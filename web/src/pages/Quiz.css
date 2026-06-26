@@ -182,7 +182,7 @@
 .oq-choice.on .oq-art {
   background:
     linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue), var(--violet)) border-box;
+    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue)) border-box;
   box-shadow:
     0 0 0 4px color-mix(in srgb, var(--brand-blue) 13%, transparent),
     0 18px 32px color-mix(in srgb, var(--brand-blue) 26%, transparent);
@@ -380,10 +380,15 @@
   display: flex;
   align-items: center;
   gap: 18px;
-  padding: 20px;
+  padding: 22px;
   border-radius: 26px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  border: 1px solid color-mix(in srgb, var(--brand-cyan) 22%, var(--border));
+  /* App ile aynı premium his: hafif marka gradyanı + cyan kenar parıltısı. */
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--brand-blue) 14%, var(--surface)),
+      color-mix(in srgb, var(--brand-cyan) 8%, var(--surface)) 60%,
+      var(--surface));
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 28%, var(--border));
   box-shadow: var(--card-glow);
 }
 .oq-sum-thumb {
@@ -396,7 +401,7 @@
   border: 3px solid transparent;
   background:
     linear-gradient(#fff, #fff) padding-box,
-    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue), var(--violet)) border-box;
+    linear-gradient(135deg, var(--brand-cyan), var(--brand-blue)) border-box;
   box-shadow: 0 14px 30px color-mix(in srgb, var(--brand-blue) 24%, transparent);
 }
 .oq-sum-thumb img { width: 70%; height: 70%; object-fit: contain; }
@@ -480,13 +485,13 @@
   color: var(--text2);
   overflow-wrap: anywhere;
 }
-.oq-sum-card.tone-c { border-color: color-mix(in srgb, var(--brand-cyan) 30%, var(--border)); }
-.oq-sum-card.tone-c .oq-sum-card-icon { color: var(--brand-cyan); background: color-mix(in srgb, var(--brand-cyan) 14%, transparent); }
-.oq-sum-card.tone-v { border-color: color-mix(in srgb, var(--violet) 30%, var(--border)); }
-.oq-sum-card.tone-v .oq-sum-card-icon { color: var(--violet); background: color-mix(in srgb, var(--violet) 14%, transparent); }
-.oq-sum-card.tone-g .oq-sum-card-icon { color: #10b981; background: color-mix(in srgb, #10b981 14%, transparent); }
-.oq-sum-card.tone-a .oq-sum-card-icon { color: #f59e0b; background: color-mix(in srgb, #f59e0b 16%, transparent); }
-.oq-sum-card.tone-b .oq-sum-card-icon { color: var(--brand-blue); background: color-mix(in srgb, var(--brand-blue) 14%, transparent); }
+/* TEMA UYUMLU: kartlar tek marka mavi/cyan ailesi — eski violet/amber/green
+   karışımı "karmaşık/çirkin" duruyordu, app ile aynı koordineli görünüm. */
+.oq-sum-card.tone-c .oq-sum-card-icon,
+.oq-sum-card.tone-b .oq-sum-card-icon { color: var(--brand-cyan); background: color-mix(in srgb, var(--brand-cyan) 14%, transparent); }
+.oq-sum-card.tone-v .oq-sum-card-icon,
+.oq-sum-card.tone-g .oq-sum-card-icon,
+.oq-sum-card.tone-a .oq-sum-card-icon { color: var(--brand-blue); background: color-mix(in srgb, var(--brand-blue) 14%, transparent); }
 
 /* ── responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {

@@ -26,6 +26,10 @@
   background: var(--brand-grad); color: #ffffff;
   display: flex; align-items: center; justify-content: center;
   font-size: 18px; font-weight: 800;
+  overflow: hidden;
+}
+.st-avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
 }
 .st-account-id strong { display: block; font-size: 14px; font-weight: 700; }
 .st-account-id span { font-size: 12.5px; color: var(--text2); }

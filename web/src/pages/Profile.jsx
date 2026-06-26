@@ -136,7 +136,11 @@ function Identity({ user, name, logout, t }) {
 
   return (
     <div className="pf-card pf-id fade-up">
-      <div className="pf-avatar">{name[0]?.toUpperCase() || 'U'}</div>
+      <div className="pf-avatar">
+        {user?.photoURL
+          ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          : (name[0]?.toUpperCase() || 'U')}
+      </div>
       <div className="pf-id-text">
         {editing ? (
           <div className="pf-name-edit">

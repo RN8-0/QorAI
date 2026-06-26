@@ -78,6 +78,13 @@ export async function signInWithGoogle() {
       if (!rec.country) {
         try { const cc = await detectCountry(); if (cc) patch.country = cc; } catch { /* best-effort */ }
       }
+      // Google profil fotoğrafını photoURL alanına kaydet (app ile AYNI alan) —
+      // header/profil/ayarlar avatarlarında gösterilsin. OAuth2 meta'dan gelir.
+      const meta = auth?.meta || {};
+      const avatar = String(
+        meta.avatarUrl || meta.avatarURL || (meta.rawUser && meta.rawUser.picture) || ''
+      ).trim();
+      if (avatar && !rec.photoURL) patch.photoURL = avatar;
       if (Object.keys(patch).length) {
         const updated = await pb.collection('users').update(rec.id, patch);
         pb.authStore.save(pb.authStore.token, updated);

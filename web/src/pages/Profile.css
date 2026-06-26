@@ -22,6 +22,10 @@
   background: var(--brand-grad); color: #ffffff;
   font-size: 26px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.pf-avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
 }
 .pf-id-text { flex: 1; min-width: 0; }
 .pf-id-text h1 { font-size: 21px; font-weight: 800; }

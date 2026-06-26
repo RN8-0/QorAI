@@ -122,7 +122,9 @@ export default function Settings() {
           <div className="st-account">
             <div className="st-account-id">
               <div className="st-avatar">
-                {(user.name || user.email || 'U')[0].toUpperCase()}
+                {user.photoURL
+                  ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : (user.name || user.email || 'U')[0].toUpperCase()}
               </div>
               <div>
                 <strong>{user.name || user.email?.split('@')[0]}</strong>

@@ -158,7 +158,11 @@ export default function Header() {
                 </span>
                 <span className="hd-tip" role="tooltip">{coinTip}</span>
               </span>
-              <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>{displayName[0]?.toUpperCase() || 'U'}</button>
+              <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>
+                {user?.photoURL
+                  ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : (displayName[0]?.toUpperCase() || 'U')}
+              </button>
               {menu && (
                 <>
                   <div className="hd-menu-backdrop" onClick={() => setMenu(false)} />
