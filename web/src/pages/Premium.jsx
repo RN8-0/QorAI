@@ -112,6 +112,22 @@ export default function Premium() {
           </Reveal>
         ))}
       </section>
+
+      <p className="premium-paynote" style={{
+        textAlign: 'center',
+        fontSize: '13px',
+        lineHeight: 1.5,
+        color: 'var(--text2, #64748b)',
+        margin: '2px auto 30px',
+        maxWidth: '560px',
+        padding: '0 16px',
+      }}>
+        {L(
+          'Subscriptions are currently available through Google Play. Web checkout is coming soon.',
+          'Abonelikler şu anda geçici olarak Google Play üzerinden alınmaktadır. Web ödemesi yakında.',
+          'Abonnements sind derzeit über Google Play verfügbar. Web-Bezahlung folgt in Kürze.',
+        )}
+      </p>
     </div>
   );
 }
