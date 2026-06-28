@@ -33,7 +33,13 @@
   <!-- Google AdSense -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
-  <script>try{document.documentElement.setAttribute('data-theme','light')}catch(e){}</script>
+  <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
+  <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
+       mounts — but ONLY once JS has run (the head script above adds `js-ready`).
+       A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
+       gets `js-ready`, so the prerender text stays visible for review/indexing.
+       seo.mjs preserves head content across the build. -->
+  <style>.js-ready .seo-prerender{display:none!important}</style>
 </head>
 <body>
   <div id="root"></div>

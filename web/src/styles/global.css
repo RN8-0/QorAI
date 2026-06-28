@@ -147,6 +147,13 @@ body {
 #root { display: flex; flex-direction: column; min-height: 100vh; }
 #root > main { flex: 1 0 auto; }
 
+/* SEO prerender shell: seo.mjs bakes a crawlable text block into #root for
+   non-JS crawlers; React (createRoot) wipes it on mount. The hide is gated on
+   `.js-ready` (added to <html> by the head script only when JS runs), so human
+   visitors never see the block flash before the SPA paints, while any crawler
+   that doesn't execute JS still sees the raw text for review/indexing. */
+.js-ready .seo-prerender { display: none !important; }
+
 /* ── site-wide animated backdrop (fixed → covers full viewport, no white gap) ── */
 .site-bg {
   position: fixed;
