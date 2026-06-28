@@ -9,6 +9,11 @@ const DISPLAY_CATS = [
   'smartwatches', 'e_readers', 'e-readers', 'vr_headsets',
 ];
 const MOBILE_CATS = ['smartphones', 'tablets', 'smartwatches'];
+// Categories that carry a discrete/dedicated GPU we can describe (brand + VRAM).
+const GPU_CATS = ['laptops', 'desktops', 'graphics_cards'];
+// Input peripherals & audio gear share a wired/wireless/Bluetooth connection axis.
+const PERIPHERAL_CONN_CATS = ['mice', 'keyboards', 'headphones', 'earbuds', 'speakers'];
+const PERIPHERAL_LIGHT_CATS = ['ram', 'mice', 'keyboards'];
 
 export const TOKEN_GROUPS = [
   // Smart vs feature phones live in one `smartphones` category — this toggle
@@ -26,6 +31,9 @@ export const TOKEN_GROUPS = [
   { prefix: 'os', label: label('Operating system', 'İşletim sistemi', 'Betriebssystem'), categories: [...COMPUTING_CATS, 'smartwatches', 'tvs'] },
   { prefix: 'processor_brand', label: label('Processor', 'İşlemci', 'Prozessor'), categories: ['smartphones', 'tablets', 'laptops', 'desktops', 'smartwatches', 'cpus'] },
   { prefix: 'gpu_type', label: label('Graphics', 'Ekran kartı', 'Grafik'), categories: ['laptops', 'desktops'] },
+  { prefix: 'gpu_brand', label: label('GPU brand', 'GPU markası', 'GPU-Marke'), categories: GPU_CATS },
+  { prefix: 'vram', kind: 'range', unit: 'capacity', label: label('Video memory', 'Ekran kartı belleği', 'Grafikspeicher'), categories: GPU_CATS },
+  { prefix: 'vram_type', label: label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: ['graphics_cards'] },
   { prefix: 'ram_type', label: label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: ['ram', 'laptops', 'desktops', 'motherboards'] },
   { prefix: 'ram_module', label: label('Module type', 'Modül tipi', 'Modultyp'), categories: ['ram'] },
   { prefix: 'ram_kit', label: label('Kit', 'Kit', 'Kit'), categories: ['ram'] },
@@ -33,18 +41,29 @@ export const TOKEN_GROUPS = [
   { prefix: 'storage_type', label: label('Storage type', 'Depolama tipi', 'Speicherart'), categories: ['ssd', 'ssds', 'storage', 'laptops', 'desktops'] },
   { prefix: 'socket', label: label('Socket', 'Soket', 'Sockel'), categories: ['cpus', 'motherboards', 'cpu_coolers'] },
   { prefix: 'connectivity', label: label('Connectivity', 'Bağlantı', 'Konnektivität'), categories: [...MOBILE_CATS, 'laptops', 'routers', 'wifi_routers', 'modem_routers'] },
+  // Input peripherals & audio.
+  { prefix: 'connection', label: label('Connection', 'Bağlantı', 'Anschluss'), categories: PERIPHERAL_CONN_CATS },
+  { prefix: 'dpi', kind: 'range', unit: 'dpi', label: label('Sensitivity (DPI)', 'Hassasiyet (DPI)', 'Empfindlichkeit (DPI)'), categories: ['mice'] },
+  { prefix: 'key_type', label: label('Key type', 'Tuş tipi', 'Tastentyp'), categories: ['keyboards'] },
+  { prefix: 'headphone_type', label: label('Type', 'Kulaklık tipi', 'Bauform'), categories: ['headphones'] },
+  // Power.
+  { prefix: 'psu_wattage', kind: 'range', unit: 'w', label: label('Wattage', 'Güç', 'Leistung'), categories: ['psu'] },
+  { prefix: 'psu_efficiency', label: label('Efficiency', 'Verimlilik', 'Effizienz'), categories: ['psu'] },
+  { prefix: 'psu_modular', label: label('Cabling', 'Kablo tipi', 'Kabelmanagement'), categories: ['psu'] },
+  { prefix: 'pb_capacity', kind: 'range', unit: 'mah', label: label('Capacity', 'Kapasite', 'Kapazität'), categories: ['powerbanks'] },
 ];
 
 export const FEATURE_TOKENS = [
   { token: 'five_g:true', label: label('5G', '5G', '5G'), categories: MOBILE_CATS },
   { token: 'nfc:true', label: label('NFC', 'NFC', 'NFC'), categories: MOBILE_CATS },
-  { token: 'wireless_charging:true', label: label('Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'), categories: ['smartphones', 'smartwatches', 'earbuds', 'headphones'] },
+  { token: 'wireless_charging:true', label: label('Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'), categories: ['smartphones', 'smartwatches', 'earbuds', 'headphones', 'powerbanks'] },
   { token: 'fast_charging:true', label: label('Fast charging', 'Hızlı şarj', 'Schnellladen'), categories: ['smartphones', 'tablets', 'laptops', 'smartwatches', 'headphones', 'earbuds', 'powerbanks'] },
   { token: 'fingerprint:true', label: label('Fingerprint', 'Parmak izi', 'Fingerabdruck'), categories: ['smartphones', 'tablets', 'laptops'] },
   { token: 'water_resistance:true', label: label('Water resistant', 'Suya dayanıklı', 'Wasserfest'), categories: ['smartphones', 'smartwatches', 'headphones', 'earbuds', 'speakers'] },
+  { token: 'anc:true', label: label('Noise cancelling (ANC)', 'Gürültü engelleme (ANC)', 'Geräuschunterdrückung (ANC)'), categories: ['headphones', 'earbuds'] },
   { token: 'ecc:true', label: label('ECC', 'ECC', 'ECC'), categories: ['ram'] },
-  { token: 'lighting:true', label: label('Lighting', 'Aydınlatma', 'Beleuchtung'), categories: ['ram'] },
-  { token: 'rgb:true', label: label('RGB', 'RGB', 'RGB'), categories: ['ram'] },
+  { token: 'lighting:true', label: label('Lighting', 'Aydınlatma', 'Beleuchtung'), categories: PERIPHERAL_LIGHT_CATS },
+  { token: 'rgb:true', label: label('RGB', 'RGB', 'RGB'), categories: PERIPHERAL_LIGHT_CATS },
   { token: 'xmp:true', label: label('Intel XMP', 'Intel XMP', 'Intel XMP'), categories: ['ram'] },
   { token: 'expo:true', label: label('AMD EXPO', 'AMD EXPO', 'AMD EXPO'), categories: ['ram'] },
 ];
@@ -58,7 +77,14 @@ const TOKEN_VALUE_LABEL = {
   hdmi: 'HDMI', displayport: 'DisplayPort', usb_c: 'USB-C', thunderbolt: 'Thunderbolt', dvi: 'DVI', vga: 'VGA',
   windows: 'Windows', macos: 'macOS', ios: 'iOS', ipados: 'iPadOS', android: 'Android', chromeos: 'ChromeOS', linux: 'Linux',
   intel: 'Intel', amd: 'AMD', apple: 'Apple', qualcomm: 'Qualcomm', mediatek: 'MediaTek', exynos: 'Exynos',
+  nvidia: 'NVIDIA',
   dedicated: label('Dedicated', 'Harici', 'Dediziert'), integrated: label('Integrated', 'Dahili', 'Integriert'),
+  gddr7: 'GDDR7', gddr6x: 'GDDR6X', gddr6: 'GDDR6', gddr5x: 'GDDR5X', gddr5: 'GDDR5', gddr4: 'GDDR4', hbm2: 'HBM2', hbm: 'HBM',
+  wireless: label('Wireless', 'Kablosuz', 'Kabellos'), wired: label('Wired', 'Kablolu', 'Kabelgebunden'), bluetooth: 'Bluetooth',
+  mechanical: label('Mechanical', 'Mekanik', 'Mechanisch'), membrane: label('Membrane', 'Membran', 'Membran'), optical_switch: label('Optical/Hall', 'Optik/Manyetik', 'Optisch/Hall'),
+  over_ear: label('Over-ear', 'Kulak çevreleyen', 'Over-Ear'), on_ear: label('On-ear', 'Kulak üstü', 'On-Ear'), in_ear: label('In-ear', 'Kulak içi', 'In-Ear'),
+  '80plus': '80+', bronze: '80+ Bronze', silver: '80+ Silver', gold: '80+ Gold', platinum: '80+ Platinum', titanium: '80+ Titanium',
+  full_modular: label('Full modular', 'Tam modüler', 'Voll modular'), semi_modular: label('Semi-modular', 'Yarı modüler', 'Teilmodular'), non_modular: label('Non-modular', 'Modüler değil', 'Nicht modular'),
   ddr3: 'DDR3', ddr4: 'DDR4', ddr5: 'DDR5', lpddr4x: 'LPDDR4X', lpddr5: 'LPDDR5', lpddr5x: 'LPDDR5X',
   dimm: 'DIMM', sodimm: 'SO-DIMM', udimm: 'UDIMM', rdimm: 'RDIMM', lrdimm: 'LRDIMM',
   desktop: label('Desktop', 'Masaüstü', 'Desktop'), laptop: label('Laptop', 'Dizüstü', 'Laptop'), server: label('Server', 'Sunucu', 'Server'),
@@ -124,6 +150,12 @@ export function rangeNumberFromTokenValue(value, unit = 'capacity') {
     const n = Number(inch[1]);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
+  if (unit === 'w' || unit === 'mah' || unit === 'dpi') {
+    const m = raw.match(new RegExp(`^(\\d+(?:\\.\\d+)?)_${unit}$`));
+    if (!m) return null;
+    const n = Number(m[1]);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
   const match = raw.match(/^(\d+(?:\.\d+)?)_(hz|mhz|mt|cl)$/);
   if (!match) return null;
   if (unit === 'hz' && match[2] !== 'hz') return null;
@@ -149,6 +181,9 @@ export function formatRangeValue(value, unit = 'capacity') {
   if (unit === 'mt') return `${Math.round(n)} MT/s`;
   if (unit === 'cl') return `CL ${Math.round(n)}`;
   if (unit === 'inch') return `${n % 1 === 0 ? n : n.toFixed(1)}"`;
+  if (unit === 'w') return `${Math.round(n)} W`;
+  if (unit === 'mah') return `${Math.round(n)} mAh`;
+  if (unit === 'dpi') return `${Math.round(n)} DPI`;
   return String(Math.round(n));
 }
 
@@ -157,6 +192,9 @@ export function rangeInputSuffix(unit = 'capacity') {
   if (unit === 'mt') return 'MT/s';
   if (unit === 'cl') return 'CL';
   if (unit === 'inch') return '"';
+  if (unit === 'w') return 'W';
+  if (unit === 'mah') return 'mAh';
+  if (unit === 'dpi') return 'DPI';
   return 'GB';
 }
 
@@ -198,6 +236,9 @@ export function prettyTokenValue(value, lang) {
   if (frequency) return `${Math.round(Number(frequency[1]))} ${frequency[2] === 'hz' ? 'Hz' : 'MT/s'}`;
   if (/^\d+(?:\.\d+)?_cl$/.test(key)) return formatRangeValue(parseFloat(key), 'cl');
   if (/^\d+(?:\.\d+)?_in$/.test(key)) return formatRangeValue(parseFloat(key), 'inch');
+  if (/^\d+(?:\.\d+)?_w$/.test(key)) return formatRangeValue(parseFloat(key), 'w');
+  if (/^\d+(?:\.\d+)?_mah$/.test(key)) return formatRangeValue(parseFloat(key), 'mah');
+  if (/^\d+(?:\.\d+)?_dpi$/.test(key)) return formatRangeValue(parseFloat(key), 'dpi');
   const mapped = TOKEN_VALUE_LABEL[key];
   if (mapped) return Array.isArray(mapped) ? lbl(mapped, lang) : mapped;
   return String(value || '')

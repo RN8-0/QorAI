@@ -30,6 +30,11 @@ const List<String> _displayCats = [
   'smartwatches', 'e_readers', 'e-readers', 'vr_headsets',
 ];
 const List<String> _mobileCats = ['smartphones', 'tablets', 'smartwatches'];
+// Categories that carry a discrete/dedicated GPU we can describe (brand + VRAM).
+const List<String> _gpuCats = ['laptops', 'desktops', 'graphics_cards'];
+// Input peripherals & audio gear share a wired/wireless/Bluetooth axis.
+const List<String> _peripheralConnCats = ['mice', 'keyboards', 'headphones', 'earbuds', 'speakers'];
+const List<String> _peripheralLightCats = ['ram', 'mice', 'keyboards'];
 
 /// One filter group keyed by a `filterTokens` prefix (e.g. `ram`, `storage`).
 class TokenGroup {
@@ -75,6 +80,9 @@ final List<TokenGroup> kTokenGroups = [
   TokenGroup(prefix: 'os', label: _label('Operating system', 'İşletim sistemi', 'Betriebssystem'), categories: [..._computingCats, 'smartwatches', 'tvs']),
   TokenGroup(prefix: 'processor_brand', label: _label('Processor', 'İşlemci', 'Prozessor'), categories: const ['smartphones', 'tablets', 'laptops', 'desktops', 'smartwatches', 'cpus']),
   TokenGroup(prefix: 'gpu_type', label: _label('Graphics', 'Ekran kartı', 'Grafik'), categories: const ['laptops', 'desktops']),
+  TokenGroup(prefix: 'gpu_brand', label: _label('GPU brand', 'GPU markası', 'GPU-Marke'), categories: _gpuCats),
+  TokenGroup(prefix: 'vram', kind: 'range', unit: 'capacity', label: _label('Video memory', 'Ekran kartı belleği', 'Grafikspeicher'), categories: _gpuCats),
+  TokenGroup(prefix: 'vram_type', label: _label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: const ['graphics_cards']),
   TokenGroup(prefix: 'ram_type', label: _label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: const ['ram', 'laptops', 'desktops', 'motherboards']),
   TokenGroup(prefix: 'ram_module', label: _label('Module type', 'Modül tipi', 'Modultyp'), categories: const ['ram']),
   TokenGroup(prefix: 'ram_kit', label: _label('Kit', 'Kit', 'Kit'), categories: const ['ram']),
@@ -82,6 +90,16 @@ final List<TokenGroup> kTokenGroups = [
   TokenGroup(prefix: 'storage_type', label: _label('Storage type', 'Depolama tipi', 'Speicherart'), categories: const ['ssd', 'ssds', 'storage', 'laptops', 'desktops']),
   TokenGroup(prefix: 'socket', label: _label('Socket', 'Soket', 'Sockel'), categories: const ['cpus', 'motherboards', 'cpu_coolers']),
   TokenGroup(prefix: 'connectivity', label: _label('Connectivity', 'Bağlantı', 'Konnektivität'), categories: [..._mobileCats, 'laptops', 'routers', 'wifi_routers', 'modem_routers']),
+  // Input peripherals & audio.
+  TokenGroup(prefix: 'connection', label: _label('Connection', 'Bağlantı', 'Anschluss'), categories: _peripheralConnCats),
+  TokenGroup(prefix: 'dpi', kind: 'range', unit: 'dpi', label: _label('Sensitivity (DPI)', 'Hassasiyet (DPI)', 'Empfindlichkeit (DPI)'), categories: const ['mice']),
+  TokenGroup(prefix: 'key_type', label: _label('Key type', 'Tuş tipi', 'Tastentyp'), categories: const ['keyboards']),
+  TokenGroup(prefix: 'headphone_type', label: _label('Type', 'Kulaklık tipi', 'Bauform'), categories: const ['headphones']),
+  // Power.
+  TokenGroup(prefix: 'psu_wattage', kind: 'range', unit: 'w', label: _label('Wattage', 'Güç', 'Leistung'), categories: const ['psu']),
+  TokenGroup(prefix: 'psu_efficiency', label: _label('Efficiency', 'Verimlilik', 'Effizienz'), categories: const ['psu']),
+  TokenGroup(prefix: 'psu_modular', label: _label('Cabling', 'Kablo tipi', 'Kabelmanagement'), categories: const ['psu']),
+  TokenGroup(prefix: 'pb_capacity', kind: 'range', unit: 'mah', label: _label('Capacity', 'Kapasite', 'Kapazität'), categories: const ['powerbanks']),
 ];
 
 /// One boolean feature toggle (a `prefix:true` token).
@@ -98,13 +116,14 @@ class FeatureToken {
 final List<FeatureToken> kFeatureTokens = [
   FeatureToken(token: 'five_g:true', label: _label('5G', '5G', '5G'), categories: _mobileCats),
   FeatureToken(token: 'nfc:true', label: _label('NFC', 'NFC', 'NFC'), categories: _mobileCats),
-  FeatureToken(token: 'wireless_charging:true', label: _label('Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'), categories: const ['smartphones', 'smartwatches', 'earbuds', 'headphones']),
+  FeatureToken(token: 'wireless_charging:true', label: _label('Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'), categories: const ['smartphones', 'smartwatches', 'earbuds', 'headphones', 'powerbanks']),
   FeatureToken(token: 'fast_charging:true', label: _label('Fast charging', 'Hızlı şarj', 'Schnellladen'), categories: const ['smartphones', 'tablets', 'laptops', 'smartwatches', 'headphones', 'earbuds', 'powerbanks']),
   FeatureToken(token: 'fingerprint:true', label: _label('Fingerprint', 'Parmak izi', 'Fingerabdruck'), categories: const ['smartphones', 'tablets', 'laptops']),
   FeatureToken(token: 'water_resistance:true', label: _label('Water resistant', 'Suya dayanıklı', 'Wasserfest'), categories: const ['smartphones', 'smartwatches', 'headphones', 'earbuds', 'speakers']),
+  FeatureToken(token: 'anc:true', label: _label('Noise cancelling (ANC)', 'Gürültü engelleme (ANC)', 'Geräuschunterdrückung (ANC)'), categories: const ['headphones', 'earbuds']),
   FeatureToken(token: 'ecc:true', label: _label('ECC', 'ECC', 'ECC'), categories: const ['ram']),
-  FeatureToken(token: 'lighting:true', label: _label('Lighting', 'Aydınlatma', 'Beleuchtung'), categories: const ['ram']),
-  FeatureToken(token: 'rgb:true', label: _label('RGB', 'RGB', 'RGB'), categories: const ['ram']),
+  FeatureToken(token: 'lighting:true', label: _label('Lighting', 'Aydınlatma', 'Beleuchtung'), categories: _peripheralLightCats),
+  FeatureToken(token: 'rgb:true', label: _label('RGB', 'RGB', 'RGB'), categories: _peripheralLightCats),
   FeatureToken(token: 'xmp:true', label: _label('Intel XMP', 'Intel XMP', 'Intel XMP'), categories: const ['ram']),
   FeatureToken(token: 'expo:true', label: _label('AMD EXPO', 'AMD EXPO', 'AMD EXPO'), categories: const ['ram']),
 ];
@@ -120,7 +139,14 @@ const Map<String, dynamic> _tokenValueLabel = {
   'hdmi': 'HDMI', 'displayport': 'DisplayPort', 'usb_c': 'USB-C', 'thunderbolt': 'Thunderbolt', 'dvi': 'DVI', 'vga': 'VGA',
   'windows': 'Windows', 'macos': 'macOS', 'ios': 'iOS', 'ipados': 'iPadOS', 'android': 'Android', 'chromeos': 'ChromeOS', 'linux': 'Linux',
   'intel': 'Intel', 'amd': 'AMD', 'apple': 'Apple', 'qualcomm': 'Qualcomm', 'mediatek': 'MediaTek', 'exynos': 'Exynos',
+  'nvidia': 'NVIDIA',
   'dedicated': ['Dedicated', 'Harici', 'Dediziert'], 'integrated': ['Integrated', 'Dahili', 'Integriert'],
+  'gddr7': 'GDDR7', 'gddr6x': 'GDDR6X', 'gddr6': 'GDDR6', 'gddr5x': 'GDDR5X', 'gddr5': 'GDDR5', 'gddr4': 'GDDR4', 'hbm2': 'HBM2', 'hbm': 'HBM',
+  'wireless': ['Wireless', 'Kablosuz', 'Kabellos'], 'wired': ['Wired', 'Kablolu', 'Kabelgebunden'], 'bluetooth': 'Bluetooth',
+  'mechanical': ['Mechanical', 'Mekanik', 'Mechanisch'], 'membrane': ['Membrane', 'Membran', 'Membran'], 'optical_switch': ['Optical/Hall', 'Optik/Manyetik', 'Optisch/Hall'],
+  'over_ear': ['Over-ear', 'Kulak çevreleyen', 'Over-Ear'], 'on_ear': ['On-ear', 'Kulak üstü', 'On-Ear'], 'in_ear': ['In-ear', 'Kulak içi', 'In-Ear'],
+  '80plus': '80+', 'bronze': '80+ Bronze', 'silver': '80+ Silver', 'gold': '80+ Gold', 'platinum': '80+ Platinum', 'titanium': '80+ Titanium',
+  'full_modular': ['Full modular', 'Tam modüler', 'Voll modular'], 'semi_modular': ['Semi-modular', 'Yarı modüler', 'Teilmodular'], 'non_modular': ['Non-modular', 'Modüler değil', 'Nicht modular'],
   'ddr3': 'DDR3', 'ddr4': 'DDR4', 'ddr5': 'DDR5', 'lpddr4x': 'LPDDR4X', 'lpddr5': 'LPDDR5', 'lpddr5x': 'LPDDR5X',
   'dimm': 'DIMM', 'sodimm': 'SO-DIMM', 'udimm': 'UDIMM', 'rdimm': 'RDIMM', 'lrdimm': 'LRDIMM',
   'desktop': ['Desktop', 'Masaüstü', 'Desktop'], 'laptop': ['Laptop', 'Dizüstü', 'Laptop'], 'server': ['Server', 'Sunucu', 'Server'],
@@ -185,6 +211,12 @@ double? rangeNumberFromTokenValue(String value, [String unit = 'capacity']) {
     final n = double.tryParse(m.group(1)!);
     return (n != null && n > 0) ? n : null;
   }
+  if (unit == 'w' || unit == 'mah' || unit == 'dpi') {
+    final m = RegExp('^(\\d+(?:\\.\\d+)?)_$unit\$').firstMatch(raw);
+    if (m == null) return null;
+    final n = double.tryParse(m.group(1)!);
+    return (n != null && n > 0) ? n : null;
+  }
   final m = RegExp(r'^(\d+(?:\.\d+)?)_(hz|mhz|mt|cl)$').firstMatch(raw);
   if (m == null) return null;
   final suffix = m.group(2);
@@ -219,6 +251,12 @@ String formatRangeValue(double value, [String unit = 'capacity']) {
       return 'CL ${value.round()}';
     case 'inch':
       return value % 1 == 0 ? '${value.round()}"' : '${value.toStringAsFixed(1)}"';
+    case 'w':
+      return '${value.round()} W';
+    case 'mah':
+      return '${value.round()} mAh';
+    case 'dpi':
+      return '${value.round()} DPI';
     default:
       return value.round().toString();
   }
@@ -241,6 +279,15 @@ String prettyTokenValue(String value, String lang) {
   }
   if (RegExp(r'^\d+(?:\.\d+)?_in$').hasMatch(key)) {
     return formatRangeValue(double.parse(key.split('_').first), 'inch');
+  }
+  if (RegExp(r'^\d+(?:\.\d+)?_w$').hasMatch(key)) {
+    return formatRangeValue(double.parse(key.split('_').first), 'w');
+  }
+  if (RegExp(r'^\d+(?:\.\d+)?_mah$').hasMatch(key)) {
+    return formatRangeValue(double.parse(key.split('_').first), 'mah');
+  }
+  if (RegExp(r'^\d+(?:\.\d+)?_dpi$').hasMatch(key)) {
+    return formatRangeValue(double.parse(key.split('_').first), 'dpi');
   }
 
   final mapped = _tokenValueLabel[key];

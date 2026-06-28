@@ -42,11 +42,25 @@ const CAT_SETS = {
   os: new Set(['smartphones', 'tablets', 'laptops', 'desktops', 'gaming_consoles', 'consoles', 'media_players', 'vr_headsets', 'e_readers', 'e-readers', 'smartwatches', 'tvs']),
   cpu: new Set(['smartphones', 'tablets', 'laptops', 'desktops', 'smartwatches', 'cpus']),
   gpu: new Set(['laptops', 'desktops']),
+  gpuBrand: new Set(['laptops', 'desktops', 'graphics_cards']),
+  vram: new Set(['laptops', 'desktops', 'graphics_cards']),
+  vramType: new Set(['graphics_cards']),
   socket: new Set(['cpus', 'motherboards', 'cpu_coolers']),
   connectivity: new Set(['smartphones', 'tablets', 'smartwatches', 'laptops', 'routers', 'wifi_routers', 'modem_routers']),
   mobile: new Set(['smartphones', 'tablets', 'smartwatches']),
   charging: new Set(['smartphones', 'tablets', 'laptops', 'smartwatches', 'headphones', 'earbuds', 'powerbanks']),
+  wirelessCharging: new Set(['smartphones', 'smartwatches', 'earbuds', 'headphones', 'powerbanks']),
   water: new Set(['smartphones', 'smartwatches', 'headphones', 'earbuds', 'speakers']),
+  // Input peripherals & audio.
+  peripheralConn: new Set(['mice', 'keyboards', 'headphones', 'earbuds', 'speakers']),
+  peripheralLight: new Set(['mice', 'keyboards']),
+  dpi: new Set(['mice']),
+  keyType: new Set(['keyboards']),
+  headphoneType: new Set(['headphones']),
+  anc: new Set(['headphones', 'earbuds']),
+  // Power.
+  psu: new Set(['psu']),
+  pbCapacity: new Set(['powerbanks']),
 };
 const cat = (pb) => String(pb?.category || '').toLowerCase();
 const allow = (pb, key) => CAT_SETS[key]?.has(cat(pb));
@@ -201,6 +215,82 @@ function _cpuBrand(v) {
   return null;
 }
 function _gpuType(v) { const n = _normalizeBrowseText(v); if (!n) return null; if (['rtx', 'gtx', 'geforce', 'radeon', 'arc', 'dedicated', 'discrete'].some((x) => n.includes(x))) return 'dedicated'; if (['integrated', 'shared', 'iris', 'uhd', 'intel hd', 'apple gpu'].some((x) => n.includes(x))) return 'integrated'; return null; }
+function _gpuBrand(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (/\bnvidia\b|geforce|\brtx\b|\bgtx\b|quadro|\bmx ?\d|tesla/.test(n)) return 'nvidia';
+  if (/\bamd\b|radeon|\brx ?\d|\bvega\b|firepro/.test(n)) return 'amd';
+  if (/\bintel\b|\barc\b|\biris\b|\buhd\b|intel hd|intel graphics/.test(n)) return 'intel';
+  if (/\bapple\b|\bm[1-5]( ?(pro|max|ultra))?\b/.test(n)) return 'apple';
+  return null;
+}
+// VRAM (graphics-card / discrete-GPU memory). GB required; capped well below RAM.
+function _vramGb(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n || !/\d\s*gb\b/.test(n) || /\d\s*tb\b/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x <= 0 || x > 128) return null;
+  return Math.round(x);
+}
+function _vramType(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (/gddr7/.test(n)) return 'gddr7';
+  if (/gddr6x/.test(n)) return 'gddr6x';
+  if (/gddr6/.test(n)) return 'gddr6';
+  if (/gddr5x/.test(n)) return 'gddr5x';
+  if (/gddr5/.test(n)) return 'gddr5';
+  if (/gddr4/.test(n)) return 'gddr4';
+  if (/hbm2/.test(n)) return 'hbm2';
+  if (/\bhbm\b/.test(n)) return 'hbm';
+  return null;
+}
+function _dpiVal(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n || !/dpi|cpi/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x < 100 || x > 60000) return null;
+  return Math.round(x);
+}
+function _headphoneType(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (/cevreleyen|over ?ear|circumaural|tam boy|full size/.test(n)) return 'over_ear';
+  if (/kulak ustu|on ?ear|supraaural/.test(n)) return 'on_ear';
+  if (/kulak ici|in ?ear|kulakici|earbud|true wireless|\btws\b/.test(n)) return 'in_ear';
+  return null;
+}
+function _psuWatt(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n || !/\bw\b|watt/.test(n)) return null;
+  const x = _num(v);
+  if (x === null || x < 50 || x > 3000) return null;
+  return Math.round(x);
+}
+function _psuEfficiency(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (/titanium/.test(n)) return 'titanium';
+  if (/platinum/.test(n)) return 'platinum';
+  if (/\bgold\b/.test(n)) return 'gold';
+  if (/\bsilver\b/.test(n)) return 'silver';
+  if (/bronze/.test(n)) return 'bronze';
+  if (/80 ?\+|80 ?plus/.test(n)) return '80plus';
+  return null;
+}
+function _psuModular(v) {
+  const n = _normalizeBrowseText(v);
+  if (!n) return null;
+  if (/yari modul|semi ?modul/.test(n)) return 'semi_modular';
+  if (/moduler degil|non ?modul|sabit kablo|fixed|non modular/.test(n)) return 'non_modular';
+  if (/tam modul|full ?modul|fully modul|modular|modul/.test(n)) return 'full_modular';
+  return null;
+}
+function _pbCapacity(v) {
+  const x = _batteryMah(v);
+  if (x === null || x < 1000 || x > 200000) return null;
+  return Math.round(x);
+}
 function _connTokens(v) { const n = _normalizeBrowseText(v); const t = []; if (n.includes('wi fi') || n.includes('wifi')) t.push('wi-fi'); if (n.includes('5g')) t.push('5g'); if (n.includes('4g') || n.includes('cellular') || n.includes('lte')) t.push('4g'); return t; }
 function _weightKg(v) { const n = _normalizeBrowseText(v), x = _num(v); if (x === null) return null; if (n.includes('kg')) return x; if (n.includes('g')) return x / 1000; return x; }
 function _normSocket(v) { let s = String(v || '').trim().toUpperCase().replace(/SOCKET/g, '').replace(/FCLGA/g, 'LGA').replace(/[^A-Z0-9]/g, ''); if (/^STR\d+$/.test(s)) s = s.slice(1); return s; }
@@ -245,7 +335,11 @@ function _displayInputTokens(flat) {
   });
   return Array.from(tokens);
 }
-function _ramType(v) { return _matchBucket(v, [['lpddr5x', 'lpddr5x'], ['lpddr5', 'lpddr5'], ['lpddr4x', 'lpddr4x'], ['ddr5', 'ddr5'], ['ddr4', 'ddr4'], ['ddr3', 'ddr3']]); }
+function _ramType(v) {
+  // GDDR is graphics VRAM, never system RAM — don't let "GDDR5" match "ddr5".
+  if (/gddr/i.test(String(v || ''))) return null;
+  return _matchBucket(v, [['lpddr5x', 'lpddr5x'], ['lpddr5', 'lpddr5'], ['lpddr4x', 'lpddr4x'], ['ddr5', 'ddr5'], ['ddr4', 'ddr4'], ['ddr3', 'ddr3']]);
+}
 function _storageType(v) { return _matchBucket(v, [['nvme', 'nvme'], ['sata', 'sata'], ['ufs', 'ufs'], ['emmc', 'emmc'], ['ssd', 'ssd'], ['hdd', 'hdd']]); }
 function _ramSpeedMt(v) {
   const n = _normalizeBrowseText(v);
@@ -314,7 +408,9 @@ function extractBrowse(pb) {
   if (allow(pb, 'ram')) {
     const ram = _ramGb(first(ramCapacityKeys)) || (category === 'ram' ? _ramGb(pb.name) : null);
     if (ram !== null) addT('ram:' + ram + '_gb');
-    const rt = _ramType(first(['RAM Type', 'Memory Type', 'Memory Technology', 'Bellek Tipi', 'Bellek Türü', 'Bellek Teknolojisi', 'Speichertyp', 'Speicherart', 'Speichertechnologie'])) || (category === 'ram' ? _ramType(pb.name) : null);
+    // firstValid (not first): "Bellek Türü" fuzzy-matches "RAM"="64 GB" too, and
+    // first() grabbed that wrong value, leaving laptops/tablets with no ram_type.
+    const rt = firstValid(['RAM Type', 'Memory Type', 'Memory Technology', 'Bellek Tipi', 'Bellek Türü', 'Bellek Teknolojisi', 'Speichertyp', 'Speicherart', 'Speichertechnologie'], _ramType) || (category === 'ram' ? _ramType(pb.name) : null);
     if (rt) addT('ram_type:' + rt);
     if (category === 'ram') {
       const speed = _ramSpeedMt(first(['Bellek Hızı (OC)', 'Bellek Hızı', 'Memory Speed', 'RAM Speed', 'Speed', 'Speichertakt', 'Taktrate']));
@@ -344,7 +440,7 @@ function extractBrowse(pb) {
     const st = _storageToken(first(['Hard Disk (SSD) Size', 'SSD Size', 'Internal Storage', 'internal storage', 'Storage Size', 'Storage Capacity', 'Total Storage Capacity', 'Capacity', 'storage', 'Storage', 'Dahili Depolama', 'Depolama', 'Kapasite', 'Speicherkapazitat', 'Speicherkapazität', 'Geratespeicher', 'Gerätespeicher']))
       || _storageToken(pb.name);
     if (st) addT('storage:' + st);
-    const sty = _storageType(first(['Storage Type', 'Storage Media', 'Disk Type', 'Interface', 'Schnittstelle', 'Depolama Tipi', 'SSD Type']));
+    const sty = firstValid(['Storage Type', 'Storage Media', 'Disk Type', 'Interface', 'Schnittstelle', 'Depolama Tipi', 'Depolama Türü', 'SSD Type', 'Sabit Disk (SSD) Tipi', 'Sabit Disk Tipi', 'SSD Tipi', 'Disk Tipi', 'Disk Türü'], _storageType);
     if (sty) addT('storage_type:' + sty);
   }
   if (allow(pb, 'os')) {
@@ -363,6 +459,79 @@ function extractBrowse(pb) {
   if (allow(pb, 'gpu')) {
     const gpu = firstValid(['GPU Model', 'Graphics Card', 'Graphics Card Type', 'External Graphics Processor (GPU)', 'Integrated Graphics Model', 'Dedicated Graphics Model', 'Video Card', 'GPU', 'Ekran Kartı', 'Harici Ekran Kartı', 'Dahili Ekran Kartı', 'Grafik İşlemci', 'Grafik Kartı', 'Grafik', 'Grafikkarte'], _gpuType);
     if (gpu) addT('gpu_type:' + gpu);
+  }
+  if (allow(pb, 'gpuBrand')) {
+    // Prefer the discrete-GPU keys; fall back to integrated/SoC graphics so
+    // MacBooks (Apple) and integrated-only PCs still get a brand.
+    const brand = firstValid([
+      'GPU Markası', 'Display Kartı İşlemci Markası', 'İşlemci Üreticisi', 'GPU Üreticisi',
+      'GPU Modeli', 'GPU Serisi', 'Display Kartı Modeli', 'GPU Model', 'GPU',
+      'Grafik İşlemcisi', 'Grafik Kartı', 'Graphics Card', 'Ekran Kartı',
+      'Dahili Grafik Modeli', 'Integrated Graphics Model', 'Graphics', 'Grafikkarte',
+    ], _gpuBrand) || (category === 'graphics_cards' ? _gpuBrand(pb.name) : null);
+    if (brand) addT('gpu_brand:' + brand);
+  }
+  if (allow(pb, 'vram')) {
+    const vram = firstValid([
+      'GPU Bellek Miktarı', 'Display Kartı Bellek Miktarı', 'Bellek Boyutu', 'Ekran Kartı Bellek Miktarı',
+      'GPU Memory', 'Video Memory', 'VRAM', 'Grafikspeicher', 'Bellek Kapasitesi (GPU)',
+    ], _vramGb);
+    if (vram) addT('vram:' + vram + '_gb');
+  }
+  if (allow(pb, 'vramType')) {
+    const vt = firstValid(['Bellek Türü', 'GPU Bellek Türü', 'Memory Type', 'Bellek Tipi', 'Speichertyp'], _vramType)
+      || _vramType(pb.name);
+    if (vt) addT('vram_type:' + vt);
+  }
+  if (allow(pb, 'peripheralConn')) {
+    const bag = _normalizeBrowseText(first(['Bağlantı Şekli', 'Baglanti Sekli', 'Bağlantı Tipi', 'Bağlantı', 'Connection Type', 'Connection', 'Bağlantı Türü', 'Anschluss']));
+    const bt = _bool(first(['Bluetooth', 'Bluetooth Desteği']));
+    const wiredCap = _bool(first(['Kablolu Kullanabilme', 'Kablolu Kullanım', 'Kablo ile Kullanım']));
+    const dongle = _bool(first(['2.4 GHz USB Alıcı', '2,4 GHz USB Alıcı', 'USB Alıcı', 'Kablosuz Alıcı']));
+    if (/wireless|kablosuz|wi ?fi/.test(bag) || dongle === true || bt === true) addT('connection:wireless');
+    if (/wired|kablolu/.test(bag) || wiredCap === true) addT('connection:wired');
+    if (bt === true || /bluetooth/.test(bag)) addT('connection:bluetooth');
+  }
+  if (allow(pb, 'dpi')) {
+    const dpi = firstValid(['Mouse Azami Hassasiyet', 'Maksimum DPI', 'Azami DPI', 'DPI', 'Hassasiyet', 'Çözünürlük (DPI)', 'Sensör Çözünürlüğü', 'Max DPI'], _dpiVal);
+    if (dpi) addT('dpi:' + dpi + '_dpi');
+  }
+  if (allow(pb, 'keyType')) {
+    const mechBool = _bool(first(['Mekanik Tuşlar', 'Mekanik Tuş', 'Mechanical Keys']));
+    const switchText = _normalizeBrowseText(first(['Mekanik Tuş Specifications', 'Mekanik Tuş Özellikleri', 'Anahtar Tipi', 'Switch Type', 'Tuş Tipi', 'Klavye Tuş Tipi', 'Switch']) + ' ' + (pb.name || ''));
+    if (/manyetik|magnetic|\bhall\b|optik|optical/.test(switchText)) addT('key_type:optical_switch');
+    else if (mechBool === true || /mekanik|mechanical/.test(switchText)) addT('key_type:mechanical');
+    else if (mechBool === false || /membran|membrane/.test(switchText)) addT('key_type:membrane');
+  }
+  if (allow(pb, 'headphoneType')) {
+    const ht = firstValid(['Kulaklık Tipi', 'Kulaklik Tipi', 'Headphone Type', 'Kulaklık Türü', 'Kullanım Tipi', 'Form', 'Tip'], _headphoneType)
+      || _headphoneType(pb.name);
+    if (ht) addT('headphone_type:' + ht);
+  }
+  if (allow(pb, 'anc')) {
+    const ancField = first(['Aktif Gürültü Engelleme (ANC)', 'Aktif Gürültü Engelleme', 'Active Noise Cancelling', 'Active Noise Cancellation', 'ANC']);
+    const ancDetail = _normalizeBrowseText(first(['Gürültü Engelleme (Dinleme)', 'Gürültü Engelleme', 'Gürültü Önleme', 'Noise Cancellation', 'Noise Cancelling']));
+    if (_bool(ancField) === true || /\banc\b|aktif gurultu|active noise/.test(ancDetail) || /\banc\b|aktif gurultu|active noise/.test(_normalizeBrowseText(ancField))) addT('anc:true');
+  }
+  if (allow(pb, 'peripheralLight')) {
+    const lightFlag = _bool(first(['Aydınlatma', 'Mouse Aydınlatması', 'Klavye Aydınlatması', 'Işıklandırma', 'Lighting', 'RGB Aydınlatma', 'Backlight', 'Arka Aydınlatma']));
+    const lightDetail = _normalizeBrowseText(first(['Aydınlatma Tipi', 'Mouse Aydınlatması Tipi', 'Klavye Aydınlatması Tipi', 'Işıklandırma Tipi', 'Lighting Type', 'RGB']));
+    if (lightFlag === true || (lightDetail && !/^(no|false|hayir|yok|n a|-)$/.test(lightDetail))) addT('lighting:true');
+    if (/\brgb\b|argb/.test(lightDetail) || /\brgb\b|argb/.test(_normalizeBrowseText(first(['Aydınlatma', 'Mouse Aydınlatması', 'Klavye Aydınlatması'])))) addT('rgb:true');
+  }
+  if (allow(pb, 'psu')) {
+    const watt = firstValid(['Güç', 'Güç (W)', 'Maksimum Güç', 'Çıkış Gücü', 'Power', 'Wattage', 'Total Power', 'Leistung', 'Nennleistung'], _psuWatt);
+    if (watt) addT('psu_wattage:' + watt + '_w');
+    const eff = firstValid(['80 Plus Sertifikası', '80 Plus', 'Verimlilik Sertifikası', 'Sertifika', 'Verimlilik', 'Efficiency', 'Certification', 'Zertifizierung'], _psuEfficiency)
+      || _psuEfficiency(pb.name);
+    if (eff) addT('psu_efficiency:' + eff);
+    const mod = firstValid(['Kablo Tipi', 'Kablo Yönetimi', 'Modülerlik', 'Modülerlik Tipi', 'Modularity', 'Cable Type', 'Kabeltyp', 'Kablo Yapısı'], _psuModular)
+      || _psuModular(pb.name);
+    if (mod) addT('psu_modular:' + mod);
+  }
+  if (allow(pb, 'pbCapacity')) {
+    const cap = firstValid(['Kapasite', 'Battery Capacity', 'Pil Kapasitesi', 'Batarya Kapasitesi', 'Kapazität'], _pbCapacity);
+    if (cap) addT('pb_capacity:' + cap + '_mah');
   }
   const PANEL_PAIRS = [['qd oled', 'qd_oled'], ['qd-oled', 'qd_oled'], ['mini led', 'mini_led'], ['miniled', 'mini_led'], ['micro led', 'micro_led'], ['microled', 'micro_led'],
     ['dynamic amoled', 'dynamic_amoled'], ['super amoled', 'super_amoled'], ['amoled', 'amoled'], ['ltpo', 'ltpo'], ['qled', 'qled'], ['woled', 'oled'], ['oled', 'oled'],
@@ -394,7 +563,7 @@ function extractBrowse(pb) {
   if (allow(pb, 'connectivity')) {
     _connTokens(first(['Connectivity', 'Connection Type', '4G', '5G', 'Wi-Fi', 'Bağlantı', 'Baglanti', 'Konnektivitat', 'Konnektivität'])).forEach((tk) => addT('connectivity:' + tk));
   }
-  [['five_g', ['5G', '5G Desteği', '5G Destegi'], 'mobile'], ['nfc', ['NFC'], 'mobile'], ['wireless_charging', ['Wireless Charging', 'Kablosuz Şarj', 'Kablosuz Sarj'], 'mobile'], ['fast_charging', ['Fast Charging', 'Hızlı Şarj', 'Hizli Sarj'], 'charging'], ['fingerprint', ['Fingerprint Reader', 'fingerprint', 'Parmak İzi', 'Parmak Izi'], 'mobile'], ['water_resistance', ['Water Resistance', 'Suya Dayanıklılık', 'Suya Dayaniklilik', 'Wasserdicht'], 'water']].forEach(([tok, keys, gate]) => { if (allow(pb, gate) && _bool(first(keys)) === true) addT(tok + ':true'); });
+  [['five_g', ['5G', '5G Desteği', '5G Destegi'], 'mobile'], ['nfc', ['NFC'], 'mobile'], ['wireless_charging', ['Wireless Charging', 'Kablosuz Şarj', 'Kablosuz Sarj'], 'wirelessCharging'], ['fast_charging', ['Fast Charging', 'Hızlı Şarj', 'Hizli Sarj'], 'charging'], ['fingerprint', ['Fingerprint Reader', 'fingerprint', 'Parmak İzi', 'Parmak Izi'], 'mobile'], ['water_resistance', ['Water Resistance', 'Suya Dayanıklılık', 'Suya Dayaniklilik', 'Wasserdicht'], 'water']].forEach(([tok, keys, gate]) => { if (allow(pb, gate) && _bool(first(keys)) === true) addT(tok + ':true'); });
 
   const screen = _screenSizeFromFlat(flat);
   const battery = _batteryMah(first(['Battery Capacity', 'Battery Capacity (Typical)', 'Batarya Kapasitesi', 'Batarya Kapasitesi (Tipik)', 'Pil Kapasitesi']));
