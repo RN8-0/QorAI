@@ -176,13 +176,13 @@ function productSpecs(product, t, lang) {
   return out.slice(0, 4);
 }
 
-function ProductImage({ p }) {
+function ProductImage({ p, eager = false }) {
   const meta = catMeta(p.category);
   const imageName = cleanProductName(p.name);
   if (p.imageUrl) {
     return (
       <div className="q-product-card-img">
-        <ProductImg src={p.imageUrl} alt={imageName} size="card" />
+        <ProductImg src={p.imageUrl} alt={imageName} size="card" eager={eager} />
       </div>
     );
   }
@@ -205,7 +205,7 @@ function polishCardSpecLabel(label, lang) {
     .replace(/En Yüksek Takt/g, 'Höchster Takt');
 }
 
-export default function ProductCard({ product: p, variant = 'card', onClick }) {
+export default function ProductCard({ product: p, variant = 'card', onClick, priority = false }) {
   const { t, lang } = useI18n();
   const geoCountry = useGeoCountry();
   const { has, tryAdd, remove } = useCompare();
@@ -250,7 +250,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick }) {
             <Gauge value={p.techScore} size={28} stroke={2.1} color={techColor(p.techScore)} fontSize={10} />
           </span>
         )}
-        <ProductImage p={{ ...p, name: cardName }} />
+        <ProductImage p={{ ...p, name: cardName }} eager={priority} />
       </div>
       <div className="q-product-card-body">
         <div className="q-product-card-head">

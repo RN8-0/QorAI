@@ -172,6 +172,11 @@ body {
   50% { transform: translate3d(22px, 30px, 0) scale(1.08); }
 }
 @media (prefers-reduced-motion: reduce) { .site-orb { animation: none; } }
+/* Mobile: three 80px-blur full-viewport orbs animating forever pin the GPU and
+   cause scroll jank. Keep them static + lighter (composite once, never re-blur). */
+@media (max-width: 760px) {
+  .site-orb { animation: none; will-change: auto; filter: blur(54px); opacity: 0.2; }
+}
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }

@@ -156,6 +156,10 @@
   gap: 8px;
 }
 .cat-list-item .q-product-card { height: 100%; }
+/* Skip layout/paint for off-screen cards so a long (load-more) list scrolls
+   smoothly on mobile. Intrinsic size ≈ card height so the scrollbar stays stable. */
+.cat-list-item { content-visibility: auto; contain-intrinsic-size: auto 200px; }
+@media (max-width: 520px) { .cat-list-item { contain-intrinsic-size: auto 172px; } }
 
 .cat-empty { text-align: center; padding: 70px 20px; }
 .cat-empty-icon { font-size: 44px; margin-bottom: 10px; }

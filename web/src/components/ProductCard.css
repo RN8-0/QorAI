@@ -206,4 +206,12 @@
   .q-product-card-spec-val {
     font-size: 13px;
   }
+
+  /* Live backdrop-blur per card (×24+) is expensive while scrolling on phones —
+     use an opaque badge background instead. */
+  .q-product-card-score {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--surface);
+  }
 }

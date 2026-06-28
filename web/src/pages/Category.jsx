@@ -460,7 +460,7 @@ export default function Category() {
               ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
               : items.map((p, i) => (
                   <div key={p.id} className="cat-list-item" style={{ '--row': i }}>
-                    <ProductCard product={p} />
+                    <ProductCard product={p} priority={i < 4} />
                   </div>
                 ))}
           </div>
