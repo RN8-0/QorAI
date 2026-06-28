@@ -15,9 +15,9 @@ function plans(L) {
       cadence: L('forever', 'sürekli', 'dauerhaft'),
       cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
       features: [
-        L('20 welcome Q Coins', '20 hoş geldin Q Coin', '20 Willkommens-Q-Coins'),
-        L('Qor AI Chat with a daily limit', 'Günlük limitli Qor AI Chat', 'Qor AI Chat mit Tageslimit'),
-        L('Visual scanner & smart link analysis (limited)', 'Görsel tarayıcı ve akıllı link analizi (limitli)', 'Visueller Scanner & smarte Link-Analyse (begrenzt)'),
+        L('20 welcome Qor Coins', '20 hoş geldin Qor Coin', '20 Willkommens-Qor-Coins'),
+        L('Qor AI Chat (runs on Qor Coins)', 'Qor AI Chat (Qor Coin ile)', 'Qor AI Chat (mit Qor Coins)'),
+        L('Visual scanner & smart link analysis (Qor Coins)', 'Görsel tarayıcı ve akıllı link analizi (Qor Coin ile)', 'Visueller Scanner & smarte Link-Analyse (mit Qor Coins)'),
         L('Standard recommendations', 'Standart öneriler', 'Standard-Empfehlungen'),
         L('Product comparisons, search and categories', 'Ürün karşılaştırma, arama ve kategoriler', 'Produktvergleiche, Suche und Kategorien'),
       ],

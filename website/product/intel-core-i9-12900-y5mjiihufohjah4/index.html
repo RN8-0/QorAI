@@ -35,10 +35,15 @@
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
   <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
-  <script type="module" crossorigin src="/spa/index-BtmqMWsb.js"></script>
-  <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-1PIvicyh.css">
+  <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
+       mounts — but ONLY once JS has run (the head script above adds `js-ready`).
+       A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
+       gets `js-ready`, so the prerender text stays visible for review/indexing.
+       seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
+  <script type="module" crossorigin src="/spa/index-ChZ6PD2J.js"></script>
+  <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
+  <link rel="stylesheet" crossorigin href="/spa/index-CY7O0l1I.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="https://qorai.net/category/cpus">İşlemci</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Intel Core i9-12900</h1><p style="color:#475569;margin:0 0 12px">Intel · İşlemci · Qor AI teknik skoru 63/100</p><img src="https://resim.epey.com/742799/m_intel-core-i9-12900-1.jpg" alt="Intel Core i9-12900" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Intel Core i9-12900 özelliklerini, 35 teknik detayını ve güncel fiyatlarını Qor AI yapay zekâ ile incele; benzer i̇şlemci modelleriyle karşılaştır ve sana en uygununu seç.</p><h2 style="font-size:18px;margin:20px 0 8px">Benzer İşlemci modelleri</h2><ul style="line-height:1.8"><li><a href="/product/intel-core-i7-13700-elq7mqcjqkbv45d" style="color:#2563eb">Intel Core i7-13700 (BX8071513700)</a></li><li><a href="/product/intel-core-i7-13700f-gdzs187gqnota1a" style="color:#2563eb">Intel Core i7-13700F (BX8071513700F)</a></li><li><a href="/product/amd-athlon-x4-950-4th8w6dqoklv7zk" style="color:#2563eb">AMD Athlon X4 950</a></li><li><a href="/product/amd-ryzen-5-7500x3d-ajzrwagtdjyfi2t" style="color:#2563eb">AMD Ryzen 5 7500X3D (100-000001904)</a></li><li><a href="/product/amd-ryzen-5-7400f-gi3ha1qoe3dth6t" style="color:#2563eb">AMD Ryzen 5 7400F (100-000001845)</a></li><li><a href="/product/amd-ryzen-5-7600x3d-6cdiexnnjsyu845" style="color:#2563eb">AMD Ryzen 5 7600X3D (100-000001721)</a></li><li><a href="/product/intel-core-i9-12900t-szvkx2rrds8fme1" style="color:#2563eb">Intel Core i9-12900T</a></li><li><a href="/product/intel-core-i5-14400t-vso5i794mxesckb" style="color:#2563eb">Intel Core i5-14400T (CM8071505092805)</a></li></ul><p><a href="https://qorai.net/category/cpus" style="color:#2563eb;font-weight:600">Tüm İşlemci modellerini karşılaştır →</a></p></main></div>
