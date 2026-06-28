@@ -6,16 +6,15 @@
 library;
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
-import 'package:qor_ai/core/search_ranking.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/config/filter_config.dart';
+import 'package:qor_ai/config/category_filters.dart' as cf;
 import 'package:qor_ai/presentation/models/filter_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/filter_bottom_sheet.dart';
@@ -30,235 +29,6 @@ import 'package:qor_ai/data/models/product_model.dart';
 // ---------------------------------------------------------------------------
 
 enum _SortOption { techScore, relevance, newest, priceAsc, priceDesc }
-
-int _releaseYearForBrowseProduct(ProductEntity product) {
-  return ProductFilter.getExactReleaseYear(product) ??
-      (product.createdAt ?? product.lastUpdated).year;
-}
-
-int _sortTimestampForBrowseProduct(ProductEntity product) {
-  return (product.createdAt ?? product.lastUpdated).millisecondsSinceEpoch;
-}
-
-/// Returns the lowest non-zero numeric value from a product's `prices` map,
-/// or `double.infinity` when the product has no usable price (so it sorts
-/// to the end on ascending sorts and to the front on descending sorts via
-/// the inverse comparator below).
-double _lowestNumericPriceForBrowseProduct(ProductEntity product) {
-  if (product.prices.isEmpty) return double.infinity;
-  double lowest = double.infinity;
-  for (final value in product.prices.values) {
-    if (value > 0 && value < lowest) lowest = value;
-  }
-  return lowest;
-}
-
-int _compareBrowseProducts(ProductEntity a, ProductEntity b, String sortKey) {
-  switch (sortKey) {
-    case 'newest':
-      final yearCmp = _releaseYearForBrowseProduct(
-        b,
-      ).compareTo(_releaseYearForBrowseProduct(a));
-      if (yearCmp != 0) return yearCmp;
-      final dateCmp = _sortTimestampForBrowseProduct(
-        b,
-      ).compareTo(_sortTimestampForBrowseProduct(a));
-      if (dateCmp != 0) return dateCmp;
-      return b.techScore.compareTo(a.techScore);
-    case 'relevance':
-      final trendCompare = b.trendScore.compareTo(a.trendScore);
-      if (trendCompare != 0) return trendCompare;
-      final yearCmp = _releaseYearForBrowseProduct(
-        b,
-      ).compareTo(_releaseYearForBrowseProduct(a));
-      if (yearCmp != 0) return yearCmp;
-      return _sortTimestampForBrowseProduct(
-        b,
-      ).compareTo(_sortTimestampForBrowseProduct(a));
-    case 'priceAsc':
-    case 'priceDesc':
-      // Local fallback only — server-side sort happens in _serverSortBy().
-      // Products without a price always go to the back of the list so the
-      // user never sees "$0" placeholders bubble to the top of the price
-      // sort.
-      final priceA = _lowestNumericPriceForBrowseProduct(a);
-      final priceB = _lowestNumericPriceForBrowseProduct(b);
-      if (!priceA.isFinite && !priceB.isFinite) {
-        return b.techScore.compareTo(a.techScore);
-      }
-      if (!priceA.isFinite) return 1;
-      if (!priceB.isFinite) return -1;
-      final cmp = sortKey == 'priceAsc'
-          ? priceA.compareTo(priceB)
-          : priceB.compareTo(priceA);
-      if (cmp != 0) return cmp;
-      return b.techScore.compareTo(a.techScore);
-    default:
-      final techCompare = b.techScore.compareTo(a.techScore);
-      if (techCompare != 0) return techCompare;
-      final trendCompare = b.trendScore.compareTo(a.trendScore);
-      if (trendCompare != 0) return trendCompare;
-      return _releaseYearForBrowseProduct(
-        b,
-      ).compareTo(_releaseYearForBrowseProduct(a));
-  }
-}
-
-Map<String, dynamic> _serializeFilterStateForBrowse(FilterState state) {
-  return {
-    'multiSelect': state.multiSelect.map(
-      (key, value) => MapEntry(key, value.toList(growable: false)),
-    ),
-    'ranges': state.ranges.map(
-      (key, value) => MapEntry(key, {'start': value.start, 'end': value.end}),
-    ),
-    'toggles': state.toggles,
-  };
-}
-
-FilterState _deserializeFilterStateForBrowse(Map<String, dynamic> raw) {
-  final multiSelect = <String, Set<String>>{};
-  final rawMulti = raw['multiSelect'] as Map<String, dynamic>? ?? const {};
-  for (final entry in rawMulti.entries) {
-    multiSelect[entry.key] = Set<String>.from(entry.value as List? ?? const []);
-  }
-
-  final ranges = <String, RangeValues>{};
-  final rawRanges = raw['ranges'] as Map<String, dynamic>? ?? const {};
-  for (final entry in rawRanges.entries) {
-    final value = entry.value as Map<String, dynamic>? ?? const {};
-    ranges[entry.key] = RangeValues(
-      (value['start'] as num?)?.toDouble() ?? 0,
-      (value['end'] as num?)?.toDouble() ?? 0,
-    );
-  }
-
-  final toggles = <String, bool?>{};
-  final rawToggles = raw['toggles'] as Map<String, dynamic>? ?? const {};
-  for (final entry in rawToggles.entries) {
-    toggles[entry.key] = entry.value as bool?;
-  }
-
-  return FilterState(
-    multiSelect: multiSelect,
-    ranges: ranges,
-    toggles: toggles,
-  );
-}
-
-Map<String, dynamic> _serializeFilterDefinitionForBrowse(FilterDefinition def) {
-  return {
-    'id': def.id,
-    'label': def.label,
-    'type': def.type.name,
-    'minValue': def.minValue,
-    'maxValue': def.maxValue,
-    'unit': def.unit,
-    'isDynamic': def.isDynamic,
-    'specKeys': def.specKeys,
-    'options': [
-      for (final option in def.options ?? const <FilterOption>[])
-        {'id': option.id, 'label': option.label},
-    ],
-  };
-}
-
-List<FilterDefinition> _deserializeFilterDefinitionsForBrowse(
-  List<dynamic> raw,
-) {
-  return raw
-      .map((item) {
-        final data = Map<String, dynamic>.from(item as Map);
-        final typeName = data['type'] as String? ?? FilterType.multiSelect.name;
-        final type = FilterType.values.firstWhere(
-          (value) => value.name == typeName,
-          orElse: () => FilterType.multiSelect,
-        );
-        final options = (data['options'] as List<dynamic>? ?? const [])
-            .map((opt) {
-              final optionData = Map<String, dynamic>.from(opt as Map);
-              return FilterOption(
-                id: optionData['id'] as String? ?? '',
-                label: optionData['label'] as String? ?? '',
-              );
-            })
-            .toList(growable: false);
-
-        return FilterDefinition(
-          id: data['id'] as String? ?? '',
-          label: data['label'] as String? ?? '',
-          type: type,
-          options: options,
-          minValue: (data['minValue'] as num?)?.toDouble(),
-          maxValue: (data['maxValue'] as num?)?.toDouble(),
-          unit: data['unit'] as String?,
-          isDynamic: data['isDynamic'] as bool? ?? false,
-          specKeys: List<String>.from(data['specKeys'] ?? const []),
-        );
-      })
-      .toList(growable: false);
-}
-
-List<String> _computeVisibleBrowseProductIds(Map<String, dynamic> args) {
-  final products = (args['products'] as List<dynamic>? ?? const [])
-      .map(
-        (item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
-      )
-      .cast<ProductEntity>()
-      .toList(growable: false);
-  final remoteProducts = (args['remoteProducts'] as List<dynamic>? ?? const [])
-      .map(
-        (item) => ProductModel.fromMap(Map<String, dynamic>.from(item as Map)),
-      )
-      .cast<ProductEntity>()
-      .toList(growable: false);
-  final filterState = _deserializeFilterStateForBrowse(
-    Map<String, dynamic>.from(args['filterState'] as Map),
-  );
-  final definitions = _deserializeFilterDefinitionsForBrowse(
-    args['definitions'] as List<dynamic>? ?? const [],
-  );
-  final query = args['query'] as String? ?? '';
-  final sortKey = args['sortKey'] as String? ?? 'techScore';
-
-  List<ProductEntity> candidates;
-  if (query.isNotEmpty) {
-    final localMatches = products.where((product) {
-      final rank = rankProductForQuery(product, query);
-      return rank.score > 0;
-    }).toList();
-    final seenIds = localMatches.map((product) => product.id).toSet();
-    for (final product in remoteProducts) {
-      if (seenIds.add(product.id)) {
-        localMatches.add(product);
-      }
-    }
-    candidates = localMatches;
-  } else {
-    candidates = products;
-  }
-
-  final filtered = FilterApplier.apply(candidates, filterState, definitions);
-  final copy = List<ProductEntity>.from(filtered);
-
-  if (query.isNotEmpty) {
-    final rankMap = {
-      for (final product in copy)
-        product.id: rankProductForQuery(product, query),
-    };
-    copy.sort((a, b) {
-      final rankCompare = (rankMap[b.id]?.score ?? 0).compareTo(
-        rankMap[a.id]?.score ?? 0,
-      );
-      if (rankCompare != 0) return rankCompare;
-      return _compareBrowseProducts(a, b, sortKey);
-    });
-  } else {
-    copy.sort((a, b) => _compareBrowseProducts(a, b, sortKey));
-  }
-
-  return copy.map((product) => product.id).toList(growable: false);
-}
 
 extension _SortOptionLabel on _SortOption {
   String label(BuildContext context) {
@@ -332,24 +102,18 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
   List<ProductEntity> _filterCatalogProducts = [];
   String? _filterCatalogCategoryId;
   List<ProductEntity> _visibleProducts = [];
-  List<ProductEntity>? _remoteSearchResults;
   bool _loading = true;
   bool _fetchingAll = false; // cursor pagination in progress
-  bool _remoteSearching = false;
-  final bool _hydratingFilterCatalog = false;
   bool _warmingFullFilterCatalog = false;
 
-  // Facets — loaded from Typesense API (single fast query)
-  // instead of fetching all products. Used for smartphone category.
+  // Facets — loaded from Typesense in one lightweight query and reused to build
+  // the web-aligned filter UI (groups, options, live counts).
   Map<String, List<FilterOption>> _typesenseFacets = {};
   bool _facetsLoaded = false;
   bool _cachedFacetsLoaded = false;
   String? _error;
   Timer? _scrollDebounce;
-  Timer? _filterHydrationDebounce;
-  Timer? _visibleProductsDebounce;
   int _totalProductCount = 0;
-  int _visibleProductsRequestId = 0;
 
   // Page counter for PocketBase pagination
   int _currentPage = 1;
@@ -379,80 +143,172 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     } catch (_) {}
   }
 
-  // ── Filter cache — computed once per products change, not on every build ──
+  // ── Filter cache — rebuilt only when category / facets / language change ──
   List<FilterDefinition>? _cachedFilterDefs;
-  int _cachedProductCount = -1;
   String _cachedCategoryId = '';
+  String _cachedDefsLang = '';
 
+  /// Web-aligned filter definitions: identical groups, order and labels to
+  /// qorai.net (see [cf.kTokenGroups] / [cf.kFeatureTokens]). Built straight
+  /// from the live Typesense `filterTokens` facet universe — the facet IS the
+  /// per-category allow-list, so only filters that actually have products show.
   List<FilterDefinition> get _filterDefinitions {
-    // When server facets are available, avoid scanning product specs here.
-    // Large categories can have very wide spec maps, and doing dynamic Epey
-    // discovery while opening the sheet can block Android input long enough to
-    // trigger an ANR. Static category definitions plus live TS facets are enough
-    // for the server-backed filter UI.
-    final useServerFacetDefinitions = _typesenseFacets.isNotEmpty;
-    final filterDefinitionProducts = useServerFacetDefinitions
-        ? const <ProductEntity>[]
-        : _filterDefinitionProducts;
-    if (_cachedFilterDefs == null ||
-        filterDefinitionProducts.length != _cachedProductCount ||
-        _activeCategoryId != _cachedCategoryId ||
-        _facetsLoaded != _cachedFacetsLoaded) {
-      var defs = useServerFacetDefinitions
-          ? FilterConfig.getFilters(_activeCategoryId)
-          : FilterConfig.getFiltersWithProducts(
-              _activeCategoryId,
-              filterDefinitionProducts,
-            );
-      if (_typesenseFacets.isNotEmpty) {
-        final coveredFacetKeys = <String>{};
-        defs = defs
-            .map(_definitionWithFacetOptions)
-            .where(_hasServerSideDefinitionSupport)
-            .map((def) {
-              final key = def.id == 'brand'
-                  ? 'brand'
-                  : _facetKeyForFilterId(def.id);
-              if (key.isNotEmpty) coveredFacetKeys.add(key);
-              return def;
-            })
-            .toList(growable: true);
+    final lang = _languageCode;
+    if (_cachedFilterDefs != null &&
+        _activeCategoryId == _cachedCategoryId &&
+        _facetsLoaded == _cachedFacetsLoaded &&
+        lang == _cachedDefsLang) {
+      return _cachedFilterDefs!;
+    }
+    final defs = _buildWebAlignedDefinitions(lang);
+    _cachedFilterDefs = defs;
+    _cachedCategoryId = _activeCategoryId;
+    _cachedFacetsLoaded = _facetsLoaded;
+    _cachedDefsLang = lang;
+    return defs;
+  }
 
-        for (final entry in _typesenseFacets.entries) {
-          if (entry.key == 'brand' || coveredFacetKeys.contains(entry.key)) {
-            continue;
-          }
-          if (!_isFacetKeyAllowedForCategory(entry.key)) continue;
-          final options = _facetOptionsForKey(entry.key);
-          if (options.isEmpty) continue;
-          defs.add(
-            FilterDefinition(
-              id: entry.key,
-              label: _labelForFacetKey(entry.key),
-              type: _isBooleanFacet(options)
-                  ? FilterType.toggle
-                  : FilterType.multiSelect,
-              options: options,
-              isDynamic: true,
-              specKeys: [entry.key],
+  /// Facet options for a `filterTokens` prefix (already keyed by prefix in
+  /// [getTypesenseFacets]).
+  List<FilterOption> _facetOptionsForPrefix(String prefix) =>
+      _typesenseFacets[prefix] ?? const <FilterOption>[];
+
+  /// Sorted, distinct numeric values present for a range group's tokens
+  /// (e.g. RAM tokens 4_gb/8_gb/16_gb → [4, 8, 16]).
+  List<double> _rangeNumbersForGroup(
+    cf.TokenGroup group,
+    List<FilterOption> options,
+  ) {
+    final values = <double>{};
+    for (final o in options) {
+      final n = cf.rangeNumberFromTokenValue(o.id, group.unit);
+      if (n != null) values.add(n);
+    }
+    final sorted = values.toList()..sort();
+    return sorted;
+  }
+
+  List<FilterDefinition> _buildWebAlignedDefinitions(String lang) {
+    final defs = <FilterDefinition>[];
+    final cat = _activeCategoryId;
+    String tr(String en, String trv, String de) =>
+        lang == 'tr' ? trv : lang == 'de' ? de : en;
+
+    // 1) Qor AI Score (single-select), always present — mirrors web.
+    defs.add(
+      FilterDefinition(
+        id: 'score',
+        label: tr('Qor AI Score', 'Qor AI Puanı', 'Qor AI Score'),
+        type: FilterType.multiSelect,
+        preLocalized: true,
+        specKeys: const ['techScore'],
+        options: [
+          FilterOption(id: 'high', label: tr('80 & up', '80 ve üzeri', '80 und mehr')),
+          FilterOption(id: 'mid', label: '60 – 79'),
+          FilterOption(id: 'low', label: tr('Under 60', '60 altı', 'Unter 60')),
+        ],
+      ),
+    );
+
+    // 2) Token groups in canonical order, only when the category actually has
+    //    products carrying those tokens (facet universe gates them).
+    for (final group in cf.filterGroupsForCategory(cat)) {
+      final options = _facetOptionsForPrefix(group.prefix);
+      if (options.isEmpty) continue;
+      if (group.isRange) {
+        final values = _rangeNumbersForGroup(group, options);
+        if (values.length < 2) continue; // need a spread to slide over
+        defs.add(
+          FilterDefinition(
+            id: group.prefix,
+            label: cf.lbl(group.label, lang),
+            type: FilterType.rangeSlider,
+            preLocalized: true,
+            unit: group.unit,
+            minValue: values.first,
+            maxValue: values.last,
+            rangeValues: values,
+            specKeys: [group.prefix],
+          ),
+        );
+      } else {
+        final sorted = [...options]
+          ..sort(
+            (a, b) => cf.compareTokenValues(
+              group.prefix,
+              '${group.prefix}:${a.id}',
+              '${group.prefix}:${b.id}',
             ),
           );
-        }
+        defs.add(
+          FilterDefinition(
+            id: group.prefix,
+            label: cf.lbl(group.label, lang),
+            type: FilterType.multiSelect,
+            preLocalized: true,
+            specKeys: [group.prefix],
+            options: [
+              for (final o in sorted)
+                FilterOption(
+                  id: o.id,
+                  label: cf.prettyTokenValue(o.id, lang),
+                  count: o.count,
+                ),
+            ],
+          ),
+        );
       }
-      _cachedFilterDefs = defs;
-      _cachedProductCount = filterDefinitionProducts.length;
-      _cachedCategoryId = _activeCategoryId;
-      _cachedFacetsLoaded = _facetsLoaded;
     }
-    return _cachedFilterDefs!;
+
+    // 3) Features — one combined section of checkboxes, like web "Features".
+    final features = cf.featureFiltersForCategory(cat).where((f) {
+      final opts = _typesenseFacets[f.prefix];
+      return opts != null && opts.any((o) => o.id == 'true');
+    }).toList();
+    if (features.isNotEmpty) {
+      defs.add(
+        FilterDefinition(
+          id: 'features',
+          label: tr('Features', 'Özellikler', 'Funktionen'),
+          type: FilterType.multiSelect,
+          preLocalized: true,
+          specKeys: const ['features'],
+          options: [
+            for (final f in features)
+              FilterOption(
+                id: f.token, // full token, e.g. 'five_g:true'
+                label: cf.lbl(f.label, lang),
+                count: _typesenseFacets[f.prefix]
+                    ?.where((o) => o.id == 'true')
+                    .map((o) => o.count)
+                    .firstWhere((c) => true, orElse: () => null),
+              ),
+          ],
+        ),
+      );
+    }
+
+    // 4) Brand — last, with counts.
+    final brandOptions = _typesenseFacets['brand'] ?? const <FilterOption>[];
+    if (brandOptions.length > 1) {
+      final sorted = [...brandOptions]
+        ..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+      defs.add(
+        FilterDefinition(
+          id: 'brand',
+          label: tr('Brand', 'Marka', 'Marke'),
+          type: FilterType.multiSelect,
+          preLocalized: true,
+          specKeys: const ['brand'],
+          options: sorted,
+        ),
+      );
+    }
+
+    return defs;
   }
 
   bool _allLoaded = false;
-
-  bool get _isSmartphoneCategory {
-    final normalized = _activeCategoryId.toLowerCase().trim();
-    return normalized == 'smartphones' || normalized == 'smartphone';
-  }
 
   List<ProductEntity> get _filterDefinitionProducts =>
       _filterCatalogCategoryId == _activeCategoryId &&
@@ -494,391 +350,90 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return '(${uniqueValues.map((value) => '$field:=${_quoteTypesenseValue(value)}').join(' || ')})';
   }
 
-  static const Map<String, String> _serverRangeFields = {
-    'screen_size': 'screenSizeValue',
-    'battery': 'batteryCapacityValue',
-    'weight': 'weightValueKg',
-    // Lowest price expressed in USD on the Typesense side (populated by
-    // pb_hooks/typesense_sync.pb.js + scripts/ts_backfill_lowest_price.js).
-    // The slider in the filter sheet shows local currency in the UI, but
-    // the value travels to the server already converted to USD because the
-    // _genericFilters price entry stores USD as its native unit.
-    'price': 'lowestPriceUSD',
-  };
-
-  // Range filters that are universally applicable on Typesense — present in
-  // the schema regardless of category, so the per-category allow-list does
-  // not need to know about them.
-  static const Set<String> _universalRangeFilters = {'price'};
-
-  static const Map<String, Set<String>> _categoryRangeAllowList = {
-    'smartphones': {'screen_size', 'battery', 'weight'},
-    'laptops': {'screen_size', 'battery', 'weight'},
-    'tablets': {'screen_size', 'battery', 'weight'},
-    'smartwatches': {'screen_size', 'battery', 'weight'},
-    'tvs': {'screen_size'},
-    'monitors': {'screen_size'},
-    'power_banks': {'battery'},
-    'powerbanks': {'battery'},
-  };
-
-  static const Map<String, List<String>> _facetKeyAliases = {
-    'capacity': ['storage'],
-    'operating_system': ['os'],
-    'os_version': ['os'],
-    'screen_technology': ['screen_tech'],
-    'panel_type': ['screen_tech'],
-    'display': ['screen_tech'],
-    'screen_type': ['screen_tech'],
-    'processor': ['processor_brand'],
-    'cpu': ['processor_brand'],
-    'graphics': ['gpu_type'],
-    'connection_type': ['connectivity'],
-    'wireless': ['connectivity'],
-    'bluetooth': ['bluetooth_version'],
-    'usb': ['usb_type'],
-    'waterproof': ['water_resistance'],
-  };
-
-  static const Map<String, Map<String, List<String>>> _categoryFacetAliases = {
-    'ram': {
-      'capacity': ['ram'],
-    },
-    'ssd': {
-      'capacity': ['storage'],
-    },
-    'cpus': {
-      'processor_brand': ['processor_brand'],
-      'socket': ['socket'],
-    },
-    'processors': {
-      'processor_brand': ['processor_brand'],
-      'socket': ['socket'],
-    },
-    'tvs': {
-      'panel_type': ['screen_tech'],
-      'smart_tv': ['os'],
-    },
-  };
-
-  static const Map<String, Set<String>> _categoryFacetAllowList = {
-    'smartphones': {
-      'ram',
-      'storage',
-      'os',
-      'screen_tech',
-      'refresh_rate',
-      'processor_brand',
-      'gpu_type',
-      'usb_type',
-      'five_g',
-      'nfc',
-      'fingerprint',
-      'fast_charging',
-      'wireless_charging',
-      'water_resistance',
-    },
-    'laptops': {
-      'ram',
-      'storage',
-      'os',
-      'screen_tech',
-      'refresh_rate',
-      'processor_brand',
-      'gpu_type',
-    },
-    'tablets': {
-      'ram',
-      'storage',
-      'os',
-      'screen_tech',
-      'refresh_rate',
-      'processor_brand',
-      'nfc',
-      'water_resistance',
-    },
-    'smartwatches': {
-      'ram',
-      'storage',
-      'os',
-      'screen_tech',
-      'processor_brand',
-      'nfc',
-      'water_resistance',
-    },
-    'tvs': {'ram', 'storage', 'os', 'screen_tech', 'refresh_rate'},
-    'media-players': {'ram', 'storage', 'os', 'processor_brand', 'gpu_type'},
-    'cpus': {'processor_brand', 'socket'},
-    'processors': {'processor_brand', 'socket'},
-    'motherboards': {'socket'},
-    'motherboard': {'socket'},
-    'ssd': {'storage'},
-    'ram': {'ram'},
-    'desktops': {'ram', 'storage', 'processor_brand', 'gpu_type', 'os'},
-    'consoles': {'storage'},
-    'soundbars': {'nfc'},
-    'speakers': {'nfc', 'water_resistance'},
-  };
-
-  static const Map<String, Set<String>> _facetAllowedValues = {
-    'ram': {
-      '1_gb',
-      '2_gb',
-      '3_gb',
-      '4_gb',
-      '5_gb',
-      '6_gb',
-      '8_gb',
-      '10_gb',
-      '12_gb',
-      '16_gb',
-      '18_gb',
-      '24_gb',
-      '32_gb',
-      '48_gb',
-      '64_gb',
-      '128_gb',
-    },
-    'storage': {
-      '1_gb',
-      '2_gb',
-      '4_gb',
-      '8_gb',
-      '16_gb',
-      '32_gb',
-      '64_gb',
-      '120_gb',
-      '128_gb',
-      '240_gb',
-      '250_gb',
-      '256_gb',
-      '480_gb',
-      '500_gb',
-      '512_gb',
-      '960_gb',
-      '1_tb',
-      '2_tb',
-      '4_tb',
-    },
-  };
-
-  static const Map<String, String> _facetLabelOverrides = {
-    'brand': 'Brand',
-    'ram': 'RAM',
-    'storage': 'Storage',
-    'os': 'Operating System',
-    'screen_tech': 'Screen Technology',
-    'refresh_rate': 'Refresh Rate',
-    'processor_brand': 'Processor Brand',
-    'socket': 'Socket',
-    'gpu_type': 'GPU Type',
-    'connectivity': 'Connectivity',
-    'usb_type': 'USB Type',
-    'usb_version': 'USB Version',
-    'bluetooth_version': 'Bluetooth Version',
-    'five_g': '5G',
-    'four_half_g': '4.5G Support',
-    'nfc': 'NFC',
-    'wireless_charging': 'Wireless Charging',
-    'fast_charging': 'Fast Charging',
-    'fingerprint': 'Fingerprint Reader',
-    'water_resistance': 'Water Resistance',
-  };
-
-  String get _facetCategoryKey => _activeCategoryId.toLowerCase().trim();
-
-  Iterable<String> _facetCandidatesForFilterId(String filterId) sync* {
-    yield filterId;
-    for (final alias
-        in _categoryFacetAliases[_facetCategoryKey]?[filterId] ??
-            const <String>[]) {
-      yield alias;
+  cf.TokenGroup? _rangeGroupForPrefix(String prefix) {
+    for (final g in cf.kTokenGroups) {
+      if (g.prefix == prefix && g.isRange) return g;
     }
-    for (final alias in _facetKeyAliases[filterId] ?? const <String>[]) {
-      yield alias;
-    }
+    return null;
   }
 
-  bool _isFacetKeyAllowedForCategory(String key) {
-    if (key == 'brand') return true;
-    final allowed = _categoryFacetAllowList[_facetCategoryKey];
-    if (allowed == null) return false;
-    return allowed.contains(key);
-  }
-
-  bool get _supportsLocalOnlyEpeyFilters {
-    return _facetCategoryKey == 'cpus' || _facetCategoryKey == 'processors';
-  }
-
-  bool _isLocalOnlyEpeyDefinition(FilterDefinition def) {
-    if (!_supportsLocalOnlyEpeyFilters) return false;
-    const localProcessorFilters = {
-      'processor_family',
-      'series',
-      'generation',
-      'architecture',
-      'cores',
-      'socket',
-      'tdp',
-      'integrated_gpu',
-    };
-    return localProcessorFilters.contains(def.id);
-  }
-
-  String _facetKeyForFilterId(String filterId) {
-    for (final candidate in _facetCandidatesForFilterId(filterId)) {
-      if (_typesenseFacets.containsKey(candidate) &&
-          _isFacetKeyAllowedForCategory(candidate)) {
-        return candidate;
-      }
-    }
-    return '';
-  }
-
-  List<FilterOption> _facetOptionsForKey(String key) {
-    final options = _typesenseFacets[key] ?? const <FilterOption>[];
-    final allowedValues = _facetAllowedValues[key];
-    final filtered = allowedValues == null
-        ? options
-        : options.where((option) => allowedValues.contains(option.id)).toList();
-    return filtered.take(80).toList(growable: false);
-  }
-
-  String _labelForFacetKey(String key) {
-    final override = _facetLabelOverrides[key];
-    if (override != null) return override;
-    return key
-        .split('_')
-        .where((part) => part.isNotEmpty)
-        .map(
-          (part) => part.length <= 3
-              ? part.toUpperCase()
-              : part[0].toUpperCase() + part.substring(1),
-        )
-        .join(' ');
-  }
-
-  bool _isBooleanFacet(List<FilterOption> options) {
-    if (options.isEmpty) return false;
-    return options.every(
-      (option) => option.id == 'true' || option.id == 'false',
-    );
-  }
-
-  bool _hasServerSideDefinitionSupport(FilterDefinition def) {
-    if (def.id == 'brand') return true;
-    switch (def.type) {
-      case FilterType.multiSelect:
-        final key = _facetKeyForFilterId(def.id);
-        return (key.isNotEmpty && _facetOptionsForKey(key).isNotEmpty) ||
-            _isLocalOnlyEpeyDefinition(def);
-      case FilterType.toggle:
-        final key = _facetKeyForFilterId(def.id);
-        return (key.isNotEmpty &&
-                (_typesenseFacets[key]?.any((option) => option.id == 'true') ??
-                    false)) ||
-            _isLocalOnlyEpeyDefinition(def);
-      case FilterType.rangeSlider:
-        // Universal range filters (price) are server-side filterable for every
-        // category because their TS field exists on every document. Other
-        // ranges are gated by the per-category allow-list because their
-        // values are only meaningful in specific categories (e.g. screen_size
-        // for laptops/phones but not for cables).
-        if (_universalRangeFilters.contains(def.id) &&
-            _serverRangeFields.containsKey(def.id)) {
-          return true;
-        }
-        return (_serverRangeFields.containsKey(def.id) &&
-                (_categoryRangeAllowList[_facetCategoryKey]?.contains(def.id) ??
-                    false)) ||
-            _isLocalOnlyEpeyDefinition(def);
-    }
-  }
-
-  FilterDefinition _definitionWithFacetOptions(FilterDefinition def) {
-    if (def.id == 'brand') {
-      return def.withOptions(_typesenseFacets['brand'] ?? def.options ?? []);
-    }
-    final key = _facetKeyForFilterId(def.id);
-    final options = key.isEmpty ? null : _facetOptionsForKey(key);
-    if (options == null || options.isEmpty) return def;
-    return def.withOptions(options);
-  }
-
+  /// Builds the Typesense `filter_by` for the current selection, identical in
+  /// shape to web's getCategoryPage: tokens are grouped by prefix → OR within a
+  /// prefix, AND across prefixes; score → techScore range; brand → brand OR;
+  /// range groups → the set of in-range discrete tokens. Returns null only when
+  /// nothing is selected. The category clause itself is added by getProductsPageTs.
   String? _buildServerSideFilterBy(FilterState state) {
     if (!state.isActive) return null;
 
+    final tokens = <String>{};
     final clauses = <String>[];
 
     for (final entry in state.multiSelect.entries) {
       final selected = entry.value;
       if (selected.isEmpty) continue;
 
-      if (entry.key == 'brand') {
-        final brandOptions =
-            _typesenseFacets['brand'] ?? const <FilterOption>[];
-        final selectedLabels = brandOptions
-            .where((option) => selected.contains(option.id))
-            .map((option) => option.label.trim())
-            .where((label) => label.isNotEmpty)
-            .toList(growable: false);
-        final clause = _buildAnyOfClause('brand', selectedLabels);
-        if (clause.isEmpty) return null;
-        clauses.add(clause);
-        continue;
+      switch (entry.key) {
+        case 'brand':
+          final brandOptions =
+              _typesenseFacets['brand'] ?? const <FilterOption>[];
+          final selectedLabels = brandOptions
+              .where((o) => selected.contains(o.id))
+              .map((o) => o.label.trim())
+              .where((l) => l.isNotEmpty)
+              .toList(growable: false);
+          final clause = _buildAnyOfClause('brand', selectedLabels);
+          if (clause.isNotEmpty) clauses.add(clause);
+          break;
+        case 'score':
+          // Single-select; first wins.
+          final id = selected.first;
+          if (id == 'high') {
+            clauses.add('techScore:>=80');
+          } else if (id == 'mid') {
+            clauses.add('techScore:[60..79]');
+          } else if (id == 'low') {
+            clauses.add('techScore:<60');
+          }
+          break;
+        case 'features':
+          // Option ids ARE full tokens, e.g. 'five_g:true'.
+          tokens.addAll(selected);
+          break;
+        default:
+          // Checkbox token group: ids are bare values → 'prefix:value'.
+          for (final id in selected) {
+            tokens.add('${entry.key}:$id');
+          }
       }
-
-      final tokenKey = _facetKeyForFilterId(entry.key);
-      if (tokenKey.isEmpty && _supportsLocalOnlyEpeyFilters) return null;
-      if (tokenKey.isEmpty) return null;
-      final allowedOptionIds = _facetOptionsForKey(
-        tokenKey,
-      ).map((option) => option.id).toSet();
-      if (!selected.every(allowedOptionIds.contains)) return null;
-      final clause = _buildAnyOfClause(
-        'filterTokens',
-        selected.map((id) => '$tokenKey:$id'),
-      );
-      if (clause.isNotEmpty) clauses.add(clause);
     }
 
+    // Range groups → expand the selected [min,max] into the in-range tokens.
     for (final entry in state.ranges.entries) {
-      final field = _serverRangeFields[entry.key];
-      if (field == null && _supportsLocalOnlyEpeyFilters) return null;
-      if (field == null) return null;
+      final prefix = entry.key;
+      final group = _rangeGroupForPrefix(prefix);
+      if (group == null) continue;
       final range = entry.value;
-
-      // Typesense 'int32' fields strictly reject string values ending in '.0'.
-      // For integers, remove the trailing .0 before sending to the search engine.
-      final startStr = range.start == range.start.toInt()
-          ? range.start.toInt().toString()
-          : range.start.toString();
-      final endStr = range.end == range.end.toInt()
-          ? range.end.toInt().toString()
-          : range.end.toString();
-
-      clauses.add('$field:>=$startStr');
-      clauses.add('$field:<=$endStr');
+      final inRange = <String>[];
+      for (final o in _facetOptionsForPrefix(prefix)) {
+        final n = cf.rangeNumberFromTokenValue(o.id, group.unit);
+        if (n == null) continue;
+        if (n >= range.start - 1e-6 && n <= range.end + 1e-6) {
+          inRange.add('$prefix:${o.id}');
+        }
+      }
+      // A sub-range that matches nothing forces an empty result (web parity).
+      tokens.addAll(inRange.isEmpty ? ['$prefix:__none__'] : inRange);
     }
 
-    for (final entry in state.toggles.entries) {
-      final value = entry.value;
-      if (value == null) continue;
-      final tokenKey = _facetKeyForFilterId(entry.key);
-      if (tokenKey.isEmpty && _supportsLocalOnlyEpeyFilters) return null;
-      if (tokenKey.isEmpty) return null;
-      final optionId = value ? 'true' : 'false';
-      final hasOption = _facetOptionsForKey(
-        tokenKey,
-      ).any((option) => option.id == optionId);
-      if (hasOption) {
-        final token = '$tokenKey:$optionId';
-        clauses.add('filterTokens:=${_quoteTypesenseValue(token)}');
-      } else if (!value) {
-        final trueToken = '$tokenKey:true';
-        clauses.add('filterTokens:!=${_quoteTypesenseValue(trueToken)}');
-      } else {
-        return null;
+    if (tokens.isNotEmpty) {
+      final byPrefix = <String, List<String>>{};
+      for (final t in tokens.take(120)) {
+        (byPrefix[t.split(':').first] ??= <String>[]).add(t);
+      }
+      for (final group in byPrefix.values) {
+        clauses.add(
+          'filterTokens:[${group.map(_quoteTypesenseValue).join(',')}]',
+        );
       }
     }
 
@@ -925,214 +480,36 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     _activeCategoryId = widget.categoryId;
     _activeCategoryName = widget.categoryName;
     _loadProducts();
+    // Warm the filterTokens/brand facets up front so the filter sheet opens
+    // instantly with the full web-aligned option set + live counts.
+    unawaited(_loadFacets());
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _scrollDebounce?.cancel();
-    _filterHydrationDebounce?.cancel();
-    _visibleProductsDebounce?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Map<String, dynamic> _serializeProductForBrowse(ProductEntity product) {
-    if (product is ProductModel) {
-      return product.toMap();
-    }
-    return {
-      'id': product.id,
-      'name': product.name,
-      'brand': product.brand,
-      'category': product.category,
-      'subcategory': product.subcategory,
-      'description': product.description,
-      'imageURL': product.imageURL,
-      'prices': product.prices,
-      'affiliateLinks': product.affiliateLinks,
-      'specs': product.specs,
-      'specSections': product.specSections,
-      'keySpecs': product.keySpecs,
-      'ratings': {
-        'expert': product.ratings.expert,
-        'community': product.ratings.community,
-        'count': product.ratings.count,
-      },
-      'pros': product.pros,
-      'cons': product.cons,
-      'tags': product.tags,
-      'trendScore': product.trendScore,
-      'techScore': product.techScore,
-      'techSubscores': product.techSubscores,
-      'images': product.images,
-      'lastUpdated': product.lastUpdated.toIso8601String(),
-      if (product.createdAt != null)
-        'createdAt': product.createdAt!.toIso8601String(),
-      'isActive': product.isActive,
-      'variantGroup': product.variantGroup,
-    };
-  }
-
-  void _setVisibleProductsFromLoaded() {
-    _visibleProductsDebounce?.cancel();
-    _visibleProductsRequestId++;
-    _visibleProducts = List<ProductEntity>.from(_allProducts);
-  }
-
-  void _scheduleVisibleProductsRebuild({Duration debounce = Duration.zero}) {
-    _visibleProductsDebounce?.cancel();
-
-    if (_searchQuery.isEmpty && !_filterState.isActive) {
-      if (!mounted) return;
-      setState(() {
-        _setVisibleProductsFromLoaded();
-      });
-      return;
-    }
-
-    final requestId = ++_visibleProductsRequestId;
-    void runner() {
-      unawaited(_rebuildVisibleProducts(requestId));
-    }
-
-    if (debounce == Duration.zero) {
-      runner();
-    } else {
-      _visibleProductsDebounce = Timer(debounce, runner);
-    }
-  }
-
-  Future<void> _rebuildVisibleProducts(int requestId) async {
-    // HIZLI YOL — saf metin araması (aktif filtre yokken). Sıralama/filtreleme
-    // tek başına `rankProductsForQuery` ile (string skorlama) binlerce üründe
-    // <10ms sürer. Eski yol her tuşta TÜM kataloğu Map'e serialize edip
-    // compute() isolate'ine kopyalıyordu; bu serileştirme asıl işten çok daha
-    // pahalıydı ve ana thread'i kilitliyordu → arama yazarken donma, klavyenin
-    // takılması ve büyük kategorilerde OOM/çökme. Arama için isolate gereksiz.
-    if (_searchQuery.isNotEmpty && !_filterState.isActive) {
-      final query = _searchQuery;
-      final merged = <ProductEntity>[
-        ..._allProducts,
-        ...(_remoteSearchResults ?? const <ProductEntity>[]),
-      ];
-      // rankProductsForQuery zaten id-dedup + score>0 filtre + skor sıralaması yapar.
-      final ranked = rankProductsForQuery(merged, query);
-      if (!mounted || requestId != _visibleProductsRequestId) return;
-      setState(() => _visibleProducts = ranked);
-      return;
-    }
-
-    final allProducts = List<ProductEntity>.from(
-      _filterState.isActive && !_usesServerSideFiltering()
-          ? _filterDefinitionProducts
-          : _allProducts,
-    );
-    final remoteProducts = List<ProductEntity>.from(
-      _remoteSearchResults ?? const <ProductEntity>[],
-    );
-    final definitions = _filterDefinitions;
-    final sourceById = <String, ProductEntity>{
-      for (final product in [...allProducts, ...remoteProducts])
-        product.id: product,
-    };
-
-    final orderedIds = await compute(_computeVisibleBrowseProductIds, {
-      'products': allProducts
-          .map(_serializeProductForBrowse)
-          .toList(growable: false),
-      'remoteProducts': remoteProducts
-          .map(_serializeProductForBrowse)
-          .toList(growable: false),
-      'filterState': _serializeFilterStateForBrowse(_filterState),
-      'definitions': definitions
-          .map(_serializeFilterDefinitionForBrowse)
-          .toList(growable: false),
-      'query': _searchQuery,
-      'sortKey': _sortOption.name,
-    });
-
-    if (!mounted || requestId != _visibleProductsRequestId) return;
-
-    final visibleProducts = orderedIds
-        .map((id) => sourceById[id])
-        .whereType<ProductEntity>()
-        .toList(growable: false);
-
-    setState(() {
-      _visibleProducts = visibleProducts;
-    });
-  }
-
   void _applyFilterState(FilterState result) {
-    final shouldReload =
-        _usesServerSideFiltering() || _usesServerSideFiltering(state: result);
     setState(() => _filterState = result);
-    if (shouldReload) {
-      _filterHydrationDebounce?.cancel();
-      _remoteSearchResults = null;
-      unawaited(_loadProducts());
-      return;
-    }
-    _scheduleVisibleProductsRebuild();
-    _filterHydrationDebounce?.cancel();
-    if (!result.isActive || _allLoaded) return;
-    _filterHydrationDebounce = Timer(const Duration(milliseconds: 300), () {
-      if (!mounted || !result.isActive) return;
-      unawaited(_ensureCompleteCatalogForFiltering());
-    });
+    // Every filter is a server-side Typesense clause, so reload from page 1 —
+    // the results then cover the WHOLE category, not just the loaded page.
+    unawaited(_loadProducts());
   }
+
+  // Search bar debounce keeps reloads in check; only fire when the query
+  // actually settled on a new value.
+  String _lastSearchSubmitted = '';
 
   void _onSearchQueryChanged(String q) {
-    setState(() {
-      _searchQuery = q;
-      if (q.isEmpty) _remoteSearchResults = null;
-    });
-    if (_usesServerSideFiltering(query: q)) {
-      unawaited(_loadProducts());
-      return;
-    }
-    _scheduleVisibleProductsRebuild();
-    if (q.length >= 2) _doRemoteSearch(q);
-  }
-
-  /// Remote search via Cloud Function — returns ALL matching products from server.
-  Future<void> _doRemoteSearch(String query) async {
-    if (!mounted || query.isEmpty) return;
-    setState(() => _remoteSearching = true);
-    try {
-      final ds = ref.read(pbDataSourceProvider);
-      final results = await ds.searchProducts(
-        query: query,
-        limit: 150,
-        category: _activeCategoryId,
-      );
-      if (mounted && _searchQuery == query) {
-        final catKey = _activeCategoryId.toLowerCase().trim();
-        // Accept both exact match and variant (e.g. "microphone" vs "microphones")
-        final categoryResults = _sanitizeCategoryProducts(
-          results
-              .where((p) {
-                final pCat = p.category.toLowerCase().trim();
-                return pCat == catKey ||
-                    (catKey.endsWith('s') &&
-                        pCat == catKey.substring(0, catKey.length - 1)) ||
-                    (!catKey.endsWith('s') && pCat == '${catKey}s');
-              })
-              .cast<ProductEntity>()
-              .toList(),
-        );
-
-        setState(() {
-          // ALL remote results — let _filteredProducts merge with local
-          _remoteSearchResults = rankProductsForQuery(categoryResults, query);
-          _remoteSearching = false;
-        });
-        _scheduleVisibleProductsRebuild();
-      }
-    } catch (e) {
-      if (mounted) setState(() => _remoteSearching = false);
-    }
+    if (q == _lastSearchSubmitted) return;
+    _lastSearchSubmitted = q;
+    setState(() => _searchQuery = q);
+    // Search is server-side too — query + active filters combine in one request.
+    unawaited(_loadProducts());
   }
 
   void _onScroll() {
@@ -1140,7 +517,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     if (!mounted ||
         !_scrollController.hasClients ||
         _fetchingAll ||
-        _hydratingFilterCatalog ||
         _allLoaded) {
       return;
     }
@@ -1151,7 +527,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       if (!mounted ||
           !_scrollController.hasClients ||
           _fetchingAll ||
-          _hydratingFilterCatalog ||
           _allLoaded) {
         return;
       }
@@ -1242,7 +617,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       _currentPage = 1;
       _allProducts = [];
       _visibleProducts = [];
-      _remoteSearchResults = null;
     });
     await _loadProducts();
   }
@@ -1310,8 +684,9 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         category: _activeCategoryId,
         limit: 40,
         page: _currentPage,
+        query: _searchQuery.isEmpty ? '*' : _searchQuery,
         sortBy: _serverSortBy(),
-        extraFilterBy: _searchQuery.isEmpty ? serverFilterBy : null,
+        extraFilterBy: serverFilterBy,
       );
       if (!mounted) return;
       final existingIds = _allProducts.map((p) => p.id).toSet();
@@ -1321,22 +696,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       final merged = [..._allProducts, ...newProducts];
       setState(() {
         _allProducts = merged;
+        _visibleProducts = merged;
         _currentPage = page.nextPage;
         _allLoaded = !page.hasMore;
         _fetchingAll = false;
         // Once all pages loaded, show true deduped count; otherwise Typesense total.
         _totalProductCount = !page.hasMore ? merged.length : page.totalFound;
-        if (_searchQuery.isEmpty &&
-            (!_filterState.isActive || serverFilterBy != null)) {
-          _visibleProducts = merged;
-        }
       });
-      if (_searchQuery.isNotEmpty ||
-          (_filterState.isActive && serverFilterBy == null)) {
-        _scheduleVisibleProductsRebuild(
-          debounce: const Duration(milliseconds: 32),
-        );
-      }
     } catch (e) {
       // Network/timeout failures must not leave _fetchingAll stuck — that
       // would silently freeze pagination forever. Extend cooldown to back off.
@@ -1372,11 +738,17 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     // v3: kategori filtresi exact-OR'a geçti (token sızıntısı düzeldi); eski v2
     // cache'inde camera_lenses altında kameralar olabilir → versiyon bump.
     final hiveCacheKey = 'cat_products_${catKey}_v3';
+    // Cached/home-feed seeds are the UNFILTERED category — only show them as an
+    // instant placeholder for the default view. When a search or filter is
+    // active we must wait for the server's filtered result instead.
+    final canSeedFromCache = _searchQuery.isEmpty && !_filterState.isActive;
 
     try {
       final cache = ref.read(cacheServiceProvider);
       final stale = cache.getLocalStale<List<dynamic>>(hiveCacheKey);
-      if (stale.data != null && (stale.data as List).isNotEmpty) {
+      if (canSeedFromCache &&
+          stale.data != null &&
+          (stale.data as List).isNotEmpty) {
         final products = _sanitizeCategoryProducts(
           (stale.data as List)
               .map(
@@ -1400,7 +772,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     try {
       final feedAsync = ref.read(homeFeedProvider);
       final cached = feedAsync.valueOrNull;
-      if (cached != null && cached.all.isNotEmpty) {
+      if (canSeedFromCache && cached != null && cached.all.isNotEmpty) {
         final catProducts = _sanitizeCategoryProducts(
           cached.all.where((p) {
             final pCat = p.category.toLowerCase().trim();
@@ -1443,12 +815,16 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         category: _activeCategoryId,
         limit: 40,
         page: 1,
+        query: _searchQuery.isEmpty ? '*' : _searchQuery,
         sortBy: _serverSortBy(),
-        extraFilterBy: _searchQuery.isEmpty ? serverFilterBy : null,
+        extraFilterBy: serverFilterBy,
       );
       if (!mounted) return;
       final firstPage = _sanitizeCategoryProducts(result.products);
-      if (_sortOption == _SortOption.techScore && firstPage.isNotEmpty) {
+      // Only cache the UNFILTERED default view as the category placeholder.
+      if (canSeedFromCache &&
+          _sortOption == _SortOption.techScore &&
+          firstPage.isNotEmpty) {
         try {
           final cache = ref.read(cacheServiceProvider);
           final maps = firstPage
@@ -1477,10 +853,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
         _loading = false;
         _error = null;
       });
-      if (_searchQuery.isNotEmpty ||
-          (_filterState.isActive && serverFilterBy == null)) {
-        _scheduleVisibleProductsRebuild();
-      }
     } catch (e) {
       // Only surface an error if no products at all are visible — otherwise
       // we already have stale/cached data and the user can still browse.
@@ -1511,72 +883,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     );
     if (result != null && mounted) {
       _applyFilterState(result);
-    }
-  }
-
-  Future<void> _ensureCompleteCatalogForFiltering() async {
-    if (_isSmartphoneCategory) {
-      await _warmFullFilterCatalogIfNeeded(showIndicator: true);
-      if (mounted && _filterState.isActive && !_usesServerSideFiltering()) {
-        _scheduleVisibleProductsRebuild(
-          debounce: const Duration(milliseconds: 16),
-        );
-      }
-      return;
-    }
-    if (_supportsLocalOnlyEpeyFilters &&
-        _filterState.isActive &&
-        !_usesServerSideFiltering()) {
-      await _loadAllProductsForLocalFiltering();
-      return;
-    }
-    // For non-smartphone categories, server-side filtering via Typesense handles
-    // all filterToken-based multiSelect filters. No need to load the full catalog.
-    // Just ensure facets are loaded so filter options are populated.
-    if (!_facetsLoaded) {
-      await _warmFullFilterCatalogIfNeeded(showIndicator: false);
-    }
-  }
-
-  Future<void> _loadAllProductsForLocalFiltering() async {
-    if (_fetchingAll || _allLoaded || !mounted) return;
-    setState(() => _fetchingAll = true);
-    try {
-      final ds = ref.read(pbDataSourceProvider);
-      var pageNumber = _currentPage;
-      var hasMore = true;
-      final byId = {for (final product in _allProducts) product.id: product};
-
-      while (mounted && hasMore) {
-        final page = await ds.getProductsPageTs(
-          category: _activeCategoryId,
-          limit: 100,
-          page: pageNumber,
-          sortBy: _serverSortBy(),
-        );
-        for (final product in _sanitizeCategoryProducts(page.products)) {
-          byId.putIfAbsent(product.id, () => product);
-        }
-        pageNumber = page.nextPage;
-        hasMore = page.hasMore;
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _allProducts = byId.values.toList(growable: false);
-        _filterCatalogProducts = _allProducts;
-        _filterCatalogCategoryId = _activeCategoryId;
-        _currentPage = pageNumber;
-        _allLoaded = true;
-        _fetchingAll = false;
-        _totalProductCount = _allProducts.length;
-        _cachedFilterDefs = null;
-      });
-      _scheduleVisibleProductsRebuild(
-        debounce: const Duration(milliseconds: 16),
-      );
-    } catch (_) {
-      if (mounted) setState(() => _fetchingAll = false);
     }
   }
 
@@ -1770,7 +1076,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
               ),
             ),
           ),
-          if (_hydratingFilterCatalog || _warmingFullFilterCatalog) ...[
+          if (_warmingFullFilterCatalog) ...[
             const SizedBox(width: 8),
             const SizedBox(
               width: 16,
@@ -1791,45 +1097,45 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     final chips = <Widget>[];
 
     for (final def in definitions) {
+      final defLabel = def.preLocalized
+          ? def.label
+          : _localizedFilterLabel(def.label);
       switch (def.type) {
         case FilterType.multiSelect:
           final selected = _filterState.multiSelect[def.id];
           if (selected != null && selected.isNotEmpty) {
             final labels = (def.options ?? [])
                 .where((o) => selected.contains(o.id))
-                .map((o) => _localizedFilterOption(o.label))
+                .map((o) => def.preLocalized
+                    ? o.label
+                    : _localizedFilterOption(o.label))
                 .join(', ');
-            chips.add(
-              _activeChip(
-                '${_localizedFilterLabel(def.label)}: $labels',
-                def.id,
-              ),
-            );
+            chips.add(_activeChip('$defLabel: $labels', def.id));
           }
         case FilterType.rangeSlider:
           if (_filterState.ranges.containsKey(def.id)) {
             final r = _filterState.ranges[def.id]!;
-            final unit = def.unit != null ? ' ${def.unit}' : '';
-            final isDecimal =
-                ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
-            final fmt = isDecimal
-                ? '${r.start.toStringAsFixed(1)}–${r.end.toStringAsFixed(1)}$unit'
-                : '${r.start.round()}–${r.end.round()}$unit';
-            chips.add(
-              _activeChip('${_localizedFilterLabel(def.label)}: $fmt', def.id),
-            );
+            final String fmt;
+            if (def.rangeValues != null) {
+              // Web-aligned token range — format each end via its unit.
+              fmt =
+                  '${cf.formatRangeValue(r.start, def.unit ?? 'capacity')} – ${cf.formatRangeValue(r.end, def.unit ?? 'capacity')}';
+            } else {
+              final unit = def.unit != null ? ' ${def.unit}' : '';
+              final isDecimal =
+                  ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
+              fmt = isDecimal
+                  ? '${r.start.toStringAsFixed(1)}–${r.end.toStringAsFixed(1)}$unit'
+                  : '${r.start.round()}–${r.end.round()}$unit';
+            }
+            chips.add(_activeChip('$defLabel: $fmt', def.id));
           }
         case FilterType.toggle:
           final v = _filterState.toggles[def.id];
           if (v != null) {
             final yes = context.l10n?.yes ?? 'Yes';
             final no = context.l10n?.no ?? 'No';
-            chips.add(
-              _activeChip(
-                '${_localizedFilterLabel(def.label)}: ${v ? yes : no}',
-                def.id,
-              ),
-            );
+            chips.add(_activeChip('$defLabel: ${v ? yes : no}', def.id));
           }
       }
     }
@@ -1931,69 +1237,6 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     }
 
     if (products.isEmpty) {
-      if (_remoteSearching) {
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 32,
-                height: 32,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: AppTheme.brandCyan,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _fallbackText(
-                  en: 'Searching all products...',
-                  tr: 'Tüm ürünlerde aranıyor...',
-                ),
-                style: GoogleFonts.plusJakartaSans(
-                  color: context.textSecondary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-      if (_filterState.isActive && _hydratingFilterCatalog) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppTheme.brandCyan,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _fallbackText(
-                    en: 'Applying filters across all products...',
-                    tr: 'Filtreler tum urunlerde uygulaniyor...',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: context.textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
       final isEmptyCategory =
           _allProducts.isEmpty &&
           !_loading &&

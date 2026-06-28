@@ -2893,9 +2893,10 @@ class PbDataSource {
           for (final c in counts) {
             final value = ((c['value'] as String?) ?? '').trim();
             if (value.isEmpty) continue;
+            final count = (c['count'] as num?)?.toInt();
 
             if (fieldName == 'filterTokens') {
-              final parsed = _filterOptionFromToken(value);
+              final parsed = _filterOptionFromToken(value, count: count);
               if (parsed != null) {
                 results.putIfAbsent(parsed.filterId, () => <FilterOption>[]);
                 final existingIds = results[parsed.filterId]!
@@ -2910,6 +2911,7 @@ class PbDataSource {
                 FilterOption(
                   id: value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
                   label: value,
+                  count: count,
                 ),
               );
             }
@@ -2947,8 +2949,9 @@ class PbDataSource {
   }
 
   ({String filterId, FilterOption option})? _filterOptionFromToken(
-    String token,
-  ) {
+    String token, {
+    int? count,
+  }) {
     final separator = token.indexOf(':');
     if (separator <= 0 || separator == token.length - 1) return null;
 
@@ -2960,7 +2963,11 @@ class PbDataSource {
 
     return (
       filterId: filterId,
-      option: FilterOption(id: optionId, label: _labelForFacetOption(optionId)),
+      option: FilterOption(
+        id: optionId,
+        label: _labelForFacetOption(optionId),
+        count: count,
+      ),
     );
   }
 

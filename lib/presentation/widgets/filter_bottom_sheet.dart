@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/config/filter_config.dart';
+import 'package:qor_ai/config/category_filters.dart' as cf;
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/models/filter_models.dart';
 
@@ -200,6 +201,17 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     return FilterConfig.localizeOptionLabel(label, languageCode: _languageCode);
   }
 
+  /// Section label honoring web-aligned (already-localized) definitions.
+  String _secLabel(FilterDefinition def) =>
+      def.preLocalized ? def.label : _displayLabel(def.label);
+
+  /// Option label honoring web-aligned (already-localized) definitions.
+  String _optLabel(FilterDefinition def, String label) =>
+      def.preLocalized ? label : _displayOptionLabel(label);
+
+  /// Per-section search text (currently used for long brand lists).
+  final Map<String, String> _sectionQuery = {};
+
   @override
   void initState() {
     super.initState();
@@ -217,6 +229,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       ..._state.toggles.entries
           .where((entry) => entry.value != null)
           .map((entry) => entry.key),
+      // Open the first few sections by default (score + top spec groups) so the
+      // most-used filters are one tap away, like the web sidebar.
+      ..._definitions.take(4).map((d) => d.id),
     };
     _visibleDefinitionCount = _definitions.length < _initialSectionLimit
         ? _definitions.length
@@ -257,13 +272,24 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       _state.multiSelect[filterId] ?? {};
 
   void _toggleOption(String filterId, String optionId) {
+    final updated = Map<String, Set<String>>.from(_state.multiSelect);
+    // Qor AI Score is single-select (mirrors web): picking again clears it.
+    if (filterId == 'score') {
+      final isOn = _selectedFor(filterId).contains(optionId);
+      if (isOn) {
+        updated.remove(filterId);
+      } else {
+        updated[filterId] = {optionId};
+      }
+      setState(() => _state = _state.copyWith(multiSelect: updated));
+      return;
+    }
     final current = Set<String>.from(_selectedFor(filterId));
     if (current.contains(optionId)) {
       current.remove(optionId);
     } else {
       current.add(optionId);
     }
-    final updated = Map<String, Set<String>>.from(_state.multiSelect);
     if (current.isEmpty) {
       updated.remove(filterId);
     } else {
@@ -336,8 +362,21 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   }
 
   List<FilterOption> _visibleOptions(FilterDefinition def) {
+    var options = [...(def.options ?? const <FilterOption>[])];
+
+    // Long brand lists get an in-section search box (web parity).
+    final query = (_sectionQuery[def.id] ?? '').trim().toLowerCase();
+    if (query.isNotEmpty) {
+      options = options
+          .where((o) => _optLabel(def, o.label).toLowerCase().contains(query))
+          .toList();
+    }
+
+    // Web-aligned sections arrive in canonical order (numeric-aware for specs,
+    // alphabetical for brands) — keep it so "12 GB" never sorts before "8 GB".
+    if (def.preLocalized) return options;
+
     final selected = _selectedFor(def.id);
-    final options = [...(def.options ?? const <FilterOption>[])];
     options.sort((a, b) {
       final selectedCompare =
           (selected.contains(b.id) ? 1 : 0) - (selected.contains(a.id) ? 1 : 0);
@@ -359,7 +398,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
         final selected = _selectedFor(def.id);
         final labels = (def.options ?? const <FilterOption>[])
             .where((opt) => selected.contains(opt.id))
-            .map((opt) => _displayOptionLabel(opt.label))
+            .map((opt) => _optLabel(def, opt.label))
             .toList();
         if (labels.isEmpty) return '';
         if (labels.length <= 2) return labels.join(', ');
@@ -367,6 +406,10 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       case FilterType.rangeSlider:
         final range = _state.ranges[def.id];
         if (range == null) return '';
+        if (def.rangeValues != null) {
+          final unit = def.unit ?? 'capacity';
+          return '${cf.formatRangeValue(range.start, unit)} – ${cf.formatRangeValue(range.end, unit)}';
+        }
         final unit = def.unit != null ? ' ${def.unit}' : '';
         final isDecimal = ((def.maxValue ?? 100) - (def.minValue ?? 0)) < 50;
         final start = isDecimal
@@ -404,7 +447,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _displayLabel(def.label),
+                  _secLabel(def),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
@@ -817,7 +860,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _displayLabel(def.label),
+                            _secLabel(def),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w700,
@@ -913,10 +956,24 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     final limit = _optionLimitFor(def.id);
     final renderedOptions = visibleOptions.take(limit).toList(growable: false);
     final hasMore = visibleOptions.length > renderedOptions.length;
+    // Long brand lists get a live search box (mirrors web's brand search).
+    final showSearch = def.id == 'brand' && options.length > 10;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (showSearch) ...[
+          _SectionSearchField(
+            hintText: _isTurkish
+                ? 'Marka ara…'
+                : _localeCode == 'de'
+                ? 'Marke suchen…'
+                : 'Search brand…',
+            initial: _sectionQuery[def.id] ?? '',
+            onChanged: (v) => setState(() => _sectionQuery[def.id] = v),
+          ),
+          const SizedBox(height: 10),
+        ],
         if (visibleOptions.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -981,7 +1038,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         const SizedBox(width: 5),
                       ],
                       Text(
-                        _displayOptionLabel(opt.label),
+                        _optLabel(def, opt.label),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
@@ -995,6 +1052,19 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                           letterSpacing: -0.1,
                         ),
                       ),
+                      if (opt.count != null && opt.count! > 0) ...[
+                        const SizedBox(width: 5),
+                        Text(
+                          '${opt.count}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : context.textTertiaryColor,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1028,6 +1098,13 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   // ── rangeSlider ───────────────────────────────────────────────────────────
 
   Widget _buildRangeSlider(FilterDefinition def, bool isDark) {
+    // Web-aligned token range: snap to the discrete values actually present
+    // (e.g. RAM 4/8/16/32 GB) so the thumb lands on real options.
+    final values = def.rangeValues;
+    if (values != null && values.length >= 2) {
+      return _buildTokenRangeSlider(def, values);
+    }
+
     final current = _rangeFor(def);
     final unit = def.unit != null ? ' ${def.unit}' : '';
     final min = def.minValue ?? 0.0;
@@ -1099,6 +1176,92 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     );
   }
 
+  // ── discrete (token) range slider ─────────────────────────────────────────
+
+  Widget _buildTokenRangeSlider(FilterDefinition def, List<double> values) {
+    final unit = def.unit ?? 'capacity';
+    final lastIndex = values.length - 1;
+    final current = _rangeFor(def);
+
+    int nearestIndex(double v) {
+      var best = 0;
+      for (var i = 1; i < values.length; i++) {
+        if ((values[i] - v).abs() < (values[best] - v).abs()) best = i;
+      }
+      return best;
+    }
+
+    final startIndex = nearestIndex(current.start);
+    final endIndex = nearestIndex(current.end);
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _RangeValuePill(text: cf.formatRangeValue(values[startIndex], unit)),
+            Container(
+              width: 24,
+              height: 2,
+              color: context.dividerColor.withValues(alpha: 0.4),
+            ),
+            _RangeValuePill(text: cf.formatRangeValue(values[endIndex], unit)),
+          ],
+        ),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppTheme.brandCyan,
+            inactiveTrackColor: context.dividerColor.withValues(alpha: 0.25),
+            thumbColor: Colors.white,
+            overlayColor: AppTheme.brandCyan.withValues(alpha: 0.14),
+            trackHeight: 4,
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 10,
+              pressedElevation: 6,
+            ),
+            overlayShape: SliderComponentShape.noOverlay,
+          ),
+          child: RangeSlider(
+            values: RangeValues(startIndex.toDouble(), endIndex.toDouble()),
+            min: 0,
+            max: lastIndex.toDouble(),
+            divisions: lastIndex,
+            labels: RangeLabels(
+              cf.formatRangeValue(values[startIndex], unit),
+              cf.formatRangeValue(values[endIndex], unit),
+            ),
+            onChanged: (v) {
+              final lo = values[v.start.round().clamp(0, lastIndex)];
+              final hi = values[v.end.round().clamp(0, lastIndex)];
+              _updateRange(def.id, RangeValues(lo, hi), def);
+            },
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              cf.formatRangeValue(values.first, unit),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
+                color: context.textTertiaryColor,
+              ),
+            ),
+            Text(
+              cf.formatRangeValue(values.last, unit),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w500,
+                color: context.textTertiaryColor,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // ── toggle ────────────────────────────────────────────────────────────────
 
   Widget _buildToggle(FilterDefinition def, bool isDark) {
@@ -1146,6 +1309,78 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
 // ---------------------------------------------------------------------------
 // Small reusable pieces
 // ---------------------------------------------------------------------------
+
+/// In-section search box (used for long brand lists). Keeps its own controller
+/// so typing never rebuilds the whole sheet on every keystroke.
+class _SectionSearchField extends StatefulWidget {
+  const _SectionSearchField({
+    required this.hintText,
+    required this.initial,
+    required this.onChanged,
+  });
+
+  final String hintText;
+  final String initial;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_SectionSearchField> createState() => _SectionSearchFieldState();
+}
+
+class _SectionSearchFieldState extends State<_SectionSearchField> {
+  late final TextEditingController _ctrl =
+      TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: TextField(
+        controller: _ctrl,
+        onChanged: widget.onChanged,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: context.textPrimary,
+        ),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: widget.hintText,
+          hintStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: context.textTertiaryColor,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 18,
+            color: context.textSecondary,
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          filled: true,
+          fillColor: context.surfaceVariantColor.withValues(alpha: 0.6),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppTheme.brandCyan, width: 1.2),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _RangeValuePill extends StatelessWidget {
   const _RangeValuePill({required this.text});

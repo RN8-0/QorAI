@@ -8,7 +8,11 @@ enum FilterType { multiSelect, rangeSlider, toggle }
 class FilterOption {
   final String id;
   final String label;
-  const FilterOption({required this.id, required this.label});
+
+  /// Optional facet count (number of products carrying this value), shown
+  /// next to the option — mirrors the live counts on qorai.net.
+  final int? count;
+  const FilterOption({required this.id, required this.label, this.count});
 }
 
 class FilterDefinition {
@@ -26,6 +30,16 @@ class FilterDefinition {
   /// Keys to look up in product specSections / specs maps.
   final List<String> specKeys;
 
+  /// For web-aligned token range sliders: the sorted, distinct numeric values
+  /// actually present in the category (e.g. [4, 8, 16, 32] for RAM). When set,
+  /// the slider snaps to these discrete stops instead of a continuous range.
+  final List<double>? rangeValues;
+
+  /// When true, [label] and option labels are ALREADY localized for the active
+  /// language (built from category_filters.dart) and must not be re-translated
+  /// by the rendering layer.
+  final bool preLocalized;
+
   const FilterDefinition({
     required this.id,
     required this.label,
@@ -36,6 +50,8 @@ class FilterDefinition {
     this.unit,
     this.isDynamic = false,
     this.specKeys = const [],
+    this.rangeValues,
+    this.preLocalized = false,
   });
 
   FilterDefinition withOptions(List<FilterOption> newOptions) =>
@@ -49,6 +65,8 @@ class FilterDefinition {
         unit: unit,
         isDynamic: isDynamic,
         specKeys: specKeys,
+        rangeValues: rangeValues,
+        preLocalized: preLocalized,
       );
 
   FilterDefinition withRange({double? minValue, double? maxValue}) =>
@@ -62,6 +80,8 @@ class FilterDefinition {
         unit: unit,
         isDynamic: isDynamic,
         specKeys: specKeys,
+        rangeValues: rangeValues,
+        preLocalized: preLocalized,
       );
 }
 
