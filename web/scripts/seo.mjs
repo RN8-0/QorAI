@@ -260,7 +260,15 @@ function guideHtml(guide) {
     + `</section>`;
 }
 
-function categoryBody(label, categoryUrl, items, guide) {
+// Per-language copy for the category landing prerender. h1/intro take the label.
+const CAT_BODY_TEXT = {
+  tr: { cats: 'Kategoriler', h1: (l) => `${l} Karşılaştırma`, intro: (l) => `En iyi ${l.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.` },
+  en: { cats: 'Categories', h1: (l) => `${l} Comparison`, intro: (l) => `Compare the best ${l.toLowerCase()} models with Qor AI: AI tech score, key features and current prices together. Pick one of the models below or filter to find the one that fits you best in seconds.` },
+  de: { cats: 'Kategorien', h1: (l) => `${l} Vergleich`, intro: (l) => `Vergleiche die besten ${l.toLowerCase()}-Modelle mit Qor AI: KI-Techscore, wichtige Merkmale und aktuelle Preise zusammen. Wähle eines der Modelle unten oder filtere, um in Sekunden das passende zu finden.` },
+};
+
+function categoryBody(label, categoryUrl, items, guide, lang = 'tr') {
+  const tx = CAT_BODY_TEXT[lang] || CAT_BODY_TEXT.tr;
   const lbl = esc(label);
   const links = items
     .filter((d) => d && d.name && d.id)
@@ -271,9 +279,9 @@ function categoryBody(label, categoryUrl, items, guide) {
     })
     .join('');
   return `<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
-    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › ${lbl}</nav>`
-    + `<h1 style="font-size:28px;margin:12px 0 6px">${lbl} Karşılaştırma</h1>`
-    + `<p style="line-height:1.7;color:#334155;max-width:680px">En iyi ${lbl.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.</p>`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">${esc(tx.cats)}</a> › ${lbl}</nav>`
+    + `<h1 style="font-size:28px;margin:12px 0 6px">${esc(tx.h1(label))}</h1>`
+    + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(tx.intro(label))}</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
     + `</main>`;
 }
@@ -1009,11 +1017,13 @@ function hreflangAlts(basePath) {
 }
 
 // Prefix a prerendered body's in-site links so a crawler/visitor on /en stays in
-// /en (tr body returned unchanged). Bodies only use href="/..." for routes; images
-// use src= and external links use https:// so neither is touched.
+// /en (tr body returned unchanged). ONLY links whose root actually has en/de
+// prerenders are prefixed — products (tr-only), blog (slug-based i18n), /ai-chat,
+// /go and /compare are left alone so we never point at a page that doesn't exist.
+const MULTILANG_LINK_RE = /href="(\/(?:category|link-analysis|subscriptions|premium|quiz|terms|privacy|refund|cookies|contact|about|faq)(?:[/?#][^"]*)?|\/)"/g;
 function localizeBodyLinks(html, lang) {
   if (lang === 'tr' || !html) return html;
-  return html.replace(/href="\/(?!\/)/g, `href="/${lang}/`);
+  return html.replace(MULTILANG_LINK_RE, (_m, p) => `href="/${lang}${p}"`);
 }
 
 // en/de <title>/<description> for the indexable content routes. Legal routes are
@@ -1165,47 +1175,58 @@ async function main() {
   //     ItemList JSON-LD + a crawlable <a> grid (categoryBody) to every curated
   //     product, so Google reaches product pages via internal links (home →
   //     category → product, ≤3 clicks) and the page isn't a thin head-only shell.
+  // Per-language <title>/<description> for the category landings.
+  const CAT_SEO_TEXT = {
+    tr: { title: (l) => `${l} Karşılaştırma — Fiyat & Özellik | Qor AI`, desc: (l) => `${l} modellerini Qor AI ile karşılaştır: yapay zekâ teknik skoru, özellikler ve güncel fiyatlar bir arada. En iyi ${l} modellerini keşfet, filtrele ve sana en uygununu saniyeler içinde seç.` },
+    en: { title: (l) => `${l} Comparison — Price & Specs | Qor AI`, desc: (l) => `Compare ${l} models with Qor AI: AI tech score, features and current prices together. Discover the best ${l} models, filter and pick the one that fits you in seconds.` },
+    de: { title: (l) => `${l} Vergleich — Preis & Specs | Qor AI`, desc: (l) => `Vergleiche ${l}-Modelle mit Qor AI: KI-Techscore, Merkmale und aktuelle Preise zusammen. Entdecke die besten ${l}-Modelle, filtere und wähle in Sekunden das passende.` },
+  };
   let categoryShells = 0;
   for (const [cat, picked] of curatedByCat) {
     const path = categoryPath(cat);
     if (!path) continue;
-    const label = categoryLabel(cat, 'tr');
-    const url = `${SITE}${path}`;
     const guide = guides.get(cat);
-    const faqLd = guideFaqLd(guide, url);
     const top = picked.slice(0, 24);
     const heroImg = String(top[0]?.imageUrl || '');
-    const itemList = {
-      '@type': 'ItemList', '@id': `${url}#itemlist`, name: `${label} — Qor AI`,
-      numberOfItems: top.length,
-      itemListElement: top.map((d, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name })),
-    };
-    const collection = {
-      '@type': 'CollectionPage', '@id': `${url}#webpage`, url, name: `${label} — Qor AI`,
-      isPartOf: { '@id': `${SITE}/#website` }, mainEntity: { '@id': `${url}#itemlist` },
-    };
-    const breadcrumb = {
-      '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
-        { '@type': 'ListItem', position: 2, name: label, item: url },
-      ],
-    };
-    writeHtml(path.replace(/^\//, ''), renderPage(template, {
-      title: truncate(`${label} Karşılaştırma — Fiyat & Özellik | Qor AI`, 68),
-      description: truncate(
-        `${label} modellerini Qor AI ile karşılaştır: yapay zekâ teknik skoru, `
-        + `özellikler ve güncel fiyatlar bir arada. En iyi ${label} modellerini `
-        + 'keşfet, filtrele ve sana en uygununu saniyeler içinde seç.',
-      ),
-      url,
-      image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
-      type: 'website',
-      jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
-    }, categoryBody(label, url, picked, guide)));
-    categoryShells += 1;
+    // Category landings are the prime "best <X>" English/German query targets, so
+    // generate them in all three languages with hreflang. Products in the JSON-LD
+    // itemList stay on their tr-canonical URLs (there is one product page per model).
+    for (const lang of SEO_LOCALES) {
+      const label = categoryLabel(cat, lang);
+      const prefix = localePrefix(lang);
+      const url = `${SITE}${prefix}${path}`;
+      const faqLd = lang === 'tr' ? guideFaqLd(guide, url) : null; // guide FAQ is tr-only copy
+      const itemList = {
+        '@type': 'ItemList', '@id': `${url}#itemlist`, name: `${label} — Qor AI`,
+        numberOfItems: top.length,
+        itemListElement: top.map((d, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name })),
+      };
+      const collection = {
+        '@type': 'CollectionPage', '@id': `${url}#webpage`, url, name: `${label} — Qor AI`,
+        isPartOf: { '@id': `${SITE}/#website` }, mainEntity: { '@id': `${url}#itemlist` },
+      };
+      const breadcrumb = {
+        '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${prefix}/` },
+          { '@type': 'ListItem', position: 2, name: label, item: url },
+        ],
+      };
+      const tx = CAT_SEO_TEXT[lang] || CAT_SEO_TEXT.tr;
+      writeHtml(`${prefix}${path}`.replace(/^\//, ''), renderPage(template, {
+        title: truncate(tx.title(label), 68),
+        description: truncate(tx.desc(label)),
+        url,
+        lang,
+        image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
+        type: 'website',
+        alternates: hreflangAlts(path),
+        jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
+      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang), lang)));
+      categoryShells += 1;
+    }
   }
-  console.log(`[seo] wrote ${categoryShells} per-category landing shells (with internal product links)`);
+  console.log(`[seo] wrote ${categoryShells} per-category landing shells (tr/en/de, with internal product links)`);
 
   // 2d) curated per-product prerender — real static HTML per model: unique <head>
   //     (title/description/canonical + Product/Breadcrumb JSON-LD) + a content
@@ -1351,13 +1372,13 @@ async function main() {
       }
     }
   }
-  // Only categories we actually generated a content shell for (curatedByCat).
-  const categoryUrls = [...curatedByCat.keys()]
-    .map((cat) => categoryPath(cat)).filter(Boolean)
-    .sort()
-    .map((path) => ({
-      loc: `${SITE}${path}`, changefreq: 'weekly', priority: '0.8',
-    }));
+  // Only categories we actually generated a content shell for (curatedByCat),
+  // including the en/de variants we now prerender alongside tr.
+  const categoryUrls = [];
+  for (const p of [...curatedByCat.keys()].map((cat) => categoryPath(cat)).filter(Boolean).sort()) {
+    categoryUrls.push({ loc: `${SITE}${p}`, changefreq: 'weekly', priority: '0.8' });
+    for (const l of ['en', 'de']) categoryUrls.push({ loc: `${SITE}/${l}${p}`, changefreq: 'weekly', priority: '0.8' });
+  }
   // Only the curated, prerendered products go in the sitemap. Listing all 106k
   // (which serve the generic SPA shell with no per-product HTML) is exactly what
   // wasted crawl budget and produced the duplicate signal that blocked indexing.
