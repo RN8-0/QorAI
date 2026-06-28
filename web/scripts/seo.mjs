@@ -407,7 +407,7 @@ function productSeo(d, label) {
     `${d.name}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
     + `${score ? `Qor AI teknik skoru ${score}/100. ` : ''}`
     + `${specs ? `${specs} teknik özellik, ` : ''}`
-    + 'güncel fiyatlar ve benzer modellerle Qor AI karşılaştırması.',
+    + 'güncel fiyatlar, Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -702,7 +702,11 @@ const STATIC_ROUTES = [
       jsonLd: {
         '@context': 'https://schema.org',
         '@graph': [
-          { '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Qor AI', url: `${SITE}/`, logo: DEFAULT_IMG },
+          {
+            '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Qor AI', url: `${SITE}/`, logo: DEFAULT_IMG,
+            description: 'Yapay zekâ destekli ürün ve dijital abonelik danışmanı.',
+            sameAs: ['https://play.google.com/store/apps/details?id=com.compair.app'],
+          },
           {
             '@type': 'WebSite', '@id': `${SITE}/#website`, name: 'Qor AI', url: `${SITE}/`,
             publisher: { '@id': `${SITE}/#organization` },
@@ -711,6 +715,28 @@ const STATIC_ROUTES = [
               target: `${SITE}/?q={search_term_string}`,
               'query-input': 'required name=search_term_string',
             },
+          },
+          {
+            // Declares Qor AI to Google as an AI-powered product-analysis app (not
+            // just another listing site). Every feature below is real and visible
+            // in the live UI, so this is an honest machine-readable declaration —
+            // not cloaking. This is the strongest signal that the site IS an AI tool.
+            '@type': 'WebApplication', '@id': `${SITE}/#webapp`, name: 'Qor AI',
+            url: `${SITE}/`, applicationCategory: 'ShoppingApplication',
+            operatingSystem: 'Web, Android', inLanguage: ['tr', 'en', 'de'],
+            description: 'Teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile '
+              + 'analiz eden, karşılaştıran ve kişiye özel öneren AI ürün danışmanı.',
+            featureList: [
+              'Yapay zekâ ürün analizi',
+              'Yapay zekâ ile ürün karşılaştırma',
+              'Ürün linki analizi — linki yapıştır, AI tanısın ve analiz etsin',
+              'Dijital abonelik karşılaştırma (Netflix, Spotify, YouTube Premium…)',
+              'AI teknik skoru (0–100)',
+              'Kişiye özel ürün önerisi',
+              'AI sohbet danışmanı',
+            ],
+            publisher: { '@id': `${SITE}/#organization` },
+            offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
           },
         ],
       },
