@@ -1,19 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://qorai.net/</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://qorai.net/en/</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://qorai.net/de/</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://qorai.net/category</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://qorai.net/en/category</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://qorai.net/de/category</loc><lastmod>2026-06-28</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://qorai.net/link-analysis</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/en/link-analysis</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/de/link-analysis</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/subscriptions</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/en/subscriptions</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/de/subscriptions</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/premium</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/en/premium</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/de/premium</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/terms</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/terms</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/terms</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/privacy</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/privacy</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/privacy</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/refund</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/refund</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/refund</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/cookies</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://qorai.net/en/cookies</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://qorai.net/de/cookies</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.4</priority></url>
   <url><loc>https://qorai.net/contact</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/contact</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/contact</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/about</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/about</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/about</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/faq</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/en/faq</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/de/faq</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/quiz</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/en/quiz</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/de/quiz</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/ai-chat</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/en/ai-chat</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/de/ai-chat</loc><lastmod>2026-06-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/category/3d_printers</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/audio_systems</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/av_receivers</loc><lastmod>2026-06-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>

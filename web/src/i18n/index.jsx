@@ -39,8 +39,13 @@ function applyDocLang(code) {
 
 const LangCtx = createContext(null);
 
-export function LangProvider({ children }) {
-  const [lang, setLangState] = useState(detectLang);
+export function LangProvider({ children, initialLang }) {
+  // A URL language prefix (/en, /de) wins for THIS page load but is NOT persisted,
+  // so it never overwrites the user's saved Settings choice. Falls back to normal
+  // detection (saved pref → browser) when there is no prefix.
+  const [lang, setLangState] = useState(
+    () => (initialLang && STRINGS[initialLang] ? initialLang : detectLang()),
+  );
 
   useEffect(() => { applyDocLang(lang); }, [lang]);
   useEffect(() => {

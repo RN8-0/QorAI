@@ -9,10 +9,24 @@ import './styles/global.css';
 
 initAnalytics();
 
+// Language URL-prefix for SEO: tr is the canonical root (no prefix); en/de live
+// under /en and /de so each language has a distinct, hreflang-linked URL Google
+// can index. This ONLY activates when the path starts with /en or /de — the root
+// (tr) experience is completely unchanged, so existing users see no difference.
+// `basename` keeps the SPA's internal links inside the language; `initialLang`
+// sets the UI language for that page load WITHOUT clobbering the user's saved
+// Settings preference.
+const PATH_LANG = (() => {
+  try {
+    const m = window.location.pathname.match(/^\/(en|de)(?:\/|$)/);
+    return m ? m[1] : null;
+  } catch { return null; }
+})();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <LangProvider>
+    <BrowserRouter basename={PATH_LANG ? `/${PATH_LANG}` : undefined}>
+      <LangProvider initialLang={PATH_LANG}>
         <AuthProvider>
           <App />
         </AuthProvider>

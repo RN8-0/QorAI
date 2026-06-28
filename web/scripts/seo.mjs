@@ -509,31 +509,49 @@ function legalBody(kind, lang = 'tr') {
 // link grid to every category landing page and the main tools. Turns the root
 // "/" from an empty SPA shell into a content-bearing hub — the first page the
 // AdSense reviewer and Googlebot hit. React wipes #root on mount.
+// Homepage prerender copy in all three served languages (tr=root, en=/en, de=/de).
+const HOME_TEXT = {
+  tr: {
+    h1: 'Qor AI — Yapay Zekâ Ürün Danışmanı',
+    p1: 'Qor AI; telefon, laptop, ekran kartı, kulaklık, televizyon, akıllı saat ve PC bileşenlerinden dijital aboneliklere kadar binlerce ürünü yapay zekâ ile inceleyip karşılaştırmanı sağlayan bir alışveriş ve ürün karar asistanıdır. Ürünleri ara, yan yana karşılaştır, bir ürün linkini yapıştırıp anında AI analizini al, abonelikleri değerlendir ve sana en uygun seçeneği saniyeler içinde bul.',
+    p2: 'Her üründe Qor AI teknik skoru, güncel fiyatlar, öne çıkan özellikler ve benzer modellerle karşılaştırma bir arada sunulur. Aşağıdan kategorilere göz at ya da bir aracı seç.',
+    cats: 'Kategoriler', tools: 'Araçlar',
+    toolLinks: [['/category', 'Tüm Kategoriler'], ['/subscriptions', 'Abonelik Karşılaştır'], ['/link-analysis', 'Link Analizi'], ['/ai-chat', 'Qor AI Sohbet'], ['/quiz', 'Kişisel Quiz'], ['/blog', 'Blog & Alım Rehberleri'], ['/premium', 'Premium'], ['/about', 'Hakkımızda']],
+  },
+  en: {
+    h1: 'Qor AI — AI Product & Subscription Advisor',
+    p1: 'Qor AI is a shopping and product-decision assistant that uses AI to research and compare thousands of products — phones, laptops, GPUs, headphones, TVs, smartwatches and PC components — as well as digital subscriptions. Search products, compare them side by side, paste a product link for an instant AI analysis, evaluate subscriptions and find the option that fits you best in seconds.',
+    p2: 'Every product shows the Qor AI tech score, current prices, key features and a comparison with similar models. Browse the categories below or pick a tool.',
+    cats: 'Categories', tools: 'Tools',
+    toolLinks: [['/category', 'All categories'], ['/subscriptions', 'Compare subscriptions'], ['/link-analysis', 'Link analysis'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Personal quiz'], ['/blog', 'Blog & buying guides'], ['/premium', 'Premium'], ['/about', 'About']],
+  },
+  de: {
+    h1: 'Qor AI — KI-Produkt- und Abo-Berater',
+    p1: 'Qor AI ist ein Einkaufs- und Produktentscheidungs-Assistent, der mit KI Tausende Produkte recherchiert und vergleicht — Smartphones, Laptops, Grafikkarten, Kopfhörer, Fernseher, Smartwatches und PC-Komponenten — sowie digitale Abos. Suche Produkte, vergleiche sie nebeneinander, füge einen Produktlink für eine sofortige KI-Analyse ein, bewerte Abos und finde in Sekunden die beste Option für dich.',
+    p2: 'Zu jedem Produkt gibt es den Qor-AI-Techscore, aktuelle Preise, wichtige Merkmale und einen Vergleich mit ähnlichen Modellen. Stöbere unten in den Kategorien oder wähle ein Tool.',
+    cats: 'Kategorien', tools: 'Tools',
+    toolLinks: [['/category', 'Alle Kategorien'], ['/subscriptions', 'Abos vergleichen'], ['/link-analysis', 'Link-Analyse'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Persönliches Quiz'], ['/blog', 'Blog & Kaufratgeber'], ['/premium', 'Premium'], ['/about', 'Über uns']],
+  },
+};
+
 function homeBody(guides, lang = 'tr') {
+  const tx = HOME_TEXT[lang] || HOME_TEXT.tr;
   const cats = [...guides.keys()]
     .map((cat) => ({ href: categoryPath(cat), label: categoryLabel(cat, lang) }))
     .filter((c) => c.href && c.label)
-    .sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+    .sort((a, b) => a.label.localeCompare(b.label, lang));
   const catLinks = cats
     .map((c) => `<li style="margin:4px 0"><a href="${esc(c.href)}" style="color:#2563eb;text-decoration:none">${esc(c.label)}</a></li>`)
     .join('');
-  const tools = [
-    ['/category', 'Tüm Kategoriler'],
-    ['/subscriptions', 'Abonelik Karşılaştır'],
-    ['/link-analysis', 'Link Analizi'],
-    ['/ai-chat', 'Qor AI Sohbet'],
-    ['/quiz', 'Kişisel Quiz'],
-    ['/blog', 'Blog & Alım Rehberleri'],
-    ['/premium', 'Premium'],
-    ['/about', 'Hakkımızda'],
-  ].map(([h, t]) => `<li style="margin:4px 0"><a href="${h}" style="color:#2563eb;text-decoration:none">${esc(t)}</a></li>`).join('');
+  const tools = tx.toolLinks
+    .map(([h, t]) => `<li style="margin:4px 0"><a href="${h}" style="color:#2563eb;text-decoration:none">${esc(t)}</a></li>`).join('');
   return '<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
-    + '<h1 style="font-size:30px;margin:0 0 10px">Qor AI — Yapay Zekâ Ürün Danışmanı</h1>'
-    + '<p style="line-height:1.7;color:#334155;max-width:760px">Qor AI; telefon, laptop, ekran kartı, kulaklık, televizyon, akıllı saat ve PC bileşenlerinden dijital aboneliklere kadar binlerce ürünü yapay zekâ ile inceleyip karşılaştırmanı sağlayan bir alışveriş ve ürün karar asistanıdır. Ürünleri ara, yan yana karşılaştır, bir ürün linkini yapıştırıp anında AI analizini al, abonelikleri değerlendir ve sana en uygun seçeneği saniyeler içinde bul.</p>'
-    + '<p style="line-height:1.7;color:#334155;max-width:760px">Her üründe Qor AI teknik skoru, güncel fiyatlar, öne çıkan özellikler ve benzer modellerle karşılaştırma bir arada sunulur. Aşağıdan kategorilere göz at ya da bir aracı seç.</p>'
-    + '<h2 style="font-size:20px;margin:24px 0 8px">Kategoriler</h2>'
+    + `<h1 style="font-size:30px;margin:0 0 10px">${esc(tx.h1)}</h1>`
+    + `<p style="line-height:1.7;color:#334155;max-width:760px">${esc(tx.p1)}</p>`
+    + `<p style="line-height:1.7;color:#334155;max-width:760px">${esc(tx.p2)}</p>`
+    + `<h2 style="font-size:20px;margin:24px 0 8px">${esc(tx.cats)}</h2>`
     + `<ul style="columns:2;-webkit-columns:2;list-style:none;padding:0;margin:0">${catLinks}</ul>`
-    + '<h2 style="font-size:20px;margin:24px 0 8px">Araçlar</h2>'
+    + `<h2 style="font-size:20px;margin:24px 0 8px">${esc(tx.tools)}</h2>`
     + `<ul style="list-style:none;padding:0;margin:0">${tools}</ul>`
     + '</main>';
 }
@@ -606,16 +624,124 @@ const LANDING = {
   },
 };
 
-function landingBody(kind, guides) {
-  const c = LANDING[kind];
-  if (!c) return '';
-  const paras = c.paras.map((t) => `<p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">${esc(t)}</p>`).join('');
-  const grid = c.grid ? `<h2 style="font-size:20px;margin:24px 0 8px">Tüm kategoriler</h2>${categoryLinkGrid(guides)}` : '';
-  const links = (c.links && c.links.length)
-    ? `<p style="margin:18px 0;font-size:14px">${c.links.map(([h, t]) => `<a href="${h}" style="color:#2563eb;margin-right:14px">${esc(t)}</a>`).join('')}</p>`
+// en/de copy for the landing/feature pages (tr lives in LANDING above). Only h1 +
+// paras + link labels are translated; hrefs are shared and get language-prefixed
+// by localizeBodyLinks. Falls back to the tr entry if a key is missing.
+const GRID_HEADING = { tr: 'Tüm kategoriler', en: 'All categories', de: 'Alle Kategorien' };
+const LANDING_I18N = {
+  en: {
+    category: {
+      h1: 'Categories',
+      paras: [
+        'Explore the tech products in the Qor AI catalogue by category: phones, laptops, GPUs, CPUs, headphones, TVs, smartwatches, monitors, PC components and more. Each category combines the AI tech score, current prices and key features.',
+        'Open a category, filter the models, compare them side by side and pick the one that fits you best. Start from the categories below.',
+      ],
+      links: [['/', 'Home'], ['/blog', 'Blog & buying guides']],
+    },
+    subscriptions: {
+      h1: 'Subscription Comparison',
+      paras: [
+        'Compare Netflix, Spotify, YouTube Premium, Disney+, Amazon Prime, ChatGPT Plus, Game Pass and more digital subscriptions by price, content and value with AI. Which platform gives you the most value, which one fits your budget — Qor AI shows them side by side.',
+        'Evaluate music, streaming, gaming and AI subscriptions on one screen, pick the plan that fits your needs and drop the ones you don’t use.',
+      ],
+      links: [['/subscriptions', 'Compare subscriptions'], ['/premium', 'Premium'], ['/blog', 'Guides']],
+    },
+    'link-analysis': {
+      h1: 'Link Analysis',
+      paras: [
+        'Paste any product link — Qor AI identifies the product, extracts its specs and summarizes its pros and cons. Paste several links at once to compare products.',
+        'Without getting lost across store pages, see in seconds whether a product is really worth it with AI-powered analysis.',
+      ],
+      links: [['/link-analysis', 'Start link analysis'], ['/category', 'Categories'], ['/ai-chat', 'Qor AI Chat']],
+    },
+    premium: {
+      h1: 'Premium',
+      paras: [
+        'Qor AI Premium unlocks deeper AI use: Qor AI Chat, visual scanner, product AI analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history.',
+        'Current prices, trial details and plan information are listed on this page. Web purchases are processed via Paddle and mobile purchases via the relevant app store. See the Refund Policy for cancellation and refund terms.',
+      ],
+      links: [['/premium', 'Premium plans'], ['/refund', 'Refund Policy'], ['/terms', 'Terms of Use']],
+    },
+    'ai-chat': {
+      h1: 'Qor AI Chat',
+      paras: [
+        'Phone, laptop, headphones or a subscription — ask your product question and get instant, unbiased advice from the Qor AI assistant. Ask things like “which laptop for this budget?” or “which of these two phones?”.',
+        'Qor AI Chat is a research assistant; it explains the alternatives and surfaces the right questions. Verify key features and prices from the seller before buying.',
+      ],
+      links: [['/ai-chat', 'Start chatting'], ['/category', 'Categories'], ['/quiz', 'Personal quiz']],
+    },
+    quiz: {
+      h1: 'Personal Quiz',
+      paras: [
+        'Answer a few questions and let Qor AI recommend the tech product that fits you best. State your budget, use case and priorities; the AI brings personalized recommendations based on your profile.',
+        'The quiz is a quick starting point for anyone unsure what to look for; afterwards you can compare and review the recommended products.',
+      ],
+      links: [['/quiz', 'Start the quiz'], ['/category', 'Categories'], ['/ai-chat', 'Qor AI Chat']],
+    },
+  },
+  de: {
+    category: {
+      h1: 'Kategorien',
+      paras: [
+        'Entdecke die Technikprodukte im Qor-AI-Katalog nach Kategorie: Smartphones, Laptops, Grafikkarten, Prozessoren, Kopfhörer, Fernseher, Smartwatches, Monitore, PC-Komponenten und mehr. Jede Kategorie vereint KI-Techscore, aktuelle Preise und wichtige Merkmale.',
+        'Öffne eine Kategorie, filtere die Modelle, vergleiche sie nebeneinander und wähle das passende aus. Starte mit den Kategorien unten.',
+      ],
+      links: [['/', 'Startseite'], ['/blog', 'Blog & Kaufratgeber']],
+    },
+    subscriptions: {
+      h1: 'Abo-Vergleich',
+      paras: [
+        'Vergleiche Netflix, Spotify, YouTube Premium, Disney+, Amazon Prime, ChatGPT Plus, Game Pass und weitere digitale Abos nach Preis, Inhalt und Wert mit KI. Welche Plattform bietet dir den meisten Wert, welche passt zu deinem Budget — Qor AI zeigt sie nebeneinander.',
+        'Bewerte Musik-, Streaming-, Gaming- und KI-Abos auf einem Bildschirm, wähle das passende Paket und kündige, was du nicht nutzt.',
+      ],
+      links: [['/subscriptions', 'Abos vergleichen'], ['/premium', 'Premium'], ['/blog', 'Ratgeber']],
+    },
+    'link-analysis': {
+      h1: 'Link-Analyse',
+      paras: [
+        'Füge einen beliebigen Produktlink ein — Qor AI erkennt das Produkt, extrahiert die Spezifikationen und fasst Vor- und Nachteile zusammen. Füge mehrere Links gleichzeitig ein, um Produkte zu vergleichen.',
+        'Sieh in Sekunden mit KI-Analyse, ob ein Produkt wirklich sein Geld wert ist — ohne dich zwischen Shop-Seiten zu verlieren.',
+      ],
+      links: [['/link-analysis', 'Link-Analyse starten'], ['/category', 'Kategorien'], ['/ai-chat', 'Qor AI Chat']],
+    },
+    premium: {
+      h1: 'Premium',
+      paras: [
+        'Qor AI Premium schaltet tiefere KI-Nutzung frei: Qor AI Chat, visueller Scanner, Produkt-KI-Analyse, Link-Analyse, Link-Vergleich, Abo-Analyse, Premium-Empfehlungen und erweiterte Preishistorie.',
+        'Aktuelle Preise, Testdetails und Planinformationen sind auf dieser Seite aufgeführt. Web-Käufe werden über Paddle, mobile Käufe über den jeweiligen App-Store abgewickelt. Kündigungs- und Erstattungsbedingungen findest du in der Erstattungsrichtlinie.',
+      ],
+      links: [['/premium', 'Premium-Pläne'], ['/refund', 'Erstattungsrichtlinie'], ['/terms', 'Nutzungsbedingungen']],
+    },
+    'ai-chat': {
+      h1: 'Qor AI Chat',
+      paras: [
+        'Smartphone, Laptop, Kopfhörer oder ein Abo — stelle deine Produktfrage und erhalte sofort unvoreingenommene Beratung vom Qor-AI-Assistenten. Frage z. B. „Welcher Laptop für dieses Budget?“ oder „Welches dieser beiden Smartphones?“.',
+        'Qor AI Chat ist ein Recherche-Assistent; er erklärt die Alternativen und macht die richtigen Fragen sichtbar. Überprüfe wichtige Merkmale und Preise vor dem Kauf beim Händler.',
+      ],
+      links: [['/ai-chat', 'Chat starten'], ['/category', 'Kategorien'], ['/quiz', 'Persönliches Quiz']],
+    },
+    quiz: {
+      h1: 'Persönliches Quiz',
+      paras: [
+        'Beantworte ein paar Fragen und lass Qor AI das passende Technikprodukt empfehlen. Gib Budget, Einsatzzweck und Prioritäten an; die KI liefert personalisierte Empfehlungen anhand deines Profils.',
+        'Das Quiz ist ein schneller Einstieg, wenn du unsicher bist, wonach du suchen sollst; danach kannst du die empfohlenen Produkte vergleichen und ansehen.',
+      ],
+      links: [['/quiz', 'Quiz starten'], ['/category', 'Kategorien'], ['/ai-chat', 'Qor AI Chat']],
+    },
+  },
+};
+
+function landingBody(kind, guides, lang = 'tr') {
+  const base = LANDING[kind];
+  if (!base) return '';
+  const tr = lang === 'tr' ? base : { ...base, ...((LANDING_I18N[lang] || {})[kind] || {}) };
+  const paras = tr.paras.map((t) => `<p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">${esc(t)}</p>`).join('');
+  const grid = base.grid ? `<h2 style="font-size:20px;margin:24px 0 8px">${esc(GRID_HEADING[lang] || GRID_HEADING.tr)}</h2>${categoryLinkGrid(guides, lang)}` : '';
+  const links = (tr.links && tr.links.length)
+    ? `<p style="margin:18px 0;font-size:14px">${tr.links.map(([h, t]) => `<a href="${h}" style="color:#2563eb;margin-right:14px">${esc(t)}</a>`).join('')}</p>`
     : '';
   return '<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
-    + `<h1 style="font-size:28px;margin:0 0 10px">${esc(c.h1)}</h1>`
+    + `<h1 style="font-size:28px;margin:0 0 10px">${esc(tr.h1)}</h1>`
     + paras + grid + links
     + '</main>';
 }
@@ -626,6 +752,10 @@ function renderPage(template, seo, bodyHtml) {
   // interpreted as a String.replace special pattern and corrupt the output.
   const block = `<!-- seo:start -->\n  ${seoBlock(seo)}\n  <!-- seo:end -->`;
   let out = template.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/, () => block);
+  // Match the <html lang> attribute to the page language so a crawler that never
+  // runs JS doesn't see e.g. German content under lang="tr". tr is a no-op.
+  const lang = seo.lang || 'tr';
+  if (lang !== 'tr') out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
   if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
   return out;
 }
@@ -858,6 +988,66 @@ const STATIC_ROUTES = [
   },
 ];
 
+// ── Multilingual SEO (tr=root, en=/en, de=/de) ──────────────────────────────
+const SEO_LOCALES = ['tr', 'en', 'de'];
+const localePrefix = (lang) => (lang === 'tr' ? '' : `/${lang}`);
+
+// A static route gets en/de variants only when it is indexable AND has real,
+// translatable content: the homepage, the legal pages (legalBody is lang-aware)
+// and the landing/feature pages (LANDING_I18N). /go and the /product placeholder
+// stay tr-only. Products/compare are NOT multiplied by language — a 3× explosion
+// of thin shells is exactly the crawl-budget/“scaled content” trap to avoid.
+const isMultilangRoute = (r) =>
+  !r.noindex && !r.seo?.noindex && (r.dir === '' || !!LEGAL_META[r.dir] || !!LANDING[r.dir]);
+
+// hreflang cluster for a path that has no language prefix. x-default → tr (root).
+function hreflangAlts(basePath) {
+  const p = basePath === '/' ? '' : basePath;
+  const alts = SEO_LOCALES.map((l) => ({ hreflang: l, href: `${SITE}${localePrefix(l)}${p || '/'}` }));
+  alts.push({ hreflang: 'x-default', href: `${SITE}${p || '/'}` });
+  return alts;
+}
+
+// Prefix a prerendered body's in-site links so a crawler/visitor on /en stays in
+// /en (tr body returned unchanged). Bodies only use href="/..." for routes; images
+// use src= and external links use https:// so neither is touched.
+function localizeBodyLinks(html, lang) {
+  if (lang === 'tr' || !html) return html;
+  return html.replace(/href="\/(?!\/)/g, `href="/${lang}/`);
+}
+
+// en/de <title>/<description> for the indexable content routes. Legal routes are
+// resolved from LEGAL_META instead; tr uses the route's own seo. Missing → tr.
+const STATIC_SEO_I18N = {
+  en: {
+    '': { title: 'Qor AI — AI Product & Subscription Advisor', description: 'Discover, compare and decide on tech products and digital subscriptions with AI. Phones, laptops, GPUs and more — analyzed by Qor AI.' },
+    category: { title: 'Categories — Qor AI', description: 'Explore AI-scored tech products by category. Filter by brand, price and specs; compare phones, laptops, GPUs and more.' },
+    'link-analysis': { title: 'Link Analysis — Qor AI', description: 'Paste any product link — Qor AI identifies the product, summarizes its pros and cons, and compares multiple links with AI.' },
+    subscriptions: { title: 'Subscription Comparison — Qor AI', description: 'Compare Netflix, Spotify, YouTube Premium and more by price, features and value with AI.' },
+    premium: { title: 'Premium — Qor AI', description: 'Explore Qor AI Premium: AI Chat, visual scanner, link analysis, subscription analysis and premium recommendations.' },
+    quiz: { title: 'Personal Quiz — Qor AI', description: 'Answer a few questions and let Qor AI recommend the tech product that fits you best.' },
+  },
+  de: {
+    '': { title: 'Qor AI — KI-Produkt- und Abo-Berater', description: 'Technikprodukte und digitale Abos mit KI entdecken, vergleichen und entscheiden. Smartphones, Laptops, GPUs und mehr — analysiert von Qor AI.' },
+    category: { title: 'Kategorien — Qor AI', description: 'KI-bewertete Technikprodukte nach Kategorie. Nach Marke, Preis und Specs filtern; Smartphones, Laptops, GPUs und mehr vergleichen.' },
+    'link-analysis': { title: 'Link-Analyse — Qor AI', description: 'Füge einen Produktlink ein — Qor AI erkennt das Produkt, fasst Vor- und Nachteile zusammen und vergleicht mehrere Links mit KI.' },
+    subscriptions: { title: 'Abo-Vergleich — Qor AI', description: 'Netflix, Spotify, YouTube Premium und mehr nach Preis, Funktionen und Wert mit KI vergleichen.' },
+    premium: { title: 'Premium — Qor AI', description: 'Entdecke Qor AI Premium: KI-Chat, visueller Scanner, Link-Analyse, Abo-Analyse und Premium-Empfehlungen.' },
+    quiz: { title: 'Persönliches Quiz — Qor AI', description: 'Beantworte ein paar Fragen und lass Qor AI das passende Technikprodukt empfehlen.' },
+  },
+};
+
+// Per-language meta override for a static route. tr keeps the route's own seo.
+function localizedRouteMeta(r, lang) {
+  if (lang === 'tr') return {};
+  if (LEGAL_META[r.dir]) {
+    const m = LEGAL_META[r.dir]; const t = m[lang] || m.en;
+    return t ? { title: t[0], description: t[1] } : {};
+  }
+  const o = (STATIC_SEO_I18N[lang] || {})[r.dir];
+  return o ? { title: o.title, description: o.description } : {};
+}
+
 // ── main ────────────────────────────────────────────────────────
 async function main() {
   if (!existsSync(templatePath)) {
@@ -885,11 +1075,23 @@ async function main() {
   //    product / blog get their rich bodies in later steps). This is the fix for
   //    the empty <div id="root"></div> that the AdSense reviewer kept rejecting.
   for (const r of STATIC_ROUTES) {
-    let body = '';
-    if (r.dir === '') body = homeBody(guides, 'tr');
-    else if (LEGAL_META[r.dir]) body = legalBody(r.dir, 'tr');
-    else if (LANDING[r.dir]) body = landingBody(r.dir, guides);
-    writeHtml(r.dir, renderPage(template, { ...r.seo, url: `${SITE}${r.path}` }, body));
+    const multilang = isMultilangRoute(r);
+    const locales = multilang ? SEO_LOCALES : ['tr'];
+    for (const lang of locales) {
+      let body = '';
+      if (r.dir === '') body = homeBody(guides, lang);
+      else if (LEGAL_META[r.dir]) body = legalBody(r.dir, lang);
+      else if (LANDING[r.dir]) body = landingBody(r.dir, guides, lang);
+      body = localizeBodyLinks(body, lang);
+      const prefix = localePrefix(lang);
+      const dir = `${prefix}${r.path}`.replace(/^\//, '');
+      writeHtml(dir, renderPage(template, {
+        ...r.seo, ...localizedRouteMeta(r, lang),
+        url: `${SITE}${prefix}${r.path}`,
+        lang,
+        alternates: multilang ? hreflangAlts(r.path) : null,
+      }, body));
+    }
   }
   // 404 shell — noindex, keeps deep-link fallback working
   writeTextFile(
@@ -1138,9 +1340,17 @@ async function main() {
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
-  const routeUrls = STATIC_ROUTES.filter((r) => r.sitemap !== false && !r.noindex && !r.seo?.noindex).map((r) => ({
-    loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority,
-  }));
+  const routeUrls = [];
+  for (const r of STATIC_ROUTES.filter((x) => x.sitemap !== false && !x.noindex && !x.seo?.noindex)) {
+    routeUrls.push({ loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority });
+    // Mirror the en/de variants we actually prerendered (isMultilangRoute) so the
+    // language pages get crawled, not just discovered via hreflang.
+    if (isMultilangRoute(r)) {
+      for (const l of ['en', 'de']) {
+        routeUrls.push({ loc: `${SITE}/${l}${r.path}`, changefreq: r.changefreq, priority: r.priority });
+      }
+    }
+  }
   // Only categories we actually generated a content shell for (curatedByCat).
   const categoryUrls = [...curatedByCat.keys()]
     .map((cat) => categoryPath(cat)).filter(Boolean)
