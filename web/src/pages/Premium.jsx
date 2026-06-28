@@ -88,6 +88,20 @@ export default function Premium() {
               'Nutze denselben Premium-Plan für Produkt-, Link- und Abo-Analysen.',
             )}
           </p>
+          <p className="premium-paynote" style={{
+            fontSize: '13.5px',
+            lineHeight: 1.5,
+            fontWeight: 600,
+            color: 'var(--text2, #475569)',
+            margin: '0 auto 14px',
+            maxWidth: '520px',
+          }}>
+            {L(
+              'Subscriptions are currently available through Google Play. Web checkout is coming soon.',
+              'Abonelikler şu anda geçici olarak Google Play üzerinden alınmaktadır. Web ödemesi yakında.',
+              'Abonnements sind derzeit über Google Play verfügbar. Web-Bezahlung folgt in Kürze.',
+            )}
+          </p>
           <PlayBadge className="premium-play" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')}
             label={L('Google Play', "Google Play'den indir", 'Google Play')} />
         </div>
@@ -112,22 +126,6 @@ export default function Premium() {
           </Reveal>
         ))}
       </section>
-
-      <p className="premium-paynote" style={{
-        textAlign: 'center',
-        fontSize: '13px',
-        lineHeight: 1.5,
-        color: 'var(--text2, #64748b)',
-        margin: '2px auto 30px',
-        maxWidth: '560px',
-        padding: '0 16px',
-      }}>
-        {L(
-          'Subscriptions are currently available through Google Play. Web checkout is coming soon.',
-          'Abonelikler şu anda geçici olarak Google Play üzerinden alınmaktadır. Web ödemesi yakında.',
-          'Abonnements sind derzeit über Google Play verfügbar. Web-Bezahlung folgt in Kürze.',
-        )}
-      </p>
     </div>
   );
 }
