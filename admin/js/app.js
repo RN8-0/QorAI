@@ -2928,8 +2928,11 @@ const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','
 // Map of UI language → display label (used by the in-modal language picker).
 // Plain-text labels — Windows doesn't render flag emojis correctly inside
 // <select> elements, which previously made every option look identical.
+// German spec views were removed (2026-07-01): specs are TR + EN only. The
+// modal no longer offers a Deutsch option, so the runtime tr→de fallback
+// translator (lookupLocalizedText over the de dictionary) is never reached.
 const MODAL_LANGS = [
-  ['tr','Türkçe (source)'], ['en','English'], ['de','Deutsch'],
+  ['tr','Türkçe (source)'], ['en','English'],
 ];
 let _modalLang = 'tr';
 // '' = auto (pick by the modal language). A country code (e.g. 'DE') pins the
