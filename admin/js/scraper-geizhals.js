@@ -30,9 +30,11 @@ const GEIZHALS_DEDUP_CIRCUIT_BASE_MS = 120000;
 const DEEPSEEK_URL = '/api/ai/deepseek';
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // v3 model for cost-effective translation
-// Scope cut (2026-05-29): app focuses on DE/UK/TR markets only.
-// Geizhals (German source) → translate to TR + EN. DE is native, no translation.
-const SUPPORTED_LANGS = ['en','de','tr'];
+// Scope cut (2026-06-30): German spec translation removed. Geizhals specs are
+// translated to TR + EN; the German source is kept ONLY in sourceSpecs (for
+// re-deriving TR/EN), never exposed as a "de" spec view. A German UI reads
+// specs in English. (UI text and product names stay German.)
+const SUPPORTED_LANGS = ['en','tr'];
 // Languages to translate German specs into (skip 'de' since source is German).
 const TARGET_LANGS = ['en','tr'];
 
@@ -780,8 +782,9 @@ function _applySourceSnapshot(payload, snapshot) {
   payload.sourceSpecs = snapshot.sourceSpecs || {};
   payload.sourceSpecSections = snapshot.sourceSpecSections || {};
   payload.sourceKeySpecs = snapshot.sourceKeySpecs || {};
-  payload.multiLangSpecs = { ...(payload.multiLangSpecs || {}), de: payload.sourceSpecs };
-  payload.multiLangSections = { ...(payload.multiLangSections || {}), de: payload.sourceSpecSections };
+  // German spec views were removed: do NOT expose the German source as a "de"
+  // spec map. The source stays in sourceSpecs/sourceSpecSections only. The
+  // German product name is still kept (names stay German).
   payload.nameTranslated = { ...(payload.nameTranslated || {}), de: snapshot.sourceName || payload.name };
   return payload;
 }
@@ -3428,10 +3431,9 @@ async function _translateProductInline(product) {
       product.nameTranslated = { ...(product.nameTranslated || {}), ...(payload.nameTranslated || {}) };
     }
     if (String(product.sourceLang || '').toLowerCase() === 'de') {
-      const deSpecs = product.sourceSpecs && typeof product.sourceSpecs === 'object' ? product.sourceSpecs : translationSource.specs;
-      const deSections = product.sourceSpecSections && typeof product.sourceSpecSections === 'object' ? product.sourceSpecSections : translationSource.specSections;
-      product.multiLangSpecs = { ...(product.multiLangSpecs || {}), de: deSpecs || {} };
-      product.multiLangSections = { ...(product.multiLangSections || {}), de: deSections || {} };
+      // German spec views were removed (2026-06-30): the German source stays in
+      // sourceSpecs/sourceSpecSections only, never as a "de" spec map. The
+      // German product NAME is still kept (names stay German).
       product.nameTranslated = { ...(product.nameTranslated || {}), de: product.nameTranslated?.de || product.name || productLabel };
     }
     _sanitizeGermanEnglishPayload(product);

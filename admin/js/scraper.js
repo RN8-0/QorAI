@@ -15,12 +15,14 @@ const SCRAPER_BUILD = '20260530-fast-create-save';
 const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
-// Scope cut (2026-05-29): app focuses on DE/UK/TR markets only.
-// Epey (Turkish source) → translate to EN + DE.
+// Scope cut (2026-06-30): German spec translation removed — most atoms were
+// mistranslated, broken or dropped. Specs are stored in TR + EN only; a German
+// UI reads specs in English. (UI text and product names stay German.)
+// Epey (Turkish source) → translate to EN.
 // Geizhals (German source) → translate to TR + EN (see scraper-geizhals.js).
-const SUPPORTED_LANGS = ['tr','en','de'];
+const SUPPORTED_LANGS = ['tr','en'];
 // Languages to translate Turkish specs into (skip TR — that's the source).
-const TARGET_LANGS = ['en','de'];
+const TARGET_LANGS = ['en'];
 // Epey product pages usually expose only 2-3 inline images. The full product
 // photo set lives on the "-resimleri.html" gallery page, so keep this enabled
 // to satisfy the catalog requirement of up to 8 product-owned images.

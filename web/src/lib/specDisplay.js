@@ -763,26 +763,14 @@ function labelCase(text, locale = 'en-US') {
 
 export function localizedSpecLabel(label, lang = 'en') {
   const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
-  const code = rawCode === 'tr' || rawCode === 'de' ? rawCode : 'en';
+  // Specs are never shown in German — a German UI reads specs in English
+  // (the German spec translation was removed). German source residue is still
+  // scrubbed below so it never leaks onto the TR/EN views.
+  const code = rawCode === 'tr' ? 'tr' : 'en';
   const clean = cleanupLabel(label);
   if (!clean) return '';
   const exact = LABELS[code]?.[clean] || LABELS[code]?.[titleCase(clean)] || ciLabel(code, clean);
   if (exact) return exact;
-  if (code === 'de') {
-    let out = clean;
-    for (const [re, replacement] of DE_WORDS) out = out.replace(re, replacement);
-    out = out
-      .replace(/\bCPU\b/gi, 'CPU')
-      .replace(/\bGPU\b/gi, 'GPU')
-      .replace(/\bRAM\b/gi, 'RAM')
-      .replace(/\bSIM\b/gi, 'SIM')
-      .replace(/\bUSB\b/gi, 'USB')
-      .replace(/\bWi Fi\b/gi, 'WLAN')
-      .replace(/\s*\/\s*/g, '/')
-      .replace(/\s+/g, ' ')
-      .trim();
-    return labelCase(out, 'de-DE');
-  }
   if (code !== 'tr') {
     // English view: scrub German (Geizhals) AND half-translated Turkish
     // (Epey) residue — the admin modal repairs both, and the site must
@@ -845,7 +833,9 @@ export function localizedSpecLabel(label, lang = 'en') {
 
 function cleanupValueLine(line, lang) {
   const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
-  const code = rawCode === 'tr' || rawCode === 'de' ? rawCode : 'en';
+  // Specs never render in German (de → en). German source residue is still
+  // scrubbed for the TR/EN views below.
+  const code = rawCode === 'tr' ? 'tr' : 'en';
   let out = String(line || '').replace(/\s+/g, ' ').trim();
   if (!out) return '';
 
@@ -1009,68 +999,6 @@ function cleanupValueLine(line, lang) {
     if (/^bar$/i.test(out.trim())) out = 'Düz (bar)';
   }
 
-  if (code === 'de') {
-    const lower = out.toLowerCase();
-    if (lower === 'yes' || lower === 'true' || lower === 'var' || lower === 'evet') return 'Ja';
-    if (lower === 'no' || lower === 'false' || lower === 'yok' || lower === 'hayır' || lower === 'hayir') return 'Nein';
-    out = out
-      .replace(/\bVar\b/g, 'Ja')
-      .replace(/\bYok\b/g, 'Nein')
-      .replace(/\bEvet\b/g, 'Ja')
-      .replace(/\bHayır\b/g, 'Nein')
-      .replace(/\bHayir\b/g, 'Nein')
-      .replace(/İnç/gi, 'Zoll')
-      .replace(/Inç/gi, 'Zoll')
-      .replace(/inç/gi, 'Zoll')
-      .replace(/\badet\b/gi, 'Stück')
-      .replace(/\bsaat\b/gi, 'Stunden')
-      .replace(/\bgün\b/gi, 'Tage')
-      .replace(/\bçekirdek\b/gi, 'Kerne')
-      .replace(/\bpiksel\b/gi, 'Pixel')
-      .replace(/\bHızlı şarj\b/gi, 'Schnellladen')
-      .replace(/\bOptik görüntü sabitleme\b/gi, 'Optische Bildstabilisierung')
-      .replace(/\bOptik zoom\b/gi, 'Optischer Zoom')
-      .replace(/\bDijital zoom\b/gi, 'Digitalzoom')
-      .replace(/\bOtomatik odaklama\b/gi, 'Autofokus')
-      .replace(/\bFaz algılamalı\b/gi, 'Phasenerkennung')
-      .replace(/\bÇift piksel\b/gi, 'Dual Pixel')
-      .replace(/\bUltra geniş açı\b/gi, 'Ultraweitwinkel')
-      .replace(/\bGeniş açı\b/gi, 'Weitwinkel')
-      .replace(/\bLazer AF\b/gi, 'Laser-AF')
-      .replace(/\bLityum iyon\b/gi, 'Lithium-Ionen')
-      // ── Canonical-EN Geizhals values → German (fallback when the German
-      //    source map is unavailable) ──
-      .replace(/\bout of the box\b/gi, 'ab Werk')
-      .replace(/\bvia update\b/gi, 'per Update')
-      .replace(/\bcharge cycles\b/gi, 'Ladezyklen')
-      .replace(/\bnits\s*\(peak\)/gi, 'Nits (maximal)')
-      .replace(/\bnits\s*\(typical\)/gi, 'Nits (typisch)')
-      .replace(/\brefresh rate\b/gi, 'Bildwiederholrate')
-      .replace(/\btouch sampling rate\b/gi, 'Abtastrate')
-      .replace(/\bcores\b/gi, 'Kerne')
-      .replace(/\bbillion colors\b/gi, 'Mrd. Farben')
-      .replace(/\bmillion colors\b/gi, 'Mio. Farben')
-      .replace(/\byears of security updates\b/gi, 'Jahre Sicherheits-Updates')
-      .replace(/\bOS updates\b/g, 'Betriebssystem-Updates')
-      .replace(/\bPhase-detection AF\b/gi, 'Phasenvergleich-AF')
-      .replace(/\bPeriscope telephoto lens\b/gi, 'Periskop-Teleobjektiv')
-      .replace(/\bTelephoto lens\b/gi, 'Teleobjektiv')
-      .replace(/\bWide-angle lens\b/gi, 'Weitwinkelobjektiv')
-      .replace(/\bMacro lens\b/gi, 'Makroobjektiv')
-      .replace(/\bDual-LED flash\b/gi, 'Dual-LED-Blitz')
-      .replace(/\bLED flash\b/gi, 'LED-Blitz')
-      .replace(/\bPunch-hole camera\b/gi, 'Kameraloch')
-      .replace(/\bCapacitive touchscreen\b/gi, 'Kapazitiver Touchscreen')
-      .replace(/\(unfolded\)/gi, '(offen)')
-      .replace(/\(folded\)/gi, '(geschlossen)')
-      .replace(/\(head\)/gi, '(Kopf)')
-      .replace(/\(body\)/gi, '(Körper)')
-      .replace(/\bNot specified\b/gi, 'Keine Angabe')
-      .replace(/\bBuilt-in\b/gi, 'Fest verbaut')
-      .replace(/\bWireless charging\b/gi, 'Kabelloses Laden')
-      .replace(/\bReverse charging\b/gi, 'Umgekehrtes Laden')
-      .replace(/\bpixels\b/gi, 'Pixel');
-  }
   out = out.replace(/\s{2,}/g, ' ').trim();
   // Writing rule: every spec value line starts with a capital letter, except
   // product/OS stylings whose official casing starts lowercase.

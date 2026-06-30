@@ -154,15 +154,24 @@ class ProductEntity extends Equatable {
     return name;
   }
 
+  /// Specs are never rendered in German. The German spec translation was
+  /// removed (most atoms were mistranslated, broken or dropped), so a German
+  /// UI locale reads specs in English instead. UI text and product names are
+  /// unaffected and stay German.
+  static String specDisplayLang(String languageCode) {
+    final c = languageCode.toLowerCase().trim();
+    return c == 'de' ? 'en' : c;
+  }
+
   Map<String, dynamic> specsForLanguage(String languageCode) {
-    final code = languageCode.toLowerCase().trim();
+    final code = specDisplayLang(languageCode);
     final localized = multiLangSpecs[code];
     if (localized != null && localized.isNotEmpty) return localized;
     return specs;
   }
 
   Map<String, dynamic> specSectionsForLanguage(String languageCode) {
-    final code = languageCode.toLowerCase().trim();
+    final code = specDisplayLang(languageCode);
     final localized = multiLangSections[code];
     if (localized != null && localized.isNotEmpty) return localized;
     return specSections;
@@ -206,7 +215,8 @@ class ProductEntity extends Equatable {
       return (s == 'tr' || s == 'de') ? s : 'tr';
     }();
 
-    final code = locale.toLowerCase().trim();
+    // German is never used for specs (de → en); see [specDisplayLang].
+    final code = specDisplayLang(locale);
     final String lang;
     if (multiLangSpecs[code]?.isNotEmpty ?? false) {
       lang = code;

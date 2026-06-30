@@ -2053,7 +2053,7 @@ function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=docum
 // PocketBase `public_config.tr_translation_dict`. Add new Turkish terms,
 // override DeepSeek output, or fix wrong translations — the next scrape
 // run automatically uses these values via _deDictLookup.
-const DICT_VIEW_LANGS = ['en','de'];
+const DICT_VIEW_LANGS = ['en']; // German spec translation removed (2026-06-30)
 let _dictSource = 'tr';
 
 function _currentDictApi(){
@@ -2430,7 +2430,7 @@ async function _fetchDictionaryProducts(categoryId){
   // Only NEW / untranslated products are eligible — products whose
   // multiLangSpecs are already filled for every target language are skipped
   // entirely, so re-running Translate never re-touches old products.
-  const xlateTargets = (window.QorAiBulkTranslate?.targetLangs?.() || ['en', 'de'])
+  const xlateTargets = (window.QorAiBulkTranslate?.targetLangs?.() || ['en'])
     .filter((l) => l && l !== 'tr');
   let alreadyTranslated = 0;
   const _needsTranslation = (p) => {

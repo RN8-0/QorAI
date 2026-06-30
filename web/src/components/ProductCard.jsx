@@ -153,7 +153,7 @@ function productSpecs(product, t, lang) {
   if (out.length < 4) {
     walkSpecSurface(product?.specSections, (label, value) => pushSpec(out, seen, label, value, null, product));
     walkSpecSurface(product?.sourceSpecSections, (label, value) => pushSpec(out, seen, label, value, null, product));
-    walkSpecSurface(product?.multiLangSpecs?.[lang], (label, value) => pushSpec(out, seen, label, value, null, product));
+    walkSpecSurface(product?.multiLangSpecs?.[lang === 'de' ? 'en' : lang], (label, value) => pushSpec(out, seen, label, value, null, product));
     walkSpecSurface(product?.multiLangSpecs, (label, value) => pushSpec(out, seen, label, value, null, product));
   }
 

@@ -324,7 +324,9 @@ function localizedProductName(product, lang) {
 // which has gaps and depends on a PocketBase fetch that can fail on cold start)
 // when a term is missing from the per-product map.
 function buildSpecTranslator(product, lang) {
-  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  // Specs are never shown in German — a German UI reads specs in English.
+  const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
+  const code = rawCode === 'de' ? 'en' : rawCode;
   const norm = (s) => String(s ?? '')
     .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
   const lookup = new Map();
@@ -376,7 +378,11 @@ function buildSpecTranslator(product, lang) {
 }
 
 function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
-  const tr = buildSpecTranslator(product, lang);
+  // Specs are never shown in German: a German UI reads them in English, so the
+  // German-source shortcut below is disabled and the German source gets
+  // translated to English instead.
+  const specLang = String(lang || 'en').toLowerCase().startsWith('de') ? 'en' : lang;
+  const tr = buildSpecTranslator(product, specLang);
   const bricks = [];
   const seen = new Set();
   const addRows = (title, icon, entries) => {
@@ -410,8 +416,8 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   // Same-language source wins: a Turkish visitor on an Epey (TR) product and a
   // German visitor on a Geizhals (DE) product both get the AUTHENTIC source
   // specs — no translation round-trip, zero leak risk.
-  const usesTurkishSource = srcLang === 'tr' && String(lang).toLowerCase().startsWith('tr');
-  const usesGermanSource = srcLang === 'de' && String(lang).toLowerCase().startsWith('de');
+  const usesTurkishSource = srcLang === 'tr' && String(specLang).toLowerCase().startsWith('tr');
+  const usesGermanSource = srcLang === 'de' && String(specLang).toLowerCase().startsWith('de');
   const useSource = (usesTurkishSource || usesGermanSource);
   const keySpecs = useSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object' && Object.keys(product.sourceKeySpecs).length
     ? product.sourceKeySpecs

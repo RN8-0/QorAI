@@ -142,8 +142,11 @@ async function main() {
       keySpecs: buildKeySpecs(built.specs, rec.keySpecs),
       specsCount: Object.keys(built.specs).length,
       nameTranslated: built.nameTranslated,
-      multiLangSpecs: { en: built.multiLangSpecs.en, tr: built.multiLangSpecs.tr, de: srcSpecs || {} },
-      multiLangSections: { en: built.multiLangSections.en, tr: built.multiLangSections.tr, de: srcSections || {} },
+      // German spec views were removed (2026-06-30): keep TR + EN only. The
+      // German source is preserved in sourceSpecs/sourceSpecSections below for
+      // re-deriving TR/EN, but never exposed as a "de" spec map.
+      multiLangSpecs: { en: built.multiLangSpecs.en, tr: built.multiLangSpecs.tr },
+      multiLangSections: { en: built.multiLangSections.en, tr: built.multiLangSections.tr },
       sourceLang: 'de',
       sourceSpecs: srcSpecs || {},
       sourceSpecSections: srcSections || {},

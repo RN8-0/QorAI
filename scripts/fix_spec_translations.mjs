@@ -27,7 +27,7 @@ const limitIdx = process.argv.indexOf('--limit');
 const PAGE_LIMIT = limitIdx >= 0 ? Number(process.argv[limitIdx + 1]) : (APPLY ? Infinity : 1);
 const PAGE_SIZE = 200;
 const START_PAGE = Math.max(1, Number(process.env.FIX_START_PAGE || 1));
-const LANGS = ['en', 'de'];
+const LANGS = ['en']; // German spec translation removed (2026-06-30) — never write 'de'
 
 // ── Load PocketBase credentials ──────────────────────────────────────────────
 const env = Object.fromEntries(
