@@ -368,21 +368,54 @@ function cmpRow(label, va, vb, unit) {
     + `<td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">${fb}</td></tr>`;
 }
 
-function compareBody(a, b, label, categoryUrl) {
+// Side-by-side spec rows from two products' keySpecs (from _raw). Every label
+// either product carries, A's order first. Turns the compare page from a 3-field
+// stub into a real spec-by-spec table — the whole point of a comparison page.
+function compareSpecRows(ksA, ksB) {
+  const a = (ksA && typeof ksA === 'object') ? ksA : {};
+  const b = (ksB && typeof ksB === 'object') ? ksB : {};
+  const labels = [];
+  const seen = new Set();
+  for (const k of [...Object.keys(a), ...Object.keys(b)]) {
+    const label = String(k == null ? '' : k).replace(/\s+/g, ' ').trim();
+    if (!label || label.length > 48 || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  const clean = (v) => {
+    const s = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    return (!s || s.length > 44 || SPEC_VALUE_SKIP.test(s)) ? '' : s;
+  };
+  const out = [];
+  for (const label of labels) {
+    const ca = clean(a[label]); const cb = clean(b[label]);
+    if (!ca && !cb) continue;
+    const row = cmpRow(label, ca, cb);
+    if (row) out.push(row);
+    if (out.length >= 16) break;
+  }
+  return out.join('');
+}
+
+function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null) {
   const na = esc(a.name); const nb = esc(b.name); const lbl = esc(label);
   const pa = esc(productPath(a)); const pb = esc(productPath(b));
   const sa = Number(a.techScore) || 0; const sb = Number(b.techScore) || 0;
-  const rows = [
+  const base = [
     cmpRow('Qor AI teknik skoru', sa ? `${sa}/100` : '', sb ? `${sb}/100` : ''),
     cmpRow('Marka', a.brand, b.brand),
+  ].filter(Boolean).join('');
+  const specRows = compareSpecRows(ksA, ksB);
+  const fallback = [
     cmpRow('Ekran', a.screenSizeValue, b.screenSizeValue, 'inç'),
     cmpRow('Batarya', a.batteryCapacityValue, b.batteryCapacityValue, 'mAh'),
     cmpRow('Ağırlık', a.weightValueKg, b.weightValueKg, 'kg'),
   ].filter(Boolean).join('');
+  const rows = base + (specRows || fallback);
   return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
     + `<h1 style="font-size:26px;margin:12px 0 6px">${na} <span style="color:#94a3b8">vs</span> ${nb}</h1>`
-    + `<p style="line-height:1.7;color:#334155">${na} ile ${nb} karşılaştırması: Qor AI yapay zekâ teknik skoru, özellikler ve güncel fiyatlar yan yana. Hangisi sana daha uygun, saniyeler içinde gör.</p>`
+    + `<p style="line-height:1.7;color:#334155">${na} ile ${nb} karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.</p>`
     + `<table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px">`
     + `<thead><tr><th></th>`
     + `<th style="padding:8px 12px;text-align:left"><a href="${pa}" style="color:#2563eb">${na}</a></th>`
@@ -399,7 +432,7 @@ function compareSeo(a, b, label) {
   const title = truncate(`${a.name} vs ${b.name} — Karşılaştırma | Qor AI`, 70);
   const description = truncate(
     `${a.name} ile ${b.name} karşılaştırması — ${label}. `
-    + 'Qor AI teknik skoru, özellikler ve güncel fiyatlar yan yana; hangisi daha iyi?',
+    + 'Qor AI teknik skoru ve teknik özellikleri yan yana; hangisi sana daha uygun?',
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -1382,7 +1415,7 @@ async function main() {
       for (let j = i + 1; j < topK.length; j += 1) {
         const a = topK[i]; const b = topK[j];
         const path = comparePath(a, b);
-        writeHtml(path.replace(/^\//, ''), renderPage(template, compareSeo(a, b, label), compareBody(a, b, label, categoryUrl)));
+        writeHtml(path.replace(/^\//, ''), renderPage(template, compareSeo(a, b, label), compareBody(a, b, label, categoryUrl, keySpecsById.get(a.id) || null, keySpecsById.get(b.id) || null)));
         compares.push({ a, b, path });
       }
     }
