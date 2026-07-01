@@ -2199,11 +2199,6 @@ function _translateTurkishLimitPhrases(text, targetLang = 'en') {
   const lang = targetLang || 'en';
   const words = ({
     en: { max: 'up to', maximum: 'maximum', min: 'at least' },
-    de: { max: 'bis zu', maximum: 'maximal', min: 'mindestens' },
-    es: { max: 'hasta', maximum: 'maximo', min: 'al menos' },
-    fr: { max: 'jusqu a', maximum: 'maximum', min: 'au moins' },
-    pt: { max: 'ate', maximum: 'maximo', min: 'pelo menos' },
-    ru: { max: 'до', maximum: 'максимум', min: 'не менее' },
   })[lang] || ({ max: 'up to', maximum: 'maximum', min: 'at least' });
   return raw
     .replace(/\bAzami\s+([0-9][^),;\n]*)/gi, `${words.max} $1`)
@@ -2230,338 +2225,298 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const n = (s.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
   const suffix = raw.match(/\([^)]*\)\s*$/)?.[0] || '';
   const phrase = {
-    minute: { en: 'minutes', de: 'Minuten', es: 'minutos', fr: 'minutes', pt: 'minutos', ru: 'минут' },
-    hour: { en: 'hours', de: 'Stunden', es: 'horas', fr: 'heures', pt: 'horas', ru: 'часов' },
-    cycle: { en: 'cycles', de: 'Zyklen', es: 'ciclos', fr: 'cycles', pt: 'ciclos', ru: 'циклов' },
-    billion: { en: 'billion', de: 'Milliarden', es: 'mil millones', fr: 'milliards', pt: 'bilhoes', ru: 'млрд' },
-    gram: { en: 'grams', de: 'Gramm', es: 'gramos', fr: 'grammes', pt: 'gramas', ru: 'грамм' },
-    onlyEsim: { en: 'eSIM only', de: 'nur eSIM', es: 'solo eSIM', fr: 'eSIM uniquement', pt: 'somente eSIM', ru: 'только eSIM' },
-    digitalZoom: { en: 'digital zoom', de: 'Digitalzoom', es: 'zoom digital', fr: 'zoom numerique', pt: 'zoom digital', ru: 'цифровой зум' },
-    elementLens: { en: 'element lens', de: 'Element-Objektiv', es: 'lente de elementos', fr: 'lentille a elements', pt: 'lente de elementos', ru: 'элементный объектив' },
-    technology: { en: 'Technology', de: 'Technologie', es: 'Tecnologia', fr: 'Technologie', pt: 'Tecnologia', ru: 'Технология' },
-    specifications: { en: 'Specifications', de: 'Spezifikationen', es: 'Especificaciones', fr: 'Specifications', pt: 'Especificacoes', ru: 'Характеристики' },
+    minute: { en: 'minutes'},
+    hour: { en: 'hours'},
+    cycle: { en: 'cycles'},
+    billion: { en: 'billion'},
+    gram: { en: 'grams'},
+    onlyEsim: { en: 'eSIM only'},
+    digitalZoom: { en: 'digital zoom'},
+    elementLens: { en: 'element lens'},
+    technology: { en: 'Technology'},
+    specifications: { en: 'Specifications'},
   };
   const p = (key) => phrase[key]?.[lang] || phrase[key]?.en;
   const exact = {
-    'ab urun kayit ve enerji etiketi': { en: 'EU product registration & energy label', de: 'EU-Produktregistrierung und Energielabel' },
-    'ag baglantilari': { en: 'Network connections', de: 'Netzwerkverbindungen' },
-    'batarya': { en: 'Battery', de: 'Akku' },
-    'diger baglantilar': { en: 'Other connections', de: 'Weitere Verbindungen' },
-    'ekran': { en: 'Display', de: 'Display' },
-    'kablosuz baglantilar': { en: 'Wireless connections', de: 'Drahtlose Verbindungen' },
-    'kamera': { en: 'Camera', de: 'Kamera' },
-    'tasarim': { en: 'Design', de: 'Design' },
-    'temel bilgiler': { en: 'Basics', de: 'Grundlagen' },
-    'temel donanim': { en: 'Core hardware', de: 'Kern-Hardware' },
-    'coklu ortam': { en: 'Multimedia', de: 'Multimedia' },
-    'ozellikler': { en: 'Features', de: 'Funktionen' },
-    'one cikanlar': { en: 'Highlights', de: 'Highlights' },
-    'isletim sistemi': { en: 'Operating system', de: 'Betriebssystem' },
-    '4.5g destegi': { en: '4.5G support', de: '4.5G-Unterstützung' },
-    '4g ozellikleri': { en: '4G features', de: '4G-Funktionen' },
-    'batarya kapasitesi (tipik)': { en: 'Battery capacity (typical)', de: 'Akkukapazität (typisch)' },
-    'batarya ozellikleri': { en: 'Battery features', de: 'Akku-Eigenschaften' },
-    'degisir batarya': { en: 'Removable battery', de: 'Wechselbarer Akku' },
-    'hizli sarj': { en: 'Fast charging', de: 'Schnellladen' },
-    'hizli sarj gucu (maks.)': { en: 'Fast charging power (max.)', de: 'Schnellladeleistung (max.)' },
-    'hizli sarj ozellikleri': { en: 'Fast charging features', de: 'Schnellladefunktionen' },
-    'kablosuz sarj': { en: 'Wireless charging', de: 'Kabelloses Laden' },
-    'kablosuz sarj ozellikleri': { en: 'Wireless charging features', de: 'Kabellose Ladefunktionen' },
-    'video oynatma': { en: 'Video playback', de: 'Videowiedergabe' },
-    'sarj': { en: 'Charging', de: 'Laden' },
-    'hat sayisi': { en: 'Number of SIMs', de: 'SIM-Anzahl' },
-    'usb baglanti tipi': { en: 'USB connection type', de: 'USB-Verbindungsart' },
-    'usb versiyonu': { en: 'USB version', de: 'USB-Version' },
-    'usb ozellikleri': { en: 'USB features', de: 'USB-Funktionen' },
-    'cift hat ozelligi': { en: 'Dual SIM feature', de: 'Dual-SIM-Funktion' },
-    'ekran / govde orani': { en: 'Display-to-body ratio', de: 'Display-Gehäuse-Verhältnis' },
-    'ekran alani': { en: 'Display area', de: 'Displayfläche' },
-    'ekran boyutu': { en: 'Screen size', de: 'Bildschirmgröße' },
-    'ekran dayanikliligi': { en: 'Display durability', de: 'Display-Haltbarkeit' },
-    'ekran orani (aspect ratio)': { en: 'Display aspect ratio', de: 'Display-Seitenverhältnis' },
-    'ekran teknolojisi': { en: 'Display technology', de: 'Display-Technologie' },
-    'ekran yenileme hizi': { en: 'Display refresh rate', de: 'Bildwiederholrate' },
-    'ekran cozunurlugu': { en: 'Display resolution', de: 'Bildschirmauflösung' },
-    'ekran cozunurlugu standardi': { en: 'Display resolution standard', de: 'Auflösungsstandard' },
-    'ekran ozellikleri': { en: 'Display features', de: 'Display-Funktionen' },
-    'cizilmeye direncli cam': { en: 'Scratch-resistant glass', de: 'Kratzfestes Glas' },
-    'cercevesiz tasarim': { en: 'Frameless design', de: 'Rahmenloses Design' },
-    'surekli acik ekran (always-on display)': { en: 'Always-on display', de: 'Always-on-Display' },
-    'ekran icinde on kamera': { en: 'In-display front camera', de: 'Frontkamera im Display' },
-    'piksel yogunlugu': { en: 'Pixel density', de: 'Pixeldichte' },
-    'renk sayisi': { en: 'Color count', de: 'Farbtiefe' },
-    'bluetooth versiyonu': { en: 'Bluetooth version', de: 'Bluetooth-Version' },
-    'kizilotesi': { en: 'Infrared', de: 'Infrarot' },
-    'navigasyon ozellikleri': { en: 'Navigation features', de: 'Navigationsfunktionen' },
-    'wi-fi kanallari': { en: 'Wi-Fi channels', de: 'Wi-Fi-Kanäle' },
-    'wi-fi ozellikleri': { en: 'Wi-Fi features', de: 'Wi-Fi-Funktionen' },
-    'agir cekim kayit secenekleri': { en: 'Slow-motion recording options', de: 'Zeitlupen-Aufnahmeoptionen' },
-    'diyafram acikligi': { en: 'Aperture', de: 'Blende' },
-    'dorduncu arka kamera': { en: 'Fourth rear camera', de: 'Vierte Rückkamera' },
-    'dorduncu arka kamera diyafram': { en: 'Fourth rear camera aperture', de: 'Blende der vierten Rückkamera' },
-    'dorduncu arka kamera cozunurlugu': { en: 'Fourth rear camera resolution', de: 'Auflösung der vierten Rückkamera' },
-    'dorduncu arka kamera ozellikleri': { en: 'Fourth rear camera features', de: 'Funktionen der vierten Rückkamera' },
-    'ucuncu arka kamera': { en: 'Third rear camera', de: 'Dritte Rückkamera' },
-    'ucuncu arka kamera diyafram': { en: 'Third rear camera aperture', de: 'Blende der dritten Rückkamera' },
-    'ucuncu arka kamera cozunurlugu': { en: 'Third rear camera resolution', de: 'Auflösung der dritten Rückkamera' },
-    'ucuncu arka kamera ozellikleri': { en: 'Third rear camera features', de: 'Funktionen der dritten Rückkamera' },
-    'ikinci arka kamera': { en: 'Second rear camera', de: 'Zweite Rückkamera' },
-    'ikinci arka kamera diyafram': { en: 'Second rear camera aperture', de: 'Blende der zweiten Rückkamera' },
-    'ikinci arka kamera cozunurlugu': { en: 'Second rear camera resolution', de: 'Auflösung der zweiten Rückkamera' },
-    'ikinci arka kamera ozellikleri': { en: 'Second rear camera features', de: 'Funktionen der zweiten Rückkamera' },
-    'flas': { en: 'Flash', de: 'Blitz' },
-    'kamera sensor boyutu': { en: 'Camera sensor size', de: 'Kamerasensorgröße' },
-    'kamera cozunurlugu': { en: 'Camera resolution', de: 'Kameraauflösung' },
-    'kamera ozellikleri': { en: 'Camera features', de: 'Kamerafunktionen' },
-    'yapay zeka (ai) sahne algilama': { en: 'AI scene detection', de: 'KI-Szenenerkennung' },
-    'perde hizi (shutter speed) kontrolu': { en: 'Shutter speed control', de: 'Verschlusszeitsteuerung' },
-    'raw kayit yapabilme': { en: 'RAW recording support', de: 'RAW-Aufnahmeunterstützung' },
-    'otomatik odaklama': { en: 'Autofocus', de: 'Autofokus' },
-    'sesli komut': { en: 'Voice command', de: 'Sprachbefehl' },
-    'sesle komut': { en: 'Voice command', de: 'Sprachbefehl' },
-    'dahili qr kod okuyucu': { en: 'Built-in QR code reader', de: 'Integrierter QR-Code-Reader' },
-    'seri cekim (burst) modu': { en: 'Burst shooting mode', de: 'Serienbildmodus' },
-    'kayipsiz yakinlastirma': { en: 'Lossless zoom', de: 'Verlustfreier Zoom' },
-    'odak uzakligi': { en: 'Focal length', de: 'Brennweite' },
-    'optik goruntu sabitleyici (ois)': { en: 'Optical image stabilizer (OIS)', de: 'Optischer Bildstabilisator (OIS)' },
-    'video fps degeri': { en: 'Video FPS', de: 'Video-FPS' },
-    'video kayit secenekleri': { en: 'Video recording options', de: 'Videoaufnahmeoptionen' },
-    'video kayit cozunurlugu': { en: 'Video recording resolution', de: 'Videoaufnahmeauflösung' },
-    'video kayit ozellikleri': { en: 'Video recording features', de: 'Videoaufnahmefunktionen' },
-    'odak takibi': { en: 'Focus tracking', de: 'Fokusverfolgung' },
-    'yavas cekim video kayit (slow motion video)': { en: 'Slow-motion video recording', de: 'Zeitlupen-Videoaufnahme' },
-    'on kamera diyafram acikligi': { en: 'Front camera aperture', de: 'Blende der Frontkamera' },
-    'on kamera fps degeri': { en: 'Front camera FPS', de: 'Frontkamera-FPS' },
-    'on kamera video cozunurlugu': { en: 'Front camera video resolution', de: 'Videoauflösung der Frontkamera' },
-    'on kamera cozunurlugu': { en: 'Front camera resolution', de: 'Frontkameraauflösung' },
-    'on kamera ozellikleri': { en: 'Front camera features', de: 'Frontkamera-Funktionen' },
-    'video kayitta portre modu': { en: 'Portrait mode in video recording', de: 'Porträtmodus bei Videoaufnahmen' },
-    'sanal flas': { en: 'Virtual flash', de: 'Virtueller Blitz' },
-    'zamanlayici (self-timer)': { en: 'Self-timer', de: 'Selbstauslöser' },
-    'hizli odaklama': { en: 'Fast focus', de: 'Schnellfokus' },
-    'panorama selfi': { en: 'Panorama selfie', de: 'Panorama-Selfie' },
-    'ekstra genis aci': { en: 'Ultra-wide angle', de: 'Ultraweitwinkel' },
-    'agirlik': { en: 'Weight', de: 'Gewicht' },
-    'boy': { en: 'Height', de: 'Höhe' },
-    'en': { en: 'Width', de: 'Breite' },
-    'govde malzemesi (kapak)': { en: 'Body material (back cover)', de: 'Gehäusematerial (Rückseite)' },
-    'govde malzemesi (cerceve)': { en: 'Body material (frame)', de: 'Gehäusematerial (Rahmen)' },
-    'kalinlik': { en: 'Thickness', de: 'Dicke' },
-    'renk secenekleri': { en: 'Color options', de: 'Farboptionen' },
-    'alt seri': { en: 'Sub-series', de: 'Unterserie' },
-    'duyurulma tarihi': { en: 'Announcement date', de: 'Ankündigungsdatum' },
-    'seri': { en: 'Series', de: 'Serie' },
-    '1. yardimci islemci': { en: '1. Auxiliary processor', de: '1. Hilfsprozessor' },
-    'antutu puani (v10)': { en: 'AnTuTu score (v10)', de: 'AnTuTu-Punktzahl (v10)' },
-    'antutu puani (v11)': { en: 'AnTuTu score (v11)', de: 'AnTuTu-Punktzahl (v11)' },
-    'ana islemci (cpu)': { en: 'Main processor (CPU)', de: 'Hauptprozessor (CPU)' },
-    'bellek (ram)': { en: 'Memory (RAM)', de: 'Speicher (RAM)' },
-    'cpu frekansi': { en: 'CPU frequency', de: 'CPU-Frequenz' },
-    'cpu cekirdegi': { en: 'CPU cores', de: 'CPU-Kerne' },
-    'cpu uretim teknolojisi': { en: 'CPU manufacturing process', de: 'CPU-Fertigungsprozess' },
-    'dahili depolama': { en: 'Internal storage', de: 'Interner Speicher' },
-    'diger bellek (ram) secenekleri': { en: 'Other memory (RAM) options', de: 'Weitere Speicheroptionen (RAM)' },
-    'diger hafiza secenekleri': { en: 'Other storage options', de: 'Weitere Speicheroptionen' },
-    'gpu frekansi': { en: 'GPU frequency', de: 'GPU-Frequenz' },
-    'grafik islemcisi (gpu)': { en: 'Graphics processor (GPU)', de: 'Grafikprozessor (GPU)' },
-    'hafiza karti destegi': { en: 'Memory card support', de: 'Speicherkartenunterstützung' },
-    'ram tipi': { en: 'RAM type', de: 'RAM-Typ' },
-    'yonga seti (chipset)': { en: 'Chipset', de: 'Chipsatz' },
-    'islemci mimarisi': { en: 'Processor architecture', de: 'Prozessorarchitektur' },
-    'hoparlor ozellikleri': { en: 'Speaker features', de: 'Lautsprecherfunktionen' },
-    'ses cikisi': { en: 'Audio output', de: 'Audioausgang' },
-    'bildirim isigi (led)': { en: 'Notification LED', de: 'Benachrichtigungs-LED' },
-    'goruntulu konusma (uygulama)': { en: 'Video calling (app)', de: 'Videoanruf (App)' },
-    'kutu icerigi': { en: 'Box contents', de: 'Lieferumfang' },
-    'parmak izi okuyucu': { en: 'Fingerprint reader', de: 'Fingerabdruckleser' },
-    'parmak izi okuyucu ozellikleri': { en: 'Fingerprint reader features', de: 'Fingerabdruckleser-Funktionen' },
-    'sar degeri 10g (bas)': { en: 'SAR value 10g (head)', de: 'SAR-Wert 10g (Kopf)' },
-    'sar degeri 10g (vucut)': { en: 'SAR value 10g (body)', de: 'SAR-Wert 10g (Körper)' },
-    'sensorler': { en: 'Sensors', de: 'Sensoren' },
-    'servis ve uygulamalar': { en: 'Services and applications', de: 'Dienste und Anwendungen' },
-    'suya dayaniklilik': { en: 'Water resistance', de: 'Wasserbeständigkeit' },
-    'suya dayaniklilik seviyesi': { en: 'Water resistance level', de: 'Wasserbeständigkeitsstufe' },
-    'toza dayaniklilik': { en: 'Dust resistance', de: 'Staubbeständigkeit' },
-    'toza dayaniklilik seviyesi': { en: 'Dust resistance level', de: 'Staubbeständigkeitsstufe' },
-    'buhar basinci (maks.)': { en: 'Steam pressure (max.)', de: 'Dampfdruck (max.)' },
-    'isinma suresi': { en: 'Heat-up time', de: 'Aufheizzeit' },
-    'max. isitici gucu': { en: 'Max. heater power', de: 'Max. Heizleistung' },
-    'kullanici arayuzu': { en: 'User interface', de: 'Benutzeroberfläche' },
-    'lansman arayuz versiyonu': { en: 'Launch interface version', de: 'Launch-Oberflächenversion' },
-    'isletim sistemi versiyonu': { en: 'OS version', de: 'Betriebssystemversion' },
-    'siyah': { en: 'Black', de: 'Schwarz' },
-    'beyaz': { en: 'White', de: 'Weiß' },
-    'altin': { en: 'Gold', de: 'Gold' },
-    'gumus': { en: 'Silver', de: 'Silber' },
-    'mavi': { en: 'Blue', de: 'Blau' },
-    'mor': { en: 'Purple', de: 'Violett' },
-    'subat': { en: 'February', de: 'Februar' },
-    'cift hat': { en: 'Dual SIM', de: 'Dual-SIM' },
-    'cift hoparlor': { en: 'Dual speaker', de: 'Doppellautsprecher' },
-    'ekran icinde': { en: 'In-display', de: 'Im Display' },
-    'ultrasonic sensor': { en: 'Ultrasonic sensor', de: 'Ultraschallsensor' },
-    'sim cikartma ignesi': { en: 'SIM eject pin', de: 'SIM-Auswurfstift' },
-    "usb kablosu (type-c'den type-c'ye)": { en: 'USB cable (Type-C to Type-C)', de: 'USB-Kabel (Type-C auf Type-C)' },
-    'ekrana cift dokunarak acma (knockon)': { en: 'Double-tap to wake (KnockON)', de: 'Doppeltippen zum Aktivieren (KnockON)' },
-    'kablosuz sarj ile baska cihazlari sarj edebilme': { en: 'Reverse wireless charging', de: 'Umgekehrtes kabelloses Laden' },
-    'kolay arayuz (easy mode)': { en: 'Easy Mode', de: 'Einfacher Modus' },
-    'tek elde kullanim modu': { en: 'One-handed mode', de: 'Einhandmodus' },
-    'yuz tanimlama': { en: 'Face recognition', de: 'Gesichtserkennung' },
-    'vapor-chamber sogutma': { en: 'Vapor-chamber cooling', de: 'Vapor-Chamber-Kühlung' },
+    'ab urun kayit ve enerji etiketi': { en: 'EU product registration & energy label'},
+    'ag baglantilari': { en: 'Network connections'},
+    'batarya': { en: 'Battery'},
+    'diger baglantilar': { en: 'Other connections'},
+    'ekran': { en: 'Display'},
+    'kablosuz baglantilar': { en: 'Wireless connections'},
+    'kamera': { en: 'Camera'},
+    'tasarim': { en: 'Design'},
+    'temel bilgiler': { en: 'Basics'},
+    'temel donanim': { en: 'Core hardware'},
+    'coklu ortam': { en: 'Multimedia'},
+    'ozellikler': { en: 'Features'},
+    'one cikanlar': { en: 'Highlights'},
+    'isletim sistemi': { en: 'Operating system'},
+    '4.5g destegi': { en: '4.5G support'},
+    '4g ozellikleri': { en: '4G features'},
+    'batarya kapasitesi (tipik)': { en: 'Battery capacity (typical)'},
+    'batarya ozellikleri': { en: 'Battery features'},
+    'degisir batarya': { en: 'Removable battery'},
+    'hizli sarj': { en: 'Fast charging'},
+    'hizli sarj gucu (maks.)': { en: 'Fast charging power (max.)'},
+    'hizli sarj ozellikleri': { en: 'Fast charging features'},
+    'kablosuz sarj': { en: 'Wireless charging'},
+    'kablosuz sarj ozellikleri': { en: 'Wireless charging features'},
+    'video oynatma': { en: 'Video playback'},
+    'sarj': { en: 'Charging'},
+    'hat sayisi': { en: 'Number of SIMs'},
+    'usb baglanti tipi': { en: 'USB connection type'},
+    'usb versiyonu': { en: 'USB version'},
+    'usb ozellikleri': { en: 'USB features'},
+    'cift hat ozelligi': { en: 'Dual SIM feature'},
+    'ekran / govde orani': { en: 'Display-to-body ratio'},
+    'ekran alani': { en: 'Display area'},
+    'ekran boyutu': { en: 'Screen size'},
+    'ekran dayanikliligi': { en: 'Display durability'},
+    'ekran orani (aspect ratio)': { en: 'Display aspect ratio'},
+    'ekran teknolojisi': { en: 'Display technology'},
+    'ekran yenileme hizi': { en: 'Display refresh rate'},
+    'ekran cozunurlugu': { en: 'Display resolution'},
+    'ekran cozunurlugu standardi': { en: 'Display resolution standard'},
+    'ekran ozellikleri': { en: 'Display features'},
+    'cizilmeye direncli cam': { en: 'Scratch-resistant glass'},
+    'cercevesiz tasarim': { en: 'Frameless design'},
+    'surekli acik ekran (always-on display)': { en: 'Always-on display'},
+    'ekran icinde on kamera': { en: 'In-display front camera'},
+    'piksel yogunlugu': { en: 'Pixel density'},
+    'renk sayisi': { en: 'Color count'},
+    'bluetooth versiyonu': { en: 'Bluetooth version'},
+    'kizilotesi': { en: 'Infrared'},
+    'navigasyon ozellikleri': { en: 'Navigation features'},
+    'wi-fi kanallari': { en: 'Wi-Fi channels'},
+    'wi-fi ozellikleri': { en: 'Wi-Fi features'},
+    'agir cekim kayit secenekleri': { en: 'Slow-motion recording options'},
+    'diyafram acikligi': { en: 'Aperture'},
+    'dorduncu arka kamera': { en: 'Fourth rear camera'},
+    'dorduncu arka kamera diyafram': { en: 'Fourth rear camera aperture'},
+    'dorduncu arka kamera cozunurlugu': { en: 'Fourth rear camera resolution'},
+    'dorduncu arka kamera ozellikleri': { en: 'Fourth rear camera features'},
+    'ucuncu arka kamera': { en: 'Third rear camera'},
+    'ucuncu arka kamera diyafram': { en: 'Third rear camera aperture'},
+    'ucuncu arka kamera cozunurlugu': { en: 'Third rear camera resolution'},
+    'ucuncu arka kamera ozellikleri': { en: 'Third rear camera features'},
+    'ikinci arka kamera': { en: 'Second rear camera'},
+    'ikinci arka kamera diyafram': { en: 'Second rear camera aperture'},
+    'ikinci arka kamera cozunurlugu': { en: 'Second rear camera resolution'},
+    'ikinci arka kamera ozellikleri': { en: 'Second rear camera features'},
+    'flas': { en: 'Flash'},
+    'kamera sensor boyutu': { en: 'Camera sensor size'},
+    'kamera cozunurlugu': { en: 'Camera resolution'},
+    'kamera ozellikleri': { en: 'Camera features'},
+    'yapay zeka (ai) sahne algilama': { en: 'AI scene detection'},
+    'perde hizi (shutter speed) kontrolu': { en: 'Shutter speed control'},
+    'raw kayit yapabilme': { en: 'RAW recording support'},
+    'otomatik odaklama': { en: 'Autofocus'},
+    'sesli komut': { en: 'Voice command'},
+    'sesle komut': { en: 'Voice command'},
+    'dahili qr kod okuyucu': { en: 'Built-in QR code reader'},
+    'seri cekim (burst) modu': { en: 'Burst shooting mode'},
+    'kayipsiz yakinlastirma': { en: 'Lossless zoom'},
+    'odak uzakligi': { en: 'Focal length'},
+    'optik goruntu sabitleyici (ois)': { en: 'Optical image stabilizer (OIS)'},
+    'video fps degeri': { en: 'Video FPS'},
+    'video kayit secenekleri': { en: 'Video recording options'},
+    'video kayit cozunurlugu': { en: 'Video recording resolution'},
+    'video kayit ozellikleri': { en: 'Video recording features'},
+    'odak takibi': { en: 'Focus tracking'},
+    'yavas cekim video kayit (slow motion video)': { en: 'Slow-motion video recording'},
+    'on kamera diyafram acikligi': { en: 'Front camera aperture'},
+    'on kamera fps degeri': { en: 'Front camera FPS'},
+    'on kamera video cozunurlugu': { en: 'Front camera video resolution'},
+    'on kamera cozunurlugu': { en: 'Front camera resolution'},
+    'on kamera ozellikleri': { en: 'Front camera features'},
+    'video kayitta portre modu': { en: 'Portrait mode in video recording'},
+    'sanal flas': { en: 'Virtual flash'},
+    'zamanlayici (self-timer)': { en: 'Self-timer'},
+    'hizli odaklama': { en: 'Fast focus'},
+    'panorama selfi': { en: 'Panorama selfie'},
+    'ekstra genis aci': { en: 'Ultra-wide angle'},
+    'agirlik': { en: 'Weight'},
+    'boy': { en: 'Height'},
+    'en': { en: 'Width'},
+    'govde malzemesi (kapak)': { en: 'Body material (back cover)'},
+    'govde malzemesi (cerceve)': { en: 'Body material (frame)'},
+    'kalinlik': { en: 'Thickness'},
+    'renk secenekleri': { en: 'Color options'},
+    'alt seri': { en: 'Sub-series'},
+    'duyurulma tarihi': { en: 'Announcement date'},
+    'seri': { en: 'Series'},
+    '1. yardimci islemci': { en: '1. Auxiliary processor'},
+    'antutu puani (v10)': { en: 'AnTuTu score (v10)'},
+    'antutu puani (v11)': { en: 'AnTuTu score (v11)'},
+    'ana islemci (cpu)': { en: 'Main processor (CPU)'},
+    'bellek (ram)': { en: 'Memory (RAM)'},
+    'cpu frekansi': { en: 'CPU frequency'},
+    'cpu cekirdegi': { en: 'CPU cores'},
+    'cpu uretim teknolojisi': { en: 'CPU manufacturing process'},
+    'dahili depolama': { en: 'Internal storage'},
+    'diger bellek (ram) secenekleri': { en: 'Other memory (RAM) options'},
+    'diger hafiza secenekleri': { en: 'Other storage options'},
+    'gpu frekansi': { en: 'GPU frequency'},
+    'grafik islemcisi (gpu)': { en: 'Graphics processor (GPU)'},
+    'hafiza karti destegi': { en: 'Memory card support'},
+    'ram tipi': { en: 'RAM type'},
+    'yonga seti (chipset)': { en: 'Chipset'},
+    'islemci mimarisi': { en: 'Processor architecture'},
+    'hoparlor ozellikleri': { en: 'Speaker features'},
+    'ses cikisi': { en: 'Audio output'},
+    'bildirim isigi (led)': { en: 'Notification LED'},
+    'goruntulu konusma (uygulama)': { en: 'Video calling (app)'},
+    'kutu icerigi': { en: 'Box contents'},
+    'parmak izi okuyucu': { en: 'Fingerprint reader'},
+    'parmak izi okuyucu ozellikleri': { en: 'Fingerprint reader features'},
+    'sar degeri 10g (bas)': { en: 'SAR value 10g (head)'},
+    'sar degeri 10g (vucut)': { en: 'SAR value 10g (body)'},
+    'sensorler': { en: 'Sensors'},
+    'servis ve uygulamalar': { en: 'Services and applications'},
+    'suya dayaniklilik': { en: 'Water resistance'},
+    'suya dayaniklilik seviyesi': { en: 'Water resistance level'},
+    'toza dayaniklilik': { en: 'Dust resistance'},
+    'toza dayaniklilik seviyesi': { en: 'Dust resistance level'},
+    'buhar basinci (maks.)': { en: 'Steam pressure (max.)'},
+    'isinma suresi': { en: 'Heat-up time'},
+    'max. isitici gucu': { en: 'Max. heater power'},
+    'kullanici arayuzu': { en: 'User interface'},
+    'lansman arayuz versiyonu': { en: 'Launch interface version'},
+    'isletim sistemi versiyonu': { en: 'OS version'},
+    'siyah': { en: 'Black'},
+    'beyaz': { en: 'White'},
+    'altin': { en: 'Gold'},
+    'gumus': { en: 'Silver'},
+    'mavi': { en: 'Blue'},
+    'mor': { en: 'Purple'},
+    'subat': { en: 'February'},
+    'cift hat': { en: 'Dual SIM'},
+    'cift hoparlor': { en: 'Dual speaker'},
+    'ekran icinde': { en: 'In-display'},
+    'ultrasonic sensor': { en: 'Ultrasonic sensor'},
+    'sim cikartma ignesi': { en: 'SIM eject pin'},
+    "usb kablosu (type-c'den type-c'ye)": { en: 'USB cable (Type-C to Type-C)'},
+    'ekrana cift dokunarak acma (knockon)': { en: 'Double-tap to wake (KnockON)'},
+    'kablosuz sarj ile baska cihazlari sarj edebilme': { en: 'Reverse wireless charging'},
+    'kolay arayuz (easy mode)': { en: 'Easy Mode'},
+    'tek elde kullanim modu': { en: 'One-handed mode'},
+    'yuz tanimlama': { en: 'Face recognition'},
+    'vapor-chamber sogutma': { en: 'Vapor-chamber cooling'},
     // Standalone ambiguous terms NLLB-600M mistranslates without context:
     // "çözünürlük" → "Solvability"/"Lösungsfähigkeit" (chemistry sense),
     // "su geçirmez(lik)" → a sentence / "Durchlässigkeit" (opposite),
     // "(dahili) hafıza" → "Inneres Gedächtnis"/"Gedächtnis" (human memory).
     // The compound forms (ekran/kamera çözünürlüğü, dahili depolama, suya
     // dayanıklılık) already resolve correctly above — only the bare words do not.
-    'cozunurluk': { en: 'Resolution', de: 'Auflösung' },
-    'cozunurlugu': { en: 'Resolution', de: 'Auflösung' },
-    'su gecirmezlik': { en: 'Water resistance', de: 'Wasserdichtigkeit' },
-    'su gecirmezligi': { en: 'Water resistance', de: 'Wasserdichtigkeit' },
-    'su gecirmez': { en: 'Waterproof', de: 'Wasserdicht' },
-    'suya dayanikli': { en: 'Water resistant', de: 'Wasserbeständig' },
-    'hafiza': { en: 'Memory', de: 'Speicher' },
-    'dahili hafiza': { en: 'Internal storage', de: 'Interner Speicher' },
-    'hafiza karti': { en: 'Memory card', de: 'Speicherkarte' },
-    'depolama': { en: 'Storage', de: 'Speicher' },
+    'cozunurluk': { en: 'Resolution'},
+    'cozunurlugu': { en: 'Resolution'},
+    'su gecirmezlik': { en: 'Water resistance'},
+    'su gecirmezligi': { en: 'Water resistance'},
+    'su gecirmez': { en: 'Waterproof'},
+    'suya dayanikli': { en: 'Water resistant'},
+    'hafiza': { en: 'Memory'},
+    'dahili hafiza': { en: 'Internal storage'},
+    'hafiza karti': { en: 'Memory card'},
+    'depolama': { en: 'Storage'},
   };
   if (exact[s]?.[lang]) return exact[s][lang];
   const inch = s.match(/^(\d+(?:[.,]\d+)?(?:\/\d+(?:[.,]\d+)?)?)\s*inc$/);
-  if (inch) return ({ en: `${inch[1]} inches`, de: `${inch[1].replace('.', ',')} Zoll` })[lang] || `${inch[1]} inches`;
+  if (inch) return ({ en: `${inch[1]} inches`})[lang] || `${inch[1]} inches`;
   const chargeFill = s.match(/^(\d+(?:[.,]\d+)?)\s*dakikada\s*%(\d+)\s*dolum$/);
-  if (chargeFill) return ({ en: `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`, de: `${chargeFill[2]} % Ladung in ${chargeFill[1].replace('.', ',')} Minuten` })[lang] || `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`;
+  if (chargeFill) return ({ en: `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`})[lang] || `${chargeFill[2]}% charge in ${chargeFill[1]} minutes`;
   const score = s.match(/^(\d+(?:[.,]\d+)?)\s*puan$/);
-  if (score) return ({ en: `${score[1]} score`, de: `${score[1]} Punkte` })[lang] || `${score[1]} score`;
+  if (score) return ({ en: `${score[1]} score`})[lang] || `${score[1]} score`;
   const cores = s.match(/^(\d+)\s*cekirdek$/);
-  if (cores) return ({ en: `${cores[1]} cores`, de: `${cores[1]} Kerne` })[lang] || `${cores[1]} cores`;
+  if (cores) return ({ en: `${cores[1]} cores`})[lang] || `${cores[1]} cores`;
   const ramOptions = s.match(/^(.+)\s*ram\s*secenegi\s*var$/);
-  if (ramOptions) return ({ en: `${ramOptions[1]} RAM options available`, de: `${ramOptions[1]} RAM-Optionen verfügbar` })[lang] || `${ramOptions[1]} RAM options available`;
+  if (ramOptions) return ({ en: `${ramOptions[1]} RAM options available`})[lang] || `${ramOptions[1]} RAM options available`;
   const storageOptions = s.match(/^(.+)\s*depolama\s*secenegi\s*var$/);
-  if (storageOptions) return ({ en: `${storageOptions[1]} storage options available`, de: `${storageOptions[1]} Speicheroptionen verfügbar` })[lang] || `${storageOptions[1]} storage options available`;
+  if (storageOptions) return ({ en: `${storageOptions[1]} storage options available`})[lang] || `${storageOptions[1]} storage options available`;
   if (/^(?:usb\s+)?flash\s+bellek$|^usb\s+bellek$/.test(s)) {
     return ({
-      en: 'USB flash drive', de: 'USB-Stick', es: 'unidad flash USB',
-      fr: 'cle USB', pt: 'pen drive USB', ru: 'USB-накопитель',
+      en: 'USB flash drive',
     })[lang] || 'USB flash drive';
   }
   if (/^(usb|usb-c|hdmi|displayport|thunderbolt|bluetooth|wi-?fi)\s+destegi$/.test(s)) {
     const tech = raw.match(/^(usb-c|usb|hdmi|displayport|thunderbolt|bluetooth|wi-?fi)/i)?.[0] || 'USB';
     return ({
-      en: `${tech} support`, de: `${tech}-Unterstutzung`, es: `compatibilidad ${tech}`,
-      fr: `prise en charge ${tech}`, pt: `suporte ${tech}`, ru: `поддержка ${tech}`,
+      en: `${tech} support`,
     })[lang] || `${tech} support`;
   }
   if (/^(usb|usb-c|hdmi|displayport|thunderbolt)\s+(girisi|girisleri|cikisi|cikislari|portu|soketi|baglantisi|tipi|turu)$/.test(s)) {
     const tech = raw.match(/^(usb-c|usb|hdmi|displayport|thunderbolt)/i)?.[0] || 'USB';
     const kind = /cikis/.test(s) ? 'output' : (/giris|port|soket|baglanti/.test(s) ? 'port' : 'type');
     return ({
-      en: `${tech} ${kind}`, de: `${tech}-${kind === 'type' ? 'Typ' : 'Anschluss'}`,
-      es: `${kind === 'type' ? 'tipo' : 'puerto'} ${tech}`,
-      fr: `${kind === 'type' ? 'type' : 'port'} ${tech}`,
-      pt: `${kind === 'type' ? 'tipo' : 'porta'} ${tech}`,
-      ru: `${tech} ${kind === 'type' ? 'тип' : 'порт'}`,
+      en: `${tech} ${kind}`,
     })[lang] || `${tech} ${kind}`;
   }
   if (/^usb(?:-c)?\s*ozellikleri$/.test(s)) {
     return ({
-      en: 'USB features', de: 'USB-Funktionen', es: 'Funciones USB',
-      fr: 'Fonctionnalites USB', pt: 'Recursos USB', ru: 'Функции USB',
+      en: 'USB features',
     })[lang] || 'USB features';
   }
   if (/^usb\s*3\.x\s*adedi$/.test(s)) {
     return ({
-      en: 'USB 3.x count', de: 'USB 3.x Anzahl', es: 'Cantidad USB 3.x',
-      fr: 'Nombre USB 3.x', pt: 'Quantidade USB 3.x', ru: 'Количество USB 3.x',
+      en: 'USB 3.x count',
     })[lang] || 'USB 3.x count';
   }
   if (/^pil\s+(ozellikleri|specifications)$/.test(s)) {
     return ({
-      en: 'Battery specifications', de: 'Akku-Spezifikationen',
-      es: 'Especificaciones de la batería', fr: 'Spécifications de la batterie',
-      pt: 'Especificações da bateria', ru: 'Характеристики батареи',
+      en: 'Battery specifications',
     })[lang] || 'Battery specifications';
   }
   if (/^li-?po\s*\(\s*lityum-polymer\s*\)$/.test(s)) {
     return ({
-      en: 'Li-Po (lithium polymer)', de: 'Li-Po (Lithium-Polymer)',
-      es: 'Li-Po (polímero de litio)', fr: 'Li-Po (lithium-polymère)',
-      pt: 'Li-Po (polímero de lítio)', ru: 'Li-Po (литий-полимер)',
+      en: 'Li-Po (lithium polymer)',
     })[lang] || 'Li-Po (lithium polymer)';
   }
   if (_isProtectedTechnicalAtom(raw)) return raw;
   const q = s.match(/^(\d{4})\s+([1-4])\.?\s*ceyrek$/);
   if (q) {
     return ({
-      en: `${q[1]} Q${q[2]}`, de: `${q[1]} Q${q[2]}`,
-      es: `${q[1]} T${q[2]}`, fr: `${q[1]} T${q[2]}`,
-      pt: `${q[1]} T${q[2]}`, ru: `${q[1]} ${q[2]} кв.`,
+      en: `${q[1]} Q${q[2]}`,
     })[lang] || `${q[1]} Q${q[2]}`;
   }
   if (/\bgoz\b/.test(s) && /(health|saglik|certification|sertifika)/.test(s)) {
     return ({
       en: raw.replace(/g[öo]z/ig, 'eye').replace(/sağlığı|sagligi/ig, 'health').replace(/sertifikası|sertifikasi/ig, 'certification'),
-      de: raw.replace(/Eyesafe\s*/i, 'Eyesafe ').replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'Augengesundheitszertifizierung'),
-      es: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certificación de salud ocular'),
-      fr: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certification de santé oculaire'),
-      pt: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'certificação de saúde ocular'),
-      ru: raw.replace(/g[öo]z\s*(health|sağlığı|sagligi)?\s*(certification|sertifikası|sertifikasi)?/ig, 'сертификация защиты зрения'),
     })[lang] || raw.replace(/g[öo]z/ig, 'eye');
   }
   if (/^hizli$/.test(s)) {
     return ({
-      en: 'Fast charging', de: 'Schnellladen', es: 'Carga rápida',
-      fr: 'Charge rapide', pt: 'Carregamento rápido', ru: 'Быстрая зарядка',
+      en: 'Fast charging',
     })[lang] || 'Fast charging';
   }
   if (/^(parlamayan\s+)?mat\s+(ekran|display)$/.test(s) || /^non-flammable\s+mat\s+display$/i.test(raw)) {
     return ({
-      en: 'Anti-glare matte display', de: 'Entspiegeltes mattes Display',
-      es: 'Pantalla mate antirreflejo', fr: 'Écran mat antireflet',
-      pt: 'Tela fosca antirreflexo', ru: 'Матовый антибликовый дисплей',
+      en: 'Anti-glare matte display',
     })[lang] || 'Anti-glare matte display';
   }
   if (/^\d+(?:[.,]\d+)?\s*adet$/.test(s)) return n;
   if (/^\d+\s*x\s*\d+\s*piksel$/.test(s)) {
     return ({
       en: raw.replace(/piksel/ig, 'pixels'),
-      de: raw.replace(/piksel/ig, 'Pixel'),
-      es: raw.replace(/piksel/ig, 'píxeles'),
-      fr: raw.replace(/piksel/ig, 'pixels'),
-      pt: raw.replace(/piksel/ig, 'pixels'),
-      ru: raw.replace(/piksel/ig, 'пикселей'),
     })[lang] || raw.replace(/piksel/ig, 'pixels');
   }
   if (/^kart\s+okuyucu\s+specifications$/.test(s)) {
     return ({
-      en: 'Card reader specifications', de: 'Kartenleser-Spezifikationen',
-      es: 'Especificaciones del lector de tarjetas',
-      fr: 'Spécifications du lecteur de carte',
-      pt: 'Especificações do leitor de cartão',
-      ru: 'Характеристики кардридера',
+      en: 'Card reader specifications',
     })[lang] || 'Card reader specifications';
   }
   if (/^klavye\s+specifications$/.test(s)) {
     return ({
-      en: 'Keyboard specifications', de: 'Tastatur-Spezifikationen',
-      es: 'Especificaciones del teclado', fr: 'Spécifications du clavier',
-      pt: 'Especificações do teclado', ru: 'Характеристики клавиатуры',
+      en: 'Keyboard specifications',
     })[lang] || 'Keyboard specifications';
   }
   if (/^minirsel\s+processing\s*\(npu\)$/.test(s)) {
     return ({
-      en: 'Neural processing (NPU)', de: 'Neuronale Verarbeitung (NPU)',
-      es: 'Procesamiento neuronal (NPU)', fr: 'Traitement neuronal (NPU)',
-      pt: 'Processamento neural (NPU)', ru: 'Нейронная обработка (NPU)',
+      en: 'Neural processing (NPU)',
     })[lang] || 'Neural processing (NPU)';
   }
   if (/^npu\s*\(sinirsel\s+trading\s+unit\)\s+name$/.test(s)) {
     return ({
       en: 'NPU (neural processing unit) name',
-      de: 'NPU-Name (neuronale Verarbeitungseinheit)',
-      es: 'Nombre de NPU (unidad de procesamiento neuronal)',
-      fr: 'Nom du NPU (unité de traitement neuronal)',
-      pt: 'Nome da NPU (unidade de processamento neural)',
-      ru: 'Название NPU (нейронного процессорного блока)',
     })[lang] || 'NPU (neural processing unit) name';
   }
   if (/^\d+(?:[.,]\d+)?\s*dakika$/.test(s)) return `${n} ${p('minute')}`;
@@ -2579,43 +2534,18 @@ function _knownTurkishRuleTranslation(sourceText, targetLang) {
   const maps = {
     updateWarranty: {
       en: `${n}-Year Update Guarantee`,
-      de: `${n} Jahre Update-Garantie`,
-      es: `Garantia De Actualizaciones De ${n} Anos`,
-      fr: `Garantie De Mises A Jour De ${n} Ans`,
-      pt: `Garantia De Atualizacoes De ${n} Anos`,
-      ru: `${n}-Летняя Гарантия Обновлений`,
     },
     securityWarranty: {
       en: `${n}-Year Security Update Guarantee`,
-      de: `${n} Jahre Sicherheitsupdate-Garantie`,
-      es: `Garantia De Actualizaciones De Seguridad De ${n} Anos`,
-      fr: `Garantie De Mises A Jour De Securite De ${n} Ans`,
-      pt: `Garantia De Atualizacoes De Seguranca De ${n} Anos`,
-      ru: `${n}-Летняя Гарантия Обновлений Безопасности`,
     },
     virtualRam: {
       en: `Virtual RAM Expansion${suffix ? ` ${suffix}` : ''}`,
-      de: `Virtuelle RAM-Erweiterung${suffix ? ` ${suffix}` : ''}`,
-      es: `Expansion De RAM Virtual${suffix ? ` ${suffix}` : ''}`,
-      fr: `Extension De RAM Virtuelle${suffix ? ` ${suffix}` : ''}`,
-      pt: `Expansao De RAM Virtual${suffix ? ` ${suffix}` : ''}`,
-      ru: `Расширение Виртуальной RAM${suffix ? ` ${suffix}` : ''}`,
     },
     cooling: {
       en: raw.replace(/soğutma|sogutma/i, 'Cooling'),
-      de: raw.replace(/soğutma|sogutma/i, 'Kühlung'),
-      es: raw.replace(/soğutma|sogutma/i, 'Refrigeracion'),
-      fr: raw.replace(/soğutma|sogutma/i, 'Refroidissement'),
-      pt: raw.replace(/soğutma|sogutma/i, 'Resfriamento'),
-      ru: raw.replace(/soğutma|sogutma/i, 'Охлаждение'),
     },
     reverseCharging: {
       en: `Reverse Charging${suffix ? ` ${suffix}` : ''}`,
-      de: `Reverse Charging${suffix ? ` ${suffix}` : ''}`,
-      es: `Carga Inversa${suffix ? ` ${suffix}` : ''}`,
-      fr: `Charge Inverse${suffix ? ` ${suffix}` : ''}`,
-      pt: `Carregamento Reverso${suffix ? ` ${suffix}` : ''}`,
-      ru: `Обратная Зарядка${suffix ? ` ${suffix}` : ''}`,
     },
   };
   if (/^\d+\s*yil\s+guvenlik\s+guncellemesi\s+garantisi$/.test(s)) return maps.securityWarranty[targetLang] || null;
@@ -4427,7 +4357,8 @@ window.QorAiDict = {
 // translating into them only burns dictionary cache for languages no
 // downstream UI ever renders.
 const _LANG_NAMES = {
-  tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', pt: 'Portuguese', ru: 'Russian'
+  // German (and es/fr/pt/ru) removed 2026-07-01 — specs are TR + EN only.
+  tr: 'Turkish', en: 'English'
 };
 
 // Best-effort recovery from a truncated DeepSeek JSON response. Walks the

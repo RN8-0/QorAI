@@ -37,7 +37,8 @@ const limitIdx = process.argv.indexOf('--limit');
 const PAGE_LIMIT = limitIdx >= 0 ? Number(process.argv[limitIdx + 1]) : (APPLY ? Infinity : 1);
 const PAGE_SIZE = 200;
 const START_PAGE = Math.max(1, Number(process.env.START_PAGE || 1));
-const THROTTLE_MS = Number(process.env.THROTTLE_MS || 12); // gentle on the single host
+const THROTTLE_MS = Number(process.env.THROTTLE_MS || 0); // optional per-write delay
+const CONCURRENCY = Math.max(1, Number(process.env.CONCURRENCY || 8)); // parallel writes per page
 
 const env = Object.fromEntries(
   fs.readFileSync(path.join(ROOT, 'migration', '.env'), 'utf8')
@@ -107,19 +108,22 @@ async function main() {
     const data = await res.json();
     totalPages = data.totalPages || 1;
 
+    // First pass: count + collect the records that still carry a `de` spec map.
+    const work = [];
     for (const rec of (data.items || [])) {
       scanned++;
       const specsHasDe = hasDe(rec.multiLangSpecs);
       const sectsHasDe = hasDe(rec.multiLangSections);
       if (!specsHasDe && !sectsHasDe) continue;
       hadDe++;
+      if (samples.length < 12) samples.push({ id: rec.id, name: rec.name, specsDe: specsHasDe, sectionsDe: sectsHasDe });
+      if (APPLY) work.push({ rec, specsHasDe, sectsHasDe });
+    }
 
+    // Second pass: strip `de` with bounded concurrency (gentle but not glacial).
+    async function processOne({ rec, specsHasDe, sectsHasDe }) {
       const cleanedSpecs = withoutDe(rec.multiLangSpecs);
       const cleanedSections = withoutDe(rec.multiLangSections);
-      if (samples.length < 12) samples.push({ id: rec.id, name: rec.name, specsDe: specsHasDe, sectionsDe: sectsHasDe });
-
-      if (!APPLY) continue;
-
       try {
         const patch = {};
         if (specsHasDe) patch.multiLangSpecs = cleanedSpecs;
@@ -127,7 +131,7 @@ async function main() {
         const w = await pbFetch(`/api/collections/products/records/${rec.id}`, {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
         });
-        if (!w.ok) { errors++; console.error(`[de-purge] PB PATCH ${rec.id} -> ${w.status}: ${(await w.text()).slice(0, 160)}`); continue; }
+        if (!w.ok) { errors++; console.error(`[de-purge] PB PATCH ${rec.id} -> ${w.status}: ${(await w.text()).slice(0, 160)}`); return; }
         pbWritten++;
 
         if (!SKIP_TS) {
@@ -147,6 +151,10 @@ async function main() {
         console.error(`[de-purge] ${rec.id} failed: ${e.message}`);
       }
       if (THROTTLE_MS) await sleep(THROTTLE_MS);
+    }
+
+    for (let i = 0; i < work.length; i += CONCURRENCY) {
+      await Promise.all(work.slice(i, i + CONCURRENCY).map(processOne));
     }
 
     pagesDone++;
