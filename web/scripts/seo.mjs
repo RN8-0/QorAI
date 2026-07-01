@@ -203,23 +203,53 @@ function specLi(label, value, unit) {
   return `<li>${esc(label)}: ${esc(value)}${unit ? ` ${esc(unit)}` : ''}</li>`;
 }
 
+// Placeholder / junk spec values that carry no information for a reader.
+const SPEC_VALUE_SKIP = /^(sponsorlu|sponsored|reklam|yok|none|-{1,2}|—|n\/?a|null|undefined|0|false)$/i;
+
+// Turn a product's keySpecs map ({label: value}, Turkish, from _raw) into clean
+// [label, value] rows. This is what makes each product page substantive and
+// UNIQUE — the old shell baked only 3 phone-only fields (screen/battery/weight),
+// so every non-phone page was a near-duplicate template with zero real content
+// (exactly the thin/"scaled content" pattern Google + Bing flag and suppress).
+function keySpecRows(keySpecs, limit = 16) {
+  if (!keySpecs || typeof keySpecs !== 'object') return [];
+  const rows = [];
+  for (const [k, v] of Object.entries(keySpecs)) {
+    const label = String(k == null ? '' : k).replace(/\s+/g, ' ').trim();
+    const value = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    if (!label || !value || value.length > 64 || label.length > 48) continue;
+    if (SPEC_VALUE_SKIP.test(value)) continue;
+    rows.push([label, value]);
+    if (rows.length >= limit) break;
+  }
+  return rows;
+}
+
 // Lightweight, factual content block baked inside #root. React (createRoot, pure
 // CSR) wipes #root on mount, so users get the full SPA; non-JS crawlers and the
 // pre-JS snapshot get real, unique text + internal links (category + siblings).
 // Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
 // path and content must exist in the raw HTML, not only after the SPA renders.
-function productBody(d, label, categoryUrl, related = []) {
+function productBody(d, label, categoryUrl, related = [], keySpecs = null) {
   const name = esc(d.name);
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
   const specs = Number(d.specsCount) || 0;
   const img = /^https?:\/\//i.test(d.imageUrl || '') ? esc(d.imageUrl) : '';
   const lbl = esc(label);
-  const items = [
-    specLi('Ekran', d.screenSizeValue, 'inç'),
-    specLi('Batarya', d.batteryCapacityValue, 'mAh'),
-    specLi('Ağırlık', d.weightValueKg, 'kg'),
-  ].filter(Boolean).join('');
+  // Real labeled specs from keySpecs (from _raw). Fall back to the 3 phone-only
+  // fields only when a product has no keySpecs map at all.
+  const rows = keySpecRows(keySpecs);
+  const items = rows.length
+    ? rows.map(([k, v]) => `<li><span style="color:#64748b">${esc(k)}:</span> <strong>${esc(v)}</strong></li>`).join('')
+    : [
+      specLi('Ekran', d.screenSizeValue, 'inç'),
+      specLi('Batarya', d.batteryCapacityValue, 'mAh'),
+      specLi('Ağırlık', d.weightValueKg, 'kg'),
+    ].filter(Boolean).join('');
+  // Weave 2-3 real spec values into the intro so the opening sentence differs
+  // per product instead of being an identical template across thousands of pages.
+  const highlights = rows.slice(0, 3).map(([k, v]) => `${esc(k.toLowerCase())} ${esc(v)}`).join(', ');
   const relLinks = related
     .filter((r) => r && r.name && r.path)
     .slice(0, 8)
@@ -230,10 +260,10 @@ function productBody(d, label, categoryUrl, related = []) {
     + `<h1 style="font-size:26px;margin:12px 0 4px">${name}</h1>`
     + `<p style="color:#475569;margin:0 0 12px">${brand ? `${brand} · ` : ''}${lbl}${score ? ` · Qor AI teknik skoru ${score}/100` : ''}</p>`
     + (img ? `<img src="${img}" alt="${name}" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />` : '')
-    + (items ? `<ul style="margin:16px 0;line-height:1.7">${items}</ul>` : '')
-    + `<p style="line-height:1.7;color:#334155">${name} özelliklerini${specs ? `, ${specs} teknik detayını` : ''} ve güncel fiyatlarını Qor AI yapay zekâ ile incele; benzer ${lbl.toLowerCase()} modelleriyle karşılaştır ve sana en uygununu seç.</p>`
-    + (relLinks ? `<h2 style="font-size:18px;margin:20px 0 8px">Benzer ${lbl} modelleri</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
-    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
+    + `<p style="line-height:1.7;color:#334155">${name}${highlights ? ` öne çıkan özellikleri: ${highlights}.` : ` — ${lbl}.`} ${name}${specs ? ` ${specs} teknik özelliğini` : ' özelliklerini'}, Qor AI teknik skorunu ve benzer ${lbl.toLowerCase()} modelleriyle karşılaştırmasını aşağıda incele.</p>`
+    + (items ? `<h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0">${items}</ul>` : '')
+    + (relLinks ? `<h2 style="font-size:18px;margin:22px 0 8px">Benzer ${lbl} modelleri</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
+    + `<p style="margin-top:16px"><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
     + `</main>`;
 }
 
@@ -404,18 +434,23 @@ function compareSeo(a, b, label) {
 // Product snippet" errors in Search Console for zero gain. The runtime
 // useSeo() hook DOES add a valid Product+offers once the live price loads (and
 // only then), so products that actually have a price still get the rich result.
-function productSeo(d, label) {
+function productSeo(d, label, keySpecs = null) {
   const url = `${SITE}${productPath(d)}`;
   const categoryUrl = `${SITE}${categoryPath(d.category)}`;
   const score = Number(d.techScore) || 0;
   const specs = Number(d.specsCount) || 0;
   const img = /^https?:\/\//i.test(d.imageUrl || '') ? d.imageUrl : DEFAULT_IMG;
-  const title = truncate(`${d.name} — Fiyat & Özellikler | Qor AI`, 68);
+  const title = truncate(`${d.name} — Özellikler & Karşılaştırma | Qor AI`, 68);
+  // Lead the description with a few REAL spec values so it is unique per product
+  // and long enough (Bing flagged descriptions as too short + too templated).
+  const rows = keySpecRows(keySpecs, 4);
+  const specHi = rows.map(([k, v]) => `${k}: ${v}`).join(', ');
   const description = truncate(
     `${d.name}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
+    + `${specHi ? `${specHi}. ` : ''}`
     + `${score ? `Qor AI teknik skoru ${score}/100. ` : ''}`
-    + `${specs ? `${specs} teknik özellik, ` : ''}`
-    + 'güncel fiyatlar, Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
+    + `${specs ? `${specs} teknik özellik. ` : ''}`
+    + 'Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -829,6 +864,46 @@ async function fetchAllProducts() {
   return out;
 }
 
+// The clean labeled keySpecs map lives ONLY inside `_raw` (a ~25-70 KB blob per
+// doc), so we never pull it for the whole 106k catalogue. Instead we fetch `_raw`
+// just for the ~few-thousand CURATED products that get a static shell, in id
+// batches, and return id → keySpecs. This is what upgrades each product page from
+// a thin near-duplicate template to a page with real, unique spec content.
+async function fetchKeySpecsByIds(ids) {
+  const byId = new Map();
+  const BATCH = 90;
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const slice = ids.slice(i, i + BATCH).filter(Boolean);
+    if (!slice.length) continue;
+    const qs = new URLSearchParams({
+      q: '*', query_by: 'name',
+      filter_by: `id:[${slice.join(',')}]`,
+      per_page: String(slice.length), include_fields: 'id,_raw',
+    });
+    let res;
+    try {
+      res = await fetch(
+        `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`,
+        { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } },
+      );
+    } catch (_) { continue; }
+    if (!res || !res.ok) continue;
+    let j;
+    try { j = await res.json(); } catch (_) { continue; }
+    for (const h of (j.hits || [])) {
+      const doc = h.document || {};
+      if (!doc.id || !doc._raw) continue;
+      try {
+        const raw = JSON.parse(doc._raw);
+        if (raw && raw.keySpecs && typeof raw.keySpecs === 'object' && Object.keys(raw.keySpecs).length) {
+          byId.set(doc.id, raw.keySpecs);
+        }
+      } catch (_) {}
+    }
+  }
+  return byId;
+}
+
 // ── Static routes ───────────────────────────────────────────────
 const STATIC_ROUTES = [
   {
@@ -1240,6 +1315,19 @@ async function main() {
       }
     }
   }
+  // Pull clean labeled key-specs (from _raw) for the curated set only, so each
+  // shell can render REAL, unique spec content instead of a thin template.
+  const curatedIds = [];
+  for (const picked of curatedByCat.values()) {
+    for (const d of picked) if (d?.id) curatedIds.push(d.id);
+  }
+  let keySpecsById = new Map();
+  try {
+    keySpecsById = await fetchKeySpecsByIds(curatedIds);
+    console.log(`[seo] fetched key-specs for ${keySpecsById.size}/${curatedIds.length} curated products`);
+  } catch (err) {
+    console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
+  }
   const prerendered = [];
   for (const [cat, picked] of curatedByCat) {
     const label = categoryLabel(cat, 'tr');
@@ -1252,7 +1340,8 @@ async function main() {
       }
       const path = productPath(d);
       if (!path) return;
-      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label), productBody(d, label, categoryUrl, related)));
+      const ks = keySpecsById.get(d.id) || null;
+      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label, ks), productBody(d, label, categoryUrl, related, ks)));
       prerendered.push({ d, path });
     });
   }
