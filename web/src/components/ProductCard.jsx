@@ -196,15 +196,6 @@ function ProductImage({ p, eager = false }) {
   );
 }
 
-function polishCardSpecLabel(label, lang) {
-  if (String(lang || '').slice(0, 2).toLowerCase() !== 'de') return label;
-  return String(label || '')
-    .replace(/Düşük Takt \(Bass\)/g, 'Niedriger Takt (Bass)')
-    .replace(/Düşük Takt \(Bas\)/g, 'Niedriger Takt (Bass)')
-    .replace(/En Düşük Takt/g, 'Niedrigster Takt')
-    .replace(/En Yüksek Takt/g, 'Höchster Takt');
-}
-
 export default function ProductCard({ product: p, variant = 'card', onClick, priority = false }) {
   const { t, lang } = useI18n();
   const geoCountry = useGeoCountry();
@@ -263,7 +254,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick, pri
         )}
         <div className="q-product-card-specs">
           {specs.map((spec, index) => {
-            const label = polishCardSpecLabel(localizedSpecLabel(spec.label, lang), lang);
+            const label = localizedSpecLabel(spec.label, lang);
             const value = localizedSpecValue(spec.value, lang);
             return (
               <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${label}: ${value}`}>

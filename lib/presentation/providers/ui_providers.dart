@@ -139,9 +139,10 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
 class LocaleNotifier extends StateNotifier<Locale?> {
   final CacheService _cacheService;
 
-  /// Supported language codes. Reduced to the only three the app ships UI
-  /// + spec translations for: German, English, Turkish. Any other device /
-  /// saved locale falls back to English.
+  /// Supported UI language codes: German, English, Turkish. Any other device /
+  /// saved locale falls back to English. NOTE: specs are only ever rendered in
+  /// English or Turkish — a German UI reads specs in English (the German spec
+  /// translation was removed); see [ProductEntity.specDisplayLang].
   static const _supported = {
     'de',
     'en',
