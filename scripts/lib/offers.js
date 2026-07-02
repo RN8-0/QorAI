@@ -161,7 +161,10 @@ async function refreshProductRollup(productId) {
     : {
         lowestPrice: 0, lowestPriceCurrency: '', lowestPriceUSD: 0,
         offerCount: live.length, pricedOfferCount: 0,
-        bestOfferId: '', bestOfferCheckedAt: '', bestOfferExpiresAt: '',
+        // Stamp the scan time even when nothing priced was found — the price
+        // cron sorts by bestOfferCheckedAt (oldest first), and an empty value
+        // here would make no-offer products hog every nightly window forever.
+        bestOfferId: '', bestOfferCheckedAt: nowIso(), bestOfferExpiresAt: '',
         lowestOfferUrl: '', lowestOfferStore: '',
         prices: {}, affiliateLinksByCountry,
       };

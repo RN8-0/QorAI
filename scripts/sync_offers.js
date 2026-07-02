@@ -29,6 +29,7 @@ const CONNECTORS = [
   require('./connectors/awin'),
   require('./connectors/admitad'),
   require('./connectors/jsonld'),
+  require('./connectors/epey_amazon'),
 ];
 
 const argv = process.argv.slice(2);
@@ -43,6 +44,14 @@ const CONNECTOR_FILTER = ((argv.find(a => a.startsWith('--connector=')) ||
   argv.find(a => a.startsWith('--only=')) || '').split('=')[1] || '')
   .trim()
   .toLowerCase();
+// --sort=<pb sort expr>: pick WHICH products a capped run enriches. The price
+// cron uses this for its two passes: refresh (`bestOfferCheckedAt` — oldest
+// checked first; rollup stamps scan time even when no offer was found) and
+// discovery (`bestOfferCheckedAt,-techScore` — never-checked flagships first).
+const SORT = (argv.find(a => a.startsWith('--sort=')) || '').slice('--sort='.length).trim() || 'id';
+// --filter-extra=<pb filter expr>, AND-ed into the product query. Example:
+//   --filter-extra=pricedOfferCount>0     only products currently showing a price
+const FILTER_EXTRA = (argv.find(a => a.startsWith('--filter-extra=')) || '').slice('--filter-extra='.length).trim();
 // --auto is kept as a harmless compatibility flag for the admin UI/proxy.
 // It used to size runs around an external marketplace quota; no quota-limited
 // offer source is currently active.
@@ -129,12 +138,13 @@ async function fetchProducts() {
   if (!ALL_VARIANTS) parts.push('variantPrimary=true');
   if (ONLY_CAT) parts.push(`category="${ONLY_CAT.replace(/"/g, '\\"')}"`);
   if (MISSING_ONLY) parts.push('offerCount<1');
+  if (FILTER_EXTRA) parts.push(`(${FILTER_EXTRA})`);
   const filter = parts.length ? `&filter=${encodeURIComponent(parts.join(' && '))}` : '';
   let page = 1;
   for (;;) {
     const r = await req('GET',
-      `/api/collections/products/records?perPage=500&page=${page}&sort=id` +
-      `&fields=id,name,brand,gtin,mpn,category${filter}`);
+      `/api/collections/products/records?perPage=500&page=${page}&sort=${encodeURIComponent(SORT)}` +
+      `&fields=id,name,brand,gtin,mpn,category,sourceUrl${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
     for (const item of (r.body.items || [])) {
       if (isSupportedProductCategory(item.category)) out.push(item);
@@ -230,6 +240,31 @@ async function main() {
 
   const totalSec = ((Date.now() - t0) / 1000).toFixed(1);
   log(`\n  Done — ${offersWritten} offers written · ${noMatch} unmatched · ${errors} errors · ${totalSec}s`);
+
+  // Publish a run summary to public_config so the admin panel's scraper tab
+  // can show price-sync health without server access.
+  try {
+    const status = {
+      lastRunAt: new Date().toISOString(),
+      connectors: active.map(c => c.id),
+      scanned: products.length,
+      offersWritten,
+      noMatch,
+      errors,
+      durationSec: Number(totalSec),
+      args: argv.join(' '),
+    };
+    const found = await req('GET',
+      `/api/collections/public_config/records?perPage=1&fields=id&filter=${encodeURIComponent('key="price_sync_status"')}`);
+    const rec = { key: 'price_sync_status', value: status };
+    if (found.status === 200 && found.body.items && found.body.items[0]) {
+      await req('PATCH', `/api/collections/public_config/records/${found.body.items[0].id}`, rec);
+    } else {
+      await req('POST', '/api/collections/public_config/records', rec);
+    }
+  } catch (e) {
+    log(`  ! status publish failed: ${e.message}`);
+  }
 
   // Push the freshly-computed lowestPriceUSD into Typesense so the admin
   // Products page (and any Typesense-backed listing on the website) sees
