@@ -28,7 +28,6 @@ const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const TS_COLLECTION = 'products';
 
 const DEFAULT_IMG = `${SITE}/assets/qor_logo_512.png?v=20260605a`;
-const NOW = new Date().toISOString().slice(0, 10);
 
 // IndexNow key — lets Bing / Yandex / DuckDuckGo / Copilot crawl new & changed
 // URLs within hours instead of waiting weeks. The key is proven by hosting
@@ -191,8 +190,9 @@ function modelKey(name) {
   s = s.replace(/\([^)]*\)/g, ' '); // drop "(512 GB)" etc.
   // colours, materials, straps/cases and connectivity tags — the cosmetic SKU
   // axes that produce near-identical pages of the same model (esp. watches).
-  s = s.replace(/\b(schwarz|weiss|blau|rot|gruen|grun|grau|silber|gold|rosa|pink|lila|violett|braun|beige|titan|titanium|graphit|mitternacht|sternenlicht|polarstern|polar|space|grey|gray|black|white|blue|red|green|silver|midnight|starlight|purple|yellow|orange|olive|stone|seashell|mit|ohne|und|with|armband|sportarmband|sportband|band|loop|solo|braided|gehause|gehaeuse|case|alpine|trail|ocean|milanese|sport|nike|hermes|aluminium|alu|edelstahl|stainless|keramik|ceramic|leder|leather|nylon|dual|sim|edition|version|cellular|gps|wifi)\b/g, ' ');
+  s = s.replace(/\b(schwarz|weiss|blau|rot|gruen|grun|grau|silber|gold|rosa|pink|lila|violett|braun|beige|titan|titanium|titanyum|graphit|mitternacht|sternenlicht|polarstern|polar|space|grey|gray|black|white|blue|red|green|silver|midnight|starlight|purple|yellow|orange|olive|stone|seashell|mit|ohne|und|with|ve|armband|sportarmband|sportband|band|loop|solo|braided|gehause|gehaeuse|case|kasa|kordon|alpine|trail|ocean|milanese|milano|sport|nike|hermes|aluminium|aluminyum|alu|edelstahl|stainless|paslanmaz|celik|keramik|ceramic|leder|leather|deri|nylon|dual|sim|edition|version|cellular|gps|wifi|smartwatch)\b/g, ' ');
   s = s.replace(/\b\d+\s?(gb|tb|mb)\b/g, ' '); // storage variants
+  s = s.replace(/\b\d{2,3}\s?mm\b/g, ' '); // watch case sizes (42mm/46mm SKUs of the same model)
   s = s.replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
   return s.split(' ').slice(0, 6).join(' ');
 }
@@ -508,12 +508,15 @@ function categoryPath(category) {
   return cat ? `/category/${cat}` : '';
 }
 
+// Real modification date or NOTHING. Defaulting to "today" stamped every URL
+// with a fresh lastmod on every nightly run, which teaches Google/Bing that the
+// site's lastmod is meaningless noise — they then ignore it and crawl stale.
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
-  if (!n) return NOW;
+  if (!n) return '';
   const ms = n > 1e12 ? n : n * 1000;
   const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? NOW : d.toISOString().slice(0, 10);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
 }
 
 // Renders the <head> SEO block injected between the seo markers.
@@ -991,8 +994,8 @@ const STATIC_ROUTES = [
   {
     dir: 'category', path: '/category', changefreq: 'daily', priority: '0.9',
     seo: {
-      title: 'Kategoriler — Qor AI',
-      description: 'AI puanlı teknoloji ürünlerini kategoriye göre keşfet. Marka, fiyat ve özelliklere göre filtrele; akıllı telefon, laptop, GPU ve daha fazlasını karşılaştır.',
+      title: 'Tüm Teknoloji Kategorileri — Karşılaştır ve Keşfet | Qor AI',
+      description: 'Akıllı telefon, laptop, ekran kartı, kulaklık ve TV dahil 40+ kategoride AI puanlı ürünleri keşfet; marka, fiyat ve özellik filtreleriyle yan yana karşılaştır.',
     },
   },
   {
@@ -1005,22 +1008,22 @@ const STATIC_ROUTES = [
   {
     dir: 'link-analysis', path: '/link-analysis', changefreq: 'weekly', priority: '0.8',
     seo: {
-      title: 'Link Analizi — Qor AI',
-      description: 'Herhangi bir ürün bağlantısını yapıştır — Qor AI ürünü tanısın, artılarını ve eksilerini özetlesin, birden fazla linki karşılaştırsın.',
+      title: 'Link Analizi — Linki Yapıştır, Yapay Zekâ Analiz Etsin | Qor AI',
+      description: 'Herhangi bir ürün bağlantısını yapıştır: Qor AI ürünü tanır, teknik özelliklerini çıkarır, artı ve eksilerini özetler. Birden fazla linki aynı anda karşılaştır.',
     },
   },
   {
     dir: 'subscriptions', path: '/subscriptions', changefreq: 'weekly', priority: '0.8',
     seo: {
-      title: 'Abonelik Karşılaştırma — Qor AI',
-      description: 'Netflix, Spotify, YouTube Premium ve daha fazlasını fiyat, özellik ve değer açısından yapay zekâ ile karşılaştır.',
+      title: 'Abonelik Karşılaştırma — Netflix, Spotify, YouTube | Qor AI',
+      description: 'Netflix, Spotify, YouTube Premium, Disney+, Game Pass ve ChatGPT Plus aboneliklerini fiyat, içerik ve değer açısından yapay zekâ ile yan yana karşılaştır.',
     },
   },
   {
     dir: 'premium', path: '/premium', changefreq: 'weekly', priority: '0.8',
     seo: {
-      title: 'Premium — Qor AI',
-      description: 'Qor AI Premium fiyatlarını ve özelliklerini incele: AI Chat, görsel tarayıcı, link analizi, abonelik analizi ve premium öneriler.',
+      title: 'Qor AI Premium — Fiyatlar, Planlar ve Premium Özellikler',
+      description: 'Qor AI Premium ile daha kapsamlı yapay zekâ: AI sohbet, görsel tarayıcı, ürün ve link analizi, abonelik analizi, premium öneriler ve genişletilmiş fiyat geçmişi.',
     },
   },
   {
@@ -1075,8 +1078,8 @@ const STATIC_ROUTES = [
   {
     dir: 'quiz', path: '/quiz', changefreq: 'monthly', priority: '0.7',
     seo: {
-      title: 'Kişisel Quiz — Qor AI',
-      description: 'Birkaç soru yanıtla, Qor AI sana en uygun teknoloji ürününü önersin.',
+      title: 'Kişisel Quiz — Sana En Uygun Teknoloji Ürününü Bul | Qor AI',
+      description: 'Bütçeni, kullanım amacını ve önceliklerini söyle; Qor AI yapay zekâ profiline göre sana en uygun telefonu, laptopu veya diğer teknoloji ürününü önersin.',
     },
   },
   {
@@ -1090,8 +1093,8 @@ const STATIC_ROUTES = [
   {
     dir: 'ai-chat', path: '/ai-chat', changefreq: 'monthly', priority: '0.7',
     seo: {
-      title: 'Qor AI Sohbet — Yapay Zekâ Danışman',
-      description: 'Telefon, laptop, kulaklık ya da abonelik — sorunu sor, Qor AI yapay zekâ danışmanından anında öneri al.',
+      title: 'Qor AI Sohbet — Yapay Zekâ Teknoloji ve Alışveriş Danışmanı',
+      description: 'Telefon, laptop, kulaklık ya da abonelik — sorunu yaz, Qor AI yapay zekâ danışmanından anında tarafsız öneri al; alternatifleri birlikte değerlendirin.',
     },
   },
   {
@@ -1139,19 +1142,21 @@ function localizeBodyLinks(html, lang) {
 const STATIC_SEO_I18N = {
   en: {
     '': { title: 'Qor AI — AI Product & Subscription Advisor', description: 'Discover, compare and decide on tech products and digital subscriptions with AI. Phones, laptops, GPUs and more — analyzed by Qor AI.' },
-    category: { title: 'Categories — Qor AI', description: 'Explore AI-scored tech products by category. Filter by brand, price and specs; compare phones, laptops, GPUs and more.' },
-    'link-analysis': { title: 'Link Analysis — Qor AI', description: 'Paste any product link — Qor AI identifies the product, summarizes its pros and cons, and compares multiple links with AI.' },
-    subscriptions: { title: 'Subscription Comparison — Qor AI', description: 'Compare Netflix, Spotify, YouTube Premium and more by price, features and value with AI.' },
-    premium: { title: 'Premium — Qor AI', description: 'Explore Qor AI Premium: AI Chat, visual scanner, link analysis, subscription analysis and premium recommendations.' },
-    quiz: { title: 'Personal Quiz — Qor AI', description: 'Answer a few questions and let Qor AI recommend the tech product that fits you best.' },
+    category: { title: 'All Tech Categories — Compare & Discover | Qor AI', description: 'Explore AI-scored products across 40+ categories including phones, laptops, GPUs, headphones and TVs; filter by brand, price and specs and compare side by side.' },
+    'link-analysis': { title: 'Link Analysis — Paste a Product Link, Let AI Review It | Qor AI', description: 'Paste any product link: Qor AI identifies the product, extracts its specs and summarizes pros and cons. Paste several links at once to compare products with AI.' },
+    subscriptions: { title: 'Subscription Comparison — Netflix, Spotify, YouTube | Qor AI', description: 'Compare Netflix, Spotify, YouTube Premium, Disney+, Game Pass and ChatGPT Plus subscriptions by price, content and value with AI — side by side in seconds.' },
+    premium: { title: 'Qor AI Premium — Prices, Plans and Premium Features', description: 'Qor AI Premium unlocks deeper AI: AI chat, visual scanner, product and link analysis, subscription analysis, premium recommendations and extended price history.' },
+    quiz: { title: 'Personal Quiz — Find the Tech Product That Fits You | Qor AI', description: 'Tell us your budget, use case and priorities; Qor AI recommends the phone, laptop or other tech product that fits your profile best — in a few quick questions.' },
+    'ai-chat': { title: 'Qor AI Chat — AI Tech & Shopping Advisor', description: 'Phone, laptop, headphones or a subscription — ask your question and get instant, unbiased advice from the Qor AI assistant; weigh the alternatives together.' },
   },
   de: {
     '': { title: 'Qor AI — KI-Produkt- und Abo-Berater', description: 'Technikprodukte und digitale Abos mit KI entdecken, vergleichen und entscheiden. Smartphones, Laptops, GPUs und mehr — analysiert von Qor AI.' },
-    category: { title: 'Kategorien — Qor AI', description: 'KI-bewertete Technikprodukte nach Kategorie. Nach Marke, Preis und Specs filtern; Smartphones, Laptops, GPUs und mehr vergleichen.' },
-    'link-analysis': { title: 'Link-Analyse — Qor AI', description: 'Füge einen Produktlink ein — Qor AI erkennt das Produkt, fasst Vor- und Nachteile zusammen und vergleicht mehrere Links mit KI.' },
-    subscriptions: { title: 'Abo-Vergleich — Qor AI', description: 'Netflix, Spotify, YouTube Premium und mehr nach Preis, Funktionen und Wert mit KI vergleichen.' },
-    premium: { title: 'Premium — Qor AI', description: 'Entdecke Qor AI Premium: KI-Chat, visueller Scanner, Link-Analyse, Abo-Analyse und Premium-Empfehlungen.' },
-    quiz: { title: 'Persönliches Quiz — Qor AI', description: 'Beantworte ein paar Fragen und lass Qor AI das passende Technikprodukt empfehlen.' },
+    category: { title: 'Alle Technik-Kategorien — Vergleichen & Entdecken | Qor AI', description: 'Entdecke KI-bewertete Produkte in 40+ Kategorien — Smartphones, Laptops, Grafikkarten, Kopfhörer und Fernseher; nach Marke, Preis und Specs filtern und vergleichen.' },
+    'link-analysis': { title: 'Link-Analyse — Produktlink einfügen, KI analysiert | Qor AI', description: 'Füge einen Produktlink ein: Qor AI erkennt das Produkt, extrahiert die Spezifikationen und fasst Vor- und Nachteile zusammen. Mehrere Links gleichzeitig vergleichen.' },
+    subscriptions: { title: 'Abo-Vergleich — Netflix, Spotify, YouTube & mehr | Qor AI', description: 'Vergleiche Netflix, Spotify, YouTube Premium, Disney+, Game Pass und ChatGPT Plus nach Preis, Inhalt und Wert mit KI — nebeneinander in Sekunden.' },
+    premium: { title: 'Qor AI Premium — Preise, Pläne und Premium-Funktionen', description: 'Qor AI Premium schaltet tiefere KI frei: KI-Chat, visueller Scanner, Produkt- und Link-Analyse, Abo-Analyse, Premium-Empfehlungen und erweiterte Preishistorie.' },
+    quiz: { title: 'Persönliches Quiz — Finde dein passendes Technikprodukt | Qor AI', description: 'Nenne Budget, Einsatzzweck und Prioritäten; Qor AI empfiehlt das Smartphone, den Laptop oder das Technikprodukt, das am besten zu deinem Profil passt.' },
+    'ai-chat': { title: 'Qor AI Chat — KI-Technik- und Einkaufsberater', description: 'Smartphone, Laptop, Kopfhörer oder Abo — stelle deine Frage und erhalte sofort unvoreingenommene Beratung vom Qor-AI-Assistenten; Alternativen gemeinsam abwägen.' },
   },
 };
 
@@ -1172,7 +1177,20 @@ async function main() {
     console.error('[seo] website/index.html not found — run vite build first');
     process.exit(1);
   }
-  const template = readFileSync(templatePath, 'utf8');
+  // The scheduled refresh runs seo.mjs WITHOUT a vite build, so website/index.html
+  // — the "template" — is the PREVIOUS run's homepage output with the prerendered
+  // body already baked inside #root. Left as-is, renderPage() never finds the
+  // empty `<div id="root"></div>` marker, so EVERY generated page keeps the
+  // homepage body: ~7.8k identical pages — the exact duplicate/"scaled content"
+  // signal that got the whole site suppressed. Always strip #root back to empty
+  // before rendering (a fresh vite template is a no-op), and refuse to run if the
+  // shell doesn't look right rather than mass-produce broken pages.
+  const template = readFileSync(templatePath, 'utf8')
+    .replace(/<div id="root">[\s\S]*?<\/div>(?=\s*<script)/, '<div id="root"></div>');
+  if (!template.includes('<div id="root"></div>') || !/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/.test(template)) {
+    console.error('[seo] template sanitisation failed (no empty #root or seo markers) — aborting instead of regenerating every page from a dirty shell');
+    process.exit(1);
+  }
 
   // Buying guides drive the per-category landing pages AND the homepage's
   // internal-link grid, so load them up front (pure local file read, no network)
@@ -1439,7 +1457,7 @@ async function main() {
       url: `${SITE}/blog`, type: 'website',
       jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE}/blog#blog`, name: 'Qor AI Blog', url: `${SITE}/blog` },
     }, blogListBody(articles)));
-    blogUrls.push({ loc: `${SITE}/blog`, changefreq: 'daily', priority: '0.7' });
+    blogUrls.push({ loc: `${SITE}/blog`, lastmod: String(articles[0]?.updated || '').slice(0, 10), changefreq: 'daily', priority: '0.7' });
     const BLOG_LANGS = ['tr', 'en', 'de'];
     for (const a of articles) {
       if (!a.slug) continue;
@@ -1474,7 +1492,7 @@ async function main() {
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
           jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
         }, blogArticleBody(a, lang)));
-        blogUrls.push({ loc: url, lastmod: String(a.publishedAt || a.updated || '').slice(0, 10) || NOW, changefreq: 'weekly', priority: '0.7' });
+        blogUrls.push({ loc: url, lastmod: String(a.updated || a.publishedAt || '').slice(0, 10), changefreq: 'weekly', priority: '0.7' });
       }
     }
   }
@@ -1495,11 +1513,16 @@ async function main() {
     }
   }
   // Only categories we actually generated a content shell for (curatedByCat),
-  // including the en/de variants we now prerender alongside tr.
+  // including the en/de variants we now prerender alongside tr. lastmod = the
+  // newest product in the category — a real change signal, not the build date.
   const categoryUrls = [];
-  for (const p of [...curatedByCat.keys()].map((cat) => categoryPath(cat)).filter(Boolean).sort()) {
-    categoryUrls.push({ loc: `${SITE}${p}`, changefreq: 'weekly', priority: '0.8' });
-    for (const l of ['en', 'de']) categoryUrls.push({ loc: `${SITE}/${l}${p}`, changefreq: 'weekly', priority: '0.8' });
+  const prodTs = (d) => Number(d.updatedAtTs || d.scrapedAtTs) || 0;
+  for (const [cat, picked] of [...curatedByCat.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const p = categoryPath(cat);
+    if (!p) continue;
+    const lastmod = lastmodFromTs(Math.max(0, ...picked.map(prodTs)));
+    categoryUrls.push({ loc: `${SITE}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
+    for (const l of ['en', 'de']) categoryUrls.push({ loc: `${SITE}/${l}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
   }
   // Only the curated, prerendered products go in the sitemap. Listing all 106k
   // (which serve the generic SPA shell with no per-product HTML) is exactly what
@@ -1507,8 +1530,9 @@ async function main() {
   const productUrls = prerendered.map(({ d, path }) => ({
     loc: `${SITE}${path}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
   }));
-  const compareUrls = compares.map(({ path }) => ({
-    loc: `${SITE}${path}`, changefreq: 'monthly', priority: '0.5',
+  const compareUrls = compares.map(({ a, b, path }) => ({
+    loc: `${SITE}${path}`, lastmod: lastmodFromTs(Math.max(prodTs(a), prodTs(b))),
+    changefreq: 'monthly', priority: '0.5',
   }));
   const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls];
 
@@ -1516,7 +1540,7 @@ async function main() {
     '<?xml version="1.0" encoding="UTF-8"?>\n'
     + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + items.map((u) =>
-      `  <url><loc>${esc(u.loc)}</loc><lastmod>${u.lastmod || NOW}</lastmod>`
+      `  <url><loc>${esc(u.loc)}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ''}`
       + `<changefreq>${u.changefreq}</changefreq><priority>${u.priority}</priority></url>`,
     ).join('\n')
     + '\n</urlset>\n';
@@ -1538,7 +1562,7 @@ async function main() {
       '<?xml version="1.0" encoding="UTF-8"?>\n'
       + '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
       + chunks.map((_, i) =>
-        `  <sitemap><loc>${SITE}/sitemap-${i + 1}.xml</loc><lastmod>${NOW}</lastmod></sitemap>`,
+        `  <sitemap><loc>${SITE}/sitemap-${i + 1}.xml</loc></sitemap>`,
       ).join('\n')
       + '\n</sitemapindex>\n';
     writeTextFile(join(site, 'sitemap.xml'), index, { optional: true });
