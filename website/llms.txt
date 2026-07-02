@@ -1,0 +1,20 @@
+# Qor AI
+
+> Qor AI (qorai.net), teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile analiz eden,
+> karşılaştıran ve kişiye özel öneren ürün karar asistanıdır. AI product & subscription advisor:
+> compare tech products side by side, paste any product link for an instant AI analysis, and get
+> an AI tech score (0-100). Languages: Turkish (/), English (/en), German (/de). Also on Android.
+
+## Ana bölümler / Main sections
+- [Kategoriler / Categories](https://qorai.net/category): 46 teknoloji kategorisinde AI puanlı ürünler
+- [Abonelik Karşılaştırma / Subscriptions](https://qorai.net/subscriptions): Netflix, Spotify, YouTube Premium, ChatGPT Plus…
+- [Link Analizi / Link Analysis](https://qorai.net/link-analysis): ürün linki yapıştır, AI analiz etsin
+- [Qor AI Sohbet / AI Chat](https://qorai.net/ai-chat)
+- [Blog & Alım Rehberleri / Buying guides](https://qorai.net/blog)
+
+## Veri / Data
+- [Sitemap](https://qorai.net/sitemap.xml): 7832 sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber
+- Her ürün sayfası: teknik özellik tablosu + Qor AI teknik skoru + benzer model linkleri
+
+## Politikalar / Policies
+- [Hakkında / About](https://qorai.net/about), [Gizlilik / Privacy](https://qorai.net/privacy), [Koşullar / Terms](https://qorai.net/terms), [İletişim / Contact](https://qorai.net/contact)

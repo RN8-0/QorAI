@@ -1582,7 +1582,35 @@ async function main() {
     ].join('\n'),
   );
 
-  // 5) IndexNow key file (served at https://qorai.net/<key>.txt) — proves
+  // 5) llms.txt — llmstxt.org convention: a concise machine-readable site guide
+  //    for AI answer engines (ChatGPT, Perplexity, Copilot, Claude). They already
+  //    crawl the site (robots allows *); this tells them what Qor AI is and where
+  //    the high-value pages live, improving citation/mention odds in AI answers.
+  writeTextFile(join(site, 'llms.txt'), [
+    '# Qor AI',
+    '',
+    '> Qor AI (qorai.net), teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile analiz eden,',
+    '> karşılaştıran ve kişiye özel öneren ürün karar asistanıdır. AI product & subscription advisor:',
+    '> compare tech products side by side, paste any product link for an instant AI analysis, and get',
+    '> an AI tech score (0-100). Languages: Turkish (/), English (/en), German (/de). Also on Android.',
+    '',
+    '## Ana bölümler / Main sections',
+    `- [Kategoriler / Categories](${SITE}/category): ${curatedByCat.size} teknoloji kategorisinde AI puanlı ürünler`,
+    `- [Abonelik Karşılaştırma / Subscriptions](${SITE}/subscriptions): Netflix, Spotify, YouTube Premium, ChatGPT Plus…`,
+    `- [Link Analizi / Link Analysis](${SITE}/link-analysis): ürün linki yapıştır, AI analiz etsin`,
+    `- [Qor AI Sohbet / AI Chat](${SITE}/ai-chat)`,
+    `- [Blog & Alım Rehberleri / Buying guides](${SITE}/blog)`,
+    '',
+    '## Veri / Data',
+    `- [Sitemap](${SITE}/sitemap.xml): ${allUrls.length} sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber`,
+    '- Her ürün sayfası: teknik özellik tablosu + Qor AI teknik skoru + benzer model linkleri',
+    '',
+    '## Politikalar / Policies',
+    `- [Hakkında / About](${SITE}/about), [Gizlilik / Privacy](${SITE}/privacy), [Koşullar / Terms](${SITE}/terms), [İletişim / Contact](${SITE}/contact)`,
+    '',
+  ].join('\n'));
+
+  // 6) IndexNow key file (served at https://qorai.net/<key>.txt) — proves
   //    ownership so the scheduled refresh can push changed URLs to IndexNow.
   writeTextFile(join(site, `${INDEXNOW_KEY}.txt`), `${INDEXNOW_KEY}\n`);
 
