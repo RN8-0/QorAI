@@ -681,7 +681,7 @@ const LANDING = {
     h1: 'Premium',
     paras: [
       'Qor AI Premium, daha kapsamlı yapay zekâ kullanımı açar: Qor AI Sohbet, görsel tarayıcı, ürün AI analizi, link analizi, link karşılaştırma, abonelik analizi, premium öneriler ve genişletilmiş fiyat geçmişi.',
-      'Güncel fiyatlar, deneme bilgisi ve plan ayrıntıları bu sayfada listelenir. Web satın alımları Paddle, mobil satın alımlar ise ilgili uygulama mağazası üzerinden işlenir. İptal ve iade koşulları için İade Politikası\'na göz atabilirsin.',
+      'Güncel fiyatlar, deneme bilgisi ve plan ayrıntıları bu sayfada listelenir. Premium şu an yalnızca Google Play üzerinden satın alınabilir; web ödemeleri yakında eklenecek. İptal ve iade koşulları için İade Politikası\'na göz atabilirsin.',
     ],
     links: [['/premium', 'Premium planları'], ['/refund', 'İade Politikası'], ['/terms', 'Kullanım Koşulları']],
   },
@@ -737,7 +737,7 @@ const LANDING_I18N = {
       h1: 'Premium',
       paras: [
         'Qor AI Premium unlocks deeper AI use: Qor AI Chat, visual scanner, product AI analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history.',
-        'Current prices, trial details and plan information are listed on this page. Web purchases are processed via Paddle and mobile purchases via the relevant app store. See the Refund Policy for cancellation and refund terms.',
+        'Current prices, trial details and plan information are listed on this page. Premium can currently be purchased only through Google Play; web payments are coming soon. See the Refund Policy for cancellation and refund terms.',
       ],
       links: [['/premium', 'Premium plans'], ['/refund', 'Refund Policy'], ['/terms', 'Terms of Use']],
     },
@@ -787,7 +787,7 @@ const LANDING_I18N = {
       h1: 'Premium',
       paras: [
         'Qor AI Premium schaltet tiefere KI-Nutzung frei: Qor AI Chat, visueller Scanner, Produkt-KI-Analyse, Link-Analyse, Link-Vergleich, Abo-Analyse, Premium-Empfehlungen und erweiterte Preishistorie.',
-        'Aktuelle Preise, Testdetails und Planinformationen sind auf dieser Seite aufgeführt. Web-Käufe werden über Paddle, mobile Käufe über den jeweiligen App-Store abgewickelt. Kündigungs- und Erstattungsbedingungen findest du in der Erstattungsrichtlinie.',
+        'Aktuelle Preise, Testdetails und Planinformationen sind auf dieser Seite aufgeführt. Premium ist derzeit nur über Google Play erhältlich; Web-Zahlungen folgen in Kürze. Kündigungs- und Erstattungsbedingungen findest du in der Erstattungsrichtlinie.',
       ],
       links: [['/premium', 'Premium-Pläne'], ['/refund', 'Erstattungsrichtlinie'], ['/terms', 'Nutzungsbedingungen']],
     },

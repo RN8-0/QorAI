@@ -507,7 +507,7 @@
           <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
           <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Translate</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
-          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus()">💰 Affiliate</button>
+          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
         </div>
 
@@ -628,6 +628,18 @@
 
         <!-- Affiliate offer sync -->
         <div class="scraper-panel" id="offersPanel">
+          <div class="card" id="priceSyncCard" style="margin-bottom:12px">
+            <div class="card-title">🌙 Epey → Amazon Gece Fiyat Sync
+              <button class="btn btn-ghost btn-sm" style="float:right" onclick="priceSyncRefreshStatus()">↻ Yenile</button>
+            </div>
+            <p class="text-muted" style="margin:0 0 10px;font-size:12px">
+              Her gece 03:10'da bu PC'deki <code>QorAI-PriceRefresh</code> zamanlanmış görevi çalışır
+              (<code>scripts/price_refresh.cmd</code> → <code>epey_amazon</code> connector'ı): Epey sayfasındaki
+              Amazon.com.tr satırından gerçek fiyat + doğrudan /dp/ASIN linki (tag=qorai-21) yazılır.
+              Hetzner'den ÇALIŞMAZ — Epey datacenter IP'lerini 403'ler.
+            </p>
+            <div id="priceSyncBody" class="text-muted" style="font-size:13px">durum okunmadı</div>
+          </div>
           <div class="card">
             <div class="card-title">💰 Affiliate Fiyat Eşleştirme <span class="text-muted" style="font-weight:normal;font-size:12px"> · feed / ağ connectorları</span></div>
             <p class="text-muted" style="margin-bottom:12px;font-size:13px">

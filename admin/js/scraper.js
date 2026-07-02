@@ -9282,6 +9282,38 @@ async function offersStop() {
   setTimeout(offersRefreshStatus, 400);
 }
 
+// Gece fiyat sync denetimi: sync_offers.js her koşuda public_config'e
+// price_sync_status özetini yazar; canlı offer sayıları PB'den okunur.
+async function priceSyncRefreshStatus() {
+  const el = document.getElementById('priceSyncBody');
+  if (!el) return;
+  el.textContent = 'okunuyor…';
+  try {
+    const [cfg, fresh, total, priced] = await Promise.all([
+      pb.collection('public_config').getList(1, 1, { filter: 'key="price_sync_status"', $autoCancel: false }),
+      pb.collection('offers').getList(1, 1, { filter: 'network="epey_amazon" && expiresAt > @now', $autoCancel: false }),
+      pb.collection('offers').getList(1, 1, { filter: 'network="epey_amazon"', $autoCancel: false }),
+      pb.collection('products').getList(1, 1, { filter: 'pricedOfferCount > 0', $autoCancel: false }),
+    ]);
+    const s = (cfg.items[0] && cfg.items[0].value) || null;
+    const fmt = (iso) => { try { return new Date(iso).toLocaleString('tr-TR'); } catch { return iso || '—'; } };
+    const stale = s && s.lastRunAt && (Date.now() - Date.parse(s.lastRunAt) > 36 * 3600 * 1000);
+    const rows = [
+      ['Son koşu', s ? `${fmt(s.lastRunAt)}${stale ? ' ⚠️ 36 saatten eski — görev çalışmamış olabilir' : ' ✅'}` : '— (henüz hiç koşmadı)'],
+      ['Taranan / yazılan / hata', s ? `${s.scanned} / ${s.offersWritten} / ${s.errors}` : '—'],
+      ['Koşu argümanları', s && s.args ? `<code style="font-size:11px">${String(s.args).replace(/</g, '&lt;')}</code>` : '—'],
+      ['Taze Amazon offer (canlı fiyat)', String(fresh.totalItems)],
+      ['Toplam epey_amazon offer', String(total.totalItems)],
+      ['Fiyat gösteren ürün (rollup)', String(priced.totalItems)],
+    ];
+    el.innerHTML = '<table style="border-collapse:collapse">' + rows.map(([k, v]) =>
+      `<tr><td style="padding:2px 14px 2px 0;color:#94a3b8;white-space:nowrap">${k}</td><td style="padding:2px 0">${v}</td></tr>`).join('') + '</table>';
+    el.style.color = '';
+  } catch (e) {
+    el.textContent = 'okunamadı: ' + (e && e.message || e);
+  }
+}
+
 async function offersRefreshStatus() {
   try {
     const r = await fetch(`${PROXY_URL}/offers/status`);
