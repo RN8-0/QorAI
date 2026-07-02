@@ -104,6 +104,34 @@ async function deepseek(system, user) {
   return JSON.parse(c);
 }
 
+async function geminiJson(system, user) {
+  const { url } = pbCreds();
+  const r = await fetch(`${url}/api/ai/gemini`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gemini-2.5-flash',
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      // 3500 Gemini'nin uzun listicle çıktısında JSON'u ortadan kesiyordu
+      // (Unterminated string) — çıktı tavanı yüksek tutulur.
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.85, responseMimeType: 'application/json' },
+    }),
+  });
+  if (!r.ok) throw new Error(`gemini ${r.status}`);
+  const data = await r.json();
+  const c = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  if (!c) throw new Error('gemini empty');
+  return JSON.parse(c);
+}
+
+// DeepSeek (bakiye varsa) → Gemini fallback; tek sağlayıcı ölünce üretim durmasın.
+// Gemini tarafına bir tekrar hakkı: 429 ve kesik-JSON (truncation) geçici olabiliyor.
+async function aiJson(system, user) {
+  try { return await deepseek(system, user); } catch (_) { /* bakiye/kota → gemini */ }
+  try { return await geminiJson(system, user); }
+  catch (_) { return await geminiJson(system, user); }
+}
+
 function sys(lang) {
   return [
     `You are an experienced tech editor writing a product buying guide in ${LANG_NAME[lang]} for a tech comparison site.`,
@@ -139,7 +167,7 @@ async function genOne(cat, existing) {
   const byName = new Map(picks.map((p, i) => [p.name.toLowerCase().trim(), i]));
   const rec = { slug: cat, status: 'published', category: cat, cover: picks[0].imageUrl };
   for (const lang of LANGS) {
-    const out = await deepseek(sys(lang), userMsg(lang, categoryLabel(cat, lang), picks));
+    const out = await aiJson(sys(lang), userMsg(lang, categoryLabel(cat, lang), picks));
     rec[`title_${lang}`] = String(out.title || '').trim().slice(0, 90);
     rec[`lead_${lang}`] = String(out.lead || '').trim();
     rec[`body_${lang}`] = String(out.body || '').trim();

@@ -65,6 +65,32 @@ async function deepseek(system, user) {
   return JSON.parse(content);
 }
 
+async function geminiJson(system, user) {
+  const res = await fetch(`${PB_URL}/api/ai/gemini`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gemini-2.5-flash',
+      systemInstruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { maxOutputTokens: 6144, temperature: 0.85, responseMimeType: 'application/json' },
+    }),
+  });
+  if (!res.ok) throw new Error(`gemini ${res.status}`);
+  const data = await res.json();
+  const content = (data?.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  if (!content) throw new Error('gemini empty');
+  return JSON.parse(content);
+}
+
+// DeepSeek (bakiye varsa) → Gemini fallback. DeepSeek bakiyesi bittiğinde gece
+// rehber üretimi aylarca sessizce ölmüştü — tek sağlayıcıya bağlı kalma.
+// Gemini'ye bir tekrar hakkı: 429 ve kesik-JSON geçici olabiliyor.
+async function aiJson(system, user) {
+  try { return await deepseek(system, user); } catch (_) { /* bakiye/kota → gemini */ }
+  try { return await geminiJson(system, user); }
+  catch (_) { return await geminiJson(system, user); }
+}
+
 const SYSTEM = [
   'Sen, Türkiye merkezli bir teknoloji karşılaştırma sitesi için yazan deneyimli bir teknoloji editörüsün.',
   'Görevin: bir ürün kategorisi için satın alma rehberi yazmak. Akıcı, samimi ama bilgili bir Türkçeyle yaz.',
@@ -107,7 +133,7 @@ async function genOne(cat) {
   }
   const picks = await tsTop(cat);
   if (picks.length < 3) return { cat, status: 'too-few' };
-  const out = await deepseek(SYSTEM, buildUser(label, picks));
+  const out = await aiJson(SYSTEM, buildUser(label, picks));
   // map picks back to real product ids/slugs so the page can link them
   const byName = new Map(picks.map((p) => [p.name.toLowerCase().trim(), p]));
   const resolvedPicks = (out.picks || []).map((pk) => {
