@@ -83,7 +83,7 @@ async function tsCategories() {
 async function tsTop(cat, n = 8, opts = {}) {
   const qs = new URLSearchParams({ q: '*', query_by: 'name', filter_by: `category:=${cat}`, sort_by: 'techScore:desc', per_page: '120', include_fields: 'id,name,slug,brand,techScore,imageUrl,lowestPrice,lowestPriceCurrency' });
   const r = await (await fetch(`${TS_URL}/collections/products/documents/search?${qs}`, { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } })).json();
-  const seen = new Set(); const out = [];
+  const seen = new Set(); const pool = [];
   const brands = (opts.brands || []).map((b) => b.toLowerCase());
   for (const h of (r.hits || [])) {
     const d = h.document;
@@ -92,10 +92,32 @@ async function tsTop(cat, n = 8, opts = {}) {
     if (brands.length && !brands.includes(String(d.brand || '').toLowerCase())) continue;
     if (opts.nameRe && !opts.nameRe.test(d.name)) continue;
     const k = modelKey(d.name); if (k && seen.has(k)) continue; if (k) seen.add(k);
-    const price = (Number(d.lowestPrice) > 0 && d.lowestPriceCurrency === 'TRY')
-      ? `${Math.round(Number(d.lowestPrice)).toLocaleString('tr-TR')} TL` : '';
-    out.push({ id: d.id, name: d.name, slug: slugifyProduct(d.slug || d.name), brand: d.brand || '', techScore: d.techScore || 0, imageUrl: d.imageUrl, price });
-    if (out.length >= n) break;
+    pool.push({ id: d.id, name: d.name, slug: slugifyProduct(d.slug || d.name), brand: d.brand || '', techScore: d.techScore || 0, imageUrl: d.imageUrl, price: '' });
+  }
+  // preferRe: konunun GERÇEK hedef ürünleri (ör. ROG Phone / RedMagic / iQOO)
+  // techScore sıralamasında flagship'lerin altında kalsa bile listeye ÖNCE girer.
+  let out;
+  if (opts.preferRe) {
+    const pref = pool.filter((p) => opts.preferRe.test(p.name));
+    const rest = pool.filter((p) => !opts.preferRe.test(p.name));
+    out = [...pref, ...rest].slice(0, n);
+  } else {
+    out = pool.slice(0, n);
+  }
+  // Gerçek Amazon TL fiyatı PB rollup'ından (TS'te lowestPrice alanı YOK —
+  // yalnız lowestPriceUSD var; TL metni buradan gelir).
+  if (out.length) {
+    try {
+      const filter = out.map((p) => `id="${p.id}"`).join(' || ');
+      const pr = await pb('GET', `/api/collections/products/records?perPage=${out.length}&fields=id,lowestPrice,lowestPriceCurrency&filter=${encodeURIComponent(filter)}`);
+      const byId = new Map((pr.body.items || []).map((x) => [x.id, x]));
+      for (const p of out) {
+        const rec = byId.get(p.id);
+        if (rec && Number(rec.lowestPrice) > 0 && rec.lowestPriceCurrency === 'TRY') {
+          p.price = `${Math.round(Number(rec.lowestPrice)).toLocaleString('tr-TR')} TL`;
+        }
+      }
+    } catch (_) { /* fiyatsız devam — makale yine üretilir */ }
   }
   return out;
 }
@@ -107,8 +129,11 @@ const TOPICS = {
     cat: 'smartphones', n: 8,
     slug_tr: 'en-iyi-oyuncu-telefonlari', slug_en: 'best-gaming-phones', slug_de: 'beste-gaming-smartphones',
     label: { tr: 'oyuncu telefonları', en: 'gaming phones', de: 'Gaming-Smartphones' },
-    brands: ['Apple', 'Samsung', 'Xiaomi', 'Asus', 'OnePlus', 'Google', 'Poco', 'Realme', 'Honor', 'Nubia', 'RedMagic', 'iQOO'],
-    angle: 'Audience: mobile gamers. Judge ONLY through a gaming lens: sustained performance and throttling, cooling, display refresh rate and touch sampling, battery drain under load, speakers/haptics. Be concrete about real game scenarios (e.g. what graphics settings a demanding title runs at). Do not repeat camera/marketing talk.',
+    brands: ['Apple', 'Samsung', 'Xiaomi', 'Asus', 'OnePlus', 'Google', 'Poco', 'Realme', 'Honor', 'Nubia', 'ZTE', 'Vivo', 'RedMagic', 'iQOO'],
+    // Safkan oyuncu telefonları (ROG/RedMagic/iQOO…) techScore'da amiral
+    // gemilerinin altında kalsa da listeye ÖNCE girer — konunun asıl ürünleri.
+    preferRe: /rog phone|red ?magic|iqoo|black ?shark|legion phone|gt neo/i,
+    angle: 'Audience: mobile gamers. Judge ONLY through a gaming lens: sustained performance and throttling, cooling (fans/vapor chamber), display refresh rate and touch sampling, shoulder triggers, battery drain under load, speakers/haptics. Be concrete about real game scenarios (e.g. what graphics settings a demanding title runs at). Do not repeat camera/marketing talk.',
   },
   'en-iyi-gaming-laptoplar': {
     cat: 'laptops', n: 8,
