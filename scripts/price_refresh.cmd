@@ -14,6 +14,9 @@ rem pass2 — discovery: hic taranmamislar; once Epey'de fiyati OLANLAR (Amazon 
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=2500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2b — discovery (kalanlar): Epey fiyatsizlar dahil genel tarama
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem pass2c — VARYANTLAR: variantPrimary=false kayitlar default filtrede TAMAMEN atlaniyordu
+rem (iPhone 1TB gibi populer varyant sayfalari fiyatsiz kaliyordu) — Epey fiyatli varyantlari tara
+node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=variantPrimary=false && pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=800 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass3 — recheck: daha once bakilmis ama fiyatsiz kalanlari arada yeniden dene
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=300 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass4 — DE: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (~421 urun, ASIN'siz)
