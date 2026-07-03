@@ -9289,20 +9289,26 @@ async function priceSyncRefreshStatus() {
   if (!el) return;
   el.textContent = 'okunuyor…';
   try {
-    const [cfg, fresh, total, priced] = await Promise.all([
+    const freshQ = (extra) => pb.collection('offers').getList(1, 1, { filter: `price > 0 && expiresAt > @now${extra ? ' && ' + extra : ''}`, $autoCancel: false });
+    const [cfg, freshTR, freshDE, freshGB, total, priced] = await Promise.all([
       pb.collection('public_config').getList(1, 1, { filter: 'key="price_sync_status"', $autoCancel: false }),
-      pb.collection('offers').getList(1, 1, { filter: 'network="epey_amazon" && expiresAt > @now', $autoCancel: false }),
+      freshQ('country="TR"'),
+      freshQ('country="DE"'),
+      freshQ('country="GB"'),
       pb.collection('offers').getList(1, 1, { filter: 'network="epey_amazon"', $autoCancel: false }),
       pb.collection('products').getList(1, 1, { filter: 'pricedOfferCount > 0', $autoCancel: false }),
     ]);
     const s = (cfg.items[0] && cfg.items[0].value) || null;
     const fmt = (iso) => { try { return new Date(iso).toLocaleString('tr-TR'); } catch { return iso || '—'; } };
     const stale = s && s.lastRunAt && (Date.now() - Date.parse(s.lastRunAt) > 36 * 3600 * 1000);
+    const byCountry = s && s.offersByCountry
+      ? Object.entries(s.offersByCountry).map(([c, n]) => `${c} ${n}`).join(' · ')
+      : '';
     const rows = [
       ['Son koşu', s ? `${fmt(s.lastRunAt)}${stale ? ' ⚠️ 36 saatten eski — görev çalışmamış olabilir' : ' ✅'}` : '— (henüz hiç koşmadı)'],
-      ['Taranan / yazılan / hata', s ? `${s.scanned} / ${s.offersWritten} / ${s.errors}` : '—'],
+      ['Taranan / yazılan / hata', s ? `${s.scanned} / ${s.offersWritten} / ${s.errors}${byCountry ? ` (${byCountry})` : ''}` : '—'],
       ['Koşu argümanları', s && s.args ? `<code style="font-size:11px">${String(s.args).replace(/</g, '&lt;')}</code>` : '—'],
-      ['Taze Amazon offer (canlı fiyat)', String(fresh.totalItems)],
+      ['Taze canlı fiyat 🇹🇷 / 🇩🇪 / 🇬🇧', `${freshTR.totalItems} / ${freshDE.totalItems} / ${freshGB.totalItems}`],
       ['Toplam epey_amazon offer', String(total.totalItems)],
       ['Fiyat gösteren ürün (rollup)', String(priced.totalItems)],
     ];

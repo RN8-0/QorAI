@@ -16,8 +16,11 @@ rem pass2b — discovery (kalanlar): Epey fiyatsizlar dahil genel tarama
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass3 — recheck: daha once bakilmis ama fiyatsiz kalanlari arada yeniden dene
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=300 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
-rem pass4 — DE: Geizhals kaynakli urunlerin EUR fiyatlari (en ucuz magaza, ~421 urun)
+rem pass4 — DE: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (~421 urun, ASIN'siz)
 node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem pass5 — DE+GB: ASIN'i bilinen (Epey'den) her urunu Amazon.de/co.uk'da dogrudan fiyatla
+rem (amazon_direct: GLOW oturumu + coklu-imza parser; tek motor, ulke=config satiri)
+node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"

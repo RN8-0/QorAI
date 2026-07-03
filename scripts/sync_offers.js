@@ -31,6 +31,7 @@ const CONNECTORS = [
   require('./connectors/jsonld'),
   require('./connectors/epey_amazon'),
   require('./connectors/geizhals_best'),
+  require('./connectors/amazon_direct'),
 ];
 
 const argv = process.argv.slice(2);
@@ -192,6 +193,7 @@ async function main() {
   let noMatch = 0;
   let errors = 0;
   let processed = 0;
+  const offersByCountry = {}; // e.g. { TR: 812, DE: 340, GB: 190 }
 
   const processOne = async (p, idx) => {
     const tag = `[${String(idx + 1).padStart(4)}/${products.length}]`;
@@ -208,7 +210,11 @@ async function main() {
           if (res.ok) {
             offersWritten++;
             productOffers++;
-            if (offer.country) countries.push(offer.country);
+            if (offer.country) {
+              countries.push(offer.country);
+              const cc = String(offer.country).toUpperCase();
+              offersByCountry[cc] = (offersByCountry[cc] || 0) + 1;
+            }
           } else {
             noMatch++;
           }
@@ -250,6 +256,7 @@ async function main() {
       connectors: active.map(c => c.id),
       scanned: products.length,
       offersWritten,
+      offersByCountry,
       noMatch,
       errors,
       durationSec: Number(totalSec),

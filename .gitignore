@@ -120,3 +120,6 @@ local-translate-worker.log
 feeds/*
 !feeds/.gitkeep
 !feeds/README.md
+
+# Amazon direct-price session jars (cookies) — machine-local, never commit
+scripts/.amazon-session/
