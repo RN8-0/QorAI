@@ -14,6 +14,22 @@ import Reviews from '../components/Reviews.jsx';
 import { useT } from '../i18n/index.jsx';
 import './Blog.css';
 
+// Format a blog product's current price for the visitor's country from the live
+// rollup (prices[cc]), falling back to the cheapest offer if it's already in the
+// right currency. Empty string when there's no priced Amazon offer.
+const BLOG_PRICE_CUR = { TR: 'TRY', DE: 'EUR', AT: 'EUR', GB: 'GBP', UK: 'GBP', US: 'USD' };
+const BLOG_PRICE_LOC = { TR: 'tr-TR', DE: 'de-DE', AT: 'de-DE', GB: 'en-GB', UK: 'en-GB', US: 'en-US' };
+function blogLivePrice(entry, country) {
+  if (!entry) return '';
+  const cc = String(country || 'TR').toUpperCase();
+  const currency = BLOG_PRICE_CUR[cc] || 'USD';
+  let amt = Number(entry.prices && entry.prices[cc]) || 0;
+  if (!(amt > 0) && Number(entry.lowestPrice) > 0 && entry.lowestPriceCurrency === currency) amt = Number(entry.lowestPrice);
+  if (!(amt > 0)) return '';
+  try { return new Intl.NumberFormat(BLOG_PRICE_LOC[cc] || 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amt); }
+  catch { return `${Math.round(amt)} ${currency}`; }
+}
+
 function esc(v) { return String(v || '').replace(/"/g, '\\"'); }
 function sessionId() {
   try {
@@ -158,6 +174,7 @@ export default function BlogPost() {
   const geoCountry = useGeoCountry();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [post, setPost] = useState(null);
+  const [livePrices, setLivePrices] = useState({}); // id → product's per-country prices rollup
   const [status, setStatus] = useState('loading');
   const [more, setMore] = useState([]);
   const [similarProds, setSimilarProds] = useState([]);
@@ -208,6 +225,19 @@ export default function BlogPost() {
         // similar products — same getSimilar() the product page uses, then ranked
         // by closeness to the article's average tech score ("yaklaşık teknik puan").
         const prods = Array.isArray(rec.products) ? rec.products.filter((p) => p && p.id && (p.kind || 'product') === 'product') : [];
+        // LIVE prices: never trust the value baked into the article (frozen at
+        // write time). Look up each product's current per-country price rollup so
+        // the buy button always shows today's Amazon price (cron-refreshed).
+        if (prods.length) {
+          const filter = prods.map((p) => `id="${esc(p.id)}"`).join(' || ');
+          pb.collection('products').getFullList({ filter, fields: 'id,prices,lowestPrice,lowestPriceCurrency', $autoCancel: false })
+            .then((recs) => {
+              if (!live) return;
+              const m = {};
+              for (const r of (recs || [])) m[r.id] = { prices: r.prices || {}, lowestPrice: r.lowestPrice, lowestPriceCurrency: r.lowestPriceCurrency };
+              setLivePrices(m);
+            }).catch(() => {});
+        }
         if (rec.category) {
           const avg = prods.length ? Math.round(prods.reduce((s, p) => s + (Number(p.techScore) || 0), 0) / prods.length) : 0;
           const exclude = new Set(prods.map((p) => p.id));
@@ -374,7 +404,7 @@ export default function BlogPost() {
           <Link to={`${productTo}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
           <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
             <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
-            {p.price ? <span className="ppbtn-price">{p.price}</span> : null}
+            {(() => { const lp = blogLivePrice(livePrices[p.id], geoCountry || 'TR') || p.price; return lp ? <span className="ppbtn-price">{lp}</span> : null; })()}
           </a>
           <Link to={productTo} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
         </div>

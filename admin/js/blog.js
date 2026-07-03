@@ -340,6 +340,8 @@
       _products = Array.isArray(a.products) ? a.products.map((p) => ({ ...p })) : [];
       _editing.publishedAt = toDtLocal(a.publishedAt);
       renderEditor();
+      // Refresh each product's live price so the editor shows current values.
+      for (const p of _products) { if (p && p.id && (p.kind || 'product') === 'product') blogProdFetchPrice(p.id); }
     } catch (e) { toast('Load failed: ' + e.message, 'e'); }
   }
   async function blogDelete(id, slug) {
@@ -522,7 +524,8 @@
                <div style="font-size:11px;opacity:.5;margin:2px 0 6px">İsim her dil için ayrı — sekmeyi değiştirip ${esc(langName)} adını yaz</div>
                <div style="margin:0 0 8px"><input class="ba-input" style="font-size:12px" value="${esc(p.link || '')}" placeholder="Bağlantı (opsiyonel) https://…" oninput="blogProdField(${i},'link',this.value)" /></div>`
             : `<div style="font-weight:700">${i + 1}. ${esc(p.name)}</div>
-               <div style="opacity:.55;font-size:12px;margin-bottom:8px">${(p.kind === 'subscription') ? `→ /subscriptions${p.affiliateUrl || p.website ? ' · resmi site' : ''}` : `→ /product/${esc(p.slug)}-${esc(p.id)}`} · <b>${esc(langName)}</b></div>`}
+               <div style="opacity:.55;font-size:12px;margin-bottom:8px">${(p.kind === 'subscription') ? `→ /subscriptions${p.affiliateUrl || p.website ? ' · resmi site' : ''}` : `→ /product/${esc(p.slug)}-${esc(p.id)}`} · <b>${esc(langName)}</b></div>
+               ${(p.kind || 'product') === 'product' ? `<div style="font-size:12px;margin-bottom:8px"><span style="opacity:.55">💰 Canlı fiyat (cron):</span> <b style="color:#0f172a">${p._livePrice ? esc(p._livePrice) : '<span style=\'opacity:.5\'>okunuyor…</span>'}</b></div>` : ''}`}
           <div class="bk-blocks">
             ${p.blocks.map((b, j) => b.t === 'image'
               ? `<div class="bk-block">
@@ -579,9 +582,29 @@
   function blogProdAdd(p) {
     if (!p || !p.id) return;
     p.kind = 'product';
-    if (!_products.some((x) => x.id === p.id)) { p.slug = p.slug || slugify(p.name); _products.push(p); renderProducts(); }
+    if (!_products.some((x) => x.id === p.id)) { p.slug = p.slug || slugify(p.name); _products.push(p); renderProducts(); blogProdFetchPrice(p.id); }
     const res = document.getElementById('b_prodresults'); if (res) res.style.display = 'none';
     const inp = document.getElementById('b_prodsearch'); if (inp) inp.value = '';
+  }
+  // Show the product's CURRENT price in the editor so the author sees what the
+  // published post will display. The price is NOT saved on the article — the
+  // site (prerender + SPA) always looks it up live from the product's rollup, so
+  // the nightly Amazon price cron keeps every blog price fresh automatically.
+  const _CUR = { TR: 'TRY', DE: 'EUR', GB: 'GBP', US: 'USD' };
+  const _LOC = { TR: 'tr-TR', DE: 'de-DE', GB: 'en-GB', US: 'en-US' };
+  async function blogProdFetchPrice(id) {
+    try {
+      const pb = getPb();
+      const r = await pb.collection('products').getOne(id, { fields: 'id,prices,lowestPrice,lowestPriceCurrency', $autoCancel: false });
+      const prices = r.prices || {};
+      const parts = [];
+      for (const cc of ['TR', 'DE', 'GB', 'US']) {
+        const amt = Number(prices[cc]) || 0;
+        if (amt > 0) { try { parts.push(new Intl.NumberFormat(_LOC[cc], { style: 'currency', currency: _CUR[cc], maximumFractionDigits: 0 }).format(amt)); } catch { parts.push(`${Math.round(amt)} ${_CUR[cc]}`); } }
+      }
+      const rec = _products.find((x) => x.id === id);
+      if (rec) { rec._livePrice = parts.length ? parts.join(' · ') : '—'; renderProducts(); }
+    } catch (_) { /* fiyat yoksa sessiz geç */ }
   }
   function blogProdRemove(i) { _products.splice(i, 1); renderProducts(); }
   function blogProdMove(i, d) { const j = i + d; if (j < 0 || j >= _products.length) return; const t = _products[i]; _products[i] = _products[j]; _products[j] = t; renderProducts(); }

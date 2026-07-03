@@ -46,6 +46,50 @@ async function fetchArticles() {
   } catch (_) { return []; }
 }
 
+// LIVE prices for blog products, keyed by id → the product's per-country `prices`
+// rollup (public read). Blog prices must NOT be baked into the article at write
+// time (they'd freeze the day it was generated); we look them up here so every
+// nightly prerender — which runs AFTER the 03:10 price cron — shows the current
+// Amazon price. The SPA does the same lookup live (BlogPost.jsx).
+async function fetchBlogPrices(ids) {
+  const byId = new Map();
+  const uniq = [...new Set((ids || []).filter(Boolean))];
+  const BATCH = 40;
+  for (let i = 0; i < uniq.length; i += BATCH) {
+    const slice = uniq.slice(i, i + BATCH);
+    const filter = slice.map((id) => `id="${id}"`).join(' || ');
+    try {
+      const r = await fetch(`${PB_URL}/api/collections/products/records?perPage=${slice.length}&fields=id,prices,lowestPrice,lowestPriceCurrency&filter=${encodeURIComponent(filter)}`);
+      if (!r.ok) continue;
+      const j = await r.json();
+      for (const it of (j.items || [])) byId.set(it.id, it);
+    } catch (_) {}
+  }
+  return byId;
+}
+
+const PRICE_CURRENCY = { TR: 'TRY', DE: 'EUR', AT: 'EUR', GB: 'GBP', UK: 'GBP', US: 'USD' };
+const PRICE_LOCALE = { TR: 'tr-TR', DE: 'de-DE', AT: 'de-DE', GB: 'en-GB', UK: 'en-GB', US: 'en-US' };
+function fmtMoney(amount, country = 'TR') {
+  const cc = String(country || 'TR').toUpperCase();
+  const currency = PRICE_CURRENCY[cc] || 'USD';
+  try {
+    return new Intl.NumberFormat(PRICE_LOCALE[cc] || 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
+  } catch { return `${Math.round(amount)} ${currency}`; }
+}
+// Current price for a product record in the given country (TR for the TR blog).
+function livePriceFor(rec, country = 'TR') {
+  if (!rec) return '';
+  const cc = String(country || 'TR').toUpperCase();
+  const amt = Number(rec.prices && rec.prices[cc]) || 0;
+  if (amt > 0) return fmtMoney(amt, cc);
+  // fallback: the rollup's cheapest offer, only if it's already in this currency
+  if (Number(rec.lowestPrice) > 0 && rec.lowestPriceCurrency === (PRICE_CURRENCY[cc] || '')) {
+    return fmtMoney(Number(rec.lowestPrice), cc);
+  }
+  return '';
+}
+
 // Sanitise stored article HTML for the static shell: allow only the tags the
 // generator/editor produces (defensive — body is our own content).
 function safeBodyHtml(html) {
@@ -64,7 +108,7 @@ const BLOG_LBL = {
   en: { ai: 'AI analysis', amz: 'View on Amazon', prod: 'Product', verdict: 'Verdict', all: '← All guides' },
   de: { ai: 'KI-Analyse', amz: 'Bei Amazon ansehen', prod: 'Produkt', verdict: 'Fazit', all: '← Alle Ratgeber' },
 };
-function blogArticleBody(a, lang = 'tr') {
+function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const lbl = BLOG_LBL[lang] || BLOG_LBL.tr;
   const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const title = esc(t('title'));
@@ -80,6 +124,9 @@ function blogArticleBody(a, lang = 'tr') {
     const imgSrc = p.image || p.imageUrl || '';
     const img = /^https?:\/\//i.test(imgSrc) ? esc(imgSrc) : '';
     const buy = esc(amazonGoPath(p, 'TR'));
+    // Live TR price (from the nightly rollup) wins over any stale baked value.
+    const livePrice = priceMap ? livePriceFor(priceMap.get(p.id), 'TR') : '';
+    const shownPrice = livePrice || (p.price || '');
     const layout = p.layout || 'split';
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
@@ -94,7 +141,7 @@ function blogArticleBody(a, lang = 'tr') {
     } else inner = dEl(d1) + imgEl + dEl(d2); // split
     const btnsHtml = `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto">`
       + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
-      + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${p.price ? `<b style="color:#0f172a">${esc(p.price)}</b>` : ''}</a>`
+      + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${shownPrice ? `<b style="color:#0f172a">${esc(shownPrice)}</b>` : ''}</a>`
       + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`;
     const titleHtml = `<a href="${href}" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`;
     return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
@@ -1443,6 +1490,17 @@ async function main() {
   // 2f) blog — prerender /blog listing + /blog/<slug> articles from PB so they're
   //     crawlable HTML (the SPA also renders them live from PB). Wipe stale dirs.
   const articles = await fetchArticles();
+  // Live prices for every product referenced by any article — looked up now (the
+  // nightly cron runs this after the 03:10 price refresh), so blog prices track
+  // the current Amazon price instead of a value frozen at article-write time.
+  const blogProductIds = [];
+  for (const a of articles) {
+    for (const p of (Array.isArray(a.products) ? a.products : [])) {
+      if (p && p.id && (p.kind || 'product') === 'product') blogProductIds.push(p.id);
+    }
+  }
+  const blogPriceMap = await fetchBlogPrices(blogProductIds);
+  console.log(`[seo] fetched live prices for ${blogPriceMap.size}/${new Set(blogProductIds).size} blog products`);
   const blogRoot = join(site, 'blog');
   if (existsSync(blogRoot)) {
     for (const entry of readdirSync(blogRoot, { withFileTypes: true })) {
@@ -1491,7 +1549,7 @@ async function main() {
           title: metaT || truncate(`${t('title')} | Qor AI`, 70), description: truncate(metaD || t('lead')),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
           jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
-        }, blogArticleBody(a, lang)));
+        }, blogArticleBody(a, lang, blogPriceMap)));
         blogUrls.push({ loc: url, lastmod: String(a.updated || a.publishedAt || '').slice(0, 10), changefreq: 'weekly', priority: '0.7' });
       }
     }
