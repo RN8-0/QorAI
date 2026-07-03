@@ -18,8 +18,13 @@ rem pass3 — recheck: daha once bakilmis ama fiyatsiz kalanlari arada yeniden d
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=300 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass4 — DE: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (~421 urun, ASIN'siz)
 node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
-rem pass5 — DE+GB: ASIN'i bilinen (Epey'den) her urunu Amazon.de/co.uk'da dogrudan fiyatla
-rem (amazon_direct: GLOW oturumu + coklu-imza parser; tek motor, ulke=config satiri)
+rem pass5 — DE+GB: ASIN'i bilinen (Epey'den) urunleri Amazon.de/co.uk'da dogrudan fiyatla
+rem (amazon_direct: GLOW oturumu + coklu-imza parser; tek motor, ulke=config satiri).
+rem Load governor: connector 20 saatten yeni amazon_direct fiyati olan urunu
+rem AGA CIKMADAN atlar (SKIP_FRESH) → limit=4000 istense de gercek Amazon
+rem trafigi sadece bayat/yeni urunlerle sinirli; -techScore sabit sirasi +
+rem skip birlikte OTOMATIK ROTASYON yapar (en degerliden asagi dolar, dolunca
+rem 20h sonra bastan). Bot duvari cikarsa breaker koser, ertesi gece devam.
 node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1

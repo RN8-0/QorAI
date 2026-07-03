@@ -199,10 +199,17 @@ async function main() {
     const tag = `[${String(idx + 1).padStart(4)}/${products.length}]`;
     const label = `${p.brand ? p.brand + ' ' : ''}${p.name || p.id}`.slice(0, 60);
     let productOffers = 0;
+    let skipped = 0;
     const countries = [];
     for (const conn of active) {
       try {
         const offers = await conn.searchOffers(p);
+        // Contract: a connector returns an ARRAY (offers found — [] means
+        // "checked, none here, clear my stale rows") or NULL ("skip this
+        // product entirely — leave my existing offers untouched, no network
+        // hit"). Skip is how amazon_direct avoids re-scraping already-fresh
+        // prices, which keeps nightly Amazon volume — and the bot wall — low.
+        if (offers == null) { skipped++; continue; }
         const cleanup = await deleteOffersForProductNetwork(p.id, conn.id, { refresh: false });
         for (const offer of offers) {
           offer.productId = offer.productId || p.id;
@@ -226,8 +233,9 @@ async function main() {
       }
     }
     processed++;
-    const sym = productOffers > 0 ? '✓' : '·';
-    const cntStr = productOffers > 0 ? `${productOffers} offer · ${countries.join(',')}` : 'no match';
+    const allSkipped = skipped === active.length && productOffers === 0;
+    const sym = productOffers > 0 ? '✓' : allSkipped ? '↷' : '·';
+    const cntStr = productOffers > 0 ? `${productOffers} offer · ${countries.join(',')}` : allSkipped ? 'skip (fresh)' : 'no match';
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     const rate = (processed / Math.max(1, (Date.now() - t0) / 1000)).toFixed(1);
     log(`  ${sym} ${tag} ${label.padEnd(60)} ${cntStr.padEnd(30)} · ${elapsed}s · ${rate}/s · total ${offersWritten}`);

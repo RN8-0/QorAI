@@ -51,9 +51,18 @@ const MARKETS = String(ENV.AMAZON_DIRECT_MARKETS || 'DE,GB')
   .split(',').map(s => s.trim().toUpperCase()).filter(cc => MARKETPLACES[cc]);
 // 50 h expiry like epey_amazon: prices survive one missed nightly run.
 const EXPIRES_MS = 50 * 60 * 60 * 1000;
+// Skip a product whose amazon_direct offers on ALL target markets were checked
+// within this window. This is the load governor: a home IP can only fetch so
+// many Amazon pages a day before the bot wall trips, so once a product is
+// priced we don't re-scrape it until its price is ~a day old. The nightly run
+// can ask for --limit=4000 yet only actually hit the network for the products
+// that are stale or never-seen — volume self-regulates.
+const SKIP_FRESH = ENV.AMAZON_DIRECT_SKIP_FRESH !== '0';
+const SKIP_FRESH_MS = Math.max(1, Number(ENV.AMAZON_DIRECT_SKIP_FRESH_H || 20)) * 60 * 60 * 1000;
 const MAX_STRIKES = 6;
 let strikes = 0;
 let breakerOpen = false;
+let breakerLogged = false;
 
 const esc = v => String(v || '').replace(/"/g, '\\"');
 
@@ -69,7 +78,7 @@ function formatPrice(value, currency) {
 async function loadOfferContext(productId) {
   const filter = `productId="${esc(productId)}" && (network="epey_amazon" || network="amazon_direct")`;
   const r = await req('GET',
-    `/api/collections/offers/records?perPage=50&fields=network,country,price,currency,merchantProductId&filter=${encodeURIComponent(filter)}`);
+    `/api/collections/offers/records?perPage=50&fields=network,country,price,currency,merchantProductId,lastCheckedAt&filter=${encodeURIComponent(filter)}`);
   if (r.status !== 200) throw new Error(`offer context ${r.status}`);
   const items = r.body.items || [];
   const trOffer = items.find(o => o.network === 'epey_amazon' && /^[A-Z0-9]{10}$/.test(o.merchantProductId || ''));
@@ -78,10 +87,15 @@ async function loadOfferContext(productId) {
   // on another storefront can't plausibly cost >3.5× / <1/3.5 of it in USD.
   const refUsd = trOffer ? toUsd(trOffer.price, trOffer.currency) : 0;
   const previous = {};
+  const checkedAt = {};
   for (const o of items) {
-    if (o.network === 'amazon_direct' && o.country && o.price > 0) previous[o.country] = o.price;
+    if (o.network === 'amazon_direct' && o.country) {
+      if (o.price > 0) previous[o.country] = o.price;
+      const t = Date.parse(o.lastCheckedAt || '');
+      if (Number.isFinite(t)) checkedAt[o.country] = t;
+    }
   }
-  return { asin, previous, refUsd };
+  return { asin, previous, refUsd, checkedAt };
 }
 
 module.exports = {
@@ -92,9 +106,22 @@ module.exports = {
   },
 
   async searchOffers(product) {
-    if (breakerOpen) throw new Error('breaker open (earlier bot wall / repeated failures)');
-    const { asin, previous, refUsd } = await loadOfferContext(product.id);
+    if (breakerOpen) {
+      // Fail fast without spamming the log once the wall is up: the first
+      // trip already explained itself; the rest just note the count at end.
+      if (!breakerLogged) { breakerLogged = true; throw new Error('breaker open — Amazon bot wall hit; remaining products left untouched this run'); }
+      throw new Error('breaker open');
+    }
+    const { asin, previous, refUsd, checkedAt } = await loadOfferContext(product.id);
     if (!asin) return []; // no verified ASIN → nothing to do on any storefront
+
+    // Load governor: if every target market already has a fresh amazon_direct
+    // price, skip WITHOUT touching Amazon (null = "leave my offers as they are").
+    if (SKIP_FRESH) {
+      const now = Date.now();
+      const allFresh = MARKETS.every(cc => (now - (checkedAt[cc] || 0)) < SKIP_FRESH_MS);
+      if (allFresh) return null;
+    }
 
     const offers = [];
     for (const cc of MARKETS) {
