@@ -30,6 +30,7 @@ const CONNECTORS = [
   require('./connectors/admitad'),
   require('./connectors/jsonld'),
   require('./connectors/epey_amazon'),
+  require('./connectors/geizhals_best'),
 ];
 
 const argv = process.argv.slice(2);
