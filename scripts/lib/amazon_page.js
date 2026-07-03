@@ -278,4 +278,67 @@ async function fetchAmazonPrice(cc, asin, { _retried } = {}) {
   return { ok: true, price: price.value, currency: price.currency, availability, title, sig: price.sig };
 }
 
-module.exports = { MARKETPLACES, marketTag, fetchAmazonPrice, buildSession, parseMoney };
+// -------------------------------------------------------- local ASIN search
+
+const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/** Model-critical tokens: every token carrying a digit + words ≥4 chars (brand,
+ *  series). ALL must appear in a result title, so "Galaxy S26 Ultra" can never
+ *  match an S25 listing or a case/accessory. */
+function modelTokens(name) {
+  // Parenthesised regional codes ("(SM-S948B)", "(2024)") rarely appear in
+  // Amazon titles and would make the match impossible — drop them, but keep
+  // capacity parens ("(1 TB)") since storage distinguishes real variants.
+  const cleaned = fold(name).replace(/\((?![^)]*(?:gb|tb))[^)]*\)/g, ' ');
+  return [...new Set(cleaned.replace(/[()/,+]/g, ' ').split(/\s+/)
+    .filter(t => t.length >= 2 && (/\d/.test(t) || t.length >= 4))
+    .slice(0, 8))];
+}
+
+/**
+ * Resolve a product's LOCAL ASIN on one marketplace by name search.
+ * TR ASINs mostly don't exist on DE/GB/US (regional catalogues), so ASIN-only
+ * pricing strands every cross-market product — this is the bridge: one search
+ * page, organic results only, strict token match, first hit wins.
+ * Resolves { ok:true, asin } | { ok:false, reason:'no-match' }.
+ * Throws on transient trouble (bot page, HTTP != 200) — same contract as
+ * fetchAmazonPrice, so callers' strike/breaker logic applies unchanged.
+ */
+async function searchLocalAsin(cc, productName) {
+  const mk = MARKETPLACES[cc];
+  if (!mk) throw new Error(`unknown marketplace ${cc}`);
+  const name = String(productName || '').trim();
+  const tokens = modelTokens(name);
+  if (name.length < 6 || !tokens.length) return { ok: false, reason: 'no-match' };
+  await ensureSession(cc);
+  const url = `https://${mk.host}/s?k=${encodeURIComponent(name).slice(0, 220)}`;
+  const res = await politeCurl([...baseArgs(mk, jarPath(cc)), url]);
+  if (res.status !== 200) throw new Error(`amazon ${cc} search ${res.status}`);
+  const html = res.text;
+  // Search pages never carry id="productTitle", and the WORD "captcha" appears
+  // in normal pages' scripts — so isBotPage() would false-positive here. A real
+  // wall is a tiny page or the explicit captcha form with zero result blocks.
+  const hasResults = /data-asin="B0/.test(html);
+  if (html.length < 60000 || (!hasResults && /validateCaptcha|opfcaptcha|Robot Check/i.test(html))) {
+    throw new Error(`amazon ${cc} search bot page`);
+  }
+  if (!hasResults) return { ok: false, reason: 'no-match' };
+  const blocks = html.split(/data-asin="/).slice(1);
+  for (const raw of blocks) {
+    const asin = (raw.match(/^(B0[A-Z0-9]{8})"/) || [])[1];
+    if (!asin) continue;
+    const block = raw.slice(0, 14000);
+    // organic results only — a sponsored slot can be a rival/wrong product.
+    // Markers must be the VISIBLE ad labels: JSON like "sponsored":false lives
+    // in every organic block and must not disqualify it.
+    if (/AdHolder|puis-sponsored-label|>\s*(Gesponsert|Sponsored|Sponsorlu)\s*</i.test(block.slice(0, 4000))) continue;
+    const title = fold(decodeEntities(
+      (block.match(/<h2[^>]*>[\s\S]{0,500}?<span[^>]*>([^<]{8,300})<\/span>/) || block.match(/alt="([^"]{10,300})"/) || [])[1] || ''));
+    if (!title) continue;
+    if (!tokens.every(t => title.includes(t))) continue;
+    return { ok: true, asin };
+  }
+  return { ok: false, reason: 'no-match' };
+}
+
+module.exports = { MARKETPLACES, marketTag, fetchAmazonPrice, searchLocalAsin, buildSession, parseMoney };

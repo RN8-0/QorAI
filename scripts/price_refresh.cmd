@@ -11,7 +11,7 @@ set NO_REINDEX=1
 rem pass1 — refresh: fiyat gösteren her ürünü yenile (en eski kontrol önce)
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2 — discovery: hic taranmamislar; once Epey'de fiyati OLANLAR (Amazon olasiligi yuksek) + yuksek techScore
-node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=2500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=6000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2b — discovery (kalanlar): Epey fiyatsizlar dahil genel tarama
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2c — VARYANTLAR: variantPrimary=false kayitlar default filtrede TAMAMEN atlaniyordu
