@@ -44,6 +44,13 @@ final RegExp _hiddenTrRe = RegExp(
   r'(ülkemiz|ulkemiz|satış[ıi]?\s*yok|satis[ıi]?\s*yok|yurt\s*d[ıi]ş[ıi]|yurtdış)',
   caseSensitive: false,
 );
+// Epey sponsored-widget leakage: ad-block rows scraped into keySpecs carried
+// the literal badge text ("Ekran Boyutu: Sponsorlu"). Data is repaired at the
+// source; this keeps any stray row from ever rendering.
+final RegExp _hiddenSponsorRe = RegExp(
+  r'\b(?:sponsorlu|sponsored)\b',
+  caseSensitive: false,
+);
 
 /// Spec rows that must NEVER be shown: volatile benchmark scores
 /// (AnTuTu / DXOMark / Geekbench / PassMark / 3DMark…) that go stale the moment
@@ -55,6 +62,7 @@ bool isHiddenSpec(String label, String value) {
   final both = '$label $value';
   if (_hiddenBenchRe.hasMatch(both)) return true;
   if (_hiddenTrRe.hasMatch(both)) return true;
+  if (_hiddenSponsorRe.hasMatch(both)) return true;
   final folded = foldTr(label);
   return folded == 'durum' || folded == 'status'; // Epey TR sales-status row
 }

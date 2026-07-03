@@ -33,7 +33,9 @@ const SYNC_TS = !argv.includes('--no-ts');
 // below 0.45 and every score got clamped to 82. We load specs/specsEn too.
 // specSections is heavy but needed for proper extraction; per-category
 // pagination keeps it from saturating the tunnel.
-const FIELDS = 'id,category,name,brand,keySpecs,specs,specsEn,specSections,multiLangSpecs,specsCount,techScore,scrapedAt,created';
+// sourceLang/source: the engine only probes multiLangSpecs[sourceLang] now
+// (other language keys are translation dictionaries, not spec rows).
+const FIELDS = 'id,category,name,brand,keySpecs,specs,specsEn,specSections,multiLangSpecs,specsCount,techScore,scrapedAt,created,sourceLang,source';
 
 async function fetchAll() {
   const out = [];

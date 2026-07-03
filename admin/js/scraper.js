@@ -7414,13 +7414,31 @@ function parseSpecs(doc) {
     });
   }
 
-  doc.querySelectorAll('.cell, .ozet .row, .row1, .row2').forEach(el => {
-    const key = cleanText(el.querySelector('.row1, strong, b')?.textContent);
+  // "Öne Çıkanlar" (top summary chips). The old page-wide `.cell` sweep also
+  // harvested Epey's SPONSORED product widgets, which render unrelated specs
+  // with the exact same cell/row1/row2 markup — a headphone ended up with
+  // "Ekran: LED", "Çözünürlük Standardı: Ultra HD (4K)" and even the literal
+  // badge text "Ekran Boyutu: Sponsorlu". Three guards now:
+  //   1. scope to the product's own summary container (#oncelikli/#ozet),
+  //   2. drop anything inside/containing sponsor markers,
+  //   3. subset rule — a summary chip must repeat a row of the REAL spec
+  //      table parsed above; ad rows never do.
+  const _sponsorRe = /sponsorlu|sponsored|reklam/i;
+  const _realKeys = new Set(Object.keys(specs).map(k => cleanText(k).replace(/:$/, '').toLowerCase()));
+  let summaryCells = doc.querySelectorAll('#oncelikli .cell, #ozet .cell, .ozet .cell');
+  if (!summaryCells.length) summaryCells = doc.querySelectorAll('.cell');
+  summaryCells.forEach(el => {
+    if (typeof el.closest === 'function'
+        && el.closest('[class*="sponsor"], [class*="reklam"], [id*="sponsor"], [id*="reklam"]')) return;
+    const key = cleanText(el.querySelector('.row1, strong, b')?.textContent).replace(/:$/, '');
     const value = cleanText(el.querySelector('.row2, span:last-child')?.textContent);
-    if (key && value && !specs[key]) {
-      keySpecs[key] = value;
-      addSpec('Öne Çıkanlar', key, value);
-    }
+    if (!key || !value || keySpecs[key]) return;
+    if (_sponsorRe.test(key) || _sponsorRe.test(value)) return;
+    // Real table missing entirely (rare layout) → keep chips, we have nothing
+    // to validate against; otherwise require the chip to exist in the table.
+    if (_realKeys.size >= 3 && !_realKeys.has(key.toLowerCase())) return;
+    keySpecs[key] = value;
+    addSpec('Öne Çıkanlar', key, value);
   });
 
   return { specs, specSections, keySpecs };

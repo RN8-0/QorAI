@@ -6,11 +6,16 @@
 // can never resurface them.
 const HIDDEN_BENCH_RE = /\b(?:antutu|an\s*tu\s*tu|dxomark|dxo\s*mark|geekbench|benchmark|passmark|pcmark|3dmark|cinebench|basemark|gfxbench|ai\s*benchmark)\b/i;
 const HIDDEN_TR_RE = /(ülkemiz|ulkemiz|satış[ıi]?\s*yok|satis[ıi]?\s*yok|yurt\s*d[ıi]ş[ıi]|yurtdış)/i;
+// Epey sponsored-widget leakage: ad-block rows scraped into keySpecs carried
+// the literal badge text ("Ekran Boyutu: Sponsorlu"). Data is repaired at the
+// source, but never render such a row again even if a bad scrape slips in.
+const HIDDEN_SPONSOR_RE = /\b(?:sponsorlu|sponsored)\b/i;
 export function isHiddenSpec(label, value) {
   const l = String(label || '');
   const v = String(value || '');
   if (HIDDEN_BENCH_RE.test(`${l} ${v}`)) return true;
   if (HIDDEN_TR_RE.test(`${l} ${v}`)) return true;
+  if (HIDDEN_SPONSOR_RE.test(`${l} ${v}`)) return true;
   const cl = l.replace(/\s*:\s*$/, '').trim().toLowerCase();
   if (cl === 'durum' || cl === 'status') return true; // Epey TR sales-status row
   return false;
@@ -137,7 +142,7 @@ const LABELS = {
     'Screen-to-body ratio': 'Ekran/gövde oranı',
     'Battery cycle life': 'Pil şarj döngüsü',
     'Battery': 'Pil',
-  },
+  },
 };
 
 const TR_WORDS = [

@@ -608,6 +608,11 @@
   }
   const BAYESIAN_K    = 0.45;        // smoothing strength (0 = off, 1 = full pull-to-median)
   const BAYESIAN_MIN_TRUST = 0.30;   // never let trust drop below this floor
+  // Renormalization floor: below this share of the category weight, missing
+  // specs count as zeros instead of handing their weight to the few specs the
+  // product does have. Full renormalization let a 2-spec no-name headphone
+  // (driver 40 mm + "kablosuz") ride 20% coverage to a ~90 base score.
+  const COVERAGE_FLOOR = 0.5;
   const SCORE_MIN = 10;
   const SCORE_MAX = 100;
   const DISABLE_FORCED_100_CATEGORIES = new Set([
@@ -749,8 +754,25 @@
     headphones: {
       sony: 1.05, bose: 1.05, sennheiser: 1.05, apple: 1.04,
       audeze: 1.06, 'beyerdynamic': 1.04, 'audio-technica': 1.03,
-      jbl: 1.0, samsung: 1.0,
+      'bowers & wilkins': 1.04, 'bang & olufsen': 1.04, focal: 1.05,
+      shure: 1.03, akg: 1.02, marshall: 1.0, beats: 1.0,
+      jbl: 1.0, samsung: 1.0, huawei: 0.98, edifier: 0.98,
+      anker: 0.95, soundcore: 0.95, haylou: 0.90, 'nothing ear': 0.98,
       xiaomi: 0.96, redmi: 0.92, honor: 0.95, jlab: 0.92,
+      // TR-market white-label / budget rebrands: full Epey spec sheets
+      // ("ANC Var, BT 5.3, 40 mm") pushed these to the category cap on spec
+      // count alone. Same construction as the smartwatch white-label penalty.
+      qcy: 0.88, baseus: 0.90, soundpeats: 0.88, mchose: 0.82,
+      machenike: 0.85, linktech: 0.78, powerway: 0.75, concord: 0.72,
+      syrox: 0.72, sunix: 0.75, torima: 0.72, zore: 0.72, polosmart: 0.80,
+      everest: 0.78, snopy: 0.80, rampage: 0.85, piranha: 0.78, auris: 0.75,
+      winex: 0.72, hytech: 0.75, frisby: 0.78, 'mf product': 0.72,
+      hoco: 0.82, wiwu: 0.80, joyroom: 0.82, usams: 0.80, recci: 0.80,
+      lenovo: 0.95, ttec: 0.88, 'general mobile': 0.80, taks: 0.78,
+      dexim: 0.80, asonic: 0.75, gomax: 0.72, 'haino teko': 0.70,
+      bloody: 0.85, 'a4tech': 0.88, topg: 0.75, oneodio: 0.85, tribit: 0.88,
+      volkano: 0.75, earldom: 0.75, onikuma: 0.82, havit: 0.85, lenrue: 0.75,
+      moxom: 0.75, 'karler bass': 0.72, kanen: 0.75, inpods: 0.72, pashaphone: 0.70,
     },
     earbuds: {
       apple: 1.06, sony: 1.05, bose: 1.05, samsung: 1.03,
@@ -773,6 +795,9 @@
       colorful: 0.98, inno3d: 0.98, gainward: 0.98,
     },
   };
+  // Earphones share the headphone brand landscape (Epey "kulaklık" pool is
+  // split across both category slugs).
+  BRAND_MOD_TABLE.earphones = { ...BRAND_MOD_TABLE.headphones, ...BRAND_MOD_TABLE.earbuds };
   function _brandKey(s) { return String(s || '').toLowerCase().trim(); }
 
   // Apple iPhone Pro Max / iPhone Pro / iPhone Air / iPhone mini reranking.
@@ -1002,9 +1027,17 @@
     pushMap(keySpecs, 'keySpecs');
     pushMap(specsEn, 'specsEn');
     pushMap(specs, '');
+    // multiLangSpecs holds the SOURCE-language flat spec map under the
+    // product's sourceLang key; every OTHER language key is a term-translation
+    // DICTIONARY (label → translated label), NOT spec rows. Probing a
+    // dictionary as spec data produced false positives — "Gürültü Engelleme
+    // (Dinleme)" → "Noise blocking (listening)" read as ANC=Var scored an
+    // ANC-less headphone 94/100. Only the source-language map is real data.
     if (multiLangSpecs && typeof multiLangSpecs === 'object') {
-      pushMap(multiLangSpecs.en, 'multiLangSpecs.en');
-      pushMap(multiLangSpecs.tr, 'multiLangSpecs.tr');
+      const srcLang = String(p.sourceLang || '').toLowerCase()
+        || (/epey/i.test(String(p.source || '')) ? 'tr' : '');
+      const srcMap = srcLang ? multiLangSpecs[srcLang] : null;
+      if (srcMap) pushMap(srcMap, 'multiLangSpecs.' + srcLang);
     }
     for (const [k, v] of Object.entries(specs)) {
       if (v != null && typeof v === 'object' && !Array.isArray(v)) {
@@ -1673,6 +1706,23 @@
     }
 
     // Pass 3: compute final scores (anchored log-scale when REF known, else 95p cat-max)
+    const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
+    // Coverage floor is RELATIVE to what this category's data allows: weight
+    // profiles include specs some categories can never fill (a wall charger
+    // has no battery/bands), so an absolute floor would crush the whole
+    // category and scramble its internal order. p95 of observed coverage =
+    // "a well-documented product here"; the floor is half of that.
+    const coverageSeries = rows.map(r => {
+      let sw = 0;
+      for (const [wKey, w] of Object.entries(weights)) if (r.breakdown[wKey]) sw += w;
+      return sw;
+    }).filter(v => v > 0).sort((a, b) => a - b);
+    const p95Coverage = coverageSeries.length
+      ? (_percentile(coverageSeries, 95) || coverageSeries[coverageSeries.length - 1])
+      : totalWeight;
+    // Blend with 70% of the nominal weight so a category whose BEST sheets
+    // are thin (headphones p95 ≈ 66) still keeps a meaningful floor.
+    const floorWeight = Math.min(totalWeight, Math.max(p95Coverage, 0.7 * totalWeight)) * COVERAGE_FLOOR;
     const computed = rows.map(r => {
       let sumW = 0, weightedSum = 0;
       const finalBreakdown = {};
@@ -1705,8 +1755,11 @@
         sumW += w;
         finalBreakdown[wKey] = { norm: +normScore.toFixed(1), weight: w, raw: b.raw, source: b.source, type: b.type, exact: b.exact };
       }
-      // Renormalize weights for missing specs
-      const baseScore = sumW > 0 ? weightedSum / sumW : 0;
+      // Renormalize weights for missing specs — but only down to the coverage
+      // floor: below it the missing specs count as zeros, so sparse spec
+      // sheets can't score like flagships.
+      const effectiveW = Math.max(sumW, floorWeight);
+      const baseScore = sumW > 0 ? weightedSum / effectiveW : 0;
       const decay = _yearDecay(r.year, cat);
 
       // Tier cap: try each anchor key in order (e.g. gpu → cpu for laptops)
@@ -1766,8 +1819,10 @@
         if (pull <= 0) continue;
         const before = c.cappedBase;
         const after = before * (1 - pull) + median * pull;
-        // Only ever pull *down* below the tier cap, never inflate above it.
-        c.cappedBase = +Math.min(c.tierCap, after).toFixed(2);
+        // Smoothing must only ever LOWER a sparse product's score. Pulling
+        // low-coverage products UP toward the median resurrected exactly the
+        // junk the coverage floor pushed down.
+        if (after < before) c.cappedBase = +Math.min(c.tierCap, after).toFixed(2);
         c.bayesianMedian = +median.toFixed(2);
         c.bayesianPull = +pull.toFixed(3);
         c.bayesianBefore = +before.toFixed(2);
@@ -1823,6 +1878,7 @@
         score: final,
         subscores,
         evidence,
+        evidenceCap,
         confidence: +confidence.toFixed(3),
         baseScore: c.baseScore,
         cappedBase: c.cappedBase,
@@ -1875,7 +1931,14 @@
       // We allow ties (multiple products at the exact same top score), so e.g.
       // every RTX 5090 SKU reaches 100, not just the first one.
       const stretchAnchorIds = new Set(pick.filter(r => r.score === stretchAnchor).map(r => r.id));
-      if (DISABLE_FORCED_100_CATEGORIES.has(cat)) {
+      // Forced-100 needs a CREDIBLE anchor: a flagship-anchored product, or
+      // one whose spec coverage is at least 50%. When the best thing a sparse
+      // category can offer is a low-coverage no-name, lifting it (and the
+      // whole category with it) to 100 just relabels missing data as
+      // excellence.
+      const anchorCredible = pick.some(r => r.score === stretchAnchor
+        && ((r.tier === 'flagship' && r.anchorKey) || Number(r.confidence) >= 0.5));
+      if (DISABLE_FORCED_100_CATEGORIES.has(cat) || (!anchorCredible && stretchAnchor > 0)) {
         for (const r of results) {
           const noAnchorCeil = r.anchorKey ? SCORE_MAX : noAnchorCategoryCap;
           r.preCategoryStretchScore = r.score;
@@ -1910,7 +1973,11 @@
                 : SCORE_MAX);
           const noAnchorCeil = (r.anchorKey || isTopOfCategory) ? SCORE_MAX : noAnchorCategoryCap;
           const yearCeil = isTopOfCategory ? SCORE_MAX : yc;
-          const cap = Math.min(SCORE_MAX, tierCeil, yearCeil, noAnchorCeil);
+          // Evidence cap survives the stretch: the ×(100/top) multiplier used
+          // to blow straight past the confidence-based ceiling, parking every
+          // sparse product at the category cap (the 94 wall of junk).
+          const evidenceCeil = isTopOfCategory ? SCORE_MAX : (Number(r.evidenceCap) || SCORE_MAX);
+          const cap = Math.min(SCORE_MAX, tierCeil, yearCeil, noAnchorCeil, evidenceCeil);
           r.score = Math.max(SCORE_MIN, Math.min(cap, Math.round(r.score * finalStretch)));
         }
       } else {

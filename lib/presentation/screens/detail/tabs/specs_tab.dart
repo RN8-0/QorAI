@@ -1830,6 +1830,7 @@ class _KeySpecsHighlight extends StatelessWidget {
     if (product.keySpecs.isNotEmpty) {
       for (final entry in product.keySpecs.entries) {
         final val = entry.value.trim();
+        if (isHiddenSpec(entry.key, val)) continue;
         if (val.isNotEmpty &&
             val != '0' &&
             val != '-' &&

@@ -123,3 +123,4 @@ feeds/*
 
 # Amazon direct-price session jars (cookies) — machine-local, never commit
 scripts/.amazon-session/
+scripts/.sponsored_repair_ids.json

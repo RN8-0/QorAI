@@ -37,6 +37,7 @@ import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
+import 'package:qor_ai/core/spec_corrections.dart' show isHiddenSpec;
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/core/product_name_localizer.dart';
