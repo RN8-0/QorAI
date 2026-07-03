@@ -83,7 +83,7 @@ function blogArticleBody(a, lang = 'tr') {
     const layout = p.layout || 'split';
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
-    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(p.name)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px" loading="lazy" /></a>` : '';
+    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(p.name)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a>` : '';
     let inner;
     if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
     else if (layout === 'top') inner = imgEl + dEl(d1) + dEl(d2);
@@ -129,7 +129,7 @@ function blogListBody(articles, lang = 'tr') {
   const rows = articles.map((a) => {
     const cover = esc(articleCoverUrl(a));
     return `<a href="/blog/${esc(a.slug)}" style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;margin:14px 0">`
-      + (cover ? `<div style="flex:0 0 200px;background:#f8fafc;display:flex;align-items:center;justify-content:center"><img src="${cover}" alt="${esc(t(a, 'title'))}" style="width:100%;max-height:150px;object-fit:contain;padding:16px" loading="lazy" /></div>` : '')
+      + (cover ? `<div style="flex:0 0 200px;background:#f8fafc;display:flex;align-items:center;justify-content:center"><img src="${cover}" alt="${esc(t(a, 'title'))}" style="width:100%;max-height:150px;object-fit:contain;padding:16px;mix-blend-mode:multiply" loading="lazy" /></div>` : '')
       + `<div style="padding:18px 20px"><h2 style="font-size:20px;font-weight:700;margin:0 0 6px">${esc(t(a, 'title'))}</h2>`
       + `<p style="font-size:15px;color:#64748b;margin:0 0 8px;line-height:1.6">${esc(t(a, 'lead'))}</p>`
       + `<span style="font-size:14px;font-weight:600;color:#2563eb">Rehberi oku →</span></div></a>`;

@@ -28,7 +28,8 @@ rem AGA CIKMADAN atlar (SKIP_FRESH) → limit=4000 istense de gercek Amazon
 rem trafigi sadece bayat/yeni urunlerle sinirli; -techScore sabit sirasi +
 rem skip birlikte OTOMATIK ROTASYON yapar (en degerliden asagi dolar, dolunca
 rem 20h sonra bastan). Bot duvari cikarsa breaker koser, ertesi gece devam.
-node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+set AMAZON_DIRECT_MARKETS=DE,GB,US
+node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"

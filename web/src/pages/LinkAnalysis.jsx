@@ -195,7 +195,12 @@ function LoadingWorkboard({ phase, isCompare, L, t }) {
     <div className="la-loading fade-up" role="status" aria-live="polite">
       <div className="la-load-orb" aria-hidden="true">
         <span className="la-load-ring" />
-        <span className="la-load-core" />
+        <span className="la-load-core" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+            <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
+          </svg>
+        </span>
       </div>
       <div className="la-load-copy">
         <strong>{copy.title}</strong>

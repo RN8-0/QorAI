@@ -144,3 +144,9 @@
 /* similar products reuse the global .rail / ScrollRail + ProductCard */
 .blog-simprods { margin: 40px 0; }
 /* comments reuse the shared <Reviews> component (components/Reviews.css) */
+
+/* Ürün görselleri (beyaz stüdyo arkaplanlı) sayfada kutu gibi durmasın —
+   multiply beyazı şeffaflaştırır (blog listesi + makale içi + benzer ürünler). */
+.post-prod-img img,
+.blog-simrow-img img,
+.blog-card-img img { mix-blend-mode: multiply; }
