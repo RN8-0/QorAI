@@ -20,7 +20,7 @@ rem pass4 — DE: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (~421 ur
 node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass5 — DE+GB: ASIN'i bilinen (Epey'den) her urunu Amazon.de/co.uk'da dogrudan fiyatla
 rem (amazon_direct: GLOW oturumu + coklu-imza parser; tek motor, ulke=config satiri)
-node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"
