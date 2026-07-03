@@ -1,20 +1,25 @@
 /**
- * Qor AI — Geizhals "best offer" DE price connector
+ * Qor AI — Geizhals → Amazon.de price connector (AMAZON ONLY)
  *
- * Geizhals-sourced products (source='geizhals.eu', ~421) get their EUR price
- * from their own Geizhals page: the offer list is cheapest-first, so we take
- * offer-index-0 (price in `gh_price`, merchant in `data-merchant-name`, link =
- * the geizhals /redir/ URL the site's own visitors click). ANY merchant counts
- * — the user's Amazon-only rule applies to TR; for DE the goal is a real price
- * on the page. No affiliate wrap (affiliateUrl empty): monetisation for DE
- * comes later (Amazon PA-API / Awin once approved); showing the price is the
- * point today.
+ * The user monetises ONLY through Amazon Associates, so the DE row must be an
+ * AMAZON price with the user's affiliate link — never a third-party merchant.
+ * Geizhals is used purely as the PRICE SOURCE: from the product's own Geizhals
+ * page we take the cheapest offer that is Amazon (direct `data-merchant-name=
+ * "Amazon"` or a "(via Amazon Marketplace)" seller — both live on amazon.de).
+ *
+ * Link reality: Geizhals /redir/ outbound links are bot-gated (403 even with
+ * cookies+referer) and the page carries no ASIN/EAN, so a direct /dp/ link is
+ * impossible from this source. Until Amazon PA-API access (post-Associates
+ * approval) the outbound link is an amazon.de NAME SEARCH carrying the
+ * affiliate tag (AMAZON_DE_TAG, default qorai-20 — the OneLink tag the site
+ * already uses for DE/GB/US). Products with no Amazon row get NO DE price.
  *
  * Fetch goes through curl for the same reason as epey_amazon: bot walls
  * fingerprint Node's TLS stack, while curl with a desktop UA gets a plain 200.
  * Datacenter IPs are blocked by these sites → runs on the user's PC only.
  *
- * Config (optional): GEIZHALS_ENABLED=0 kill switch, GEIZHALS_FETCH_GAP_MS.
+ * Config (optional): GEIZHALS_ENABLED=0 kill switch, GEIZHALS_FETCH_GAP_MS,
+ * AMAZON_DE_TAG.
  */
 'use strict';
 
@@ -63,14 +68,19 @@ function parseEur(text) {
   return Number(m[1].replace(/\./g, '').replace(',', '.')) || 0;
 }
 
-// Cheapest offer row: Geizhals renders the list price-ascending, so
-// offer-index-0 is the best. Row: gh_price → redir href → data-merchant-name.
-function bestOfferRow(html) {
-  const m = html.match(/id="offer-index-0"[\s\S]{0,4000}?class="gh_price">([^<]+)<[\s\S]{0,4000}?href="(https:\/\/geizhals\.eu\/redir\/[^"]+)"[^>]*data-merchant-name="([^"]+)"/i);
-  if (!m) return null;
-  const price = parseEur(m[1]);
-  if (!(price > 0)) return null;
-  return { price, url: m[2], merchant: m[3] };
+// Cheapest AMAZON row on the page. Geizhals renders offers price-ascending, so
+// the first block that is Amazon (direct or "(via Amazon Marketplace)") is the
+// cheapest Amazon price. Blocks are split on their stable offer-index anchors.
+function bestAmazonRow(html) {
+  const blocks = String(html || '').split(/id="offer-index-\d+"/).slice(1);
+  for (const block of blocks) {
+    const seg = block.slice(0, 6000);
+    const isAmazon = /data-merchant-name="Amazon"/i.test(seg) || /via Amazon Marketplace/i.test(seg);
+    if (!isAmazon) continue;
+    const price = parseEur((seg.match(/class="gh_price">([^<]+)</i) || [])[1]);
+    if (price > 0) return { price };
+  }
+  return null;
 }
 
 module.exports = {
@@ -86,12 +96,15 @@ module.exports = {
     const res = await politeFetch(src);
     if (res.status === 404 || res.status === 410) return []; // page gone → clear
     if (res.status !== 200) throw new Error(`geizhals ${res.status}`);
-    const best = bestOfferRow(res.text);
-    if (!best) return [];
+    const best = bestAmazonRow(res.text);
+    if (!best) return []; // no Amazon offer on Geizhals → no DE price (Amazon-only rule)
+    const q = encodeURIComponent(String(product.name || '').trim()).slice(0, 200);
+    const url = `https://www.amazon.de/s?k=${q}`;
+    const tag = (ENV.AMAZON_DE_TAG || 'qorai-20').trim();
     const now = Date.now();
     return [{
       productId: product.id,
-      store: best.merchant,
+      store: 'Amazon.de',
       network: 'geizhals_best',
       country: 'DE',
       price: best.price,
@@ -99,12 +112,12 @@ module.exports = {
       totalPrice: best.price,
       currency: 'EUR',
       priceText: `€ ${best.price.toFixed(2).replace('.', ',')}`,
-      url: best.url,
-      affiliateUrl: '',
+      url,
+      affiliateUrl: `${url}&tag=${encodeURIComponent(tag)}`,
       condition: 'new',
       inStock: true,
       availability: 'in_stock',
-      matchConfidence: 1, // the product's own Geizhals page
+      matchConfidence: 1, // the product's own Geizhals page priced this Amazon offer
       source: 'geizhals',
       lastCheckedAt: new Date(now).toISOString(),
       priceUpdatedAt: new Date(now).toISOString(),
