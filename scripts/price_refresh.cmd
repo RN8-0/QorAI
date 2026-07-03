@@ -10,10 +10,12 @@ echo ===== %date% %time% price refresh start ===== >> "%USERPROFILE%\qorai-price
 set NO_REINDEX=1
 rem pass1 — refresh: fiyat gösteren her ürünü yenile (en eski kontrol önce)
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
-rem pass2 — discovery: hic taranmamislar, once yuksek techScore (amiral gemileri)
-node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=700 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem pass2 — discovery: hic taranmamislar; once Epey'de fiyati OLANLAR (Amazon olasiligi yuksek) + yuksek techScore
+node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=2500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem pass2b — discovery (kalanlar): Epey fiyatsizlar dahil genel tarama
+node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass3 — recheck: daha once bakilmis ama fiyatsiz kalanlari arada yeniden dene
-node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=150 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=300 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"

@@ -39,7 +39,9 @@ const ENV = { ...loadEnv(), ...process.env };
 
 const TAG = ENV.AMAZON_TR_TAG || 'qorai-21';
 const GAP_MS = Math.max(400, Number(ENV.EPEY_FETCH_GAP_MS || 1100));
-const EXPIRES_MS = 26 * 60 * 60 * 1000;
+// 50 h: gece görevi bir gün atlarsa (PC kapalı) fiyatlar ertesi güne kadar
+// kaybolmasın; StartWhenAvailable telafisi gelene dek fiyat görünür kalır.
+const EXPIRES_MS = 50 * 60 * 60 * 1000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Epey's CDN fingerprints the TLS/HTTP stack: Node's fetch (undici) gets a 403

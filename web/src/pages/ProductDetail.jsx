@@ -1179,17 +1179,27 @@ export default function ProductDetail() {
             ].filter(Boolean))];
 
             const amazonUrl = amazonUrlForProduct(p, sel || 'US');
-            // Retailer offers shippable to the SELECTED country. Amazon is shown
-            // once as its own geo link, so its stored offers are dropped here.
+            const isAmazonOffer = (o) =>
+              String(o.network || '').toLowerCase().includes('amazon') || /(^|\.)amazon\./i.test(o.url || '');
+            // A REAL scraped Amazon offer for the selected country (epey_amazon
+            // writes price + direct /dp/ASIN link). When it exists it REPLACES
+            // the generic "see price" search link, so the row shows the actual
+            // price and the click lands on the product page, not a search.
+            const amazonOffer = offers
+              .filter((o) => o.url && isAmazonOffer(o) && String(o.country || '').toUpperCase() === sel)
+              .sort((a, b) => (a.hasExactPrice !== b.hasExactPrice ? (a.hasExactPrice ? -1 : 1) : (a.price || Infinity) - (b.price || Infinity)))
+              .find((o) => o.hasExactPrice) || null;
+            // Other retailers shippable to the SELECTED country. Amazon is shown
+            // once as its own row (real offer or geo link), so its stored offers
+            // are dropped here.
             const priced = offers.filter((o) => {
               if (!o.url) return false;
-              const isAmazon = String(o.network || '').toLowerCase() === 'amazon' || /(^|\.)amazon\./i.test(o.url);
-              if (isAmazon) return false;
+              if (isAmazonOffer(o)) return false;
               const oc = String(o.country || '').toUpperCase();
               if (oc && sel && oc !== sel) return false;
               return true;
             });
-            if (!amazonUrl && priced.length === 0 && countryOptions.length <= 1) return null;
+            if (!amazonUrl && !amazonOffer && priced.length === 0 && countryOptions.length <= 1) return null;
             return (
               <section className="pd-block">
                 {/* Title + ship-to selector on one aligned row (selector right,
@@ -1212,7 +1222,12 @@ export default function ProductDetail() {
                   )}
                 </div>
                 <div className="pd-prices-list">
-                  {amazonUrl && (
+                  {amazonOffer ? (
+                    <a className="pd-price-row" href={offerClickPath(amazonOffer)} target="_blank" rel="sponsored noopener nofollow">
+                      <span className="pd-price-store"><AmazonLogo height={26} /></span>
+                      <span className="pd-price-amt">{formatOfferPrice(amazonOffer, lang)}</span>
+                    </a>
+                  ) : amazonUrl && (
                     <a className="pd-price-row" href={amazonGoPath(p, sel)} target="_blank" rel="sponsored noopener nofollow">
                       <span className="pd-price-store"><AmazonLogo height={26} /></span>
                       <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
