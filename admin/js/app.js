@@ -3272,6 +3272,39 @@ function _buildOfferRow(p){
       +(url?`<a href="${url}" target="_blank" rel="noopener sponsored" style="margin-left:auto;background:#0064d2;color:#fff;font-weight:700;font-size:13px;padding:8px 18px;border-radius:8px;text-decoration:none">Satın Al ↗</a>`:'')
       +`</div>`;
   }
+  // Pazar fiyat şeridi: HANGİ ülkenin fiyatı olduğu bir bakışta görülsün —
+  // ülke başına en ucuz GERÇEK fiyat (priceUnknown arama-linkleri hariç),
+  // bayrak + fiyat + tazelik; mağaza/network tooltip'te.
+  {
+    const FLAGS={TR:'🇹🇷',DE:'🇩🇪',GB:'🇬🇧',UK:'🇬🇧',US:'🇺🇸',FR:'🇫🇷',IT:'🇮🇹',ES:'🇪🇸',CA:'🇨🇦'};
+    const rank=c=>{const i=['TR','DE','GB','US'].indexOf(c);return i<0?9:i;};
+    const byCountry={};
+    for(const o of offers){
+      const cc=String(o.country||'').toUpperCase();
+      const price=Number(o.totalPrice||o.price)||0;
+      if(!cc||price<=0||o.priceUnknown)continue;
+      const cur=byCountry[cc];
+      if(!cur||price<(Number(cur.totalPrice||cur.price)||Infinity))byCountry[cc]=o;
+    }
+    const ccs=Object.keys(byCountry).sort((a,b)=>rank(a)-rank(b)||a.localeCompare(b));
+    if(ccs.length){
+      html+=`<div class="card" style="margin:10px 0 0;border:1px solid var(--border);padding:12px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">`
+        +`<span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.4px">PAZAR FİYATLARI</span>`;
+      for(const cc of ccs){
+        const o=byCountry[cc];
+        let pt;
+        try{pt=new Intl.NumberFormat('en-US',{style:'currency',currency:o.currency||'USD',maximumFractionDigits:0}).format(Number(o.totalPrice||o.price));}
+        catch{pt=`${Number(o.totalPrice||o.price)} ${o.currency||''}`;}
+        const ageH=o.lastCheckedAt?Math.max(0,Math.round((Date.now()-Date.parse(o.lastCheckedAt))/36e5)):null;
+        const ageTxt=ageH==null||!Number.isFinite(ageH)?'':ageH<48?`${ageH}sa`:`${Math.round(ageH/24)}g`;
+        html+=`<span title="${escHtml(o.store||'')} · ${escHtml(o.network||'')}${ageTxt?` · ${ageTxt} önce kontrol`:''}" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-weight:800;font-size:13px">`
+          +`${FLAGS[cc]||'🌍'} ${escHtml(cc)} <span style="color:#22c55e">${escHtml(pt)}</span>`
+          +(ageTxt?`<span style="font-size:10px;color:var(--text3);font-weight:600">${escHtml(ageTxt)}</span>`:'')
+          +`</span>`;
+      }
+      html+=`</div>`;
+    }
+  }
   return html;
 }
 

@@ -61,6 +61,16 @@ const NO_SESSION_MARKETS = new Set(String(ENV.AMAZON_DIRECT_NO_SESSION_MARKETS ?
   .split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
 function sessionless(cc) { return NO_SESSION || NO_SESSION_MARKETS.has(cc); }
 
+// Optional per-market egress proxy. Amazon blocks Hetzner's ENTIRE ASN — a
+// fresh Ashburn (US) box got the same captcha wall as Falkenstein (measured
+// 2026-07-04) — so amazon.com is unreachable from ANY Hetzner IP. When the
+// user provisions a residential/mobile proxy, ONE env line turns US back on:
+//   AMAZON_DIRECT_PROXY_URL=http://user:pass@host:port   (or socks5h://…)
+//   AMAZON_DIRECT_PROXY_MARKETS=US                        (CSV, default US)
+const PROXY_URL = String(ENV.AMAZON_DIRECT_PROXY_URL || '').trim();
+const PROXY_MARKETS = new Set(String(ENV.AMAZON_DIRECT_PROXY_MARKETS ?? 'US')
+  .split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
+
 // A marketplace is one row. To add US/FR/IT/ES later: add the row and put it
 // in AMAZON_DIRECT_MARKETS — nothing else changes.
 // zip must be a deliverable in-country address hint for GLOW; tag falls back
@@ -98,6 +108,7 @@ function baseArgs(cc) {
     '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     '-H', `Accept-Language: ${mk.lang}`,
     ...(sessionless(cc) ? ['-H', `Cookie: i18n-prefs=${mk.currency}`] : ['-b', jar, '-c', jar]),
+    ...(PROXY_URL && PROXY_MARKETS.has(cc) ? ['--proxy', PROXY_URL] : []),
     '-w', '\n__HTTP_STATUS__:%{http_code}',
   ];
 }

@@ -1189,6 +1189,25 @@ export default function ProductDetail() {
               .filter((o) => o.url && isAmazonOffer(o) && String(o.country || '').toUpperCase() === sel)
               .sort((a, b) => (a.hasExactPrice !== b.hasExactPrice ? (a.hasExactPrice ? -1 : 1) : (a.price || Infinity) - (b.price || Infinity)))
               .find((o) => o.hasExactPrice) || null;
+            // REAL Amazon prices scraped for OTHER countries (one row per
+            // country, cheapest first). Without these a TR visitor on a
+            // product not sold in TR saw NO price at all even though the
+            // engine had e.g. Amazon.de €899 — a popular product must never
+            // look priceless while a real price exists somewhere.
+            const foreignAmazon = (() => {
+              const seen = new Set([sel]);
+              const out = [];
+              const sorted = offers
+                .filter((o) => o.url && isAmazonOffer(o) && o.hasExactPrice)
+                .sort((a, b) => (a.price || Infinity) - (b.price || Infinity));
+              for (const o of sorted) {
+                const oc = String(o.country || '').toUpperCase();
+                if (!oc || seen.has(oc)) continue;
+                seen.add(oc);
+                out.push(o);
+              }
+              return out.slice(0, 3);
+            })();
             // Other retailers shippable to the SELECTED country. Amazon is shown
             // once as its own row (real offer or geo link), so its stored offers
             // are dropped here.
@@ -1233,6 +1252,18 @@ export default function ProductDetail() {
                       <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
                     </a>
                   )}
+                  {foreignAmazon.map((o) => {
+                    const oc = String(o.country || '').toUpperCase();
+                    return (
+                      <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o)} target="_blank" rel="sponsored noopener nofollow">
+                        <span className="pd-price-store">
+                          <AmazonLogo height={26} />
+                          <span className="pd-price-cc">{FLAG[oc] || '🌍'} {oc}</span>
+                        </span>
+                        <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
+                      </a>
+                    );
+                  })}
                   {priced.map((o) => (
                     <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o)} target="_blank" rel="sponsored noopener">
                       <span className="pd-price-store">{o.store || L('Store', 'Mağaza', 'Shop')}</span>

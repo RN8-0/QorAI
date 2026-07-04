@@ -731,6 +731,9 @@
 }
 .pd-price-row:active { transform: translateY(1px); }
 .pd-price-store { font-weight: 850; font-size: 16px; display: inline-flex; align-items: center; }
+/* Country tag on cross-market Amazon rows (e.g. 🇩🇪 DE next to the logo) so
+   the visitor can always tell WHICH storefront a price belongs to. */
+.pd-price-cc { margin-left: 10px; font-size: 13px; font-weight: 800; opacity: 0.75; letter-spacing: 0.4px; }
 .pd-price-amt { margin-left: auto; font-weight: 850; color: #22c55e; font-size: 19px; white-space: nowrap; }
 /* Price-less rows (Amazon search link) show a muted, accent-coloured hint on
    the right instead of a number — still no arrow, whole row clickable. */
