@@ -271,9 +271,13 @@ async function main() {
 
   if (DRY || NO_TS || !changedIds.length) { console.log(DRY ? 'Dry run — no writes.' : 'TS sync skipped.'); return; }
 
-  console.log('\nTypesense re-upsert (batches of 150)…');
-  for (let i = 0; i < changedIds.length; i += 150) {
-    const batch = changedIds.slice(i, i + 150);
+  // 150-id batches produced a PB filter long enough to 400 ("PB by-ids: 400");
+  // 40 ids keeps the id="…"||… filter well under the URL/parser limit.
+  const BATCH = 40;
+  console.log(`\nTypesense re-upsert (batches of ${BATCH})…`);
+  let tsFailed = 0;
+  for (let i = 0; i < changedIds.length; i += BATCH) {
+    const batch = changedIds.slice(i, i + BATCH);
     try {
       execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'ts_fast_upsert_products.js')], {
         env: { ...process.env, TS_FAST_IDS: batch.join(',') },
@@ -281,10 +285,11 @@ async function main() {
         cwd: ROOT,
       });
     } catch (e) {
-      console.log(`  ! TS batch ${i / 150 + 1} failed: ${e.message}`);
+      tsFailed++;
+      console.log(`  ! TS batch ${Math.floor(i / BATCH) + 1} failed: ${e.message}`);
     }
   }
-  console.log('\nDone.');
+  console.log(`\nDone.${tsFailed ? ` (${tsFailed} TS batches failed)` : ''}`);
 }
 
 main().catch(e => { console.error('✗', e); process.exit(1); });
