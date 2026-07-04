@@ -90,6 +90,19 @@ function breakerActive(cc) {
 
 const esc = v => String(v || '').replace(/"/g, '\\"');
 
+/** Epey's scraped TR display price ("6.524,10 TL", "42.999 TL") → number.
+ *  Dot is the Turkish THOUSANDS separator: a comma-less "1.299" is 1299,
+ *  never 1.299 — so this must not go through the generic parseMoney. */
+function parseTryPriceRaw(raw) {
+  const m = String(raw || '').trim().match(/^₺?\s*([\d.,]+)\s*(?:TL|₺|TRY)?$/i);
+  if (!m) return 0;
+  let num = m[1];
+  if (num.includes(',')) num = num.replace(/\./g, '').replace(',', '.');
+  else num = num.replace(/\./g, '');
+  const v = Number(num);
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
 function formatPrice(value, currency) {
   const locale = { EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US', TRY: 'tr-TR' }[currency] || 'en-US';
   try {
@@ -182,7 +195,13 @@ module.exports = {
       if (!breakerLogged) { breakerLogged = true; throw new Error('breaker open — Amazon bot wall hit on every market; remaining products left untouched this run'); }
       throw new Error('breaker open');
     }
-    const { asin, previous, prevRows, refUsd, checkedAt, localAsins } = await loadOfferContext(product.id);
+    const ctx = await loadOfferContext(product.id);
+    const { asin, previous, prevRows, checkedAt, localAsins } = ctx;
+    // Discovery products have no epey_amazon row yet, so no TR referee — but
+    // Epey's own scraped display price (products.price_raw, TRY) is just as
+    // good for the ±3.5× sanity band. Without it a wrong search match on a
+    // never-priced product would publish with no cross-check at all.
+    const refUsd = ctx.refUsd || toUsd(parseTryPriceRaw(product.price_raw), 'TRY');
     // No TR ASIN → we can still price via per-market name search (below); but
     // without a name there is nothing to search for.
     if (!asin && !String(product.name || '').trim()) return [];
@@ -199,7 +218,18 @@ module.exports = {
     // pace gate in amazon_page, so pricing DE+GB+US concurrently costs one
     // gap of wall time instead of three — per-host request rate is unchanged.
     const results = await Promise.all(MARKETS.map(cc => this._priceMarket(cc, { product, asin, previous, prevRows, refUsd, checkedAt, localAsins })));
-    return results.filter(Boolean);
+    const out = results.filter(Boolean);
+    // The runner's cleanup deletes ALL amazon_direct rows for the product —
+    // including countries this run is NOT configured for (the PC task runs
+    // DE,GB,US while the Hetzner cron runs TR,DE,GB,US). Re-emit the
+    // unconfigured countries' rows untouched, or a subset-market run silently
+    // wipes the other markets' prices every night.
+    for (const cc of Object.keys(prevRows)) {
+      if (MARKETS.includes(cc)) continue;
+      const keep = keepAliveOffer(product, cc, prevRows[cc]);
+      if (keep) out.push(keep);
+    }
+    return out;
   },
 
   /** Price one product on one marketplace. Returns a fresh offer, a
@@ -217,10 +247,16 @@ module.exports = {
       return keepAliveOffer(product, cc, prevRows[cc]);
     }
     const mk = MARKETPLACES[cc];
-    // Candidate order: the market's own ASIN from a previous run beats the TR
-    // ASIN (regional catalogues rarely share ASINs). If the candidate has no
-    // offer, fall back ONCE to a name search that resolves the LOCAL ASIN.
-    let mAsin = localAsins[cc] || asin;
+    // Candidate order: the market's own ASIN from a previous run → the
+    // Epey-verified TR ASIN → PEER markets' local ASINs. Catalogues are
+    // regional, but EU/global listings often share ASINs — and on a
+    // datacenter IP (Hetzner) the GB/US SEARCH page is walled while /dp/
+    // keeps working, so a DE-resolved ASIN is frequently GB's only bridge.
+    // Every candidate costs one /dp/ fetch; the cap keeps dead products cheap.
+    const candidates = [...new Set(
+      [localAsins[cc], asin, ...MARKETS.filter(m => m !== cc).map(m => localAsins[m])].filter(Boolean)
+    )].slice(0, 3);
+    let mAsin = '';
     let res = null;
     const strike = (e) => {
       // Transient for THIS market only: its existing row survives via
@@ -232,18 +268,22 @@ module.exports = {
       }
     };
     try {
-      if (mAsin) res = await fetchAmazonPrice(cc, mAsin);
-      marketStrikes[cc] = 0;
+      for (const cand of candidates) {
+        mAsin = cand;
+        res = await fetchAmazonPrice(cc, cand);
+        marketStrikes[cc] = 0;
+        // Re-validate every ASIN that is not the Epey-verified TR one against
+        // the fetched page title: a wrong match stored once (e.g. a Pad 3
+        // listing saved for the Pad 4) would otherwise refresh itself via
+        // direct /dp/ forever and never face a matcher again. This covers
+        // search-resolved AND peer-market candidates alike.
+        if (res && res.ok && cand !== asin && !titleMatches(product.name, res.title)) {
+          console.log(`  ! amazon_direct title-mismatch: ${cand} ${cc} "${String(res.title).slice(0, 60)}" — next candidate`);
+          res = { ok: false, reason: 'wrong-asin' };
+        }
+        if (res && res.ok) break;
+      }
     } catch (e) { strike(e); return keepAliveOffer(product, cc, prevRows[cc]); }
-    // Re-validate SEARCH-RESOLVED ASINs against the fetched page title: a
-    // wrong match stored once (e.g. a Pad 3 listing saved for the Pad 4)
-    // would otherwise refresh itself via direct /dp/ forever and never face
-    // the search matcher again. The Epey-verified TR ASIN (mAsin === asin)
-    // needs no title check.
-    if (res && res.ok && mAsin !== asin && !titleMatches(product.name, res.title)) {
-      console.log(`  ! amazon_direct title-mismatch: ${mAsin} ${cc} "${String(res.title).slice(0, 60)}" — re-searching`);
-      res = { ok: false, reason: 'wrong-asin' };
-    }
     if ((!res || !res.ok) && String(product.name || '').trim()) {
       try {
         const found = await searchLocalAsin(cc, product.name);
@@ -252,11 +292,12 @@ module.exports = {
           res = await fetchAmazonPrice(cc, mAsin);
         }
       } catch (e) {
-        // The SEARCH wall must not trip the market breaker: on a datacenter
-        // IP (Hetzner) Amazon walls the search page permanently while direct
-        // /dp/<ASIN> fetches keep working — so ASIN-known products must keep
-        // pricing and only local-ASIN DISCOVERY is left to the residential
-        // run. Skip this product+market silently.
+        // The SEARCH wall must not trip the market breaker. Measured from the
+        // Hetzner IP (2026-07-04): TR + DE search pages WORK, GB answers 202
+        // and US 503 permanently — while direct /dp/<ASIN> keeps working on
+        // TR/DE/GB. So ASIN-known products must keep pricing; GB local-ASIN
+        // discovery rides the peer-ASIN bridge above, and US is left to the
+        // residential (PC) run. Skip this product+market silently.
         return keepAliveOffer(product, cc, prevRows[cc]);
       }
     }

@@ -146,7 +146,7 @@ async function fetchProducts() {
   for (;;) {
     const r = await req('GET',
       `/api/collections/products/records?perPage=500&page=${page}&sort=${encodeURIComponent(SORT)}` +
-      `&fields=id,name,brand,gtin,mpn,category,sourceUrl${filter}`);
+      `&fields=id,name,brand,gtin,mpn,category,sourceUrl,price_raw${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
     for (const item of (r.body.items || [])) {
       if (isSupportedProductCategory(item.category)) out.push(item);
