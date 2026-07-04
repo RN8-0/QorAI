@@ -42,6 +42,13 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const GAP_MS = Math.max(1500, Number(ENV.AMAZON_DIRECT_GAP_MS || 5000));
 const JAR_MAX_AGE_H = 20;
 const JAR_DIR = path.join(__dirname, '..', '.amazon-session');
+// Sessionless mode (AMAZON_DIRECT_NO_SESSION=1): skip warmup + GLOW + cookie
+// jar entirely. On a datacenter IP (Hetzner) the homepage warmup answers 202
+// and poisons the jar — every subsequent /dp/ fetch lands on the captcha —
+// while the SAME /dp/ URL fetched bare returns the full product page. Without
+// GLOW there is no in-country zip, but the buy-box list price still renders,
+// and each storefront's default currency matches its market row.
+const NO_SESSION = ENV.AMAZON_DIRECT_NO_SESSION === '1';
 
 // A marketplace is one row. To add US/FR/IT/ES later: add the row and put it
 // in AMAZON_DIRECT_MARKETS — nothing else changes.
@@ -77,7 +84,7 @@ function baseArgs(mk, jar) {
     '-A', UA,
     '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     '-H', `Accept-Language: ${mk.lang}`,
-    '-b', jar, '-c', jar,
+    ...(NO_SESSION ? [] : ['-b', jar, '-c', jar]),
     '-w', '\n__HTTP_STATUS__:%{http_code}',
   ];
 }
@@ -108,6 +115,7 @@ async function buildSession(cc) {
 }
 
 async function ensureSession(cc) {
+  if (NO_SESSION) return; // bare fetches — no jar to build or refresh
   const jar = jarPath(cc);
   try {
     const age = Date.now() - fs.statSync(jar).mtimeMs;
