@@ -16,7 +16,11 @@
  *
  * Fetch goes through curl for the same reason as epey_amazon: bot walls
  * fingerprint Node's TLS stack, while curl with a desktop UA gets a plain 200.
- * Datacenter IPs are blocked by these sites → runs on the user's PC only.
+ * Host: sourceUrl is geizhals.EU, but that host 403-blocks datacenter IPs
+ * (Hetzner, ölçüm 2026-07-04) while the SAME product path on geizhals.DE
+ * answers 200 — the sites are mirrors of one DB. The fetch therefore rewrites
+ * .eu→.de; note .de renders `data-merchant-name="Amazon.de"` where .eu says
+ * "Amazon", so the merchant regex accepts both.
  *
  * Config (optional): GEIZHALS_ENABLED=0 kill switch, GEIZHALS_FETCH_GAP_MS,
  * AMAZON_DE_TAG.
@@ -75,7 +79,7 @@ function bestAmazonRow(html) {
   const blocks = String(html || '').split(/id="offer-index-\d+"/).slice(1);
   for (const block of blocks) {
     const seg = block.slice(0, 6000);
-    const isAmazon = /data-merchant-name="Amazon"/i.test(seg) || /via Amazon Marketplace/i.test(seg);
+    const isAmazon = /data-merchant-name="Amazon(\.[a-z]{2,3})?"/i.test(seg) || /via Amazon Marketplace/i.test(seg);
     if (!isAmazon) continue;
     const price = parseEur((seg.match(/class="gh_price">([^<]+)</i) || [])[1]);
     if (price > 0) return { price };
@@ -93,7 +97,10 @@ module.exports = {
   async searchOffers(product) {
     const src = String(product.sourceUrl || '').trim();
     if (!src || !/geizhals\.(eu|de|at)\//i.test(src)) return [];
-    const res = await politeFetch(src);
+    // geizhals.eu 403-blocks datacenter IPs; the .de mirror serves the same
+    // product paths (and the de-DE price format parseEur already expects).
+    const fetchUrl = src.replace(/^https?:\/\/(www\.)?geizhals\.eu\//i, 'https://geizhals.de/');
+    const res = await politeFetch(fetchUrl);
     if (res.status === 404 || res.status === 410) return []; // page gone → clear
     if (res.status !== 200) throw new Error(`geizhals ${res.status}`);
     const best = bestAmazonRow(res.text);
