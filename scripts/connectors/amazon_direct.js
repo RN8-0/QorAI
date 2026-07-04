@@ -9,23 +9,29 @@
  *
  * Per product:
  *   1. read its offers once — the epey_amazon row supplies the ASIN, our own
- *      amazon_direct rows supply previous prices for the sanity check
- *   2. fetchAmazonPrice(cc, asin) per marketplace
+ *      amazon_direct rows supply previous prices for sanity + keep-alive
+ *   2. fetchAmazonPrice(cc, asin) on every marketplace IN PARALLEL (each host
+ *      has its own pace gate in amazon_page, so three markets cost one gap)
  *        ok        → write offer (direct /dp/<ASIN> + per-market tag)
  *        no-price  → no offer on that storefront (runner clears stale rows)
  *        gone      → same
- *        throw     → whole product aborts, existing offers stay alive
+ *        throw     → transient (wall/5xx): re-emit the market's EXISTING row
+ *                    (keep-alive) so the runner's delete-then-insert cycle
+ *                    does not drop it — price just stays one day older
  *   3. sanity: a new price outside [25%, 400%] of the previous one is
- *      suspicious (parse drift / price glitch) — keep the OLD price, extend
- *      its expiry, log. Never publish a wild swing silently.
+ *      suspicious (parse drift / price glitch) — keep-alive the OLD offer
+ *      (price + extended expiry), log. Never publish a wild swing silently.
  *
  * Circuit breaker: MAX_STRIKES consecutive transient failures trip the
- * breaker; every later product fails fast ("breaker open") so a bot-wall
- * night degrades to "prices stay one day older" instead of hammering Amazon.
+ * breaker; later products fail fast ("breaker open") so a bot wall degrades
+ * to "prices stay one day older" instead of hammering Amazon. The breaker
+ * cools down (default 45 min) and allows one probe — captcha walls usually
+ * clear in minutes, so a multi-hour run gets the market back the same night.
  *
  * Config (migration/.env or process env):
  *   AMAZON_DIRECT_ENABLED=0     kill switch
  *   AMAZON_DIRECT_MARKETS       CSV, default "DE,GB"
+ *   AMAZON_DIRECT_BREAKER_COOLDOWN_MIN  breaker cooldown, default 45
  *   AMAZON_TAG_DE / AMAZON_TAG_UK / … per-market Associates tag,
  *   AMAZON_TAG                  fallback tag (qorai-20)
  */
@@ -35,7 +41,7 @@ const fs = require('fs');
 const path = require('path');
 const { req } = require('../../migration/pb');
 const { toUsd } = require('../lib/offers');
-const { MARKETPLACES, marketTag, fetchAmazonPrice, searchLocalAsin } = require('../lib/amazon_page');
+const { MARKETPLACES, marketTag, fetchAmazonPrice, searchLocalAsin, titleMatches } = require('../lib/amazon_page');
 
 function loadEnv() {
   try {
@@ -63,9 +69,24 @@ const MAX_STRIKES = 6;
 // PER-MARKET breaker: amazon.com's search wall must not stop amazon.de/.co.uk
 // pricing (one blocked country used to abort the whole product AND, at 6
 // strikes, the whole run for every market).
+// The breaker COOLS DOWN instead of staying open for the whole run: Amazon's
+// captcha walls usually clear within minutes, and a multi-hour run used to
+// lose a market permanently to one bad stretch. After the cooldown one probe
+// is allowed — its single failure re-opens the breaker for another cooldown.
+const BREAKER_COOLDOWN_MS = Math.max(5, Number(ENV.AMAZON_DIRECT_BREAKER_COOLDOWN_MIN || 45)) * 60 * 1000;
 const marketStrikes = {};
-const marketBreaker = {};
+const marketBreaker = {}; // cc → tripped-at ms
 let breakerLogged = false;
+
+function breakerActive(cc) {
+  const trippedAt = marketBreaker[cc];
+  if (!trippedAt) return false;
+  if (Date.now() - trippedAt < BREAKER_COOLDOWN_MS) return true;
+  delete marketBreaker[cc]; // half-open: one strike away from re-opening
+  marketStrikes[cc] = MAX_STRIKES - 1;
+  console.log(`  ! amazon_direct: ${cc} breaker half-open — probing again after cooldown`);
+  return false;
+}
 
 const esc = v => String(v || '').replace(/"/g, '\\"');
 
@@ -77,11 +98,12 @@ function formatPrice(value, currency) {
 }
 
 /** One offers query serves both needs: the epey_amazon row carries the ASIN,
- *  our own rows carry previous prices for the sanity check. */
+ *  our own rows carry previous prices for the sanity check — and the FULL
+ *  previous rows back the keep-alive path (see keepAliveOffer). */
 async function loadOfferContext(productId) {
   const filter = `productId="${esc(productId)}" && (network="epey_amazon" || network="amazon_direct")`;
   const r = await req('GET',
-    `/api/collections/offers/records?perPage=50&fields=network,country,price,currency,merchantProductId,lastCheckedAt&filter=${encodeURIComponent(filter)}`);
+    `/api/collections/offers/records?perPage=50&filter=${encodeURIComponent(filter)}`);
   if (r.status !== 200) throw new Error(`offer context ${r.status}`);
   const items = r.body.items || [];
   const trOffer = items.find(o => o.network === 'epey_amazon' && /^[A-Z0-9]{10}$/.test(o.merchantProductId || ''));
@@ -90,6 +112,7 @@ async function loadOfferContext(productId) {
   // on another storefront can't plausibly cost >3.5× / <1/3.5 of it in USD.
   const refUsd = trOffer ? toUsd(trOffer.price, trOffer.currency) : 0;
   const previous = {};
+  const prevRows = {};
   const checkedAt = {};
   // Per-market LOCAL ASINs from our own earlier rows: Amazon catalogues are
   // regional (a TR ASIN usually doesn't exist on .de/.co.uk/.com), so once the
@@ -98,13 +121,51 @@ async function loadOfferContext(productId) {
   const localAsins = {};
   for (const o of items) {
     if (o.network === 'amazon_direct' && o.country) {
-      if (o.price > 0) previous[o.country] = o.price;
+      if (o.price > 0) { previous[o.country] = o.price; prevRows[o.country] = o; }
       if (/^[A-Z0-9]{10}$/.test(o.merchantProductId || '')) localAsins[o.country] = o.merchantProductId;
       const t = Date.parse(o.lastCheckedAt || '');
       if (Number.isFinite(t)) checkedAt[o.country] = t;
     }
   }
-  return { asin, previous, refUsd, checkedAt, localAsins };
+  return { asin, previous, prevRows, refUsd, checkedAt, localAsins };
+}
+
+/** Re-emit a market's EXISTING offer so the runner's delete-then-insert cycle
+ *  does not drop it. Used for every "checked nothing new tonight" outcome —
+ *  breaker open, transient wall, sanity skip — so a bad stretch degrades to
+ *  "price stays one day older" instead of the row vanishing from the site.
+ *  lastCheckedAt is NOT bumped (SKIP_FRESH must re-check the product soon);
+ *  expiresAt IS extended, or the row would expire mid-wall anyway.
+ *  Definite no-offer ('gone' / 'no-price') must NOT come here — delisting has
+ *  to keep deleting rows. */
+function keepAliveOffer(product, cc, prevRow) {
+  if (!prevRow || !(prevRow.price > 0)) return null;
+  const mk = MARKETPLACES[cc];
+  const url = prevRow.url ||
+    (/^[A-Z0-9]{10}$/.test(prevRow.merchantProductId || '') ? `https://${mk.host}/dp/${prevRow.merchantProductId}` : '');
+  if (!url) return null;
+  return {
+    productId: product.id,
+    store: prevRow.store || mk.store,
+    network: 'amazon_direct',
+    country: cc,
+    price: prevRow.price,
+    shipping: prevRow.shipping || 0,
+    totalPrice: prevRow.totalPrice || prevRow.price,
+    currency: prevRow.currency || mk.currency,
+    priceText: prevRow.priceText || formatPrice(prevRow.price, prevRow.currency || mk.currency),
+    url,
+    affiliateUrl: prevRow.affiliateUrl || url,
+    merchantProductId: prevRow.merchantProductId || '',
+    condition: prevRow.condition || 'new',
+    inStock: prevRow.inStock !== false,
+    availability: prevRow.availability || 'in_stock',
+    matchConfidence: prevRow.matchConfidence || 0.85,
+    source: prevRow.source || 'amazon',
+    lastCheckedAt: prevRow.lastCheckedAt || '',
+    priceUpdatedAt: prevRow.priceUpdatedAt || '',
+    expiresAt: new Date(Date.now() + EXPIRES_MS).toISOString(),
+  };
 }
 
 module.exports = {
@@ -115,13 +176,13 @@ module.exports = {
   },
 
   async searchOffers(product) {
-    if (MARKETS.every(cc => marketBreaker[cc])) {
+    if (MARKETS.every(cc => breakerActive(cc))) {
       // Fail fast without spamming the log once every market's wall is up: the
       // first trip already explained itself; the rest just note the count.
       if (!breakerLogged) { breakerLogged = true; throw new Error('breaker open — Amazon bot wall hit on every market; remaining products left untouched this run'); }
       throw new Error('breaker open');
     }
-    const { asin, previous, refUsd, checkedAt, localAsins } = await loadOfferContext(product.id);
+    const { asin, previous, prevRows, refUsd, checkedAt, localAsins } = await loadOfferContext(product.id);
     // No TR ASIN → we can still price via per-market name search (below); but
     // without a name there is nothing to search for.
     if (!asin && !String(product.name || '').trim()) return [];
@@ -134,91 +195,118 @@ module.exports = {
       if (allFresh) return null;
     }
 
-    const offers = [];
-    for (const cc of MARKETS) {
-      if (marketBreaker[cc]) continue; // this country's wall is up — skip it, keep pricing the rest
-      const mk = MARKETPLACES[cc];
-      // Candidate order: the market's own ASIN from a previous run beats the TR
-      // ASIN (regional catalogues rarely share ASINs). If the candidate has no
-      // offer, fall back ONCE to a name search that resolves the LOCAL ASIN.
-      let mAsin = localAsins[cc] || asin;
-      let res = null;
-      const strike = (e) => {
-        // Transient for THIS market only: skip it (tonight's cleanup may drop
-        // its old row; the next run re-resolves it) but keep the other markets.
-        marketStrikes[cc] = (marketStrikes[cc] || 0) + 1;
-        if (marketStrikes[cc] >= MAX_STRIKES && !marketBreaker[cc]) {
-          marketBreaker[cc] = true;
-          console.log(`  ! amazon_direct: ${cc} breaker open (${e.message}) — market disabled for the rest of this run`);
-        }
-      };
-      try {
-        if (mAsin) res = await fetchAmazonPrice(cc, mAsin);
-        marketStrikes[cc] = 0;
-      } catch (e) { strike(e); continue; }
-      if ((!res || !res.ok) && String(product.name || '').trim()) {
-        try {
-          const found = await searchLocalAsin(cc, product.name);
-          if (found.ok && found.asin !== mAsin) {
-            mAsin = found.asin;
-            res = await fetchAmazonPrice(cc, mAsin);
-          }
-        } catch (e) {
-          // The SEARCH wall must not trip the market breaker: on a datacenter
-          // IP (Hetzner) Amazon walls the search page permanently while direct
-          // /dp/<ASIN> fetches keep working — so ASIN-known products must keep
-          // pricing and only local-ASIN DISCOVERY is left to the residential
-          // run. Skip this product+market silently.
-          continue;
-        }
-      }
-      if (!res || !res.ok) continue; // definite no-offer on this storefront
+    // Markets run in PARALLEL: each storefront is its own host with its own
+    // pace gate in amazon_page, so pricing DE+GB+US concurrently costs one
+    // gap of wall time instead of three — per-host request rate is unchanged.
+    const results = await Promise.all(MARKETS.map(cc => this._priceMarket(cc, { product, asin, previous, prevRows, refUsd, checkedAt, localAsins })));
+    return results.filter(Boolean);
+  },
 
-      const price = res.price;
-      // Sanity 1 — cross-market referee: reject a price wildly off the
-      // Epey-verified TR price (catches parse drift like "3 options from
-      // £109" → 3109). Skipping the offer beats publishing a wrong price.
-      const newUsd = toUsd(price, mk.currency);
-      if (refUsd > 0 && newUsd > 0 && (newUsd > refUsd * 3.5 || newUsd < refUsd / 3.5)) {
-        console.log(`  ! amazon_direct sanity(ref): ${mAsin} ${cc} ${price} ${mk.currency} vs TR ~$${refUsd} — skipped`);
-        continue;
-      }
-      // Sanity 2 — no referee available: guard against swings vs our own
-      // previous price for this marketplace.
-      const prev = previous[cc];
-      if (!refUsd && prev > 0 && (price < prev * 0.25 || price > prev * 4)) {
-        console.log(`  ! amazon_direct sanity(prev): ${mAsin} ${cc} ${prev} → ${price} — skipped`);
-        continue;
-      }
-
-      const direct = `https://${mk.host}/dp/${mAsin}`;
-      const tag = marketTag(cc);
-      const now = Date.now();
-      offers.push({
-        productId: product.id,
-        store: mk.store,
-        network: 'amazon_direct',
-        country: cc,
-        price,
-        shipping: 0,
-        totalPrice: price,
-        currency: mk.currency,
-        priceText: formatPrice(price, mk.currency),
-        url: direct,
-        affiliateUrl: tag ? `${direct}?tag=${encodeURIComponent(tag)}` : direct,
-        merchantProductId: mAsin,
-        condition: 'new',
-        inStock: true,
-        availability: 'in_stock',
-        // 1 = the verified TR ASIN itself; 0.85 = local ASIN resolved by strict
-        // name-token search (still guarded by the TR price referee above).
-        matchConfidence: (asin && mAsin === asin) ? 1 : 0.85,
-        source: 'amazon',
-        lastCheckedAt: new Date(now).toISOString(),
-        priceUpdatedAt: new Date(now).toISOString(),
-        expiresAt: new Date(now + EXPIRES_MS).toISOString(),
-      });
+  /** Price one product on one marketplace. Returns a fresh offer, a
+   *  keep-alive of the existing offer (breaker / transient / sanity-skip —
+   *  the runner deletes-then-reinserts, so absence = the row is dropped), or
+   *  null for a definite no-offer. Never throws — a market's wall must not
+   *  abort its peers. */
+  async _priceMarket(cc, { product, asin, previous, prevRows, refUsd, checkedAt, localAsins }) {
+    if (breakerActive(cc)) return keepAliveOffer(product, cc, prevRows[cc]); // wall up — skip market, keep its row
+    // Per-market load governor: when only SOME markets are stale (e.g. a US
+    // breaker night left US rows missing while DE/GB are hours old), the
+    // product passes the all-fresh skip above — but the fresh markets still
+    // must not re-hit Amazon. Keep their rows, fetch only the stale peers.
+    if (SKIP_FRESH && (Date.now() - (checkedAt[cc] || 0)) < SKIP_FRESH_MS) {
+      return keepAliveOffer(product, cc, prevRows[cc]);
     }
-    return offers;
+    const mk = MARKETPLACES[cc];
+    // Candidate order: the market's own ASIN from a previous run beats the TR
+    // ASIN (regional catalogues rarely share ASINs). If the candidate has no
+    // offer, fall back ONCE to a name search that resolves the LOCAL ASIN.
+    let mAsin = localAsins[cc] || asin;
+    let res = null;
+    const strike = (e) => {
+      // Transient for THIS market only: its existing row survives via
+      // keep-alive at the call site, and the other markets keep pricing.
+      marketStrikes[cc] = (marketStrikes[cc] || 0) + 1;
+      if (marketStrikes[cc] >= MAX_STRIKES && !marketBreaker[cc]) {
+        marketBreaker[cc] = Date.now();
+        console.log(`  ! amazon_direct: ${cc} breaker open (${e.message}) — cooling down ${Math.round(BREAKER_COOLDOWN_MS / 60000)} min`);
+      }
+    };
+    try {
+      if (mAsin) res = await fetchAmazonPrice(cc, mAsin);
+      marketStrikes[cc] = 0;
+    } catch (e) { strike(e); return keepAliveOffer(product, cc, prevRows[cc]); }
+    // Re-validate SEARCH-RESOLVED ASINs against the fetched page title: a
+    // wrong match stored once (e.g. a Pad 3 listing saved for the Pad 4)
+    // would otherwise refresh itself via direct /dp/ forever and never face
+    // the search matcher again. The Epey-verified TR ASIN (mAsin === asin)
+    // needs no title check.
+    if (res && res.ok && mAsin !== asin && !titleMatches(product.name, res.title)) {
+      console.log(`  ! amazon_direct title-mismatch: ${mAsin} ${cc} "${String(res.title).slice(0, 60)}" — re-searching`);
+      res = { ok: false, reason: 'wrong-asin' };
+    }
+    if ((!res || !res.ok) && String(product.name || '').trim()) {
+      try {
+        const found = await searchLocalAsin(cc, product.name);
+        if (found.ok && found.asin !== mAsin) {
+          mAsin = found.asin;
+          res = await fetchAmazonPrice(cc, mAsin);
+        }
+      } catch (e) {
+        // The SEARCH wall must not trip the market breaker: on a datacenter
+        // IP (Hetzner) Amazon walls the search page permanently while direct
+        // /dp/<ASIN> fetches keep working — so ASIN-known products must keep
+        // pricing and only local-ASIN DISCOVERY is left to the residential
+        // run. Skip this product+market silently.
+        return keepAliveOffer(product, cc, prevRows[cc]);
+      }
+    }
+    if (!res || !res.ok) return null; // definite no-offer on this storefront — let the stale row drop
+
+    const price = res.price;
+    // Sanity 1 — cross-market referee: reject a price wildly off the
+    // Epey-verified TR price (catches parse drift like "3 options from
+    // £109" → 3109). Publishing a wrong price is the worst outcome, so keep
+    // the OLD offer alive instead (a wrong TR referee — Epey mismatch — used
+    // to DELETE a market's good row every night).
+    const newUsd = toUsd(price, mk.currency);
+    if (refUsd > 0 && newUsd > 0 && (newUsd > refUsd * 3.5 || newUsd < refUsd / 3.5)) {
+      console.log(`  ! amazon_direct sanity(ref): ${mAsin} ${cc} ${price} ${mk.currency} vs TR ~$${refUsd} — skipped`);
+      return keepAliveOffer(product, cc, prevRows[cc]);
+    }
+    // Sanity 2 — no referee available: guard against swings vs our own
+    // previous price for this marketplace.
+    const prev = previous[cc];
+    if (!refUsd && prev > 0 && (price < prev * 0.25 || price > prev * 4)) {
+      console.log(`  ! amazon_direct sanity(prev): ${mAsin} ${cc} ${prev} → ${price} — skipped`);
+      return keepAliveOffer(product, cc, prevRows[cc]);
+    }
+
+    const direct = `https://${mk.host}/dp/${mAsin}`;
+    const tag = marketTag(cc);
+    const now = Date.now();
+    return {
+      productId: product.id,
+      store: mk.store,
+      network: 'amazon_direct',
+      country: cc,
+      price,
+      shipping: 0,
+      totalPrice: price,
+      currency: mk.currency,
+      priceText: formatPrice(price, mk.currency),
+      url: direct,
+      affiliateUrl: tag ? `${direct}?tag=${encodeURIComponent(tag)}` : direct,
+      merchantProductId: mAsin,
+      condition: 'new',
+      inStock: true,
+      availability: 'in_stock',
+      // 1 = the verified TR ASIN itself; 0.85 = local ASIN resolved by strict
+      // name-token search (still guarded by the TR price referee above).
+      matchConfidence: (asin && mAsin === asin) ? 1 : 0.85,
+      source: 'amazon',
+      lastCheckedAt: new Date(now).toISOString(),
+      priceUpdatedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + EXPIRES_MS).toISOString(),
+    };
   },
 };

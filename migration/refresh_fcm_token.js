@@ -16,9 +16,19 @@ const os = require('os');
 const path = require('path');
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const PB_URL = process.env.POCKETBASE_URL || 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
-const PB_ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || 'admin@qorai.local';
-const PB_ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || '';
+// The scheduled task (QorAI-FCM-TokenRefresh) runs without env vars, so fall
+// back to migration/.env — the same file every other PB script reads.
+const DOTENV = (() => {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, '.env'), 'utf8');
+    return Object.fromEntries(raw.split(/\r?\n/)
+      .filter((l) => l && !l.startsWith('#') && l.includes('='))
+      .map((l) => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
+  } catch { return {}; }
+})();
+const PB_URL = process.env.POCKETBASE_URL || DOTENV.POCKETBASE_URL || 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+const PB_ADMIN_EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || DOTENV.POCKETBASE_ADMIN_EMAIL || 'admin@qorai.local';
+const PB_ADMIN_PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || DOTENV.POCKETBASE_ADMIN_PASSWORD || '';
 
 const FIREBASE_CLIENT_ID =
   '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com';

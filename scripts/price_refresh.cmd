@@ -4,11 +4,23 @@ rem Runs on this PC (residential IP) because Epey 403-blocks datacenter IPs —
 rem the Hetzner box cannot fetch epey.com. Scheduled task: QorAI-PriceRefresh.
 rem Pass 1 refreshes every currently-priced product (oldest check first);
 rem pass 2 expands coverage (never-checked flagships first); then one TS backfill.
-rem NOT: PB bu kurulumda çoklu sort'u ("a,-b") 400'ler — her pass TEKLİ sort kullanır.
+rem NOT: PB bu kurulumda coklu sort'u ("a,-b") 400'ler — her pass TEKLI sort kullanir.
+rem
+rem DE/GB/US (amazon_direct) BU ZINCIRDE DEGIL: pass5 olarak en sondaydi ve
+rem gunduz kill edilen koroda hicbir gece bitemiyordu — sondaki TS backfill de
+rem hic calismadigi icin PB'de biriken fiyatlar siteye YANSIMIYORDU (2.807 PB
+rem vs 123 TS, 2026-07-04). Simdi ayri gorevde paralel kosuyor:
+rem QorAI-PriceDirect → scripts\price_refresh_direct.cmd (epey.com ile host
+rem cakismasi yok; geizhals amazon.de aramalari icin asagidaki nota bak).
 cd /d C:\Users\RN8\Desktop\Compair-master
 echo ===== %date% %time% price refresh start ===== >> "%USERPROFILE%\qorai-price.log"
 set NO_REINDEX=1
-rem pass1 — refresh: fiyat gösteren her ürünü yenile (en eski kontrol önce)
+rem pass0 — DE besleme: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (ASIN'siz).
+rem EN BASTA kosuyor cunku amazon.de ARAMA sayfalarini kullaniyor ve direct
+rem gorev de amazon.de'ye gidiyor — direct.cmd ilk 10 dk bekleyerek basladigi
+rem icin bu pass bitmeden .de'ye cift yuk binmiyor.
+node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem pass1 — refresh: fiyat gosteren her urunu yenile (en eski kontrol once)
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2 — discovery: hic taranmamislar; once Epey'de fiyati OLANLAR (Amazon olasiligi yuksek) + yuksek techScore
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=6000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
@@ -19,17 +31,8 @@ rem (iPhone 1TB gibi populer varyant sayfalari fiyatsiz kaliyordu) — Epey fiya
 node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=variantPrimary=false && pricedOfferCount<1 && bestOfferCheckedAt='' && price_raw!=''" --sort=-techScore --limit=800 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass3 — recheck: daha once bakilmis ama fiyatsiz kalanlari arada yeniden dene
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=300 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
-rem pass4 — DE: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (~421 urun, ASIN'siz)
-node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
-rem pass5 — DE+GB: ASIN'i bilinen (Epey'den) urunleri Amazon.de/co.uk'da dogrudan fiyatla
-rem (amazon_direct: GLOW oturumu + coklu-imza parser; tek motor, ulke=config satiri).
-rem Load governor: connector 20 saatten yeni amazon_direct fiyati olan urunu
-rem AGA CIKMADAN atlar (SKIP_FRESH) → limit=4000 istense de gercek Amazon
-rem trafigi sadece bayat/yeni urunlerle sinirli; -techScore sabit sirasi +
-rem skip birlikte OTOMATIK ROTASYON yapar (en degerliden asagi dolar, dolunca
-rem 20h sonra bastan). Bot duvari cikarsa breaker koser, ertesi gece devam.
-set AMAZON_DIRECT_MARKETS=DE,GB,US
-node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 set NO_REINDEX=
+rem TS backfill: bu zincir artik ~3.5 saatte bitiyor, yani backfill HER GUN calisir
+rem (direct gorev de kendi sonunda bir tane kosar — idempotent, cift kosmasi zararsiz).
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"

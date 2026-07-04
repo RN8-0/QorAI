@@ -13,9 +13,11 @@
  * redesigns one, the other still parses.
  *
  * Sessions live as curl cookie jars in scripts/.amazon-session/ (gitignored),
- * refreshed when older than JAR_MAX_AGE_H. All fetches share one global
- * pace gate (AMAZON_DIRECT_GAP_MS, default 3000 ms + jitter) — polite enough
- * to run nightly from a home connection without tripping the bot wall.
+ * refreshed when older than JAR_MAX_AGE_H. Each marketplace HOST has its own
+ * pace gate (AMAZON_DIRECT_GAP_MS, default 5000 ms + jitter, override per
+ * market via AMAZON_DIRECT_GAP_MS_<CC>) — amazon.de / .co.uk / .com are
+ * separate services, so pacing them independently triples throughput without
+ * raising any single storefront's request rate.
  *
  * Failure contract (mirrors epey_amazon):
  *   resolved {ok:false, reason:'gone'|'no-price'}   definite "no offer here"
@@ -39,16 +41,25 @@ function loadEnv() {
 const ENV = { ...loadEnv(), ...process.env };
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
-const GAP_MS = Math.max(1500, Number(ENV.AMAZON_DIRECT_GAP_MS || 5000));
 const JAR_MAX_AGE_H = 20;
 const JAR_DIR = path.join(__dirname, '..', '.amazon-session');
 // Sessionless mode (AMAZON_DIRECT_NO_SESSION=1): skip warmup + GLOW + cookie
 // jar entirely. On a datacenter IP (Hetzner) the homepage warmup answers 202
 // and poisons the jar — every subsequent /dp/ fetch lands on the captcha —
-// while the SAME /dp/ URL fetched bare returns the full product page. Without
-// GLOW there is no in-country zip, but the buy-box list price still renders,
-// and each storefront's default currency matches its market row.
+// while the SAME /dp/ URL fetched bare returns the full product page.
+// Sessionless fetches carry a static `i18n-prefs=<currency>` cookie header so
+// the page renders in the marketplace currency instead of the visitor-geo one
+// (amazon.com shows a TR visitor TRY export prices otherwise). No GLOW zip
+// means the buy-box may hide, but the twister/olp signatures still price.
 const NO_SESSION = ENV.AMAZON_DIRECT_NO_SESSION === '1';
+// Per-market sessionless list: amazon.com captchas the session WARMUP itself
+// even on a residential IP (verified 2026-07-04: fresh jar → bot page on
+// every /dp/, the same URLs bare + static cookie → full page, twister gives
+// the USD price) — so US defaults to sessionless everywhere. DE keeps its
+// jar: GLOW zip 10115 renders the real buy-box.
+const NO_SESSION_MARKETS = new Set(String(ENV.AMAZON_DIRECT_NO_SESSION_MARKETS ?? 'US')
+  .split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
+function sessionless(cc) { return NO_SESSION || NO_SESSION_MARKETS.has(cc); }
 
 // A marketplace is one row. To add US/FR/IT/ES later: add the row and put it
 // in AMAZON_DIRECT_MARKETS — nothing else changes.
@@ -78,13 +89,15 @@ function curl(args, opts = {}) {
   });
 }
 
-function baseArgs(mk, jar) {
+function baseArgs(cc) {
+  const mk = MARKETPLACES[cc];
+  const jar = jarPath(cc);
   return [
     '-sS', '--compressed', '--location', '--max-time', '35',
     '-A', UA,
     '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     '-H', `Accept-Language: ${mk.lang}`,
-    ...(NO_SESSION ? [] : ['-b', jar, '-c', jar]),
+    ...(sessionless(cc) ? ['-H', `Cookie: i18n-prefs=${mk.currency}`] : ['-b', jar, '-c', jar]),
     '-w', '\n__HTTP_STATUS__:%{http_code}',
   ];
 }
@@ -100,9 +113,9 @@ async function buildSession(cc) {
   fs.mkdirSync(JAR_DIR, { recursive: true });
   const jar = jarPath(cc);
   try { fs.unlinkSync(jar); } catch {}
-  await curl([...baseArgs(mk, jar), `https://${mk.host}/`, '-o', process.platform === 'win32' ? 'NUL' : '/dev/null']);
+  await curl([...baseArgs(cc), `https://${mk.host}/`, '-o', process.platform === 'win32' ? 'NUL' : '/dev/null']);
   await curl([
-    ...baseArgs(mk, jar),
+    ...baseArgs(cc),
     '-H', 'Content-Type: application/x-www-form-urlencoded',
     '-X', 'POST',
     '--data', `locationType=LOCATION_INPUT&zipCode=${encodeURIComponent(mk.zip)}&storeContext=generic&deviceType=web&pageType=Gateway&actionSource=glow`,
@@ -115,7 +128,7 @@ async function buildSession(cc) {
 }
 
 async function ensureSession(cc) {
-  if (NO_SESSION) return; // bare fetches — no jar to build or refresh
+  if (sessionless(cc)) return; // bare fetches — no jar to build or refresh
   const jar = jarPath(cc);
   try {
     const age = Date.now() - fs.statSync(jar).mtimeMs;
@@ -126,17 +139,23 @@ async function ensureSession(cc) {
 
 // ------------------------------------------------------------------ pacing
 
-let fetchChain = Promise.resolve();
-let lastFetchAt = 0;
-function politeCurl(args) {
+// One serial gate PER MARKETPLACE HOST: requests to the same storefront stay
+// GAP_MS apart, but amazon.de / .co.uk / .com proceed in parallel — a product
+// priced on three markets costs one gap, not three.
+function gapMsFor(cc) {
+  return Math.max(1500, Number(ENV[`AMAZON_DIRECT_GAP_MS_${cc}`] || ENV.AMAZON_DIRECT_GAP_MS || 5000));
+}
+const paceGates = {}; // cc → { chain, lastAt }
+function politeCurl(cc, args) {
+  const gate = paceGates[cc] || (paceGates[cc] = { chain: Promise.resolve(), lastAt: 0 });
   const run = async () => {
-    const wait = lastFetchAt + GAP_MS - Date.now();
+    const wait = gate.lastAt + gapMsFor(cc) - Date.now();
     if (wait > 0) await new Promise(r => setTimeout(r, wait + Math.floor(Math.random() * 900)));
-    lastFetchAt = Date.now();
+    gate.lastAt = Date.now();
     return curl(args);
   };
-  const p = fetchChain.then(run, run);
-  fetchChain = p.catch(() => {});
+  const p = gate.chain.then(run, run);
+  gate.chain = p.catch(() => {});
   return p;
 }
 
@@ -263,7 +282,7 @@ async function fetchAmazonPrice(cc, asin, { _retried } = {}) {
   const mk = MARKETPLACES[cc];
   if (!mk) throw new Error(`unknown marketplace ${cc}`);
   await ensureSession(cc);
-  const res = await politeCurl([...baseArgs(mk, jarPath(cc)), `https://${mk.host}/dp/${asin}`]);
+  const res = await politeCurl(cc, [...baseArgs(cc), `https://${mk.host}/dp/${asin}`]);
   if (res.status === 404 || res.status === 410) return { ok: false, reason: 'gone' };
   if (res.status !== 200) throw new Error(`amazon ${cc} ${res.status}`);
   const html = res.text;
@@ -279,7 +298,9 @@ async function fetchAmazonPrice(cc, asin, { _retried } = {}) {
   if (!price) return { ok: false, reason: 'no-price', availability };
   if (price.currency !== mk.currency) {
     // Session lost its currency pin (or GLOW state drifted) — rebuild once.
-    if (_retried) throw new Error(`amazon ${cc} wrong currency ${price.currency}`);
+    // Sessionless markets have no jar to rebuild; a retry would repeat the
+    // same static-cookie request, so fail straight to the transient contract.
+    if (_retried || sessionless(cc)) throw new Error(`amazon ${cc} wrong currency ${price.currency}`);
     await buildSession(cc);
     return fetchAmazonPrice(cc, asin, { _retried: true });
   }
@@ -288,19 +309,80 @@ async function fetchAmazonPrice(cc, asin, { _retried } = {}) {
 
 // -------------------------------------------------------- local ASIN search
 
-const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+// NFD strips combining diacritics (ü→u, ş→s, ğ→g) but Turkish dotless ı is
+// its own letter and does NOT decompose — map it by hand or 'Kasası' never
+// folds to 'kasasi'.
+const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ı/g, 'i');
+
+// Epey product names end in a TURKISH category tail ("… Robot Süpürge+Mop",
+// "… Bilgisayar Kasası", "… Ekran Kartı") that never appears in EN/DE Amazon
+// titles. As REQUIRED tokens those words made nearly every cross-market name
+// search fail (only globally-shared TR ASINs ever priced on .com/.co.uk), and
+// in the query they skew results. Folded forms (fold() strips diacritics);
+// universal words (monitor, tablet, robot, laptop, fan, modem…) stay.
+const TR_NAME_STOPWORDS = new Set([
+  'supurge', 'mop', 'bilgisayar', 'kasasi', 'anakart', 'islemci', 'sogutucu',
+  'sogutucusu', 'kulaklik', 'kulakligi', 'klavye', 'fare', 'oyun', 'kolu',
+  'konsolu', 'yazici', 'tarayici', 'hoparlor', 'kamera', 'kamerasi', 'arac',
+  'ici', 'akilli', 'saat', 'saati', 'bileklik', 'yuzuk', 'telefon', 'telefonu',
+  'cep', 'sarj', 'cihazi', 'aleti', 'guc', 'kaynagi', 'ekran', 'karti',
+  'bellek', 'okuyucu', 'kitap', 'gozlugu', 'gerceklik', 'sanal', 'donanim',
+  'cuzdani', 'televizyon', 'projeksiyon', 'amfi', 'sistemi', 'oynatici',
+  'medya', 'yonlendirici', 'soket', 'fani', 'kablosuz', 'kablolu',
+  'tasinabilir', 'dizustu', 'masaustu', 'aksesuari', 'aksesuar', 'yukseltici',
+  'genisletici', 'kurutmali', 'temizleyici', 'suzgec', 'faresi', 'klavyesi',
+  'yazicisi', 'hoparloru', 'konsol',
+]);
 
 /** Model-critical tokens: every token carrying a digit + words ≥4 chars (brand,
  *  series). ALL must appear in a result title, so "Galaxy S26 Ultra" can never
- *  match an S25 listing or a case/accessory. */
+ *  match an S25 listing or a case/accessory. Turkish category words are
+ *  dropped first — they cannot appear in a foreign-market title. Single bare
+ *  digits stay: "Pad 4" vs "Pad 3" differ ONLY in that generation digit. */
 function modelTokens(name) {
   // Parenthesised regional codes ("(SM-S948B)", "(2024)") rarely appear in
   // Amazon titles and would make the match impossible — drop them, but keep
   // capacity parens ("(1 TB)") since storage distinguishes real variants.
   const cleaned = fold(name).replace(/\((?![^)]*(?:gb|tb))[^)]*\)/g, ' ');
   return [...new Set(cleaned.replace(/[()/,+]/g, ' ').split(/\s+/)
-    .filter(t => t.length >= 2 && (/\d/.test(t) || t.length >= 4))
+    .filter(t => (/^\d+$/.test(t) ? t.length >= 1 : t.length >= 2 && (/\d/.test(t) || t.length >= 4))
+      && !TR_NAME_STOPWORDS.has(t))
     .slice(0, 8))];
+}
+
+/** Substring match for model codes ("rs20", "wh-1000xm6" — dashes make exact
+ *  word splits unreliable), but DIGIT-BOUNDED match for pure-number tokens:
+ *  plain includes() let "512"/"3.4k" satisfy a required "12"/"4", which is how
+ *  a OnePlus Pad 3 listing passed for the Pad 4 (live 2026-07-04). A number
+ *  token must not touch another digit or a decimal point. */
+function tokenInTitle(title, t) {
+  if (!/^\d+$/.test(t)) return title.includes(t);
+  return new RegExp(`(?<![\\d.])${t}(?![\\d.])`).test(title);
+}
+
+/** Does a fetched product-page title still look like OUR product? Used to
+ *  re-validate STORED search-resolved ASINs on every price fetch: a wrong
+ *  match written once (offers.merchantProductId) would otherwise refresh
+ *  itself forever via direct /dp/ fetches and never face the search matcher
+ *  again. Empty tokens/title verify as true — nothing to check against. */
+function titleMatches(name, title) {
+  if (!title) return true;
+  const tokens = modelTokens(name);
+  if (!tokens.length) return true;
+  const t = fold(String(title));
+  return tokens.every(tok => tokenInTitle(t, tok));
+}
+
+/** The search QUERY with the Turkish category tail removed ("Ezviz RS20 Pro
+ *  Robot Süpürge+Mop" → "Ezviz RS20 Pro Robot") — original casing/diacritics
+ *  kept for the surviving words; falls back to the full name if everything
+ *  would be dropped. */
+function searchQuery(name) {
+  const words = String(name || '').split(/\s+/).filter(w => {
+    const parts = fold(w).split(/[()/,+]/).filter(Boolean);
+    return !parts.length || !parts.every(p => TR_NAME_STOPWORDS.has(p));
+  });
+  return (words.join(' ').trim() || String(name || '')).slice(0, 160);
 }
 
 /**
@@ -319,8 +401,8 @@ async function searchLocalAsin(cc, productName) {
   const tokens = modelTokens(name);
   if (name.length < 6 || !tokens.length) return { ok: false, reason: 'no-match' };
   await ensureSession(cc);
-  const url = `https://${mk.host}/s?k=${encodeURIComponent(name).slice(0, 220)}`;
-  const res = await politeCurl([...baseArgs(mk, jarPath(cc)), url]);
+  const url = `https://${mk.host}/s?k=${encodeURIComponent(searchQuery(name)).slice(0, 220)}`;
+  const res = await politeCurl(cc, [...baseArgs(cc), url]);
   if (res.status !== 200) throw new Error(`amazon ${cc} search ${res.status}`);
   const html = res.text;
   // Search pages never carry id="productTitle", and the WORD "captcha" appears
@@ -343,10 +425,10 @@ async function searchLocalAsin(cc, productName) {
     const title = fold(decodeEntities(
       (block.match(/<h2[^>]*>[\s\S]{0,500}?<span[^>]*>([^<]{8,300})<\/span>/) || block.match(/alt="([^"]{10,300})"/) || [])[1] || ''));
     if (!title) continue;
-    if (!tokens.every(t => title.includes(t))) continue;
+    if (!tokens.every(t => tokenInTitle(title, t))) continue;
     return { ok: true, asin };
   }
   return { ok: false, reason: 'no-match' };
 }
 
-module.exports = { MARKETPLACES, marketTag, fetchAmazonPrice, searchLocalAsin, buildSession, parseMoney };
+module.exports = { MARKETPLACES, marketTag, fetchAmazonPrice, searchLocalAsin, buildSession, parseMoney, modelTokens, searchQuery, titleMatches };
