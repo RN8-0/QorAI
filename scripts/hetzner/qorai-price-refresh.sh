@@ -30,8 +30,14 @@ run() { node "$@" || echo "! pass basarisiz (devam): $*"; }
 run scripts/sync_offers.js --connector=geizhals_best --filter-extra="source='geizhals.eu'" --limit=500 --concurrency=2
 # pass1 — refresh: fiyat gosteren HER urun + varyantlar; en eski kontrol once (dogal rotasyon)
 run scripts/sync_offers.js --connector=amazon_direct --all-variants --filter-extra="source='epey.com' && pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=6000 --concurrency=2
-# pass2 — kesif A: Epey fiyatli (TR'de satista) hic bakilmamislar; TR/DE aramasi ASIN cozer
-run scripts/sync_offers.js --connector=amazon_direct --filter-extra="source='epey.com' && pricedOfferCount<1 && price_raw!='' && bestOfferCheckedAt=''" --sort=-techScore --limit=600 --concurrency=2
+# pass2 — kesif A (tuketici kategorileri KOTALI): -techScore tek basina kasalari
+# one cikariyordu (ts 90+ kasa cok) ve telefon/tablet siraya giremiyordu —
+# populer kategoriler her gece garantili pay alir, varyantlar dahil.
+for CAT in smartphones tablets laptops smartwatches headphones monitors tvs gaming_consoles; do
+  run scripts/sync_offers.js --connector=amazon_direct --all-variants --cat=$CAT --filter-extra="source='epey.com' && pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-techScore --limit=80 --concurrency=2
+done
+# pass2g — kesif A (genel): kalan tum kategorilerden en yuksek skorlular
+run scripts/sync_offers.js --connector=amazon_direct --filter-extra="source='epey.com' && pricedOfferCount<1 && price_raw!='' && bestOfferCheckedAt=''" --sort=-techScore --limit=300 --concurrency=2
 # pass2b — kesif A varyantlar (iPhone 1 TB gibi populer varyant sayfalari)
 run scripts/sync_offers.js --connector=amazon_direct --all-variants --filter-extra="variantPrimary=false && source='epey.com' && pricedOfferCount<1 && price_raw!='' && bestOfferCheckedAt=''" --sort=-techScore --limit=200 --concurrency=2
 # pass3 — kesif B: TR'de satilmayanlar (Pixel/OnePlus sinifi) — DE aramasi cozer.
