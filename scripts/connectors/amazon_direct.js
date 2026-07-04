@@ -143,17 +143,7 @@ module.exports = {
       // offer, fall back ONCE to a name search that resolves the LOCAL ASIN.
       let mAsin = localAsins[cc] || asin;
       let res = null;
-      try {
-        if (mAsin) res = await fetchAmazonPrice(cc, mAsin);
-        if ((!res || !res.ok) && String(product.name || '').trim()) {
-          const found = await searchLocalAsin(cc, product.name);
-          if (found.ok && found.asin !== mAsin) {
-            mAsin = found.asin;
-            res = await fetchAmazonPrice(cc, mAsin);
-          }
-        }
-        marketStrikes[cc] = 0;
-      } catch (e) {
+      const strike = (e) => {
         // Transient for THIS market only: skip it (tonight's cleanup may drop
         // its old row; the next run re-resolves it) but keep the other markets.
         marketStrikes[cc] = (marketStrikes[cc] || 0) + 1;
@@ -161,7 +151,26 @@ module.exports = {
           marketBreaker[cc] = true;
           console.log(`  ! amazon_direct: ${cc} breaker open (${e.message}) — market disabled for the rest of this run`);
         }
-        continue;
+      };
+      try {
+        if (mAsin) res = await fetchAmazonPrice(cc, mAsin);
+        marketStrikes[cc] = 0;
+      } catch (e) { strike(e); continue; }
+      if ((!res || !res.ok) && String(product.name || '').trim()) {
+        try {
+          const found = await searchLocalAsin(cc, product.name);
+          if (found.ok && found.asin !== mAsin) {
+            mAsin = found.asin;
+            res = await fetchAmazonPrice(cc, mAsin);
+          }
+        } catch (e) {
+          // The SEARCH wall must not trip the market breaker: on a datacenter
+          // IP (Hetzner) Amazon walls the search page permanently while direct
+          // /dp/<ASIN> fetches keep working — so ASIN-known products must keep
+          // pricing and only local-ASIN DISCOVERY is left to the residential
+          // run. Skip this product+market silently.
+          continue;
+        }
       }
       if (!res || !res.ok) continue; // definite no-offer on this storefront
 
