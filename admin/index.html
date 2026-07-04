@@ -508,6 +508,7 @@
           <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Translate</button>
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Affiliate</button>
+          <button class="scraper-tab" data-tab="priceLab" onclick="switchScraperTab(this); priceLabInit()">💵 Price</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
         </div>
 
@@ -1023,6 +1024,26 @@
 
         <!-- Score Update panel removed (replaced by Score Engine v4) -->
 
+        <!-- 💵 Price Lab — yerel IP'den elle fiyat koşuları -->
+        <div class="scraper-panel" id="priceLabPanel">
+          <div class="card">
+            <div class="card-title">💵 Fiyat Koşuları (bu cihazın IP'sinden)</div>
+            <p class="text-muted" style="margin-bottom:10px;font-size:12px">
+              Epey ve Amazon arama sayfaları datacenter IP'lerini duvarlıyor — bu koşular
+              scraper proxy üzerinden <b>bu makinede</b> çalışır. Tek seferde tek koşu.
+              Gece görevleri (03:10/03:12) ve Hetzner cron'u ayrıca çalışmaya devam eder;
+              taze ürünler otomatik atlanır (SKIP_FRESH), mükerrer istek oluşmaz.
+            </p>
+            <div id="priceCoverage" class="text-muted" style="font-size:13px;margin-bottom:12px">Kapsam yükleniyor…</div>
+            <div id="priceJobButtons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span id="priceRunState" class="text-muted" style="font-size:12px">—</span>
+              <button class="btn btn-danger btn-sm" id="btnPriceStop" onclick="priceStop()" style="display:none">Durdur</button>
+            </div>
+            <pre id="priceLogView" style="display:none;margin-top:10px;max-height:340px;overflow:auto;background:#0b1220;color:#cde3ff;padding:10px;border-radius:8px;font-size:11px;line-height:1.45;white-space:pre-wrap"></pre>
+          </div>
+        </div>
+
         <!-- Tech Score Engine v2 (spec-based, percentile + power curve) -->
         <div class="scraper-panel" id="scoreEnginePanel">
           <div class="card">
@@ -1356,6 +1377,7 @@
         'js/categories.js',
         'js/scraper.js',
         'js/scraper-geizhals.js',
+        'js/scraper-price.js',
         'js/notifications.js',
         'js/support.js',
         'js/blog.js',

@@ -238,6 +238,60 @@ function isOffersRunning() {
   return !!(offersProc && !offersProc.killed && offersProc.exitCode === null);
 }
 
+// ─── Price lab (admin Scraper → 💵 Price sekmesi) ────────────────────────
+// Fiyat koşuları BU makineden (yerel/residential IP) elle tetiklenir: Epey
+// ve Amazon arama sayfaları datacenter IP'leri duvarlıyor, Newegg da en
+// stabil ev IP'sinden. Preset'ler sunucu tarafında sabit — UI'dan serbest
+// arg gelmez. Tek seferde tek koşu (offers kilidiyle ortak).
+const HOME = process.env.USERPROFILE || process.env.HOME || rootDir;
+const PRICE_JOBS = {
+  epey_chain: {
+    label: 'TR — Epey→Amazon tam zincir + backfill',
+    cmd: 'cmd.exe', args: ['/c', 'scripts\\price_refresh.cmd'],
+    logFile: path.join(HOME, 'qorai-price.log'),
+  },
+  direct: {
+    label: 'DE/GB/US — Amazon direct (keşif+refresh) + backfill',
+    cmd: 'cmd.exe', args: ['/c', 'scripts\\price_refresh_direct.cmd', 'now'],
+    logFile: path.join(HOME, 'qorai-price-direct.log'),
+  },
+  newegg: {
+    label: 'US — Newegg arama taraması',
+    node: ['scripts/sync_offers.js', '--connector=newegg', '--sort=-techScore', '--limit=3000', '--concurrency=2'],
+    env: { NO_REINDEX: '1' },
+  },
+  geizhals: {
+    label: 'DE — Geizhals en ucuz Amazon satırı',
+    node: ['scripts/sync_offers.js', '--connector=geizhals_best', "--filter-extra=source='geizhals.eu'", '--limit=500', '--concurrency=2'],
+    env: { NO_REINDEX: '1' },
+  },
+  backfill: {
+    label: 'Typesense fiyat backfill (site listeleri)',
+    node: ['scripts/ts_backfill_lowest_price.js', '--confirm'],
+  },
+};
+let priceJob = null; // { key, startedAt, proc, logFile }
+
+function isPriceRunning() {
+  return !!(priceJob && priceJob.proc && !priceJob.proc.killed && priceJob.proc.exitCode === null);
+}
+
+function priceLogTail(maxBytes = 6000) {
+  if (!priceJob) return '';
+  if (priceJob.logFile) {
+    try {
+      const st = fs.statSync(priceJob.logFile);
+      const fd = fs.openSync(priceJob.logFile, 'r');
+      const size = Math.min(maxBytes, st.size);
+      const buf = Buffer.alloc(size);
+      fs.readSync(fd, buf, 0, size, Math.max(0, st.size - size));
+      fs.closeSync(fd);
+      return buf.toString('utf8');
+    } catch { return '(log dosyası okunamadı)'; }
+  }
+  return offersLog.slice(-maxBytes);
+}
+
 // ─── FlareSolverr (optional CF-bypass sidecar) ───────────────────────────
 // FlareSolverr is a Docker container that solves Cloudflare challenges using
 // undetected-chromedriver. When it's running on http://localhost:8191/v1 the
@@ -1786,6 +1840,102 @@ const server = http.createServer(async (req, res) => {
   // POST /offers/test  body: {connector, cat, limit} -> spawns a tiny test run
   // POST /offers/sync  body: {connector, cat, missingOnly, limit} -> sync_offers.js
   // GET  /offers/status -> {running, logTail, config}
+  // ── Price lab endpoints (admin Scraper → 💵 Price) ──
+  if (req.url === '/price/jobs') {
+    const jobs = Object.entries(PRICE_JOBS).map(([key, j]) => ({ key, label: j.label }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ jobs }));
+    return;
+  }
+
+  if (req.url === '/price/run' && req.method === 'POST') {
+    try {
+      const opts = await readJsonBody(req);
+      const key = String(opts.job || '').replace(/[^a-z_]/g, '');
+      const job = PRICE_JOBS[key];
+      if (!job) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: `Bilinmeyen iş: ${key}` }));
+        return;
+      }
+      if (isOffersRunning() || isPriceRunning()) {
+        res.writeHead(409, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Zaten bir fiyat/offer koşusu çalışıyor' }));
+        return;
+      }
+      const { spawn } = require('child_process');
+      let proc;
+      if (job.cmd) {
+        proc = spawn(job.cmd, job.args, { cwd: rootDir, env: { ...process.env }, windowsHide: true });
+      } else {
+        const dnsPatch = path.join(__dirname, 'dns-patch.js');
+        const spawnArgs = fs.existsSync(dnsPatch) ? ['--require', dnsPatch, ...job.node] : job.node;
+        offersLog = '';
+        proc = spawn('node', spawnArgs, { cwd: rootDir, env: { ...process.env, ...(job.env || {}) }, windowsHide: true });
+        proc.stdout.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+        proc.stderr.on('data', d => { offersLog += d.toString(); if (offersLog.length > 50000) offersLog = offersLog.slice(-40000); });
+      }
+      priceJob = { key, startedAt: new Date().toISOString(), proc, logFile: job.logFile || null };
+      proc.on('exit', code => { if (!job.cmd) offersLog += `\n[price:${key}] exited with code ${code}\n`; });
+      console.log(`  💵 /price/run job=${key} pid=${proc.pid}`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, job: key, pid: proc.pid }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  if (req.url === '/price/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      running: isPriceRunning(),
+      job: priceJob ? priceJob.key : null,
+      label: priceJob && PRICE_JOBS[priceJob.key] ? PRICE_JOBS[priceJob.key].label : null,
+      startedAt: priceJob ? priceJob.startedAt : null,
+      logTail: priceLogTail(),
+    }));
+    return;
+  }
+
+  if (req.url === '/price/stop' && req.method === 'POST') {
+    if (isPriceRunning()) {
+      // cmd zincirleri çocuk node süreçleri doğurur — Windows'ta ağacı komple
+      // devirmek için taskkill /T gerekir (SIGTERM cmd'nin çocuklarını bırakır).
+      try {
+        const { execFile: ef } = require('child_process');
+        ef('taskkill', ['/pid', String(priceJob.proc.pid), '/T', '/F'], { windowsHide: true }, () => {});
+      } catch { try { priceJob.proc.kill('SIGTERM'); } catch {} }
+      console.log('  💵 /price/stop — process tree killed');
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  if (req.url === '/price/coverage') {
+    try {
+      const { req: pbReq } = require(path.join(rootDir, 'migration', 'pb'));
+      const count = async (coll, filter) => {
+        const r = await pbReq('GET', `/api/collections/${coll}/records?perPage=1&filter=${encodeURIComponent(filter)}`);
+        return ((r.body || r) && (r.body || r).totalItems) || 0;
+      };
+      const nowIso = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      const live = (cc) => count('offers', `country='${cc}' && price>0 && (expiresAt='' || expiresAt>='${nowIso}')`);
+      const [priced, tr, de, gb, us] = await Promise.all([
+        count('products', 'pricedOfferCount>0'),
+        live('TR'), live('DE'), live('GB'), live('US'),
+      ]);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ pricedProducts: priced, live: { TR: tr, DE: de, GB: gb, US: us }, at: new Date().toISOString() }));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
   // POST /offers/stop
   if (req.url === '/offers/config' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

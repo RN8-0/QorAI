@@ -24,7 +24,11 @@ rem geceyi zaten cikarir. Kesif erken kosuyor ki ana zincirin pass2b'si
 rem (generic tarama, ~4-5 saat sonra baslar) ayni taranmamis havuzun tepesini
 rem bestOfferCheckedAt ile damgalamadan once amiral gemilerini biz alalim.
 cd /d C:\Users\RN8\Desktop\Compair-master
+rem "now" argumani (admin Price sekmesi / elle kosum): 10 dk'lik geizhals
+rem cakisma beklemesini atla — gece gorevi argumansiz cagirir ve bekler.
+if "%~1"=="now" goto :run
 timeout /t 600 /nobreak >nul
+:run
 echo ===== %date% %time% direct refresh start ===== >> "%USERPROFILE%\qorai-price-direct.log"
 set NO_REINDEX=1
 set AMAZON_DIRECT_MARKETS=DE,GB,US
