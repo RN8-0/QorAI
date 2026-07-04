@@ -329,6 +329,10 @@ const TR_NAME_STOPWORDS = new Set([
   'bellek', 'okuyucu', 'kitap', 'gozlugu', 'gerceklik', 'sanal', 'donanim',
   'cuzdani', 'televizyon', 'projeksiyon', 'amfi', 'sistemi', 'oynatici',
   'medya', 'yonlendirici', 'soket', 'fani', 'kablosuz', 'kablolu',
+  // 'flash': Epey "Flash Bellek" der ama Amazon basliklari "USB-Stick"/"USB
+  // bellek"/"Flash Drive" arasinda gezer — zorunlu token olarak koca
+  // flash_drives kategorisini eslesmez yapiyordu (marka+kapasite yeterli).
+  'flash',
   'tasinabilir', 'dizustu', 'masaustu', 'aksesuari', 'aksesuar', 'yukseltici',
   'genisletici', 'kurutmali', 'temizleyici', 'suzgec', 'faresi', 'klavyesi',
   'yazicisi', 'hoparloru', 'konsol',
