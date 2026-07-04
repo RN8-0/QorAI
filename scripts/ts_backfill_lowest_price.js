@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════════════════
-//  QOR AI — Typesense backfill: lowestPriceUSD
+//  QOR AI — Typesense backfill: lowestPriceUSD + pricesByCountry + bestOfferExpiresAt
 //
-//  Adds the `lowestPriceUSD` field to the existing Typesense `products`
+//  Adds the price rollup fields to the existing Typesense `products`
 //  collection (without recreating it), then streams every PocketBase product
-//  and patches the corresponding TS document with a freshly computed USD
-//  price derived from its country/currency-keyed `prices` map.
+//  and patches the corresponding TS document with:
+//    - lowestPriceUSD: freshly computed cross-market USD price (sorting)
+//    - pricesByCountry: compact JSON of country-code→native price (lean cards)
+//    - bestOfferExpiresAt: rollup freshness stamp (strict-country price gate)
 //
 //  Why a dedicated script (vs. just running migration/ts_index.js):
 //    - Drop-recreate would invalidate the live index for ~1-2 minutes and
@@ -33,11 +35,16 @@ const { req: pbReq } = require(path.join(__dirname, '..', 'migration', 'pb'));
 const { lowestPriceUsd, FX_VERSION } = require(path.join(__dirname, 'fx_rates'));
 
 const TS_COLLECTION = 'products';
-const NEW_FIELD = {
-  name: 'lowestPriceUSD',
-  type: 'float',
-  optional: true,
-};
+// Kartların lean (_raw'sız) payload'ında ülke-bazlı fiyat gösterebilmek için
+// lowestPriceUSD'nin yanına iki kompakt alan daha yazıyoruz:
+//   - pricesByCountry: yalnız 2 harfli ülke kodu anahtarlı, JSON.stringify
+//     edilmiş {"TR":1234.56,...} map'i (index:false → aranmaz ama döner)
+//   - bestOfferExpiresAt: rollup tazelik damgası (priceForCountry bunu ister)
+const NEW_FIELDS = [
+  { name: 'lowestPriceUSD', type: 'float', optional: true },
+  { name: 'pricesByCountry', type: 'string', optional: true, index: false },
+  { name: 'bestOfferExpiresAt', type: 'string', optional: true, index: false },
+];
 
 // CLI flags ----------------------------------------------------------------
 const args = process.argv.slice(2);
@@ -54,34 +61,52 @@ const TS_BATCH_SIZE = (() => {
 const log = (...m) => console.log('[backfill]', ...m);
 const warn = (...m) => console.warn('[backfill]', ...m);
 
-async function ensureField() {
+async function ensureFields() {
   const r = await tsReq('GET', `/collections/${TS_COLLECTION}`);
   if (r.status !== 200) {
     throw new Error(`Cannot read collection: ${JSON.stringify(r.body).slice(0, 200)}`);
   }
   const fields = (r.body && r.body.fields) || [];
-  const exists = fields.some(f => f.name === NEW_FIELD.name);
-  if (exists) {
-    log(`field ${NEW_FIELD.name} already present, skipping schema alter`);
+  const existing = new Set(fields.map(f => f.name));
+  const missing = NEW_FIELDS.filter(f => !existing.has(f.name));
+  if (!missing.length) {
+    log(`fields ${NEW_FIELDS.map(f => f.name).join(', ')} already present, skipping schema alter`);
     return;
   }
   if (!CONFIRM) {
-    log(`[dry-run] would PATCH /collections/${TS_COLLECTION} adding ${NEW_FIELD.name}:${NEW_FIELD.type}`);
+    log(`[dry-run] would PATCH /collections/${TS_COLLECTION} adding ${missing.map(f => `${f.name}:${f.type}`).join(', ')}`);
     return;
   }
   const patch = await tsReq('PATCH', `/collections/${TS_COLLECTION}`, {
-    fields: [NEW_FIELD],
+    fields: missing,
   });
   if (patch.status !== 200) {
     throw new Error(`Schema alter failed (${patch.status}): ${JSON.stringify(patch.body).slice(0, 300)}`);
   }
-  log(`schema altered: +${NEW_FIELD.name}`);
+  log(`schema altered: +${missing.map(f => f.name).join(', +')}`);
+}
+
+// PB `prices` map'inden SADECE 2 harfli BÜYÜK ülke kodu anahtarlarını (TR, DE,
+// GB, US, ...) alır — legacy para-kodu anahtarları (TRY, EUR...) elenmiş olur —
+// pozitif değerleri 2 ondalığa yuvarlayıp kompakt JSON string döndürür.
+// Boş/geçersizse '' döner: idempotentlik için alan HER ZAMAN yazılır, böylece
+// fiyatını kaybeden ürünün eski pricesByCountry değeri de temizlenir.
+function compactCountryPrices(prices) {
+  if (!prices || typeof prices !== 'object') return '';
+  const out = {};
+  for (const key of Object.keys(prices)) {
+    if (!/^[A-Z]{2}$/.test(key)) continue;
+    const n = Number(prices[key]);
+    if (!(n > 0)) continue;
+    out[key] = Math.round(n * 100) / 100;
+  }
+  return Object.keys(out).length ? JSON.stringify(out) : '';
 }
 
 async function pbPage(page) {
   const r = await pbReq(
     'GET',
-    `/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=${page}&fields=id,prices`,
+    `/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=${page}&fields=id,prices,bestOfferExpiresAt`,
   );
   if (r.status !== 200) {
     throw new Error(`PB page ${page} failed: ${JSON.stringify(r.body).slice(0, 200)}`);
@@ -119,7 +144,7 @@ async function importBatch(docs) {
 
 async function main() {
   log(`mode=${CONFIRM ? 'APPLY' : 'DRY-RUN'} fxVersion=${FX_VERSION} pbBatch=${PB_PAGE_SIZE} tsBatch=${TS_BATCH_SIZE}`);
-  await ensureField();
+  await ensureFields();
 
   const first = await pbPage(1);
   const total = first.totalItems;
@@ -142,7 +167,12 @@ async function main() {
       processed++;
       const usd = lowestPriceUsd(pb.prices);
       if (usd > 0) withPrice++; else zeroPrice++;
-      buffer.push({ id: pb.id, lowestPriceUSD: usd });
+      buffer.push({
+        id: pb.id,
+        lowestPriceUSD: usd,
+        pricesByCountry: compactCountryPrices(pb.prices),
+        bestOfferExpiresAt: pb.bestOfferExpiresAt || '',
+      });
       if (buffer.length >= TS_BATCH_SIZE) await flush();
     }
     const rate = (processed / Math.max(1, (Date.now() - t0) / 1000)).toFixed(0);

@@ -16,6 +16,7 @@ const SEARCH_PATH = `/collections/${COLLECTION}/documents/search`;
 const LIST_FIELD_NAMES = [
   'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
   'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
+  'pricesByCountry', 'bestOfferExpiresAt',
   'keySpecsText', 'filterTokens', 'screenSizeValue', 'batteryCapacityValue',
   'weightValueKg', 'scrapedAtTs', 'updatedAtTs',
 ];
@@ -23,8 +24,9 @@ const LIST_FIELD_NAMES = [
 // needs it for prices/offers/rich specs on detail-grade surfaces. But it dominates
 // payload, and the home feed over-fetches ~1200 docs across its rails. So list
 // surfaces that only render cards use LIST_FIELDS_LEAN (no `_raw`): the card draws
-// image/name/brand/score/spec-chips from indexed fields, and these top-scored
-// products carry no usable localized price anyway. Detail still reads the full doc.
+// image/name/brand/score/spec-chips from indexed fields, and the country price
+// comes from the compact `pricesByCountry` + `bestOfferExpiresAt` stored fields
+// (backfilled by scripts/ts_backfill_lowest_price.js). Detail reads the full doc.
 const LIST_FIELDS = [...LIST_FIELD_NAMES, '_raw'].join(',');
 const LIST_FIELDS_LEAN = LIST_FIELD_NAMES.join(',');
 
@@ -276,6 +278,19 @@ export function productMatchesRequestedCategory(product, category) {
   return true;
 }
 
+// Lean list docs carry the country→price map as a compact JSON string in the
+// indexed-but-stored `pricesByCountry` field (see ts_backfill_lowest_price.js).
+// Parse defensively: any malformed value degrades to "no price", never throws.
+function parsePricesByCountry(s) {
+  if (!s || typeof s !== 'string') return {};
+  try {
+    const o = JSON.parse(s);
+    return (o && typeof o === 'object') ? o : {};
+  } catch {
+    return {};
+  }
+}
+
 // A Typesense doc carries the full PocketBase record as `_raw` only when the
 // document endpoint is used. Search/list endpoints return lightweight fields.
 export function docToProduct(doc) {
@@ -312,8 +327,10 @@ export function docToProduct(doc) {
     pricedOfferCount: base.pricedOfferCount || 0,
     bestOfferId: base.bestOfferId || '',
     bestOfferCheckedAt: base.bestOfferCheckedAt || '',
-    bestOfferExpiresAt: base.bestOfferExpiresAt || '',
-    prices: base.prices || {},
+    bestOfferExpiresAt: base.bestOfferExpiresAt || doc.bestOfferExpiresAt || '',
+    prices: (base.prices && Object.keys(base.prices).length)
+      ? base.prices
+      : parsePricesByCountry(doc.pricesByCountry),
     affiliateLinksByCountry: base.affiliateLinksByCountry || {},
     source: base.source || doc.source || '',
     sourceUrl: base.sourceUrl || '',
