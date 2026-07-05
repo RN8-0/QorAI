@@ -62,6 +62,7 @@ function ProfileBody({ user, logout, t }) {
     { key: 'analyses', label: t('pf.tabAnalyses') },
     { key: 'reviews', label: t('pf.tabReviews') },
     { key: 'liked', label: t('pf.tabLiked') },
+    { key: 'account', label: t('pf.tabAccount') },
   ];
 
   return (
@@ -85,6 +86,7 @@ function ProfileBody({ user, logout, t }) {
       {tab === 'analyses' && <AnalysesTab t={t} />}
       {tab === 'reviews' && <ReviewsTab t={t} />}
       {tab === 'liked' && <LikedTab t={t} />}
+      {tab === 'account' && <AccountTab user={user} t={t} />}
     </div>
   );
 }
@@ -171,41 +173,48 @@ function Identity({ user, name, logout, t }) {
 }
 
 /* ─── Overview tab ───────────────────────────────────────────────── */
-// Keep this lean and app-synced: membership, the shared Qor Coin balance, and
-// account deletion. The old compare-count stat and the "Profilin" quiz-answer
-// card were removed — the quiz is answered once at onboarding and can't be
-// re-edited here (the algorithm learns the user over time), and privacy/terms
-// live in the footer, not here.
+// Membership + the shared Qor Coin balance. On Premium the balance shows ∞
+// (Premium never spends coins — mirrors the app + header), NOT a finite number.
+// Account deletion lives in its own "Hesap" tab now; the old compare-count stat
+// and "Profilin" quiz card were removed (quiz is set once at onboarding).
 function Overview({ user, t }) {
-  const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   const prem = premiumStatus(user);
+  const isPrem = prem.isPremium;
+  const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   const premUntil = prem.expiresAt
     ? new Date(prem.expiresAt).toLocaleDateString()
     : '';
   return (
     <div className="fade-up">
-      <div className={'pf-card pf-membership' + (prem.isPremium ? ' is-premium' : '')}>
-        <div className="pf-mem-badge">{prem.isPremium ? '✦' : 'Q'}</div>
+      <div className={'pf-card pf-membership' + (isPrem ? ' is-premium' : '')}>
+        <div className="pf-mem-badge">{isPrem ? '✦' : 'Q'}</div>
         <div className="pf-mem-text">
-          <strong>{prem.isPremium ? t('pf.memberPremium') : t('pf.memberFree')}</strong>
+          <strong>{isPrem ? t('pf.memberPremium') : t('pf.memberFree')}</strong>
           <span>
-            {prem.isPremium
+            {isPrem
               ? (premUntil ? t('pf.premiumUntil', { date: premUntil }) : t('pf.premiumActive'))
               : t('pf.premiumApp')}
           </span>
         </div>
-        {!prem.isPremium && <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>}
+        {!isPrem && <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>}
       </div>
 
-      <div className="pf-card pf-coins">
+      <div className={'pf-card pf-coins' + (isPrem ? ' pf-coins-pro' : '')}>
         <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>
         <div>
-          <div className="pf-coin-num">{coins}</div>
-          <div className="pf-coin-lbl">{t('pf.coinBalance')}</div>
+          <div className="pf-coin-num">{isPrem ? '∞' : coins}</div>
+          <div className="pf-coin-lbl">{isPrem ? t('pf.coinUnlimited') : t('pf.coinBalance')}</div>
         </div>
-        <p>{t('pf.coinDesc')}</p>
+        <p>{isPrem ? t('pf.coinPremiumDesc') : t('pf.coinDesc')}</p>
       </div>
+    </div>
+  );
+}
 
+/* ─── Account tab — sign-out + account deletion ──────────────────── */
+function AccountTab({ user, t }) {
+  return (
+    <div className="fade-up">
       <DangerZone user={user} t={t} />
     </div>
   );
