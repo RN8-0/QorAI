@@ -400,6 +400,25 @@ function extractBrowse(pb) {
     }
     return null;
   };
+  // Exact (normalized-equality) key match only — NO substring fuzzing. Use this
+  // when the parser is too permissive to tell fields apart: e.g. VRAM only needs
+  // "N GB", so a bare "Bellek"=RAM ("64 GB") would leak into a "GPU Bellek
+  // Miktarı" lookup via firstValid (which matches whenever the query key
+  // contains the spec key). exactNorm requires the keys to be the SAME field.
+  const exactNorm = (keys, parse) => {
+    for (const key of keys) {
+      if (flat[key] != null && flat[key] !== '') { const r = parse(String(flat[key])); if (r) return r; }
+    }
+    const normKeys = keys.map(_normalizeBrowseText);
+    for (const sk of Object.keys(flat)) {
+      const nsk = _normalizeBrowseText(sk);
+      if (normKeys.includes(nsk) && flat[sk] != null && flat[sk] !== '') {
+        const r = parse(String(flat[sk]));
+        if (r) return r;
+      }
+    }
+    return null;
+  };
   const category = cat(pb);
   const ramCapacityKeys = category === 'ram'
     ? ['Bellek Kapasitesi', 'Memory Capacity', 'RAM Capacity', 'Capacity', 'Kapasite', 'Speicherkapazitat', 'Speicherkapazität', 'Arbeitsspeicher Kapazitat', 'Arbeitsspeicher Kapazität']
@@ -463,19 +482,23 @@ function extractBrowse(pb) {
   if (allow(pb, 'gpuBrand')) {
     // Prefer the discrete-GPU keys; fall back to integrated/SoC graphics so
     // MacBooks (Apple) and integrated-only PCs still get a brand.
+    // GPU-named keys first; "İşlemci Üreticisi" (CPU-ambiguous on laptops, but
+    // = GPU maker on cards) only after, so a discrete GPU never reads as its CPU.
     const brand = firstValid([
-      'GPU Markası', 'Display Kartı İşlemci Markası', 'İşlemci Üreticisi', 'GPU Üreticisi',
-      'GPU Modeli', 'GPU Serisi', 'Display Kartı Modeli', 'GPU Model', 'GPU',
-      'Grafik İşlemcisi', 'Grafik Kartı', 'Graphics Card', 'Ekran Kartı',
+      'GPU Markası', 'Display Kartı İşlemci Markası', 'GPU Modeli', 'GPU Serisi',
+      'Display Kartı Modeli', 'GPU Model', 'GPU', 'Grafik İşlemcisi', 'GPU Üreticisi',
+      'İşlemci Üreticisi', 'Grafik Kartı', 'Graphics Card', 'Ekran Kartı',
       'Dahili Grafik Modeli', 'Integrated Graphics Model', 'Graphics', 'Grafikkarte',
     ], _gpuBrand) || (category === 'graphics_cards' ? _gpuBrand(pb.name) : null);
     if (brand) addT('gpu_brand:' + brand);
   }
   if (allow(pb, 'vram')) {
-    const vram = firstValid([
-      'GPU Bellek Miktarı', 'Display Kartı Bellek Miktarı', 'Bellek Boyutu', 'Ekran Kartı Bellek Miktarı',
-      'GPU Memory', 'Video Memory', 'VRAM', 'Grafikspeicher', 'Bellek Kapasitesi (GPU)',
-    ], _vramGb);
+    // exactNorm (not firstValid): VRAM only needs "N GB", so a bare system-RAM
+    // field ("Bellek"=64 GB) would otherwise leak in on integrated laptops.
+    const vramKeys = category === 'graphics_cards'
+      ? ['Bellek Boyutu', 'Bellek Miktarı', 'GPU Bellek Miktarı', 'Memory Size', 'VRAM', 'Video Memory', 'Grafikspeicher']
+      : ['GPU Bellek Miktarı', 'Display Kartı Bellek Miktarı', 'Ekran Kartı Bellek Miktarı', 'Harici Grafik Bellek Miktarı', 'GPU Memory', 'Dedicated Video Memory', 'Video Memory', 'VRAM', 'Grafikspeicher'];
+    const vram = exactNorm(vramKeys, _vramGb);
     if (vram) addT('vram:' + vram + '_gb');
   }
   if (allow(pb, 'vramType')) {

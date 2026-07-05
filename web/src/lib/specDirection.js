@@ -488,6 +488,20 @@ function extractNumber(value) {
   return m ? parseFloat(m[0]) : null;
 }
 
+// A value is a single comparable quantity only when it is one line and carries
+// at most ONE number (optionally with a unit): "5000 mAh", "120 Hz", "6.9 inch".
+// Free-text descriptions ("6x 2.0 GHz ARM Cortex-A55 · Mali-G57 · 2x 2.2 GHz ·
+// 64-bit", triple-camera "50 MP + 12 MP + 10 MP") carry several numbers, so the
+// old generic extractNumber() grabbed the FIRST one (a core count) and crowned
+// the wrong product. Those are rejected here so no bogus winner is declared.
+function isSingleQuantity(value) {
+  const raw = String(value == null ? '' : value).trim();
+  if (!raw) return false;
+  if (/[\n\r]/.test(raw)) return false;
+  const tokens = raw.match(/\d+(?:[.,]\d+)?/g) || [];
+  return tokens.length <= 1;
+}
+
 function extractResolutionScore(key, value) {
   const looksLikeResolution = key.includes('resolution') || key.includes('cozunurluk')
     || key.includes('video recording') || key.includes('recording')
@@ -566,6 +580,11 @@ function extractComparableNumber(specKey, value) {
   if (storage != null) return storage;
   const weight = extractWeightInGrams(key, v);
   if (weight != null) return weight;
+  // The unit-aware extractors above already handled every multi-number pattern
+  // we understand (WxH, storage, weight, frequency range). Anything left that
+  // still carries several numbers is a free-text spec, not a quantity — do NOT
+  // guess a winner from its leading digit.
+  if (!isSingleQuantity(v)) return null;
   return extractNumber(v);
 }
 
@@ -591,7 +610,11 @@ function compareByComponentRanking(specKey, values) {
   if (isGpu) table = GPU_RANKINGS;
   if (!table) return -1;
   const scores = values.map((v) => lookupRanking(table, v));
-  if (scores.every((s) => s === 0)) return -1;
+  // If ANY contender is an unknown model (score 0), the ranking is unreliable:
+  // the unknown one could be the fastest (e.g. a brand-new Apple A19 Pro that
+  // isn't in the table yet would score 0 and wrongly "lose" to a listed
+  // mid-range chip). Refuse to pick a winner rather than crown the wrong one.
+  if (scores.some((s) => s === 0)) return -1;
   if (scores.every((s) => s === scores[0])) return -1;
   const maxScore = Math.max(...scores);
   return scores.indexOf(maxScore);

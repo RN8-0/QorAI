@@ -22,7 +22,7 @@ if (!existsSync(indexHtml)) {
 const ROUTES = [
   'category', 'product', 'ai-chat',
   'link-analysis', 'subscriptions', 'premium', 'quiz', 'go', 'profile',
-  'settings', 'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
+  'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
 ];
 
 for (const route of ROUTES) {

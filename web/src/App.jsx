@@ -28,7 +28,6 @@ const Subscriptions = lazy(() => import('./pages/Subscriptions.jsx'));
 const Premium = lazy(() => import('./pages/Premium.jsx'));
 const Quiz = lazy(() => import('./pages/Quiz.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
-const Settings = lazy(() => import('./pages/Settings.jsx'));
 const Go = lazy(() => import('./pages/Go.jsx'));
 const Blog = lazy(() => import('./pages/Blog.jsx'));
 const BlogPost = lazy(() => import('./pages/BlogPost.jsx'));
@@ -78,7 +77,6 @@ export default function App() {
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="/terms" element={<LegalPage kind="terms" />} />
           <Route path="/privacy" element={<LegalPage kind="privacy" />} />
           <Route path="/refund" element={<LegalPage kind="refund" />} />

@@ -1148,10 +1148,6 @@ const STATIC_ROUTES = [
     dir: 'profile', path: '/profile', noindex: true,
     seo: { title: 'Profilim — Qor AI', description: 'Qor Coin bakiyen, karşılaştırmaların, analizlerin ve yorumların.', noindex: true },
   },
-  {
-    dir: 'settings', path: '/settings', noindex: true,
-    seo: { title: 'Ayarlar — Qor AI', description: 'Tema, dil ve hesap ayarları.', noindex: true },
-  },
 ];
 
 // ── Multilingual SEO (tr=root, en=/en, de=/de) ──────────────────────────────

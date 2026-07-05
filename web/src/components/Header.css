@@ -271,6 +271,25 @@
 .hd-menu-item:hover { background: var(--bg3); color: var(--text); }
 .hd-menu-item.danger:hover { color: var(--red); }
 
+/* language + region picker (replaces the old Settings page) */
+.hd-intl { position: relative; display: inline-flex; }
+.hd-intl-menu { width: 244px; }
+.hd-intl-langs { display: flex; gap: 6px; padding: 4px 2px 8px; }
+.hd-intl-lang {
+  flex: 1; padding: 8px 6px; border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 700; color: var(--text2);
+  background: var(--bg3); text-align: center; white-space: nowrap;
+}
+.hd-intl-lang:hover { color: var(--text); }
+.hd-intl-lang.on { background: var(--accent-soft); color: var(--accent); }
+.hd-intl-region { display: block; padding: 4px; }
+.hd-intl-region > span { display: block; font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+.hd-intl-region select {
+  width: 100%; padding: 9px 10px; border-radius: var(--radius-sm);
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); font-size: 13px; cursor: pointer;
+}
+
 .hd-burger { display: none; flex-direction: column; gap: 4px; }
 .hd-burger span { width: 16px; height: 2px; background: var(--text); border-radius: 2px; }
 

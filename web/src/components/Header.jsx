@@ -5,10 +5,21 @@ import { useTheme } from '../lib/theme';
 import { premiumStatus } from '../lib/premium';
 import { formatQorCoins, hasCompletedQuiz } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
-import { CANONICAL_CATEGORY_GROUPS, categoryLabel } from '../lib/format';
+import { CANONICAL_CATEGORY_GROUPS, categoryLabel, CURRENCY_BY_COUNTRY, countryDisplayName } from '../lib/format';
 import { categoryPath } from '../lib/routes';
+import { useGeoCountry, setGeoCountry } from '../lib/geo';
+import { updateProfile } from '../lib/pocketbase';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
+
+// Markets the site supports (drives prices/currency + Amazon storefront). Moved
+// here from the (deleted) Settings page so language + region stay changeable.
+const MARKET_COUNTRIES = Object.keys(CURRENCY_BY_COUNTRY);
+function flagEmoji(cc) {
+  const c = String(cc || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return '🌍';
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
 
 // Order: Home, then the Categories mega-menu trigger, then the tools.
 const NAV_REST = [
@@ -27,11 +38,20 @@ export default function Header() {
   const { user, openAuth, logout } = useAuth();
   const loc = useLocation();
   const { theme, toggle } = useTheme();
-  const { t, lang } = useI18n();
+  const { t, lang, setLang, langs } = useI18n();
+  const geoCountry = useGeoCountry();
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [intl, setIntl] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const currentCC = (user?.country || geoCountry || '').toUpperCase();
+  const onRegion = async (e) => {
+    const cc = e.target.value;
+    if (!cc) return;
+    setGeoCountry(cc); // updates displayed currency/store live
+    if (user) { try { await updateProfile({ country: cc }); } catch { /* best effort */ } }
+  };
 
   // Mega-menu open/close with a small grace delay so moving the cursor from the
   // "Categories" trigger down into the panel doesn't close it.
@@ -129,6 +149,45 @@ export default function Header() {
           )}
 
           <div className="grow" />
+
+          <div className="hd-intl">
+            <button className="iconbtn" onClick={() => setIntl((v) => !v)}
+              aria-label={L('Language & region', 'Dil ve bölge', 'Sprache & Region')}
+              title={L('Language & region', 'Dil ve bölge', 'Sprache & Region')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+              </svg>
+            </button>
+            {intl && (
+              <>
+                <div className="hd-menu-backdrop" onClick={() => setIntl(false)} />
+                <div className="hd-menu hd-intl-menu fade-up">
+                  <div className="hd-menu-head">
+                    <strong>{L('Language & region', 'Dil ve bölge', 'Sprache & Region')}</strong>
+                  </div>
+                  <div className="hd-intl-langs">
+                    {langs.map((l) => (
+                      <button key={l.code}
+                        className={'hd-intl-lang' + (lang === l.code ? ' on' : '')}
+                        onClick={() => setLang(l.code)}>
+                        {l.flag} {l.label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="hd-intl-region">
+                    <span>{L('Region · prices in', 'Bölge · fiyatlar', 'Region · Preise in')} {CURRENCY_BY_COUNTRY[currentCC] || 'USD'}</span>
+                    <select value={currentCC || ''} onChange={onRegion}>
+                      {!currentCC && <option value="">{L('Select…', 'Seç…', 'Wählen…')}</option>}
+                      {MARKET_COUNTRIES.map((cc) => (
+                        <option key={cc} value={cc}>{flagEmoji(cc)} {countryDisplayName(cc, lang)} ({CURRENCY_BY_COUNTRY[cc]})</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </>
+            )}
+          </div>
+
           <button className="iconbtn" onClick={toggle} aria-label={t('header.theme')}>
             {theme === 'dark'
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
@@ -173,7 +232,6 @@ export default function Header() {
                     </div>
                     <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coinDisplay}</b> {coinWord}</div>
                     <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.profile')}</Link>
-                    <Link to="/settings" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.settings')}</Link>
                     <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>{t('nav.signOut')}</button>
                   </div>
                 </>

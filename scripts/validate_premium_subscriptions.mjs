@@ -13,23 +13,32 @@
 //  (expired / refunded / revoked / token unknown), it clears `isPremium`.
 //
 //  SAFETY:
-//   - Accounts with NO stored token are GRANDFATHERED (left untouched) — these
-//     predate the token-capturing app build, so we must not revoke them.
-//   - DRY_RUN=1 reports what it would do without writing anything.
 //   - It only ever flips isPremium false→ (never grants), so it can't be abused.
+//   - DRY_RUN=1 reports what it would do without writing anything. ALWAYS run a
+//     DRY_RUN first and add real buyers to GRANDFATHER_EMAILS before going live.
+//   - Transient/permission HTTP errors are inconclusive → never revoke on those.
+//   - The Google service-account key is OPTIONAL: without it the job still
+//     revokes token-less self-grants (NO-TOKEN-ONLY mode); with it, it also
+//     verifies tokened subscriptions against Google.
 //
 //  RUN:  node scripts/validate_premium_subscriptions.mjs
+//        DRY_RUN=1 node scripts/validate_premium_subscriptions.mjs        (review)
+//        WATCH_INTERVAL_SEC=300 node scripts/...mjs                       (daemon)
 //  ENV (migration/.env or process env):
 //     POCKETBASE_URL, POCKETBASE_ADMIN_EMAIL, POCKETBASE_ADMIN_PASSWORD
-//     GOOGLE_PLAY_SA_KEY   absolute path to a Google service-account JSON that
-//                          has the Android Publisher API enabled AND is invited
+//     GOOGLE_PLAY_SA_KEY   (optional) absolute path to a Google service-account
+//                          JSON with the Android Publisher API enabled AND invited
 //                          in Play Console (Users & permissions) with access to
-//                          this app's financial data.
+//                          this app's financial data. Enables full verification.
+//     STRICT_NO_TOKEN      default ON; set 0 to keep the old grandfather-all behavior
+//     GRANDFATHER_EMAILS   comma-separated real pre-token buyers to never revoke
+//     GRANDFATHER_IDS      same, by user id
+//     WATCH_INTERVAL_SEC   >0 keeps running and re-checks on that interval (no cron)
 //     ANDROID_PACKAGE      defaults to com.compair.app
 //     DRY_RUN=1            report only, do not write
 //
-//  Intended to run on the host on a schedule (system cron, like the FCM token
-//  refresh), e.g. hourly:  0 * * * * node /path/validate_premium_subscriptions.mjs
+//  Run as a daemon (WATCH_INTERVAL_SEC) or on a system cron, like the FCM token
+//  refresh, e.g. every 5 min:  */5 * * * * node /path/validate_premium_subscriptions.mjs
 // ═══════════════════════════════════════════════════════════════════════════
 
 import fs from 'fs';
@@ -38,6 +47,21 @@ import PocketBase from 'pocketbase';
 
 const PKG = process.env.ANDROID_PACKAGE || 'com.compair.app';
 const DRY_RUN = process.env.DRY_RUN === '1' || process.env.DRY_RUN === 'true';
+
+// STRICT_NO_TOKEN (default ON): an account flagged Premium with NO stored Google
+// Play purchaseToken is a client self-grant (the devtools/PB-API abuse this job
+// exists to stop) UNLESS it is a genuine pre-token-capture buyer listed in the
+// grandfather allowlist. This check needs NO Google API access, so it closes the
+// most common hole even before the service account is configured.
+// IMPORTANT: run with DRY_RUN=1 once and add any REAL buyers (Play Console →
+// financial data) to GRANDFATHER_EMAILS before going live, so you don't revoke a
+// legitimate buyer whose token didn't surface on an old build.
+const STRICT_NO_TOKEN = process.env.STRICT_NO_TOKEN !== '0' && process.env.STRICT_NO_TOKEN !== 'false';
+const GRANDFATHER_IDS = new Set((process.env.GRANDFATHER_IDS || '').split(',').map((s) => s.trim()).filter(Boolean));
+const GRANDFATHER_EMAILS = new Set((process.env.GRANDFATHER_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+// WATCH_INTERVAL_SEC > 0 keeps the process running and re-checks on that interval
+// (shrinks the abuse window without needing a system cron). 0 = run once and exit.
+const WATCH_INTERVAL_SEC = Math.max(0, parseInt(process.env.WATCH_INTERVAL_SEC || '0', 10) || 0);
 
 // ── env loading (process env first, then migration/.env) ────────────────────
 function loadEnv() {
@@ -135,12 +159,12 @@ async function checkSubscription(accessToken, token) {
 async function main() {
   const env = loadEnv();
   const saKey = env.GOOGLE_PLAY_SA_KEY;
-  if (!saKey || !fs.existsSync(saKey)) {
-    console.error('[premium-validate] GOOGLE_PLAY_SA_KEY missing/not found:', saKey);
-    console.error('  → Set up a Google service account with Android Publisher API access');
-    console.error('    (Play Console → Users & permissions → invite the SA email),');
-    console.error('    then point GOOGLE_PLAY_SA_KEY at its JSON key file.');
-    process.exit(2);
+  const haveSaKey = !!(saKey && fs.existsSync(saKey));
+  if (!haveSaKey) {
+    console.warn('[premium-validate] GOOGLE_PLAY_SA_KEY missing/not found — running in');
+    console.warn('  NO-TOKEN-ONLY mode: self-grants without a purchaseToken are revoked,');
+    console.warn('  but accounts WITH a token cannot be verified against Google (kept as');
+    console.warn('  inconclusive). Set up the service account to enable full verification.');
   }
 
   const pb = new PocketBase(env.POCKETBASE_URL);
@@ -148,13 +172,30 @@ async function main() {
   try { await pb.collection('_superusers').authWithPassword(env.POCKETBASE_ADMIN_EMAIL, env.POCKETBASE_ADMIN_PASSWORD); }
   catch { await pb.admins.authWithPassword(env.POCKETBASE_ADMIN_EMAIL, env.POCKETBASE_ADMIN_PASSWORD); }
 
-  const accessToken = await playAccessToken(saKey);
+  const accessToken = haveSaKey ? await playAccessToken(saKey) : null;
   const premium = await pb.collection('users').getFullList({ filter: 'isPremium = true' });
 
   const summary = { checked: 0, kept: 0, revoked: 0, grandfathered: 0, inconclusive: 0, revokedEmails: [] };
   for (const u of premium) {
     const token = u?.userSubscriptionDetails?.premium?.purchaseToken;
-    if (!token) { summary.grandfathered++; continue; } // predates token capture — leave alone
+    if (!token) {
+      // No stored token. A genuine pre-token-capture buyer is grandfathered ONLY
+      // if listed in the allowlist (read your real buyers in Play Console). Any
+      // other Premium account with no token is a client self-grant → revoke.
+      const allowed =
+        GRANDFATHER_IDS.has(u.id) ||
+        GRANDFATHER_EMAILS.has((u.email || '').toLowerCase());
+      if (allowed || !STRICT_NO_TOKEN) { summary.grandfathered++; continue; }
+      summary.revoked++; summary.revokedEmails.push(`${u.email} (NO_TOKEN_SELF_GRANT)`);
+      if (!DRY_RUN) {
+        const details = u.userSubscriptionDetails || {};
+        details.premium = { ...(details.premium || {}), revokedAt: new Date().toISOString(), revokedReason: 'NO_TOKEN_SELF_GRANT' };
+        try { await pb.collection('users').update(u.id, { isPremium: false, userSubscriptionDetails: details }); }
+        catch (e) { console.error('  revoke failed', u.email, e.message); }
+      }
+      continue;
+    }
+    if (!accessToken) { summary.inconclusive++; continue; } // have token but no SA key to verify — keep
     summary.checked++;
     let res;
     try { res = await checkSubscription(accessToken, token); }
@@ -173,4 +214,16 @@ async function main() {
   console.log('[premium-validate]' + (DRY_RUN ? ' (DRY_RUN)' : ''), JSON.stringify(summary, null, 2));
 }
 
-main().catch((e) => { console.error('[premium-validate] fatal', e); process.exit(1); });
+async function loop() {
+  if (WATCH_INTERVAL_SEC > 0) {
+    console.log(`[premium-validate] watch mode — re-checking every ${WATCH_INTERVAL_SEC}s (Ctrl+C to stop)`);
+    for (;;) {
+      try { await main(); }
+      catch (e) { console.error('[premium-validate] run error (will retry):', e.message); }
+      await new Promise((r) => setTimeout(r, WATCH_INTERVAL_SEC * 1000));
+    }
+  } else {
+    await main();
+  }
+}
+loop().catch((e) => { console.error('[premium-validate] fatal', e); process.exit(1); });

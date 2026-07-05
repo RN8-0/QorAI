@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const site = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'website');
 const wipe = [
   'spa', 'catalog', 'compare', 'ai-chat', 'pc-builder',
-  'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'settings', 'product',
+  'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'product',
   'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
 ];
 

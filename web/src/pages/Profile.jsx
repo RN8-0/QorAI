@@ -21,6 +21,7 @@ import { productPath } from '../lib/routes';
 import { useT } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import AiText from '../components/AiText.jsx';
+import AiAnalysisView, { parseAiJson } from '../components/AiAnalysis.jsx';
 import './Profile.css';
 
 function fmtDate(v) {
@@ -190,7 +191,7 @@ function Overview({ user, ids, t }) {
               : t('pf.premiumApp')}
           </span>
         </div>
-        {!prem.isPremium && <Link to="/premium" className="btn btn-primary pf-mem-cta">{t('nav.premium')}</Link>}
+        {!prem.isPremium && <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>}
       </div>
 
       <div className="pf-grid">
@@ -210,16 +211,6 @@ function Overview({ user, ids, t }) {
       </div>
 
       <ProfileSignals user={user} />
-
-      <div className="pf-card pf-links">
-        <h3>{t('pf.quickAccess')}</h3>
-        <div className="pf-link-row">
-          <Link to="/">📦 {t('nav.home')}</Link>
-          <Link to="/compare">⚖️ {t('nav.compare')}</Link>
-          <Link to="/privacy">🔒 {t('footer.privacy')}</Link>
-          <Link to="/terms">📄 {t('footer.terms')}</Link>
-        </div>
-      </div>
 
       <DangerZone user={user} t={t} />
     </div>
@@ -371,7 +362,21 @@ function ComparisonsTab({ t }) {
 }
 
 /* ─── Analyses tab ───────────────────────────────────────────────── */
+// Renders the SAME analysis the origin page showed, not a summary. Product and
+// comparison analyses are stored as structured JSON (product_full_report /
+// compare_full_report) — render them through the rich AiAnalysisView (score
+// rings, pros/cons, verdict…). Link and subscription analyses are stored as
+// readable text, so those keep the plain AiText renderer.
+function SavedAnalysisBody({ item, lang }) {
+  const parsed = parseAiJson(item.analysis);
+  if (parsed && (parsed.type === 'product_full_report' || parsed.type === 'compare_full_report')) {
+    return <AiAnalysisView raw={item.analysis} lang={lang} />;
+  }
+  return <AiText text={item.analysis} />;
+}
+
 function AnalysesTab({ t }) {
+  const { lang } = useI18n();
   const [items, setItems] = useState(null);
   const [expanded, setExpanded] = useState(null);
   useEffect(() => { getSavedAnalyses().then(setItems); }, []);
@@ -401,7 +406,7 @@ function AnalysesTab({ t }) {
               <span className="pf-row-go">{isOpen ? '▲' : '▼'}</span>
             </button>
             {isOpen && a.analysis && (
-              <div className="pf-acard-body"><AiText text={a.analysis} /></div>
+              <div className="pf-acard-body"><SavedAnalysisBody item={a} lang={lang} /></div>
             )}
           </div>
         );

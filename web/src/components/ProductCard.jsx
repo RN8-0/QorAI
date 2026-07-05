@@ -34,6 +34,9 @@ function inferredPct(label, value, index, product) {
 const REJECT_LABEL_RE = /^(marka|brand|model|ürün|urun|product|category|kategori|kategorie|renk|color|colour|slug|url|link|source|site|name|ad|title|başlık|baslik|kullanım amacı|kullanim amaci|usage|use case|series|seri)$/i;
 const REJECT_INTERNAL_RE = /(qor|score|puan|anchor|engine|tier|rank|trend|internal|weight|ağırlık|agirlik|seed)/i;
 const REJECT_VALUE_RE = /^(yes|no|true|false|var|yok|evet|hayır|hayir|ja|nein|n\/a|na|-|sponsorlu|sponsored|advert|ad|oyun|ofis|gaming|office|home|ev)$/i;
+// High-signal qualitative spec values (no number, but still a real headline
+// spec) — lets TV/monitor/laptop cards show panel type, resolution class, etc.
+const GOOD_QUAL_SPEC_RE = /\b(oled|qled|amoled|mini[- ]?led|micro[- ]?led|neo ?qled|ips|lcd|led|tn|va panel|nano ?cell|nvme|ssd|hdd|emmc|ufs|wi-?fi|usb[- ]?c|hdmi|displayport|thunderbolt|bluetooth|nfc|uhd|qhd|fhd|full hd|ultra hd|retina|hdr|dolby|android|ios|ipados|windows|macos|tizen|webos|google tv|harmonyos)\b/i;
 
 // Card headline specs follow epey: the value is the hero and must read like a
 // real, comparable spec — so it has to carry a number (8 GB, 240 Hz, 1000 W…).
@@ -46,7 +49,12 @@ function looksUsefulSpec(label, value, product) {
   if (REJECT_LABEL_RE.test(cleanLabel) || REJECT_INTERNAL_RE.test(cleanLabel)) return false;
   if (REJECT_VALUE_RE.test(cleanValue) || REJECT_INTERNAL_RE.test(cleanValue)) return false;
   if (cleanLabel.length > 38 || cleanValue.length > 28) return false;
-  if (!/\d/.test(cleanValue)) return false; // must be a measurable, epey-style spec
+  // A card spec must be a real, comparable attribute. Usually that means it
+  // carries a number (8 GB, 240 Hz, 1000 W…). But TVs / monitors / laptops have
+  // headline specs that are qualitative (OLED panel, 4K, Wi-Fi 6, NVMe) — allow
+  // those high-signal tokens too so those cards fill with REAL specs instead of
+  // falling back to junk like the category name or a "last updated" date.
+  if (!/\d/.test(cleanValue) && !GOOD_QUAL_SPEC_RE.test(cleanValue)) return false;
   const brand = String(product?.brand || '').trim().toLowerCase();
   const category = String(product?.category || '').replace(/[_-]+/g, ' ').trim().toLowerCase();
   const valueLower = cleanValue.toLowerCase();
@@ -70,22 +78,6 @@ function pushSpec(out, seen, label, value, pct, product) {
   });
 }
 
-function pushMetaSpec(out, seen, label, value, product) {
-  const cleanLabel = String(label || '').replace(/\s+/g, ' ').trim();
-  const cleanValue = String(value || '').replace(/\s+/g, ' ').trim();
-  if (!cleanLabel || !cleanValue || out.length >= 4) return;
-  if (REJECT_INTERNAL_RE.test(cleanLabel) || REJECT_INTERNAL_RE.test(cleanValue)) return;
-  if (cleanLabel.length > 38 || cleanValue.length > 30) return;
-  const key = `${cleanLabel.toLowerCase()}=${cleanValue.toLowerCase()}`;
-  if (seen.has(key)) return;
-  seen.add(key);
-  out.push({
-    label: cleanLabel,
-    value: cleanValue,
-    pct: clampPct(inferredPct(cleanLabel, cleanValue, out.length, product)),
-  });
-}
-
 function walkSpecSurface(value, cb, depth = 0) {
   if (!value || depth > 4) return;
   if (Array.isArray(value)) {
@@ -105,21 +97,6 @@ function walkSpecSurface(value, cb, depth = 0) {
       cb(label, val);
     }
     walkSpecSurface(raw, cb, depth + 1);
-  }
-}
-
-function formatTs(ts, lang) {
-  const n = Number(ts) || 0;
-  if (!n) return '';
-  const ms = n > 1e12 ? n : n * 1000;
-  try {
-    return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-    }).format(new Date(ms));
-  } catch {
-    return '';
   }
 }
 
@@ -157,22 +134,9 @@ function productSpecs(product, t, lang) {
     walkSpecSurface(product?.multiLangSpecs, (label, value) => pushSpec(out, seen, label, value, null, product));
   }
 
-  if (out.length < 4) {
-    const metaLabels = lang === 'tr'
-      ? { score: 'Qor AI', specs: 'Özellik', category: 'Kategori', updated: 'Güncel' }
-      : lang === 'de'
-        ? { score: 'Qor AI', specs: 'Specs', category: 'Kategorie', updated: 'Aktuell' }
-        : { score: 'Qor AI', specs: 'Specs', category: 'Category', updated: 'Updated' };
-    const updated = formatTs(product?.updatedAtTs || product?.scrapedAtTs, lang);
-    const fallbacks = [
-      product?.techScore ? [metaLabels.score, String(Math.round(product.techScore))] : null,
-      product?.specsCount ? [metaLabels.specs, String(product.specsCount)] : null,
-      product?.category ? [metaLabels.category, categoryLabel(product.category, lang)] : null,
-      updated ? [metaLabels.updated, updated] : null,
-    ].filter(Boolean);
-    for (const [label, value] of fallbacks) pushMetaSpec(out, seen, label, value, product);
-  }
-
+  // No meta padding: the card shows only REAL specs. Fewer than four honest
+  // specs is better than filling the grid with the category name or a "last
+  // updated" date, which read as nonsense next to genuine specs.
   return out.slice(0, 4);
 }
 
