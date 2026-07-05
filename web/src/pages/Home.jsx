@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeed, searchProducts } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
-import { saveSearchHistory } from '../lib/pbHistory';
+import { saveSearchHistory, readSearchHistory } from '../lib/pbHistory';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
@@ -112,6 +112,28 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Google-style recent searches — shown when the search box is focused but empty.
+// Pulls from the signed-in user's shared searchHistory (same field the app writes).
+function RecentSearchList({ items, onPick, L }) {
+  if (!items.length) return null;
+  return (
+    <div className="hero-suggest-panel">
+      <div className="hero-recent-head">{L('Recent searches', 'Son aramalar', 'Letzte Suchen')}</div>
+      {items.map((s, i) => (
+        <button key={`${s.query}-${i}`} type="button" className="hero-suggest-row hero-recent-row"
+          onMouseDown={(e) => { e.preventDefault(); onPick(s.query); }}>
+          <span className="hero-recent-ic">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 14" />
+            </svg>
+          </span>
+          <span className="hero-recent-q">{s.query}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -262,14 +284,32 @@ export default function Home() {
     setSubmitted(qp);
   }, [params]);
 
-  function search(e) {
-    e.preventDefault();
-    const term = q.trim();
-    if (!term) return;
-    saveSearchHistory(term);
-    setSubmitted(term);
+  // Recent searches (Google-style) for the signed-in user — newest first, deduped.
+  const recentSearches = useMemo(() => {
+    const seen = new Set();
+    return readSearchHistory(user)
+      .filter((s) => {
+        const key = String(s?.query || '').trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, 8);
+  }, [user]);
+
+  function runSearch(term) {
+    const s = String(term || '').trim();
+    if (!s) return;
+    setQ(s);
+    saveSearchHistory(s);
+    setSubmitted(s);
     setSuggestOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function search(e) {
+    e.preventDefault();
+    runSearch(q);
   }
 
   function openProduct(product) {
@@ -337,18 +377,20 @@ export default function Home() {
                     <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                   </svg>
                   <input value={q}
-                    onFocus={() => { if (q.trim()) setSuggestOpen(true); }}
+                    onFocus={() => setSuggestOpen(true)}
                     onChange={(e) => {
                       const value = e.target.value;
                       setQ(value);
                       setSubmitted('');
-                      setSuggestOpen(Boolean(value.trim()));
+                      setSuggestOpen(true);
                     }}
                     placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
                   <button type="submit" className="btn btn-grad btn-shine">{t('common.search')}</button>
                 </form>
-                {suggestOpen && q.trim() && (
-                  <SearchSuggestionList products={searchResults} searching={searching} onOpen={openProduct} L={L} />
+                {suggestOpen && (
+                  q.trim()
+                    ? <SearchSuggestionList products={searchResults} searching={searching} onOpen={openProduct} L={L} />
+                    : <RecentSearchList items={recentSearches} onPick={runSearch} L={L} />
                 )}
               </div>
             </div>

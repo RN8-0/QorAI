@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { useCompare, setCompareList } from '../lib/compare';
+import { setCompareList } from '../lib/compare';
 import {
   refreshUser, updateProfile, requestVerification, requestAccountDeletion,
 } from '../lib/pocketbase';
@@ -9,15 +9,16 @@ import { pb, fileUrl } from '../lib/pocketbase';
 import { formatQorCoins } from '../lib/qorCoins';
 import {
   getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview, getMyLikedArticles,
-  readSearchHistory, readQuizHistory,
+  getMyFavoriteProducts,
 } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
-import { profileAnswers, optionLabel, STEPS } from './Quiz.jsx';
 import { articlePath } from '../lib/routes';
 import { getProduct } from '../lib/typesense';
+import ProductImg from '../components/ProductImg.jsx';
 import { premiumStatus } from '../lib/premium';
 import { catMeta } from '../lib/format';
 import { productPath } from '../lib/routes';
+import { displayProductName } from '../lib/productNames';
 import { useT } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import AiText from '../components/AiText.jsx';
@@ -33,7 +34,6 @@ function fmtDate(v) {
 export default function Profile() {
   const t = useT();
   const { user, openAuth, logout } = useAuth();
-  const { ids } = useCompare();
 
   useSeo({ title: `${t('nav.profile')} — Qor AI`, noindex: true });
   useEffect(() => { if (user) refreshUser(); }, []); // eslint-disable-line
@@ -49,10 +49,10 @@ export default function Profile() {
     );
   }
 
-  return <ProfileBody user={user} ids={ids} logout={logout} t={t} />;
+  return <ProfileBody user={user} logout={logout} t={t} />;
 }
 
-function ProfileBody({ user, ids, logout, t }) {
+function ProfileBody({ user, logout, t }) {
   const name = user.name || user.displayName || user.email?.split('@')[0] || 'User';
   const [tab, setTab] = useState('overview');
 
@@ -62,7 +62,6 @@ function ProfileBody({ user, ids, logout, t }) {
     { key: 'analyses', label: t('pf.tabAnalyses') },
     { key: 'reviews', label: t('pf.tabReviews') },
     { key: 'liked', label: t('pf.tabLiked') },
-    { key: 'history', label: t('pf.tabHistory') },
   ];
 
   return (
@@ -81,12 +80,11 @@ function ProfileBody({ user, ids, logout, t }) {
         ))}
       </div>
 
-      {tab === 'overview' && <Overview user={user} ids={ids} t={t} />}
+      {tab === 'overview' && <Overview user={user} t={t} />}
       {tab === 'comparisons' && <ComparisonsTab t={t} />}
       {tab === 'analyses' && <AnalysesTab t={t} />}
       {tab === 'reviews' && <ReviewsTab t={t} />}
       {tab === 'liked' && <LikedTab t={t} />}
-      {tab === 'history' && <HistoryTab user={user} t={t} />}
     </div>
   );
 }
@@ -173,7 +171,12 @@ function Identity({ user, name, logout, t }) {
 }
 
 /* ─── Overview tab ───────────────────────────────────────────────── */
-function Overview({ user, ids, t }) {
+// Keep this lean and app-synced: membership, the shared Qor Coin balance, and
+// account deletion. The old compare-count stat and the "Profilin" quiz-answer
+// card were removed — the quiz is answered once at onboarding and can't be
+// re-edited here (the algorithm learns the user over time), and privacy/terms
+// live in the footer, not here.
+function Overview({ user, t }) {
   const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   const prem = premiumStatus(user);
   const premUntil = prem.expiresAt
@@ -194,89 +197,16 @@ function Overview({ user, ids, t }) {
         {!prem.isPremium && <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>}
       </div>
 
-      <div className="pf-grid">
-        <div className="pf-card pf-coins">
-          <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>
-          <div>
-            <div className="pf-coin-num">{coins}</div>
-            <div className="pf-coin-lbl">{t('pf.coinBalance')}</div>
-          </div>
-          <p>{t('pf.coinDesc')}</p>
+      <div className="pf-card pf-coins">
+        <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>
+        <div>
+          <div className="pf-coin-num">{coins}</div>
+          <div className="pf-coin-lbl">{t('pf.coinBalance')}</div>
         </div>
-        <div className="pf-card pf-stat">
-          <div className="pf-stat-num">{ids.length}</div>
-          <div className="pf-stat-lbl">{t('pf.compareCount')}</div>
-          <Link to="/compare" className="btn btn-ghost">{t('pf.openList')}</Link>
-        </div>
+        <p>{t('pf.coinDesc')}</p>
       </div>
-
-      <ProfileSignals user={user} />
 
       <DangerZone user={user} t={t} />
-    </div>
-  );
-}
-
-/* ─── Profile signals (app parity: ecosystem/budget/interests/…) ──── */
-function ProfileSignals({ user }) {
-  const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
-  const v = profileAnswers(user);
-  const stepFor = (field) => STEPS.find((s) => s.field === field);
-  const lbl = (field, val) => {
-    const s = stepFor(field);
-    return s ? optionLabel(s, val, lang) : String(val).replace(/[_-]+/g, ' ');
-  };
-
-  const facts = [
-    v.ecosystem && { k: L('Ecosystem', 'Ekosistem', 'Ökosystem'), val: lbl('ecosystem', v.ecosystem) },
-    v.budgetRange && { k: L('Budget', 'Bütçe', 'Budget'), val: lbl('budgetRange', v.budgetRange) },
-    v.ageRange && { k: L('Age', 'Yaş', 'Alter'), val: String(v.ageRange) },
-    v.profession && { k: L('Profession', 'Meslek', 'Beruf'), val: lbl('profession', v.profession) },
-    v.usageIntent && { k: L('Usage', 'Kullanım', 'Nutzung'), val: lbl('usageIntent', v.usageIntent) },
-    user.country && { k: L('Country', 'Ülke', 'Land'), val: String(user.country).toUpperCase() },
-  ].filter(Boolean);
-
-  const groups = [
-    { title: L('Interest categories', 'İlgi Kategorileri', 'Interessen'), vals: v.interestCategories.map((x) => lbl('interestCategories', x)) },
-    { title: L('Decision priorities', 'Karar Öncelikleri', 'Prioritäten'), vals: v.priorities.map((x) => lbl('priorities', x)) },
-    { title: L('Current devices', 'Mevcut Cihazlar', 'Geräte'), vals: v.currentDevices.map((x) => lbl('currentDevices', x)) },
-    { title: L('Subscriptions', 'Abonelikler', 'Abos'), vals: v.subscriptions.filter((x) => x && x !== 'none').map((x) => lbl('subscriptions', x)) },
-  ].filter((g) => g.vals.length);
-
-  if (!facts.length && !groups.length) {
-    return (
-      <div className="pf-card pf-signals">
-        <h3>{L('Your profile', 'Profilin', 'Dein Profil')}</h3>
-        <p className="pf-signals-empty">{L(
-          'Complete the quick quiz so Qor AI can personalise recommendations and analyses.',
-          'Qor AI önerileri ve analizleri kişiselleştirebilmesi için hızlı quizi çöz.',
-          'Mach den kurzen Quiz, damit Qor AI Empfehlungen personalisieren kann.',
-        )}</p>
-        <Link to="/quiz" className="btn btn-primary">{L('Take the quiz', 'Quizi çöz', 'Quiz starten')}</Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pf-card pf-signals">
-      <div className="pf-signals-head">
-        <h3>{L('Your profile', 'Profilin', 'Dein Profil')}</h3>
-        <Link to="/quiz" className="pf-signals-edit">✏️ {L('Edit', 'Düzenle', 'Bearbeiten')}</Link>
-      </div>
-      {facts.length > 0 && (
-        <div className="pf-sig-facts">
-          {facts.map((f) => (
-            <span key={f.k} className="pf-sig-fact"><b>{f.k}</b> {f.val}</span>
-          ))}
-        </div>
-      )}
-      {groups.map((g) => (
-        <div key={g.title} className="pf-sig-group">
-          <span className="pf-sig-group-title">{g.title}</span>
-          <div className="pf-sig-chips">{g.vals.map((x, i) => <span key={i}>{x}</span>)}</div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -285,10 +215,15 @@ function ProfileSignals({ user }) {
 function DangerZone({ user, t }) {
   const [open, setOpen] = useState(false);
   const [state, setState] = useState('');
+  const [errMsg, setErrMsg] = useState('');
   async function confirm() {
     setState('sending');
+    setErrMsg('');
     try { await requestAccountDeletion(); setState('sent'); }
-    catch { setState('error'); }
+    catch (e) {
+      setErrMsg(e?.response?.message || e?.data?.message || e?.message || '');
+      setState('error');
+    }
   }
   return (
     <div className="pf-card pf-danger">
@@ -313,7 +248,7 @@ function DangerZone({ user, t }) {
               {t('pf.cancel')}
             </button>
           </div>
-          {state === 'error' && <p className="pf-danger-err">{t('pf.deleteErr')}</p>}
+          {state === 'error' && <p className="pf-danger-err">{t('pf.deleteErr')}{errMsg ? ` (${errMsg})` : ''}</p>}
         </>
       )}
     </div>
@@ -416,143 +351,147 @@ function AnalysesTab({ t }) {
 }
 
 /* ─── Reviews tab ────────────────────────────────────────────────── */
+// Every review the user left — product reviews, blog reviews AND comparison
+// reviews — merged from the same PB collections the app writes (`reviews` +
+// `comparison_reviews`), so it stays in sync with the phone.
 function ReviewsTab({ t }) {
+  const { lang } = useI18n();
+  const nav = useNavigate();
   const [items, setItems] = useState(null);
   const [names, setNames] = useState({});
 
   useEffect(() => {
     getMyReviews().then(async (revs) => {
       setItems(revs);
+      // Resolve display names for every referenced product / article once.
+      const productIds = new Set();
+      const blogIds = new Set();
+      revs.forEach((r) => {
+        if (r.kind === 'blog' && r.productId) blogIds.add(r.productId);
+        else if (r.kind === 'product' && r.productId) productIds.add(r.productId);
+        (r.productIds || []).forEach((id) => productIds.add(id));
+      });
       const map = {};
-      await Promise.all(revs.map(async (r) => {
-        if (!r.productId) return;
-        try {
-          if (r.productId.startsWith('blog:')) {
-            const s = r.productId.slice(5);
+      await Promise.all([
+        ...[...productIds].map(async (id) => {
+          try { const p = await getProduct(id); if (p) map[id] = displayProductName(p, lang) || p.name; } catch { /* noop */ }
+        }),
+        ...[...blogIds].map(async (bid) => {
+          try {
+            const s = bid.slice(5);
             const a = await pb.collection('articles').getFirstListItem(`slug="${s.replace(/"/g, '\\"')}"`, { $autoCancel: false });
-            if (a) map[r.productId] = a.title_tr || a.title_en || a.title_de || s;
-          } else {
-            const p = await getProduct(r.productId);
-            if (p) map[r.productId] = p.name;
-          }
-        } catch { /* noop */ }
-      }));
+            if (a) map[bid] = a[`title_${lang}`] || a.title_tr || a.title_en || a.title_de || s;
+          } catch { /* noop */ }
+        }),
+      ]);
       setNames(map);
     });
-  }, []);
+  }, [lang]);
 
-  const reviewLink = (productId) => (productId.startsWith('blog:') ? `/blog/${productId.slice(5)}` : productPath(productId));
+  async function remove(item) {
+    setItems((list) => list.filter((r) => r.id !== item.id));
+    try { await deleteMyReview(item); } catch { /* noop */ }
+  }
 
-  async function remove(id) {
-    setItems((list) => list.filter((r) => r.id !== id));
-    try { await deleteMyReview(id); } catch { /* noop */ }
+  function openComparison(ids) {
+    if (!ids || ids.length < 2) return;
+    setCompareList(ids);
+    nav('/compare');
   }
 
   if (items === null) return <Loading t={t} />;
   if (!items.length) return <Empty icon="⭐" text={t('pf.noReviews')} />;
+
+  const cmpLabel = (r) => {
+    const parts = (r.productIds || []).map((id) => names[id]).filter(Boolean);
+    return parts.length ? parts.join(' vs ') : t('pf.viewComparison');
+  };
 
   return (
     <div className="pf-list fade-up">
       {items.map((r) => (
         <div key={r.id} className="pf-rev">
           <div className="pf-rev-top">
-            <span className="pf-stars">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <span key={i} className={i <= r.rating ? 'on' : ''}>★</span>
-              ))}
+            {r.rating > 0 && (
+              <span className="pf-stars">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <span key={i} className={i <= r.rating ? 'on' : ''}>★</span>
+                ))}
+              </span>
+            )}
+            <span className="pf-rev-kind">
+              {r.kind === 'comparison' ? `⚖️ ${t('pf.kindComparison')}` : r.kind === 'blog' ? '📝' : '📦'}
             </span>
             <span className="pf-rev-date">{fmtDate(r.created)}</span>
-            <button className="pf-rev-del" onClick={() => remove(r.id)}
+            <button className="pf-rev-del" onClick={() => remove(r)}
               aria-label={t('pf.delete')} title={t('pf.delete')}>🗑</button>
           </div>
           {r.text && <p className="pf-rev-text">{r.text}</p>}
-          {r.productId && (
-            <Link to={reviewLink(r.productId)} className="pf-rev-link">
-              {names[r.productId] || (r.productId.startsWith('blog:') ? t('pf.viewArticle') : t('pf.viewProduct'))} →
+          {r.kind === 'comparison' ? (
+            <button type="button" className="pf-rev-link pf-rev-link-btn" onClick={() => openComparison(r.productIds)}>
+              {cmpLabel(r)} →
+            </button>
+          ) : r.productId ? (
+            <Link
+              to={r.kind === 'blog' ? `/blog/${r.productId.slice(5)}` : productPath(r.productId)}
+              className="pf-rev-link"
+            >
+              {names[r.productId] || (r.kind === 'blog' ? t('pf.viewArticle') : t('pf.viewProduct'))} →
             </Link>
-          )}
+          ) : null}
         </div>
       ))}
     </div>
   );
 }
 
-/* ─── Liked articles tab ─────────────────────────────────────────── */
+/* ─── Liked tab — favourited products + liked articles ───────────── */
+// "Beğendiklerim" now shows BOTH the products the user hearted (favorites id
+// array on the user record, shared with the app) and the blog articles they
+// liked — previously only articles appeared.
 function LikedTab({ t }) {
   const { lang } = useI18n();
-  const [items, setItems] = useState(null);
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const [products, setProducts] = useState(null);
+  const [articles, setArticles] = useState(null);
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const coverOf = (a) => { const p0 = (Array.isArray(a.products) ? a.products : [])[0] || {}; return a.cover || (a.coverFile ? fileUrl(a, a.coverFile) : (p0.image || p0.imageUrl || '')); };
 
-  useEffect(() => { getMyLikedArticles().then(setItems); }, []);
+  useEffect(() => {
+    getMyFavoriteProducts().then(setProducts);
+    getMyLikedArticles().then(setArticles);
+  }, []);
 
-  if (items === null) return <Loading t={t} />;
-  if (!items.length) return <Empty icon="❤" text={t('pf.noLiked')} />;
+  if (products === null || articles === null) return <Loading t={t} />;
+  if (!products.length && !articles.length) return <Empty icon="❤" text={t('pf.noLiked')} />;
 
-  return (
-    <div className="pf-list fade-up">
-      {items.map((a) => (
-        <Link key={a.id} to={articlePath(a, lang)} className="pf-liked">
-          {coverOf(a) ? <img className="pf-liked-img" src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /> : null}
-          <span className="pf-liked-title">{pick(a, 'title')}</span>
-          <span className="pf-liked-go">→</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-/* ─── History tab — search + quiz ────────────────────────────────── */
-function HistoryTab({ user, t }) {
-  const search = readSearchHistory(user);
-  const quiz = readQuizHistory(user);
-  const [openQuiz, setOpenQuiz] = useState(null);
-
-  if (!search.length && !quiz.length) {
-    return <Empty icon="🕘" text={t('pf.noHistory')} />;
-  }
   return (
     <div className="fade-up">
-      {search.length > 0 && (
-        <div className="pf-card pf-hist">
-          <h3>🔍 {t('pf.searchHistory')}</h3>
-          <div className="pf-chips">
-            {search.slice(0, 30).map((s, i) => (
-              s.productId ? (
-                <Link key={i} to={productPath(s.productId)} className="pf-chip">{s.query}</Link>
-              ) : (
-                <Link key={i} to={`/?q=${encodeURIComponent(s.query || '')}`} className="pf-chip">
-                  {s.query}
-                </Link>
-              )
+      {products.length > 0 && (
+        <div className="pf-liked-section">
+          <h3 className="pf-liked-head">❤ {L('Products', 'Ürünler', 'Produkte')}</h3>
+          <div className="pf-list">
+            {products.map((p) => (
+              <Link key={p.id} to={productPath(p)} className="pf-liked">
+                {p.imageUrl ? <ProductImg src={p.imageUrl} alt={displayProductName(p, lang)} size="thumb" className="pf-liked-img" /> : null}
+                <span className="pf-liked-title">{displayProductName(p, lang) || p.name}</span>
+                <span className="pf-liked-go">→</span>
+              </Link>
             ))}
           </div>
         </div>
       )}
-      {quiz.length > 0 && (
-        <div className="pf-card pf-hist">
-          <h3>🎯 {t('pf.quizHistory')}</h3>
+      {articles.length > 0 && (
+        <div className="pf-liked-section">
+          <h3 className="pf-liked-head">📝 {L('Articles', 'Yazılar', 'Artikel')}</h3>
           <div className="pf-list">
-            {quiz.slice(0, 20).map((q, i) => {
-              const isOpen = openQuiz === i;
-              return (
-                <div key={i} className={'pf-acard' + (isOpen ? ' open' : '')}>
-                  <button className="pf-row" onClick={() => setOpenQuiz(isOpen ? null : i)}>
-                    <span className="pf-row-ic">🎯</span>
-                    <span className="pf-row-main">
-                      <b>{t('pf.quizEntry', { n: i + 1 })}</b>
-                      <small>{fmtDate(q.timestamp)}</small>
-                    </span>
-                    <span className="pf-row-go">{isOpen ? '▲' : '▼'}</span>
-                  </button>
-                  {isOpen && (q.result || q.recommendation) && (
-                    <div className="pf-acard-body">
-                      <AiText text={q.result || q.recommendation} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {articles.map((a) => (
+              <Link key={a.id} to={articlePath(a, lang)} className="pf-liked">
+                {coverOf(a) ? <img className="pf-liked-img" src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /> : null}
+                <span className="pf-liked-title">{pick(a, 'title')}</span>
+                <span className="pf-liked-go">→</span>
+              </Link>
+            ))}
           </div>
         </div>
       )}

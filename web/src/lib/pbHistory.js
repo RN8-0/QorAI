@@ -1,4 +1,5 @@
 import { currentUser, pb } from './pocketbase';
+import { getProduct } from './typesense';
 
 function uniq(arr) {
   return Array.from(new Set((arr || []).filter(Boolean)));
@@ -447,29 +448,70 @@ export async function deleteSavedAnalysisHistory(itemOrId) {
   return true;
 }
 
-// Reviews written by the signed-in user.
+// Reviews written by the signed-in user — the SAME collections the app writes:
+// product/blog reviews live in `reviews` (productId; "blog:<slug>" for articles)
+// and comparison reviews live in `comparison_reviews` (productIds set). Both are
+// merged so "Yorumlarım" shows every review the user left, app or web.
 export async function getMyReviews(limit = 50) {
   const user = currentUser();
   if (!user) return [];
+  const out = [];
   try {
     const res = await pb.collection('reviews').getList(1, limit, {
       filter: `userId = "${user.id}"`,
       sort: '-created',
     });
-    return res.items.map((r) => ({
+    res.items.forEach((r) => out.push({
       id: r.id,
+      kind: String(r.productId || '').startsWith('blog:') ? 'blog' : 'product',
       productId: r.productId || '',
+      productIds: [],
       rating: Number(r.rating) || 0,
       text: r.text || '',
       created: r.created,
     }));
-  } catch {
-    return [];
-  }
+  } catch { /* keep whatever we have */ }
+  try {
+    const res = await pb.collection('comparison_reviews').getList(1, limit, {
+      filter: `userId = "${user.id}"`,
+      sort: '-created',
+    });
+    res.items.forEach((r) => out.push({
+      id: r.id,
+      kind: 'comparison',
+      productId: '',
+      productIds: Array.isArray(r.productIds) ? r.productIds.filter(Boolean) : [],
+      rating: Number(r.rating) || 0,
+      text: r.reviewText || r.text || '',
+      created: r.timestamp || r.created,
+    }));
+  } catch { /* comparison_reviews optional */ }
+  return out.sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0));
 }
 
-export async function deleteMyReview(id) {
-  return pb.collection('reviews').delete(id);
+export async function deleteMyReview(idOrItem) {
+  const item = typeof idOrItem === 'string' ? { id: idOrItem, kind: 'product' } : (idOrItem || {});
+  if (!item.id) return null;
+  const col = item.kind === 'comparison' ? 'comparison_reviews' : 'reviews';
+  return pb.collection(col).delete(item.id);
+}
+
+// Products the signed-in user has favourited (the heart). The app + web both
+// store these as the `favorites` id array on the user record
+// (favorites.js / pb_ds.toggleFavorite), so "Beğendiklerim" shows them next to
+// liked articles. Ids are resolved to full products via Typesense.
+export async function getMyFavoriteProducts(limit = 60) {
+  const user = currentUser();
+  if (!user) return [];
+  let ids = Array.isArray(user.favorites) ? user.favorites : [];
+  try {
+    const latest = await pb.collection('users').getOne(user.id);
+    if (Array.isArray(latest.favorites)) ids = latest.favorites;
+  } catch { /* fall back to the auth-store copy */ }
+  ids = uniq(ids).slice(0, limit);
+  if (!ids.length) return [];
+  const prods = await Promise.all(ids.map((id) => getProduct(id).catch(() => null)));
+  return prods.filter(Boolean);
 }
 
 // Blog articles the signed-in user has liked (article_events, type="like").

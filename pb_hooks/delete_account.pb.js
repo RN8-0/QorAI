@@ -35,8 +35,25 @@ routerAdd('POST', '/api/users/request-delete', (e) => {
 
     const displayName = String(user.get('displayName') || user.get('name') || email.split('@')[0]);
 
+    // Send FROM the address PocketBase is actually configured/authenticated to
+    // send with (Settings → Mail — the same sender that delivers verification &
+    // password-reset mail). Hardcoding noreply@qorai.net made the SMTP relay
+    // reject the message (sender ≠ authenticated mailbox) → the send threw →
+    // the endpoint returned 500 and both the app and the site showed
+    // "deletion could not be started". Fall back to the constants only if the
+    // instance has no configured sender.
+    let senderName = FROM_NAME;
+    let senderAddress = FROM_EMAIL;
+    try {
+      const meta = $app.settings().meta;
+      if (meta && meta.senderAddress) {
+        senderAddress = meta.senderAddress;
+        senderName = meta.senderName || FROM_NAME;
+      }
+    } catch (_) { /* keep fallback constants */ }
+
     const message = new MailerMessage({
-      from: { name: FROM_NAME, address: FROM_EMAIL },
+      from: { name: senderName, address: senderAddress },
       to: [{ address: email }],
       subject: 'Confirm Account Deletion — Qor AI',
       html: `

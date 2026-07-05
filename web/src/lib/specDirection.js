@@ -482,12 +482,6 @@ function scoreQualitativeValue(specKey, value) {
   return null;
 }
 
-function extractNumber(value) {
-  const cleaned = value.replace(/,/g, '.').replace(/[^0-9.]/g, ' ').trim();
-  const m = cleaned.match(/\d+\.?\d*/);
-  return m ? parseFloat(m[0]) : null;
-}
-
 // A value is a single comparable quantity only when it is one line and carries
 // at most ONE number (optionally with a unit): "5000 mAh", "120 Hz", "6.9 inch".
 // Free-text descriptions ("6x 2.0 GHz ARM Cortex-A55 · Mali-G57 · 2x 2.2 GHz ·
@@ -585,7 +579,15 @@ function extractComparableNumber(specKey, value) {
   // still carries several numbers is a free-text spec, not a quantity — do NOT
   // guess a winner from its leading digit.
   if (!isSingleQuantity(v)) return null;
-  return extractNumber(v);
+  // What remains must be a BARE quantity: a number optionally followed by a
+  // unit token (GHz, W, mAh, MT/s, %, mm, GB/s…). A value that starts with
+  // letters or carries extra words is a model/name string with an incidental
+  // digit — "AMD Zen 5", "Apple M4", "Snapdragon 8 Gen 2" — and must NEVER be
+  // ranked by that digit (it crowned the wrong CPU before). Model names are
+  // ranked only by the component table; if that was undecidable, no winner.
+  const m = v.trim().match(/^(\d+(?:[.,]\d+)?)\s*[a-zçğıöşü%°µ/.²³-]*$/i);
+  if (!m) return null;
+  return parseFloat(m[1].replace(',', '.'));
 }
 
 function lookupRanking(table, value) {
