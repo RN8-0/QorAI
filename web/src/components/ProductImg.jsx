@@ -17,7 +17,7 @@ export default function ProductImg({ src, alt, className, style, size = 'card', 
       className={className}
       style={style}
       loading={eager ? 'eager' : 'lazy'}
-      fetchPriority={eager ? 'high' : 'auto'}
+      fetchpriority={eager ? 'high' : 'auto'}
       decoding="async"
       onError={() => setI((n) => (n < list.length - 1 ? n + 1 : n))}
     />
