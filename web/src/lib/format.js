@@ -158,13 +158,17 @@ export function safeExternalUrl(url) {
   }
 }
 
-// Amazon OneLink: a single store ID (qorai-20) earns across the US, GB, DE, FR,
-// IT, ES and CA storefronts. The connector writes every Amazon offer as an
-// amazon.com search link; at click time we swap the domain to the visitor's
-// preferred OneLink storefront. The ?tag= is preserved — single store ID means
-// the same tag tracks on every domain. Languages outside OneLink's coverage
-// (tr, ru, pt) fall back to the nearest in-coverage storefront that ships
-// internationally, since amazon.com.tr is not part of OneLink.
+// Amazon storefront routing. CURL-PROVEN 2026-07-05 (no JS, no cookies, no
+// Skimlinks): Amazon's server-side Earn Globally router 302s ANY amazon.* URL
+// carrying our ?tag= to the storefront nearest the VISITOR's IP (a TR IP gets
+// amazon.it + linkCode=gg3) — no matter which storefront the link names, even
+// amazon.de → amazon.it. Untagged URLs are NEVER redirected. Therefore the
+// selected storefront is enforced through TAG PRESENCE: the tag stays only
+// when Amazon's router would leave this visitor's click alone (their own
+// storefront, or Amazon's known redirect target for their country); on any
+// other cross-geo pick the tag is dropped so the user lands EXACTLY on the
+// storefront they chose. Strict country rule: landing correctness beats
+// commission on mismatched clicks.
 const AMAZON_DOMAIN = {
   US: 'www.amazon.com', GB: 'www.amazon.co.uk', DE: 'www.amazon.de',
   FR: 'www.amazon.fr', IT: 'www.amazon.it', ES: 'www.amazon.es',
@@ -199,7 +203,7 @@ const AMAZON_MARKET_BY_LANG = {
 // GTIN coverage, ships intl). Other languages use the single redirect below.
 const AMAZON_STOREFRONTS_BY_LANG = { tr: ['TR', 'DE'] };
 
-export function localizeAmazonUrl(url, lang = 'en') {
+export function localizeAmazonUrl(url, lang = 'en', visitorCountry = '') {
   const raw = safeExternalUrl(url);
   if (!raw) return raw;
   try {
@@ -208,7 +212,27 @@ export function localizeAmazonUrl(url, lang = 'en') {
     const code = String(lang || 'en').slice(0, 2).toLowerCase();
     const market = AMAZON_MARKET_BY_LANG[code] || 'US';
     if (AMAZON_DOMAIN[market]) u.hostname = AMAZON_DOMAIN[market];
-    u.searchParams.set('tag', AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG);
+    setAmazonTag(u, market, visitorCountry);
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
+// Keep an Amazon URL on the storefront it ALREADY points at and only decide
+// the affiliate tag: set it when Amazon's geo-router will leave this visitor
+// alone, strip it otherwise so the server-side gg3 302 cannot move the click
+// to another country's storefront. Used by /go for stored offers — the offer's
+// own domain IS the ship-to country its row was rendered under, so unlike
+// localizeAmazonUrl the domain must never be rewritten here.
+export function amazonTagUrl(url, visitorCountry = '') {
+  const raw = safeExternalUrl(url);
+  if (!raw) return raw;
+  try {
+    const u = new URL(raw);
+    if (!/(^|\.)amazon\./i.test(u.hostname)) return raw;
+    const market = AMAZON_MARKET_BY_HOST[u.hostname.replace(/^www\./i, '').toLowerCase()] || '';
+    setAmazonTag(u, market, visitorCountry);
     return u.toString();
   } catch {
     return raw;
@@ -218,7 +242,7 @@ export function localizeAmazonUrl(url, lang = 'en') {
 // Returns multiple storefront targets for languages configured with more than
 // one (currently Turkish → [TR, DE]). Returns [] for single-storefront
 // languages so callers fall back to the localizeAmazonUrl redirect.
-export function amazonStorefrontsForLang(url, lang = 'en') {
+export function amazonStorefrontsForLang(url, lang = 'en', visitorCountry = '') {
   const raw = safeExternalUrl(url);
   if (!raw) return [];
   let u;
@@ -230,7 +254,7 @@ export function amazonStorefrontsForLang(url, lang = 'en') {
   return markets.map((m) => {
     const nu = new URL(raw);
     if (AMAZON_DOMAIN[m]) nu.hostname = AMAZON_DOMAIN[m];
-    nu.searchParams.set('tag', AMAZON_TAG_BY_MARKET[m] || AMAZON_DEFAULT_TAG);
+    setAmazonTag(nu, m, visitorCountry);
     return { market: m, flag: AMAZON_FLAG[m] || '', url: nu.toString() };
   });
 }
@@ -253,10 +277,12 @@ function amazonQueryForProduct(p) {
   return name.replace(/\s+/g, ' ').trim().slice(0, 120);
 }
 
-function amazonMarketUrl(market, query) {
+function amazonMarketUrl(market, query, visitorCountry) {
   const host = AMAZON_DOMAIN[market] || AMAZON_DOMAIN.US;
+  const base = `https://${host}/s?k=${encodeURIComponent(query)}&i=electronics`;
+  if (!amazonTagAllowed(market, visitorCountry)) return base;
   const tag = AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG;
-  return `https://${host}/s?k=${encodeURIComponent(query)}&i=electronics&tag=${encodeURIComponent(tag)}`;
+  return `${base}&tag=${encodeURIComponent(tag)}`;
 }
 
 // Storefront button(s) for a product. Turkish gets two (TR + DE); every other
@@ -284,6 +310,42 @@ const AMAZON_COUNTRY_TO_MARKET = {
   AU: 'GB', NZ: 'GB', MX: 'US',
 };
 
+// Where Amazon's Earn-Globally router actually SENDS visitors from countries
+// outside its marketplace set (curl-proven per entry, 2026-07-05: tagged
+// amazon.it stays put for a TR IP while every other tagged storefront 302s
+// there). A tagged link to this storefront survives for that visitor, so the
+// tag — and the commission — can be kept.
+const AMAZON_EG_TARGET = { TR: 'IT' };
+
+// Hostname (minus www.) → market, for tagging stored offer URLs in place.
+const AMAZON_MARKET_BY_HOST = Object.fromEntries(
+  Object.entries(AMAZON_DOMAIN).map(([m, h]) => [h.replace(/^www\./, ''), m]),
+);
+
+// May a link to `market` carry our affiliate tag for this visitor WITHOUT the
+// gg3 geo-router moving the click to another storefront? True when the
+// visitor's own storefront (or Amazon's known redirect target for them) is the
+// linked one. Unknown/blank geo keeps the tag: the probe almost never fails
+// (Cloudflare trace + ipwho.is) and zeroing every commission on a failed probe
+// is worse than one rare bounce. Unmapped exotic geos drop the tag — Amazon
+// would bounce them somewhere we can't predict, and the landing storefront
+// must stay deterministic.
+export function amazonTagAllowed(market, visitorCountry) {
+  const m = String(market || '').toUpperCase();
+  const geo = String(visitorCountry || '').toUpperCase();
+  if (!geo || !m) return true;
+  return AMAZON_COUNTRY_TO_MARKET[geo] === m || AMAZON_EG_TARGET[geo] === m;
+}
+
+// Set or strip the ?tag= on an Amazon URL object per amazonTagAllowed.
+function setAmazonTag(u, market, visitorCountry) {
+  if (market && amazonTagAllowed(market, visitorCountry)) {
+    u.searchParams.set('tag', AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG);
+  } else {
+    u.searchParams.delete('tag');
+  }
+}
+
 // Single Amazon link for a product, routed to the visitor's country store.
 export function amazonUrlForProduct(product, country = 'US') {
   const query = amazonQueryForProduct(product);
@@ -292,12 +354,13 @@ export function amazonUrlForProduct(product, country = 'US') {
   return amazonMarketUrl(market, query);
 }
 
-// Internal /go link for an Amazon search. We must NOT render the raw amazon.*
-// href in the page: third-party link rewriters loaded site-wide (Skimlinks)
-// hijack the click and re-localise it to the VISITOR's geo (e.g. a TR visitor
-// asking for amazon.de got bounced to amazon.it), ignoring the chosen ship-to.
-// Routing through our own /go (an internal URL, never skimmed) and doing a
-// programmatic redirect there keeps the user on the country THEY picked.
+// Internal /go link for an Amazon search. Two reasons to never render a raw
+// amazon.* href: (1) site-wide link rewriters (Skimlinks) can touch external
+// hrefs, and (2) the TR→amazon.it bounce turned out to be Amazon's OWN
+// server-side gg3 router triggered by the ?tag= param (curl-proven 2026-07-05,
+// see the routing note above AMAZON_DOMAIN) — so /go must resolve the
+// visitor's geo FIRST and only then emit a tagged or untagged URL for the
+// chosen storefront.
 export function amazonGoPath(product, country = 'US') {
   const query = amazonQueryForProduct(product);
   if (!query) return '';
@@ -307,11 +370,13 @@ export function amazonGoPath(product, country = 'US') {
 
 // Rebuild the Amazon URL on /go from whitelisted params (market must be a known
 // storefront — guards against open-redirect since we never pass a raw URL).
-export function amazonUrlFromParams(market, query) {
+// visitorCountry gates the affiliate tag (see amazonTagAllowed): cross-geo
+// picks go untagged so Amazon's gg3 router can't override the chosen store.
+export function amazonUrlFromParams(market, query, visitorCountry) {
   const m = String(market || '').toUpperCase();
   const q = String(query || '').trim();
   if (!AMAZON_DOMAIN[m] || !q) return '';
-  return amazonMarketUrl(m, q);
+  return amazonMarketUrl(m, q, visitorCountry);
 }
 
 function rollupPriceIsFresh(product) {

@@ -22,12 +22,15 @@ import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import { amazonStorefrontsForLang, localizeAmazonUrl, safeExternalUrl } from '../lib/format';
+import { useGeoCountry } from '../lib/geo';
 import './LinkAnalysis.css';
 
 const MAX_LINKS = 4;
 const PENDING_LINK_KEY = 'qor.pendingLinkAnalysis';
 
-function amazonCtaForUrl(url, lang) {
+// geo gates the affiliate tag: a cross-geo storefront button goes untagged so
+// Amazon's server-side gg3 router can't bounce the click to another store.
+function amazonCtaForUrl(url, lang, geo) {
   const raw = safeExternalUrl(url);
   if (!raw) return null;
   try {
@@ -36,13 +39,14 @@ function amazonCtaForUrl(url, lang) {
   } catch {
     return null;
   }
-  const storefronts = amazonStorefrontsForLang(raw, lang);
-  const primary = storefronts[0] || { market: '', flag: '', url: localizeAmazonUrl(raw, lang) };
+  const storefronts = amazonStorefrontsForLang(raw, lang, geo);
+  const primary = storefronts[0] || { market: '', flag: '', url: localizeAmazonUrl(raw, lang, geo) };
   return { primary, extras: storefronts.slice(1) };
 }
 
 function StoreCta({ url, lang, L, compact = false }) {
-  const cta = amazonCtaForUrl(url, lang);
+  const geoCountry = useGeoCountry();
+  const cta = amazonCtaForUrl(url, lang, geoCountry);
   if (!cta?.primary?.url) return null;
   const label = L('View on Amazon', 'Amazon’da gör', 'Bei Amazon ansehen');
   const click = (market) => trackEvent('affiliate_click', {

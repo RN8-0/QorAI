@@ -27,6 +27,7 @@ import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/services/profile_algorithm_service.dart';
+import 'package:qor_ai/services/ip_location_service.dart' show detectedCountryProvider;
 import 'package:share_plus/share_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/pb_client.dart';

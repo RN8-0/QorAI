@@ -411,7 +411,15 @@ class _AmazonSearchCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final url = amazonUrlForProduct(product, country);
+    // Device's detected (IP) country gates the affiliate tag: a cross-geo
+    // storefront pick goes untagged so Amazon's server-side geo-router can't
+    // bounce the click to another country's store (see amazon_link.dart).
+    final visitorCountry = ref.watch(detectedCountryProvider).valueOrNull;
+    final url = amazonUrlForProduct(
+      product,
+      country,
+      visitorCountry: visitorCountry,
+    );
     if (url.isEmpty) return const SizedBox.shrink();
     final brand = _resolveStoreBrand('amazon');
     final market = amazonMarketForCountry(country);

@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
 import { pb } from '../lib/pocketbase';
 import { isFreshPricedOffer, normalizeOffer } from '../lib/offers';
-import { localizeAmazonUrl, safeExternalUrl, amazonUrlFromParams } from '../lib/format';
+import { amazonTagUrl, safeExternalUrl, amazonUrlFromParams } from '../lib/format';
+import { detectCountry, useGeoCountry } from '../lib/geo';
 import { productPath } from '../lib/routes';
 import { useSeo } from '../lib/seo';
 import './Placeholder.css';
@@ -15,11 +16,13 @@ export default function Go() {
   const offerId = params.get('offer') || '';
   const productId = params.get('product') || '';
   // Direct Amazon search redirect (no offer record): /go?store=amazon&m=DE&q=...
-  // Used by product/compare pages so the click is on an internal link Skimlinks
-  // won't hijack; we then programmatically redirect to the chosen storefront.
-  const amazonDirect = params.get('store') === 'amazon'
-    ? amazonUrlFromParams(params.get('m'), params.get('q'))
-    : '';
+  // The URL itself is built INSIDE the effect, after the visitor's geo is
+  // known: Amazon's server-side gg3 router bounces any TAGGED amazon.* URL to
+  // the visitor's nearest storefront (TR IP → amazon.it), so the tag may only
+  // be kept when the geo matches the chosen storefront (amazonTagAllowed).
+  const amazonMarket = params.get('store') === 'amazon' ? (params.get('m') || '') : '';
+  const amazonQuery = params.get('store') === 'amazon' ? (params.get('q') || '') : '';
+  const geoCountry = useGeoCountry();
   const [state, setState] = useState({ status: 'loading', offer: null, message: '' });
 
   useSeo({
@@ -31,10 +34,21 @@ export default function Go() {
 
   useEffect(() => {
     let live = true;
-    // Amazon direct redirect short-circuits the offer lookup entirely.
-    if (amazonDirect) {
+    // Amazon direct redirect short-circuits the offer lookup entirely. Geo is
+    // awaited (localStorage-cached, instant on repeat visits) BEFORE the URL
+    // exists, so the tag decision never races the redirect.
+    if (amazonMarket && amazonQuery) {
+      let timer = 0;
       setState({ status: 'redirecting', offer: null, message: '' });
-      const timer = window.setTimeout(() => { window.location.assign(amazonDirect); }, 300);
+      detectCountry().then((cc) => {
+        if (!live) return;
+        const target = amazonUrlFromParams(amazonMarket, amazonQuery, cc);
+        if (!target) {
+          setState({ status: 'error', offer: null, message: L('Store link is unavailable.', 'Mağaza bağlantısı kullanılamıyor.', 'Shop-Link ist nicht verfügbar.') });
+          return;
+        }
+        timer = window.setTimeout(() => { window.location.assign(target); }, 300);
+      });
       return () => { live = false; window.clearTimeout(timer); };
     }
     async function run() {
@@ -54,8 +68,13 @@ export default function Go() {
         });
         if (!live) return;
         const offer = normalizeOffer(rec);
+        // Stored offers keep their OWN storefront (it is the ship-to country
+        // their row was rendered under — strict country rule). Only the tag is
+        // decided, from the visitor's geo, never the domain: the old
+        // localizeAmazonUrl(lang) here rewrote even a TR offer to amazon.de.
+        const cc = await detectCountry();
         const target = offer.network === 'amazon'
-          ? localizeAmazonUrl(offer.url, lang)
+          ? amazonTagUrl(offer.url, cc)
           : safeExternalUrl(offer.url);
         if (!target) {
           setState({ status: 'error', offer, message: L('Store link is unavailable.', 'Mağaza bağlantısı kullanılamıyor.', 'Shop-Link ist nicht verfügbar.') });
@@ -81,13 +100,13 @@ export default function Go() {
       live = false;
       if (cleanupPromise && typeof cleanupPromise.then === 'function') cleanupPromise.then(cleanup => cleanup && cleanup());
     };
-  }, [offerId, amazonDirect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [offerId, amazonMarket, amazonQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const target = useMemo(() => (
     state.offer?.network === 'amazon'
-      ? localizeAmazonUrl(state.offer?.url || '', lang)
+      ? amazonTagUrl(state.offer?.url || '', geoCountry)
       : safeExternalUrl(state.offer?.url || '')
-  ), [state.offer, lang]);
+  ), [state.offer, geoCountry]);
   const back = productId || state.offer?.productId ? productPath(productId || state.offer.productId) : '/';
 
   if (state.status === 'redirecting') {

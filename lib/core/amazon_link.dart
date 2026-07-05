@@ -1,10 +1,14 @@
 // Amazon affiliate links for the app — mirrors web/src/lib/format.js so the app
-// builds the SAME country-correct, properly-tagged Amazon search link the website
-// does (instead of opening whatever raw URL happens to be stored, which often
-// pointed at the wrong storefront). OneLink store id qorai-20 earns across
-// US/GB/DE/FR/IT/ES/NL/PL/SE/CA; Turkey is a separate program (qorai-21,
-// amazon.com.tr) that is NOT OneLink-redirected, so a TR shopper lands on the TR
-// store and can actually buy.
+// builds the SAME country-correct Amazon search link the website does.
+//
+// TAG GATING (curl-proven 2026-07-05, see web/src/lib/format.js): Amazon's
+// server-side Earn Globally router 302s ANY amazon.* URL carrying our ?tag= to
+// the storefront nearest the visitor's IP (TR IP → amazon.it + linkCode=gg3),
+// no matter which storefront the link names. Untagged URLs are never touched.
+// So the tag is kept only when the device's detected country maps to the very
+// storefront being linked (or to Amazon's known redirect target for it);
+// otherwise the link goes untagged so the user lands EXACTLY on the store they
+// picked. Strict country rule: landing correctness beats commission.
 import '../domain/entities/product_entity.dart';
 
 const Map<String, String> _amazonDomain = {
@@ -25,6 +29,23 @@ const Map<String, String> _countryToMarket = {
 
 const Map<String, String> _tagByMarket = {'TR': 'qorai-21'};
 const String _defaultTag = 'qorai-20';
+
+// Where Amazon's Earn-Globally router actually SENDS visitors from countries
+// outside its marketplace set (curl-proven): tagged amazon.it stays put for a
+// TR IP, so the tag — and the commission — survives there.
+const Map<String, String> _egTarget = {'TR': 'IT'};
+
+/// May a link to [market] carry our affiliate tag for a device in
+/// [visitorCountry] without Amazon's gg3 geo-router moving the click to
+/// another storefront? Unknown geo keeps the tag (IP probe is 7-day cached and
+/// rarely missing); unmapped exotic geos drop it so the landing store stays
+/// deterministic.
+bool amazonTagAllowed(String market, String? visitorCountry) {
+  final m = market.trim().toUpperCase();
+  final geo = (visitorCountry ?? '').trim().toUpperCase();
+  if (geo.isEmpty || m.isEmpty) return true;
+  return _countryToMarket[geo] == m || _egTarget[geo] == m;
+}
 
 const Map<String, String> amazonMarketFlag = {
   'US': '🇺🇸', 'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹', 'ES': '🇪🇸',
@@ -57,11 +78,19 @@ String _amazonQuery(ProductEntity p) {
 }
 
 /// Country-correct Amazon search URL for a product (empty if no query).
-String amazonUrlForProduct(ProductEntity product, String? country) {
+/// [visitorCountry] is the device's DETECTED (IP) country and gates the tag:
+/// a cross-geo selection goes untagged so Amazon can't bounce it elsewhere.
+String amazonUrlForProduct(
+  ProductEntity product,
+  String? country, {
+  String? visitorCountry,
+}) {
   final query = _amazonQuery(product);
   if (query.isEmpty) return '';
   final market = amazonMarketForCountry(country);
   final host = _amazonDomain[market] ?? _amazonDomain['US']!;
+  final base = 'https://$host/s?k=${Uri.encodeQueryComponent(query)}&i=electronics';
+  if (!amazonTagAllowed(market, visitorCountry)) return base;
   final tag = _tagByMarket[market] ?? _defaultTag;
-  return 'https://$host/s?k=${Uri.encodeQueryComponent(query)}&i=electronics&tag=$tag';
+  return '$base&tag=$tag';
 }
