@@ -172,13 +172,13 @@ class _CompareStoreLinksCard extends StatelessWidget {
   }
 }
 
-class _CompareStoreRow extends StatelessWidget {
+class _CompareStoreRow extends ConsumerWidget {
   final String name;
   final String url;
   const _CompareStoreRow({required this.name, required this.url});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final brand = _resolveCompareStoreBrand(name);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -187,7 +187,11 @@ class _CompareStoreRow extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            final uri = Uri.tryParse(url);
+            // Legacy affiliateLinks may carry stale/wrong-program Amazon tags
+            // (qorai-20 on .de/.co.uk) — re-tag for the storefront the URL
+            // already points at; non-Amazon URLs pass through untouched.
+            final visitor = ref.read(detectedCountryProvider).valueOrNull;
+            final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
             if (uri == null) return;
             try {
               await launchUrl(uri, mode: LaunchMode.externalApplication);

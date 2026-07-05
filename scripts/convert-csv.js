@@ -95,12 +95,14 @@ function convertCsvToJson() {
 
       // Generate Amazon Affiliate Links (Search Queries)
       const amazonQuery = encodeURIComponent(`${brand} ${name}`);
+      // Store IDs are per-marketplace (panels 2026-07-05); no IN program, so
+      // that link stays untagged instead of carrying a foreign program's tag.
       const affiliateLinks = {
         'amazon_us': `https://www.amazon.com/s?k=${amazonQuery}&tag=qorai-20`,
-        'amazon_uk': `https://www.amazon.co.uk/s?k=${amazonQuery}&tag=qorai-21`,
-        'amazon_de': `https://www.amazon.de/s?k=${amazonQuery}&tag=qorai-21`,
+        'amazon_uk': `https://www.amazon.co.uk/s?k=${amazonQuery}&tag=qorai0e-21`,
+        'amazon_de': `https://www.amazon.de/s?k=${amazonQuery}&tag=qorai0d-21`,
         'amazon_tr': `https://www.amazon.com.tr/s?k=${amazonQuery}&tag=qorai-21`,
-        'amazon_in': `https://www.amazon.in/s?k=${amazonQuery}&tag=qorai-21`
+        'amazon_in': `https://www.amazon.in/s?k=${amazonQuery}`
       };
 
       const product = {

@@ -1012,7 +1012,7 @@ export default function ProductDetail() {
   const hasExactPrice = Boolean(offer?.hasExactPrice);
   const price = hasExactPrice ? Number(offer?.price) || 0 : 0;
   const displayPrice = hasExactPrice ? formatOfferPrice(offer, lang) : '';
-  const offerUrl = offerClickPath(offer);
+  const offerUrl = offerClickPath(offer, geoCountry);
   const inCompare = has(p.id);
   const compareCount = ids.length;
   const compareCategory = compareBase?.category || (inCompare ? p.category : '');
@@ -1228,7 +1228,7 @@ export default function ProductDetail() {
                 </div>
                 <div className="pd-prices-list">
                   {amazonOffer ? (
-                    <a className="pd-price-row" href={offerClickPath(amazonOffer)} target="_blank" rel="sponsored noopener nofollow">
+                    <a className="pd-price-row" href={offerClickPath(amazonOffer, geoCountry)} target="_blank" rel="sponsored noopener nofollow">
                       <span className="pd-price-store"><AmazonLogo height={26} /></span>
                       <span className="pd-price-amt">{formatOfferPrice(amazonOffer, lang)}</span>
                     </a>
@@ -1239,7 +1239,7 @@ export default function ProductDetail() {
                     </a>
                   )}
                   {priced.map((o) => (
-                    <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o)} target="_blank" rel="sponsored noopener">
+                    <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o, geoCountry)} target="_blank" rel="sponsored noopener">
                       <span className="pd-price-store">{o.store || L('Store', 'Mağaza', 'Shop')}</span>
                       {o.hasExactPrice
                         ? <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>

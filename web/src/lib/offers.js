@@ -2,6 +2,7 @@ import { pb } from './pocketbase';
 import {
   CURRENCY_BY_COUNTRY,
   PRICE_COUNTRIES_BY_LANG,
+  amazonTagUrl,
   offerForLang,
   safeExternalUrl,
 } from './format';
@@ -198,11 +199,14 @@ export function formatOfferPrice(offer, lang = 'en') {
   }
 }
 
-export function offerClickPath(offer) {
+export function offerClickPath(offer, visitorCountry = '') {
   if (offer?.id) {
     const qs = new URLSearchParams({ offer: offer.id });
     if (offer.productId) qs.set('product', offer.productId);
     return `/go?${qs.toString()}`;
   }
-  return safeExternalUrl(offer?.url || '');
+  // Id-less rollup fallback renders a raw href — legacy affiliateLinks can
+  // carry a stale/wrong-program Amazon tag (qorai-20 on .de/.co.uk), so re-tag
+  // for the storefront the URL already points at before it hits the DOM.
+  return amazonTagUrl(offer?.url || '', visitorCountry);
 }

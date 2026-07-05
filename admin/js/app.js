@@ -3317,7 +3317,8 @@ function _adminLocalizeAmazon(url,lang){
     const u=new URL(raw);
     if(!/(^|\.)amazon\./i.test(u.hostname))return raw;
     const DOMAIN={US:'www.amazon.com',GB:'www.amazon.co.uk',DE:'www.amazon.de',FR:'www.amazon.fr',IT:'www.amazon.it',ES:'www.amazon.es',CA:'www.amazon.ca',TR:'www.amazon.com.tr'};
-    const TAG={TR:'qorai-21'};
+    // Store ID'ler pazara ozel (paneller 2026-07-05): .de/.co.uk'da qorai-20 yanlis program.
+    const TAG={TR:'qorai-21',DE:'qorai0d-21',GB:'qorai0e-21'};
     const BY_LANG={tr:'TR',en:'US',de:'DE',fr:'FR',it:'IT',es:'ES',pt:'ES',ru:'DE'};
     const m=BY_LANG[String(lang||'tr').slice(0,2).toLowerCase()]||'US';
     if(DOMAIN[m])u.hostname=DOMAIN[m];
