@@ -143,8 +143,8 @@
   display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
 }
 .pf-membership.is-premium {
-  border-color: rgba(245, 158, 11, 0.4);
-  background-image: radial-gradient(ellipse 60% 100% at 100% 0%, rgba(245, 158, 11, 0.12), transparent);
+  border-color: rgba(124, 58, 237, 0.4);
+  background-image: radial-gradient(ellipse 60% 100% at 100% 0%, rgba(124, 58, 237, 0.14), transparent);
 }
 .pf-mem-badge {
   width: 46px; height: 46px; border-radius: 13px; flex-shrink: 0;
@@ -153,7 +153,7 @@
   background: var(--accent-soft); color: var(--accent);
 }
 .pf-membership.is-premium .pf-mem-badge {
-  background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #1a1200;
+  background: var(--grad-violet); color: #fff;
 }
 .pf-mem-text { flex: 1; min-width: 0; }
 .pf-mem-text strong { display: block; font-size: 14px; font-weight: 800; }

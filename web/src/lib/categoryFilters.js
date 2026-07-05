@@ -456,11 +456,15 @@ export function cardKeySpecs(product, lang = 'en', max = 4) {
   const out = [];
   const usedConcepts = new Set();
 
-  const push = (value, labelText, concept) => {
+  // dedupeConcept is only for the RICH fallback — token/native slots are the
+  // curated per-category set and must ALL show even when they share a concept
+  // (e.g. GPU: VRAM + brand + memory-type all map to the "gpu" concept). They
+  // still record their concept so the rich fallback won't re-add the same spec.
+  const push = (value, labelText, concept, dedupeConcept = false) => {
     const v = String(value ?? '').replace(/\s+/g, ' ').trim();
     const l = String(labelText ?? '').replace(/\s+/g, ' ').trim();
     if (!v || !l || out.length >= max) return false;
-    if (concept && usedConcepts.has(concept)) return false;
+    if (dedupeConcept && concept && usedConcepts.has(concept)) return false;
     if (out.some((c) => c.label === l || c.value === v)) return false;
     out.push({ label: l, value: v });
     if (concept) usedConcepts.add(concept);
@@ -509,7 +513,7 @@ export function cardKeySpecs(product, lang = 'en', max = 4) {
         const concept = conceptForKey(key);
         const val = firstLine(value);
         if (!val || val.length > 30) return;
-        if (push(val, localizedSpecLabel(key, lang), concept)) usedKeys.add(key);
+        if (push(val, localizedSpecLabel(key, lang), concept, true)) usedKeys.add(key);
       };
       // 1) category priority aliases
       for (const group of aliases) {

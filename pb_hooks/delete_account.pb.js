@@ -2,25 +2,40 @@
 // PocketBase JS hooks: Account deletion via email confirmation
 // ─────────────────────────────────────────────────────────────
 // Flow:
-//   1. App calls POST /api/users/request-delete (authenticated)
+//   1. App/site call POST /api/users/request-delete (authenticated)
 //      → generates a signed token, sends confirmation email
 //   2. User clicks link in email: GET /api/users/confirm-delete?id=...&ts=...&sig=...
 //      → validates token, deletes all user data, returns success page
-
-const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
-const FROM_EMAIL = 'noreply@qorai.net';
-const FROM_NAME = 'Qor AI';
-const TOKEN_TTL_SECONDS = 86400; // 24 hours
-
-function _getDeletionSecret() {
-  return $os.getenv('DELETION_SIGNING_SECRET') ||
-    $os.getenv('POCKETBASE_ADMIN_EMAIL') ||
-    'qorai_delete_secret';
-}
+//
+// CRITICAL — PocketBase JSVM isolation: every routerAdd callback runs in its OWN
+// isolated runtime, so FILE-LEVEL `const`/`function` declarations are NOT visible
+// inside the callback (they throw "X is not defined"). That is exactly why
+// deletion failed: `_getDeletionSecret()` / `PB_URL` etc. were file-level → the
+// handler threw before sending → 500 → "Silme işlemi başlatılamadı". Everything
+// the callbacks need is therefore declared INSIDE each callback.
 
 // POST /api/users/request-delete — requires user auth
 routerAdd('POST', '/api/users/request-delete', (e) => {
   try {
+    const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
+    const FROM_NAME = 'Qor AI';
+    // Send FROM the configured mail sender (proven working = contact@arain.digital,
+    // the SMTP auth mailbox). Hardcoding noreply@qorai.net made Hostinger reject
+    // the message. Fall back to the known-good address, never to noreply@.
+    let senderName = FROM_NAME;
+    let senderAddress = 'contact@arain.digital';
+    try {
+      const meta = $app.settings().meta;
+      if (meta && meta.senderAddress) {
+        senderAddress = meta.senderAddress;
+        senderName = meta.senderName || FROM_NAME;
+      }
+    } catch (_) { /* keep the known-good fallback */ }
+
+    const secret = $os.getenv('DELETION_SIGNING_SECRET')
+      || $os.getenv('POCKETBASE_ADMIN_EMAIL')
+      || 'qorai_delete_secret';
+
     const user = e.auth;
     if (!user) return e.json(401, { error: 'auth_required' });
 
@@ -29,28 +44,11 @@ routerAdd('POST', '/api/users/request-delete', (e) => {
 
     const ts = Math.floor(Date.now() / 1000);
     const data = user.id + '_' + ts;
-    const sig = $security.hs256(data, _getDeletionSecret());
+    const sig = $security.hs256(data, secret);
     const confirmUrl =
       `${PB_URL}/api/users/confirm-delete?id=${encodeURIComponent(user.id)}&ts=${ts}&sig=${encodeURIComponent(sig)}`;
 
     const displayName = String(user.get('displayName') || user.get('name') || email.split('@')[0]);
-
-    // Send FROM the address PocketBase is actually configured/authenticated to
-    // send with (Settings → Mail — the same sender that delivers verification &
-    // password-reset mail). Hardcoding noreply@qorai.net made the SMTP relay
-    // reject the message (sender ≠ authenticated mailbox) → the send threw →
-    // the endpoint returned 500 and both the app and the site showed
-    // "deletion could not be started". Fall back to the constants only if the
-    // instance has no configured sender.
-    let senderName = FROM_NAME;
-    let senderAddress = FROM_EMAIL;
-    try {
-      const meta = $app.settings().meta;
-      if (meta && meta.senderAddress) {
-        senderAddress = meta.senderAddress;
-        senderName = meta.senderName || FROM_NAME;
-      }
-    } catch (_) { /* keep fallback constants */ }
 
     const message = new MailerMessage({
       from: { name: senderName, address: senderAddress },
@@ -93,7 +91,7 @@ routerAdd('POST', '/api/users/request-delete', (e) => {
     </tr>
     <tr>
       <td style="background:#111;padding:16px 32px;text-align:center;border-top:1px solid #2a2a2a">
-        <p style="margin:0;color:#555;font-size:11px">© 2025 Qor AI · qorai.net</p>
+        <p style="margin:0;color:#555;font-size:11px">© 2026 Qor AI · qorai.net</p>
       </td>
     </tr>
   </table>
@@ -105,18 +103,13 @@ routerAdd('POST', '/api/users/request-delete', (e) => {
 
     return e.json(200, { message: 'Confirmation email sent.' });
   } catch (err) {
-    return e.json(500, { error: 'hook_fatal', detail: String(err) });
+    return e.json(500, { error: 'hook_fatal', message: String(err), detail: String(err) });
   }
 }, $apis.requireAuth());
 
 // GET /api/users/confirm-delete — public, processes confirmation link
 routerAdd('GET', '/api/users/confirm-delete', (e) => {
-  try {
-    const id = String(e.request.url.query().get('id') || '').trim();
-    const ts = parseInt(String(e.request.url.query().get('ts') || '0'), 10);
-    const sig = String(e.request.url.query().get('sig') || '').trim();
-
-    const errorPage = (msg) => `<!DOCTYPE html>
+  const errorPage = (msg) => `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Error — Qor AI</title></head>
 <body style="font-family:sans-serif;background:#0f0f0f;color:#f5f5f5;text-align:center;padding:60px 20px">
   <div style="max-width:440px;margin:0 auto">
@@ -127,18 +120,28 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
   </div>
 </body></html>`;
 
+  try {
+    const TOKEN_TTL_SECONDS = 86400; // 24 hours
+    const secret = $os.getenv('DELETION_SIGNING_SECRET')
+      || $os.getenv('POCKETBASE_ADMIN_EMAIL')
+      || 'qorai_delete_secret';
+
+    const id = String(e.request.url.query().get('id') || '').trim();
+    const ts = parseInt(String(e.request.url.query().get('ts') || '0'), 10);
+    const sig = String(e.request.url.query().get('sig') || '').trim();
+
     if (!id || !ts || !sig) {
       return e.html(400, errorPage('Invalid deletion link.'));
     }
 
     // Verify expiry (24 hours)
     if (Math.floor(Date.now() / 1000) - ts > TOKEN_TTL_SECONDS) {
-      return e.html(400, errorPage('This link has expired. Please request a new deletion email from the app.'));
+      return e.html(400, errorPage('This link has expired. Please request a new deletion email.'));
     }
 
     // Verify HMAC signature
     const data = id + '_' + ts;
-    const expectedSig = $security.hs256(data, _getDeletionSecret());
+    const expectedSig = $security.hs256(data, secret);
     if (sig !== expectedSig) {
       return e.html(400, errorPage('Invalid link signature.'));
     }
@@ -157,13 +160,15 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
       { col: 'comparisons', field: 'userId' },
       { col: 'favorites', field: 'userId' },
       { col: 'saved_analyses', field: 'userId' },
+      { col: 'comparison_reviews', field: 'userId' },
+      { col: 'review_replies', field: 'userId' },
       { col: 'notifications', field: 'recipientId' },
       { col: 'support_messages', field: 'userId' },
     ];
 
-    for (const { col, field } of relatedCollections) {
+    for (const rc of relatedCollections) {
       try {
-        const records = $app.findRecordsByFilter(col, `${field} = "${id}"`, '', 0, 0);
+        const records = $app.findRecordsByFilter(rc.col, `${rc.field} = "${id}"`, '', 0, 0);
         for (const rec of records) {
           try { $app.delete(rec); } catch (_) {}
         }
@@ -171,7 +176,7 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
     }
 
     // Reviews: keep them as community content but anonymize the author so the
-    // app can render "Silinen Hesap" / "Deleted Account" in the UI.
+    // app can render "Deleted Account" in the UI.
     try {
       const reviews = $app.findRecordsByFilter('reviews', `userId = "${id}"`, '', 0, 0);
       for (const rec of reviews) {
@@ -205,7 +210,7 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
   } catch (err) {
     return e.html(500, `<html><body style="font-family:sans-serif;background:#0f0f0f;color:#f5f5f5;text-align:center;padding:60px">
       <h1 style="color:#ef4444">Server Error</h1>
-      <p style="color:#999">An error occurred. Please try again later.</p>
+      <p style="color:#999">An error occurred: ${String(err)}</p>
     </body></html>`);
   }
 });

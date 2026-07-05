@@ -5,6 +5,7 @@
 // but catalog listing/search/detail no longer depends on PB hooks being live.
 
 import { productImageList } from './imageUrl';
+import { cardKeySpecs } from './categoryFilters';
 
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 // Search-only scoped key (actions: documents:search,get on `products` only).
@@ -415,6 +416,52 @@ export async function getCategoryVisuals(categories = [], perCategory = 4) {
   }
 }
 
+// Merge rich `_raw` specs into the home feed's displayed products that fall
+// short of four lean key specs, so the SAME fixed four render on the home cards
+// as on category/detail cards. Only the thin ones are fetched (a couple dozen),
+// keeping the extra payload small; best-effort — lean chips still show on error.
+async function enrichHomeCardsWithRichSpecs(feed) {
+  const displayed = [
+    ...feed.categorySections.flatMap((s) => s.products),
+    ...feed.forYou,
+    ...feed.trending,
+    ...feed.newArrivals,
+    ...(feed.spotlight ? [feed.spotlight] : []),
+  ];
+  const byId = new Map();
+  for (const p of displayed) if (p && p.id) byId.set(p.id, p);
+  const thin = [...byId.values()].filter(
+    (p) => !p.keySpecs && !p.specs && !p.specSections && cardKeySpecs(p, 'en').length < 4,
+  );
+  if (!thin.length) return feed;
+  const ids = thin.map((p) => p.id).slice(0, 150);
+  try {
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      filter_by: `id:[${ids.map(lit).join(',')}]`,
+      per_page: ids.length,
+      include_fields: 'id,_raw',
+    });
+    const rich = new Map();
+    for (const d of docs(data)) {
+      let base = {};
+      try { base = d._raw ? JSON.parse(d._raw) : {}; } catch { base = {}; }
+      rich.set(d.id, base);
+    }
+    for (const p of thin) {
+      const r = rich.get(p.id);
+      if (!r) continue;
+      if (r.keySpecs) p.keySpecs = r.keySpecs;
+      if (r.specs) p.specs = r.specs;
+      if (r.specsEn) p.specsEn = r.specsEn;
+      if (r.specSections) p.specSections = r.specSections;
+      if (r.multiLangSpecs) p.multiLangSpecs = r.multiLangSpecs;
+    }
+  } catch { /* best-effort: lean chips still render */ }
+  return feed;
+}
+
 export async function getHomeFeed(prefCats = []) {
   const preferred = (prefCats || [])
     .map((cat) => String(cat || '').toLowerCase())
@@ -478,7 +525,7 @@ export async function getHomeFeed(prefCats = []) {
     const newArrivals = dedupeVariants(uniqueProducts(docs(newRes).map(docToProduct))
       .filter((product) => homeQualityFilter(product))).slice(0, 9);
 
-    return {
+    const feed = {
       categorySections,
       forYou,
       trending,
@@ -488,6 +535,12 @@ export async function getHomeFeed(prefCats = []) {
       categories,
       total: Number(facetRes && facetRes.found) || 0,
     };
+    // Make home cards identical to category/detail cards: pull the rich `_raw`
+    // specs for the handful of displayed products that come up short of four
+    // key specs on the lean payload (thin-token categories — GPUs, CPUs, SSDs,
+    // headphones…), so the same fixed four show everywhere.
+    await enrichHomeCardsWithRichSpecs(feed);
+    return feed;
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
     return { categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
