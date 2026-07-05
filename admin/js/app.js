@@ -3322,6 +3322,7 @@ function _adminLocalizeAmazon(url,lang){
     const BY_LANG={tr:'TR',en:'US',de:'DE',fr:'FR',it:'IT',es:'ES',pt:'ES',ru:'DE'};
     const m=BY_LANG[String(lang||'tr').slice(0,2).toLowerCase()]||'US';
     if(DOMAIN[m])u.hostname=DOMAIN[m];
+    u.searchParams.delete('linkCode');u.searchParams.delete('linkId');
     u.searchParams.set('tag',TAG[m]||'qorai-20');
     return u.toString();
   }catch{ return raw; }

@@ -201,12 +201,12 @@ export function countryDisplayName(code, lang = 'en') {
 // panels while TR, with its correct tag, tracked fine).
 const AMAZON_TAG_BY_MARKET = { TR: 'qorai-21', DE: 'qorai0d-21', GB: 'qorai0e-21' };
 const AMAZON_DEFAULT_TAG = 'qorai-20';
-// Markets whose LOCAL program tag Amazon's Earn-Globally geo-router ignores
-// (curl-proven from a TR IP 2026-07-05: tagged .de/qorai0d-21, .co.uk/qorai0e-21
-// and .com.tr/qorai-21 all stay put while .com/qorai-20 302s to amazon.it).
-// Links to these storefronts keep their tag for EVERY visitor — correct
-// landing AND commission in that store's own program.
-const AMAZON_LOCAL_PROGRAM_MARKETS = ['TR', 'DE', 'GB'];
+// 2026-07-05/2: Amazon'un geo-router'ı OTURUMA bağlı çıktı — aynı dakikada
+// çıplak curl 302 üretmezken gerçek tarayıcı (çerezli oturum) tag'li amazon.de
+// /dp linkini amazon.it'ye fırlattı (linkCode=gg2). "Yerel program tag'leri
+// (TR/DE/GB) router'ı asla tetiklemez" istisnası bu yüzden KALDIRILDI: tag
+// yalnız ziyaretçinin kendi pazarında (veya bilinen EG hedefinde) tutulur,
+// her çapraz-geo tıklama tag'siz gider — seçilen mağazaya iniş deterministik.
 // Single-storefront redirect target per language (used by /go).
 const AMAZON_MARKET_BY_LANG = {
   tr: 'DE', en: 'US', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
@@ -350,13 +350,16 @@ export function amazonTagAllowed(market, visitorCountry) {
   const m = String(market || '').toUpperCase();
   const geo = String(visitorCountry || '').toUpperCase();
   if (!m) return true;
-  if (AMAZON_LOCAL_PROGRAM_MARKETS.includes(m)) return true;
   if (!geo) return true;
   return AMAZON_COUNTRY_TO_MARKET[geo] === m || AMAZON_EG_TARGET[geo] === m;
 }
 
-// Set or strip the ?tag= on an Amazon URL object per amazonTagAllowed.
+// Set or strip the ?tag= on an Amazon URL object per amazonTagAllowed. OneLink
+// redirect leftovers (linkCode/linkId, e.g. gg2/gg3) are always removed — a
+// stored URL carrying them can re-arm Amazon's geo-router even untagged.
 function setAmazonTag(u, market, visitorCountry) {
+  u.searchParams.delete('linkCode');
+  u.searchParams.delete('linkId');
   if (market && amazonTagAllowed(market, visitorCountry)) {
     u.searchParams.set('tag', AMAZON_TAG_BY_MARKET[market] || AMAZON_DEFAULT_TAG);
   } else {

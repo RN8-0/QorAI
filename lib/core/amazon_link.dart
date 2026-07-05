@@ -39,28 +39,24 @@ const Map<String, String> _tagByMarket = {
 };
 const String _defaultTag = 'qorai-20';
 
-// Markets whose LOCAL program tag Amazon's Earn-Globally geo-router ignores
-// (curl-proven from a TR IP): their links keep the tag for EVERY visitor —
-// correct landing AND commission in that store's own program.
-const Set<String> _localProgramMarkets = {'TR', 'DE', 'GB'};
-
 // Where Amazon's Earn-Globally router actually SENDS visitors from countries
 // outside its marketplace set (curl-proven): tagged amazon.it stays put for a
 // TR IP, so the tag — and the commission — survives there.
 const Map<String, String> _egTarget = {'TR': 'IT'};
 
 /// May a link to [market] carry our affiliate tag for a device in
-/// [visitorCountry] without Amazon's gg3 geo-router moving the click to
-/// another storefront? Local-program markets (TR/DE/GB): always. qorai-20
-/// markets: only when the device's storefront (or Amazon's known redirect
-/// target for it) IS the linked one. Unknown geo keeps the tag (IP probe is
-/// 7-day cached and rarely missing); unmapped exotic geos drop it so the
-/// landing store stays deterministic.
+/// [visitorCountry] without Amazon's geo-router moving the click to another
+/// storefront? ONLY when the device's own storefront (or Amazon's known
+/// redirect target for it) IS the linked one. 2026-07-05/2: the former
+/// "local-program markets (TR/DE/GB) are always safe" exception was removed —
+/// Amazon's router proved SESSION-dependent (a real browser bounced a tagged
+/// amazon.de /dp link to amazon.it while bare curl did not), so every
+/// cross-geo click goes untagged; landing correctness is deterministic.
+/// Unknown geo keeps the tag (IP probe is 7-day cached and rarely missing).
 bool amazonTagAllowed(String market, String? visitorCountry) {
   final m = market.trim().toUpperCase();
   final geo = (visitorCountry ?? '').trim().toUpperCase();
   if (m.isEmpty) return true;
-  if (_localProgramMarkets.contains(m)) return true;
   if (geo.isEmpty) return true;
   return _countryToMarket[geo] == m || _egTarget[geo] == m;
 }
@@ -85,6 +81,10 @@ String amazonTagUrlForVisitor(String url, String? visitorCountry) {
   if (!RegExp(r'(^|\.)amazon\.').hasMatch(host)) return url;
   final market = _marketByHost[host.replaceFirst(RegExp(r'^www\.'), '')] ?? '';
   final params = Map<String, String>.from(uri.queryParameters);
+  // OneLink redirect leftovers (gg2/gg3) can re-arm Amazon's geo-router even
+  // on an untagged URL — always drop them from stored links.
+  params.remove('linkCode');
+  params.remove('linkId');
   if (market.isNotEmpty && amazonTagAllowed(market, visitorCountry)) {
     params['tag'] = _tagByMarket[market] ?? _defaultTag;
   } else {
