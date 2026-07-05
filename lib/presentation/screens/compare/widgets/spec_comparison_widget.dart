@@ -6755,7 +6755,13 @@ Rules:
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            final uri = Uri.tryParse(offer.url);
+            // Amazon offers are re-tagged at click time for the storefront
+            // they already point at (stored tags can be stale/wrong-program;
+            // see amazon_link.dart) — non-Amazon URLs pass through untouched.
+            final visitor = ref.read(detectedCountryProvider).valueOrNull;
+            final uri = Uri.tryParse(
+              amazonTagUrlForVisitor(offer.url, visitor),
+            );
             if (uri == null) return;
             try {
               await launchUrl(uri, mode: LaunchMode.externalApplication);

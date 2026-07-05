@@ -27,8 +27,22 @@ const Map<String, String> _countryToMarket = {
   'AU': 'GB', 'NZ': 'GB', 'MX': 'US',
 };
 
-const Map<String, String> _tagByMarket = {'TR': 'qorai-21'};
+// Tag is per-program — Amazon store IDs are NOT shared across marketplaces.
+// Four owned Associates accounts (panels checked 2026-07-05): US qorai-20
+// (also the OneLink/Earn-Globally id the other storefronts ride on),
+// TR qorai-21, DE qorai0d-21, UK qorai0e-21. qorai-20 on .de/.co.uk
+// attributed nothing there.
+const Map<String, String> _tagByMarket = {
+  'TR': 'qorai-21',
+  'DE': 'qorai0d-21',
+  'GB': 'qorai0e-21',
+};
 const String _defaultTag = 'qorai-20';
+
+// Markets whose LOCAL program tag Amazon's Earn-Globally geo-router ignores
+// (curl-proven from a TR IP): their links keep the tag for EVERY visitor —
+// correct landing AND commission in that store's own program.
+const Set<String> _localProgramMarkets = {'TR', 'DE', 'GB'};
 
 // Where Amazon's Earn-Globally router actually SENDS visitors from countries
 // outside its marketplace set (curl-proven): tagged amazon.it stays put for a
@@ -37,14 +51,46 @@ const Map<String, String> _egTarget = {'TR': 'IT'};
 
 /// May a link to [market] carry our affiliate tag for a device in
 /// [visitorCountry] without Amazon's gg3 geo-router moving the click to
-/// another storefront? Unknown geo keeps the tag (IP probe is 7-day cached and
-/// rarely missing); unmapped exotic geos drop it so the landing store stays
-/// deterministic.
+/// another storefront? Local-program markets (TR/DE/GB): always. qorai-20
+/// markets: only when the device's storefront (or Amazon's known redirect
+/// target for it) IS the linked one. Unknown geo keeps the tag (IP probe is
+/// 7-day cached and rarely missing); unmapped exotic geos drop it so the
+/// landing store stays deterministic.
 bool amazonTagAllowed(String market, String? visitorCountry) {
   final m = market.trim().toUpperCase();
   final geo = (visitorCountry ?? '').trim().toUpperCase();
-  if (geo.isEmpty || m.isEmpty) return true;
+  if (m.isEmpty) return true;
+  if (_localProgramMarkets.contains(m)) return true;
+  if (geo.isEmpty) return true;
   return _countryToMarket[geo] == m || _egTarget[geo] == m;
+}
+
+// Hostname (minus www.) → market, for re-tagging stored offer URLs in place.
+final Map<String, String> _marketByHost = {
+  for (final e in _amazonDomain.entries)
+    e.value.replaceFirst(RegExp(r'^www\.'), ''): e.key,
+};
+
+/// Re-tag an Amazon URL for the storefront it ALREADY points at (domain is
+/// never rewritten — a stored offer's storefront IS the country its row was
+/// shown under). Sets that market's own program tag when [amazonTagAllowed],
+/// strips the tag otherwise so Amazon's server-side gg3 302 can't move the
+/// click to another country's store. Non-Amazon URLs pass through untouched.
+String amazonTagUrlForVisitor(String url, String? visitorCountry) {
+  final uri = Uri.tryParse(url.trim());
+  if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
+    return url;
+  }
+  final host = uri.host.toLowerCase();
+  if (!RegExp(r'(^|\.)amazon\.').hasMatch(host)) return url;
+  final market = _marketByHost[host.replaceFirst(RegExp(r'^www\.'), '')] ?? '';
+  final params = Map<String, String>.from(uri.queryParameters);
+  if (market.isNotEmpty && amazonTagAllowed(market, visitorCountry)) {
+    params['tag'] = _tagByMarket[market] ?? _defaultTag;
+  } else {
+    params.remove('tag');
+  }
+  return uri.replace(queryParameters: params.isEmpty ? null : params).toString();
 }
 
 const Map<String, String> amazonMarketFlag = {

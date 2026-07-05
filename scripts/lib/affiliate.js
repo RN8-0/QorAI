@@ -27,9 +27,18 @@ function loadEnv() {
 }
 const ENV = loadEnv();
 
+// Amazon store IDs are per-marketplace — the four owned programs (panels,
+// 2026-07-05). qorai-20 on .de/.co.uk attributed nothing there; each store
+// needs ITS OWN program's tag. Env can still override per country, but these
+// defaults make every machine (PC + Hetzner cron) stamp correct tags.
+const DEFAULT_AMAZON_TAGS = {
+  US: 'qorai-20', TR: 'qorai-21', DE: 'qorai0d-21', GB: 'qorai0e-21',
+};
+
 function amazonUrl(url, opts = {}) {
   const country = String(opts.country || '').toUpperCase();
-  const tag = ENV[`AMAZON_TAG_${country}`] || ENV.AMAZON_TAG || '';
+  const tag = ENV[`AMAZON_TAG_${country}`] || DEFAULT_AMAZON_TAGS[country] ||
+    ENV.AMAZON_TAG || DEFAULT_AMAZON_TAGS.US;
   if (!tag) return url;
   try { const u = new URL(url); u.searchParams.set('tag', tag); return u.toString(); }
   catch { return url; }
@@ -50,8 +59,25 @@ function awinUrl(url, opts = {}) {
     `&ued=${encodeURIComponent(url)}`;
 }
 
+// İncehesap "Paylaştıkça Kazan": link formatı yalnız onaylı publisher
+// panelinde üretiliyor ve resmî sayfalarda örneklenmiyor (2026-07-04
+// araştırması) — o yüzden hem parametre ADI hem DEĞERİ env'den gelir.
+// Panele kabul edilince üretilen tek bir linke bakıp deseni buraya yaz:
+//   INCEHESAP_PARAM   ör. ref | pk | ortak  (panel linkindeki query anahtarı)
+//   INCEHESAP_REF     publisher kimliği/değeri
+// İkisi de doluysa ürün URL'ine eklenir; boşsa düz link döner (fiyat
+// gösterimi atıftan bağımsız). Panel linki query-param DEĞİL de apayrı bir
+// path/host kullanıyorsa bu sarmalayıcı yetmez — o durumda dal güncellenmeli.
+function incehesapUrl(url) {
+  const param = ENV.INCEHESAP_PARAM || '';
+  const ref = ENV.INCEHESAP_REF || '';
+  if (!param || !ref) return url;
+  try { const u = new URL(url); u.searchParams.set(param, ref); return u.toString(); }
+  catch { return url; }
+}
+
 /**
- * @param {string} network  amazon | awin | direct | geizhals | …
+ * @param {string} network  amazon | awin | incehesap | direct | geizhals | …
  * @param {string} url      raw retailer URL
  * @param {{country?:string, mid?:string, clickref?:string}} opts
  * @returns {string} affiliate-wrapped URL (or the plain URL if not configured)
@@ -59,16 +85,17 @@ function awinUrl(url, opts = {}) {
 function buildAffiliateUrl(network, url, opts = {}) {
   if (!url) return '';
   switch (String(network || '').toLowerCase()) {
-    case 'amazon': return amazonUrl(url, opts);
-    case 'awin':   return awinUrl(url, opts);
-    default:       return url; // direct / geizhals deep links need no wrap
+    case 'amazon':    return amazonUrl(url, opts);
+    case 'awin':      return awinUrl(url, opts);
+    case 'incehesap': return incehesapUrl(url);
+    default:          return url; // direct / geizhals deep links need no wrap
   }
 }
 
 /** True when at least one affiliate program is configured. */
 function hasAnyAffiliateConfig() {
   return !!(ENV.AMAZON_TAG || ENV.AWIN_PUBLISHER_ID ||
-    ENV.ADMITAD_CLIENT_ID ||
+    ENV.ADMITAD_CLIENT_ID || ENV.INCEHESAP_REF ||
     Object.keys(ENV).some(k => k.startsWith('AMAZON_TAG_')));
 }
 

@@ -33,6 +33,7 @@ const CONNECTORS = [
   require('./connectors/geizhals_best'),
   require('./connectors/amazon_direct'),
   require('./connectors/newegg'),
+  require('./connectors/incehesap'),
 ];
 
 const argv = process.argv.slice(2);

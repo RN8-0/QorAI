@@ -320,7 +320,13 @@ class _OfferLinkRow extends ConsumerWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            final uri = Uri.tryParse(offer.url);
+            // Amazon offers are re-tagged at click time for the storefront
+            // they already point at (stored tags can be stale/wrong-program;
+            // see amazon_link.dart) — non-Amazon URLs pass through untouched.
+            final visitor = ref.read(detectedCountryProvider).valueOrNull;
+            final uri = Uri.tryParse(
+              amazonTagUrlForVisitor(offer.url, visitor),
+            );
             if (uri == null) return;
             try {
               ref.read(behaviorTrackingProvider).trackAffiliateTap(productId);
@@ -609,7 +615,10 @@ class _StoreLinkRow extends ConsumerWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () async {
-            final uri = Uri.tryParse(url);
+            // Legacy affiliateLinks may hold Amazon URLs with stale/wrong-
+            // program tags — re-tag Amazon URLs in place at click time.
+            final visitor = ref.read(detectedCountryProvider).valueOrNull;
+            final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
             if (uri == null) return;
             // Track affiliate click — feeds the user's behavior signals (match
             // score boosts) and future affiliate analytics.

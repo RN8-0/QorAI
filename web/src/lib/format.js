@@ -190,10 +190,23 @@ export function countryDisplayName(code, lang = 'en') {
     return code;
   }
 }
-// Tag is per-program: amazon.com.tr is its own TR Associates program (qorai-21);
-// every OneLink storefront rides the single qorai-20 store ID.
-const AMAZON_TAG_BY_MARKET = { TR: 'qorai-21' };
+// Tag is per-program — Amazon store IDs are NOT shared across marketplaces.
+// We hold FOUR separate Associates accounts (panels checked 2026-07-05):
+//   amazon.com  → qorai-20   (US; also the OneLink/Earn-Globally store id that
+//                             FR/IT/ES/NL/PL/SE/CA ride on)
+//   amazon.com.tr → qorai-21 (TR Gelir Ortaklığı)
+//   amazon.de   → qorai0d-21 (DE PartnerNet)
+//   amazon.co.uk→ qorai0e-21 (UK Associates)
+// Using qorai-20 on .de/.co.uk attributed NOTHING there (0 clicks in their
+// panels while TR, with its correct tag, tracked fine).
+const AMAZON_TAG_BY_MARKET = { TR: 'qorai-21', DE: 'qorai0d-21', GB: 'qorai0e-21' };
 const AMAZON_DEFAULT_TAG = 'qorai-20';
+// Markets whose LOCAL program tag Amazon's Earn-Globally geo-router ignores
+// (curl-proven from a TR IP 2026-07-05: tagged .de/qorai0d-21, .co.uk/qorai0e-21
+// and .com.tr/qorai-21 all stay put while .com/qorai-20 302s to amazon.it).
+// Links to these storefronts keep their tag for EVERY visitor — correct
+// landing AND commission in that store's own program.
+const AMAZON_LOCAL_PROGRAM_MARKETS = ['TR', 'DE', 'GB'];
 // Single-storefront redirect target per language (used by /go).
 const AMAZON_MARKET_BY_LANG = {
   tr: 'DE', en: 'US', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
@@ -323,17 +336,22 @@ const AMAZON_MARKET_BY_HOST = Object.fromEntries(
 );
 
 // May a link to `market` carry our affiliate tag for this visitor WITHOUT the
-// gg3 geo-router moving the click to another storefront? True when the
-// visitor's own storefront (or Amazon's known redirect target for them) is the
-// linked one. Unknown/blank geo keeps the tag: the probe almost never fails
-// (Cloudflare trace + ipwho.is) and zeroing every commission on a failed probe
-// is worse than one rare bounce. Unmapped exotic geos drop the tag — Amazon
-// would bounce them somewhere we can't predict, and the landing storefront
-// must stay deterministic.
+// gg3 geo-router moving the click to another storefront?
+// - Local-program markets (TR/DE/GB): always — their tags are not enrolled in
+//   Earn Globally, so Amazon never geo-routes them (curl-proven).
+// - qorai-20 markets (US + OneLink storefronts): only when the visitor's own
+//   storefront (or Amazon's known redirect target for them) IS the linked one.
+// Unknown/blank geo keeps the tag: the probe almost never fails (Cloudflare
+// trace + ipwho.is) and zeroing every commission on a failed probe is worse
+// than one rare bounce. Unmapped exotic geos drop it — Amazon would bounce
+// them somewhere unpredictable, and the landing storefront must stay
+// deterministic.
 export function amazonTagAllowed(market, visitorCountry) {
   const m = String(market || '').toUpperCase();
   const geo = String(visitorCountry || '').toUpperCase();
-  if (!geo || !m) return true;
+  if (!m) return true;
+  if (AMAZON_LOCAL_PROGRAM_MARKETS.includes(m)) return true;
+  if (!geo) return true;
   return AMAZON_COUNTRY_TO_MARKET[geo] === m || AMAZON_EG_TARGET[geo] === m;
 }
 

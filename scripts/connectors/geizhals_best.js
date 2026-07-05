@@ -107,7 +107,9 @@ module.exports = {
     if (!best) return []; // no Amazon offer on Geizhals → no DE price (Amazon-only rule)
     const q = encodeURIComponent(String(product.name || '').trim()).slice(0, 200);
     const url = `https://www.amazon.de/s?k=${q}`;
-    const tag = (ENV.AMAZON_DE_TAG || 'qorai-20').trim();
+    // amazon.de needs the DE PartnerNet program's OWN store id — qorai-20 is
+    // the US program and attributes nothing on .de (panels, 2026-07-05).
+    const tag = (ENV.AMAZON_DE_TAG || 'qorai0d-21').trim();
     const now = Date.now();
     return [{
       productId: product.id,
