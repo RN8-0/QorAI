@@ -9,6 +9,12 @@ import './styles/global.css';
 
 initAnalytics();
 
+// Build marker — a side-effecting write (survives minification) so every deploy
+// yields a fresh entry-bundle content hash. This guarantees new HTML never points
+// at a bundle URL that a CDN edge may have negatively cached, avoiding stale-asset
+// white-screens after a deploy.
+if (typeof window !== 'undefined') window.__qorBuild = '20260706-a';
+
 // Language URL-prefix for SEO: tr is the canonical root (no prefix); en/de live
 // under /en and /de so each language has a distinct, hreflang-linked URL Google
 // can index. This ONLY activates when the path starts with /en or /de — the root
