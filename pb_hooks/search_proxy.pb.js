@@ -233,6 +233,44 @@ routerAdd('GET', '/api/img', (e) => {
 
     if (!/^https?:\/\//i.test(url)) return e.json(400, { error: 'bad_url' });
 
+    // ── SSRF guard: block internal / private fetch targets ──────────────
+    // /api/img fetches an attacker-supplied URL server-side. Without this an
+    // attacker could reach loopback/LAN services, cloud metadata, or our own
+    // Typesense/PB via the host IP or *.sslip.io. Named hosts that aren't
+    // obviously internal stay allowed (blog images live on arbitrary public
+    // hosts); we block literal private IPs + known-internal names. (DNS
+    // rebinding is out of scope for the JSVM.)
+    var _host = '';
+    try {
+      var _m = url.match(/^https?:\/\/([^/?#]+)/i);
+      var _auth = _m ? _m[1] : '';
+      var _at = _auth.lastIndexOf('@');
+      if (_at >= 0) _auth = _auth.slice(_at + 1);
+      var _v6 = _auth.match(/^\[([^\]]+)\]/);
+      _host = (_v6 ? _v6[1] : _auth.split(':')[0]).toLowerCase();
+    } catch (_) { _host = ''; }
+    function _isBlockedHost(h) {
+      if (!h) return true;
+      if (h === 'localhost' || h === 'localhost.localdomain') return true;
+      if (/(^|\.)(local|internal|lan|intranet|corp|home)$/.test(h)) return true;
+      if (h === 'metadata.google.internal') return true;
+      if (h.indexOf('sslip.io') !== -1) return true;      // our internal TS/PB hosts
+      if (h.indexOf('46.225.95.201') !== -1) return true; // our host IP
+      if (h.indexOf(':') !== -1) return true;             // IPv6 literal
+      var ip = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+      if (ip) {
+        var a = +ip[1], b = +ip[2];
+        if (a === 0 || a === 10 || a === 127) return true;
+        if (a === 169 && b === 254) return true;          // link-local + cloud metadata
+        if (a === 172 && b >= 16 && b <= 31) return true;
+        if (a === 192 && b === 168) return true;
+        if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+        if (a >= 224) return true;                         // multicast / reserved
+      }
+      return false;
+    }
+    if (_isBlockedHost(_host)) return e.json(400, { error: 'blocked_host' });
+
     const res = $http.send({
       method: 'GET', url,
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'image/*,*/*' },

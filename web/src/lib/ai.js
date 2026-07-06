@@ -113,10 +113,17 @@ function retryableStatus(status) {
 async function fetchJson(url, body, timeoutMs = 90000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  // Forward the PocketBase auth token so the AI proxy can identify the signed-in
+  // user and apply the higher per-user rate limit (instead of the stricter
+  // anon-by-IP bucket) and attribute usage. Anonymous visitors still work — the
+  // proxy just falls back to the IP bucket when there's no token. PB expects the
+  // raw token in the Authorization header (no "Bearer" prefix).
+  const headers = { 'Content-Type': 'application/json' };
+  try { if (pb && pb.authStore && pb.authStore.token) headers.Authorization = pb.authStore.token; } catch (_) { /* ignore */ }
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
