@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getHomeFeed, searchProducts } from '../lib/typesense';
+import { getHomeFeed, searchProducts, enrichThinCards } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { saveSearchHistory, readSearchHistory } from '../lib/pbHistory';
@@ -184,6 +184,11 @@ export default function Home() {
   const [feed, setFeed] = useState({ categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [recent, setRecent] = useState(() => getRecentProducts());
+  // Recently-viewed snapshots are LEAN (no `_raw`), so thin-token categories
+  // (headphones, GPUs, SSDs…) can't reach four key specs from localStorage
+  // alone. Enrich them the same way the home feed cards are enriched, so the
+  // recent rail shows the same fixed four specs as every other card.
+  const [recentCards, setRecentCards] = useState(recent);
 
   const [q, setQ] = useState(() => params.get('q') || '');
   const [searchResults, setSearchResults] = useState([]);
@@ -241,6 +246,14 @@ export default function Home() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [feedKey]);
+
+  useEffect(() => {
+    let live = true;
+    const base = recent.map((p) => ({ ...p }));
+    setRecentCards(base); // show lean chips instantly, upgrade to four when ready
+    enrichThinCards(base).then((enriched) => { if (live) setRecentCards([...enriched]); });
+    return () => { live = false; };
+  }, [recent.map((p) => p.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const refreshRecent = () => setRecent(getRecentProducts());
@@ -446,7 +459,7 @@ export default function Home() {
 
             {/* RECENTLY VIEWED — 3×3 */}
             {recent.length > 0 && (
-              <Section title={t('home.recent')} products={recent.slice(0, 9)} loading={false} t={t} dense />
+              <Section title={t('home.recent')} products={recentCards.slice(0, 9)} loading={false} t={t} dense />
             )}
 
             {/* NEW ARRIVALS — 3×3 */}

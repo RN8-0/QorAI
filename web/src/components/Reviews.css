@@ -167,6 +167,15 @@
 .pd-rev-item {
   background: var(--bg2); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 14px 16px;
+  scroll-margin-top: 90px;
+}
+
+/* Deep-linked comment highlight (from "Yorumlarım" → this exact review). */
+.pd-rev-item.rv-flash { animation: rvFlash 2.2s ease; }
+@keyframes rvFlash {
+  0% { box-shadow: 0 0 0 2px var(--accent, #22d3ee); background: var(--accent-soft, rgba(34, 211, 238, 0.12)); }
+  60% { box-shadow: 0 0 0 2px var(--accent, #22d3ee); background: var(--accent-soft, rgba(34, 211, 238, 0.12)); }
+  100% { box-shadow: 0 0 0 0 transparent; background: var(--bg2); }
 }
 
 .pd-rev-item-head { display: flex; align-items: center; gap: 10px; }

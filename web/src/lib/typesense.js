@@ -416,24 +416,20 @@ export async function getCategoryVisuals(categories = [], perCategory = 4) {
   }
 }
 
-// Merge rich `_raw` specs into the home feed's displayed products that fall
-// short of four lean key specs, so the SAME fixed four render on the home cards
-// as on category/detail cards. Only the thin ones are fetched (a couple dozen),
+// Merge rich `_raw` specs into any lean CARD product list whose items fall short
+// of four key specs, so the SAME fixed four render on those cards as on
+// category/detail cards. Only the thin ones are fetched (a couple dozen),
 // keeping the extra payload small; best-effort — lean chips still show on error.
-async function enrichHomeCardsWithRichSpecs(feed) {
-  const displayed = [
-    ...feed.categorySections.flatMap((s) => s.products),
-    ...feed.forYou,
-    ...feed.trending,
-    ...feed.newArrivals,
-    ...(feed.spotlight ? [feed.spotlight] : []),
-  ];
+// Mutates the passed products in place and returns them. Used by the home feed
+// AND the lean "Recently viewed" rail (localStorage snapshots carry no `_raw`).
+export async function enrichThinCards(products) {
+  const list = (products || []).filter((p) => p && p.id);
   const byId = new Map();
-  for (const p of displayed) if (p && p.id) byId.set(p.id, p);
+  for (const p of list) byId.set(p.id, p);
   const thin = [...byId.values()].filter(
     (p) => !p.keySpecs && !p.specs && !p.specSections && cardKeySpecs(p, 'en').length < 4,
   );
-  if (!thin.length) return feed;
+  if (!thin.length) return products;
   const ids = thin.map((p) => p.id).slice(0, 150);
   try {
     const data = await searchDocs({
@@ -459,6 +455,17 @@ async function enrichHomeCardsWithRichSpecs(feed) {
       if (r.multiLangSpecs) p.multiLangSpecs = r.multiLangSpecs;
     }
   } catch { /* best-effort: lean chips still render */ }
+  return products;
+}
+
+async function enrichHomeCardsWithRichSpecs(feed) {
+  await enrichThinCards([
+    ...feed.categorySections.flatMap((s) => s.products),
+    ...feed.forYou,
+    ...feed.trending,
+    ...feed.newArrivals,
+    ...(feed.spotlight ? [feed.spotlight] : []),
+  ]);
   return feed;
 }
 
@@ -648,15 +655,47 @@ export async function getCategoryPage(opts = {}) {
   }
 }
 
-export async function getProduct(id) {
-  if (!id) return null;
-  try {
-    const doc = await tsGet(`/collections/${COLLECTION}/documents/${encodeURIComponent(id)}`);
-    return docToProduct(doc);
-  } catch (err) {
-    console.warn('[catalog] product failed', err);
-    return null;
+// Session product cache — makes opening a product feel instant. Cards warm this
+// on hover/touch (prefetchProduct) so by the time the click navigates, the
+// product detail is already in memory and renders with zero network wait.
+// Catalog docs are static within a session, so a soft-capped Map is safe.
+const _productCache = new Map();
+const _productInflight = new Map();
+const PRODUCT_CACHE_MAX = 250;
+
+function cacheProduct(p) {
+  if (!p || !p.id) return;
+  if (_productCache.size >= PRODUCT_CACHE_MAX) {
+    _productCache.delete(_productCache.keys().next().value);
   }
+  _productCache.set(p.id, p);
+}
+
+export async function getProduct(id, { force = false } = {}) {
+  if (!id) return null;
+  if (!force && _productCache.has(id)) return _productCache.get(id);
+  if (!force && _productInflight.has(id)) return _productInflight.get(id);
+  const promise = (async () => {
+    try {
+      const doc = await tsGet(`/collections/${COLLECTION}/documents/${encodeURIComponent(id)}`);
+      const p = docToProduct(doc);
+      cacheProduct(p);
+      return p;
+    } catch (err) {
+      console.warn('[catalog] product failed', err);
+      return null;
+    } finally {
+      _productInflight.delete(id);
+    }
+  })();
+  _productInflight.set(id, promise);
+  return promise;
+}
+
+// Warm the cache ahead of navigation (called on card hover/touch). Fire-and-
+// forget; never throws, never blocks.
+export function prefetchProduct(id) {
+  if (id && !_productCache.has(id)) getProduct(id).catch(() => {});
 }
 
 export async function getSimilar(category, _techScore, excludeId, limit = 12) {

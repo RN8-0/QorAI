@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount } from '../lib/format';
 import { cardKeySpecs } from '../lib/categoryFilters';
+import { prefetchProduct } from '../lib/typesense';
 import { productPath } from '../lib/routes';
 import { useGeoCountry } from '../lib/geo';
 import { useCompare } from '../lib/compare';
@@ -58,8 +59,13 @@ export default function ProductCard({ product: p, variant = 'card', onClick, pri
     }
   };
 
+  // Warm the product cache the moment the user shows intent (hover on desktop,
+  // first touch on mobile) so the tap that follows opens the page instantly.
+  const warm = () => prefetchProduct(p.id);
+
   return (
     <Link to={productPath(p)} onClick={onClick}
+      onPointerEnter={warm} onTouchStart={warm} onFocus={warm}
       className={`q-product-card${variant === 'list' ? ' q-product-card-list' : ''}`} aria-label={cardName}>
       <button type="button"
         className={'q-product-card-cmp' + (inCompare ? ' on' : '')}

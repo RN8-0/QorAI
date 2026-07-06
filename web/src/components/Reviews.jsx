@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useT } from '../i18n/index.jsx';
 import {
@@ -6,6 +6,7 @@ import {
   toggleReviewLike, toggleReviewDislike,
   getReplies, addReply, deleteReply, toggleReplyLike, toggleReplyDislike,
 } from '../lib/reviews';
+import { useScrollToReviewHash } from '../lib/useReviewAnchor';
 import './Reviews.css';
 
 function Stars({ value }) {
@@ -190,11 +191,16 @@ export default function Reviews({ productId, productName, lang, headerSlot = nul
   const [msg, setMsg] = useState('');
   const [openReplies, setOpenReplies] = useState(null);
   const [sortMode, setSortMode] = useState('new');
+  const flashedRef = useRef('');
 
   useEffect(() => {
     setReviews([]); setRating(0); setText(''); setMsg(''); setOpenReplies(null);
     getReviews(productId).then(setReviews);
   }, [productId]);
+
+  // Deep-link from "Yorumlarım": a #rev-<id> hash scrolls straight to that exact
+  // comment and flashes it once the reviews have loaded into the DOM.
+  useScrollToReviewHash(reviews, flashedRef);
 
   async function submit(e) {
     e.preventDefault();
@@ -302,7 +308,7 @@ export default function Reviews({ productId, productName, lang, headerSlot = nul
             const mine = user && r.likedBy.includes(user.id) ? 'like'
               : user && r.dislikedBy.includes(user.id) ? 'dislike' : '';
             return (
-              <div className="pd-rev-item" key={r.id}>
+              <div className="pd-rev-item" key={r.id} id={`rev-${r.id}`}>
                 <div className="pd-rev-item-head">
                   <div className="pd-rev-av">{(r.author || 'U')[0].toUpperCase()}</div>
                   <div className="pd-rev-meta">

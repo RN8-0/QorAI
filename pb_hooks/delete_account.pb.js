@@ -50,10 +50,24 @@ routerAdd('POST', '/api/users/request-delete', (e) => {
 
     const displayName = String(user.get('displayName') || user.get('name') || email.split('@')[0]);
 
+    // Plain-text alternative. HTML-only transactional mail is a strong spam
+    // signal (Gmail/Outlook penalise it), so we always ship a multipart
+    // text+HTML message to improve inbox placement.
+    const textBody =
+      'Qor AI - Account deletion request\n\n' +
+      'Hi ' + displayName + ',\n\n' +
+      'We received a request to permanently delete your Qor AI account. ' +
+      'If you did not request this, you can safely ignore this email - your account stays active.\n\n' +
+      'WARNING: this action is permanent and cannot be undone.\n\n' +
+      'To confirm deletion, open this link (valid for 24 hours):\n' +
+      confirmUrl + '\n\n' +
+      'Qor AI - qorai.net';
+
     const message = new MailerMessage({
       from: { name: senderName, address: senderAddress },
       to: [{ address: email }],
-      subject: 'Confirm Account Deletion — Qor AI',
+      subject: 'Confirm your Qor AI account deletion',
+      text: textBody,
       html: `
 <!DOCTYPE html>
 <html>

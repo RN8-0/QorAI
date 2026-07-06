@@ -8,7 +8,7 @@ import {
 import { pb, fileUrl } from '../lib/pocketbase';
 import { formatQorCoins } from '../lib/qorCoins';
 import {
-  getComparisons, getSavedAnalyses, getMyReviews, deleteMyReview, getMyLikedArticles,
+  getComparisons, getMyReviews, deleteMyReview, getMyLikedArticles,
   getMyFavoriteProducts,
 } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
@@ -21,8 +21,6 @@ import { productPath } from '../lib/routes';
 import { displayProductName } from '../lib/productNames';
 import { useT } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
-import AiText from '../components/AiText.jsx';
-import AiAnalysisView, { parseAiJson } from '../components/AiAnalysis.jsx';
 import './Profile.css';
 
 function fmtDate(v) {
@@ -59,7 +57,6 @@ function ProfileBody({ user, logout, t }) {
   const TABS = [
     { key: 'overview', label: t('pf.tabOverview') },
     { key: 'comparisons', label: t('pf.tabComparisons') },
-    { key: 'analyses', label: t('pf.tabAnalyses') },
     { key: 'reviews', label: t('pf.tabReviews') },
     { key: 'liked', label: t('pf.tabLiked') },
     { key: 'account', label: t('pf.tabAccount') },
@@ -83,7 +80,6 @@ function ProfileBody({ user, logout, t }) {
 
       {tab === 'overview' && <Overview user={user} t={t} />}
       {tab === 'comparisons' && <ComparisonsTab t={t} />}
-      {tab === 'analyses' && <AnalysesTab t={t} />}
       {tab === 'reviews' && <ReviewsTab t={t} />}
       {tab === 'liked' && <LikedTab t={t} />}
       {tab === 'account' && <AccountTab user={user} t={t} />}
@@ -173,39 +169,58 @@ function Identity({ user, name, logout, t }) {
 }
 
 /* ─── Overview tab ───────────────────────────────────────────────── */
-// Membership + the shared Qor Coin balance. On Premium the balance shows ∞
-// (Premium never spends coins — mirrors the app + header), NOT a finite number.
-// Account deletion lives in its own "Hesap" tab now; the old compare-count stat
-// and "Profilin" quiz card were removed (quiz is set once at onboarding).
+// Premium users see ONE consolidated premium card (badge + until-date + the
+// "unlimited AI, never spends Qor Coins" perk) — Premium is stated once, not
+// spread across a membership card AND a coin card. Free users keep two distinct
+// cards: the Premium upsell + their finite Qor Coin balance.
+// Account deletion lives in its own "Hesap" tab; the old compare-count stat and
+// "Profilin" quiz card were removed (quiz is set once at onboarding).
 function Overview({ user, t }) {
   const prem = premiumStatus(user);
-  const isPrem = prem.isPremium;
-  const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   const premUntil = prem.expiresAt
     ? new Date(prem.expiresAt).toLocaleDateString()
     : '';
+
+  if (prem.isPremium) {
+    return (
+      <div className="fade-up">
+        <div className="pf-card pf-premium">
+          <div className="pf-premium-top">
+            <div className="pf-premium-badge">✦</div>
+            <div className="pf-premium-text">
+              <strong>{t('pf.memberPremium')}</strong>
+              <span>{premUntil ? t('pf.premiumUntil', { date: premUntil }) : t('pf.premiumActive')}</span>
+            </div>
+            <span className="pf-premium-inf" aria-hidden="true">∞</span>
+          </div>
+          <div className="pf-premium-perk">
+            <span className="pf-premium-perk-tag">{t('pf.coinUnlimited')}</span>
+            <span className="pf-premium-perk-txt">{t('pf.coinPremiumDesc')}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   return (
     <div className="fade-up">
-      <div className={'pf-card pf-membership' + (isPrem ? ' is-premium' : '')}>
-        <div className="pf-mem-badge">{isPrem ? '✦' : 'Q'}</div>
+      <div className="pf-card pf-membership">
+        <div className="pf-mem-badge">Q</div>
         <div className="pf-mem-text">
-          <strong>{isPrem ? t('pf.memberPremium') : t('pf.memberFree')}</strong>
-          <span>
-            {isPrem
-              ? (premUntil ? t('pf.premiumUntil', { date: premUntil }) : t('pf.premiumActive'))
-              : t('pf.premiumApp')}
-          </span>
+          <strong>{t('pf.memberFree')}</strong>
+          <span>{t('pf.premiumApp')}</span>
         </div>
-        {!isPrem && <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>}
+        <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>
       </div>
 
-      <div className={'pf-card pf-coins' + (isPrem ? ' pf-coins-pro' : '')}>
+      <div className="pf-card pf-coins">
         <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>
         <div>
-          <div className="pf-coin-num">{isPrem ? '∞' : coins}</div>
-          <div className="pf-coin-lbl">{isPrem ? t('pf.coinUnlimited') : t('pf.coinBalance')}</div>
+          <div className="pf-coin-num">{coins}</div>
+          <div className="pf-coin-lbl">{t('pf.coinBalance')}</div>
         </div>
-        <p>{isPrem ? t('pf.coinPremiumDesc') : t('pf.coinDesc')}</p>
+        <p>{t('pf.coinDesc')}</p>
       </div>
     </div>
   );
@@ -305,60 +320,6 @@ function ComparisonsTab({ t }) {
   );
 }
 
-/* ─── Analyses tab ───────────────────────────────────────────────── */
-// Renders the SAME analysis the origin page showed, not a summary. Product and
-// comparison analyses are stored as structured JSON (product_full_report /
-// compare_full_report) — render them through the rich AiAnalysisView (score
-// rings, pros/cons, verdict…). Link and subscription analyses are stored as
-// readable text, so those keep the plain AiText renderer.
-function SavedAnalysisBody({ item, lang }) {
-  const parsed = parseAiJson(item.analysis);
-  if (parsed && (parsed.type === 'product_full_report' || parsed.type === 'compare_full_report')) {
-    return <AiAnalysisView raw={item.analysis} lang={lang} />;
-  }
-  return <AiText text={item.analysis} />;
-}
-
-function AnalysesTab({ t }) {
-  const { lang } = useI18n();
-  const [items, setItems] = useState(null);
-  const [expanded, setExpanded] = useState(null);
-  useEffect(() => { getSavedAnalyses().then(setItems); }, []);
-
-  if (items === null) return <Loading t={t} />;
-  if (!items.length) return <Empty icon="🔗" text={t('pf.noAnalyses')} />;
-
-  return (
-    <div className="pf-list fade-up">
-      {items.map((a) => {
-        const isOpen = expanded === a.id;
-        return (
-          <div key={a.id} className={'pf-acard' + (isOpen ? ' open' : '')}>
-            <button className="pf-row" onClick={() => setExpanded(isOpen ? null : a.id)}>
-              <span className="pf-row-ic">{a.kind === 'subscription' ? '📺' : a.kind === 'product' ? '📦' : '🔗'}</span>
-              <span className="pf-row-main">
-                <b>{a.title || t('pf.untitledAnalysis')}</b>
-                <small>
-                  {t(a.kind === 'subscription'
-                    ? 'pf.kindSubscription'
-                    : a.kind === 'product'
-                      ? 'pf.kindProduct'
-                      : 'pf.kindLink')}
-                  {fmtDate(a.at) && ` · ${fmtDate(a.at)}`}
-                </small>
-              </span>
-              <span className="pf-row-go">{isOpen ? '▲' : '▼'}</span>
-            </button>
-            {isOpen && a.analysis && (
-              <div className="pf-acard-body"><SavedAnalysisBody item={a} lang={lang} /></div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ─── Reviews tab ────────────────────────────────────────────────── */
 // Every review the user left — product reviews, blog reviews AND comparison
 // reviews — merged from the same PB collections the app writes (`reviews` +
@@ -402,10 +363,12 @@ function ReviewsTab({ t }) {
     try { await deleteMyReview(item); } catch { /* noop */ }
   }
 
-  function openComparison(ids) {
+  function openComparison(ids, revId) {
     if (!ids || ids.length < 2) return;
     setCompareList(ids);
-    nav('/compare');
+    // #rev-<id> lets CompareReviews scroll straight to this exact comment once
+    // the compared products (and their shared review thread) have loaded.
+    nav(`/compare#rev-${revId}`);
   }
 
   if (items === null) return <Loading t={t} />;
@@ -437,12 +400,12 @@ function ReviewsTab({ t }) {
           </div>
           {r.text && <p className="pf-rev-text">{r.text}</p>}
           {r.kind === 'comparison' ? (
-            <button type="button" className="pf-rev-link pf-rev-link-btn" onClick={() => openComparison(r.productIds)}>
+            <button type="button" className="pf-rev-link pf-rev-link-btn" onClick={() => openComparison(r.productIds, r.id)}>
               {cmpLabel(r)} →
             </button>
           ) : r.productId ? (
             <Link
-              to={r.kind === 'blog' ? `/blog/${r.productId.slice(5)}` : productPath(r.productId)}
+              to={(r.kind === 'blog' ? `/blog/${r.productId.slice(5)}` : productPath(r.productId)) + `#rev-${r.id}`}
               className="pf-rev-link"
             >
               {names[r.productId] || (r.kind === 'blog' ? t('pf.viewArticle') : t('pf.viewProduct'))} →

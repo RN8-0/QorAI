@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import {
   getComparisonReviews, createComparisonReview, deleteComparisonReview,
   toggleComparisonLike, toggleComparisonDislike, averageRating,
 } from '../lib/comparisonReviews';
+import { useScrollToReviewHash } from '../lib/useReviewAnchor';
 
 function Stars({ value }) {
   return <span className="stars">{[1, 2, 3, 4, 5].map((i) => <span key={i} className={i <= value ? 'on' : ''}>★</span>)}</span>;
@@ -32,11 +33,15 @@ export default function CompareReviews({ productIds, productNames }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const key = [...(productIds || [])].sort().join('_');
+  const flashedRef = useRef('');
 
   useEffect(() => {
     setReviews([]); setRating(0); setText(''); setMsg('');
     if (productIds && productIds.length >= 2) getComparisonReviews(productIds).then(setReviews);
   }, [key]); // eslint-disable-line
+
+  // Deep-link from "Yorumlarım": #rev-<id> scrolls to this comparison comment.
+  useScrollToReviewHash(reviews, flashedRef);
 
   async function submit(e) {
     e.preventDefault();
@@ -108,7 +113,7 @@ export default function CompareReviews({ productIds, productNames }) {
           {reviews.map((r) => {
             const mine = user && r.likedBy.includes(user.id) ? 'like' : user && r.dislikedBy.includes(user.id) ? 'dislike' : '';
             return (
-              <div className="pd-rev-item" key={r.id}>
+              <div className="pd-rev-item" key={r.id} id={`rev-${r.id}`}>
                 <div className="pd-rev-item-head">
                   <div className="pd-rev-av">{(r.author || 'U')[0].toUpperCase()}</div>
                   <div className="pd-rev-meta">
