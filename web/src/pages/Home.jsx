@@ -29,6 +29,32 @@ const feedCategory = (c) => FEED_CAT_ALIAS[c] || c;
 import Reveal from '../components/Reveal.jsx';
 import './Home.css';
 
+// ── Home feed instant-paint cache ───────────────────────────────────────────
+// Stale-while-revalidate: a refresh or return visit paints the last feed snapshot
+// immediately (from localStorage) instead of blocking on a fresh Typesense round-
+// trip, so cards appear on the first frame on every device. We ALWAYS refetch in
+// the background, so the cache only affects perceived speed, never correctness.
+// Keyed by the personalization string so an account/interest change never shows
+// the wrong feed.
+const EMPTY_FEED = { categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
+const HOME_FEED_CACHE_KEY = 'qor.homeFeed.v1';
+const HOME_FEED_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h; revalidated on every load
+function readHomeFeedCache(feedKey) {
+  try {
+    const raw = localStorage.getItem(HOME_FEED_CACHE_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw);
+    if (!snap || snap.key !== feedKey || !snap.feed) return null;
+    if (Date.now() - (snap.ts || 0) > HOME_FEED_CACHE_TTL) return null;
+    return snap.feed;
+  } catch { return null; }
+}
+function writeHomeFeedCache(feedKey, feed) {
+  try {
+    localStorage.setItem(HOME_FEED_CACHE_KEY, JSON.stringify({ key: feedKey, feed, ts: Date.now() }));
+  } catch { /* quota / private mode — ignore */ }
+}
+
 function StatItem({ n, l }) {
   return (
     <div className="stat">
@@ -181,8 +207,28 @@ export default function Home() {
         : L('Good evening', 'İyi akşamlar', 'Guten Abend');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
-  const [feed, setFeed] = useState({ categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 });
-  const [loading, setLoading] = useState(true);
+  // "For You" must reflect THIS account, not just this browser. Recent categories
+  // live in shared localStorage (so a second account on the same browser saw the
+  // first account's feed) — lead with the signed-in user's onboarding profile
+  // (rebuilt from the persisted profileVector) so the feed is personalized and
+  // refreshes when the account changes. Keyed as a STABLE STRING: the auth context
+  // hands back a fresh `user` object on every tab focus even when nothing changed,
+  // so depending on that object made the feed refetch and visibly "reload"; keying
+  // on the derived category string means we only refetch when categories change.
+  const feedKey = useMemo(() => {
+    const prof = aiUserProfile(user);
+    const profileCats = [prof.primaryCategory, ...(prof.interestCategories || [])]
+      .filter(Boolean)
+      .map(feedCategory);
+    const prefCats = [...new Set([...profileCats, ...getRecentCategories().map(feedCategory)])];
+    return prefCats.join('|');
+  }, [user?.id, user?.profileVector]);
+
+  // Instant paint on refresh / return visit: seed feed + loading from the last
+  // cached snapshot for this key so cards render on the FIRST frame instead of
+  // after a Typesense round-trip. The effect below revalidates in the background.
+  const [feed, setFeed] = useState(() => readHomeFeedCache(feedKey) || EMPTY_FEED);
+  const [loading, setLoading] = useState(() => !readHomeFeedCache(feedKey));
   const [recent, setRecent] = useState(() => getRecentProducts());
   // Recently-viewed snapshots are LEAN (no `_raw`), so thin-token categories
   // (headphones, GPUs, SSDs…) can't reach four key specs from localStorage
@@ -217,31 +263,16 @@ export default function Home() {
     },
   });
 
-  // "For You" must reflect THIS account, not just this browser. Recent
-  // categories live in shared localStorage (so a second account on the same
-  // browser saw the first account's feed) — lead with the signed-in user's
-  // onboarding profile (rebuilt from the persisted profileVector) so the feed
-  // is personalized and refreshes when the account changes.
-  // Personalization key as a STABLE STRING. The auth context hands back a fresh
-  // `user` object (and a new profileVector reference) on every tab focus even
-  // when nothing changed — depending on that object made the feed refetch and
-  // visibly "reload" each time the user came back to the tab. Keying on the
-  // derived category string means we only refetch when the categories change.
-  const feedKey = useMemo(() => {
-    const prof = aiUserProfile(user);
-    const profileCats = [prof.primaryCategory, ...(prof.interestCategories || [])]
-      .filter(Boolean)
-      .map(feedCategory);
-    const prefCats = [...new Set([...profileCats, ...getRecentCategories().map(feedCategory)])];
-    return prefCats.join('|');
-  }, [user?.id, user?.profileVector]);
-
+  // Revalidate the feed for the current personalization key. If we already have a
+  // cached snapshot (mount seed, or the key changed mid-session), keep the visible
+  // cards and refresh silently; only show skeletons when there's nothing cached.
   useEffect(() => {
     let live = true;
-    setLoading(true);
     const prefCats = feedKey ? feedKey.split('|') : [];
+    const cached = readHomeFeedCache(feedKey);
+    if (cached) { setFeed(cached); setLoading(false); } else { setLoading(true); }
     getHomeFeed(prefCats)
-      .then((f) => { if (live) setFeed(f); })
+      .then((f) => { if (live) { setFeed(f); writeHomeFeedCache(feedKey, f); } })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
