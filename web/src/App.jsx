@@ -9,7 +9,7 @@ import AuthModal from './components/AuthModal.jsx';
 import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
-import { hasCompletedQuiz } from './lib/qorCoins.js';
+import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
 
 // Home stays eager so the landing page paints on the first request (no extra
 // chunk round-trip on the most-visited route). Every other page is loaded on
@@ -45,10 +45,12 @@ export default function App() {
     trackPageView(`${loc.pathname}${loc.search}`);
   }, [loc.pathname, loc.search]);
 
-  // Same onboarding rule as the mobile app: real signed-in users must complete
-  // the profile quiz before using the site as an authenticated AI surface.
+  // Onboarding quiz is offered once to new signed-in users, but it is SKIPPABLE
+  // (like the app): if they dismissed it we don't force them back — they browse
+  // freely. AI features stay gated by hasCompletedQuiz(), so the first AI action
+  // still routes them to finish the quiz.
   useEffect(() => {
-    if (!user || hasCompletedQuiz(user) || loc.pathname === '/quiz') return;
+    if (!user || hasCompletedQuiz(user) || wasQuizSkippedLocal(user) || loc.pathname === '/quiz') return;
     if (String(user.email || '').toLowerCase().endsWith('@qorai.local')) return;
     const next = `${loc.pathname}${loc.search}${loc.hash}`;
     nav(`/quiz?required=1&next=${encodeURIComponent(next)}`, { replace: true });

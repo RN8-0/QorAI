@@ -121,7 +121,15 @@ export async function refreshUser() {
   try {
     const res = await pb.collection('users').authRefresh();
     return res.record;
-  } catch {
+  } catch (err) {
+    // If the server REJECTS the token (account deleted / disabled), sign out
+    // everywhere on this client — the locally-cached session is stale and must
+    // not linger. Network/timeout errors keep the cached user (offline-friendly).
+    const status = err?.status || err?.response?.status || 0;
+    if (status === 401 || status === 403 || status === 404) {
+      try { pb.authStore.clear(); } catch { /* noop */ }
+      return null;
+    }
     return currentUser();
   }
 }

@@ -295,6 +295,16 @@
 }
 .oq-foot-row { display: flex; align-items: center; gap: 10px; }
 
+/* Skippable onboarding — subtle, always-visible "skip for now" link. */
+.oq-skip-link {
+  display: block; width: 100%; margin: 12px auto 0; padding: 6px;
+  background: none; border: 0; cursor: pointer;
+  font-size: 13px; font-weight: 650; color: var(--text3, #8a8f98);
+  text-align: center; transition: color 0.13s;
+}
+.oq-skip-link:hover { color: var(--text, #eaeef3); text-decoration: underline; }
+.oq-skip-link:disabled { opacity: 0.5; cursor: default; }
+
 .oq-btn {
   display: inline-flex;
   align-items: center;

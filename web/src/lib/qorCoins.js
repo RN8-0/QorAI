@@ -56,6 +56,27 @@ export function markQuizCompletedLocal(userId) {
   try { localStorage.setItem(QUIZ_DONE_KEY, String(userId || '1')); } catch { /* storage blocked */ }
 }
 
+// The onboarding quiz is skippable (like the mobile app): a user can dismiss it
+// and browse the whole site freely. We remember the skip per user (this browser)
+// so the passive onboarding gate doesn't shove them straight back. Skipping is
+// NOT completing — AI features stay gated by hasCompletedQuiz(), so the first AI
+// action still routes them to finish the quiz.
+const QUIZ_SKIP_KEY = 'qor.quizSkipped';
+export function markQuizSkippedLocal(userId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUIZ_SKIP_KEY) || '{}');
+    raw[String(userId || '1')] = Date.now();
+    localStorage.setItem(QUIZ_SKIP_KEY, JSON.stringify(raw));
+  } catch { /* storage blocked */ }
+}
+export function wasQuizSkippedLocal(user) {
+  if (!user?.id) return false;
+  try {
+    const raw = JSON.parse(localStorage.getItem(QUIZ_SKIP_KEY) || '{}');
+    return Boolean(raw[String(user.id)] || raw['1']);
+  } catch { return false; }
+}
+
 // PocketBase drops some onboarding columns (interestCategories, priorities…) on
 // save, so the server can't always echo a full profile back. We mirror the exact
 // submitted answers into localStorage (per user) so the quiz summary and the AI

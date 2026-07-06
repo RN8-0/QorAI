@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { updateProfile } from '../lib/pocketbase';
-import { markQuizCompletedLocal, hasCompletedQuiz, saveQuizAnswersLocal, readQuizAnswersLocal } from '../lib/qorCoins';
+import { markQuizCompletedLocal, markQuizSkippedLocal, hasCompletedQuiz, saveQuizAnswersLocal, readQuizAnswersLocal } from '../lib/qorCoins';
 import { trackEvent } from '../lib/analytics';
 import { getCategoryVisuals } from '../lib/typesense';
 import { QuizGlyph } from '../lib/quizIcons.jsx';
@@ -647,6 +647,14 @@ export default function Quiz() {
     setStep((s) => Math.max(0, s - 1));
   }
 
+  // Skip onboarding: leave the quiz from any step and browse freely. Remembered
+  // per user so the passive gate won't force them back. AI stays locked until
+  // they actually complete it (hasCompletedQuiz), so nothing is unlocked here.
+  function skip() {
+    if (user) markQuizSkippedLocal(user.id);
+    nav(nextPath, { replace: true });
+  }
+
   function snapshot() {
     return STEPS.map((s) => {
       const raw = answers[s.field];
@@ -911,6 +919,9 @@ export default function Quiz() {
             )}
           </button>
         </div>
+        <button type="button" className="oq-skip-link" onClick={skip} disabled={busy}>
+          {L('Skip for now — you can do this later', 'Şimdilik geç — sonra tamamlayabilirsin', 'Später — du kannst das später machen')}
+        </button>
       </footer>
     </div>
   );

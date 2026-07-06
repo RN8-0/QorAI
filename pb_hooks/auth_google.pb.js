@@ -260,3 +260,28 @@ onRecordAfterCreateSuccess(function (e) {
     console.log("[qcoin] signup grant error:", err);
   }
 }, "users");
+
+// ── Re-signup cooldown: block CREATING a users record whose email is inside the
+//    15-day window after a self-deletion — otherwise a user could delete + re-
+//    create to farm a fresh Qor Coin welcome bonus. Fires for EVERY create path:
+//    website native OAuth2, email/password register, AND the mobile
+//    /api/auth/google $app.save(user) above. Helpers inlined (JSVM isolation).
+//    The window is written by pb_hooks/delete_account.pb.js on confirmed delete.
+onRecordCreate(function (e) {
+  const email = String(e.record.get("email") || "").toLowerCase().trim();
+  if (email && email.indexOf("@qorai.local") === -1) {
+    const emailHash = $security.hs256(email, "qorai_del_cd_v1");
+    const nowSec = Math.floor(Date.now() / 1000);
+    let rec = null;
+    try {
+      rec = $app.findFirstRecordByFilter("deleted_emails", "emailHash = {:h}", { h: emailHash });
+    } catch (_) {
+      rec = null; // not found or lookup failed — never block a legit signup on a DB hiccup
+    }
+    if (rec && Number(rec.get("expiresTs") || 0) > nowSec) {
+      // Throw is OUTSIDE the try above so it actually aborts the create.
+      throw new BadRequestError("Bu e-posta adresiyle son hesap silme isleminden sonra 15 gun boyunca yeni hesap olusturulamaz. Lutfen daha sonra tekrar deneyin.");
+    }
+  }
+  e.next();
+}, "users");

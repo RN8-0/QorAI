@@ -203,7 +203,34 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
       }
     } catch (_) {}
 
-    // Delete the user account
+    // Record a 15-day re-signup cooldown for this email BEFORE deleting the user,
+    // so the same person can't delete + immediately re-create the account to farm
+    // a fresh Qor Coin welcome bonus. Stored as a non-reversible HMAC (no
+    // plaintext PII) in a superuser-only collection. Best-effort — a cooldown
+    // write failure must never block the deletion the user explicitly confirmed.
+    try {
+      const email = String(user.get('email') || '').toLowerCase().trim();
+      if (email && email.indexOf('@qorai.local') === -1) {
+        const COOLDOWN_DAYS = 15;
+        const emailHash = $security.hs256(email, 'qorai_del_cd_v1');
+        const nowSec = Math.floor(Date.now() / 1000);
+        const expiresTs = nowSec + (COOLDOWN_DAYS * 86400);
+        let rec = null;
+        try { rec = $app.findFirstRecordByFilter('deleted_emails', 'emailHash = {:h}', { h: emailHash }); } catch (_) { rec = null; }
+        if (!rec) {
+          const col = $app.findCollectionByNameOrId('deleted_emails');
+          rec = new Record(col);
+          rec.set('emailHash', emailHash);
+        }
+        rec.set('expiresTs', expiresTs);
+        rec.set('deletedAt', new Date().toISOString());
+        $app.save(rec);
+      }
+    } catch (_) { /* cooldown is best-effort */ }
+
+    // Delete the user account. Removing the record invalidates every auth token
+    // that referenced it (its tokenKey is gone), so all sessions on all devices
+    // are logged out server-side on their next request.
     $app.delete(user);
 
     const successPage = `<!DOCTYPE html>
