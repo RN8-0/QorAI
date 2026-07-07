@@ -300,14 +300,16 @@ export async function analyzeLink(url, language, userProfile = {}) {
 function quizGenerationPrompt(language) {
   const langName = languageName(language);
   return `You are Qor AI's product quiz engine. Generate a focused personalized quiz
-(8-10 questions) to understand the user's needs for a specific product category.
+of EXACTLY 5 questions to understand the user's needs for a specific product category.
+Pick only the 5 most decisive, highest-signal questions — the ones whose answers most
+change whether this product is the right fit. No filler, no nice-to-have questions.
 
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
 - Questions must be relevant to the product CATEGORY.
-- Choose 8 questions for simple products, 9-10 for complex/high-consideration products.
+- Ask EXACTLY 5 questions — no more, no fewer. Spend them on the 5 highest-signal trade-offs that decide the fit; drop anything lower-signal.
 - Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
 - Each question reveals one concrete trade-off (comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, privacy vs convenience).
 - HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the product name at most once in the whole quiz (otherwise say "this one" or the category). Options describe behaviors/priorities only, never a brand name.
@@ -318,8 +320,8 @@ Rules:
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
-- This quiz is about THIS PRODUCT CATEGORY first. The clear majority of questions (at least 6 of them) MUST be neutral, category-driven usage scenarios that ANY buyer of this product could relate to. Do NOT bend the scenarios around the user's job or hobby.
-- AT MOST 1-2 questions in the WHOLE quiz may quietly lean on the user's profession or hobbies for their scenario — and only when it genuinely fits the product category. Never force a profession/hobby context into a question where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
+- This quiz is about THIS PRODUCT CATEGORY first. The clear majority of questions (at least 3 of the 5) MUST be neutral, category-driven usage scenarios that ANY buyer of this product could relate to. Do NOT bend the scenarios around the user's job or hobby.
+- AT MOST 1 question in the WHOLE quiz may quietly lean on the user's profession or hobbies for its scenario — and only when it genuinely fits the product category. Never force a profession/hobby context into a question where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
 - For every other question, use ordinary everyday contexts that come from the product category itself (commuting, travel, home, general work, leisure, family), NOT the user's specific job or hobby.
 - You may lean lightly on recentlyViewed products/categories and interestCategories to pick realistic contexts, but keep the spotlight on the product decision, not the person.
 - NEVER state or hint at what we already know about them. Do not write "as a doctor", "since you love gaming", or name their profession, hobby, budget or ecosystem. Infer silently and ask a question that UNCOVERS the trade-off — the user must never feel told about their own profile.
@@ -347,21 +349,23 @@ export async function generateQuiz({ category, productTitle, url, language, user
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
     .filter((q) => q.text && q.options.length >= 2)
-    .slice(0, 10);
+    .slice(0, 5);
   return questions;
 }
 
 function compareQuizGenerationPrompt(language) {
   const langName = languageName(language);
   return `You are Qor AI's comparison quiz engine. Generate a focused, high-signal quiz
-(8-10 questions) that helps choose between multiple product links.
+of EXACTLY 5 questions that helps choose between multiple product links. Pick only the
+5 most decisive trade-offs — the ones whose answers most change which product wins.
+No filler questions.
 
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
 - The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
-- Choose 8 questions for two products, 9-10 for complex categories or 3+ products.
+- Ask EXACTLY 5 questions — no more, no fewer — the 5 most decisive trade-offs that determine which product fits best, whether comparing two products or several.
 - Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
 - Each question exposes one real decision trade-off between the options' differing strengths.
 - HARD RULE — NEVER name, write, or hint at any of the compared products or brands in the questions OR in the options. Not even once. The user must NOT be able to tell which option maps to which product. Describe only behaviors, situations and priorities.
@@ -373,8 +377,8 @@ Rules:
 - ALL text must be in ${langName}
 
 PERSONALIZATION (read the userProfile JSON in the user message):
-- This quiz is about choosing between THESE PRODUCTS first. The clear majority of questions (at least 6 of them) MUST be neutral, category-driven trade-off scenarios that ANY buyer comparing these products could relate to. Do NOT bend the scenarios around the user's job or hobby.
-- AT MOST 1-2 questions in the WHOLE quiz may quietly lean on the user's profession or hobbies for their scenario — and only when it genuinely fits the compared category. Never force a profession/hobby context where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
+- This quiz is about choosing between THESE PRODUCTS first. The clear majority of questions (at least 3 of the 5) MUST be neutral, category-driven trade-off scenarios that ANY buyer comparing these products could relate to. Do NOT bend the scenarios around the user's job or hobby.
+- AT MOST 1 question in the WHOLE quiz may quietly lean on the user's profession or hobbies for its scenario — and only when it genuinely fits the compared category. Never force a profession/hobby context where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
 - For every other question, use ordinary everyday contexts drawn from the compared category itself, NOT the user's specific job or hobby.
 - You may lean lightly on recentlyViewed products/categories and interestCategories to pick realistic contexts, but keep the spotlight on the comparison decision.
 - NEVER state or hint at what we already know about them. Do not name their profession, hobby, budget or ecosystem in the text. Infer silently and ask a question that UNCOVERS which trade-off wins for them.
@@ -411,14 +415,16 @@ export async function generateCompareQuiz({ products, language, userProfile = {}
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
     .filter((q) => q.text && q.options.length >= 2)
-    .slice(0, 10);
+    .slice(0, 5);
 }
 
 // ── Subscription quiz (same engine, subscription wording) ─────────
 function subscriptionQuizPrompt(names, isCompare, language) {
   const langName = languageName(language);
   return `You are Qor AI's subscription quiz engine. Generate a focused personalized quiz
-(8-10 questions) to understand the user's needs for: ${names}.
+of EXACTLY 5 questions to understand the user's needs for: ${names}. Pick only the 5 most
+decisive, highest-signal questions — the ones whose answers most change which service fits
+this person best. No filler, no nice-to-have questions.
 
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the service names or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the context. Only official brand/service names may stay as-is.
 
@@ -427,7 +433,7 @@ their specific habits, preferences, and expectations.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
-- Choose 8 questions for one service, 9-10 when comparing multiple services.
+- Ask EXACTLY 5 questions — no more, no fewer — the 5 most decisive ones that determine which service fits best, whether analysing one service or comparing several.
 - Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
 - HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
 - Each question has exactly 4 options. Every option is a short, concrete everyday behavior or priority — NO brand names, NO service names, NO product-specific feature jargon — that silently maps to a different service's strength.
@@ -465,7 +471,7 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
       options: Array.isArray(q.options) ? q.options.map(String) : [],
     }))
     .filter((q) => q.text && q.options.length >= 2)
-    .slice(0, 10);
+    .slice(0, 5);
   return questions;
 }
 

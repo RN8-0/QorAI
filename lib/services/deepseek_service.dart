@@ -361,6 +361,7 @@ class DeepSeekService implements AIService {
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+        .take(5)
         .toList();
 
     debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
@@ -394,6 +395,7 @@ class DeepSeekService implements AIService {
               ),
             )
             .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+            .take(5)
             .toList();
         if (questions.isNotEmpty) {
           return ProductQuiz(
@@ -414,7 +416,8 @@ class DeepSeekService implements AIService {
     final subscriptionQuizPrompt =
         '''
 You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
-(4-5 questions) to understand the user's needs for: $names.
+of EXACTLY 5 questions to understand the user's needs for: $names. Pick only the 5
+most decisive, highest-signal questions that determine which service fits best — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
@@ -466,6 +469,7 @@ Return valid JSON:
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+        .take(5)
         .toList();
 
     return ProductQuiz(
@@ -956,7 +960,8 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
     final langName = _languageName(language);
     return '''
 You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
-(4-6 questions) to understand the user's needs for a specific product category.
+of EXACTLY 5 questions to understand the user's needs for a specific product category.
+Pick only the 5 most decisive, highest-signal questions that determine the fit — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 

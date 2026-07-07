@@ -876,7 +876,7 @@ You are Qor AI's Subscription Intelligence quiz engine.
 SESSION SEED: $sessionSeed  ← use this to vary phrasing and angles every time.
 
 TASK: Generate a DEEPLY PERSONALIZED, SCENARIO-DRIVEN quiz for: $names
-QUESTION COUNT (web paritesi): ${isCompare ? '9-10 questions (comparing multiple services)' : 'exactly 8 questions (single service)'}.
+QUESTION COUNT (web paritesi): EXACTLY 5 questions — no more, no fewer — whether ${isCompare ? 'comparing multiple services' : 'analysing a single service'}. Spend them ONLY on the 5 most decisive, highest-signal questions whose answers most change which service fits this person best. No filler.
 MODE: ${isCompare ? 'COMPARISON (user is deciding between these services)' : 'SINGLE ANALYSIS (user wants deep compatibility score)'}
 LANGUAGE: ALL text in $langName.
 
@@ -980,6 +980,7 @@ Return ONLY valid JSON. No markdown, no explanation:
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+        .take(5)
         .toList();
 
     return ProductQuiz(
@@ -1489,7 +1490,7 @@ $jsonSchema
   }
 
   /// Generate a short personalized quiz for a product category.
-  /// Returns 4-6 questions tailored to the product type.
+  /// Returns exactly 5 key questions tailored to the product type.
   /// When [allProducts] is provided (compare mode), generates comparison-aware questions.
   Future<ProductQuiz> generateQuiz({
     required String category,
@@ -1546,6 +1547,7 @@ $jsonSchema
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
+        .take(5)
         .toList();
 
     debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
@@ -2224,8 +2226,9 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
     final langName = _languageName(language);
     return '''
 You are Qor AI's advanced product quiz engine. Generate a fresh, complex,
-personalized quiz (6-8 questions) to understand the user's needs for the
-SPECIFIC product being analyzed.
+personalized quiz of EXACTLY 5 questions to understand the user's needs for the
+SPECIFIC product being analyzed. Pick only the 5 most decisive, highest-signal
+questions whose answers most change whether this product fits — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
@@ -2268,8 +2271,9 @@ Return valid JSON:
     final langName = _languageName(language);
     return '''
 You are Qor AI's advanced product COMPARISON quiz engine. The user is comparing
-multiple products. Generate a fresh, complex personalized quiz (6-8 questions)
+multiple products. Generate a fresh, complex personalized quiz of EXACTLY 5 questions
 to understand the user's needs so we can determine which product is the BEST FIT.
+Pick only the 5 most decisive trade-offs whose answers most change which product wins — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
