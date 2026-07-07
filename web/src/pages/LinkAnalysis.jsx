@@ -13,6 +13,16 @@ import {
 } from '../lib/linkAnalysisJobs';
 import AiText from '../components/AiText.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
+import {
+  BarFill,
+  Collapsible,
+  DecisionBadge,
+  DistributionBar,
+  SentimentDonut,
+  factorDistribution,
+  firstSentencesOf,
+  normalizeSentiment,
+} from '../components/AiCharts.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
@@ -115,15 +125,17 @@ function FactorRadar({ factors = [], size = 230 }) {
 
 function FactorBars({ factors = [] }) {
   if (!factors.length) return null;
+  // Skora göre azalan sıralı, 0→değer animasyonlu çubuklar (spec §4A).
+  const rows = [...factors].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
   return (
     <div className="la-factors">
-      {factors.map((f) => (
+      {rows.map((f, i) => (
         <div className="la-factor" key={f.label}>
           <div className="la-factor-top">
             <span>{f.emoji} {f.label}</span>
             <b style={{ color: techColor(f.score) }}>{Math.round(f.score)}</b>
           </div>
-          <div className="la-factor-bar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
+          <div className="la-factor-bar"><BarFill pct={Math.max(4, Math.min(100, f.score))} color={techColor(f.score)} delay={i * 60} /></div>
         </div>
       ))}
     </div>
@@ -229,7 +241,20 @@ function EnhancedResult({ data, L, lang }) {
   const pros = Array.isArray(data.prosForUser) ? data.prosForUser : [];
   const cons = Array.isArray(data.consForUser) ? data.consForUser : [];
   const alts = Array.isArray(data.alternatives) ? data.alternatives : [];
+  const factors = Array.isArray(data.factors) ? data.factors : [];
   const base = data.base || {};
+  // Grafikler (spec §4, web+app senkron): topluluk sentiment donutu +
+  // faktör dengesi dağılımı. sentimentBreakdown yoksa communityScore/score'dan
+  // türetilir; dağılım faktör skorlarından hesaplanır (AI gerekmez).
+  const sentiment = normalizeSentiment(
+    data.sentimentBreakdown,
+    Math.round(data.communityScore || score),
+  );
+  const dist = factorDistribution(factors);
+  // Hero tek cümle: nihai karardan (yoksa değerlendirmeden) ilk cümle.
+  const oneLiner = firstSentencesOf(data.overallVerdict || data.verdict, 1);
+  const hasDetail = data.verdict || data.personaAnalysis || data.communityAnalysis
+    || data.overallVerdict || alts.length > 0 || pros.length > 3 || cons.length > 3;
   return (
     <div className="la-result fade-up">
       <div className="la-result-head">
@@ -243,67 +268,97 @@ function EnhancedResult({ data, L, lang }) {
             <div className="la-score-band" style={{ color: techColor(score) }}>{bandLabel(score, L)}</div>
             <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
             {base.siteName && <div className="la-score-site">{base.siteName}</div>}
+            <div className="la-hero-badge"><DecisionBadge score={score} L={L} /></div>
           </div>
           <StoreCta url={base.url || data.url} lang={lang} L={L} />
         </div>
 
-        {Array.isArray(data.factors) && data.factors.length > 0 && (
+        {oneLiner && <p className="aic-hero-line">{oneLiner}</p>}
+
+        {factors.length > 0 && (
           <div className="la-factor-wrap">
-            <FactorRadar factors={data.factors} />
-            <div className="la-factor-bars-col"><FactorBars factors={data.factors} /></div>
+            <FactorRadar factors={factors} />
+            <div className="la-factor-bars-col"><FactorBars factors={factors} /></div>
           </div>
         )}
 
-        {data.verdict && (
-          <section className="la-sec">
-            <h4>📋 {L('Verdict', 'Değerlendirme', 'Fazit')}</h4>
-            <div className="la-prose"><AiText text={data.verdict} /></div>
-          </section>
-        )}
+        <div className="aic-row">
+          <SentimentDonut breakdown={sentiment} L={L} />
+          <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
+        </div>
 
         {(pros.length > 0 || cons.length > 0) && (
           <div className="la-poncons">
             {pros.length > 0 && (
               <div className="la-pc la-pc-pro">
                 <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
-                <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                <ul>{pros.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
               </div>
             )}
             {cons.length > 0 && (
               <div className="la-pc la-pc-con">
                 <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
-                <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                <ul>{cons.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
               </div>
             )}
           </div>
         )}
 
-        {alts.length > 0 && (
-          <section className="la-sec">
-            <h4>🔀 {L('Alternatives', 'Alternatifler', 'Alternativen')}</h4>
-            <div className="la-alts">{alts.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
-          </section>
-        )}
+        {/* Uzun metinler varsayılan kapalı — "tek bakışta anla" için (spec §5). */}
+        {hasDetail && (
+          <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
+            {data.verdict && (
+              <section className="la-sec">
+                <h4>📋 {L('Verdict', 'Değerlendirme', 'Fazit')}</h4>
+                <div className="la-prose"><AiText text={data.verdict} /></div>
+              </section>
+            )}
 
-        {data.personaAnalysis && (
-          <section className="la-sec">
-            <h4>👤 {L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}{data.personaScore ? ` · ${Math.round(data.personaScore)}` : ''}</h4>
-            <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
-          </section>
-        )}
+            {(pros.length > 3 || cons.length > 3) && (
+              <div className="la-poncons">
+                {pros.length > 3 && (
+                  <div className="la-pc la-pc-pro">
+                    <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
+                    <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                  </div>
+                )}
+                {cons.length > 3 && (
+                  <div className="la-pc la-pc-con">
+                    <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
+                    <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                  </div>
+                )}
+              </div>
+            )}
 
-        {data.communityAnalysis && (
-          <section className="la-sec">
-            <h4>🌐 {L('Community reception', 'Topluluk yorumu', 'Community-Echo')}{data.communityScore ? ` · ${Math.round(data.communityScore)}` : ''}</h4>
-            <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
-          </section>
-        )}
+            {alts.length > 0 && (
+              <section className="la-sec">
+                <h4>🔀 {L('Alternatives', 'Alternatifler', 'Alternativen')}</h4>
+                <div className="la-alts">{alts.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
+              </section>
+            )}
 
-        {data.overallVerdict && (
-          <section className="la-sec la-sec-final">
-            <h4>🏁 {L('Final verdict', 'Son karar', 'Endgültiges Fazit')}</h4>
-            <div className="la-prose"><AiText text={data.overallVerdict} /></div>
-          </section>
+            {data.personaAnalysis && (
+              <section className="la-sec">
+                <h4>👤 {L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}{data.personaScore ? ` · ${Math.round(data.personaScore)}` : ''}</h4>
+                <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
+              </section>
+            )}
+
+            {data.communityAnalysis && (
+              <section className="la-sec">
+                <h4>🌐 {L('Community reception', 'Topluluk yorumu', 'Community-Echo')}{data.communityScore ? ` · ${Math.round(data.communityScore)}` : ''}</h4>
+                <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
+              </section>
+            )}
+
+            {data.overallVerdict && (
+              <section className="la-sec la-sec-final">
+                <h4>🏁 {L('Final verdict', 'Son karar', 'Endgültiges Fazit')}</h4>
+                <div className="la-prose"><AiText text={data.overallVerdict} /></div>
+              </section>
+            )}
+          </Collapsible>
         )}
       </div>
     </div>
@@ -329,7 +384,7 @@ function CompareScoreChart({ products = [], L }) {
               <span className="la-cmp-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
               <span className="la-cmp-chart-name">{p.name}</span>
               <div className="la-cmp-chart-track">
-                <i style={{ width: `${Math.max(4, (score / max) * 100)}%`, background: color }} />
+                <BarFill pct={Math.max(4, (score / max) * 100)} color={color} delay={i * 90} />
               </div>
               <b style={{ color }}>{score}</b>
             </div>
@@ -357,7 +412,7 @@ function CompareFactorMatrix({ products = [], L }) {
               return (
                 <div className="la-cmp-mini" key={`${p.name}-${label}`}>
                   <span>{p.name}</span>
-                  <div><i style={{ width: `${Math.max(4, score)}%`, background: color }} /></div>
+                  <div><BarFill pct={Math.max(4, score)} color={color} /></div>
                   <b style={{ color }}>{score}</b>
                 </div>
               );
@@ -398,7 +453,7 @@ function CompareProductCard({ product, isWinner, L, lang }) {
                 <span>{f.emoji} {f.label}</span>
                 <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
               </div>
-              <div className="la-factor-bar"><i style={{ width: `${Math.max(4, Math.min(100, f.score || 0))}%`, background: techColor(f.score) }} /></div>
+              <div className="la-factor-bar"><BarFill pct={Math.max(4, Math.min(100, f.score || 0))} color={techColor(f.score)} /></div>
               {f.detail && <small>{f.detail}</small>}
             </div>
           ))}
@@ -488,29 +543,34 @@ function CompareResult({ data, L, lang }) {
           </div>
         )}
 
-        {detailed.fit && (
-          <section className="la-sec">
-            <h4>🎯 {L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}</h4>
-            <div className="la-prose"><AiText text={detailed.fit} /></div>
-          </section>
-        )}
-        {detailed.performance && (
-          <section className="la-sec">
-            <h4>⚡ {L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}</h4>
-            <div className="la-prose"><AiText text={detailed.performance} /></div>
-          </section>
-        )}
-        {detailed.ownership && (
-          <section className="la-sec">
-            <h4>🛡 {L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}</h4>
-            <div className="la-prose"><AiText text={detailed.ownership} /></div>
-          </section>
-        )}
-        {(detailed.recommendation || data?.recommendation) && (
-          <section className="la-sec la-sec-final">
-            <h4>🏁 {L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')}</h4>
-            <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
-          </section>
+        {(detailed.fit || detailed.performance || detailed.ownership
+          || detailed.recommendation || data?.recommendation) && (
+          <Collapsible label={`📖 ${L('Detailed comparison', 'Detaylı karşılaştırma', 'Detaillierter Vergleich')}`}>
+            {detailed.fit && (
+              <section className="la-sec">
+                <h4>🎯 {L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}</h4>
+                <div className="la-prose"><AiText text={detailed.fit} /></div>
+              </section>
+            )}
+            {detailed.performance && (
+              <section className="la-sec">
+                <h4>⚡ {L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}</h4>
+                <div className="la-prose"><AiText text={detailed.performance} /></div>
+              </section>
+            )}
+            {detailed.ownership && (
+              <section className="la-sec">
+                <h4>🛡 {L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}</h4>
+                <div className="la-prose"><AiText text={detailed.ownership} /></div>
+              </section>
+            )}
+            {(detailed.recommendation || data?.recommendation) && (
+              <section className="la-sec la-sec-final">
+                <h4>🏁 {L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')}</h4>
+                <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
+              </section>
+            )}
+          </Collapsible>
         )}
       </div>
     </div>

@@ -27,6 +27,7 @@ import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';

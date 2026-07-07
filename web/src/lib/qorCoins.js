@@ -1,5 +1,6 @@
 import { currentUser, pb } from './pocketbase';
 import { premiumStatus } from './premium';
+import { getRecentProducts } from './recentViewed';
 
 export const AI_FEATURE_COSTS = {
   // Keep these in sync with lib/core/constants.dart.
@@ -167,6 +168,20 @@ export function aiUserProfile(user) {
     hobbies,
     pastQuizQuestions: pastQuizQuestions.slice(0, 24),
     primaryCategory: user.primaryCategory || '',
+    // Kayıt (onboarding) quizinin ham cevapları — kişiselleştirmenin en zengin
+    // kaynağı ve "zaten soruldu, tekrar sorma" sinyali. localStorage tek
+    // güvenilir kaynak (PB bazı kolonları düşürüyor).
+    registrationQuizAnswers: cached || null,
+    // Son görüntülenen ürünler — quiz senaryolarına gerçekçi bağlam sağlar.
+    // Sayfalar kendi recentlyViewed'ını spread ile üzerine yazabilir; ikisi de
+    // aynı hafif {name, category, brand} şeklini kullanır.
+    recentlyViewed: (() => {
+      try {
+        return getRecentProducts().slice(0, 8)
+          .map((p) => ({ name: p.name, category: p.category, brand: p.brand }))
+          .filter((x) => x.name);
+      } catch { return []; }
+    })(),
     profileVector: vector,
   };
 }

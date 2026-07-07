@@ -23,6 +23,7 @@ import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/ai_service.dart';
 import 'package:qor_ai/services/cache_service.dart';
 import 'package:qor_ai/services/gemini_service.dart';
+import 'package:qor_ai/services/quiz_config.dart';
 
 /// DeepSeek V3 service — handles all text-based AI tasks for Qor AI.
 /// Primary AI provider. Gemini is used ONLY for vision + web grounding.
@@ -337,10 +338,12 @@ class DeepSeekService implements AIService {
     String language = 'en',
   }) async {
     debugPrint('[Qor AI] generateQuiz for: $productTitle ($category)');
+    // Web paritesi (quiz_config.dart): kompleks kategori → 6 soru, değilse 5.
+    final questionCount = productQuizQuestionCount(category: category);
     final response = await _jsonRequest(
       system: await adminPrompt(
         'deepseek_quiz_generation_system',
-        _quizGenerationPrompt(language),
+        _quizGenerationPrompt(language, questionCount),
       ),
       user: jsonEncode({
         'category': category,
@@ -361,7 +364,7 @@ class DeepSeekService implements AIService {
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
-        .take(5)
+        .take(questionCount)
         .toList();
 
     debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
@@ -379,6 +382,8 @@ class DeepSeekService implements AIService {
     required List<String> subscriptionNames,
     String language = 'en',
   }) async {
+    // Web paritesi (quiz_config.dart): tek servis → 5, karşılaştırma → 6.
+    final questionCount = subscriptionQuizQuestionCount(subscriptionNames.length);
     final sortedNames = [...subscriptionNames]..sort();
     final cacheKey = 'ds_sub_quiz_${sortedNames.join('_')}_$language';
     try {
@@ -395,7 +400,7 @@ class DeepSeekService implements AIService {
               ),
             )
             .where((q) => q.text.isNotEmpty && q.options.length >= 2)
-            .take(5)
+            .take(questionCount)
             .toList();
         if (questions.isNotEmpty) {
           return ProductQuiz(
@@ -416,7 +421,7 @@ class DeepSeekService implements AIService {
     final subscriptionQuizPrompt =
         '''
 You are Qor AI's subscription quiz engine. Generate a SHORT personalized quiz
-of EXACTLY 5 questions to understand the user's needs for: $names. Pick only the 5
+of EXACTLY $questionCount questions to understand the user's needs for: $names. Pick only the $questionCount
 most decisive, highest-signal questions that determine which service fits best — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
@@ -469,7 +474,7 @@ Return valid JSON:
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
-        .take(5)
+        .take(questionCount)
         .toList();
 
     return ProductQuiz(
@@ -591,6 +596,18 @@ Return valid JSON:
       }(),
       communityAnalysis: response['communityAnalysis'] as String?,
       overallVerdict: response['overallVerdict'] as String?,
+      // Donut grafiği için topluluk duygu dağılımı (web paritesi); yoksa UI
+      // memnuniyet skorundan türetir.
+      sentimentBreakdown: () {
+        final raw =
+            response['sentimentBreakdown'] ?? response['sentiment_breakdown'];
+        if (raw is Map) {
+          return raw.map(
+            (k, v) => MapEntry(k.toString(), (v as num?)?.round() ?? 0),
+          );
+        }
+        return null;
+      }(),
     );
   }
 
@@ -956,12 +973,12 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.
 ''';
 
-  static String _quizGenerationPrompt(String language) {
+  static String _quizGenerationPrompt(String language, int questionCount) {
     final langName = _languageName(language);
     return '''
 You are Qor AI's product quiz engine. Generate a SHORT personalized quiz
-of EXACTLY 5 questions to understand the user's needs for a specific product category.
-Pick only the 5 most decisive, highest-signal questions that determine the fit — no filler.
+of EXACTLY $questionCount questions to understand the user's needs for a specific product category.
+Pick only the $questionCount most decisive, highest-signal questions that determine the fit — no filler.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
@@ -1013,10 +1030,13 @@ SCORING RULES:
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific and detailed, not generic.
 - Cite actual specs, community observations, or market context wherever possible.
-- verdict must be 5-7 rich paragraphs covering the full product story.
-- personaAnalysis must be 3-5 paragraphs, deeply personalized to quiz answers.
-- communityAnalysis must be 3-4 paragraphs synthesizing broad community feedback.
-- prosForUser and consForUser must be detailed, specific bullet points.
+- BREVITY (web paritesi — ANALYSIS_REDESIGN_SPEC §3): the reader scans, they do NOT
+  read walls of text. Respect the exact paragraph/word limits below; every sentence
+  must carry information, no padding, no repetition.
+- communityAnalysis MUST plainly call out the most-reported NEGATIVES and complaints
+  (price hikes, defects, missing features, reliability, support) — one of its two
+  paragraphs is about negatives; a positives-only summary is FORBIDDEN.
+- prosForUser and consForUser must be specific, concise bullet points — one clear sentence each.
 
 Return valid JSON (all text in $langName):
 {
@@ -1028,16 +1048,19 @@ Return valid JSON (all text in $langName):
     {"label": "$futureProofing", "score": <0-100>, "emoji": "🚀"},
     {"label": "$lifestyleMatch", "score": <0-100>, "emoji": "🏠"}
   ],
-  "verdict": "5-7 paragraph comprehensive product analysis in $langName. Cover: technical overview, performance analysis, build quality, value assessment, long-term ownership outlook, who it's for. Be specific with actual product characteristics. NO user attribute lists.",
-  "prosForUser": ["Detailed pro 1 citing specific product trait", "Detailed pro 2 with performance context", "Detailed pro 3", "Detailed pro 4", "Detailed pro 5"],
-  "consForUser": ["Specific con 1 with real-world impact", "Specific con 2 with severity context", "Specific con 3", "Specific con 4"],
+  "verdict": "EXACTLY 2 short paragraphs, ~90 words total: (1) technical overview, market positioning and real performance, (2) build/reliability, value assessment and who this product is best suited for. Professional tone, specific details, no filler. In $langName. NO user attribute lists.",
+  "prosForUser": ["Concise pro 1 citing a specific product trait", "Concise pro 2", "Concise pro 3", "Optional concise pro 4"],
+  "consForUser": ["Concise con 1 with real-world impact", "Concise con 2", "Concise con 3"],
   "alternatives": ["Full model name of alternative 1", "Full model name of alternative 2", "Full model name of alternative 3"],
   "personaScore": <0-100>,
-  "personaAnalysis": "3-5 paragraphs in $langName — deep analysis of how this product fits the user's lifestyle, use cases, and needs from quiz answers. Reference specific quiz answers. Be concrete. NEVER list user attributes by name.",
+  "personaAnalysis": "EXACTLY 2 short paragraphs, ~70 words total: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) the main daily-use friction point or long-term consideration. Concrete, references quiz answers. In $langName. NEVER list user attributes by name.",
   "communityScore": <0-100>,
-  "communityAnalysis": "3-4 paragraphs in $langName — professional synthesis of community opinion. Cover overall reception, specific praise, recurring criticisms, long-term ownership reports. Reference known sources (Reddit, YouTube, review sites). IGNORE user profile.",
-  "overallVerdict": "3-4 paragraph definitive buy/consider/skip verdict in $langName. Include specific reasoning and concrete alternative if recommending skip. NEVER mention user attributes by name."
+  "communityAnalysis": "EXACTLY 2 short paragraphs, ~70 words total: (1) overall reception and what users praise most, (2) the most common complaints, defects and disappointments — stated plainly, never softened (positives-only is FORBIDDEN). Reference known sources (Reddit, YouTube, review sites). IGNORE user profile.",
+  "sentimentBreakdown": {"positive": <integer>, "neutral": <integer>, "negative": <integer>},
+  "overallVerdict": "1 short paragraph with the reasoning, then ONE final standalone sentence giving a clear decision: buy / consider / skip (include a concrete alternative if recommending skip). In $langName. NEVER mention user attributes by name."
 }
+
+- sentimentBreakdown values are integers summing to ~100 — the share of positive/neutral/negative community voice about this product.
 ''';
   }
 

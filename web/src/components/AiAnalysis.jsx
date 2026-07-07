@@ -10,6 +10,18 @@ import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
 import { displayProductName, cleanProductName } from '../lib/productNames';
+import {
+  BarFill,
+  Collapsible,
+  DecisionBadge,
+  DistributionBar,
+  DonutChart,
+  SentimentDonut,
+  factorDistribution,
+  normalizeSentiment,
+  useCountUp,
+  usePrefersReducedMotion,
+} from './AiCharts.jsx';
 
 const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish', ja: 'Japanese', ar: 'Arabic' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
@@ -340,6 +352,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '  },\n' +
     '  "community": {\n' +
     '    "satisfaction": <0-100>,\n' +
+    '    "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},\n' +
     '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums, and specialist reviews; include uncertainty where needed",\n' +
     '    "pros": ["6 recurring positive themes"],\n' +
     '    "cons": ["5 recurring negative themes"],\n' +
@@ -352,6 +365,7 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n' +
     '}\n\n' +
     'Rules:\n' +
+    '- community.sentimentBreakdown must be integer percentages summing to ~100, realistic (never all-positive) and consistent with community.summary.\n' +
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
@@ -445,7 +459,7 @@ export function buildCompareProductPrompt(product, lang, profile = {}, context =
     '  "analysis": "5-7 substantial paragraphs, each 45-85 words",\n' +
     '  "pros": ["6 detailed pros"],\n' +
     '  "cons": ["5 detailed cons"],\n' +
-    '  "community": {"satisfaction": <0-100>, "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
+    '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
     'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
@@ -527,19 +541,28 @@ function scoreColor(n) { return n >= 80 ? '#22c55e' : n >= 60 ? '#f59e0b' : '#f4
 
 function ScoreRing({ value, max = 100, suffix = '/ 100' }) {
   const v = Math.max(0, Math.min(max, Number(value) || 0));
-  const pct = v / max;
   const col = scoreColor((v / max) * 100);
   const R = 44, C = 2 * Math.PI * R;
+  // Açılışta 0'dan hedefe süpür + sayıyı count-up'la (reduced-motion'da anında).
+  const reduced = usePrefersReducedMotion();
+  const [drawn, setDrawn] = useState(reduced);
+  useEffect(() => {
+    if (reduced) { setDrawn(true); return undefined; }
+    const id = setTimeout(() => setDrawn(true), 40);
+    return () => clearTimeout(id);
+  }, [reduced]);
+  const pct = (drawn ? v : 0) / max;
+  const shown = useCountUp(v, { duration: 900 });
   return (
     <div className="ai-ring">
       <svg width="100" height="100" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r={R} fill="none" stroke={col} strokeOpacity="0.14" strokeWidth="8" />
         <circle cx="50" cy="50" r={R} fill="none" stroke={col} strokeWidth="8" strokeLinecap="round"
           strokeDasharray={C} strokeDashoffset={C * (1 - pct)} transform="rotate(-90 50 50)"
-          style={{ transition: 'stroke-dashoffset 1s ease' }} />
+          style={{ transition: reduced ? 'none' : 'stroke-dashoffset .9s cubic-bezier(.22,.61,.36,1)' }} />
       </svg>
       <div className="ai-ring-t" style={{ color: col }}>
-        <b>{Math.round(v)}</b><small>{suffix}</small>
+        <b>{Math.round(shown)}</b><small>{suffix}</small>
       </div>
     </div>
   );
@@ -554,7 +577,7 @@ function AttrBar({ name, score, detail, color }) {
         <span className="ai-attr-score" style={{ color }}>{v}</span>
       </div>
       <div className="ai-attr-track" style={{ background: `${color}1f` }}>
-        <i style={{ width: `${v}%`, background: `linear-gradient(90deg, ${color}80, ${color})` }} />
+        <BarFill pct={v} color={color} gradient />
       </div>
       {detail ? <small className="ai-attr-detail">{detail}</small> : null}
     </div>
@@ -817,7 +840,8 @@ function ReportFactors({ factors = [], L }) {
     label: f.label || f.name || '',
     score: toInt(f.score),
     detail: f.detail || '',
-  })).filter((f) => f.label);
+  })).filter((f) => f.label)
+    .sort((a, b) => b.score - a.score); // skora göre azalan (spec §4A)
   if (!list.length) return null;
   return (
     <div className="ai-report-factors">
@@ -952,46 +976,77 @@ function PriceForecastBlock({ data = {}, L }) {
   );
 }
 
+// Spec yerleşimi: 1) hero (animasyonlu skor + karar rozeti + tek cümle özet)
+// 2) faktör çubukları 3) donut + dağılım çubuğu yan yana 4) kısa pro/con
+// 5) "Detaylı analiz ▾" (varsayılan kapalı) — tüm uzun metinler orada.
 function ProductFullReport({ data, L }) {
   const product = data.product || {};
   const match = toInt(product.matchScore || product.overallScore);
+  const community = data.community || {};
+  const sentiment = normalizeSentiment(
+    community.sentimentBreakdown || community.sentiment_breakdown,
+    toInt(community.satisfaction) || match,
+  );
+  const dist = factorDistribution(product.factors);
+  const oneLiner = firstSentences(product.matchComment, 1);
+  const strengths = arr(product.strengths).map(String);
+  const weaknesses = arr(product.weaknesses).map(String);
   return (
     <div className="ai-report">
-      <ReportSection eyebrow="01" title={L('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz', 'Match, Beratung und Tiefenanalyse')}>
+      <section className="ai-report-section">
         <div className="ai-report-hero">
           {match > 0 && <ScoreRing value={match} />}
           <div>
             <h3>{cleanProductName(product.name || data.name || L('Product report', 'Ürün raporu', 'Produktbericht'))}</h3>
-            <Paragraphs text={product.matchComment} />
+            {match > 0 && <DecisionBadge score={match} L={L} />}
+            {oneLiner && <p className="aic-hero-line">{oneLiner}</p>}
           </div>
         </div>
         <ReportFactors factors={product.factors} L={L} />
-        <FeatureMatches items={product.featureMatches} L={L} />
-        <Paragraphs text={product.analysis} />
-        <div className="ai-procon-row">
-          <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={arr(product.strengths).map(String)} color="#22c55e" />
-          <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={arr(product.weaknesses).map(String)} color="#f43f5e" />
+        <div className="aic-row">
+          <SentimentDonut breakdown={sentiment} L={L} />
+          <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
         </div>
-        <BulletList items={localizedAiList(product.reviewedInputs, L)} tone="notes" />
-      </ReportSection>
+        <div className="ai-procon-row">
+          <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={strengths.slice(0, 3)} color="#22c55e" />
+          <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={weaknesses.slice(0, 3)} color="#f43f5e" />
+        </div>
+      </section>
 
-      <ReportSection eyebrow="02" title={L('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet', 'Internet-Kommentare und Zufriedenheit')}>
-        <CommunityBlock data={data.community} L={L} />
-      </ReportSection>
+      <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
+        <ReportSection eyebrow="01" title={L('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz', 'Match, Beratung und Tiefenanalyse')}>
+          <Paragraphs text={product.matchComment} />
+          <FeatureMatches items={product.featureMatches} L={L} />
+          <Paragraphs text={product.analysis} />
+          {(strengths.length > 3 || weaknesses.length > 3) && (
+            <div className="ai-procon-row">
+              <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={strengths} color="#22c55e" />
+              <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={weaknesses} color="#f43f5e" />
+            </div>
+          )}
+          <BulletList items={localizedAiList(product.reviewedInputs, L)} tone="notes" />
+        </ReportSection>
 
-      <ReportSection eyebrow="03" title={L('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen')}>
-        <AlternativeCards alternatives={data.alternatives} L={L} />
-      </ReportSection>
+        <ReportSection eyebrow="02" title={L('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet', 'Internet-Kommentare und Zufriedenheit')}>
+          <CommunityBlock data={data.community} L={L} />
+        </ReportSection>
 
-      <ReportSection eyebrow="04" title={L('Price forecast', 'Fiyat tahmini', 'Preisprognose')}>
-        <PriceForecastBlock data={data.priceForecast} L={L} />
-      </ReportSection>
+        <ReportSection eyebrow="03" title={L('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen')}>
+          <AlternativeCards alternatives={data.alternatives} L={L} />
+        </ReportSection>
+
+        <ReportSection eyebrow="04" title={L('Price forecast', 'Fiyat tahmini', 'Preisprognose')}>
+          <PriceForecastBlock data={data.priceForecast} L={L} />
+        </ReportSection>
+      </Collapsible>
     </div>
   );
 }
 
 function CompareScoreChartFull({ chart = [], L }) {
-  const rows = arr(chart).map((x) => ({ name: cleanProductName(x.name || ''), score: toInt(x.score), reason: x.reason || '' })).filter((x) => x.name);
+  const rows = arr(chart).map((x) => ({ name: cleanProductName(x.name || ''), score: toInt(x.score), reason: x.reason || '' }))
+    .filter((x) => x.name)
+    .sort((a, b) => b.score - a.score);
   if (!rows.length) return null;
   const max = Math.max(1, ...rows.map((r) => r.score));
   return (
@@ -1001,7 +1056,7 @@ function CompareScoreChartFull({ chart = [], L }) {
         return (
           <div className="ai-compare-chart-row" key={`${r.name}-${i}`}>
             <span>{r.name}</span>
-            <div><i style={{ width: `${Math.max(4, (r.score / max) * 100)}%`, background: color }} /></div>
+            <div><BarFill pct={Math.max(4, (r.score / max) * 100)} color={color} delay={i * 90} /></div>
             <b style={{ color }}>{r.score}</b>
             {r.reason && <small>{r.reason}</small>}
           </div>
@@ -1054,10 +1109,14 @@ function ComparisonOverview({ cmp = {}, L }) {
       )}
       <CompareScoreChartFull chart={cmp.chart} L={L} />
       <FactorMatrix rows={cmp.factorMatrix} />
-      <BulletList items={cmp.decisiveDifferences} tone="notes" />
-      <Paragraphs text={cmp.headToHead} />
-      {String(cmp.recommendation || '').trim() && (
-        <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} /></div></div>
+      {(arr(cmp.decisiveDifferences).length > 0 || String(cmp.headToHead || '').trim() || String(cmp.recommendation || '').trim()) && (
+        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
+          <BulletList items={cmp.decisiveDifferences} tone="notes" />
+          <Paragraphs text={cmp.headToHead} />
+          {String(cmp.recommendation || '').trim() && (
+            <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} /></div></div>
+          )}
+        </Collapsible>
       )}
     </section>
   );
@@ -1146,9 +1205,43 @@ function CompareFullReport({ data, L, lang, products = [] }) {
   const winnerNorm = norm(cmp.winner || '');
   const active = openIdx >= 0 && openIdx < columns.length ? columns[openIdx] : null;
 
+  // Ürün başına küçük topluluk-memnuniyeti donutu (spec: karşılaştırma no. 4).
+  const miniDonuts = columns
+    .map((c) => {
+      const community = c.ai?.community || {};
+      const sat = toInt(community.satisfaction);
+      const bd = community.sentimentBreakdown || community.sentiment_breakdown;
+      if (!sat && !bd) return null;
+      return { name: c.name, key: c.key, sentiment: normalizeSentiment(bd, sat || toInt(c.ai?.matchScore)) };
+    })
+    .filter(Boolean);
+
   return (
     <div className="ai-report ai-report-compare">
       <ComparisonOverview cmp={cmp} L={L} />
+
+      {miniDonuts.length > 0 && (
+        <section className="ai-report-section">
+          <div className="ai-report-eyebrow">💬 {L('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}</div>
+          <div className="aic-mini-donuts">
+            {miniDonuts.map((m) => (
+              <div className="aic-mini-donut" key={m.key}>
+                <DonutChart
+                  segments={[
+                    { label: L('Positive', 'Olumlu', 'Positiv'), value: m.sentiment.positive, color: '#22c55e' },
+                    { label: L('Neutral', 'Nötr', 'Neutral'), value: m.sentiment.neutral, color: '#f59e0b' },
+                    { label: L('Negative', 'Olumsuz', 'Negativ'), value: m.sentiment.negative, color: '#f43f5e' },
+                  ]}
+                  centerValue={`${Math.round(m.sentiment.positive)}%`}
+                  size={84}
+                  thickness={10}
+                />
+                <span>{m.name}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {columns.length > 0 && (
         <section className="ai-report-section ai-cmp-eval">

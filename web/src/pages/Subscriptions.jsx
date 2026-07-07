@@ -15,6 +15,13 @@ import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import AiText from '../components/AiText.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
+import {
+  BarFill,
+  Collapsible,
+  DecisionBadge,
+  SentimentDonut,
+  normalizeSentiment,
+} from '../components/AiCharts.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
@@ -79,7 +86,7 @@ function ScoreChart({ services, L }) {
               <span className="subs-chart-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
               <span className="subs-chart-label"><SubLogo name={s.name} size={20} radius={6} />{s.name}</span>
               <div className="subs-chart-track">
-                <i style={{ width: `${Math.max(3, (v / max) * 100)}%`, background: col }} />
+                <BarFill pct={Math.max(3, (v / max) * 100)} color={col} delay={i * 90} />
               </div>
               <b style={{ color: col }}>{v}</b>
             </div>
@@ -107,7 +114,7 @@ function FactorMatrix({ services, L }) {
               return (
                 <div className="subs-mini" key={`${s.name}-${label}`}>
                   <span><SubLogo name={s.name} size={18} radius={5} />{s.name}</span>
-                  <div><i style={{ width: `${Math.max(4, Math.min(100, score))}%`, background: color }} /></div>
+                  <div><BarFill pct={Math.max(4, Math.min(100, score))} color={color} /></div>
                   <b style={{ color }}>{score}</b>
                 </div>
               );
@@ -127,6 +134,8 @@ function ServiceCard({ s, isWinner, L }) {
   const cons = list(s.cons);
   const risks = list(s.risks);
   const features = list(s.features);
+  // Topluluk sentiment donutu — s.sentiment yoksa skordan türetilir (spec §4B).
+  const sentiment = normalizeSentiment(s.sentiment, score);
   return (
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
@@ -136,20 +145,24 @@ function ServiceCard({ s, isWinner, L }) {
         <div className="subs-svc-id">
           <strong>{s.name}</strong>
           {s.category && <span>{s.category}</span>}
+          <div className="la-hero-badge"><DecisionBadge score={score} L={L} /></div>
         </div>
       </div>
       {s.explanation && <p className="subs-svc-exp">{s.explanation}</p>}
-      {factors.length > 0 && (
-        <div className="subs-svc-factors">
-          {factors.map((f) => (
-            <div className="subs-svc-factor" key={f.label}>
-              <span>{f.emoji ? `${f.emoji} ` : ''}{f.label.replace(/_/g, ' ')}</span>
-              <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
-              <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, f.score))}%`, background: techColor(f.score) }} /></div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="aic-row">
+        {factors.length > 0 && (
+          <div className="subs-svc-factors" style={{ flex: '1 1 220px' }}>
+            {factors.map((f, i) => (
+              <div className="subs-svc-factor" key={f.label}>
+                <span>{f.emoji ? `${f.emoji} ` : ''}{f.label.replace(/_/g, ' ')}</span>
+                <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
+                <div className="subs-svc-fbar"><BarFill pct={Math.max(4, Math.min(100, f.score))} color={techColor(f.score)} delay={i * 60} /></div>
+              </div>
+            ))}
+          </div>
+        )}
+        <SentimentDonut breakdown={sentiment} L={L} compact />
+      </div>
       {features.length > 0 && (
         <div className="subs-svc-features">
           {features.slice(0, 6).map((x, i) => (
@@ -161,29 +174,34 @@ function ServiceCard({ s, isWinner, L }) {
         {pros.length > 0 && (
           <div className="subs-svc-list subs-svc-pros">
             <h4>✓ {L('Strengths', 'Güçlü yanlar', 'Stärken')}</h4>
-            <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{pros.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
         )}
         {cons.length > 0 && (
           <div className="subs-svc-list subs-svc-cons">
             <h4>⚠ {L('Trade-offs', 'Eksiler', 'Nachteile')}</h4>
-            <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <ul>{cons.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
         )}
       </div>
-      {risks.length > 0 && (
-        <div className="subs-svc-risks">
-          <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
-          <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
-        </div>
-      )}
-      {s.community && (
-        <section className="subs-svc-section">
-          <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
-          <AiText text={s.community} />
-        </section>
-      )}
       {s.bestFor && <p className="subs-svc-best">🎯 {s.bestFor}</p>}
+      {/* Uzun topluluk metni + risk notları varsayılan kapalı (spec §5). */}
+      {(s.community || risks.length > 0) && (
+        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
+          {risks.length > 0 && (
+            <div className="subs-svc-risks">
+              <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
+              <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </div>
+          )}
+          {s.community && (
+            <section className="subs-svc-section">
+              <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
+              <AiText text={s.community} />
+            </section>
+          )}
+        </Collapsible>
+      )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
 
 // Exact web palette so the app report matches the site 1:1.
 const _green = Color(0xFF22C55E);
@@ -92,42 +93,49 @@ class _ScoreRing extends StatelessWidget {
     final v = value.clamp(0, 100).toDouble();
     final pct = v / 100;
     final col = _scoreColor((pct * 100));
+    // Açılışta yay 0→pct süpürülür ve sayı sayılarak dolar (web ai-ring paritesi).
+    final reduced = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return SizedBox(
       width: 92,
       height: 92,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 92,
-            height: 92,
-            child: CustomPaint(
-              painter: _RingPainter(progress: pct, color: col),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: reduced ? pct : 0, end: pct),
+        duration: reduced ? Duration.zero : const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, _) => Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 92,
+              height: 92,
+              child: CustomPaint(
+                painter: _RingPainter(progress: t, color: col),
+              ),
             ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                v.round().toString(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: col,
-                  height: 1,
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  (t * 100).round().toString(),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: col,
+                    height: 1,
+                  ),
                 ),
-              ),
-              Text(
-                suffix,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: col.withValues(alpha: 0.8),
+                Text(
+                  suffix,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: col.withValues(alpha: 0.8),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -209,15 +217,7 @@ class _AttrBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 5),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: v / 100,
-              minHeight: 7,
-              backgroundColor: color.withValues(alpha: 0.14),
-              valueColor: AlwaysStoppedAnimation(color),
-            ),
-          ),
+          AnimatedBarFill(pct: v.toDouble(), color: color, gradient: true),
           if (detail.isNotEmpty) ...[
             const SizedBox(height: 5),
             Text(
@@ -521,7 +521,8 @@ class _ReportFactors extends StatelessWidget {
           ),
         )
         .where((f) => f.label.isNotEmpty)
-        .toList();
+        .toList()
+      ..sort((a, b) => b.score - a.score); // skora göre azalan (web §4A)
     if (list.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1097,12 +1098,22 @@ class _ProductFullReport extends StatelessWidget {
     final price = (data['priceForecast'] is Map)
         ? Map<String, dynamic>.from(data['priceForecast'])
         : <String, dynamic>{};
+    // Grafik verileri (web ProductFullReport paritesi): topluluk sentiment
+    // donutu + faktör dengesi dağılımı; hero'da tek cümle özet + karar rozeti.
+    final sentiment = normalizeSentiment(
+      community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
+      _toInt(community['satisfaction']) > 0 ? _toInt(community['satisfaction']) : match,
+    );
+    final dist = factorDistribution(product['factors']);
+    final oneLiner = firstSentencesOf(_str(product['matchComment']));
+    final strengths = _strs(product['strengths']);
+    final weaknesses = _strs(product['weaknesses']);
     return Column(
       children: [
+        // Hero — tek bakışta karar: skor + rozet + tek cümle + grafikler.
         _ReportSection(
-          eyebrow: '01',
-          title: l('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz',
-              'Match, Beratung und Tiefenanalyse'),
+          eyebrow: '★',
+          title: l('At a glance', 'Tek bakışta', 'Auf einen Blick'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1113,17 +1124,43 @@ class _ProductFullReport extends StatelessWidget {
                     _ScoreRing(value: match.toDouble()),
                     const SizedBox(width: 12),
                   ],
-                  Expanded(child: _Paragraphs(_str(product['matchComment']))),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (match > 0) DecisionBadge(score: match, l: l),
+                        if (oneLiner.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            oneLiner,
+                            style: GoogleFonts.inter(
+                              fontSize: 13.5,
+                              height: 1.5,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               _ReportFactors(factors: product['factors'], l: l),
-              const SizedBox(height: 4),
-              _FeatureMatches(items: product['featureMatches'], l: l),
-              _Paragraphs(_str(product['analysis'])),
+              const SizedBox(height: 6),
+              SentimentDonut(breakdown: sentiment, l: l),
+              const SizedBox(height: 10),
+              DistributionBar(
+                strong: dist.strong,
+                balanced: dist.balanced,
+                weak: dist.weak,
+                l: l,
+              ),
+              const SizedBox(height: 12),
               _ProConRow(
-                pros: _strs(product['strengths']),
-                cons: _strs(product['weaknesses']),
+                pros: strengths.take(3).toList(),
+                cons: weaknesses.take(3).toList(),
                 l: l,
                 prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
                 consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
@@ -1131,21 +1168,51 @@ class _ProductFullReport extends StatelessWidget {
             ],
           ),
         ),
-        _ReportSection(
-          eyebrow: '02',
-          title: l('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet',
-              'Internet-Kommentare und Zufriedenheit'),
-          child: _CommunityBlock(data: community, l: l),
-        ),
-        _ReportSection(
-          eyebrow: '03',
-          title: l('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen'),
-          child: _AlternativeCards(alternatives: data['alternatives'], l: l),
-        ),
-        _ReportSection(
-          eyebrow: '04',
-          title: l('Price forecast', 'Fiyat tahmini', 'Preisprognose'),
-          child: _PriceForecastBlock(data: price, l: l),
+        // Uzun metinler varsayılan kapalı — "tek bakışta anla" için (web §5).
+        AiCollapsible(
+          label: '📖 ${l('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}',
+          builder: (context) => Column(
+            children: [
+              _ReportSection(
+                eyebrow: '01',
+                title: l('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz',
+                    'Match, Beratung und Tiefenanalyse'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Paragraphs(_str(product['matchComment'])),
+                    const SizedBox(height: 4),
+                    _FeatureMatches(items: product['featureMatches'], l: l),
+                    _Paragraphs(_str(product['analysis'])),
+                    if (strengths.length > 3 || weaknesses.length > 3)
+                      _ProConRow(
+                        pros: strengths,
+                        cons: weaknesses,
+                        l: l,
+                        prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
+                        consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
+                      ),
+                  ],
+                ),
+              ),
+              _ReportSection(
+                eyebrow: '02',
+                title: l('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet',
+                    'Internet-Kommentare und Zufriedenheit'),
+                child: _CommunityBlock(data: community, l: l),
+              ),
+              _ReportSection(
+                eyebrow: '03',
+                title: l('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen'),
+                child: _AlternativeCards(alternatives: data['alternatives'], l: l),
+              ),
+              _ReportSection(
+                eyebrow: '04',
+                title: l('Price forecast', 'Fiyat tahmini', 'Preisprognose'),
+                child: _PriceForecastBlock(data: price, l: l),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1203,14 +1270,9 @@ class _CompareScoreChart extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: (r.score / max).clamp(0.04, 1),
-                    minHeight: 7,
-                    backgroundColor: _scoreColor(r.score).withValues(alpha: 0.14),
-                    valueColor: AlwaysStoppedAnimation(_scoreColor(r.score)),
-                  ),
+                AnimatedBarFill(
+                  pct: ((r.score / max) * 100).clamp(4, 100).toDouble(),
+                  color: _scoreColor(r.score),
                 ),
                 if (r.reason.isNotEmpty) ...[
                   const SizedBox(height: 3),
@@ -1292,16 +1354,10 @@ class _FactorMatrix extends StatelessWidget {
                               ),
                             ),
                             Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(5),
-                                child: LinearProgressIndicator(
-                                  value: (_toInt(s['score']) / 100).clamp(0.04, 1),
-                                  minHeight: 6,
-                                  backgroundColor: context.dividerColor,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    _scoreColor(_toInt(s['score'])),
-                                  ),
-                                ),
+                              child: AnimatedBarFill(
+                                pct: _toInt(s['score']).toDouble().clamp(4, 100),
+                                color: _scoreColor(_toInt(s['score'])),
+                                height: 6,
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -1340,6 +1396,14 @@ class _CompareProductDetail extends StatelessWidget {
         ? Map<String, dynamic>.from(data['priceForecast'])
         : <String, dynamic>{};
     final match = _toInt(data['matchScore']);
+    final sentiment = normalizeSentiment(
+      community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
+      _toInt(community['satisfaction']) > 0 ? _toInt(community['satisfaction']) : match,
+    );
+    final dist = factorDistribution(data['factors']);
+    final oneLiner = firstSentencesOf(_str(data['matchComment']));
+    final pros = _strs(data['pros']);
+    final cons = _strs(data['cons']);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1350,19 +1414,64 @@ class _CompareProductDetail extends StatelessWidget {
               _ScoreRing(value: match.toDouble()),
               const SizedBox(width: 12),
             ],
-            Expanded(child: _Paragraphs(_str(data['matchComment']))),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (match > 0) DecisionBadge(score: match, l: l),
+                  if (oneLiner.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      oneLiner,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         _ReportFactors(factors: data['factors'], l: l),
-        const SizedBox(height: 4),
-        _FeatureMatches(items: data['featureMatches'], l: l),
-        _Paragraphs(_str(data['analysis'])),
-        _ProConRow(pros: _strs(data['pros']), cons: _strs(data['cons']), l: l),
-        const SizedBox(height: 8),
-        _CommunityBlock(data: community, l: l),
-        const SizedBox(height: 8),
-        _PriceForecastBlock(data: price, l: l),
+        const SizedBox(height: 6),
+        SentimentDonut(breakdown: sentiment, l: l),
+        const SizedBox(height: 10),
+        DistributionBar(
+          strong: dist.strong,
+          balanced: dist.balanced,
+          weak: dist.weak,
+          l: l,
+        ),
+        const SizedBox(height: 12),
+        _ProConRow(
+          pros: pros.take(3).toList(),
+          cons: cons.take(3).toList(),
+          l: l,
+        ),
+        const SizedBox(height: 6),
+        AiCollapsible(
+          label: '📖 ${l('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}',
+          builder: (context) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Paragraphs(_str(data['matchComment'])),
+              const SizedBox(height: 4),
+              _FeatureMatches(items: data['featureMatches'], l: l),
+              _Paragraphs(_str(data['analysis'])),
+              if (pros.length > 3 || cons.length > 3)
+                _ProConRow(pros: pros, cons: cons, l: l),
+              const SizedBox(height: 8),
+              _CommunityBlock(data: community, l: l),
+              const SizedBox(height: 8),
+              _PriceForecastBlock(data: price, l: l),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -1386,6 +1495,76 @@ String _displayImage(dynamic product) {
     if (v is String) return v;
   } catch (_) {}
   return '';
+}
+
+/// Per-product community-satisfaction donuts, side by side (web mini-donuts).
+class _CompareMiniDonuts extends StatelessWidget {
+  final List<({Map<String, dynamic> ai, String image, String name})> columns;
+  final _L l;
+  const _CompareMiniDonuts({required this.columns, required this.l});
+
+  @override
+  Widget build(BuildContext context) {
+    final donuts = <({String name, Map<String, int> sentiment})>[];
+    for (final c in columns) {
+      final community = (c.ai['community'] is Map)
+          ? Map<String, dynamic>.from(c.ai['community'] as Map)
+          : <String, dynamic>{};
+      final sat = _toInt(community['satisfaction']);
+      final bd = community['sentimentBreakdown'] ?? community['sentiment_breakdown'];
+      if (sat <= 0 && bd == null) continue;
+      donuts.add((
+        name: c.name,
+        sentiment: normalizeSentiment(bd, sat > 0 ? sat : _toInt(c.ai['matchScore'])),
+      ));
+    }
+    if (donuts.length < 2) return const SizedBox.shrink();
+    return _ReportSection(
+      eyebrow: '💬',
+      title: l('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit'),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final d in donuts)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Column(
+                  children: [
+                    AicDonut(
+                      segments: [
+                        (value: (d.sentiment['positive'] ?? 0).toDouble(), color: aicStrong),
+                        (value: (d.sentiment['neutral'] ?? 0).toDouble(), color: aicBalanced),
+                        (value: (d.sentiment['negative'] ?? 0).toDouble(), color: aicWeak),
+                      ],
+                      centerValue: '${d.sentiment['positive'] ?? 0}%',
+                      size: 84,
+                      thickness: 10,
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        d.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CompareFullReport extends StatelessWidget {
@@ -1451,6 +1630,7 @@ class _CompareFullReport extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ComparisonOverview(cmp: cmp, l: l),
+        _CompareMiniDonuts(columns: columns, l: l),
         if (columns.isNotEmpty)
           _ReportSection(
             eyebrow: l('AI', 'AI', 'KI'),
@@ -1751,23 +1931,34 @@ class _ComparisonOverview extends StatelessWidget {
           _CompareScoreChart(chart: cmp['chart'], l: l),
           const SizedBox(height: 6),
           _FactorMatrix(rows: cmp['factorMatrix']),
-          _BulletList(_strs(cmp['decisiveDifferences'])),
-          _Paragraphs(_str(cmp['headToHead'])),
-          if (_str(cmp['recommendation']).isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.brandBlue.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
-              ),
-              child: Row(
+          if (_arr(cmp['decisiveDifferences']).isNotEmpty ||
+              _str(cmp['headToHead']).isNotEmpty ||
+              _str(cmp['recommendation']).isNotEmpty)
+            AiCollapsible(
+              label: '📖 ${l('Detailed comparison', 'Detaylı karşılaştırma', 'Detaillierter Vergleich')}',
+              builder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('✓', style: TextStyle(color: _green, fontSize: 15)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _Paragraphs(_str(cmp['recommendation']))),
+                  _BulletList(_strs(cmp['decisiveDifferences'])),
+                  _Paragraphs(_str(cmp['headToHead'])),
+                  if (_str(cmp['recommendation']).isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandBlue.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.18)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('✓', style: TextStyle(color: _green, fontSize: 15)),
+                          const SizedBox(width: 8),
+                          Expanded(child: _Paragraphs(_str(cmp['recommendation']))),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),

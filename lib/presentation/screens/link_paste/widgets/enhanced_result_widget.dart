@@ -165,6 +165,20 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
     final databaseMatch = quizState.databaseMatch;
     final similarProducts = quizState.similarProducts;
     final confidence = _calculateConfidence(result);
+    // Grafikler için localizer (web AiCharts paritesi) + veri türetimleri.
+    final langCode = Localizations.localeOf(context).languageCode;
+    String aicL(String en, String tr, String de) => langCode.startsWith('tr')
+        ? tr
+        : langCode.startsWith('de')
+        ? de
+        : en;
+    final sentiment = normalizeSentiment(
+      result.sentimentBreakdown,
+      (result.communityScore ?? result.enhancedScore).round(),
+    );
+    final factorDist = factorDistribution(
+      result.factors.map((f) => {'score': f.score}).toList(),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,6 +485,9 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
 
         // Gauge
         _CompatibilityGauge(score: score, scoreAnimation: _scoreAnimation),
+        const SizedBox(height: 12),
+        // Tek bakışta karar rozeti (Al / Düşün / Geç).
+        Center(child: DecisionBadge(score: score, l: aicL)),
         const SizedBox(height: 16),
 
         // Factor breakdown
@@ -519,6 +536,20 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Grafikler: topluluk sentiment donutu + faktör dengesi dağılımı
+        // (web EnhancedResult paritesi — animasyonlu açılır).
+        SentimentDonut(breakdown: sentiment, l: aicL),
+        const SizedBox(height: 12),
+        if (result.factors.isNotEmpty) ...[
+          DistributionBar(
+            strong: factorDist.strong,
+            balanced: factorDist.balanced,
+            weak: factorDist.weak,
+            l: aicL,
           ),
           const SizedBox(height: 16),
         ],

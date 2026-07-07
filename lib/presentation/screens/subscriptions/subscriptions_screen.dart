@@ -21,6 +21,7 @@ import 'package:qor_ai/presentation/widgets/gradient_button.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/presentation/screens/subscriptions/subscription_history_screen.dart';
@@ -2908,6 +2909,21 @@ class _SubResultView extends StatelessWidget {
     final sentiment = data['community_sentiment'] as String? ?? '';
     final factors = (data['factors'] as Map<String, dynamic>?) ?? {};
     final category = data['category'] as String? ?? '';
+    // Grafikler (web abonelik paritesi): topluluk sentiment donutu + faktör
+    // dengesi. sentiment_breakdown yoksa skordan türetilir (AiCharts §4B).
+    final langCode = Localizations.localeOf(context).languageCode;
+    String aicL(String en, String tr, String de) => langCode.startsWith('tr')
+        ? tr
+        : langCode.startsWith('de')
+        ? de
+        : en;
+    final sentimentBd = normalizeSentiment(
+      data['sentiment_breakdown'] ?? data['sentimentBreakdown'],
+      score.round(),
+    );
+    final factorDist = factorDistribution(
+      factors.entries.map((e) => {'score': (e.value as num?) ?? 0}).toList(),
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -3068,14 +3084,10 @@ class _SubResultView extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: fScore / 100,
-                          minHeight: 8,
-                          backgroundColor: context.surfaceElevatedColor,
-                          color: _scoreColor(fScore),
-                        ),
+                      child: AnimatedBarFill(
+                        pct: fScore,
+                        color: _scoreColor(fScore),
+                        height: 8,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -3095,6 +3107,19 @@ class _SubResultView extends StatelessWidget {
                 ),
               );
             }),
+          ],
+
+          // Grafikler: sentiment donutu + faktör dengesi (web abonelik paritesi).
+          const SizedBox(height: 16),
+          SentimentDonut(breakdown: sentimentBd, l: aicL),
+          if (factors.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            DistributionBar(
+              strong: factorDist.strong,
+              balanced: factorDist.balanced,
+              weak: factorDist.weak,
+              l: aicL,
+            ),
           ],
 
           // Pros & Cons

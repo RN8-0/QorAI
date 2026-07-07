@@ -17,6 +17,7 @@ import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/ai_service.dart';
 import 'package:qor_ai/services/cache_service.dart';
+import 'package:qor_ai/services/quiz_config.dart';
 
 /// Central Gemini Flash 2.5 service — the brain of Qor AI.
 class GeminiService implements AIService {
@@ -835,6 +836,7 @@ class GeminiService implements AIService {
   Future<ProductQuiz> generateSubscriptionQuiz({
     required List<String> subscriptionNames,
     String language = 'en',
+    UserEntity? profile,
   }) async {
     final langName = _languageName(language);
     final normalizedNames = subscriptionNames
@@ -842,6 +844,8 @@ class GeminiService implements AIService {
         .toList();
     final names = normalizedNames.join(', ');
     final isCompare = normalizedNames.length > 1;
+    // WEB PARİTESİ (spec §1): tek servis → 5 soru, karşılaştırma → 6 soru.
+    final questionCount = subscriptionQuizQuestionCount(normalizedNames.length);
 
     // Build service-specific context for better question generation
     // For unknown services, instruct AI to use its knowledge
@@ -876,7 +880,7 @@ You are Qor AI's Subscription Intelligence quiz engine.
 SESSION SEED: $sessionSeed  ← use this to vary phrasing and angles every time.
 
 TASK: Generate a DEEPLY PERSONALIZED, SCENARIO-DRIVEN quiz for: $names
-QUESTION COUNT (web paritesi): EXACTLY 5 questions — no more, no fewer — whether ${isCompare ? 'comparing multiple services' : 'analysing a single service'}. Spend them ONLY on the 5 most decisive, highest-signal questions whose answers most change which service fits this person best. No filler.
+QUESTION COUNT (web paritesi): EXACTLY $questionCount questions — no more, no fewer — ${isCompare ? 'because the user is comparing multiple services' : 'for this single-service analysis'}. Spend them ONLY on the $questionCount most decisive, highest-signal questions whose answers most change which service fits this person best. No filler, no generic preference polls.
 MODE: ${isCompare ? 'COMPARISON (user is deciding between these services)' : 'SINGLE ANALYSIS (user wants deep compatibility score)'}
 LANGUAGE: ALL text in $langName.
 
@@ -949,15 +953,20 @@ For PRODUCTIVITY (Microsoft 365, Google Workspace, Notion etc.):
 - One question should be a fun hypothetical scenario ("If you could only keep one subscription this year..." etc.)
 - HARD RULE (web paritesi) — EVERY question MUST include one or two fitting emojis that match its scene (exactly like the ✅ examples above and the website). No question may be emoji-less; place the emoji naturally at the end of the question text.
 
+═══ PERSONALIZATION (silent) ═══
+- If "profileSignals" is provided in the user payload, ground at least one
+  scenario in it (interests, profession, current subscriptions, priorities) —
+  but NEVER read the profile back to the user ("as a doctor…" is FORBIDDEN).
+  Use silent inference: build a realistic scene that fits their life instead.
+- Do NOT re-ask anything already answered in profileSignals.
+
 ═══ FORMAT ═══
-Return ONLY valid JSON. No markdown, no explanation:
+Return ONLY valid JSON. No markdown, no explanation. The "questions" array
+MUST contain EXACTLY $questionCount items:
 {
   "questions": [
     {"question": "...", "options": ["...", "...", "...", "..."]},
-    {"question": "...", "options": ["...", "...", "...", "..."]},
-    {"question": "...", "options": ["...", "...", "...", "..."]},
-    {"question": "...", "options": ["...", "...", "...", "..."]},
-    {"question": "...", "options": ["...", "...", "...", "..."]}
+    ...
   ]
 }
 ''',
@@ -965,6 +974,17 @@ Return ONLY valid JSON. No markdown, no explanation:
         'subscriptions': normalizedNames,
         'mode': isCompare ? 'compare' : 'single',
         'seed': sessionSeed,
+        if (profile != null)
+          'profileSignals': {
+            'language': profile.language,
+            'country': profile.country,
+            'priorities': profile.priorities,
+            'profession': profile.profession,
+            'ageRange': profile.ageRange,
+            'interestCategories': profile.interestCategories,
+            'usageIntent': profile.usageIntent,
+            'currentSubscriptions': profile.subscriptions,
+          },
       }),
       tier: AiTier.heavy,
     );
@@ -980,7 +1000,7 @@ Return ONLY valid JSON. No markdown, no explanation:
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
-        .take(5)
+        .take(questionCount)
         .toList();
 
     return ProductQuiz(
@@ -1212,22 +1232,21 @@ Output a clear per-service research summary, labeled with each service name.
     }
 
     // Step 2: Analysis phase — structured JSON output (NO googleSearch, forces JSON)
-    // WEB PARİTESİ: app analizini web (linkAnalysis.js) ile AYNI uzunluk/derinlikte
-    // yap — kullanıcı "aynı uzunlukta analiz" istedi. Tüm uzunluklar web şemasıyla
-    // eşitlendi (4-6 cümle, 3-4 paragraf, 5-7 paragraf). Renderer bu alanları
-    // (detailed_comparison.{service_fit_summary,feature_comparison,user_experience})
-    // zaten işliyor; tekli şemada eksikti, eklendi.
+    // WEB PARİTESİ (ANALYSIS_REDESIGN_SPEC §3): analiz artık KISA — %70
+    // görsel/kısa madde, %30 metin. Uzun paragraf duvarları kaldırıldı;
+    // sentiment_breakdown alanı donut grafiği için eklendi.
     final jsonSchema = isCompare
         ? '''{
   "subscriptions": {
     "<service_name>": {
       "category": "string - shared subscription category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to the quiz answers",
-      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
-      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
-      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
-      "best_for": "string - 2-3 sentence ideal user type and usage context",
+      "compatibility_explanation": "string - 2-3 concise sentences why this score, personalized to the quiz answers",
+      "pros": ["concise specific string", "concise specific string", "concise specific string", "optional 4th"],
+      "cons": ["concise specific string", "concise specific string", "concise specific string"],
+      "community_sentiment": "string - EXACTLY 2 short paragraphs summarizing Reddit/forum/reviewer opinion; one paragraph MUST plainly state the most common complaints and negatives (praise-only is FORBIDDEN)",
+      "sentiment_breakdown": {"positive": "integer", "neutral": "integer", "negative": "integer"},
+      "best_for": "string - 1-2 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -1240,12 +1259,12 @@ Output a clear per-service research summary, labeled with each service name.
   "winner": {
     "best_content": "string - service name",
     "overall": "string - service name",
-    "recommendation": "string - 5-7 paragraph personalized recommendation explaining WHY, trade-offs, best use cases and the final decision"
+    "recommendation": "string - 2-3 SHORT paragraphs: WHY it wins, the key trade-off, and a clear final decision"
   },
   "detailed_comparison": {
-    "service_fit_summary": "string - 3-4 paragraphs comparing overall fit",
-    "feature_comparison": "string - 3-4 paragraphs about feature differences",
-    "user_experience": "string - 3-4 paragraphs about UX differences"
+    "service_fit_summary": "string - 2 short paragraphs comparing overall fit",
+    "feature_comparison": "string - 2 short paragraphs about feature differences",
+    "user_experience": "string - 2 short paragraphs about UX differences"
   }
 }'''
         : '''{
@@ -1253,11 +1272,12 @@ Output a clear per-service research summary, labeled with each service name.
     "$names": {
       "category": "string - service category label",
       "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 4-6 detailed sentences why this score, personalized to the quiz answers",
-      "pros": ["detailed string", "detailed string", "detailed string", "detailed string", "detailed string"],
-      "cons": ["detailed string", "detailed string", "detailed string", "detailed string"],
-      "community_sentiment": "string - 3-4 paragraph Reddit/forum/reviewer summary that clearly includes the most common complaints and negatives, not only praise",
-      "best_for": "string - 2-3 sentence ideal user type and usage context",
+      "compatibility_explanation": "string - 2-3 concise sentences why this score, personalized to the quiz answers",
+      "pros": ["concise specific string", "concise specific string", "concise specific string", "optional 4th"],
+      "cons": ["concise specific string", "concise specific string", "concise specific string"],
+      "community_sentiment": "string - EXACTLY 2 short paragraphs summarizing Reddit/forum/reviewer opinion; one paragraph MUST plainly state the most common complaints and negatives (praise-only is FORBIDDEN)",
+      "sentiment_breakdown": {"positive": "integer", "neutral": "integer", "negative": "integer"},
+      "best_for": "string - 1-2 sentence ideal user type and usage context",
       "factors": {
         "usage_fit": "integer 0-100",
         "value_match": "integer 0-100",
@@ -1268,11 +1288,11 @@ Output a clear per-service research summary, labeled with each service name.
     }
   },
   "detailed_comparison": {
-    "service_fit_summary": "string - 3-4 paragraphs about overall fit",
-    "feature_comparison": "string - 3-4 paragraphs about features and content/use cases",
-    "user_experience": "string - 3-4 paragraphs about UX and everyday usage"
+    "service_fit_summary": "string - 2 short paragraphs about overall fit",
+    "feature_comparison": "string - 2 short paragraphs about features and content/use cases",
+    "user_experience": "string - 2 short paragraphs about UX and everyday usage"
   },
-  "recommendation": "string - 5-7 paragraph personalized recommendation explaining fit, trade-offs, usage scenarios and final decision"
+  "recommendation": "string - 2-3 SHORT paragraphs: fit, key trade-off, clear final decision"
 }''';
 
     // Identify unknown services for the analysis prompt
@@ -1307,11 +1327,12 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${normalizedNames.length} entries, one for EACH of: ${normalizedNames.map((n) => '"$n"').join(', ')}
 - You MUST complete ALL ${normalizedNames.length} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have exactly 5 detailed items, cons exactly 4 detailed items (full sentences, not 1-2 words)
+- pros must have 3-4 concise items, cons exactly 3 concise items (one clear sentence each, no filler)
 - factors are 0-100 integers
+- sentiment_breakdown values are integers that sum to ~100 (share of positive/neutral/negative community voice)
 - Be specific and personalized, not generic
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
-- DEPTH (web paritesi): match a premium, multi-paragraph analysis. compatibility_explanation = 4-6 detailed sentences; community_sentiment = 3-4 paragraphs (MUST include common complaints/negatives, not praise-only); every detailed_comparison field and the recommendation = multiple full paragraphs as specified. Do NOT shorten or summarize.
+- BREVITY (web paritesi): the reader scans, they don't read walls of text. compatibility_explanation = 2-3 sentences; community_sentiment = EXACTLY 2 short paragraphs (one MUST plainly state the most common complaints/negatives — praise-only is FORBIDDEN); each detailed_comparison field = 2 short paragraphs; recommendation = 2-3 short paragraphs ending with a clear decision. Do NOT pad or repeat.
 
 Return ONLY valid JSON matching this exact schema:
 $jsonSchema
@@ -1490,8 +1511,11 @@ $jsonSchema
   }
 
   /// Generate a short personalized quiz for a product category.
-  /// Returns exactly 5 key questions tailored to the product type.
+  /// Returns 5-6 key questions (deterministic per spec §1: complex categories
+  /// and 3+ product comparisons get 6, everything else 5).
   /// When [allProducts] is provided (compare mode), generates comparison-aware questions.
+  /// [recentlyViewed], [registrationQuizAnswers] and [pastQuizQuestions] are
+  /// optional personalization signals (spec §2) — best-effort from callers.
   Future<ProductQuiz> generateQuiz({
     required String category,
     required String productTitle,
@@ -1499,15 +1523,26 @@ $jsonSchema
     String language = 'en',
     List<Map<String, String>>? allProducts,
     UserEntity? profile,
+    List<String>? recentlyViewed,
+    List<Map<String, dynamic>>? registrationQuizAnswers,
+    List<String>? pastQuizQuestions,
   }) async {
     debugPrint('[Qor AI] generateQuiz for: $productTitle ($category)');
     final isCompare = allProducts != null && allProducts.length >= 2;
+    // WEB PARİTESİ (spec §1): kompleks kategori / 3+ ürün → 6 soru, diğerleri 5.
+    final questionCount = productQuizQuestionCount(
+      category: category,
+      allCategories: isCompare
+          ? allProducts.map((p) => p['category']).toList()
+          : const [],
+      productCount: isCompare ? allProducts.length : 1,
+    );
     final promptKey = isCompare
         ? 'gemini_quiz_compare_system'
         : 'gemini_quiz_single_system';
     final fallbackPrompt = isCompare
-        ? _compareQuizGenerationPrompt(language)
-        : _quizGenerationPrompt(language);
+        ? _compareQuizGenerationPrompt(language, questionCount)
+        : _quizGenerationPrompt(language, questionCount);
     final response = await _jsonRequest(
       system: await adminPrompt(promptKey, fallbackPrompt),
       user: jsonEncode(
@@ -1516,18 +1551,30 @@ $jsonSchema
                 'category': category,
                 'products': allProducts,
                 'productCount': allProducts.length,
+                'questionCount': questionCount,
                 'profileSignals': profile == null
                     ? null
-                    : _quizProfileSignals(profile),
+                    : _quizProfileSignals(
+                        profile,
+                        recentlyViewed: recentlyViewed,
+                        registrationQuizAnswers: registrationQuizAnswers,
+                        pastQuizQuestions: pastQuizQuestions,
+                      ),
                 'quizGenerationId': DateTime.now().toUtc().toIso8601String(),
               }
             : {
                 'category': category,
                 'productTitle': productTitle,
                 'url': url,
+                'questionCount': questionCount,
                 'profileSignals': profile == null
                     ? null
-                    : _quizProfileSignals(profile),
+                    : _quizProfileSignals(
+                        profile,
+                        recentlyViewed: recentlyViewed,
+                        registrationQuizAnswers: registrationQuizAnswers,
+                        pastQuizQuestions: pastQuizQuestions,
+                      ),
                 'quizGenerationId': DateTime.now().toUtc().toIso8601String(),
               },
       ),
@@ -1547,7 +1594,7 @@ $jsonSchema
           ),
         )
         .where((q) => q.text.isNotEmpty && q.options.length >= 2)
-        .take(5)
+        .take(questionCount)
         .toList();
 
     debugPrint('[Qor AI] generateQuiz got ${questions.length} questions');
@@ -1589,7 +1636,12 @@ $jsonSchema
     return '$base\n\n$guardrails';
   }
 
-  Map<String, dynamic> _quizProfileSignals(UserEntity profile) {
+  Map<String, dynamic> _quizProfileSignals(
+    UserEntity profile, {
+    List<String>? recentlyViewed,
+    List<Map<String, dynamic>>? registrationQuizAnswers,
+    List<String>? pastQuizQuestions,
+  }) {
     return {
       'language': profile.language,
       'country': profile.country,
@@ -1603,6 +1655,13 @@ $jsonSchema
       'budgetRange': profile.budgetRange,
       'currentDevices': profile.currentDevices,
       'ownedProducts': profile.ownedProducts.take(8).toList(),
+      // Spec §2 personalization signals — best-effort, may be absent.
+      if (recentlyViewed != null && recentlyViewed.isNotEmpty)
+        'recentlyViewed': recentlyViewed.take(8).toList(),
+      if (registrationQuizAnswers != null && registrationQuizAnswers.isNotEmpty)
+        'registrationQuizAnswers': registrationQuizAnswers.take(12).toList(),
+      if (pastQuizQuestions != null && pastQuizQuestions.isNotEmpty)
+        'pastQuizQuestions': pastQuizQuestions.take(15).toList(),
     };
   }
 
@@ -1768,7 +1827,29 @@ $jsonSchema
       overallVerdict:
           (response['overallVerdict'] ?? response['overall_verdict'])
               as String?,
+      sentimentBreakdown: parseSentimentBreakdown(
+        response['sentimentBreakdown'] ?? response['sentiment_breakdown'],
+      ),
     );
+  }
+
+  /// Parses a `{"positive": n, "neutral": n, "negative": n}` map from AI
+  /// output. Returns null when absent/invalid — callers derive a fallback
+  /// from the satisfaction score instead (spec §4B).
+  static Map<String, int>? parseSentimentBreakdown(dynamic raw) {
+    if (raw is! Map) return null;
+    int read(String key) {
+      final v = raw[key];
+      if (v is num) return v.round().clamp(0, 100);
+      if (v is String) return (double.tryParse(v) ?? 0).round().clamp(0, 100);
+      return 0;
+    }
+
+    final positive = read('positive');
+    final neutral = read('neutral');
+    final negative = read('negative');
+    if (positive + neutral + negative <= 0) return null;
+    return {'positive': positive, 'neutral': neutral, 'negative': negative};
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2222,13 +2303,14 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.
 ''';
 
-  static String _quizGenerationPrompt(String language) {
+  static String _quizGenerationPrompt(String language, int count) {
     final langName = _languageName(language);
     return '''
 You are Qor AI's advanced product quiz engine. Generate a fresh, complex,
-personalized quiz of EXACTLY 5 questions to understand the user's needs for the
-SPECIFIC product being analyzed. Pick only the 5 most decisive, highest-signal
-questions whose answers most change whether this product fits — no filler.
+personalized quiz of EXACTLY $count questions to understand the user's needs for
+the SPECIFIC product being analyzed. Pick only the $count most decisive,
+highest-signal questions — the trade-offs whose answers most change whether
+this product fits. No filler, no generic shopping questions.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
@@ -2239,13 +2321,20 @@ compute an accurate compatibility score.
 
 CRITICAL RULES:
 - Questions MUST be relevant to the specific product and its category
+- Every question is a mini-scene from daily life (28-45 words), not an abstract poll
 - Use profileSignals if provided; connect questions to priorities, profession,
   usageIntent, currentDevices, ownedProducts, country/currency, and category interests
+- PERSONALIZATION (silent): at least ONE question must be grounded in the
+  user's profileSignals — interestCategories, recentlyViewed products, hobbies
+  or profession — as a realistic scene. But NEVER read the profile back to the
+  user ("as a doctor…", "since you like gaming…" are FORBIDDEN); infer silently.
+- NEVER re-ask anything already covered by registrationQuizAnswers or
+  pastQuizQuestions in profileSignals (budget, ecosystem, age etc. are known)
 - quizGenerationId is intentionally unique; do not reuse a generic template
 - Reference the product name/type in at least 3 questions
 - Ask scenario and trade-off questions that reveal why this product may or may not fit
 - For BOOKS: ask about reading preferences, genre interests, reading habits
-- For TECH: ask about usage scenarios, environment, feature priorities  
+- For TECH: ask about usage scenarios, environment, feature priorities
 - For CLOTHING: ask about style, occasions, comfort preferences
 - For HOME: ask about living space, household size, usage frequency
 - Each question has exactly 4 options
@@ -2257,7 +2346,7 @@ CRITICAL RULES:
 - Questions should feel intelligent and adaptive, not like a simple survey
 - ALL text must be in $langName
 
-Return valid JSON:
+Return valid JSON with EXACTLY $count items in "questions":
 {
   "questions": [
     {"question": "...", "options": ["...", "...", "...", "..."]},
@@ -2267,13 +2356,14 @@ Return valid JSON:
 ''';
   }
 
-  static String _compareQuizGenerationPrompt(String language) {
+  static String _compareQuizGenerationPrompt(String language, int count) {
     final langName = _languageName(language);
     return '''
 You are Qor AI's advanced product COMPARISON quiz engine. The user is comparing
-multiple products. Generate a fresh, complex personalized quiz of EXACTLY 5 questions
-to understand the user's needs so we can determine which product is the BEST FIT.
-Pick only the 5 most decisive trade-offs whose answers most change which product wins — no filler.
+multiple products. Generate a fresh, complex personalized quiz of EXACTLY $count
+questions to understand the user's needs so we can determine which product is
+the BEST FIT. Pick only the $count most decisive trade-offs whose answers most
+change which product wins — no filler, no generic shopping questions.
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
@@ -2284,9 +2374,16 @@ which compared product is the best match.
 CRITICAL RULES:
 - You are given MULTIPLE products that are being compared
 - Questions should help differentiate between the products
+- Every question is a mini-scene from daily life (28-45 words), not an abstract poll
 - Use profileSignals if provided; personalize questions around priorities,
   profession, usageIntent, currentDevices, ownedProducts, country/currency,
   and category interests
+- PERSONALIZATION (silent): at least ONE question must be grounded in the
+  user's profileSignals — interestCategories, recentlyViewed products, hobbies
+  or profession — as a realistic scene. But NEVER read the profile back to the
+  user ("as a doctor…", "since you like gaming…" are FORBIDDEN); infer silently.
+- NEVER re-ask anything already covered by registrationQuizAnswers or
+  pastQuizQuestions in profileSignals (budget, ecosystem, age etc. are known)
 - quizGenerationId is intentionally unique; do not reuse a generic template
 - Ask about the user's specific needs that would make one product better than another
 - Reference the actual product names in at least 3 questions where relevant
@@ -2304,7 +2401,7 @@ CRITICAL RULES:
 - Questions should feel intelligent and adaptive, not like a simple survey
 - ALL text must be in $langName
 
-Return valid JSON:
+Return valid JSON with EXACTLY $count items in "questions":
 {
   "questions": [
     {"question": "...", "options": ["...", "...", "...", "..."]},
@@ -2343,12 +2440,13 @@ SCORING RULES:
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific, not generic.
 - Cite actual specs, real benchmarks, community observations, or market context.
-- WEB PARİTESİ — uzunluklar web ile AYNI olmalı: verdict = 5-7 rich paragraphs;
-  personaAnalysis = 3-5 paragraphs (deeply personalized to quiz answers).
-- communityAnalysis = 3-4 paragraphs and MUST clearly call out the most-reported
-  NEGATIVES and complaints (price hikes, defects, missing features, reliability,
-  support) — at least one paragraph on negatives, never a positives-only summary.
-- prosForUser and consForUser must be specific, detailed bullet points — not one-word answers.
+- BREVITY (web paritesi — ANALYSIS_REDESIGN_SPEC §3): the reader scans, they
+  don't read walls of text. Respect the exact paragraph/word limits below.
+  Every sentence must carry information; no padding, no repetition.
+- communityAnalysis MUST clearly call out the most-reported NEGATIVES and
+  complaints (price hikes, defects, missing features, reliability, support) —
+  one of its two paragraphs is about negatives; a positives-only summary is FORBIDDEN.
+- prosForUser and consForUser must be specific, concise bullet points — one clear sentence each.
 
 Return valid JSON (all text in $langName):
 {
@@ -2361,20 +2459,22 @@ Return valid JSON (all text in $langName):
     {"label": "<category-appropriate label in $langName>", "score": <0-100>, "emoji": "🏠"}
   ],
   "personaScore": <0-100>,
-  "personaAnalysis": "3-5 paragraph deep personal fit analysis. Cover: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) performance in scenarios the user cares about, (3) potential daily-use friction points, (4) value proposition relative to their budget range, (5) long-term ownership experience forecast. Be concrete and reference actual product characteristics. In $langName.",
+  "personaAnalysis": "EXACTLY 2 short paragraphs, ~70 words total: (1) how the product's strengths align with this user's specific use cases from quiz answers, (2) the main daily-use friction point or long-term consideration. Concrete, references actual product characteristics. In $langName.",
   "communityScore": <0-100>,
-  "communityAnalysis": "3-4 paragraph synthesis of community sentiment. Cover overall reception and praise, but you MUST devote at least one clear paragraph to the NEGATIVES: the most common complaints, recurring criticisms, defects and disappointments users actually report — state them plainly, do not soften or bury them. Also cover long-term ownership reports (1-2 years) and how it compares to direct competitors. Reference real sources (Reddit, YouTube, review sites) where known. In $langName.",
-  "verdict": "5-7 paragraph comprehensive product verdict. Cover: (1) technical overview and market positioning, (2) performance analysis with specific metrics, (3) build quality and reliability, (4) software/ecosystem (if relevant), (5) value assessment, (6) who this product is best suited for. Professional tone, specific details. In $langName.",
-  "overallVerdict": "3-4 paragraph definitive recommendation. Give a clear buy/consider/skip verdict with detailed reasoning. Reference the user's specific needs and how this product does or doesn't address them. Include a concrete alternative suggestion if recommending skip. In $langName.",
-  "prosForUser": ["Detailed pro 1 with specifics", "Detailed pro 2 with performance context", "Detailed pro 3 citing real characteristic", "Detailed pro 4", "Detailed pro 5"],
-  "consForUser": ["Specific con 1 with real-world impact", "Specific con 2 with severity assessment", "Specific con 3", "Specific con 4"],
+  "communityAnalysis": "EXACTLY 2 short paragraphs, ~70 words total: (1) overall reception and what users praise most, (2) the most common complaints, defects and disappointments — stated plainly, never softened (positives-only is FORBIDDEN). Reference real sources (Reddit, YouTube, review sites) where known. In $langName.",
+  "sentimentBreakdown": {"positive": <integer>, "neutral": <integer>, "negative": <integer>},
+  "verdict": "EXACTLY 2 short paragraphs, ~90 words total: (1) technical overview, market positioning and real performance, (2) build/reliability, value assessment and who this product is best suited for. Professional tone, specific details, no filler. In $langName.",
+  "overallVerdict": "1 short paragraph with the reasoning, then ONE final standalone sentence giving a clear decision: buy / consider / skip (include a concrete alternative if recommending skip). In $langName.",
+  "prosForUser": ["Concise pro 1 with a specific fact", "Concise pro 2", "Concise pro 3", "Optional concise pro 4"],
+  "consForUser": ["Concise con 1 with real-world impact", "Concise con 2", "Concise con 3"],
   "alternatives": ["Specific real product model 1", "Specific real product model 2", "Specific real product model 3"]
 }
 
 Rules:
 - Factor labels MUST be in $langName and adapted to the product category.
 - All text fields (personaAnalysis, communityAnalysis, verdict, overallVerdict) must be in $langName.
-- Pros/cons must be personalized, detailed, and product-specific — no generic one-liners.
+- sentimentBreakdown values are integers summing to ~100 — the share of positive/neutral/negative community voice about this product.
+- prosForUser has 3-4 items, consForUser exactly 3 — personalized, product-specific, one sentence each.
 - Alternatives must be real, currently available products with full model names.
 ''';
   }

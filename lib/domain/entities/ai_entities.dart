@@ -269,6 +269,11 @@ class EnhancedAnalysisResult extends Equatable {
   final String? personaAnalysis;
   final String? overallVerdict;
 
+  /// Community sentiment split for the donut chart —
+  /// keys: `positive`, `neutral`, `negative` (ints, roughly summing to 100).
+  /// Nullable: older saved analyses derive a fallback from the scores.
+  final Map<String, int>? sentimentBreakdown;
+
   const EnhancedAnalysisResult({
     required this.baseResult,
     required this.enhancedScore,
@@ -282,6 +287,7 @@ class EnhancedAnalysisResult extends Equatable {
     this.personaScore,
     this.personaAnalysis,
     this.overallVerdict,
+    this.sentimentBreakdown,
   });
 
   Map<String, dynamic> toJson() => {
@@ -297,6 +303,7 @@ class EnhancedAnalysisResult extends Equatable {
     if (personaScore != null) 'personaScore': personaScore,
     if (personaAnalysis != null) 'personaAnalysis': personaAnalysis,
     if (overallVerdict != null) 'overallVerdict': overallVerdict,
+    if (sentimentBreakdown != null) 'sentimentBreakdown': sentimentBreakdown,
   };
 
   factory EnhancedAnalysisResult.fromJson(Map<String, dynamic> j) => EnhancedAnalysisResult(
@@ -314,6 +321,11 @@ class EnhancedAnalysisResult extends Equatable {
     personaScore: (j['personaScore'] as num?)?.toDouble(),
     personaAnalysis: j['personaAnalysis'] as String?,
     overallVerdict: j['overallVerdict'] as String?,
+    sentimentBreakdown: j['sentimentBreakdown'] is Map
+        ? (j['sentimentBreakdown'] as Map).map(
+            (k, v) => MapEntry(k.toString(), (v as num?)?.round() ?? 0),
+          )
+        : null,
   );
 
   @override
