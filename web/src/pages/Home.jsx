@@ -271,7 +271,17 @@ export default function Home() {
     const prefCats = feedKey ? feedKey.split('|') : [];
     const cached = readHomeFeedCache(feedKey);
     if (cached) { setFeed(cached); setLoading(false); } else { setLoading(true); }
-    getHomeFeed(prefCats)
+    getHomeFeed(prefCats, {
+      // Thin cards (monitors/TVs/GPUs/headphones…) upgrade to their full four key
+      // specs a beat after first paint via background enrichment — with no layout
+      // shift (the specs grid always reserves two rows). Apply AND re-cache the
+      // upgraded feed so return visits get the four-spec cards instantly.
+      onEnriched: (enriched) => {
+        if (!live) return;
+        setFeed(enriched);
+        writeHomeFeedCache(feedKey, enriched);
+      },
+    })
       .then((f) => { if (live) { setFeed(f); writeHomeFeedCache(feedKey, f); } })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });

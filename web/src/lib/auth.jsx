@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { onAuthChange, signOut as pbSignOut, refreshUser } from './pocketbase';
+import { onAuthChange, signOut as pbSignOut, refreshUser, currentUser } from './pocketbase';
 
 const AuthCtx = createContext(null);
 
@@ -56,7 +56,13 @@ function useUserSync(setUser) {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  // Seed from the SYNCHRONOUSLY-available persisted PocketBase session (read from
+  // localStorage in the pb constructor) instead of null. Starting null meant the
+  // very first render was always "signed-out": the home feed's personalization
+  // key (feedKey) computed as anon, so its instant-paint cache — written under the
+  // signed-in key — missed on refresh and flashed skeletons before the auth effect
+  // populated the user. Seeding here makes feedKey correct on frame one.
+  const [user, setUser] = useState(() => currentUser());
   const [modalOpen, setModalOpen] = useState(false);
 
   // Merge auth-store updates over the previous user (clearing only on sign-out)

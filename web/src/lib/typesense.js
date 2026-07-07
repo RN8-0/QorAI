@@ -469,7 +469,7 @@ async function enrichHomeCardsWithRichSpecs(feed) {
   return feed;
 }
 
-export async function getHomeFeed(prefCats = []) {
+export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
   const preferred = (prefCats || [])
     .map((cat) => String(cat || '').toLowerCase())
     .filter((cat) => cat && !HOME_LOW_SIGNAL_CATEGORIES.has(cat));
@@ -546,7 +546,20 @@ export async function getHomeFeed(prefCats = []) {
     // specs for the handful of displayed products that come up short of four
     // key specs on the lean payload (thin-token categories — GPUs, CPUs, SSDs,
     // headphones…), so the same fixed four show everywhere.
-    await enrichHomeCardsWithRichSpecs(feed);
+    //
+    // Do this in the BACKGROUND, never on the critical path. The lean multi_search
+    // above already fully fills every card (image/name/brand/score + its chips),
+    // and the specs grid reserves two rows regardless of chip count, so a thin
+    // card gaining its 3rd/4th chip a beat later causes NO layout shift. Awaiting
+    // the enrich here used to fetch + JSON.parse ~2-3 MB of `_raw` before the feed
+    // resolved — that delayed products by ~0.5 s and froze the main thread on the
+    // parse ("kasma"). Callers pass onEnriched to receive the upgraded feed once
+    // it's ready; getHomeFeed itself returns the paint-ready lean feed immediately.
+    if (typeof onEnriched === 'function') {
+      enrichHomeCardsWithRichSpecs(feed)
+        .then(() => onEnriched({ ...feed }))
+        .catch(() => {});
+    }
     return feed;
   } catch (err) {
     console.warn('[catalog] home feed failed', err);
