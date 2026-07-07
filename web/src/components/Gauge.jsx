@@ -1,15 +1,26 @@
 import { useEffect, useState } from 'react';
 
 // Circular score ring — the app's signature Tech Score / Your Match gauge.
-export default function Gauge({ value, size = 56, stroke = 5, color, track, fontSize }) {
+//
+// `animate` plays the 0→value fill on mount. Hero gauges (product detail, link
+// analysis, subscriptions, compare) keep it on by default. But list CARDS turn it
+// OFF (ProductCard passes animate={false}): the home/category feeds render dozens
+// of these tiny gauges at once, and the animation was a real scroll-jank source —
+// each gauge scheduled a post-mount setState (a second full re-render wave across
+// all cards) and then ran a `stroke-dashoffset` CSS transition, which is NOT
+// GPU-composited, so every ring repainted on the main thread each frame for ~1.1 s
+// right after load. Static card gauges paint once.
+export default function Gauge({ value, size = 56, stroke = 5, color, track, fontSize, animate = true }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const [draw, setDraw] = useState(0);
+  const [drawState, setDrawState] = useState(0);
   useEffect(() => {
-    const id = setTimeout(() => setDraw(v), 60);
+    if (!animate) return undefined;
+    const id = setTimeout(() => setDrawState(v), 60);
     return () => clearTimeout(id);
-  }, [v]);
+  }, [v, animate]);
+  const draw = animate ? drawState : v;
   const off = c - (draw / 100) * c;
   return (
     <div className="gauge" style={{ width: size, height: size }}>
@@ -18,7 +29,7 @@ export default function Gauge({ value, size = 56, stroke = 5, color, track, font
         <circle
           cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none"
           strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)' }}
+          style={animate ? { transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)' } : undefined}
         />
       </svg>
       <span className="gv" style={{ color, fontSize: fontSize || size * 0.32 }}>{Math.round(v)}</span>

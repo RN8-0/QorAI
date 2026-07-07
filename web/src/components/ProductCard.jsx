@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount } from '../lib/format';
 import { cardKeySpecs } from '../lib/categoryFilters';
@@ -32,7 +32,7 @@ function ProductImage({ p, eager = false }) {
   );
 }
 
-export default function ProductCard({ product: p, variant = 'card', onClick, priority = false }) {
+function ProductCard({ product: p, variant = 'card', onClick, priority = false }) {
   const { lang } = useI18n();
   const geoCountry = useGeoCountry();
   const { has, tryAdd, remove } = useCompare();
@@ -82,7 +82,7 @@ export default function ProductCard({ product: p, variant = 'card', onClick, pri
       <div className="q-product-card-media">
         {hasScore && (
           <span className="q-product-card-score gauge-badge" title={`Qor AI ${Math.round(p.techScore)}`}>
-            <Gauge value={p.techScore} size={28} stroke={2.1} color={techColor(p.techScore)} fontSize={10} />
+            <Gauge value={p.techScore} size={28} stroke={2.1} color={techColor(p.techScore)} fontSize={10} animate={false} />
           </span>
         )}
         <ProductImage p={{ ...p, name: cardName }} eager={priority} />
@@ -108,6 +108,16 @@ export default function ProductCard({ product: p, variant = 'card', onClick, pri
     </Link>
   );
 }
+
+// Memoised: the home feed re-renders the whole list when background enrichment
+// upgrades a handful of thin cards to four specs. Without memo, all ~69 cards
+// re-render on that pass (and on every parent state change), which showed up as a
+// multi-hundred-ms main-thread block a couple seconds after load — exactly when
+// the user tries to scroll. The parent hands enriched cards a NEW object ref and
+// leaves the rest referentially stable, so only the cards that actually changed
+// re-render. Cheap default shallow-prop compare is correct here (product ref +
+// primitive props); context changes (lang/geo/compare) still re-render via hooks.
+export default memo(ProductCard);
 
 export function ProductCardSkeleton() {
   return (

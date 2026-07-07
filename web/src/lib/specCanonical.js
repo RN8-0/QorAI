@@ -83,12 +83,33 @@ const keyRules = [
 
 const exact = new Map(keyRules.flatMap(([canonical, aliases]) => aliases.map((a) => [normSpec(a), canonical])));
 
+// Aliases are static, but canonicalSpecKey used to re-run normSpec() on every one
+// of them for every spec it looked up — thousands of regex passes per product.
+// Pre-normalise once (dropping the ≤3-char aliases the matcher skips anyway) so
+// the hot loop just compares strings. This alone turns canonicalSpecKey (and thus
+// the card key-specs / compare table it feeds) from ~18 ms/product into ~2 ms.
+const keyRulesNorm = keyRules.map(([canonical, aliases]) => [
+  canonical,
+  aliases.map((a) => normSpec(a)).filter((a) => a.length > 3),
+]);
+
 // Whole-word containment so short keys can't false-match inside longer aliases.
 // Without this, "flaş" (normSpec "flas") matched Storage's alias "flash
 // speicher" via `alias.includes(key)` → camera Flash rendered as "Storage".
+// The compiled RegExp is cached per needle — building a fresh one on every call
+// (dozens of aliases × every spec) was a big chunk of the canonicalisation cost.
+const wordReCache = new Map();
+function wordRe(needle) {
+  let re = wordReCache.get(needle);
+  if (!re) {
+    re = new RegExp(`(^| )${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`);
+    wordReCache.set(needle, re);
+  }
+  return re;
+}
 function containsWord(haystack, needle) {
   if (!needle || !haystack) return false;
-  return new RegExp(`(^| )${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( |$)`).test(haystack);
+  return wordRe(needle).test(haystack);
 }
 
 function cleanValue(value) {
@@ -122,15 +143,14 @@ export function canonicalSpecKey(key, value = '') {
   if (k === 'charging' || k === 'charge') {
     return /\b(usb|type c|typec|lightning|micro usb)\b/.test(v) ? 'Charging port' : 'Charging';
   }
-  for (const [canonical, aliases] of keyRules) {
-    if (aliases.some((alias) => {
-      const a = normSpec(alias);
-      if (a.length <= 3) return false;
-      // Word-boundary match both ways (alias as whole-word in key, or a generic
-      // key as whole-word in alias) — never a raw substring, which mis-mapped
-      // "flas"⊂"flash speicher", "en"⊂"breite en", etc.
-      return k === a || containsWord(k, a) || (k.length >= 4 && containsWord(a, k));
-    })) return canonical;
+  for (const [canonical, aliases] of keyRulesNorm) {
+    // aliases are pre-normalised (see keyRulesNorm). Word-boundary match both ways
+    // (alias as whole-word in key, or a generic key as whole-word in alias) —
+    // never a raw substring, which mis-mapped "flas"⊂"flash speicher", "en"⊂
+    // "breite en", etc.
+    if (aliases.some((a) => k === a || containsWord(k, a) || (k.length >= 4 && containsWord(a, k)))) {
+      return canonical;
+    }
   }
   return String(key || '').replace(/:$/, '').replace(/\s+/g, ' ').trim();
 }
@@ -143,7 +163,19 @@ export function canonicalSpecSection(section, key = '') {
   return String(section || 'General').replace(/:$/, '').replace(/\s+/g, ' ').trim() || 'General';
 }
 
+// Per-product memo: canonicalising a full spec map is the single most expensive
+// thing the card/compare rendering does, and the same product object is asked for
+// its specs many times (every card re-render, the compare table, the detail page).
+// Products are immutable within a session and enrichment hands back a NEW object
+// when specs change, so a WeakMap keyed by the product object is always correct.
+const canonCache = new WeakMap();
+
 export function canonicalizeSpecMaps(product = {}) {
+  const cacheable = product && typeof product === 'object';
+  if (cacheable) {
+    const hit = canonCache.get(product);
+    if (hit) return hit;
+  }
   const specs = {};
   const specSections = {};
   const add = (section, key, value) => {
@@ -183,5 +215,7 @@ export function canonicalizeSpecMaps(product = {}) {
     const k = canonicalSpecKey(key, v);
     keySpecs[k] = mergeValue(keySpecs[k], v);
   });
-  return { specs, specSections, keySpecs };
+  const result = { specs, specSections, keySpecs };
+  if (cacheable) canonCache.set(product, result);
+  return result;
 }

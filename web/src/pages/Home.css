@@ -14,6 +14,19 @@
   gap: 8px;
 }
 
+/* Skip layout + paint for the off-screen rails. The home feed renders ~69 cards
+   across 9 grids over a ~15 000px page, but only the first grid or two are ever
+   on-screen at load. Without this the browser lays out and paints EVERY card on
+   the first render (and again whenever the feed updates) — the multi-second
+   main-thread block that froze scrolling in the first few seconds. Off-screen
+   grids render at contain-intrinsic-size instead; the `auto` prefix remembers
+   each grid's real height once it's been shown, keeping the scrollbar accurate. */
+.card-grid,
+.card-grid-compact {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1400px;
+}
+
 .hero-search-wrap {
   width: 100%;
   max-width: 560px;

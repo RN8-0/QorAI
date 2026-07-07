@@ -458,15 +458,36 @@ export async function enrichThinCards(products) {
   return products;
 }
 
+// Enrich the feed's thin cards and return a NEW feed whose arrays give a fresh
+// object reference ONLY to the cards that actually gained specs — every other
+// card keeps its original reference. That's what lets memo(ProductCard) re-render
+// just the handful of upgraded cards instead of all ~69 when the background
+// enrichment lands (the re-render that used to jank scroll a couple seconds in).
 async function enrichHomeCardsWithRichSpecs(feed) {
-  await enrichThinCards([
+  const all = [
     ...feed.categorySections.flatMap((s) => s.products),
     ...feed.forYou,
     ...feed.trending,
     ...feed.newArrivals,
+    ...(feed.heroPicks || []),
     ...(feed.spotlight ? [feed.spotlight] : []),
-  ]);
-  return feed;
+  ];
+  const hadRich = (p) => Boolean(p && (p.keySpecs || p.specs || p.specsEn || p.specSections || p.multiLangSpecs));
+  const before = new Map(all.map((p) => [p.id, hadRich(p)]));
+  await enrichThinCards(all); // mutates matched thin cards in place
+  const changed = new Set();
+  for (const p of all) if (p && !before.get(p.id) && hadRich(p)) changed.add(p.id);
+  if (!changed.size) return feed;
+  const remap = (p) => (p && changed.has(p.id) ? { ...p } : p);
+  return {
+    ...feed,
+    categorySections: feed.categorySections.map((s) => ({ ...s, products: s.products.map(remap) })),
+    forYou: feed.forYou.map(remap),
+    trending: feed.trending.map(remap),
+    newArrivals: feed.newArrivals.map(remap),
+    heroPicks: (feed.heroPicks || []).map(remap),
+    spotlight: feed.spotlight ? remap(feed.spotlight) : feed.spotlight,
+  };
 }
 
 export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
@@ -557,7 +578,7 @@ export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
     // it's ready; getHomeFeed itself returns the paint-ready lean feed immediately.
     if (typeof onEnriched === 'function') {
       enrichHomeCardsWithRichSpecs(feed)
-        .then(() => onEnriched({ ...feed }))
+        .then((enrichedFeed) => onEnriched(enrichedFeed))
         .catch(() => {});
     }
     return feed;

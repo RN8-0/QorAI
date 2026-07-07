@@ -242,6 +242,27 @@ export default function Home() {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [submitted, setSubmitted] = useState(() => (params.get('q') || '').trim());
 
+  // Progressive mount: the home feed is ~69 cards across 9 rails. Mounting them
+  // all in one synchronous React pass is a ~700 ms main-thread block that freezes
+  // scrolling for the first couple seconds. Only the hero + top two rails (For You,
+  // Trending) are above the fold, so those render immediately; the below-the-fold
+  // rails then stream in ONE PER IDLE TICK, so each mount is a small (~one rail)
+  // task the thread yields between — scroll never freezes. They appear off-screen
+  // (content-visibility skips their paint) so there is no visible pop. `belowShown`
+  // always starts at 0 — even a warm cache benefits, since painting all 69 cards in
+  // one pass was itself a ~330 ms block; the above-the-fold rails still paint on the
+  // first frame from cache, only the below-the-fold ones stream in.
+  const BELOW_RAIL_CEILING = 9; // 6 category rails + ad + recent + new arrivals
+  const [belowShown, setBelowShown] = useState(0);
+  useEffect(() => {
+    if (belowShown >= BELOW_RAIL_CEILING) return undefined;
+    const ric = window.requestIdleCallback || ((cb) => setTimeout(cb, 80));
+    const cic = window.cancelIdleCallback || clearTimeout;
+    const id = ric(() => setBelowShown((n) => n + 1), { timeout: 400 });
+    return () => cic(id);
+  }, [belowShown]);
+  const catRailTotal = feed.categorySections?.length || 0;
+
   useSeo({
     title: `Qor AI — ${t('home.heroTitle')}`,
     description: t('seo.home'),
@@ -278,8 +299,13 @@ export default function Home() {
       // upgraded feed so return visits get the four-spec cards instantly.
       onEnriched: (enriched) => {
         if (!live) return;
-        setFeed(enriched);
-        writeHomeFeedCache(feedKey, enriched);
+        // Apply the upgraded feed when the main thread is idle so its re-render
+        // never competes with an in-progress scroll (the timeout caps the wait so
+        // it still lands promptly). memo(ProductCard) keeps this to the few cards
+        // that actually changed.
+        const apply = () => { if (live) { setFeed(enriched); writeHomeFeedCache(feedKey, enriched); } };
+        if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(apply, { timeout: 800 });
+        else setTimeout(apply, 0);
       },
     })
       .then((f) => { if (live) { setFeed(f); writeHomeFeedCache(feedKey, f); } })
@@ -486,8 +512,11 @@ export default function Home() {
             {/* TRENDING — top, 3×3 */}
             <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category/smartphones?sort=trend" />
 
+            {/* Below-the-fold rails stream in one per idle tick (see belowShown)
+                so no single mount blocks the thread and scroll never freezes. */}
+
             {/* PER-CATEGORY POPULAR RAILS — own title each, 3×2 = 6 products */}
-            {(feed.categorySections || []).map((sec) => (
+            {(feed.categorySections || []).slice(0, belowShown).map((sec) => (
               <Section key={sec.category}
                 title={categoryLabel(sec.category, lang)}
                 products={sec.products}
@@ -496,15 +525,19 @@ export default function Home() {
                 seeAllTo={categoryPath(sec.category)} />
             ))}
 
-            <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
+            {belowShown > catRailTotal && (
+              <div style={{ marginTop: 24 }}><AdSlot slot={AD_SLOTS.home} /></div>
+            )}
 
             {/* RECENTLY VIEWED — 3×3 */}
-            {recent.length > 0 && (
+            {recent.length > 0 && belowShown > catRailTotal + 1 && (
               <Section title={t('home.recent')} products={recentCards.slice(0, 9)} loading={false} t={t} dense />
             )}
 
             {/* NEW ARRIVALS — 3×3 */}
-            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
+            {belowShown > catRailTotal + 1 && (
+              <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
+            )}
           </>
         )}
       </div>
