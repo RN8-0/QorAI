@@ -89,40 +89,6 @@ function bandLabel(s, L) {
         : L('Weak match', 'Zayıf uyum', 'Schwach');
 }
 
-// Spider/radar chart of the match factors — a visual "shape" of the fit that
-// reads faster than a column of bars. Colour comes from the overall band.
-function FactorRadar({ factors = [], size = 230 }) {
-  const fs = (factors || []).filter((f) => f && Number.isFinite(Number(f.score)));
-  if (fs.length < 3) return null;
-  const cx = size / 2;
-  const cy = size / 2;
-  const R = size / 2 - 26;
-  const N = fs.length;
-  const pt = (i, r) => {
-    const a = -Math.PI / 2 + (i * 2 * Math.PI) / N;
-    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-  };
-  const poly = (vals) => vals.map((v, i) => pt(i, v).join(',')).join(' ');
-  const clamp = (s) => Math.max(0, Math.min(100, Number(s) || 0));
-  const dataPoly = poly(fs.map((f) => (clamp(f.score) / 100) * R));
-  const avg = Math.round(fs.reduce((s, f) => s + clamp(f.score), 0) / N);
-  const color = techColor(avg);
-  return (
-    <svg className="la-radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Factor radar">
-      {[0.25, 0.5, 0.75, 1].map((g, i) => (
-        <polygon key={i} points={poly(fs.map(() => g * R))} className="la-radar-ring" />
-      ))}
-      {fs.map((_, i) => { const [x, y] = pt(i, R); return <line key={i} x1={cx} y1={cy} x2={x} y2={y} className="la-radar-axis" />; })}
-      <polygon points={dataPoly} className="la-radar-area" style={{ fill: color, stroke: color }} />
-      {fs.map((f, i) => { const [x, y] = pt(i, (clamp(f.score) / 100) * R); return <circle key={i} cx={x} cy={y} r="3.2" style={{ fill: color }} />; })}
-      {fs.map((f, i) => {
-        const [lx, ly] = pt(i, R + 13);
-        return <text key={i} x={lx} y={ly} className="la-radar-emoji" textAnchor="middle" dominantBaseline="middle">{f.emoji}</text>;
-      })}
-    </svg>
-  );
-}
-
 function FactorBars({ factors = [] }) {
   if (!factors.length) return null;
   // Skora göre azalan sıralı, 0→değer animasyonlu çubuklar (spec §4A).
@@ -275,11 +241,9 @@ function EnhancedResult({ data, L, lang }) {
 
         {oneLiner && <p className="aic-hero-line">{oneLiner}</p>}
 
+        {/* Radar kaldırıldı — çubuklarla aynı veriyi tekrar ediyordu; tek net görünüm (spec). */}
         {factors.length > 0 && (
-          <div className="la-factor-wrap">
-            <FactorRadar factors={factors} />
-            <div className="la-factor-bars-col"><FactorBars factors={factors} /></div>
-          </div>
+          <div className="la-factor-bars-full"><FactorBars factors={factors} /></div>
         )}
 
         <div className="aic-row">

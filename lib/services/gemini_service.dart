@@ -1329,6 +1329,7 @@ CRITICAL RULES:
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
 - pros must have 3-4 concise items, cons exactly 3 concise items (one clear sentence each, no filler)
 - factors are 0-100 integers
+- ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Differentiate honestly; identical high scores across factors are unrealistic.
 - sentiment_breakdown values are integers that sum to ~100 (share of positive/neutral/negative community voice)
 - Be specific and personalized, not generic
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
@@ -2436,6 +2437,7 @@ SCORING RULES:
 - Scores must be realistic, differentiated, and defensible.
 - Poor match: 20-45. Average match: 46-65. Good match: 66-80. Excellent match: 81-95.
 - NEVER give identical scores to two different products.
+- ANTI-INFLATION (critical): do NOT cluster scores near the top. Use the FULL range honestly. Every real product has genuine weak spots — AT LEAST 2 of the factor scores MUST fall below 65, and at least one below 55, unless this is a rare near-flawless fit for THIS user. Reserve 85+ only for true standout strengths, never as a default. If most factors land in 75-95 you are inflating — spread them out and score weak areas honestly. The enhancedScore must reflect this honest spread, not drift upward.
 
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific, not generic.

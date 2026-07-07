@@ -543,6 +543,7 @@ SCORING RULES:
 - Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user's exact needs.
 - Scores MUST be realistic and differentiated. Never give identical scores.
 - Poor match: 20-45. Average: 46-65. Good: 66-80. Excellent: 81-95.
+- ANTI-INFLATION (critical): do NOT cluster scores near the top. Use the FULL range honestly. Every real product has genuine weak spots — AT LEAST 2 of the factor scores MUST fall below 65, and at least one below 55, unless this is a rare near-flawless fit for THIS user. Reserve 85+ only for true standout strengths, never as a default. If most factors land in 75-95 you are inflating — spread them out and score weak areas honestly. The enhancedScore must reflect this honest spread, not drift upward.
 
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific, not generic — but SHORT. A human reads this at a glance; every sentence must earn its place.
@@ -887,6 +888,7 @@ CRITICAL RULES:
 - pros must have 3-4 items, cons exactly 3 items, risks 2-3 items — each item one concise sentence
 - notable_features must have 4-6 concise items
 - factors are 0-100 integers and MUST include every factor key shown in the schema
+- ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Differentiate honestly; identical high scores across factors are unrealistic.
 - sentiment_breakdown values are integer percentages summing to ~100; keep them realistic (never all-positive) and consistent with community_sentiment
 - Be specific and personalized to the quiz answers and the user profile, not generic
 - Blend the user's profile, browsing history and quiz answers when scoring

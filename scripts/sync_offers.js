@@ -215,6 +215,8 @@ async function main() {
         const cleanup = await deleteOffersForProductNetwork(p.id, conn.id, { refresh: false });
         for (const offer of offers) {
           offer.productId = offer.productId || p.id;
+          // Kategori ipucu — rollup taban kontrolü için (ekstra PB GET'inden kaçınır).
+          offer.category = offer.category || p.category || '';
           const res = await upsertOffer(offer);
           if (res.ok) {
             offersWritten++;
@@ -228,7 +230,7 @@ async function main() {
             noMatch++;
           }
         }
-        if (!offers.length || cleanup.deleted) await refreshProductRollup(p.id);
+        if (!offers.length || cleanup.deleted) await refreshProductRollup(p.id, p.category);
       } catch (e) {
         errors++;
         log(`  ! ${tag} ${label} — ${conn.id}: ${e.message}`);

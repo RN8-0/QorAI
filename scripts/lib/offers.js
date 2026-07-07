@@ -13,6 +13,7 @@
 
 const { req } = require('../../migration/pb');
 const { FX_TO_USD } = require('../fx_rates');
+const { isPlausibleUsd } = require('./price_sanity');
 
 const esc = v => String(v || '').replace(/"/g, '\\"');
 const nowIso = () => new Date().toISOString();
@@ -94,7 +95,18 @@ async function resolveProductId(offer) {
 }
 
 /** Recompute lowestPrice* / offerCount on a product from its in-stock offers. */
-async function refreshProductRollup(productId) {
+async function refreshProductRollup(productId, categoryHint = null) {
+  // Ürün kategorisi — aksesuar-fiyatı uyumsuzluğunu (ör. ₺200 telefon) rollup'a
+  // sokmamak için taban kontrolünde kullanılır (scripts/lib/price_sanity.js).
+  // Çağıran (sync_offers) kategoriyi zaten elinde tutuyor → hint ile ekstra
+  // GET'ten kaçınırız; hint yoksa fallback olarak çekilir.
+  let category = categoryHint || '';
+  if (!category) {
+    try {
+      const pr0 = await req('GET', `/api/collections/products/records/${esc(productId)}?fields=category`);
+      if (pr0.status === 200 && pr0.body) category = pr0.body.category || '';
+    } catch (_) { /* kategori alınamazsa taban kontrolü sessizce atlanır */ }
+  }
   const r = await req('GET',
     `/api/collections/offers/records?perPage=200&fields=id,price,totalPrice,shipping,currency,inStock,availability,condition,priceUnknown,affiliateUrl,url,store,country,lastCheckedAt,priceUpdatedAt,expiresAt,scrapedAt,updated` +
     `&filter=${encodeURIComponent(`productId="${esc(productId)}"`)}`);
@@ -134,6 +146,10 @@ async function refreshProductRollup(productId) {
   for (const o of pricedLive) {
     const price = effectivePrice(o);
     const usd = toUsd(price, o.currency);
+    // Kategori taban kontrolü: pahalı bir üründe aksesuar fiyatı (₺200 telefon
+    // gibi) hem lowestPrice'a hem ülke fiyatına girmesin. usd=0 (dönüştürülemeyen)
+    // teklifler eskisi gibi geçer — muhafazakâr.
+    if (usd > 0 && !isPlausibleUsd(category, usd)) continue;
     if (usd > 0 && usd < bestUsd) { bestUsd = usd; best = o; }
     const c = String(o.country || '').toUpperCase();
     const pr = price;
@@ -253,7 +269,7 @@ async function upsertOffer(offer) {
     throw new Error(`offer upsert failed: ${JSON.stringify(res.body).slice(0, 200)}`);
   }
   await writePriceSnapshot(res.body.id, rec);
-  await refreshProductRollup(productId);
+  await refreshProductRollup(productId, offer.category || null);
   return { ok: true, productId };
 }
 

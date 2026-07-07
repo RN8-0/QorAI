@@ -3062,54 +3062,8 @@ class _SubResultView extends StatelessWidget {
             ),
           ],
 
-          // Factor Bars
-          if (factors.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            ...factors.entries.map((f) {
-              final fScore = (f.value as num?)?.toDouble() ?? 0;
-              final label = _factorLabel(context, f.key);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 95,
-                      child: Text(
-                        label,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          color: context.textTertiaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: AnimatedBarFill(
-                        pct: fScore,
-                        color: _scoreColor(fScore),
-                        height: 8,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 32,
-                      child: Text(
-                        '${fScore.toInt()}',
-                        textAlign: TextAlign.right,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: _scoreColor(fScore),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-
-          // Grafikler: sentiment donutu + faktör dengesi (web abonelik paritesi).
+          // Tek bakış: sentiment donutu + faktör dengesi önde; faktör çubukları
+          // aşağıda "Detaylı" altında (web abonelik paritesi).
           const SizedBox(height: 16),
           SentimentDonut(breakdown: sentimentBd, l: aicL),
           if (factors.isNotEmpty) ...[
@@ -3143,6 +3097,59 @@ class _SubResultView extends StatelessWidget {
                 cons,
                 AppTheme.error,
               ),
+          ],
+
+          // Faktör çubukları varsayılan KAPALI — kart tek bakışta kalsın (web paritesi).
+          if (factors.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            AiCollapsible(
+              label: '📊 ${aicL('Factor detail', 'Faktör detayı', 'Faktor-Detail')}',
+              builder: (_) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: factors.entries.map((f) {
+                  final fScore = (f.value as num?)?.toDouble() ?? 0;
+                  final label = _factorLabel(context, f.key);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 95,
+                          child: Text(
+                            label,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: context.textTertiaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: AnimatedBarFill(
+                            pct: fScore,
+                            color: _scoreColor(fScore),
+                            height: 8,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 32,
+                          child: Text(
+                            '${fScore.toInt()}',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: _scoreColor(fScore),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ],
 
           // Community Sentiment — web yorumları özetleri

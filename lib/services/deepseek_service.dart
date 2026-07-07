@@ -1026,6 +1026,7 @@ SCORING RULES:
 - Score must reflect how well THIS SPECIFIC product matches THIS SPECIFIC user's exact needs.
 - Scores MUST be realistic and differentiated. Never give identical scores.
 - Poor match: 20-45. Average: 46-65. Good: 66-80. Excellent: 81-95.
+- ANTI-INFLATION (critical): do NOT cluster scores near the top. Use the FULL range honestly. Every real product has genuine weak spots — AT LEAST 2 of the factor scores MUST fall below 65, and at least one below 55, unless this is a rare near-flawless fit for THIS user. Reserve 85+ only for true standout strengths, never as a default. If most factors land in 75-95 you are inflating — spread them out and score weak areas honestly. The enhancedScore must reflect this honest spread, not drift upward.
 
 WRITING QUALITY REQUIREMENTS:
 - Use professional, tech-journalist level language. Be specific and detailed, not generic.
