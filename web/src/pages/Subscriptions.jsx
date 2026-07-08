@@ -290,6 +290,7 @@ export default function Subscriptions() {
 
   const [selected, setSelected] = useState([]);
   const [custom, setCustom] = useState('');
+  const customRef = useRef(null); // "Ekle" input — eklemeden sonra odakta kalsın
   // phase: select | quizLoading | quiz | analyzing | result | history
   const [phase, setPhase] = useState('select');
   const [questions, setQuestions] = useState([]);
@@ -373,6 +374,7 @@ export default function Subscriptions() {
       resetAnalysis();
     } finally {
       setAdding(false);
+      customRef.current?.focus(); // eklemeden sonra imleç input'ta kalsın
     }
   }
 
@@ -501,8 +503,8 @@ export default function Subscriptions() {
             </div>
 
             <form className="subs-custom" onSubmit={addCustom}>
-              <input value={custom} onChange={(e) => setCustom(e.target.value)}
-                placeholder={t('subs.customPlaceholder')} disabled={adding} />
+              <input ref={customRef} value={custom} onChange={(e) => setCustom(e.target.value)}
+                placeholder={t('subs.customPlaceholder')} />
               <button type="submit" className="btn btn-ghost" disabled={adding || !custom.trim()}>
                 {adding ? L('Checking…', 'Kontrol ediliyor…', 'Wird geprüft…') : t('subs.add')}
               </button>
@@ -513,7 +515,10 @@ export default function Subscriptions() {
                 {selected.map((s) => (
                   <span key={s} className="subs-chip">
                     <SubLogo name={s} size={22} radius={6} />
-                    {s}<button onClick={() => toggle(s)} aria-label="Remove">×</button>
+                    {s}
+                    <button type="button" onClick={() => toggle(s)} aria-label="Remove">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><path d="M6 6 18 18M18 6 6 18" /></svg>
+                    </button>
                   </span>
                 ))}
               </div>
