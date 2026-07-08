@@ -16,7 +16,8 @@ import { articlePath } from '../lib/routes';
 import { getProduct } from '../lib/typesense';
 import ProductImg from '../components/ProductImg.jsx';
 import { premiumStatus } from '../lib/premium';
-import { catMeta } from '../lib/format';
+import { catMeta, CURRENCY_BY_COUNTRY, countryDisplayName } from '../lib/format';
+import { useGeoCountry, setGeoCountry } from '../lib/geo';
 import { productPath } from '../lib/routes';
 import { displayProductName } from '../lib/productNames';
 import { useT } from '../i18n/index.jsx';
@@ -226,10 +227,58 @@ function Overview({ user, t }) {
   );
 }
 
-/* ─── Account tab — sign-out + account deletion ──────────────────── */
+/* ─── Region setting — üst bardan buraya taşındı; dil tarayıcıdan otomatik ─── */
+const MARKET_COUNTRIES = Object.keys(CURRENCY_BY_COUNTRY);
+function flagEmoji(cc) {
+  const c = String(cc || '').toUpperCase();
+  if (c.length !== 2) return '🏳️';
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+function RegionSetting({ user }) {
+  const { lang } = useI18n();
+  const geoCountry = useGeoCountry();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const currentCC = (user?.country || geoCountry || '').toUpperCase();
+  const onRegion = async (e) => {
+    const cc = e.target.value;
+    if (!cc) return;
+    setGeoCountry(cc); // fiyat/mağaza para birimini canlı günceller
+    if (user) { try { await updateProfile({ country: cc }); } catch { /* best effort */ } }
+  };
+  return (
+    <div className="pf-card">
+      <h3>{L('Region', 'Bölge', 'Region')}</h3>
+      <p style={{ margin: '0 0 12px', color: 'var(--text-2)', fontSize: 14, lineHeight: 1.5 }}>
+        {L('Prices and stores are shown for this country. The site language follows your browser automatically.',
+          'Fiyatlar ve mağazalar bu ülkeye göre gösterilir. Site dili tarayıcınıza göre otomatik ayarlanır.',
+          'Preise und Shops werden für dieses Land angezeigt. Die Sprache folgt automatisch deinem Browser.')}
+      </p>
+      <label>
+        <span style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text-3)' }}>
+          {L('Region · prices in', 'Bölge · fiyatlar', 'Region · Preise in')} {CURRENCY_BY_COUNTRY[currentCC] || 'USD'}
+        </span>
+        <select value={currentCC || ''} onChange={onRegion}
+          style={{
+            width: '100%', maxWidth: 360, padding: '10px 12px', borderRadius: 10,
+            border: '1px solid var(--border)', background: 'var(--surface-2)',
+            color: 'var(--text)', fontSize: 15, cursor: 'pointer',
+          }}>
+          {!currentCC && <option value="">{L('Select…', 'Seç…', 'Wählen…')}</option>}
+          {MARKET_COUNTRIES.map((cc) => (
+            <option key={cc} value={cc}>{flagEmoji(cc)} {countryDisplayName(cc, lang)} ({CURRENCY_BY_COUNTRY[cc]})</option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+/* ─── Account tab — region + sign-out + account deletion ──────────── */
 function AccountTab({ user, t }) {
   return (
     <div className="fade-up">
+      <RegionSetting user={user} />
       <DangerZone user={user} t={t} />
     </div>
   );
