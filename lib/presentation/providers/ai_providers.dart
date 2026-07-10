@@ -501,8 +501,14 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         if (matches.length >= 5) break;
       }
       if (matches.isNotEmpty) {
+        String? cc;
+        String? cur;
+        try {
+          cc = (user.country as String?)?.toUpperCase();
+          cur = (user.currency as String?)?.toUpperCase();
+        } catch (_) {}
         context.add(
-          'Database matches: ${matches.map(_formatProductContext).join(' ; ')}',
+          'Database matches: ${matches.map((p) => _formatProductContext(p, cc, cur)).join(' ; ')}',
         );
       }
     } catch (_) {}
@@ -551,15 +557,28 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     return match?.group(0);
   }
 
-  String _formatProductContext(ProductEntity product) {
+  String _formatProductContext(
+    ProductEntity product, [
+    String? countryCode,
+    String? currency,
+  ]) {
     final specs = product.keySpecs.entries
         .take(4)
         .map((entry) => '${entry.key}: ${entry.value}')
         .join(', ');
     final pros = product.pros.take(2).join(', ');
     final cons = product.cons.take(2).join(', ');
+    // Site-first Qor price for the user's market, so the chat can quote the real
+    // catalog price instead of guessing — same as the web assistant.
+    final price = (countryCode != null && countryCode.isNotEmpty)
+        ? product.getPriceForCountry(countryCode)
+        : null;
+    final priceStr = (price != null && price > 0)
+        ? 'Qor price (${countryCode!}): ${price.round()}${currency != null && currency.isNotEmpty ? ' $currency' : ''}'
+        : null;
     return [
       '${product.name} (${product.brand ?? 'brand unknown'}, ${product.category}/${product.subcategory}, score ${product.techScore.round()}/100)',
+      if (priceStr != null) priceStr,
       if (specs.isNotEmpty) 'specs: $specs',
       if (pros.isNotEmpty) 'pros: $pros',
       if (cons.isNotEmpty) 'cons: $cons',
