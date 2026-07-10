@@ -24,6 +24,97 @@ const PHONE_BUDGET_BY_CURRENCY = {
   CHF: 400, PLN: 1800, MXN: 8000, BRL: 2500, RUB: 35000,
 };
 
+// Chat strings live HERE (not the site i18n table) so the assistant can pick its
+// OWN language from the visitor's country — a Turkish visitor gets Turkish even
+// with an English browser — and so German is always covered (the shared STRINGS
+// table has no `ai.*` German entries).
+const CHAT_STRINGS = {
+  en: {
+    subtitle: 'AI advisor',
+    greeting: "Hi! I'm Qor AI 👋 Phone, laptop, headphones or a subscription — ask away and let's find your best match.",
+    placeholder: 'Ask something…',
+    errReply: "I couldn't answer just now 😕 Mind trying again shortly?",
+    s1: 'Best phone under {price}', s2: 'Laptop recommendation for gaming', s3: 'iPhone 15 or Samsung S24?',
+    newChat: 'New chat', history: 'Chat history', historyEmpty: 'No past chats yet.',
+    signIn: 'Sign in', signInText: 'Sign in to chat with Qor AI and get personalized answers.',
+    now: 'just now', minute: 'm', hour: 'h', day: 'd',
+  },
+  tr: {
+    subtitle: 'Yapay zekâ danışman',
+    greeting: 'Merhaba! Ben Qor AI 👋 Telefon, laptop, kulaklık ya da abonelik — ne arıyorsan sor, sana en uygununu bulalım.',
+    placeholder: 'Bir şey sor…',
+    errReply: 'Şu an yanıt veremedim 😕 Birazdan tekrar dener misin?',
+    s1: '{price} altı en iyi telefon', s2: 'Oyun için laptop önerisi', s3: 'iPhone 15 mi Samsung S24 mü?',
+    newChat: 'Yeni sohbet', history: 'Geçmiş sohbetler', historyEmpty: 'Henüz geçmiş sohbet yok.',
+    signIn: 'Giriş yap', signInText: 'Qor AI ile sohbet etmek ve sana özel yanıtlar almak için giriş yap.',
+    now: 'az önce', minute: 'dk', hour: 'sa', day: 'g',
+  },
+  de: {
+    subtitle: 'KI-Berater',
+    greeting: 'Hallo! Ich bin Qor AI 👋 Handy, Laptop, Kopfhörer oder ein Abo — frag einfach, ich finde das Beste für dich.',
+    placeholder: 'Frag etwas…',
+    errReply: 'Ich konnte gerade nicht antworten 😕 Versuchst du es gleich noch einmal?',
+    s1: 'Bestes Handy unter {price}', s2: 'Laptop-Empfehlung fürs Gaming', s3: 'iPhone 15 oder Samsung S24?',
+    newChat: 'Neuer Chat', history: 'Chatverlauf', historyEmpty: 'Noch keine früheren Chats.',
+    signIn: 'Anmelden', signInText: 'Melde dich an, um mit Qor AI zu chatten und persönliche Antworten zu erhalten.',
+    now: 'gerade eben', minute: 'Min', hour: 'Std', day: 'T',
+  },
+};
+
+// Chat language = the visitor's OWN language: their explicit Settings choice wins,
+// then their country (TR→Turkish, DACH→German, anywhere else→English), then the
+// browser-detected site language. This is why a US visitor never sees a Turkish
+// "under ₺30.000" prompt and a Turkey visitor is answered in Turkish.
+function resolveChatLang(country, siteLang) {
+  let saved = '';
+  try { saved = localStorage.getItem('qor.lang') || ''; } catch { /* storage blocked */ }
+  if (['tr', 'en', 'de'].includes(saved)) return saved;
+  const cc = String(country || '').toUpperCase();
+  if (cc === 'TR') return 'tr';
+  if (['DE', 'AT', 'CH', 'LI'].includes(cc)) return 'de';
+  if (cc) return 'en';
+  return ['tr', 'en', 'de'].includes(siteLang) ? siteLang : 'en';
+}
+
+// ── Persisted chat threads (per signed-in user) ─────────────────────
+// The conversation survives page navigation AND reload, and the user keeps a
+// history of past chats. Stored in localStorage keyed by user id so it never
+// leaks between accounts on a shared browser.
+const CHATS_KEY = 'qor.aiChats';
+const uid = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+
+function loadChats(userId) {
+  if (!userId) return null;
+  try {
+    const all = JSON.parse(localStorage.getItem(CHATS_KEY) || '{}');
+    const bucket = all && all[userId];
+    if (bucket && Array.isArray(bucket.threads)) return bucket;
+  } catch { /* ignore */ }
+  return null;
+}
+function saveChats(userId, bucket) {
+  if (!userId) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(CHATS_KEY) || '{}');
+    all[userId] = bucket;
+    localStorage.setItem(CHATS_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+function newThread(greeting) {
+  return { id: uid(), title: '', greeting: greeting || '', msgs: [], createdAt: Date.now(), updatedAt: Date.now() };
+}
+
+// Compact "2dk / 3sa / 1g" relative time for the history list.
+function relativeTime(ts, S) {
+  const s = Math.max(0, Math.floor((Date.now() - Number(ts || 0)) / 1000));
+  if (s < 60) return S.now;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}${S.minute}`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}${S.hour}`;
+  return `${Math.floor(h / 24)}${S.day}`;
+}
+
 // Query words that carry no product identity — ignored when deciding whether a
 // message is "about a specific product the catalog should have".
 const STOP = new Set([
@@ -213,7 +304,7 @@ function webResearchPrompt(q, lang, country, currency, wantsSub) {
 
 // Page-aware opening line: reads the current route + page metadata so the chat
 // greets the visitor with what they're actually looking at and what to ask.
-function pageGreeting(lang, pathname, meta, t) {
+function pageGreeting(lang, pathname, meta, defaultGreeting) {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const bare = String(pathname || '').replace(/^\/(en|de)(?=\/|$)/, '') || '/';
   const kind = meta?.kind || (
@@ -231,7 +322,7 @@ function pageGreeting(lang, pathname, meta, t) {
         ? L(`You're viewing **${title}**. Ask me about its specs, price, who it's for, or how it stacks up against rivals — I'll use Qor's data.`,
           `**${title}** sayfasındasın. Özelliklerini, fiyatını, kime uygun olduğunu ya da rakipleriyle farkını sorabilirsin — Qor verisini kullanırım.`,
           `Du siehst **${title}**. Frag mich zu Specs, Preis, Zielgruppe oder Vergleich — ich nutze Qor-Daten.`)
-        : t('ai.greeting');
+        : defaultGreeting;
     case 'compare':
       return title
         ? L(`Comparing **${title}**. Ask which one fits you best and why — I'll weigh the specs and prices.`,
@@ -253,7 +344,7 @@ function pageGreeting(lang, pathname, meta, t) {
         ? L(`You're reading **${title}**. Ask me anything about the products in it or a better pick for you.`,
           `**${title}** yazısını okuyorsun. İçindeki ürünler ya da sana daha uygun bir seçim hakkında sorabilirsin.`,
           `Du liest **${title}**. Frag mich zu den Produkten darin oder einer besseren Wahl.`)
-        : t('ai.greeting');
+        : defaultGreeting;
     case 'subscriptions':
       return L("You're on Subscriptions. Ask me to compare plans (Netflix, Spotify, ChatGPT…) for what you need.",
         'Abonelikler sayfasındasın. İhtiyacına göre planları (Netflix, Spotify, ChatGPT…) karşılaştırmamı isteyebilirsin.',
@@ -263,45 +354,83 @@ function pageGreeting(lang, pathname, meta, t) {
         'Yukarıya herhangi bir ürün linki yapıştırıp tam analiz alabilirsin — ya da buradan bana sorabilirsin.',
         'Füge oben einen Produktlink für eine Analyse ein — oder frag mich einfach hier.');
     default:
-      return t('ai.greeting');
+      return defaultGreeting;
   }
 }
 
 export default function AiBubble() {
-  const { t, lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const { lang } = useI18n();
   const { user, openAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const requireAiAccess = useAiAccess(lang);
+  const geoCountry = useGeoCountry();
+  const currency = CURRENCY_BY_COUNTRY[String(geoCountry || '').toUpperCase()] || 'USD';
+  // The chat speaks the VISITOR's language (country-first), independent of the
+  // browser-driven site UI language — see resolveChatLang.
+  const chatLang = useMemo(() => resolveChatLang(geoCountry, lang), [geoCountry, lang]);
+  const S = CHAT_STRINGS[chatLang] || CHAT_STRINGS.en;
+  const requireAiAccess = useAiAccess(chatLang);
+
   const [open, setOpen] = useState(false);
-  // Real conversation turns only — the greeting is derived + rendered live, so it
-  // stays page-aware and never leaks into the model history.
-  const [msgs, setMsgs] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [ctxVer, setCtxVer] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  // Persisted conversation threads (per signed-in user). Survives navigation AND
+  // reload; the active thread never changes just because the page changed.
+  const [threads, setThreads] = useState([]);
+  const [activeId, setActiveId] = useState('');
+
   const scrollRef = useRef(null);
   const sendRef = useRef(null);
   const userRef = useRef(user);
   userRef.current = user;
-  const geoCountry = useGeoCountry();
-  const currency = CURRENCY_BY_COUNTRY[String(geoCountry || '').toUpperCase()] || 'USD';
+  const threadsRef = useRef(threads);
+  threadsRef.current = threads;
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
+  const activeThread = threads.find((tr) => tr.id === activeId) || null;
+  const msgs = activeThread ? activeThread.msgs : [];
+  const historyThreads = threads.filter((tr) => tr.msgs.length > 0).sort((a, b) => b.updatedAt - a.updatedAt);
+
+  // Load / reset the user's saved chats when the signed-in user changes.
+  useEffect(() => {
+    if (!user) { setThreads([]); setActiveId(''); return; }
+    const bucket = loadChats(user.id);
+    if (bucket && bucket.threads.length) {
+      setThreads(bucket.threads);
+      const valid = bucket.activeId && bucket.threads.some((tr) => tr.id === bucket.activeId);
+      setActiveId(valid ? bucket.activeId : bucket.threads[bucket.threads.length - 1].id);
+    } else {
+      setThreads([]); setActiveId('');
+    }
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (user && threads.length) saveChats(user.id, { threads, activeId });
+  }, [threads, activeId, user]);
 
   // Re-render the greeting when a page publishes new context (a product page
   // finishes loading its data after we've already mounted).
   useEffect(() => subscribePageContext(() => setCtxVer((v) => v + 1)), []);
 
-  const greeting = useMemo(
-    () => pageGreeting(lang, location.pathname, getPageMeta(), t),
-    [lang, location.pathname, ctxVer, t],
+  // Live page-aware opener — shown only while the active thread is empty; once the
+  // conversation starts, the thread keeps its own frozen greeting.
+  const liveGreeting = useMemo(
+    () => pageGreeting(chatLang, location.pathname, getPageMeta(), S.greeting),
+    [chatLang, location.pathname, ctxVer, S.greeting],
   );
+  const greeting = (activeThread && msgs.length > 0 && activeThread.greeting) ? activeThread.greeting : liveGreeting;
 
-  // Quick prompts follow the SITE LANGUAGE (templates) but the user's COUNTRY
-  // for the price figure — so the budget suggestion is always in their currency.
+  // Quick prompts follow the CHAT language (templates) and the visitor's COUNTRY
+  // for the price figure — so a US visitor never sees a Turkish-Lira budget.
   const budget = PHONE_BUDGET_BY_CURRENCY[currency] || PHONE_BUDGET_BY_CURRENCY.USD;
-  const s1 = t('ai.s1', { price: formatPriceAmount(budget, currency, lang) });
-  const suggestions = [s1, t('ai.s2'), t('ai.s3')];
+  const suggestions = [
+    S.s1.replace('{price}', formatPriceAmount(budget, currency, chatLang)),
+    S.s2,
+    S.s3,
+  ];
 
   function goQuiz() {
     const next = `${location.pathname}${location.search}${location.hash}`;
@@ -309,9 +438,31 @@ export default function AiBubble() {
     navigate(`/quiz?required=1&next=${encodeURIComponent(next)}`);
   }
 
+  // Start a fresh chat that comments on the CURRENT page. The previous chat is
+  // kept in history untouched. If the active chat is already empty, we just point
+  // its greeting at the current page instead of piling up empty threads.
+  function newChat() {
+    setShowHistory(false);
+    const g = pageGreeting(chatLang, location.pathname, getPageMeta(), S.greeting);
+    const active = threadsRef.current.find((tr) => tr.id === activeIdRef.current);
+    if (active && active.msgs.length === 0) {
+      setThreads((prev) => prev.map((tr) => (tr.id === active.id
+        ? { ...tr, greeting: g, createdAt: Date.now(), updatedAt: Date.now() } : tr)));
+      return;
+    }
+    const th = newThread(g);
+    setThreads((prev) => [...prev.filter((tr) => tr.msgs.length > 0), th]);
+    setActiveId(th.id);
+  }
+
+  function openThread(id) {
+    setActiveId(id);
+    setShowHistory(false);
+  }
+
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [msgs, busy, open, greeting]);
+  }, [msgs, busy, open, greeting, showHistory, activeId]);
 
   useEffect(() => {
     const onOpen = (e) => {
@@ -349,7 +500,7 @@ export default function AiBubble() {
     const ids = [...new Set([...strongIds, ...onPageIds])].slice(0, 3);
     if (ids.length) {
       const full = (await Promise.all(ids.map((id) => getProduct(id).catch(() => null)))).filter(Boolean);
-      if (full.length) return pbGrounding(full, geoCountry, lang);
+      if (full.length) return pbGrounding(full, geoCountry, chatLang);
     }
     // No confident on-site product → go to the internet for current facts when the
     // message is about a product, a recommendation, or a subscription (or we're on
@@ -359,11 +510,11 @@ export default function AiBubble() {
     if (wantsResearch) {
       try {
         const research = await askQorAiGrounded(
-          webResearchPrompt(q, lang, geoCountry, currency, wantsSub),
-          { language: lang, timeoutMs: 22000, maxOutputTokens: 1400 },
+          webResearchPrompt(q, chatLang, geoCountry, currency, wantsSub),
+          { language: chatLang, timeoutMs: 22000, maxOutputTokens: 1400 },
         );
         if (research && research.trim()) {
-          const catalog = buildCatalogContext(results, lang);
+          const catalog = buildCatalogContext(results, chatLang);
           const onSite = results.some((p) => p?.id && p?.name)
             ? `\n\nON-SITE QOR OPTIONS (recommend and link these when they fit the answer):\n${catalog}`
             : '';
@@ -371,7 +522,7 @@ export default function AiBubble() {
         }
       } catch { /* grounded search unavailable — fall through to catalog options */ }
     }
-    return buildCatalogContext(results, lang);
+    return buildCatalogContext(results, chatLang);
   }
 
   async function send(text) {
@@ -380,13 +531,43 @@ export default function AiBubble() {
     const q = (text ?? input).trim();
     if (!q || busy) return;
     setInput('');
-    const next = [...msgs, { role: 'user', text: q }];
-    setMsgs(next);
+    setShowHistory(false);
+
+    // Resolve — or lazily create — the active thread, then append the user turn.
+    let tid = activeIdRef.current;
+    let thread = threadsRef.current.find((tr) => tr.id === tid);
+    if (!thread) {
+      thread = newThread(pageGreeting(chatLang, location.pathname, getPageMeta(), S.greeting));
+      tid = thread.id;
+    }
+    const priorMsgs = thread.msgs || [];
+    const next = [...priorMsgs, { role: 'user', text: q }];
+    // Freeze the greeting to THIS page on the first turn so later navigation can't
+    // rewrite an ongoing conversation's opener.
+    const frozenGreeting = priorMsgs.length === 0
+      ? pageGreeting(chatLang, location.pathname, getPageMeta(), S.greeting)
+      : thread.greeting;
+
+    setThreads((prev) => {
+      const base = prev.some((tr) => tr.id === tid) ? prev : [...prev, thread];
+      return base.map((tr) => (tr.id === tid ? {
+        ...tr,
+        title: tr.title || q.slice(0, 48),
+        greeting: frozenGreeting,
+        msgs: next,
+        updatedAt: Date.now(),
+      } : tr));
+    });
+    setActiveId(tid);
     setBusy(true);
     trackEvent('ai_chat_message');
+
+    const append = (msg) => setThreads((prev) => prev.map((tr) => (tr.id === tid
+      ? { ...tr, msgs: [...tr.msgs, msg], updatedAt: Date.now() } : tr)));
+
     try {
       const access = await requireAiAccess('ai_chat', {
-        onMessage: (message) => setMsgs((m) => [...m, { role: 'model', text: message }]),
+        onMessage: (message) => append({ role: 'model', text: message }),
       });
       if (!access.ok) return;
       const profile = aiUserProfile(userRef.current);
@@ -405,10 +586,10 @@ export default function AiBubble() {
         ...profileContext,
         ...pageContext,
         ...next,
-      ], { language: lang, context: grounding, country: geoCountry, currency });
-      setMsgs((m) => [...m, { role: 'model', text: reply }]);
+      ], { language: chatLang, context: grounding, country: geoCountry, currency });
+      append({ role: 'model', text: reply });
     } catch {
-      setMsgs((m) => [...m, { role: 'model', text: t('ai.errReply') }]);
+      append({ role: 'model', text: S.errReply });
     } finally {
       setBusy(false);
     }
@@ -433,11 +614,49 @@ export default function AiBubble() {
               <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" />
               <div>
                 <strong>Qor AI</strong>
-                <span>{t('ai.subtitle')}</span>
+                <span>{S.subtitle}</span>
               </div>
             </div>
-            <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="✕">✕</button>
+            <div className="aib-head-actions">
+              {user && (
+                <button className="aib-head-btn" onClick={newChat} title={S.newChat} aria-label={S.newChat}>
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              )}
+              {user && historyThreads.length > 0 && (
+                <button
+                  className={'aib-head-btn' + (showHistory ? ' active' : '')}
+                  onClick={() => setShowHistory((v) => !v)}
+                  title={S.history}
+                  aria-label={S.history}
+                >
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" /><path d="M12 7.5V12l3 2" />
+                  </svg>
+                </button>
+              )}
+              <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="✕">✕</button>
+            </div>
           </div>
+
+          {user && showHistory && (
+            <div className="aib-history">
+              {historyThreads.length === 0 ? (
+                <p className="aib-history-empty">{S.historyEmpty}</p>
+              ) : historyThreads.map((th) => (
+                <button
+                  key={th.id}
+                  className={'aib-history-item' + (th.id === activeId ? ' active' : '')}
+                  onClick={() => openThread(th.id)}
+                >
+                  <span className="aib-history-title">{th.title || S.newChat}</span>
+                  <span className="aib-history-time">{relativeTime(th.updatedAt, S)}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="aib-msgs" ref={scrollRef}>
             <div className="aib-msg model"><AiText text={greeting} /></div>
@@ -451,11 +670,9 @@ export default function AiBubble() {
             )}
             {!user ? (
               <div className="aib-login">
-                <p>{L('Sign in to chat with Qor AI and get personalized answers.',
-                  'Qor AI ile sohbet etmek ve sana özel yanıtlar almak için giriş yap.',
-                  'Melde dich an, um mit Qor AI zu chatten und persönliche Antworten zu erhalten.')}</p>
+                <p>{S.signInText}</p>
                 <button className="aib-login-btn" onClick={() => { setOpen(false); openAuth(); }}>
-                  {L('Sign in', 'Giriş yap', 'Anmelden')}
+                  {S.signIn}
                 </button>
               </div>
             ) : msgs.length === 0 && (
@@ -472,7 +689,7 @@ export default function AiBubble() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={t('ai.placeholder')}
+                placeholder={S.placeholder}
                 disabled={busy}
               />
               <button type="submit" disabled={busy || !input.trim()} aria-label="→">

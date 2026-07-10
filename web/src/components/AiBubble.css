@@ -55,8 +55,40 @@
 .aib-head-id img { width: 34px; height: 34px; border-radius: 9px; }
 .aib-head-id strong { font-size: 14px; display: block; }
 .aib-head-id span { font-size: 11.5px; color: var(--accent); font-weight: 600; }
+.aib-head-actions { display: flex; align-items: center; gap: 2px; }
+.aib-head-btn {
+  width: 30px; height: 30px; border-radius: 8px; color: var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.13s, color 0.13s;
+}
+.aib-head-btn:hover { background: var(--bg4); color: var(--text); }
+.aib-head-btn.active { background: var(--bg4); color: var(--accent); }
 .aib-head-x { width: 30px; height: 30px; border-radius: 8px; color: var(--text3); }
 .aib-head-x:hover { background: var(--bg4); color: var(--text); }
+
+/* ─── Chat history dropdown ──────────────────────────────────── */
+.aib-history {
+  max-height: 210px; overflow-y: auto;
+  border-bottom: 1px solid var(--border); background: var(--bg3);
+  padding: 6px;
+}
+.aib-history-empty {
+  margin: 0; padding: 14px 10px; text-align: center;
+  font-size: 12.5px; color: var(--text3);
+}
+.aib-history-item {
+  width: 100%; display: flex; align-items: center; gap: 8px;
+  justify-content: space-between; text-align: left;
+  padding: 9px 11px; border-radius: 9px; color: var(--text2);
+  transition: background 0.12s, color 0.12s;
+}
+.aib-history-item:hover { background: var(--bg4); color: var(--text); }
+.aib-history-item.active { background: var(--bg4); color: var(--accent); }
+.aib-history-title {
+  flex: 1; min-width: 0; font-size: 12.8px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.aib-history-time { flex-shrink: 0; font-size: 11px; color: var(--text3); }
 
 .aib-msgs {
   flex: 1; overflow-y: auto; padding: 16px;
