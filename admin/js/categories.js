@@ -1049,16 +1049,10 @@ function _currentScrapeSourceForCategories() {
 }
 
 function _scrapeCategorySupportState(categoryId) {
-  const src = _currentScrapeSourceForCategories();
   const cat = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getById)
     ? QorAiCategories.getById(categoryId)
     : null;
   if (!cat) return { ok: true, reason: '' };
-  if (src === 'geizhals') {
-    return cat.LegacySlug
-      ? { ok: true, reason: '' }
-      : { ok: false, reason: 'Geizhals yok' };
-  }
   return (cat.epeyPath && !cat.scrapeDisabled)
     ? { ok: true, reason: '' }
     : { ok: false, reason: 'Epey yok' };

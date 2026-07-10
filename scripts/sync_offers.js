@@ -30,7 +30,6 @@ const CONNECTORS = [
   require('./connectors/admitad'),
   require('./connectors/jsonld'),
   require('./connectors/epey_amazon'),
-  require('./connectors/geizhals_best'),
   require('./connectors/amazon_direct'),
   require('./connectors/newegg'),
   require('./connectors/incehesap'),

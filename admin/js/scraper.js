@@ -19,7 +19,6 @@ const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for Deep
 // mistranslated, broken or dropped. Specs are stored in TR + EN only; a German
 // UI reads specs in English. (UI text and product names stay German.)
 // Epey (Turkish source) → translate to EN.
-// Geizhals (German source) → translate to TR + EN (see scraper-geizhals.js).
 const SUPPORTED_LANGS = ['tr','en'];
 // Languages to translate Turkish specs into (skip TR — that's the source).
 const TARGET_LANGS = ['en'];
@@ -1018,7 +1017,6 @@ function _cloneSourceSpecObject(value) {
 
 function _sourceLangForProduct(product) {
   const marker = String(product?.source || product?.sourceUrl || '');
-  if (/geizhals/i.test(marker)) return 'de';
   if (/epey/i.test(marker)) return 'tr';
   return '';
 }
@@ -8280,9 +8278,9 @@ async function _pbGetAllPaged(collection, options = {}, perPage = 500, timeoutMs
 async function _findExistingByVariantGroup(variantGroup, productName = '') {
   const vg = String(variantGroup || '').trim();
   if (!vg) return null;
-  // These dedup helpers are exported to window and called from the Geizhals
-  // scraper, where the module-scope `pb` of the main scrape loop is NOT in
-  // scope. Resolve the shared client here so the lookup actually runs instead
+  // These dedup helpers are exported to window; resolve the shared client here
+  // so the lookup runs even where the module-scope `pb` of the main scrape loop
+  // is NOT in scope, instead
   // of throwing `pb is not defined` (which silently aborted dedup → duplicates).
   const pb = getPb();
   try {
@@ -8328,7 +8326,7 @@ function _isEpeyRecord(record = {}) {
 function _isScrapedSourceRecord(record = {}) {
   const source = String(record.source || '').toLowerCase();
   const sourceUrl = String(record.sourceUrl || '').toLowerCase();
-  return /(epey|geizhals)/.test(source) || /(epey\.com|geizhals\.eu)/.test(sourceUrl);
+  return /epey/.test(source) || /epey\.com/.test(sourceUrl);
 }
 
 function _stripModelCodesForIdentity(value) {
@@ -8448,7 +8446,7 @@ async function _findExistingScrapedByModelFamily(product = {}) {
   const pb = getPb();
   try {
     const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-    const parts = ['(source ~ "epey" || sourceUrl ~ "epey.com" || source ~ "geizhals" || sourceUrl ~ "geizhals.eu")'];
+    const parts = ['(source ~ "epey" || sourceUrl ~ "epey.com")'];
     const category = String(product.category || '').trim();
     if (category) parts.push(`category = "${esc(category)}"`);
     if (product.brand) parts.push(`brand ~ "${esc(product.brand)}"`);
@@ -8526,8 +8524,8 @@ async function _findExistingEpeyByModelFamily(product = {}) {
 }
 
 // Merge incoming `clean` payload into an existing PB product record.
-// Used by cross-source dedup so an Epey TR record gets enriched with
-// Geizhals DE specs (and vice versa) instead of creating a duplicate.
+// Used by dedup so a re-scraped Epey record gets enriched instead of
+// creating a duplicate.
 //
 // Strategy:
 //   • Fetch existing record's specs / multiLangSpecs / images
@@ -8646,13 +8644,13 @@ async function _loadExistingSourceUrls(categoryId) {
   const empty = { urls: new Set(), slugs: new Set(), byVariantGroup: new Map(), complete: false };
   const isScrapedRecord = (record = {}) => {
     const src = String(record.source || '').toLowerCase();
-    return /(epey|geizhals)/.test(src) ||
-      /(^|\.)(epey\.com|geizhals\.eu)\//.test(String(record.sourceUrl || ''));
+    return /epey/.test(src) ||
+      /(^|\.)epey\.com\//.test(String(record.sourceUrl || ''));
   };
   try {
     const safeCategory = String(categoryId || '').replace(/"/g, '\\"');
     const categoryFilter = safeCategory ? `category = "${safeCategory}"` : '';
-    const sourceFilter = `(source = "epey.com" || source = "epey" || source = "geizhals.eu" || source = "geizhals")`;
+    const sourceFilter = `(source = "epey.com" || source = "epey")`;
     const filter = categoryFilter || sourceFilter;
     const docs = await _pbGetAllPaged('products', {
       filter,
@@ -8920,7 +8918,7 @@ async function scrapeByUrl() {
       if (!url) {
         let isEpeyUrl = false;
         try { isEpeyUrl = /(^|\.)epey\.com$/i.test(new URL(inputVal).hostname); } catch {}
-        if (!isEpeyUrl) { toast('Epey veya Geizhals URL destekleniyor', 'e'); return; }
+        if (!isEpeyUrl) { toast('Epey URL destekleniyor', 'e'); return; }
         slog(`Epey liste/filtre URL çözümleniyor: ${inputVal}`, 'info');
         const res = await fetch(
           `${PROXY_URL}/category-links?url=${encodeURIComponent(inputVal)}&max=5`,
@@ -9379,30 +9377,23 @@ window.offersSaveProviderConfig = offersSaveProviderConfig;
 window.offersTestProvider = offersTestProvider;
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  LIVE DICTIONARY COUNTERS
-//  The TR (Epey) and DE (Geizhals) dictionaries grow as new atoms hit
-//  DeepSeek. The header badge polls both sources every second so the user
-//  can watch the cache warm up.
+//  LIVE DICTIONARY COUNTER
+//  The Epey TR dictionary grows as new atoms hit DeepSeek. The header badge
+//  polls it every second so the user can watch the cache warm up.
+//  (Geizhals DE dictionary removed 2026-07-10.)
 // ═══════════════════════════════════════════════════════════════════════════
 function _getDictSizes() {
-  let tr = 0, de = 0;
+  let tr = 0;
   try { tr = window.QorAiDict?.size?.() ?? Object.keys(window.QorAiDict?.cache?.() || {}).length; } catch {}
-  try {
-    const g = window.QorAiGeizhals?.dict;
-    de = g?.size?.() ?? Object.keys(g?.cache?.() || {}).length;
-  } catch {}
-  return { tr, de };
+  return { tr };
 }
 
 function _refreshDictCounter() {
-  const { tr, de } = _getDictSizes();
-  const text = `TR ${tr.toLocaleString()} · DE ${de.toLocaleString()}`;
+  const { tr } = _getDictSizes();
   const headerEl = document.getElementById('dictCounterText');
-  if (headerEl) headerEl.textContent = text;
+  if (headerEl) headerEl.textContent = `TR ${tr.toLocaleString()}`;
   const trEl = document.getElementById('dictCountTr');
   if (trEl) trEl.textContent = tr.toLocaleString();
-  const deEl = document.getElementById('dictCountDe');
-  if (deEl) deEl.textContent = de.toLocaleString();
 }
 
 // Pre-load both dicts on first scraper view, then poll for live changes.
@@ -9415,9 +9406,8 @@ async function _warmupEmptyDicts() {
   if (_dictWarmupInflight) return;
   _dictWarmupInflight = true;
   try {
-    const { tr, de } = _getDictSizes();
+    const { tr } = _getDictSizes();
     if (tr === 0) { try { await _loadDeDict(); } catch (e) { console.warn('[dict-counter] TR warmup retry pending:', e.message || e); } }
-    if (de === 0) { try { await window.QorAiGeizhals?.dict?.load?.(); } catch (e) { console.warn('[dict-counter] DE warmup retry pending:', e.message || e); } }
   } finally {
     _dictWarmupInflight = false;
     _refreshDictCounter();
@@ -9458,87 +9448,21 @@ window.showDictCounterPopup = function () {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  SOURCE-AWARE SCRAPER ROUTER (Epey | Geizhals)
+//  SCRAPER SOURCE (Epey only — Geizhals removed 2026-07-10)
 //
-//  The HTML wires startBulkScrape() / scrapeByUrl() onto its buttons.
-//  We intercept those globals AFTER scraper.js has finished loading so the
-//  buttons route to either the Epey path (this file) or the Geizhals path
-//  (admin/js/scraper-geizhals.js → window.QorAiGeizhals).
-//
-//  Both sources share:
-//   - the same 49 PB category ids (categories.js whitelist)
-//   - the same deferred bulk translation API (window.QorAiBulkTranslate)
-//   - the same dictionary shards (public_config.tr_translation_dict*)
+//  The HTML wires startBulkScrape() / scrapeByUrl() / stopScraping() onto its
+//  buttons. These now route straight to the Epey path in this file.
 // ═══════════════════════════════════════════════════════════════════════════
-
-// Stash the Epey entry points BEFORE we reassign the globals.
-const _epeyStartBulkScrape = startBulkScrape;
-const _epeyScrapeByUrl = scrapeByUrl;
-const _epeyStopScraping = stopScraping;
 
 function _resolveScrapeSource() {
   return document.getElementById('scrapeSource')?.value || 'epey';
 }
 
-function _detectSourceFromUrl(rawUrl) {
-  const raw = String(rawUrl || '').trim();
-  if (!raw) return null;
-  try {
-    const host = new URL(raw).hostname.toLowerCase();
-    if (/(^|\.)geizhals\.(eu|at|de|com)$/i.test(host)) return 'geizhals';
-    if (/(^|\.)epey\.com$/i.test(host)) return 'epey';
-  } catch {}
-  const u = raw.toLowerCase();
-  if (/geizhals\.(eu|at|de|com)(?:[/?#]|$)/.test(u)) return 'geizhals';
-  if (/(?:^|\/\/|\.)epey\.com(?:[/?#]|$)/.test(u)) return 'epey';
-  return null;
-}
-
-window.startBulkScrape = async function () {
-  const src = _resolveScrapeSource();
-  if (src === 'geizhals') {
-    if (!window.QorAiGeizhals?.startBulkScrape) {
-      if (typeof toast === 'function') toast('Geizhals scraper not loaded', 'e');
-      return;
-    }
-    return window.QorAiGeizhals.startBulkScrape();
-  }
-  return _epeyStartBulkScrape();
-};
-
-window.scrapeByUrl = async function () {
-  const inputVal = document.getElementById('scrapeUrl')?.value?.trim() || '';
-  // URL takes precedence: a geizhals.eu link always routes to the Geizhals
-  // scraper, regardless of the bulk-scrape dropdown selection. Plain search
-  // terms (no http://) fall back to the Bulk Scrape dropdown.
-  const fromUrl = inputVal.startsWith('http') ? _detectSourceFromUrl(inputVal) : null;
-  const src = fromUrl || _resolveScrapeSource();
-  if (src === 'geizhals') {
-    if (!window.QorAiGeizhals?.scrapeByUrl) {
-      if (typeof toast === 'function') toast('Geizhals scraper not loaded', 'e');
-      return;
-    }
-    return window.QorAiGeizhals.scrapeByUrl();
-  }
-  return _epeyScrapeByUrl();
-};
-
-// The Stop button calls one global, but EITHER source could be the live run —
-// the old global only aborted Epey, so Stop did nothing during a Geizhals
-// scrape. Abort BOTH scrapers (a no-op flag flip on the idle one).
-window.stopScraping = function () {
-  try { _epeyStopScraping(); } catch (_) {}
-  try { window.QorAiGeizhals?.stopScraping?.(); } catch (_) {}
-};
-
 // Source-aware speed defaults. Epey detail fetches are fast, but product
 // writes are large translated payloads; keep workers below the PB write
-// limiter so retries do not flood the backend. Geizhals is Cloudflare-fronted
-// so it stays slower. When the user picks a source we overwrite the shared
-// inputs unless the user has manually customised them this session.
+// limiter so retries do not flood the backend.
 const _SCRAPE_PRESETS = {
   epey:     { max: 100000, delay: 0,   concurrency: EPEY_DETAIL_CONCURRENCY_DEFAULT, concurrencyMax: EPEY_DETAIL_CONCURRENCY_MAX },
-  geizhals: { max: 30000,  delay: 800, concurrency: 6,  concurrencyMax: 12 },
 };
 let _scrapeUserOverride = { max: false, delay: false, concurrency: false };
 function _bindScrapeOverrideListeners() {
@@ -9567,9 +9491,7 @@ window.updateScrapeSourceUI = function () {
     if (!_scrapeUserOverride.concurrency) concEl.value = preset.concurrency;
   }
   if (hint) {
-    hint.textContent = src === 'geizhals'
-      ? `Geizhals.eu: Cloudflare korumalı — temkinli (${preset.concurrency} worker, ${preset.delay} ms delay). Almanca specs, AB fiyatları.`
-      : `Epey.com: güvenli hızlı mod (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
+    hint.textContent = `Epey.com: güvenli hızlı mod (${preset.concurrency} worker, ${preset.delay} ms delay). Seçenek kapalıysa ${preset.max}/kategori.`;
   }
   if (typeof _syncScrapeCategoryChecklistFromSelect === 'function') {
     _syncScrapeCategoryChecklistFromSelect();

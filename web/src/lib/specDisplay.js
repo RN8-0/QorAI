@@ -175,94 +175,6 @@ const TR_WORDS = [
 
 
 
-// German spec words that leak through on Geizhals-sourced products (the DE
-// scrape dictionary is tiny, so the German source text often survives). These
-// are scrubbed at display time so a Turkish/English visitor never sees German.
-// Order: longest phrases first so partials don't pre-empt full matches.
-const DE_RESIDUE = [
-  // charging / battery
-  [/\bumgekehrtes\s+laden\b/gi, { tr: 'Ters şarj', en: 'Reverse charging' }],
-  [/\bkabelloses\s+laden\b/gi, { tr: 'Kablosuz şarj', en: 'Wireless charging' }],
-  [/\bkabelgebunden(?:es)?\b/gi, { tr: 'kablolu', en: 'wired' }],
-  [/\bfest\s+verbaut\b/gi, { tr: 'sabit', en: 'built-in' }],
-  [/\bbuilt-?in\b/gi, { tr: 'Dahili', en: 'Built-in' }],
-  [/\bschnellladen\b/gi, { tr: 'Hızlı şarj', en: 'Fast charging' }],
-  [/\bakkulaufzeit\b/gi, { tr: 'Pil ömrü', en: 'Battery life' }],
-  [/\bladezyklen\b/gi, { tr: 'şarj döngüsü', en: 'charge cycles' }],
-  [/\bladedauer\b/gi, { tr: 'Şarj süresi', en: 'Charging time' }],
-  [/\bakku\b/gi, { tr: 'Pil', en: 'Battery' }],
-  // SAR / body
-  [/\bkopf\b/gi, { tr: 'baş', en: 'head' }],
-  [/\bkörper\b/gi, { tr: 'vücut', en: 'body' }],
-  // form factor / material
-  [/\bbarren\b/gi, { tr: 'Düz (bar)', en: 'Bar' }],
-  [/\bkunststoff\b/gi, { tr: 'Plastik', en: 'Plastic' }],
-  [/\bedelstahl\b/gi, { tr: 'Paslanmaz çelik', en: 'Stainless steel' }],
-  [/\baluminium\b/gi, { tr: 'Alüminyum', en: 'Aluminium' }],
-  [/\bglas\b/gi, { tr: 'Cam', en: 'Glass' }],
-  [/\brahmen\b/gi, { tr: 'Çerçeve', en: 'Frame' }],
-  [/\brückseite\b/gi, { tr: 'arka', en: 'back' }],
-  // camera
-  [/\bweitwinkelobjektiv\b/gi, { tr: 'Geniş açı objektifi', en: 'Wide-angle lens' }],
-  [/\bultraweitwinkel\b/gi, { tr: 'Ultra geniş açı', en: 'Ultra-wide' }],
-  [/\bweitwinkel\b/gi, { tr: 'Geniş açı', en: 'Wide-angle' }],
-  [/\bteleobjektiv\b/gi, { tr: 'Telefoto', en: 'Telephoto' }],
-  [/\bhauptkamera\b/gi, { tr: 'Ana kamera', en: 'Main camera' }],
-  [/\bfrontkamera\b/gi, { tr: 'Ön kamera', en: 'Front camera' }],
-  [/\bdual-?led-?blitz\b/gi, { tr: 'Çift LED flaş', en: 'Dual-LED flash' }],
-  [/\bled-?blitz\b/gi, { tr: 'LED flaş', en: 'LED flash' }],
-  [/\bblitz\b/gi, { tr: 'Flaş', en: 'Flash' }],
-  [/\bphasenerkennung\b/gi, { tr: 'Faz algılama', en: 'Phase detection' }],
-  [/\bautofokus\b/gi, { tr: 'Otomatik odaklama', en: 'Autofocus' }],
-  // os / updates
-  [/\bbetriebssystem-?updates?\b/gi, { tr: 'İşletim sistemi güncellemeleri', en: 'OS updates' }],
-  [/\bsicherheits?-?updates?\b/gi, { tr: 'Güvenlik güncellemeleri', en: 'Security updates' }],
-  [/\bbetriebssystem\b/gi, { tr: 'İşletim sistemi', en: 'Operating system' }],
-  [/\bjahre\b/gi, { tr: 'yıl', en: 'years' }],
-  [/\bab\s+werk\b/gi, { tr: 'fabrika çıkışı', en: 'factory' }],
-  // sensors
-  [/\bbeschleunigungssensor\b/gi, { tr: 'İvmeölçer', en: 'Accelerometer' }],
-  [/\bgyroskop\b/gi, { tr: 'Jiroskop', en: 'Gyroscope' }],
-  [/\bannäherungssensor\b/gi, { tr: 'Yakınlık sensörü', en: 'Proximity sensor' }],
-  [/\bhelligkeitssensor\b/gi, { tr: 'Işık sensörü', en: 'Light sensor' }],
-  [/\bfingerabdrucksensor\b/gi, { tr: 'Parmak izi sensörü', en: 'Fingerprint sensor' }],
-  [/\bkompass\b/gi, { tr: 'Pusula', en: 'Compass' }],
-  // connectivity / misc
-  [/\bschnittstelle\b/gi, { tr: 'Arayüz', en: 'Interface' }],
-  [/\banschluss\b/gi, { tr: 'Bağlantı', en: 'Connection' }],
-  [/\breparierbarkeitsklasse\b/gi, { tr: 'Onarılabilirlik sınıfı', en: 'Repairability class' }],
-  [/\bfreifall\b/gi, { tr: 'Düşme', en: 'Free fall' }],
-  [/\bspeicher\b/gi, { tr: 'Depolama', en: 'Storage' }],
-  [/\bzoll\b/gi, { tr: 'İnç', en: 'inch' }],
-  [/\bstück\b/gi, { tr: 'Adet', en: 'pcs' }],
-  [/\bstunden\b/gi, { tr: 'saat', en: 'hours' }],
-  [/\btage\b/gi, { tr: 'gün', en: 'days' }],
-  // leaked English in a non-EN context
-  [/\bphase\b/gi, { tr: 'Faz', en: 'Phase' }],
-  [/\bvideos\b/gi, { tr: 'Videolar', en: 'Videos' }],
-];
-
-// German spec LABELS that leak on Geizhals products (applied to labels only).
-const DE_LABEL_RESIDUE = [
-  [/\bkamera\s+hinten\b/gi, { tr: 'Arka kamera', en: 'Rear camera' }],
-  [/\bkamera\s+vorne\b/gi, { tr: 'Ön kamera', en: 'Front camera' }],
-  [/\bakkulaufzeit\s+pro\s+zyklus\b/gi, { tr: 'Döngü başına pil ömrü', en: 'Battery life per cycle' }],
-  [/\bbatterieausdauer\b/gi, { tr: 'Pil dayanıklılığı', en: 'Battery endurance' }],
-  [/\benergieeffizienzklasse\b/gi, { tr: 'Enerji verimliliği sınıfı', en: 'Energy efficiency class' }],
-  [/\bschutzart\b/gi, { tr: 'Koruma sınıfı', en: 'Protection rating' }],
-  [/\bsar[\s-]?wert\b/gi, { tr: 'SAR değeri', en: 'SAR value' }],
-  [/\bnavigation\b/gi, { tr: 'Navigasyon', en: 'Navigation' }],
-  [/\bsensoren\b/gi, { tr: 'Sensörler', en: 'Sensors' }],
-  [/\bsim[\s-]?karte\b/gi, { tr: 'SIM kartı', en: 'SIM card' }],
-  [/\babmessungen\b/gi, { tr: 'Boyutlar', en: 'Dimensions' }],
-  [/\bgewicht\b/gi, { tr: 'Ağırlık', en: 'Weight' }],
-  [/\bbetriebssystem\b/gi, { tr: 'İşletim sistemi', en: 'Operating system' }],
-  [/\barbeitsspeicher\b/gi, { tr: 'RAM', en: 'RAM' }],
-  [/\binterner\s+speicher\b/gi, { tr: 'Dahili depolama', en: 'Internal storage' }],
-  [/\banschlüsse\b/gi, { tr: 'Bağlantılar', en: 'Connections' }],
-  [/\bmaterial\b/gi, { tr: 'Malzeme', en: 'Material' }],
-];
-
 // Uppercase the first visible letter of a value line (Turkish-aware), so every
 // spec reads "Sabit takılı" / "Dahili" rather than "sabit takılı" / "built-in".
 function upperFirst(text, code) {
@@ -507,21 +419,17 @@ function labelCase(text, locale = 'en-US') {
 
 export function localizedSpecLabel(label, lang = 'en') {
   const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
-  // Specs are never shown in German — a German UI reads specs in English
-  // (the German spec translation was removed). German source residue is still
-  // scrubbed below so it never leaks onto the TR/EN views.
+  // Specs are shown only in Turkish or English — a German UI reads specs in
+  // English (the German spec translation and Geizhals source were removed).
   const code = rawCode === 'tr' ? 'tr' : 'en';
   const clean = cleanupLabel(label);
   if (!clean) return '';
   const exact = LABELS[code]?.[clean] || LABELS[code]?.[titleCase(clean)] || ciLabel(code, clean);
   if (exact) return exact;
   if (code !== 'tr') {
-    // English view: scrub German (Geizhals) AND half-translated Turkish
-    // (Epey) residue — the admin modal repairs both, and the site must
-    // match the admin output exactly.
+    // English view: scrub half-translated Turkish (Epey) residue so the site
+    // matches the admin modal output exactly.
     let outEn = clean;
-    for (const [re, map] of DE_LABEL_RESIDUE) outEn = outEn.replace(re, map.en);
-    for (const [re, map] of DE_RESIDUE) outEn = outEn.replace(re, map.en);
     outEn = scrubTurkishLabelResidueEn(outEn);
     if (/^[A-Z0-9\s&/'().+-]+$/.test(outEn) && /[A-Z]{3,}/.test(outEn)) {
       outEn = outEn.toLowerCase();
@@ -559,8 +467,6 @@ export function localizedSpecLabel(label, lang = 'en') {
       .replace(/\bMacos\b/g, 'macOS');
   }
   let out = clean;
-  for (const [re, map] of DE_LABEL_RESIDUE) out = out.replace(re, map.tr);
-  for (const [re, map] of DE_RESIDUE) out = out.replace(re, map.tr);
   for (const [re, replacement] of TR_WORDS) out = out.replace(re, replacement);
   out = out
     .replace(/\bCPU\b/gi, 'CPU')
@@ -577,16 +483,11 @@ export function localizedSpecLabel(label, lang = 'en') {
 
 function cleanupValueLine(line, lang) {
   const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
-  // Specs never render in German (de → en). German source residue is still
-  // scrubbed for the TR/EN views below.
+  // Specs render only in Turkish or English (de → en).
   const code = rawCode === 'tr' ? 'tr' : 'en';
   let out = String(line || '').replace(/\s+/g, ' ').trim();
   if (!out) return '';
 
-  // Scrub German residue on tr/en views (Geizhals source text leaking through).
-  if (code === 'tr' || code === 'en') {
-    for (const [re, map] of DE_RESIDUE) out = out.replace(re, map[code] || map.en);
-  }
   if (code === 'en') {
     // Epey writes bilingual values as "<Turkish term> (<English term>)". On the
     // EN view keep only the English parenthetical when the prefix still carries

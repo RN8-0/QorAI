@@ -260,11 +260,6 @@ const PRICE_JOBS = {
     node: ['scripts/sync_offers.js', '--connector=newegg', '--sort=-techScore', '--limit=3000', '--concurrency=2'],
     env: { NO_REINDEX: '1' },
   },
-  geizhals: {
-    label: 'DE — Geizhals en ucuz Amazon satırı',
-    node: ['scripts/sync_offers.js', '--connector=geizhals_best', "--filter-extra=source='geizhals.eu'", '--limit=500', '--concurrency=2'],
-    env: { NO_REINDEX: '1' },
-  },
   backfill: {
     label: 'Typesense fiyat backfill (site listeleri)',
     node: ['scripts/ts_backfill_lowest_price.js', '--confirm'],
@@ -718,10 +713,10 @@ function plainFetch(url, redirects = 4, referer = '') {
       headers: {
         'User-Agent': currentUA || _randomUA(),
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': isGeizhalsUrl(url) ? 'de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7' : 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
         'Accept-Encoding': 'gzip, deflate, br',
         'Upgrade-Insecure-Requests': '1',
-        ...(referer ? { 'Referer': referer } : (isGeizhalsUrl(url) ? { 'Referer': 'https://geizhals.de/' } : {})),
+        ...(referer ? { 'Referer': referer } : {}),
         ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
       },
     };
@@ -854,48 +849,6 @@ function extractListingLinksWithPrefixFallback(html, maxLinks = 1000, requirePre
     }
   }
   return [];
-}
-
-// ── Geizhals listing link extraction (server-side, regex) ────────────────────
-// Geizhals product URLs are single-segment and end in `-a<id>.html` (article)
-// or `-v<id>.html` (variant), e.g. `apple-iphone-17-pro-max-2tb-a3340592.html`.
-// The Epey extractor above hardcodes the epey.com host and requires a TWO-segment
-// `/cat/slug.html` shape, so it returned 0 links for every Geizhals listing —
-// which forced the admin into a slow double-fetch fallback that hammered
-// Cloudflare. This dedicated extractor lets `/category-links` serve Geizhals as
-// a first-class fast path, mirroring admin/js/scraper-geizhals.js.
-function extractGeizhalsLinksFromHtml(html, maxLinks = 1000) {
-  let scope = String(html || '');
-  // Narrow to the main product listing container when we can find it, so
-  // sidebar / "popular" / related-product links don't leak in. Falls back to
-  // the whole document if no recognizable container marker is present.
-  const startMatch = scope.match(
-    /<(?:div|ul|section|table)[^>]*(?:id|class)=["'][^"']*(?:productlist|offerlist|listview|cat__list|gh_listing)[^"']*["'][^>]*>/i
-  );
-  if (startMatch) scope = scope.slice(startMatch.index);
-  const seen = new Set();
-  const links = [];
-  const re = /href\s*=\s*["']([^"']+?-[av]\d+\.html)(?:[?#][^"']*)?["']/gi;
-  let m;
-  while ((m = re.exec(scope)) !== null && links.length < maxLinks) {
-    let href = m[1].trim();
-    if (/^https?:/i.test(href)) { try { href = new URL(href).pathname; } catch { continue; } }
-    if (!href.startsWith('/')) href = '/' + href;
-    if (/^\/(?:en|about|contact|impressum|datenschutz)\b/i.test(href)) continue;
-    const full = 'https://geizhals.eu' + href;
-    if (seen.has(full)) continue;
-    seen.add(full);
-    links.push(full);
-  }
-  return links;
-}
-
-function isGeizhalsUrl(url) {
-  // Match on the parsed hostname — a naïve /(^|\.)geizhals…/ against the full
-  // URL never matches `https://geizhals.eu/…` because "geizhals" sits right
-  // after the `//`, not after a dot.
-  try { return /(^|\.)geizhals\.(eu|at|de|com)$/i.test(new URL(url).hostname); }
-  catch { return /geizhals\.(eu|at|de|com)(?:[/?#]|$)/i.test(String(url || '').toLowerCase()); }
 }
 
 function productPrefixFromLinks(links, fallbackPrefix = '') {
@@ -1225,18 +1178,9 @@ async function fetchWithPuppeteer(url, opts = {}) {
   requestCount++;
   _browserCycle++;
 
-  // Per-site header overrides. Geizhals' Cloudflare wall blocks the default
-  // TR locale; pretending to be a German visitor (de-DE + geizhals.de
-  // referer) lifts the block in most cases.
+  // Per-site header override: forward the caller's referer when present.
   const lowerUrl = String(url || '').toLowerCase();
-  // Was /(^|\.)geizhals…/ against the full URL, which never matched
-  // `https://geizhals.eu/…` — so the de-DE locale headers below were dead and
-  // Geizhals saw TR-locale requests it likes to Cloudflare-block.
-  const isGeizhals = isGeizhalsUrl(url);
-  const perSiteHeaders = isGeizhals ? {
-    'Accept-Language': 'de-DE,de;q=0.9,en;q=0.7',
-    'Referer': referer || 'https://geizhals.de/',
-  } : (referer ? { Referer: referer } : null);
+  const perSiteHeaders = referer ? { Referer: referer } : null;
 
   try {
     if (perSiteHeaders) {
@@ -1274,10 +1218,7 @@ async function fetchWithPuppeteer(url, opts = {}) {
       // the page. No manual click required.
       console.log(`  ⏳ Cloudflare challenge — turnstile auto-solver working… ("${title.substring(0, 50)}")`);
       const POLL_INTERVAL = 2500;
-      const MAX_WAIT = isGeizhals ? 60000 : 45000;
-      if (isGeizhals) {
-        console.log('  ℹ️  Geizhals challenge: keep the opened Chrome window visible; manual solve is accepted if Cloudflare asks.');
-      }
+      const MAX_WAIT = 45000;
       let waited = 0;
       while (waited < MAX_WAIT) {
         // Human interaction is required to pass Turnstile. Mouse move + click the challenge bounding box.
@@ -2319,20 +2260,6 @@ const server = http.createServer(async (req, res) => {
           }));
           return;
         }
-        // Geizhals listings use a different URL shape and host than Epey, so the
-        // Epey extractor (and the ajax/filter/brand machinery below) never apply.
-        // Serve them server-side here so the admin doesn't fall back to a slow,
-        // CF-heavy second fetch per page.
-        if (isGeizhalsUrl(targetUrl)) {
-          const ghLinks = extractGeizhalsLinksFromHtml(html, maxLinks);
-          console.log(`  📄 category-links (${((Date.now() - t0) / 1000).toFixed(1)}s · geizhals/${fetchEngine}): ${ghLinks.length} product links`);
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            count: ghLinks.length, links: ghLinks, pages: [],
-            ajax: null, filter: null, filtersTopK: [], brandFilter: null,
-          }));
-          return;
-        }
         let catPath = '';
         try { catPath = new URL(targetUrl).pathname.replace(/^\/|\/$/g, '').replace(/\/\d+$/, ''); } catch {}
         const prefix = catPath ? `/${catPath.split('/')[0]}/` : '';
@@ -2989,12 +2916,10 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ error: 'Invalid URL.' }));
     return;
   }
-  const allowedGenericHost =
-    parsed.hostname.endsWith('epey.com') ||
-    /(^|\.)geizhals\.(eu|at|de|com)$/i.test(parsed.hostname);
+  const allowedGenericHost = parsed.hostname.endsWith('epey.com');
   if (!allowedGenericHost) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Only epey.com and geizhals.* domains are allowed.' }));
+    res.end(JSON.stringify({ error: 'Only epey.com domains are allowed.' }));
     return;
   }
 
@@ -3041,17 +2966,14 @@ const server = http.createServer(async (req, res) => {
     let heldSlowLock = false;
     _slowPathBusy++; heldSlowLock = true;
     try {
-      const isTargetGeizhals = isGeizhalsUrl(targetUrl);
-      if (!isTargetGeizhals) {
-        const browserFetch = await fetchWithBrowserFetch(targetUrl);
-        if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.setHeader('X-Status-Code', String(browserFetch.status || 200));
-          res.setHeader('X-Fetch-Engine', 'browser-fetch');
-          res.writeHead(200);
-          res.end(browserFetch.html);
-          return;
-        }
+      const browserFetch = await fetchWithBrowserFetch(targetUrl);
+      if (browserFetch.html && browserFetch.status >= 200 && browserFetch.status < 400 && !browserFetch.isChallenge) {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('X-Status-Code', String(browserFetch.status || 200));
+        res.setHeader('X-Fetch-Engine', 'browser-fetch');
+        res.writeHead(200);
+        res.end(browserFetch.html);
+        return;
       }
       // Cloudflare JA3-fingerprints Node's TLS stack, so a plain https request
       // (GET or POST) to epey.com is always answered with a 403 challenge — only

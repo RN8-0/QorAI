@@ -124,3 +124,6 @@ feeds/*
 # Amazon direct-price session jars (cookies) — machine-local, never commit
 scripts/.amazon-session/
 scripts/.sponsored_repair_ids.json
+
+# Local live-data backups (Geizhals removal etc.) — never commit
+backups/

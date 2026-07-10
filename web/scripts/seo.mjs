@@ -229,8 +229,8 @@ function productPath(product) {
   return slug ? `/product/${slug}-${id}` : `/product/${id}`;
 }
 
-// Collapses cosmetic SKU variants (colour / strap / storage, often in German
-// from Geizhals) down to one representative model so the curated prerender set
+// Collapses cosmetic SKU variants (colour / strap / storage) down to one
+// representative model so the curated prerender set
 // is real distinct models, not 50 near-identical pages of the same watch.
 function modelKey(name) {
   let s = String(name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss');

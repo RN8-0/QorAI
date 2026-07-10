@@ -7,10 +7,6 @@ rem gece bitemiyordu: PC gunduz acilip ogleden sonra kapaninca 3096 urunluk
 rem amazon_direct pass'ine 1 saat kaliyordu. Ayri sureste epey.com hattiyla
 rem PARALEL kosar (farkli hostlar) — sinirli pencerede iki kat is.
 rem
-rem Ilk bekleme: ana zincirin geizhals pass'i amazon.de ARAMA sayfalari ceker;
-rem boot catch-up'ta iki gorev ayni saniyede basladigi icin .de'ye cift yuk
-rem binmesin diye geizhals bitene kadar (~7-10 dk) bekliyoruz.
-rem
 rem Hiz: amazon_page host basina ayri pace gate kullanir (5 sn + jitter) ve
 rem pazarlar paralel fiyatlanir → urun basina ~25 sn yerine ~6-8 sn.
 rem US: jar'siz + statik i18n-prefs=USD cookie (warmup captcha'si jar'i
@@ -24,11 +20,6 @@ rem geceyi zaten cikarir. Kesif erken kosuyor ki ana zincirin pass2b'si
 rem (generic tarama, ~4-5 saat sonra baslar) ayni taranmamis havuzun tepesini
 rem bestOfferCheckedAt ile damgalamadan once amiral gemilerini biz alalim.
 cd /d C:\Users\RN8\Desktop\Compair-master
-rem "now" argumani (admin Price sekmesi / elle kosum): 10 dk'lik geizhals
-rem cakisma beklemesini atla — gece gorevi argumansiz cagirir ve bekler.
-if "%~1"=="now" goto :run
-timeout /t 600 /nobreak >nul
-:run
 echo ===== %date% %time% direct refresh start ===== >> "%USERPROFILE%\qorai-price-direct.log"
 set NO_REINDEX=1
 set AMAZON_DIRECT_MARKETS=DE,GB,US

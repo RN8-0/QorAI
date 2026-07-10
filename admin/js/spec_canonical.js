@@ -3,7 +3,7 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.QorAiSpecCanonical = api;
 })(typeof window !== 'undefined' ? window : globalThis, function() {
-  const VERSION = '20260605-spec-canonical-geizhals-v2';
+  const VERSION = '20260710-spec-canonical-epey';
 
   function norm(text) {
     return String(text || '')

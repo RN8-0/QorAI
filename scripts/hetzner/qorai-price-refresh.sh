@@ -26,8 +26,6 @@ export AMAZON_DIRECT_NO_SESSION=1
 export AMAZON_DIRECT_GAP_MS_US=9000
 export NO_REINDEX=1
 run() { node "$@" || echo "! pass basarisiz (devam): $*"; }
-# pass0 — DE besleme: Geizhals kaynakli urunler (amazon.de aramasi bu IP'de calisiyor)
-run scripts/sync_offers.js --connector=geizhals_best --filter-extra="source='geizhals.eu'" --limit=500 --concurrency=2
 # pass1 — refresh: fiyat gosteren HER urun + varyantlar; en eski kontrol once (dogal rotasyon)
 run scripts/sync_offers.js --connector=amazon_direct --all-variants --filter-extra="source='epey.com' && pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=6000 --concurrency=2
 # pass2 — kesif A (tuketici kategorileri KOTALI): -techScore tek basina kasalari

@@ -77,7 +77,7 @@ function incehesapUrl(url) {
 }
 
 /**
- * @param {string} network  amazon | awin | incehesap | direct | geizhals | …
+ * @param {string} network  amazon | awin | incehesap | direct | …
  * @param {string} url      raw retailer URL
  * @param {{country?:string, mid?:string, clickref?:string}} opts
  * @returns {string} affiliate-wrapped URL (or the plain URL if not configured)
@@ -88,7 +88,7 @@ function buildAffiliateUrl(network, url, opts = {}) {
     case 'amazon':    return amazonUrl(url, opts);
     case 'awin':      return awinUrl(url, opts);
     case 'incehesap': return incehesapUrl(url);
-    default:          return url; // direct / geizhals deep links need no wrap
+    default:          return url; // direct deep links need no wrap
   }
 }
 

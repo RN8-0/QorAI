@@ -14,6 +14,12 @@
       "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
       "cwd": "web",
       "port": 4173
+    },
+    {
+      "name": "admin-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4180", "--directory", "admin"],
+      "port": 4180
     }
   ]
 }

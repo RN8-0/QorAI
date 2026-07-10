@@ -434,7 +434,7 @@
               onclick="showDictCounterPopup()"
               title="Click for live dictionary stats"
               style="display:flex;align-items:center;gap:6px;font-family:ui-monospace,monospace">
-              📚 <span id="dictCounterText">TR — · DE —</span>
+              📚 <span id="dictCounterText">TR —</span>
             </button>
             <span class="proxy-status" id="proxyStatus">● Proxy: Checking...</span>
             <button class="btn btn-ghost btn-sm" onclick="checkProxy(true)">Check Proxy</button>
@@ -453,16 +453,11 @@
             <button class="btn btn-sm btn-ghost" style="margin-left:auto;padding:2px 8px"
                     onclick="document.getElementById('dictCounterPopup').style.display='none'">✕</button>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+          <div style="font-size:13px">
             <div style="padding:12px;background:var(--surface-1,#0e0e0e);border-radius:8px">
               <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇹🇷 EPEY (TR → EN)</div>
               <div style="font-size:24px;font-weight:800;color:#06b6d4;margin-top:4px" id="dictCountTr">—</div>
               <div class="text-muted" style="font-size:11px">term · public_config.tr_translation_dict</div>
-            </div>
-            <div style="padding:12px;background:var(--surface-1,#0e0e0e);border-radius:8px">
-              <div class="text-muted" style="font-size:10px;letter-spacing:.5px;font-weight:700">🇩🇪 GEIZHALS (DE → TR+EN)</div>
-              <div style="font-size:24px;font-weight:800;color:#f59e0b;margin-top:4px" id="dictCountDe">—</div>
-              <div class="text-muted" style="font-size:11px">term · public_config.de_translation_dict</div>
             </div>
           </div>
           <div class="text-muted" style="font-size:11px;margin-top:10px">
@@ -472,7 +467,6 @@
           <div style="display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap">
             <select class="input" id="dictSourceSelect" onchange="switchDictionarySource(this.value)" style="height:32px;padding:4px 8px;max-width:120px">
               <option value="tr">Epey TR</option>
-              <option value="de">Geizhals DE</option>
             </select>
             <input class="input" id="dictSearch" placeholder="Sözlükte ara..." oninput="renderDictionaryTable()" style="height:32px;padding:4px 8px;flex:1;min-width:150px">
             <button class="btn btn-sm" onclick="addDictionaryRow()">Add</button>
@@ -521,9 +515,8 @@
                 <label>Kaynak</label>
                 <select class="input" id="scrapeSource" onchange="updateScrapeSourceUI()">
                   <option value="epey">🇹🇷 Epey.com (TR)</option>
-                  <option value="geizhals">🇩🇪 Geizhals.eu (DE/EU)</option>
                 </select>
-                <small class="text-muted" id="scrapeSourceHint" style="font-size:11px">Epey: Türkçe ürün isimleri ve specs. Geizhals: Almanca specs (Avrupa fiyat karşılaştırma).</small>
+                <small class="text-muted" id="scrapeSourceHint" style="font-size:11px">Epey: Türkçe ürün isimleri ve specs.</small>
               </div>
               <div class="form-field" style="grid-column:span 2">
                 <label>Kategori</label>
@@ -589,7 +582,6 @@
                 <label>Sözlük kaynağı</label>
                 <select class="input" id="dictSourceSelect" onchange="switchDictionarySource(this.value)">
                   <option value="tr">TR source → EN</option>
-                  <option value="de">DE source → TR + EN</option>
                 </select>
               </div>
             </div>
@@ -653,7 +645,6 @@
                   <select class="input" id="offersConnector" onchange="offersRenderProvider()">
                     <option value="epey_amazon">Epey → Amazon TR (gerçek fiyat + /dp linki)</option>
                     <option value="amazon_direct">Amazon Direct — DE/GB (ASIN-first)</option>
-                    <option value="geizhals_best">Geizhals → Amazon.de (fiyat)</option>
                     <option value="admitad">Admitad</option>
                     <option value="awin">Awin</option>
                     <option value="amazon">Amazon</option>
@@ -987,18 +978,18 @@
           </div>
         </div>
 
-        <!-- Icecat panel removed (2026-05-23 EU pivot) — products use Epey + Geizhals -->
+        <!-- Icecat panel removed (2026-05-23 EU pivot); Geizhals removed (2026-07-10) — products use Epey only -->
 
         <!-- Single URL -->
         <div class="scraper-panel" id="singleUrlPanel">
           <div class="card">
             <div class="card-title">Add Product by URL or Search</div>
             <p class="text-muted" style="margin-bottom:10px;font-size:12px">
-              Epey ya da Geizhals URL'sini yapıştır — kaynak URL'den otomatik algılanır. Veya ürün adı ile arama yap.
+              Epey URL'sini yapıştır — kaynak URL'den otomatik algılanır. Veya ürün adı ile arama yap.
             </p>
             <div class="form-field">
-              <label>Product URL (epey.com / geizhals.eu) or Search Term</label>
-              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/... | https://geizhals.eu/... | iPhone 16">
+              <label>Product URL (epey.com) or Search Term</label>
+              <input class="input" id="scrapeUrl" placeholder="https://www.epey.com/... | iPhone 16">
             </div>
             <div class="form-field">
               <label>Category (auto-detected from URL)</label>
@@ -1373,10 +1364,8 @@
         'js/scoring/score_engine.js',
         'js/scoring/score_runner.js',
         'js/spec_canonical.js',
-        'js/geizhals-glossary.js',
         'js/categories.js',
         'js/scraper.js',
-        'js/scraper-geizhals.js',
         'js/scraper-price.js',
         'js/notifications.js',
         'js/support.js',

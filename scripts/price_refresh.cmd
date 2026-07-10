@@ -11,15 +11,10 @@ rem gunduz kill edilen koroda hicbir gece bitemiyordu — sondaki TS backfill de
 rem hic calismadigi icin PB'de biriken fiyatlar siteye YANSIMIYORDU (2.807 PB
 rem vs 123 TS, 2026-07-04). Simdi ayri gorevde paralel kosuyor:
 rem QorAI-PriceDirect → scripts\price_refresh_direct.cmd (epey.com ile host
-rem cakismasi yok; geizhals amazon.de aramalari icin asagidaki nota bak).
+rem cakismasi yok).
 cd /d C:\Users\RN8\Desktop\Compair-master
 echo ===== %date% %time% price refresh start ===== >> "%USERPROFILE%\qorai-price.log"
 set NO_REINDEX=1
-rem pass0 — DE besleme: Geizhals kaynakli urunlerin Amazon.de satir fiyatlari (ASIN'siz).
-rem EN BASTA kosuyor cunku amazon.de ARAMA sayfalarini kullaniyor ve direct
-rem gorev de amazon.de'ye gidiyor — direct.cmd ilk 10 dk bekleyerek basladigi
-rem icin bu pass bitmeden .de'ye cift yuk binmiyor.
-node scripts\sync_offers.js --connector=geizhals_best "--filter-extra=source='geizhals.eu'" --limit=500 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass1 — refresh: fiyat gosteren her urunu yenile (en eski kontrol once)
 node scripts\sync_offers.js --connector=epey_amazon "--filter-extra=pricedOfferCount>0" --sort=bestOfferCheckedAt --limit=4000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2 — discovery: hic taranmamislar; once Epey'de fiyati OLANLAR (Amazon olasiligi yuksek) + yuksek techScore

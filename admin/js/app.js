@@ -1259,7 +1259,7 @@ function queueProductsRefresh(){
 }
 
 // ─── Live product list polling ──────────────────────────────────────────────
-// Scrapers (Epey + Geizhals) write directly to PocketBase from background
+// The Epey scraper writes directly to PocketBase from background
 // workers, so the admin doesn't always receive a qorai:product-saved event.
 // A light 20s poll (one count request, id field only) keeps the Products
 // view in sync: the count badge updates and page 1 auto-refreshes when the
@@ -2057,12 +2057,12 @@ const DICT_VIEW_LANGS = ['en']; // German spec translation removed (2026-06-30)
 let _dictSource = 'tr';
 
 function _currentDictApi(){
-  if (_dictSource === 'de') return window.QorAiGeizhals?.dict || null;
   return window.QorAiDict || null;
 }
 
-function switchDictionarySource(src){
-  _dictSource = src === 'de' ? 'de' : 'tr';
+function switchDictionarySource(){
+  // Only the Epey TR dictionary remains (Geizhals DE removed 2026-07-10).
+  _dictSource = 'tr';
   openDictionaryPanel();
 }
 
@@ -2190,8 +2190,7 @@ function _scheduleDictionaryLiveRender(detail = '', delay = 350){
 }
 
 function addDictionaryRow(){
-  const label = _dictSource === 'de' ? 'Yeni Almanca/Geizhals terim:' : 'Yeni Türkçe/Epey terim:';
-  const term = (prompt(label) || '').trim();
+  const term = (prompt('Yeni Türkçe/Epey terim:') || '').trim();
   if (!term) return;
   const api = _currentDictApi();
   if (!api?.cache) return;
@@ -2253,8 +2252,8 @@ async function saveDictionary(){
 // cache). Used when stale entries from a previous filter generation are
 // poisoning the new pipeline. The next scrape will rebuild from scratch.
 async function wipeDictionary(){
-  const src = _dictSource === 'de' ? 'Geizhals DE' : 'Epey TR';
-  const key = _dictSource === 'de' ? 'de_translation_dict' : 'tr_translation_dict';
+  const src = 'Epey TR';
+  const key = 'tr_translation_dict';
   if (!confirm(`${src} sözlüğünü TAMAMEN sil?\n\nPocketBase shard'ları + yerel worker cache silinir. Sonraki scrape sıfırdan öğrenir.`)) return;
   const btn = event?.target;
   const orig = btn?.textContent;
@@ -2945,9 +2944,8 @@ function _adminActiveProductLang() {
 
 function _adminProductDisplayName(p, lang = _adminActiveProductLang()) {
   const nameMap = p?.nameTranslated && typeof p.nameTranslated === 'object' ? p.nameTranslated : {};
-  const sourceIsGeizhals = /geizhals/i.test(String(p?.source || p?.sourceUrl || ''));
   const storedSourceLang = String(p?.sourceLang || '').toLowerCase().trim();
-  const sourceLang = /^(tr|de)$/.test(storedSourceLang) ? storedSourceLang : (sourceIsGeizhals ? 'de' : 'tr');
+  const sourceLang = storedSourceLang || 'tr';
   if (lang && lang !== sourceLang && nameMap[lang]) return nameMap[lang];
   if (sourceLang && nameMap[sourceLang]) return nameMap[sourceLang];
   return p?.name || '';
@@ -3256,7 +3254,7 @@ function _buildOfferRow(p){
         +`</div>`;
     }
   }
-  // Priced rollup offer (Geizhals / Awin / Admitad with a real price).
+  // Priced rollup offer (Amazon / Awin / Admitad with a real price).
   const offer=_adminOfferForLang(p,_modalLang||'tr');
   if(offer){
     const priceText=escHtml(_adminFormatOfferPrice(offer));
@@ -3333,18 +3331,9 @@ function _renderProductModal(p,variants=[]){
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the Turkish source.
   const lang = _modalLang || 'tr';
-  const germanProbe = [
-    p.source,
-    p.sourceUrl,
-    p.name,
-    ...Object.keys(p.specs || {}).slice(0, 80),
-    ...Object.values(p.specs || {}).slice(0, 80),
-    ...Object.keys(p.specSections || {}).slice(0, 40),
-  ].join('\n');
-  const sourceIsGeizhals = /geizhals/i.test(String(p.source || p.sourceUrl || '')) ||
-    /\b(schwarz|betriebssystem|batterielaufzeit|energieeffizienzklasse|phasenvergleich|beschleunigungssensor|annäherungssensor|lichtsensor|aussparung|aktualisierungsrate|satellitenkommunikation|schnittstellen|kerne|ab werk|fest verbaut|kabelloses laden|zellen|netzteil|stecker|klinke|netzwerkanschluss|bauform|de-layout)\b/i.test(germanProbe);
+  // All products are Epey (Turkish source); Geizhals/German removed 2026-07-10.
   const storedSourceLang = String(p.sourceLang || '').toLowerCase().trim();
-  const sourceLang = /^(tr|de)$/.test(storedSourceLang) ? storedSourceLang : (sourceIsGeizhals ? 'de' : 'tr');
+  const sourceLang = storedSourceLang || 'tr';
   const sourceSpecs = (p.sourceSpecs && typeof p.sourceSpecs === 'object' && !Array.isArray(p.sourceSpecs)) ? p.sourceSpecs : (p.specs || {});
   const sourceSectionsRaw = (p.sourceSpecSections && typeof p.sourceSpecSections === 'object' && !Array.isArray(p.sourceSpecSections)) ? p.sourceSpecSections : (p.specSections || {});
   const sourceKeySpecs = (p.sourceKeySpecs && typeof p.sourceKeySpecs === 'object' && !Array.isArray(p.sourceKeySpecs)) ? p.sourceKeySpecs : (p.keySpecs || {});
@@ -3374,7 +3363,7 @@ function _renderProductModal(p,variants=[]){
     for(const u of src){const k=_imageIdentityKey(u);if(!k||seen.has(k))continue;seen.add(k);out.push(u);}
     return out;
   })();
-  const dictApiForModal = sourceIsGeizhals ? window.QorAiGeizhals?.dict : window.QorAiDict;
+  const dictApiForModal = window.QorAiDict;
   const dictCacheForModal = (lang !== sourceLang && dictApiForModal?.cache) ? dictApiForModal.cache() : null;
   function modalIsPreserveText(text){
     const words = String(text || '').match(/[a-zA-ZÀ-ÿığşçöüİĞŞÇÖÜÄÖÜäöüß-]{2,}/g) || [];
@@ -3763,57 +3752,6 @@ function _renderProductModal(p,variants=[]){
     const raw = String(text ?? '').trim();
     const n = (raw.match(/\d+(?:[.,]\d+)?/) || [''])[0].replace(',', '.');
     if (!raw) return null;
-    if (sourceIsGeizhals) {
-      const de = raw.toLowerCase().replace(/\s+/g,' ').trim();
-      const germanExact = {
-        'betriebssystem': { tr:'İşletim sistemi', en:'Operating system'},
-        'kamera vorne': { tr:'Ön kamera', en:'Front camera'},
-        'kamera hinten': { tr:'Arka kamera', en:'Rear camera'},
-        'kamera 1': { tr:'Kamera 1', en:'Camera 1'},
-        'kamera 2': { tr:'Kamera 2', en:'Camera 2'},
-        'kamera 3': { tr:'Kamera 3', en:'Camera 3'},
-        'kamera 4': { tr:'Kamera 4', en:'Camera 4'},
-        'weitwinkelobjektiv': { tr:'Geniş açı objektifi', en:'Wide-angle lens'},
-        'teleobjektiv': { tr:'Telefoto objektifi', en:'Telephoto lens'},
-        'makroobjektiv': { tr:'Makro objektifi', en:'Macro lens'},
-        'tiefensensor': { tr:'Derinlik sensörü', en:'Depth sensor'},
-        'akkulaufzeit pro zyklus': { tr:'Döngü başına pil ömrü', en:'Battery life per cycle'},
-        'batterieausdauer': { tr:'Pil dayanıklılığı', en:'Battery endurance'},
-        'sensoren': { tr:'Sensörler', en:'Sensors'},
-        'sim-karte': { tr:'SIM kartı', en:'SIM card'},
-        'abmessungen': { tr:'Boyutlar', en:'Dimensions'},
-        'farbe': { tr:'Renk', en:'Color'},
-        'gewicht': { tr:'Ağırlık', en:'Weight'},
-        'besonderheiten': { tr:'Özellikler', en:'Features'},
-        'batterielaufzeit': { tr:'Pil ömrü', en:'Battery life'},
-        'energieeffizienzklasse': { tr:'Enerji verimliliği sınıfı', en:'Energy efficiency class'},
-        'bildschirmgröße': { tr:'Ekran boyutu', en:'Screen size'},
-        'beschleunigungssensor': { tr:'İvmeölçer', en:'Accelerometer'},
-        'gyroskop': { tr:'Jiroskop', en:'Gyroscope'},
-        'annäherungssensor': { tr:'Yakınlık sensörü', en:'Proximity sensor'},
-        'lichtsensor': { tr:'Işık sensörü', en:'Light sensor'},
-        'kompass': { tr:'Pusula', en:'Compass'},
-        'gesichtsscanner (3d, infrarot)': { tr:'Yüz tarayıcı (3D, kızılötesi)', en:'Face scanner (3D, infrared)'},
-        'schwarz': { tr:'Siyah', en:'Black'},
-        'aussparung': { tr:'Ekran kesiti', en:'Display cutout'},
-        'flach': { tr:'Düz', en:'Flat'},
-        'kapazitiver touchscreen': { tr:'Kapasitif dokunmatik ekran', en:'Capacitive touchscreen'},
-        'phasenvergleich-af': { tr:'Faz algılamalı otomatik odaklama', en:'Phase detection autofocus'},
-        'stereo-lautsprecher (hybrid)': { tr:'Stereo hoparlörler (hibrit)', en:'Stereo speakers (hybrid)'},
-        'ip68-zertifiziert': { tr:'IP68 sertifikalı', en:'IP68 certified'},
-      };
-      if (germanExact[de]?.[lang]) return cleanupModalText(germanExact[de][lang]);
-      const gp = (obj) => obj?.[lang] || obj?.en || null;
-      const mLoad = de.match(/^(\d+(?:[.,]\d+)?)x\s+laden$/);
-      if (mLoad) return cleanupModalText(gp({ tr:`${mLoad[1]} şarj döngüsü`, en:`${mLoad[1]} charging cycles`}));
-      const mHz = de.match(/^(\d+(?:[.,]\d+)?)hz\s+aktualisierungsrate$/);
-      if (mHz) return cleanupModalText(gp({ tr:`${mHz[1]}Hz yenileme hızı`, en:`${mHz[1]}Hz refresh rate`}));
-      const mNits = de.match(/^(\d+(?:[.,]\d+)?)\s+nits\s+\(maximal\)$/);
-      if (mNits) return cleanupModalText(gp({ tr:`${mNits[1]} nit (maksimum)`, en:`${mNits[1]} nits (maximum)`}));
-      if (/^satellitenkommunikation/i.test(de)) {
-        return cleanupModalText(gp({ tr:'Uydu iletişimi (mesajlar, sadece acil arama)', en:'Satellite communication (text messages, emergency only)'}));
-      }
-    }
     const s = raw.toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u')

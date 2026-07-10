@@ -331,7 +331,7 @@ function buildSpecTranslator(product, lang) {
     .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
   const lookup = new Map();
   // The product's SOURCE-language entry in multiLangSpecs is the FULL spec
-  // object ({label: value}) — Epey stores .tr that way, Geizhals .de — and
+  // object ({label: value}) — Epey stores .tr that way — and
   // multiLangSections.<source> is NESTED. Neither is an atom map: feeding
   // them into the lookup makes a label resolve to its own VALUE ("Pil
   // kapasitesi" → "3988 mAh", so the row shows "3988 mAh | 3988 mAh") and
@@ -413,12 +413,10 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   // translation already handles localisation; the canonical step was just
   // throwing data away.
   const srcLang = String(product?.sourceLang || '').toLowerCase();
-  // Same-language source wins: a Turkish visitor on an Epey (TR) product and a
-  // German visitor on a Geizhals (DE) product both get the AUTHENTIC source
-  // specs — no translation round-trip, zero leak risk.
-  const usesTurkishSource = srcLang === 'tr' && String(specLang).toLowerCase().startsWith('tr');
-  const usesGermanSource = srcLang === 'de' && String(specLang).toLowerCase().startsWith('de');
-  const useSource = (usesTurkishSource || usesGermanSource);
+  // Same-language source wins: a Turkish visitor on an Epey (TR) product gets
+  // the AUTHENTIC source specs — no translation round-trip, zero leak risk.
+  // (Specs render only in Turkish or English; Geizhals/German source removed.)
+  const useSource = srcLang === 'tr' && String(specLang).toLowerCase().startsWith('tr');
   const keySpecs = useSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object' && Object.keys(product.sourceKeySpecs).length
     ? product.sourceKeySpecs
     : product?.keySpecs;
