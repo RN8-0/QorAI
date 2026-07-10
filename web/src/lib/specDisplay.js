@@ -163,6 +163,12 @@ const TR_WORDS = [
   [/\bfeatures?\b/gi, 'özellikleri'],
   [/\btechnology\b/gi, 'teknolojisi'],
   [/\bspecifications?\b/gi, 'özellikleri'],
+  // Old MT glued the Turkish possessive onto the English stem ("Bluetooth
+  // Specificationsi", "Kamera Featuresi") so the plain rules above never fired.
+  // These exact strings can only ever be scrape residue — safe to always fold.
+  [/\bspecificationsi\b/gi, 'özellikleri'],
+  [/\bfeaturesi\b/gi, 'özellikleri'],
+  [/\btechnologysi\b/gi, 'teknolojisi'],
   [/\boperating system\b/gi, 'işletim sistemi'],
   [/\bannouncement date\b/gi, 'duyuru tarihi'],
 ];

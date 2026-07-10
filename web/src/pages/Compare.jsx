@@ -9,7 +9,7 @@ import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx'
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo } from '../lib/seo';
-import { canonicalizeSpecMaps } from '../lib/specCanonical';
+import { canonicalSpecKey } from '../lib/specCanonical';
 import { rowWinners } from '../lib/specDirection';
 import { productPath, parseComparePair } from '../lib/routes';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
@@ -29,28 +29,83 @@ import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
-import { isDisplayableSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import { isDisplayableSpec, isHiddenSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
 import { displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
 import CompareReviews from '../components/CompareReviews.jsx';
 import './Compare.css';
 
-function flatSpecs(p) {
-  const flat = {};
-  const put = (obj) => {
-    if (obj && typeof obj === 'object') {
-      Object.entries(obj).forEach(([k, v]) => {
-        if (v != null && String(v).trim() !== '' && isDisplayableSpec(k, v)) flat[k] = String(v);
-      });
-    }
-  };
-  const canonical = canonicalizeSpecMaps(p);
-  put(canonical.keySpecs);
-  put(canonical.specs);
-  if (canonical.specSections && typeof canonical.specSections === 'object') {
-    Object.values(canonical.specSections).forEach(put);
+// Source-aware spec flattening for the compare table. The old path ran every
+// product through canonicalizeSpecMaps, which overlaid BOTH the Turkish `specs`
+// AND the English `specsEn` into one map — so every niche row appeared TWICE (once
+// per language) — and it read the post-processed `specSections`, whose labels are
+// half-translated at scrape time ("Bluetooth Specificationsi", "Body Malzemesi",
+// "Sanal Core"). Instead we pick ONE clean, complete source per UI language:
+//   • Turkish view → the AUTHENTIC source maps of a Turkish product (mirrors the
+//     detail page's mergeSpecBricks) — clean Turkish labels.
+//   • English view → the pre-translated `specsEn` map — already clean, complete
+//     English (the detail page can lean on multiLangSpecs for this; compare's
+//     lighter localizedSpecLabel would otherwise leak folded Turkish like
+//     "Islemci Modeli", so read the ready-made English directly).
+// Either way a single language source removes the leaked words AND the duplication.
+function pickSpecMaps(p, lang) {
+  const specLang = String(lang || 'en').toLowerCase().startsWith('de')
+    ? 'en'
+    : String(lang || 'en').slice(0, 2).toLowerCase();
+  const has = (o) => o && typeof o === 'object' && Object.keys(o).length > 0;
+  const empty = {};
+  if (specLang === 'tr') {
+    const trSrc = String(p?.sourceLang || '').toLowerCase() === 'tr';
+    return {
+      keySpecs: trSrc && has(p.sourceKeySpecs) ? p.sourceKeySpecs : (p.keySpecs || empty),
+      sections: trSrc && has(p.sourceSpecSections) ? p.sourceSpecSections : (p.specSections || empty),
+      flat: trSrc && has(p.sourceSpecs) ? p.sourceSpecs : (p.specs || empty),
+    };
   }
-  return flat;
+  // English (and German, which reads specs in English): iterate the ready-made
+  // English map alone. Fall back to the raw maps (translated per-row) only when a
+  // product predates the English pre-translation.
+  if (has(p.specsEn)) return { keySpecs: empty, sections: empty, flat: p.specsEn };
+  return { keySpecs: p.keySpecs || empty, sections: p.specSections || empty, flat: p.specs || empty };
+}
+
+function cleanMultiline(v) {
+  return String(v == null ? '' : v)
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
+function flatSpecs(p, lang) {
+  const { keySpecs, sections, flat } = pickSpecMaps(p, lang);
+  const out = {};
+  const seen = new Set();
+  const put = (k, v) => {
+    const key = String(k || '').trim();
+    if (!key) return;
+    const val = cleanMultiline(v);
+    if (!val) return;
+    if (isHiddenSpec(key, val) || !isDisplayableSpec(key, val)) return;
+    const sig = key.toLowerCase();
+    if (seen.has(sig)) return; // same raw label seen already (e.g. a Highlights echo)
+    seen.add(sig);
+    // Canonical key aligns the SAME spec across products (and drives the
+    // winner-direction lookup, which is language-agnostic via normKey);
+    // localizedSpecLabel renders it back to the UI language at display time.
+    // First writer wins, in priority order keySpecs → sections → flat.
+    const ck = canonicalSpecKey(key, val);
+    if (!(ck in out)) out[ck] = val;
+  };
+  Object.entries(keySpecs).forEach(([k, v]) => put(k, v));
+  Object.values(sections).forEach((body) => {
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      Object.entries(body).forEach(([k, v]) => put(k, v));
+    }
+  });
+  Object.entries(flat).forEach(([k, v]) => put(k, v));
+  return out;
 }
 
 
@@ -392,7 +447,7 @@ export default function Compare() {
 
   const specRows = useMemo(() => {
     if (products.length < 1) return [];
-    const flats = products.map(flatSpecs);
+    const flats = products.map((p) => flatSpecs(p, lang));
     const keys = [];
     const seen = new Set();
     flats.forEach((f) => Object.keys(f).forEach((k) => {
@@ -402,7 +457,7 @@ export default function Compare() {
       const values = flats.map((f) => f[k] || '—');
       return { key: k, values, win: rowWinners(k, values) };
     });
-  }, [products]);
+  }, [products, lang]);
 
   const matchScores = useMemo(() => {
     if (!showMatchScore) return {};
