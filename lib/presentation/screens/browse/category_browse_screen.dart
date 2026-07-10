@@ -461,22 +461,12 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return _priceSortCountries.contains(c) ? 'price$c' : 'lowestPriceUSD';
   }
 
-  /// Extra Typesense filter clauses required by the active sort option,
-  /// independent of the user's filter selections. Fiyat sıralamalarında SEÇİLİ
-  /// ÜLKEDE fiyatı olmayan ürünleri (`price{ÜLKE} == 0`) dışlarız — böylece
-  /// liste yalnız o ülkede fiyatı olanları GÖSTERİLEN fiyata göre gösterir ve
-  /// "fiyatsız/yanlış-fiyat" ürünler araya karışmaz. Returns null when the sort
-  /// imposes no extra constraints.
+  /// Extra Typesense filter clauses required by the active sort option.
+  /// Fiyat sıralamasında ARTIK FİLTRE YOK — kullanıcı isteği: "bu filtre değil
+  /// sıralama; fiyatsızlar fiyatlılardan SONRA gelsin, tüm ürünler görünsün".
+  /// Fiyatsızları dışlamak yerine `_serverSortBy`'daki `_eval` ile en sona atarız.
   String? _sortDrivenFilterBy() {
-    switch (_sortOption) {
-      case _SortOption.priceAsc:
-      case _SortOption.priceDesc:
-        return '${_priceSortField()}:>0';
-      case _SortOption.techScore:
-      case _SortOption.relevance:
-      case _SortOption.newest:
-        return null;
-    }
+    return null;
   }
 
   /// Combines user-driven filter clauses with sort-driven ones into a single
@@ -600,11 +590,13 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       case _SortOption.newest:
         return 'trendScore:desc,techScore:desc';
       case _SortOption.priceAsc:
-        // Seçili ülkenin native fiyat alanına göre — GÖSTERİLEN fiyatla birebir.
-        // Fiyatsızlar `_sortDrivenFilterBy` (price{ÜLKE}:>0) ile zaten dışlanır.
-        return '${_priceSortField()}:asc,techScore:desc';
+        // Seçili ülkenin native fiyat alanına göre (GÖSTERİLEN fiyatla birebir).
+        // `_eval(price{ÜLKE}:>0):desc` → o ülkede FİYATI OLANLAR önce, fiyatsızlar
+        // EN SONA (kullanıcı isteği); sonra ucuzdan pahalıya; fiyatsızlar kendi
+        // içinde techScore'a göre. Fiyatsızlar dışlanmaz, tüm ürünler görünür.
+        return '_eval(${_priceSortField()}:>0):desc,${_priceSortField()}:asc,techScore:desc';
       case _SortOption.priceDesc:
-        return '${_priceSortField()}:desc,techScore:desc';
+        return '_eval(${_priceSortField()}:>0):desc,${_priceSortField()}:desc,techScore:desc';
     }
   }
 

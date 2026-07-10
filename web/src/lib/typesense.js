@@ -668,14 +668,15 @@ export async function getCategoryPage(opts = {}) {
     // alanları (ts_backfill) ile server GÖSTERİLEN fiyata göre sıralar.
     const cc = String(opts.country || '').toUpperCase();
     const priceField = PRICE_SORT_COUNTRIES.has(cc) ? `price${cc}` : 'lowestPriceUSD';
-    if (opts.sort === 'priceUp' || opts.sort === 'priceDown') {
-      filters.push(`${priceField}:>0`);
-    }
+    // Fiyatsızları DIŞLAMA — `_eval(price:>0):desc` ile o ülkede fiyatı OLANLAR
+    // önce, fiyatsızlar EN SONA (kullanıcı: "filtre değil sıralama, tüm ürünler
+    // görünsün"). 2 alan: arama sırasında `_text_match` ile birleşince Typesense
+    // 3-sıra limitini aşmaz.
     const sortMap = {
       score: 'techScore:desc',
       trend: 'trendScore:desc',
-      priceUp: `${priceField}:asc`,
-      priceDown: `${priceField}:desc`,
+      priceUp: `_eval(${priceField}:>0):desc,${priceField}:asc`,
+      priceDown: `_eval(${priceField}:>0):desc,${priceField}:desc`,
       new: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
     };
     const sort = sortMap[opts.sort] || sortMap.score;
