@@ -14,6 +14,9 @@ const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const COLLECTION = 'products';
 const SEARCH_PATH = `/collections/${COLLECTION}/documents/search`;
+// Ülke-bazlı sortable fiyat alanı olan pazarlar (ts_backfill `price{ÜLKE}` yazar).
+// Fiyat sıralaması bu ülkelerde GÖSTERİLEN yerli fiyata göre yapılır.
+const PRICE_SORT_COUNTRIES = new Set(['TR', 'US', 'DE', 'GB', 'FR', 'IT', 'ES', 'NL']);
 const LIST_FIELD_NAMES = [
   'id', 'name', 'imageUrl', 'category', 'subcategory', 'brand', 'slug',
   'techScore', 'trendScore', 'price_segment', 'lowestPriceUSD',
@@ -659,11 +662,20 @@ export async function getCategoryPage(opts = {}) {
     else if (opts.score === 'mid') filters.push('techScore:[60..79]');
     else if (opts.score === 'low') filters.push('techScore:<60');
 
+    // Fiyat sıralaması: `lowestPriceUSD` küresel EN UCUZ pazarı gösterir; oysa
+    // kart ziyaretçinin ülkesinin YERLİ fiyatını gösterir. GB'de ucuz + TR'de
+    // pahalı bir ürün USD'ye göre yanlış yere düşüyordu. `price{ÜLKE}` sortable
+    // alanları (ts_backfill) ile server GÖSTERİLEN fiyata göre sıralar.
+    const cc = String(opts.country || '').toUpperCase();
+    const priceField = PRICE_SORT_COUNTRIES.has(cc) ? `price${cc}` : 'lowestPriceUSD';
+    if (opts.sort === 'priceUp' || opts.sort === 'priceDown') {
+      filters.push(`${priceField}:>0`);
+    }
     const sortMap = {
       score: 'techScore:desc',
       trend: 'trendScore:desc',
-      priceUp: 'lowestPriceUSD:asc',
-      priceDown: 'lowestPriceUSD:desc',
+      priceUp: `${priceField}:asc`,
+      priceDown: `${priceField}:desc`,
       new: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
     };
     const sort = sortMap[opts.sort] || sortMap.score;

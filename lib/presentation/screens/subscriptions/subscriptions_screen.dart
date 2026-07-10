@@ -23,6 +23,7 @@ import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
+import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/presentation/screens/subscriptions/subscription_history_screen.dart';
@@ -361,9 +362,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   bool _validatingChip = false;
 
   late AnimationController _pulseController;
-  late AnimationController _orbController;
-  late Animation<double> _orbScaleAnimation;
-  late Animation<double> _orbOpacityAnimation;
 
   static const _suggestions = [
     'Netflix',
@@ -389,24 +387,12 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _orbController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat(reverse: true);
-
     // Clear any stale error from previous session so the red banner does
     // not greet users before they even hit "Start Analysis".
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(subQuizProvider.notifier).clearError();
     });
-
-    _orbScaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
-    );
-    _orbOpacityAnimation = Tween<double>(begin: 0.5, end: 0.8).animate(
-      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
-    );
   }
 
   @override
@@ -414,7 +400,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     _inputCtrl.dispose();
     _inputFocus.dispose();
     _pulseController.dispose();
-    _orbController.dispose();
     super.dispose();
   }
 
@@ -771,54 +756,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   // ── Background Orbs ────────────────────────────────────────────────────────
 
   Widget _buildBackgroundOrbs() {
-    return Stack(
-      children: [
-        Positioned(
-          top: -100,
-          right: -100,
-          child: AnimatedBuilder(
-            animation: _orbController,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _orbScaleAnimation.value,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        _kPrimary.withValues(
-                          alpha: _orbOpacityAnimation.value * 0.3,
-                        ),
-                        _kPrimary.withValues(alpha: 0.0),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Positioned(
-          bottom: 100,
-          left: -50,
-          child: Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  _kAccent.withValues(alpha: 0.15),
-                  _kAccent.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    // Arka plandaki gradyant orb'lar KALDIRILDI (kullanıcı isteği).
+    return const SizedBox.shrink();
   }
 
   // ── Phase Timeline ─────────────────────────────────────────────────────────
@@ -900,6 +839,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                     ),
                   ),
                 ),
+                // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
+                // döner, analiz sırasında ekran "canlı" kalır (kullanıcı isteği).
+                const ScanningArc(size: 180, color: _kAccent),
                 // Pulsing inner orb
                 AnimatedBuilder(
                   animation: _pulseController,

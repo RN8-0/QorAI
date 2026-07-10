@@ -40,11 +40,35 @@ const TS_COLLECTION = 'products';
 //   - pricesByCountry: yalnız 2 harfli ülke kodu anahtarlı, JSON.stringify
 //     edilmiş {"TR":1234.56,...} map'i (index:false → aranmaz ama döner)
 //   - bestOfferExpiresAt: rollup tazelik damgası (priceForCountry bunu ister)
+// Ülke-bazlı SIRALANABİLİR fiyat alanları. `lowestPriceUSD` küresel EN UCUZ
+// pazarı gösterir (ör. GB fiyatı) — ama app/web sıkı-ülke kuralıyla SEÇİLİ
+// ülkenin YERLİ fiyatını gösterir. GB'de ucuz + TR'de pahalı bir ürün USD'ye
+// göre "ucuz" sıralanıp TR fiyatıyla "pahalı" görününce sıralama bozuk
+// görünüyordu. Bu alanlar seçili ülkenin native fiyatını sortable tutar →
+// server, GÖSTERİLEN fiyata göre sıralar. Yalnız gerçekten fiyat gören ülkeler
+// (Epey TR + feed pazarları) — 54 ülkenin hepsi gereksiz.
+const PRICE_COUNTRIES = ['TR', 'US', 'DE', 'GB', 'FR', 'IT', 'ES', 'NL'];
+
 const NEW_FIELDS = [
   { name: 'lowestPriceUSD', type: 'float', optional: true },
   { name: 'pricesByCountry', type: 'string', optional: true, index: false },
   { name: 'bestOfferExpiresAt', type: 'string', optional: true, index: false },
+  ...PRICE_COUNTRIES.map((c) => ({ name: `price${c}`, type: 'float', optional: true, sort: true })),
 ];
+
+// PB `prices` map'inden ülke-bazlı native fiyatları (2 harfli kod) çıkarır;
+// her PRICE_COUNTRIES için sortable alan değeri döndürür (yoksa 0 → app tarafı
+// `price{C}:>0` ile filtreleyip fiyatsızları dışlar). Idempotent: alan HER ZAMAN
+// yazılır ki fiyatını kaybeden ürünün eski değeri de sıfırlansın.
+function countryPriceFields(prices) {
+  const out = {};
+  const src = prices && typeof prices === 'object' ? prices : {};
+  for (const c of PRICE_COUNTRIES) {
+    const n = Number(src[c]);
+    out[`price${c}`] = n > 0 ? Math.round(n * 100) / 100 : 0;
+  }
+  return out;
+}
 
 // CLI flags ----------------------------------------------------------------
 const args = process.argv.slice(2);
@@ -172,6 +196,7 @@ async function main() {
         lowestPriceUSD: usd,
         pricesByCountry: compactCountryPrices(pb.prices),
         bestOfferExpiresAt: pb.bestOfferExpiresAt || '',
+        ...countryPriceFields(pb.prices),
       });
       if (buffer.length >= TS_BATCH_SIZE) await flush();
     }

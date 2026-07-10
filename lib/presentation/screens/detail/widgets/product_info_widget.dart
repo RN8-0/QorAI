@@ -133,24 +133,18 @@ class _DescCardState extends State<_DescCard> {
 
 class _TitlePriceSection extends ConsumerWidget {
   final ProductEntity product;
-  final String country;
-  const _TitlePriceSection({required this.product, required this.country});
+  const _TitlePriceSection({required this.product});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final countryInfo = SupportedCountries.countries[country];
-    final localPrice = product.getPriceForCountry(country);
-    final usPrice = product.getPriceForCountry('US');
-    final price = localPrice ?? usPrice;
-    final currency = localPrice != null
-        ? (countryInfo?.currency ?? 'USD')
-        : 'USD';
     final locale = Localizations.localeOf(context).languageCode;
     // PB'nin o dildeki adını AYNEN göster. localizeProductName runtime çevirisi
     // zaten doğru olan adı bozuyordu ("Apple iPhone 17 Pro" → "Apple The iphone
     // 17 Pro"). nameForLanguage PB'nin lokalize adını (de/en/tr) verir — kaynak o.
     final displayName = product.nameForLanguage(locale);
 
+    // Ad altındaki fiyat rozeti KALDIRILDI (kullanıcı isteği): fiyat zaten
+    // "Fiyatlar" sekmesinde gösteriliyor, burada tekrar etmesi gereksiz.
     return Container(
       width: double.infinity,
       color: context.backgroundColor,
@@ -179,27 +173,6 @@ class _TitlePriceSection extends ConsumerWidget {
               letterSpacing: -0.2,
             ),
           ),
-          if (price != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                AppUtils.formatCurrency(price, currency),
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: context.surfaceVariantColor,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

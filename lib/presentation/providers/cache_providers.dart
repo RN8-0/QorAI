@@ -2047,12 +2047,13 @@ final localMatchScoreProvider = Provider.family<int?, ProductEntity>((
   final behavior =
       ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
   final algo = ProfileAlgorithmService();
-  // Algorithm always returns 20-100. Works for users without a completed quiz
-  // too — the score will be less personalized but still meaningful.
+  // Algorithm returns 20-100 (kullanıcı isteği). Works for users without a
+  // completed quiz too — the score will be less personalized but still
+  // meaningful. Clamp mirrors the algorithm floor so the ring never shows <20.
   final score = algo
       .calculateTotalFitScore(user: user, product: product, behavior: behavior)
       .round()
-      .clamp(10, 100);
+      .clamp(20, 100);
   return score;
 });
 

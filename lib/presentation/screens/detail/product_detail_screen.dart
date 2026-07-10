@@ -319,7 +319,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
             _HeroHeader(product: product),
             SliverToBoxAdapter(
               child: RepaintBoundary(
-                child: _TitlePriceSection(product: product, country: country),
+                child: _TitlePriceSection(product: product),
               ),
             ),
             // Overview content — always visible above tabs
@@ -370,65 +370,20 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   }
 }
 
-class _LazyDetailTabView extends StatefulWidget {
+/// NestedScrollView'in header'ı (ürün görseli/adı) iç scroll ile koordine
+/// edebilmesi için body GERÇEK bir [TabBarView] olmalıdır. Eski IndexedStack
+/// tabanlı sürüm bu koordinasyonu kırıyordu → yukarı kaydırınca header, aktif
+/// sekme kendi en üstüne gelmeden erken açılıyordu. TabBarView ile artık tek
+/// ekran gibi: önce sekme en üste gelir, SONRA header yeniden görünür.
+/// (Sekme scroll konumu, tab içeriklerindeki PageStorageKey ile korunur.)
+class _LazyDetailTabView extends StatelessWidget {
   const _LazyDetailTabView({required this.controller, required this.children});
 
   final TabController controller;
   final List<Widget> children;
 
   @override
-  State<_LazyDetailTabView> createState() => _LazyDetailTabViewState();
-}
-
-class _LazyDetailTabViewState extends State<_LazyDetailTabView> {
-  late final Set<int> _builtIndexes = {widget.controller.index};
-  late int _currentIndex = widget.controller.index;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_handleTabChange);
-  }
-
-  @override
-  void didUpdateWidget(covariant _LazyDetailTabView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller == widget.controller) return;
-    oldWidget.controller.removeListener(_handleTabChange);
-    widget.controller.addListener(_handleTabChange);
-    _builtIndexes.add(widget.controller.index);
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_handleTabChange);
-    super.dispose();
-  }
-
-  void _handleTabChange() {
-    final nextIndex = widget.controller.index;
-    if (nextIndex == _currentIndex) return;
-    _currentIndex = nextIndex;
-    _builtIndexes.add(nextIndex);
-    if (mounted) setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final currentIndex = widget.controller.index;
-    _currentIndex = currentIndex;
-    _builtIndexes.add(currentIndex);
-    return IndexedStack(
-      index: currentIndex,
-      children: List<Widget>.generate(widget.children.length, (index) {
-        if (!_builtIndexes.contains(index)) {
-          return const SizedBox.shrink();
-        }
-        return KeyedSubtree(
-          key: PageStorageKey<String>('detail-tab-$index'),
-          child: widget.children[index],
-        );
-      }),
-    );
+    return TabBarView(controller: controller, children: children);
   }
 }

@@ -111,27 +111,20 @@ class _OfferLinksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Başlık/çift fiyat YOK: sadece market satır(lar)ı (logo + ad + fiyat,
-    // tıklanınca o markette ürüne gider). "Fiyatlar" sekme başlığı zaten var.
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ...offers.map(
-            (offer) => _OfferLinkRow(
-              offer: offer,
-              selectedCountry: country,
-              productId: product.id,
-            ),
+    // Dış "kart" kutusu KALDIRILDI (kullanıcı isteği): mağaza satırı zaten
+    // kendi kutusuna (border + surfaceColor) sahip; iki iç içe kutu yerine
+    // TEK satır tam genişlikte gösterilir. Başlık/çift fiyat yok — "Fiyatlar"
+    // sekme başlığı zaten var.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final offer in offers)
+          _OfferLinkRow(
+            offer: offer,
+            selectedCountry: country,
+            productId: product.id,
           ),
-        ],
-      ),
+      ],
     );
   }
 }

@@ -16,6 +16,7 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
+import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 
 // Exact web palette so the app report matches the site 1:1.
 const _green = Color(0xFF22C55E);
@@ -2032,7 +2033,8 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
   int _active = 0;
 
   // Orb pulse — transient (yalnızca yükleme ekranı görünürken çalışır), bu
-  // yüzden sürekli-frame perf sorunu yaratmaz.
+  // yüzden sürekli-frame perf sorunu yaratmaz. Sürekli dönen tarama halkası
+  // ayrı, self-contained [ScanningArc] widget'ıyla sağlanır.
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -2204,6 +2206,9 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
                       ),
                     ),
                   ),
+                  // Sürekli dönen tarama arkı — belirleyici halka bir aşamada
+                  // beklerken bile bu döner, "işlem devam ediyor" hissi verir.
+                  const ScanningArc(size: 150, color: AppTheme.brandCyan),
                   AnimatedBuilder(
                     animation: _pulse,
                     builder: (ctx, _) => Container(

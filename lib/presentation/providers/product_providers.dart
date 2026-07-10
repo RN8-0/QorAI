@@ -423,6 +423,25 @@ final trendsProvider = FutureProvider<Result<List<TrendModel>>>((ref) {
 });
 
 /// Search results (FutureProvider) - Section 10
+/// Compare varsayılan listesinde popüler kategorileri öne alır (sıra sabit).
+/// Listede olmayan kategoriler sona atılır (999).
+int _comparePopularCategoryRank(String category) {
+  const order = <String>[
+    'smartphones',
+    'laptops',
+    'tablets',
+    'smartwatches',
+    'graphics_cards',
+    'cpus',
+    'monitors',
+    'tvs',
+    'headphones',
+    'gaming_consoles',
+  ];
+  final idx = order.indexOf(category.toLowerCase().trim());
+  return idx < 0 ? 999 : idx;
+}
+
 final searchResultsProvider = FutureProvider.autoDispose
     .family<Result<List<ProductEntity>>, String>((ref, query) async {
       // Ignore the warm-up sentinel
@@ -430,19 +449,26 @@ final searchResultsProvider = FutureProvider.autoDispose
         return ref.read(productRepositoryProvider).searchProducts(query: '');
       }
       if (query.isEmpty) {
-        // Show personalized products from homeFeed cache
+        // Compare varsayılan listesi. KURAL (kullanıcı isteği):
+        //  • Davranış YOKKEN → popüler kategorilerde YÜKSEK teknik puanlı
+        //    popüler ürünler (iPhone / üst-segment Asus·Acer vb.). Aşağı akıştaki
+        //    marka/kategori çeşitlilik filtresi bunları yayar.
+        //  • Davranış VARKEN (görüntüleme/karşılaştırma) → profil + davranış fit
+        //    skoruna göre kişiselleştirilir.
         final feedAsync = ref.read(homeFeedProvider);
         final cached = feedAsync.valueOrNull;
         if (cached != null && cached.all.isNotEmpty) {
-          // Personalize order using user profile
           final user = ref.read(userProfileProvider).valueOrNull;
+          final behavior =
+              ref.read(behaviorSignalsProvider).valueOrNull ??
+              BehaviorSignals.empty;
+          final hasBehavior =
+              behavior.categoryViews.isNotEmpty ||
+              behavior.productViews.isNotEmpty;
           final products = cached.all.toList();
 
-          if (user != null) {
+          if (user != null && hasBehavior) {
             final algo = ref.read(profileAlgorithmServiceProvider);
-            final behavior =
-                ref.read(behaviorSignalsProvider).valueOrNull ??
-                BehaviorSignals.empty;
             final fitScores = {
               for (final p in products)
                 p.id: algo.calculateTotalFitScore(
@@ -454,6 +480,15 @@ final searchResultsProvider = FutureProvider.autoDispose
             products.sort(
               (a, b) => fitScores[b.id]!.compareTo(fitScores[a.id]!),
             );
+          } else {
+            // Varsayılan: popüler kategoriler önce, her birinde techScore'a göre
+            // (üst-segment/popüler ürünler öne gelir).
+            products.sort((a, b) {
+              final ra = _comparePopularCategoryRank(a.category);
+              final rb = _comparePopularCategoryRank(b.category);
+              if (ra != rb) return ra.compareTo(rb);
+              return b.techScore.compareTo(a.techScore);
+            });
           }
 
           // Dedup before returning — homeFeed pool can have storage/color variants
@@ -2903,7 +2938,9 @@ final recentlyAnalyzedProvider =
               .toList();
           for (final id in missingIds.take(5)) {
             try {
-              final pResult = await repo.getProduct(id, preferCache: true);
+              // Live fetch (not cache): a product deleted from the catalog still
+              // has a stale cached detail, so preferCache would resurface it.
+              final pResult = await repo.getProduct(id, preferCache: false);
               pResult.when(success: (p) => result.add(p), failure: (_) {});
             } catch (_) {}
           }
@@ -3112,43 +3149,42 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
     }
   }
 
-  // Fetch missing from Firestore in parallel (max 10)
+  // Fetch missing from the LIVE catalog (bulk). We must NOT prefer cache here:
+  // a product deleted from the catalog still has its stale detail sitting in the
+  // local cache, so preferCache would resurrect it (e.g. old Geizhals records
+  // with German names). getProductsByIds hits Typesense with `id:[...]` and
+  // returns ONLY ids that still exist — anything requested but not returned is
+  // gone, so we drop it from history.
   if (missingIds.isNotEmpty) {
     final repo = ref.read(productRepositoryProvider);
     final lookup = missingIds.take(10).toList();
-    final dead = <String>{};
-    final futures = lookup.map((id) async {
-      try {
-        final result = await repo.getProduct(id, preferCache: true);
-        return result.when(
-          success: (p) => MapEntry(id, p),
-          failure: (_) {
-            dead.add(id);
-            return null;
-          },
-        );
-      } catch (_) {
-        dead.add(id);
-        return null;
-      }
-    });
-    final fetched = await Future.wait(futures);
-    for (final entry in fetched) {
-      if (entry != null) results[entry.key] = entry.value;
-    }
-    // Drop deleted products from Hive AND the PB recently_viewed collection
-    // so subsequent provider rebuilds (and the next app launch) don't keep
-    // refetching them. Without the PB prune the firestoreIds stream just
-    // reseeds the Hive cache with the same dead ids next time.
-    if (dead.isNotEmpty) {
-      unawaited(hiveDs.pruneViewedProducts(dead));
-      final uid = ref.read(authStateProvider).valueOrNull;
-      if (uid != null && uid.isNotEmpty) {
-        unawaited(
-          ref.read(pbDataSourceProvider).pruneRecentlyViewed(uid, dead),
-        );
-      }
-    }
+    final lookupResult = await repo.getProductsByIds(lookup);
+    lookupResult.when(
+      success: (products) {
+        for (final p in products) {
+          results[p.id] = p;
+        }
+        // Ids we asked for but the live catalog didn't return are deleted.
+        // A total backend failure surfaces as `failure` (handled below), so an
+        // empty success here genuinely means those products are gone — safe to
+        // prune from Hive AND the PB recently_viewed collection so subsequent
+        // rebuilds (and the next launch) don't keep resurfacing them.
+        final live = {for (final p in products) p.id};
+        final dead = lookup.where((id) => !live.contains(id)).toSet();
+        if (dead.isNotEmpty) {
+          unawaited(hiveDs.pruneViewedProducts(dead));
+          final uid = ref.read(authStateProvider).valueOrNull;
+          if (uid != null && uid.isNotEmpty) {
+            unawaited(
+              ref.read(pbDataSourceProvider).pruneRecentlyViewed(uid, dead),
+            );
+          }
+        }
+      },
+      // Network/backend blip — keep the ids for next time, don't prune valid
+      // history and don't surface anything we couldn't validate this rebuild.
+      failure: (_) {},
+    );
   }
 
   // Return in original viewedIds order

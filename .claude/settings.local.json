@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell($javaHome = \\(Get-Command flutter -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\\) ; flutter doctor -v 2>&1 | Select-String \"Java\" | head)"
+      "PowerShell($javaHome = \\(Get-Command flutter -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\\) ; flutter doctor -v 2>&1 | Select-String \"Java\" | head)",
+      "PowerShell(flutter analyze lib/config/category_filters.dart lib/config/filter_config.dart lib/data/datasources/pb_ds.dart lib/presentation/widgets/filter_bottom_sheet.dart lib/presentation/screens/browse/category_browse_screen.dart lib/presentation/models/filter_models.dart 2>&1)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

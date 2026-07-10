@@ -205,6 +205,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         });
       }
     }
+    // Misafir (giriş yapmamış) kullanıcı: ana sayfa sadeleşir — yalnız popüler
+    // kategori rail'leri gösterilir (For You / Trending / Discover vb. yok).
+    // Giriş/çıkış olunca authStateProvider değişir → home tam düzene geçer.
+    final isGuest =
+        ref.watch(authStateProvider).valueOrNull == null &&
+        !pb.authStore.isValid;
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: RefreshIndicator(
@@ -232,6 +238,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             parent: AlwaysScrollableScrollPhysics(),
           ),
           slivers: [
+            // Misafir (giriş yapmamış): ana sayfada SADECE popüler kategori
+            // rail'leri (her biri 10 ürün). For You / Trending / vb. YOK.
+            if (isGuest) ...[
+              _buildAppBar(context),
+              SliverToBoxAdapter(child: _buildSearchBar(context)),
+              SliverToBoxAdapter(
+                child: _SectionHeader(
+                  title: context.l10n?.categories ?? 'Categories',
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: RepaintBoundary(child: _buildCategoriesSection()),
+              ),
+              _buildGuestRailsSliver(),
+            ] else ...[
             // ── STAGE 0: PROVIDER-BAĞIMSIZ statik iskelet ─────────────────
             // Hiçbir Consumer/ref.watch yok → ilk frame'de provider rebuild
             // storm yaratmaz. SearchBar zaten statik. AppBar/QuizReminder
@@ -337,6 +358,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               SliverToBoxAdapter(child: _buildDiscoverSection()),
             ],
+            ], // ← misafir/tam düzen (else) kapanışı
 
             const SliverToBoxAdapter(child: SizedBox(height: 120)),
           ],
@@ -2434,6 +2456,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ),
       ),
     ];
+  }
+
+  /// Misafir ana sayfası: popüler kategori rail'leri (her biri 10 ürün),
+  /// kullanıcının belirttiği sabit sırayla. Tek bir Consumer içine sarılır
+  /// ki feed yüklenince AppBar/kategori çipleri yeniden build olmasın.
+  Widget _buildGuestRailsSliver() {
+    return SliverToBoxAdapter(
+      child: Consumer(
+        builder: (context, ref, _) {
+          final homeFeed = ref.watch(homeFeedProvider);
+          final rails = _buildGuestCategoryRails(homeFeed);
+          if (rails.isEmpty) return const SizedBox.shrink();
+          return RepaintBoundary(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: rails
+                  .whereType<SliverToBoxAdapter>()
+                  .map((s) => s.child ?? const SizedBox.shrink())
+                  .toList(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Sıra sabit (kullanıcı isteği): akıllı telefon, tablet, laptop, akıllı
+  /// saat, monitör, tv, ekran kartı — her biri 10 ürün. Ürünü olmayan
+  /// kategori otomatik atlanır (_buildCategoryBlock boş dönerse).
+  List<Widget> _buildGuestCategoryRails(AsyncValue<HomeFeed> homeFeed) {
+    const guestCategories = <String>[
+      'smartphones',
+      'tablets',
+      'laptops',
+      'smartwatches',
+      'monitors',
+      'tvs',
+      'graphics_cards',
+    ];
+    final sections = <Widget>[];
+    for (final category in guestCategories) {
+      final info = _categoryMeta(category);
+      sections.addAll(
+        _buildCategoryBlock(
+          homeFeed: homeFeed,
+          title: info['title'] as String,
+          categoryId: category,
+          icon: info['icon'] as IconData,
+          iconColor: info['color'] as Color,
+          wide: false, // compact grid → kategori başına 10 ürün
+        ),
+      );
+    }
+    return sections;
   }
 
   List<Widget> _buildPriorityCategorySectionsList(

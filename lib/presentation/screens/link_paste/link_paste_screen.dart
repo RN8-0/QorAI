@@ -29,6 +29,7 @@ import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
+import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 
 // ── Part files ──
 part 'widgets/quiz_widgets.dart';
@@ -55,7 +56,7 @@ class LinkPasteScreen extends ConsumerStatefulWidget {
 }
 
 class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // === TAB SYSTEM ===
   late TabController _tabController;
 
@@ -66,7 +67,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   String? _lastSavedSingleHistoryKey;
   String? _lastSavedCompareHistoryKey;
   bool _singleSubmitInFlight = false;
-  bool _suppressNextClipboardPaste = false;
+  // Panodaki linki tekrar tekrar sormamak için son sorulan URL.
+  String? _lastClipboardPrompt;
 
   // === COMPARE TAB (up to 4 links) ===
   final List<TextEditingController> _compareControllers = List.generate(
@@ -106,12 +108,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   late AnimationController _pulseController;
   late AnimationController _orbController;
   late AnimationController _quizEntryController;
-  late Animation<double> _orbScaleAnimation;
-  late Animation<double> _orbOpacityAnimation;
 
   @override
   void initState() {
     super.initState();
+    // Uygulama arka plandan öne gelince (kullanıcı tarayıcıda link kopyalayıp
+    // uygulamaya dönünce) panoyu yeniden kontrol edip yapıştırma teklifi sunarız.
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 2, vsync: this);
 
     // Unified link flow: when the last visible field receives a link, reveal
@@ -142,18 +145,23 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       duration: const Duration(milliseconds: 600),
     );
 
-    _orbScaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
-      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
-    );
-    _orbOpacityAnimation = Tween<double>(begin: 0.5, end: 0.8).animate(
-      CurvedAnimation(parent: _orbController, curve: Curves.easeInOutSine),
-    );
+    // İlk açılışta panoda link varsa yapıştırma teklifi göster.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybePromptClipboardPaste();
+    });
+  }
 
-    _checkClipboard();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _maybePromptClipboardPaste();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     _singleUrlController.dispose();
     _singleFocusNode.dispose();
@@ -170,8 +178,102 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     super.dispose();
   }
 
-  Future<void> _checkClipboard() async {
-    // Clipboard detection disabled — users paste manually via the paste button
+  /// Panoda geçerli bir ürün linki varsa, kullanıcıya "yapıştıralım mı?" diye
+  /// tek dokunuşluk bir teklif (SnackBar) gösterir. Yalnızca idle akışta ve
+  /// alanlar boşken; aynı linki tekrar tekrar sormaz.
+  Future<void> _maybePromptClipboardPaste() async {
+    if (!mounted) return;
+    // Sadece boşta (analiz/karşılaştırma sürmüyorken) teklif et.
+    final quiz = ref.read(linkQuizProvider);
+    final compare = ref.read(compareAnalysisProvider);
+    if (quiz.phase != LinkFlowPhase.idle ||
+        compare.phase != ComparePhase.idle) {
+      return;
+    }
+    // Herhangi bir alan zaten doluysa teklif etme.
+    final anyFilled = _compareControllers
+        .take(_visibleCompareFields)
+        .any((c) => c.text.trim().isNotEmpty);
+    if (anyFilled) return;
+
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final url = _extractUrlCandidate(data?.text ?? '');
+    if (url == null) return;
+    if (url == _lastClipboardPrompt) return; // bu linki zaten sormuştuk
+    _lastClipboardPrompt = url;
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        // İki buton: "Geç" (yapıştırma) ve "Yapıştır". SnackBar tek action'a
+        // izin verdiği için içeriği Row olarak kuruyoruz.
+        content: Row(
+          children: [
+            Expanded(
+              child: Text(
+                _linkText(
+                  context,
+                  tr: 'Panodaki bağlantıyı yapıştıralım mı?',
+                  en: 'Paste the link from your clipboard?',
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => messenger.hideCurrentSnackBar(),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(_linkText(context, tr: 'Geç', en: 'Skip')),
+            ),
+            const SizedBox(width: 4),
+            TextButton(
+              onPressed: () {
+                messenger.hideCurrentSnackBar();
+                if (!mounted) return;
+                final controller = _compareControllers.first;
+                controller.text = url;
+                controller.selection = TextSelection.collapsed(
+                  offset: url.length,
+                );
+                // Listener zaten sonraki alanı açar ve butonları günceller.
+                _onUnifiedFieldChanged();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.white.withValues(alpha: 0.18),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                _linkText(context, tr: 'Yapıştır', en: 'Paste'),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.brandBlue,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 
   void _showLinkSnackBar(
@@ -231,39 +333,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return _isValidUrl(normalized) ? normalized : null;
   }
 
-  Future<void> _pasteClipboardInto(
-    TextEditingController controller, {
-    bool onlyWhenEmpty = false,
-    bool showInvalidFeedback = true,
-  }) async {
-    if (onlyWhenEmpty && controller.text.trim().isNotEmpty) {
-      return;
-    }
-    final invalidClipboardMessage = _linkText(
-      context,
-      tr: 'Panoda gecerli bir baglanti bulunamadi.',
-      en: 'No valid URL was found in the clipboard.',
-    );
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final pastedUrl = _extractUrlCandidate(data?.text ?? '');
-    if (pastedUrl == null) {
-      if (showInvalidFeedback) {
-        _showLinkSnackBar(invalidClipboardMessage);
-      }
-      return;
-    }
-
-    setState(() {
-      controller.text = pastedUrl;
-      controller.selection = TextSelection.collapsed(
-        offset: controller.text.length,
-      );
-    });
-  }
-
-  /// Tracks which focus nodes are in "edit mode" (double-tapped)
-  final Set<FocusNode> _editModeFocusNodes = {};
-
   Widget _buildModernUrlField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -272,101 +341,74 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     Widget? trailing,
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
-    bool enableSingleTapPaste = true,
+    bool enableSingleTapPaste = true, // korunuyor (imza uyumu) — kullanılmıyor
   }) {
-    final isEditMode = _editModeFocusNodes.contains(focusNode);
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: enableSingleTapPaste
-          ? () {
-              if (_suppressNextClipboardPaste) {
-                _suppressNextClipboardPaste = false;
-                return;
-              }
-              // Single tap: paste from clipboard (overwrites existing text)
-              unawaited(
-                _pasteClipboardInto(
-                  controller,
-                  onlyWhenEmpty: false,
-                  showInvalidFeedback: false,
+    // Tek dokunuş klavyeyi açar (çift dokunuş / edit-mode kaldırıldı). Alan
+    // doğrudan düzenlenebilir; yapıştırma ekrana gelince çıkan teklifle yapılır.
+    return AnimatedGradientInputShell(
+      child: SizedBox(
+        height: 48,
+        child: Center(
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: TextInputType.url,
+            textInputAction: textInputAction,
+            autocorrect: false,
+            enableSuggestions: false,
+            maxLines: 1,
+            textAlignVertical: TextAlignVertical.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: context.textPrimary,
+            ),
+            onTapOutside: (_) => focusNode.unfocus(),
+            onSubmitted: onSubmitted,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hintText,
+              hintStyle: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w400,
+                color: context.textTertiaryColor.withValues(alpha: 0.6),
+              ),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 14, right: 8),
+                child: Icon(
+                  prefixIconData,
+                  color: AppTheme.brandBlue.withValues(alpha: 0.7),
+                  size: 18,
                 ),
-              );
-            }
-          : null,
-      onDoubleTap: () {
-        // Double tap: enter edit mode, open keyboard
-        setState(() => _editModeFocusNodes.add(focusNode));
-        focusNode.requestFocus();
-        focusNode.addListener(() {
-          if (!focusNode.hasFocus && mounted) {
-            setState(() => _editModeFocusNodes.remove(focusNode));
-          }
-        });
-      },
-      child: AnimatedGradientInputShell(
-        child: AbsorbPointer(
-          absorbing: !isEditMode,
-          child: SizedBox(
-            height: 48,
-            child: Center(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                readOnly: !isEditMode,
-                keyboardType: TextInputType.url,
-                textInputAction: textInputAction,
-                autocorrect: false,
-                enableSuggestions: false,
-                maxLines: 1,
-                textAlignVertical: TextAlignVertical.center,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: context.textPrimary,
-                ),
-                onTapOutside: (_) {
-                  focusNode.unfocus();
-                  setState(() => _editModeFocusNodes.remove(focusNode));
-                },
-                onSubmitted: onSubmitted,
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: hintText,
-                  hintStyle: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: context.textTertiaryColor.withValues(alpha: 0.6),
-                  ),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 14, right: 8),
-                    child: Icon(
-                      prefixIconData,
-                      color: AppTheme.brandBlue.withValues(alpha: 0.7),
-                      size: 18,
-                    ),
-                  ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 44,
-                  ),
-                  suffixIcon: trailing != null
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: trailing,
-                        )
-                      : null,
-                  suffixIconConstraints: const BoxConstraints(
-                    minWidth: 36,
-                    minHeight: 44,
-                  ),
-                  border: InputBorder.none,
-                  filled: false,
-                  contentPadding: const EdgeInsets.only(
-                    top: 12,
-                    bottom: 12,
-                    right: 8,
-                  ),
-                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 44,
+              ),
+              suffixIcon: trailing != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: trailing,
+                    )
+                  : null,
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 36,
+                minHeight: 44,
+              ),
+              // Odaklanınca temanın focusedBorder'ı devreye girip ETRAFTA
+              // İKİNCİ bir çizgi çiziyordu (kullanıcı: "tıklayınca ekstra çizgi").
+              // Tüm border state'lerini none yaparak yalnız gradyant kabuk kalır.
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              focusedErrorBorder: InputBorder.none,
+              filled: false,
+              contentPadding: const EdgeInsets.only(
+                top: 12,
+                bottom: 12,
+                right: 8,
               ),
             ),
           ),
@@ -613,19 +655,16 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   Future<void> _startAnalysis(String url) async => _startSingleAnalysis();
 
   // ── Unified link flow ───────────────────────────────────────────────
-  // Reveals the next empty field once the current last one has a link, so the
-  // user can paste 1..4 links in a single screen (no Single/Compare tabs).
+  // Görünür alan sayısı = dolu alan sayısı + 1 boş (min 1, max 4). Böylece
+  // link yapıştırınca yeni alan AÇILIR, bir link silinince (üstte boş alan
+  // kalırsa) alan sayısı yeniden AZALIR.
   void _onUnifiedFieldChanged() {
     if (!mounted) return;
-    final last = _visibleCompareFields - 1;
-    final lastHasText = last >= 0 &&
-        last < _compareControllers.length &&
-        _compareControllers[last].text.trim().isNotEmpty;
-    if (lastHasText && _visibleCompareFields < _compareControllers.length) {
-      setState(() => _visibleCompareFields++);
-    } else {
-      setState(() {}); // keep clear buttons / button label in sync
-    }
+    final filledCount = _compareControllers
+        .where((c) => c.text.trim().isNotEmpty)
+        .length;
+    final desired = (filledCount + 1).clamp(1, _compareControllers.length);
+    setState(() => _visibleCompareFields = desired);
   }
 
   // Routes by how many links the user supplied: exactly one → the single
@@ -1754,23 +1793,20 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
       prefixIconData: Icons.link_rounded,
       enableSingleTapPaste: true,
       trailing: controller.text.isNotEmpty
-          ? Listener(
-              onPointerDown: (_) => _suppressNextClipboardPaste = true,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  controller.clear();
-                  setState(() {});
-                },
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: Center(
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: AppTheme.error.withValues(alpha: 0.78),
-                      size: 14,
-                    ),
+          ? GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                controller.clear();
+                setState(() {});
+              },
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: Center(
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: AppTheme.error.withValues(alpha: 0.78),
+                    size: 14,
                   ),
                 ),
               ),
@@ -1917,6 +1953,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                             ),
                           ),
                   ),
+                  // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
+                  // döner, analiz sırasında ekran "canlı" kalır.
+                  const ScanningArc(size: 120, color: AppTheme.brandCyan),
                   AnimatedBuilder(
                     animation: _pulseController,
                     builder: (_, ac) => Container(
@@ -2598,6 +2637,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                     ),
                   ),
                 ),
+                // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
+                // döner, analiz sırasında ekran "canlı" kalır.
+                const ScanningArc(size: 120, color: AppTheme.brandCyan),
                 AnimatedBuilder(
                   animation: _pulseController,
                   builder: (ctx, _) => Container(
@@ -3053,59 +3095,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   }
 
   Widget _buildBackgroundOrbs() {
-    // RepaintBoundary: orb her frame yeniden boyanıyor (sürekli animasyon).
-    // İzole etmezsek üstteki içerik katmanını da kirletip gereksiz repaint
-    // (jank) yaratır. Boundary ile orb kendi katmanında kalır.
-    return RepaintBoundary(
-      child: Stack(
-      children: [
-        Positioned(
-          top: -100,
-          right: -100,
-          child: AnimatedBuilder(
-            animation: _orbController,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _orbScaleAnimation.value,
-                child: Container(
-                  width: 400,
-                  height: 400,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        AppTheme.primaryBlue.withValues(
-                          alpha: _orbOpacityAnimation.value * 0.3,
-                        ),
-                        AppTheme.primaryBlue.withValues(alpha: 0.0),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Positioned(
-          bottom: 100,
-          left: -50,
-          child: Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppTheme.accentCyan.withValues(alpha: 0.15),
-                  AppTheme.accentCyan.withValues(alpha: 0.0),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-      ),
-    );
+    // Arka plandaki gradyant orb'lar KALDIRILDI (kullanıcı isteği).
+    return const SizedBox.shrink();
   }
 
   // ignore: unused_element

@@ -9305,6 +9305,10 @@ async function priceSyncRefreshStatus() {
   if (!el) return;
   el.textContent = 'okunuyor…';
   try {
+    // Bu fonksiyon window'a export edilir; ana scrape döngüsünün modül-kapsamlı
+    // `pb`'sine erişemez → kendi client'ını almalı (aksi halde "pb is not
+    // defined" ile durum kartı hep hata veriyordu).
+    const pb = getPb();
     const freshQ = (extra) => pb.collection('offers').getList(1, 1, { filter: `price > 0 && expiresAt > @now${extra ? ' && ' + extra : ''}`, $autoCancel: false });
     const [cfg, freshTR, freshDE, freshGB, total, priced] = await Promise.all([
       pb.collection('public_config').getList(1, 1, { filter: 'key="price_sync_status"', $autoCancel: false }),

@@ -6578,60 +6578,40 @@ Rules:
           // "Fiyat yok". Mağaza/offer varsa redundant "Fiyatı gör →" başlığını
           // GÖSTERME (alttaki mağaza satırı zaten linki/fiyatı taşıyor) →
           // iç içe/hizasız görünüm giderilir.
-          if (hasPrice || (offers.isEmpty && entries.isEmpty)) ...[
+          // Kesin fiyat varsa fiyatı göster; yoksa fiyat alanı BOŞ kalır
+          // (kullanıcı isteği: "Fiyat yok" + uzun "mağaza/fiyat bilgisi yok"
+          // metni kaldırıldı). Sadece fiyatlar hâlâ yükleniyorsa ince bir
+          // "yükleniyor" ipucu gösterilir.
+          if (hasPrice) ...[
             Center(
               child: Text(
-                hasPrice
-                    ? AppUtils.formatCurrency(displayAmount, displayCurrency)
-                    : (isTr ? 'Fiyat yok' : 'No price'),
+                AppUtils.formatCurrency(displayAmount, displayCurrency),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: hasPrice ? (compact ? 15 : 18) : 13.5,
-                  fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w700,
-                  color: hasPrice
-                      ? AppTheme.scoreExcellent
-                      : context.textTertiaryColor,
+                  fontSize: compact ? 15 : 18,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.scoreExcellent,
+                ),
+              ),
+            ),
+            SizedBox(height: compact ? 8 : 12),
+          ] else if (offers.isEmpty &&
+              entries.isEmpty &&
+              offersAsync is AsyncLoading) ...[
+            Center(
+              child: Text(
+                isTr ? 'Fiyatlar yükleniyor' : 'Loading prices',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: context.textTertiaryColor,
                 ),
               ),
             ),
             SizedBox(height: compact ? 8 : 12),
           ],
-          if (offers.isEmpty && entries.isEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.surfaceVariantColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.dividerColor),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.price_change_outlined,
-                    size: 18,
-                    color: context.textTertiaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      isTr
-                          ? (offersAsync is AsyncLoading
-                                ? 'Fiyatlar yükleniyor'
-                                : 'Bu ürün için mağaza/fiyat bilgisi yok')
-                          : (offersAsync is AsyncLoading
-                                ? 'Loading prices'
-                                : 'No store or price information for this product'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (offers.isNotEmpty)
+          if (offers.isNotEmpty)
             // Tek en iyi teklif (seçili ülke) — çoklu market/ülke listelenmez.
             ...offers
                 .take(1)
@@ -6642,10 +6622,16 @@ Rules:
                     compact: compact,
                   ),
                 )
-          else
+          else if (entries.isNotEmpty)
             ...entries.map(
               (entry) => _CompareStoreRow(name: entry.key, url: entry.value),
-            ),
+            )
+          else
+            // Ne canlı teklif ne kayıtlı affiliate linki var: fiyat olmasa da
+            // ülkeye-uygun Amazon linki HER ZAMAN gösterilir (Fiyatlar sekmesi
+            // ve web ile parite). Kullanıcı: "fiyat yoksa link de gösterilmiyor,
+            // saçma — linkler eskisi gibi görünmeli".
+            _buildCompareAmazonFallback(product: product, country: country, compact: compact),
           if (showSimilar) _buildCompareSimilarRow(product),
         ],
       ),
@@ -6824,6 +6810,109 @@ Rules:
                 );
               },
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Fiyat/teklif yokken bile gösterilen ülkeye-uygun Amazon linki. Detaydaki
+  /// `_AmazonSearchCard`'ın compare karşılığı — `_buildCompareOfferRow` ile aynı
+  /// görünümde (compact modda logo + CTA dikey, geniş modda satır).
+  Widget _buildCompareAmazonFallback({
+    required ProductEntity product,
+    required String country,
+    required bool compact,
+  }) {
+    final visitor = ref.watch(detectedCountryProvider).valueOrNull;
+    final url = amazonUrlForProduct(product, country, visitorCountry: visitor);
+    if (url.isEmpty) return const SizedBox.shrink();
+    final brand = _resolveCompareStoreBrand('amazon $url');
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final cta = isTr ? 'Fiyata bak' : 'See price';
+
+    final logo = Container(
+      width: compact ? 26 : 32,
+      height: compact ? 26 : 32,
+      decoration: BoxDecoration(
+        color: brand.logoUrl == null
+            ? brand.color.withValues(alpha: 0.12)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: brand.color.withValues(alpha: 0.2)),
+      ),
+      alignment: Alignment.center,
+      child: _CompareStoreLogo(brand: brand),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            final uri = Uri.tryParse(url);
+            if (uri == null) return;
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (_) {}
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 10,
+              vertical: compact ? 8 : 10,
+            ),
+            decoration: BoxDecoration(
+              color: context.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.dividerColor),
+            ),
+            child: compact
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      logo,
+                      const SizedBox(height: 6),
+                      Text(
+                        cta,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      logo,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Amazon',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        cta,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),

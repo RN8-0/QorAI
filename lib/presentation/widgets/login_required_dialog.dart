@@ -9,10 +9,11 @@ import 'package:qor_ai/core/pb_client.dart' as pb_client;
 import 'package:qor_ai/routing/router.dart';
 
 /// Returns `true` if user is logged in, `false` otherwise.
-/// When not logged in, shows a dialog prompting sign-in.
+/// When not logged in, sends the user straight to the sign-in screen
+/// (no intermediate "sign in required" dialog — user request).
 bool requireAuth(BuildContext context) {
   if (pb_client.pb.authStore.isValid) return true;
-  showLoginRequiredDialog(context);
+  context.push(AppRoutes.login);
   return false;
 }
 

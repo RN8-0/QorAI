@@ -446,16 +446,32 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     return _buildServerSideFilterBy(state ?? _filterState) != null;
   }
 
+  // Ülke-bazlı SIRALANABİLİR Typesense fiyat alanları (ts_backfill yazar).
+  // Bunlar seçili ülkenin NATIVE fiyatını tutar → server GÖSTERİLEN fiyata göre
+  // sıralar. `lowestPriceUSD` küresel en-ucuz pazarı gösterdiği için (GB'de ucuz
+  // + TR'de pahalı ürün TR listesinde yanlış yere düşüyordu) artık kullanılmaz.
+  static const _priceSortCountries = {
+    'TR', 'US', 'DE', 'GB', 'FR', 'IT', 'ES', 'NL',
+  };
+
+  /// Seçili ülkenin sıralanabilir fiyat alanı. Alanı olmayan (nadir) ülkelerde
+  /// `lowestPriceUSD`'ye düşer (o ülkelerde zaten ~hiç fiyat yok).
+  String _priceSortField() {
+    final c = ref.read(selectedCountryProvider).trim().toUpperCase();
+    return _priceSortCountries.contains(c) ? 'price$c' : 'lowestPriceUSD';
+  }
+
   /// Extra Typesense filter clauses required by the active sort option,
-  /// independent of the user's filter selections. For price sorts we exclude
-  /// products without a known USD price (lowestPriceUSD == 0) so the list
-  /// never starts with "$0" placeholders. Returns null when the sort imposes
-  /// no extra constraints.
+  /// independent of the user's filter selections. Fiyat sıralamalarında SEÇİLİ
+  /// ÜLKEDE fiyatı olmayan ürünleri (`price{ÜLKE} == 0`) dışlarız — böylece
+  /// liste yalnız o ülkede fiyatı olanları GÖSTERİLEN fiyata göre gösterir ve
+  /// "fiyatsız/yanlış-fiyat" ürünler araya karışmaz. Returns null when the sort
+  /// imposes no extra constraints.
   String? _sortDrivenFilterBy() {
     switch (_sortOption) {
       case _SortOption.priceAsc:
       case _SortOption.priceDesc:
-        return 'lowestPriceUSD:>0';
+        return '${_priceSortField()}:>0';
       case _SortOption.techScore:
       case _SortOption.relevance:
       case _SortOption.newest:
@@ -584,12 +600,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       case _SortOption.newest:
         return 'trendScore:desc,techScore:desc';
       case _SortOption.priceAsc:
-        // Typesense excludes `0` from ascending price sort by clamping it to
-        // the bottom via secondary techScore descending — products with
-        // unknown prices keep a deterministic order.
-        return 'lowestPriceUSD:asc,techScore:desc';
+        // Seçili ülkenin native fiyat alanına göre — GÖSTERİLEN fiyatla birebir.
+        // Fiyatsızlar `_sortDrivenFilterBy` (price{ÜLKE}:>0) ile zaten dışlanır.
+        return '${_priceSortField()}:asc,techScore:desc';
       case _SortOption.priceDesc:
-        return 'lowestPriceUSD:desc,techScore:desc';
+        return '${_priceSortField()}:desc,techScore:desc';
     }
   }
 
@@ -746,7 +761,11 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     try {
       final cache = ref.read(cacheServiceProvider);
       final stale = cache.getLocalStale<List<dynamic>>(hiveCacheKey);
+      // Hive seed'i YALNIZ varsayılan (techScore) sıralamada gösterilir: cache
+      // techScore'a göre kaydediliyor; başka sıralamada seed farklı sırada
+      // görünüp 1sn sonra TS ile "birden değişir" gibi görünüyordu.
       if (canSeedFromCache &&
+          _sortOption == _SortOption.techScore &&
           stale.data != null &&
           (stale.data as List).isNotEmpty) {
         final products = _sanitizeCategoryProducts(
@@ -769,44 +788,10 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
       }
     } catch (_) {}
 
-    try {
-      final feedAsync = ref.read(homeFeedProvider);
-      final cached = feedAsync.valueOrNull;
-      if (canSeedFromCache && cached != null && cached.all.isNotEmpty) {
-        final catProducts = _sanitizeCategoryProducts(
-          cached.all.where((p) {
-            final pCat = p.category.toLowerCase().trim();
-            return pCat == catKey ||
-                (catKey.endsWith('s') &&
-                    pCat == catKey.substring(0, catKey.length - 1)) ||
-                (!catKey.endsWith('s') && pCat == '${catKey}s');
-          }).toList(),
-        );
-        if (catProducts.isNotEmpty && mounted) {
-          if (_allProducts.isEmpty) {
-            setState(() {
-              _allProducts = catProducts;
-              _visibleProducts = catProducts;
-              _loading = false;
-            });
-          } else {
-            final existingIds = _allProducts.map((p) => p.id).toSet();
-            final extras = catProducts
-                .where((p) => !existingIds.contains(p.id))
-                .toList();
-            if (extras.isNotEmpty) {
-              setState(() {
-                _allProducts = [..._allProducts, ...extras];
-                if (_searchQuery.isEmpty && !_filterState.isActive) {
-                  _visibleProducts = [..._allProducts, ...extras];
-                }
-                _loading = false;
-              });
-            }
-          }
-        }
-      }
-    } catch (_) {}
+    // Home-feed "varyete" seed'i KALDIRILDI: farklı sıralı (çeşitlilik yayılmış)
+    // ürünleri anlık gösterip ~1sn sonra TS sonucuyla değiştirdiği için
+    // "önce farklı sıralama, sonra birden değişiyor" hissi yaratıyordu. Artık
+    // yalnız (techScore) Hive seed'i veya doğrudan TS sonucu gösterilir.
 
     try {
       final ds = ref.read(pbDataSourceProvider);
@@ -905,9 +890,56 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
 
   // ── build ─────────────────────────────────────────────────────────────────
 
+  /// "En Yüksek Puanlı" sıralamasını İSTEMCİ tarafında da garantiler — sunucu
+  /// techScore sırası bazı yollarda (Hive/feed seed, PB fallback) korunmadığı
+  /// için ekranda uygulanmıyordu.
+  ///
+  /// FİYAT sıralaması: sunucu `lowestPriceUSD` (küresel USD) alanına göre
+  /// sıralıyor, ancak KARTTA gösterilen fiyat SEÇİLİ ülkenin fiyatı
+  /// (`getPriceForCountry`). Bir ürünün USD fiyatı olup seçili ülkede fiyatı
+  /// OLMAYABİLİR (örn. yalnız US Amazon fiyatı) → kartta boş görünür ama sunucu
+  /// sırasında araya karışır. Kullanıcı isteği: "fiyatı olmayanlar fiyatı
+  /// olanlardan SONRA gelsin". Bunu istemci tarafında KARARLI bölütleme ile
+  /// garantileriz: seçili ülkede fiyatı olanlar (sunucu sırasında) önce,
+  /// fiyatı görünmeyenler en sonda. Böylece görünen liste her zaman doğru:
+  /// fiyatlılar ucuzdan/pahalıya, fiyatsızlar altta.
+  List<ProductEntity> _sortForDisplay(
+    List<ProductEntity> products,
+    String country,
+  ) {
+    if (products.isEmpty) return products;
+    if (_sortOption == _SortOption.techScore) {
+      return [...products]..sort((a, b) => b.techScore.compareTo(a.techScore));
+    }
+    if (_sortOption == _SortOption.priceAsc ||
+        _sortOption == _SortOption.priceDesc) {
+      // Sunucu artık seçili ülkenin native fiyat alanına göre sıralıyor; burada
+      // GÖSTERİLEN fiyata (getPriceForCountry) göre tam sıralayıp fiyatsızları
+      // sona atarak seed/PB-fallback yollarında da birebir doğru sıra garanti
+      // ederiz (sunucu sırasıyla tutarlı olduğu için "zıplama" olmaz).
+      final asc = _sortOption == _SortOption.priceAsc;
+      final priced = <ProductEntity>[];
+      final unpriced = <ProductEntity>[];
+      for (final p in products) {
+        final v = p.getPriceForCountry(country);
+        (v != null && v > 0 ? priced : unpriced).add(p);
+      }
+      priced.sort((a, b) {
+        final pa = a.getPriceForCountry(country)!;
+        final pb = b.getPriceForCountry(country)!;
+        return asc ? pa.compareTo(pb) : pb.compareTo(pa);
+      });
+      return [...priced, ...unpriced];
+    }
+    return products; // relevance/newest → sunucu sırası
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = _visibleProducts;
+    final filtered = _sortForDisplay(
+      _visibleProducts,
+      ref.watch(selectedCountryProvider),
+    );
 
     return Scaffold(
       backgroundColor: context.backgroundColor,

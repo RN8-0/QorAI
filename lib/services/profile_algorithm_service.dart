@@ -506,19 +506,21 @@ class ProfileAlgorithmService {
             ? product.ratings.community * 20
             : (product.trendScore * 10).clamp(0, 100));
 
-    // Price/Performance (15%)
+    // Price/Performance vs the user's budget (budget-aware → kişisel).
     final pricePerf =
         pricePerformanceScore ?? _calculatePricePerformanceScore(user, product);
 
-    // Weighted total (weights: 0.55 + 0.18 + 0.12 + 0.15 = 1.0). Personal fit
-    // dominates so scores spread by how well the product matches THIS user;
-    // techScore (expert) is dialed back because it clusters near 100 for all
-    // top products and was collapsing the score range.
+    // Ürün "arzu edilirliği" (0-100): techScore + topluluk sinyali yalnız HAFİF
+    // bir kalite dokunuşu. Kullanıcı isteği: eşleşme puanı teknik puanın kopyası
+    // OLMASIN. Bu yüzden desirability toplamda düşük ağırlıkta kullanılır.
+    final desirability = ((expert * 0.7) + (community * 0.3)).clamp(0.0, 100.0);
+
+    // Ağırlıklar: KİŞİSEL UYUM BASKIN (%70) — ekosistem/bütçe/öncelik/cihaz/
+    // davranış. Bütçe-değer uyumu %13. Ürün kalitesi (techScore/topluluk) yalnız
+    // %17 → "teknik puanla doğru orantılı" his kırıldı; puan artık kullanıcının
+    // ürüne ne kadar uyduğuna göre yayılır (0.70 + 0.13 + 0.17 = 1.0).
     double total =
-        (personalFit * 0.55) +
-        (expert * 0.18) +
-        (community * 0.12) +
-        (pricePerf * 0.15);
+        (personalFit * 0.70) + (pricePerf * 0.13) + (desirability * 0.17);
 
     // Recency bonus/penalty.
     final releaseYear = _getReleaseYear(product);
@@ -555,11 +557,11 @@ class ProfileAlgorithmService {
     // Behavior-driven personalization bonus (search/view/compare history).
     total += _calculateHistoryBoost(product, behavior);
 
-    // ── Normalize into the 10-100 band ──────────────────────────────────────
-    // Map raw [0..100] → [10..100]: a low floor keeps a real spread between a
-    // poor and a great match, while an ideal personal fit can still reach 100.
+    // ── 20-100 bandına eşle ─────────────────────────────────────────────────
+    // Kullanıcı isteği: eşleşme puanı 20-100 arası. Düşük taban gerçek yayılım
+    // korur (kötü uyum ~20-40, mükemmel uyum ~90-100), asla 20 altına inmez.
     final clamped = total.clamp(0.0, 100.0);
-    return 10 + (clamped * 0.90);
+    return 20 + (clamped * 0.80);
   }
 
   /// History boost: rewards products related to what the user actually
@@ -1362,14 +1364,60 @@ class ProfileAlgorithmService {
         ? matchCount / user.priorities.length
         : 0.0;
 
-    // If keyword matching found little, use techScore as a quality proxy
-    // High techScore products partially satisfy 'quality' and 'performance' priorities
+    // Kazınmış pros/specs metni önceliğin anahtar kelimesini çoğu zaman
+    // taşımıyor (TR/EN karışık, tutarsız). Eskiden bu durumda techScore proxy'ye
+    // düşülüyordu → puan "teknik puanın kopyası" oluyordu. Bunun YERİNE ürünün
+    // KATEGORİSİNİN kullanıcının öncelik/kullanım-amacına ne kadar uyduğuna
+    // bakan, techScore'dan BAĞIMSIZ bir taban kullanılır (kullanıcı isteği).
     if (keywordScore < 0.3) {
-      final techProxy = (product.techScore / 100).clamp(0.0, 1.0);
-      // Blend: 60% keyword, 40% tech proxy
-      return (keywordScore * 0.6 + techProxy * 0.4).clamp(0.0, 1.0);
+      final baseline = _priorityCategoryBaseline(user, product);
+      return (keywordScore * 0.55 + baseline * 0.45).clamp(0.0, 1.0);
     }
     return keywordScore.clamp(0.0, 1.0);
+  }
+
+  /// techScore'dan BAĞIMSIZ öncelik-uyum tabanı: ürünün kategorisi kullanıcının
+  /// öncelikleri / mesleği / kullanım amacı / ilgi alanlarıyla ne kadar
+  /// örtüşüyor? Anahtar kelime eşleşmesi zayıf kaldığında güvenilir kişisel
+  /// sinyaldir. 0.45 (alakasız) – 0.9 (birebir kullanım-amacı kategorisi).
+  double _priorityCategoryBaseline(UserEntity user, ProductEntity product) {
+    final cat = product.category.toLowerCase().trim();
+    double best = 0.5;
+    void bump(double v) {
+      if (v > best) best = v;
+    }
+
+    if (user.priorities.contains('gaming') &&
+        gamingFocusedCategories.contains(cat)) {
+      bump(0.88);
+    }
+    if (user.priorities.contains('creator') &&
+        creatorFocusedCategories.contains(cat)) {
+      bump(0.85);
+    }
+    if (user.priorities.contains('productivity') &&
+        productivityFocusedCategories.contains(cat)) {
+      bump(0.83);
+    }
+    if (categoriesForUsageIntent(user.usageIntent).contains(cat)) bump(0.85);
+    if (categoriesForProfession(user.profession).contains(cat)) bump(0.8);
+    if (user.interestCategories
+        .map((e) => e.toLowerCase().trim())
+        .contains(cat)) {
+      bump(0.78);
+    }
+    if (user.primaryCategory != null &&
+        user.primaryCategory!.toLowerCase().trim() == cat) {
+      bump(0.82);
+    }
+    // Kullanıcının hiçbir odağıyla örtüşmeyen kategori → hafif düşük taban.
+    if (best == 0.5 &&
+        (user.priorities.isNotEmpty ||
+            user.interestCategories.isNotEmpty ||
+            user.usageIntent != null)) {
+      best = 0.45;
+    }
+    return best;
   }
 
   double _calculateDeviceCompatibilityScore(

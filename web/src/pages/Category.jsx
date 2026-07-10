@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
+import { useGeoCountry } from '../lib/geo';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { usePageContext } from '../lib/pageContext';
@@ -184,9 +185,12 @@ export default function Category() {
     return min > meta.min || max < meta.max;
   });
 
+  // Ziyaretçinin ülkesi — fiyat sıralamasını GÖSTERİLEN yerli fiyata göre yapar.
+  const geoCountry = useGeoCountry();
+
   const filterKey = [
     q, score, sort, brands.join(','), segments.join(','), apiTokens.join(','),
-    JSON.stringify(rangeFilters),
+    JSON.stringify(rangeFilters), geoCountry,
   ].join('|');
 
   // Load the stable facet universe whenever the category changes.
@@ -227,7 +231,7 @@ export default function Category() {
     setPage(1);
     getCategoryPage({
       category: cat, q: q.trim(), brands, segment: segments[0], tokens: apiTokens,
-      score, sort, page: 1, perPage: PER_PAGE, facets: true,
+      score, sort, page: 1, perPage: PER_PAGE, facets: true, country: geoCountry,
     })
       .then((r) => {
         if (!live) return;
@@ -247,7 +251,7 @@ export default function Category() {
     try {
       const r = await getCategoryPage({
         category: cat, q: q.trim(), brands, segment: segments[0], tokens: apiTokens,
-        score, sort, page: next, perPage: PER_PAGE,
+        score, sort, page: next, perPage: PER_PAGE, country: geoCountry,
       });
       setItems((prev) => [...prev, ...r.hits]);
       setPage(next);
