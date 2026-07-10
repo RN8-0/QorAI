@@ -18,6 +18,7 @@ import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/glass_container.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -490,6 +491,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   Future<void> _startAnalysis() async {
+    // Misafir AI'ı kullanamaz → giriş dialog'u aç, login'e yönlendir.
+    if (!requireAuth(context)) return;
     final pending = _inputCtrl.text.trim();
 
     if (pending.isNotEmpty) {

@@ -34,6 +34,11 @@ List<ProductModel> _parseTypesenseHitsToProducts(
         continue;
       }
       final raw = jsonDecode(rawStr) as Map<String, dynamic>;
+      // TS-only fiyat alanları (`pricesByCountry`, `lowestPriceUSD`) PB `_raw`
+      // JSON'unda yok — lean doc'tan taşı ki kartlar seçili ülke fiyatını
+      // gösterebilsin (web paritesi).
+      raw['pricesByCountry'] ??= doc['pricesByCountry'];
+      raw['lowestPriceUSD'] ??= doc['lowestPriceUSD'];
       products.add(ProductModel.fromMap(raw));
     } catch (_) {}
   }
@@ -780,8 +785,41 @@ class PbDataSource {
 
   Future<List<ProductModel>> getProductsByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
+    // Typesense ÖNCE: PB kayıtlarında ülke-bazlı fiyat alanları
+    // (pricesByCountry / lowestPriceUSD) YOK — kartların/detayın seçili ülke
+    // fiyatını gösterebilmesi için TS'ten çekeriz (web paritesi). `_raw` full
+    // PB JSON'u taşıdığı için ürün verisi eksilmez. TS hata verirse PB'ye düşer.
     try {
-      // PocketBase supports `id IN (id1, id2, ...)` filter
+      final results = <ProductModel>[];
+      for (final chunk in _chunkList(ids, 100)) {
+        final resp = await _dio
+            .get(
+              '/collections/products/documents/search',
+              queryParameters: {
+                'q': '*',
+                'filter_by': 'id:[${chunk.join(',')}]',
+                'per_page': chunk.length,
+                'exclude_fields': 'keySpecsText',
+              },
+            )
+            .timeout(const Duration(seconds: 12));
+        final hits = (resp.data['hits'] as List?) ?? [];
+        results.addAll(await _parseTypesenseProductsOffMainThread(hits));
+      }
+      if (results.isNotEmpty) {
+        // Çağıranın istediği sırayı koru (son görüntülenen / sabitlenen buna güvenir).
+        final byId = {for (final p in results) p.id: p};
+        final ordered = <ProductModel>[
+          for (final id in ids)
+            if (byId[id] != null) byId[id]!,
+        ];
+        return ordered.isNotEmpty ? ordered : results;
+      }
+    } catch (e) {
+      debugPrint('=== QOR AI: getProductsByIds TS failed, PB fallback: $e ===');
+    }
+    // Fallback: PocketBase (`id IN (...)`).
+    try {
       final chunks = _chunkList(ids, 50);
       final results = <ProductModel>[];
       for (final chunk in chunks) {
@@ -2603,6 +2641,9 @@ class PbDataSource {
         return ProductModel.fromMap(doc);
       }
       final raw = jsonDecode(rawStr) as Map<String, dynamic>;
+      // TS-only fiyat alanları PB `_raw`'da yok — lean doc'tan taşı.
+      raw['pricesByCountry'] ??= doc['pricesByCountry'];
+      raw['lowestPriceUSD'] ??= doc['lowestPriceUSD'];
       return ProductModel.fromMap(raw);
     } catch (e) {
       return null;

@@ -36,7 +36,8 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell>
+    with WidgetsBindingObserver {
   StreamSubscription<String>? _fcmTokenRefreshSub;
   Future<void> Function()? _productsUnsubscribe;
   Timer? _productCacheInvalidationDebounce;
@@ -44,6 +45,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
+    // Telefon GERİ tuşunu framework seviyesinde yakalamak için observer.
+    // (go_router StatefulShellRoute'ta branch kökünde PopScope consult
+    // edilmiyor → didPopRoute tek güvenilir yol.)
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _subscribeProductCatalogChanges();
       Future.delayed(const Duration(milliseconds: 1200), () {
@@ -175,6 +180,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_fcmTokenRefreshSub?.cancel());
     _productCacheInvalidationDebounce?.cancel();
     final unsubscribe = _productsUnsubscribe;
@@ -182,6 +188,27 @@ class _MainShellState extends ConsumerState<MainShell> {
       unawaited(unsubscribe());
     }
     super.dispose();
+  }
+
+  /// Telefon GERİ tuşu. Bu observer, GoRouter'ın back-dispatcher'ından ÖNCE
+  /// çalışır (daha geç register edildiği için observer listesinde önce gelir).
+  ///
+  /// - Root navigator'da shell'in ÜSTÜNDE bir sayfa varsa (ürün/arama/ayarlar)
+  ///   → dokunma, normal pop olsun.
+  /// - Shell en üstteyse ve Ana Sayfa DIŞI bir sekmedeysek → app'ten çıkmak
+  ///   yerine Ana Sayfa'ya dön.
+  /// - Ana Sayfa'daysak → Router'a bırak (iç-rota pop / uygulamadan çıkış).
+  @override
+  Future<bool> didPopRoute() async {
+    final rootNav = Navigator.maybeOf(context, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
+      return false;
+    }
+    if (widget.navigationShell.currentIndex != 0) {
+      _onNavTap(0);
+      return true;
+    }
+    return false;
   }
 
   int _indexFromLocation(String location) {
@@ -192,10 +219,9 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   void _onNavTap(int index) {
     if (!kIsWeb) HapticFeedback.lightImpact();
-    if (index != 0 && !pb.authStore.isValid) {
-      context.go(AppRoutes.login);
-      return;
-    }
+    // Misafir kullanıcı tüm sekmelerde GEZEBİLİR (Karşılaştır / Link Analizi /
+    // Abonelik). Giriş yalnız AI AKSİYONU tetiklenince istenir — bu kilit ilgili
+    // ekranlardaki "başlat/analiz et" butonlarında requireAuth() ile uygulanır.
     // Close any open modals/bottom sheets before navigating
     Navigator.of(
       context,

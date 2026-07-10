@@ -2,6 +2,7 @@
 /// Blueprint Section 4.2
 library;
 
+import 'dart:convert';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 
@@ -56,6 +57,8 @@ class ProductModel extends ProductEntity {
         if (parsed != null && parsed > 0) prices[k.toString()] = parsed;
       });
     }
+    // Ülke-anahtarlı fiyatları (web'in kullandığı alan) da kat.
+    _mergePricesByCountry(data, prices);
 
     if (prices.isEmpty &&
         data.containsKey('priceRange') &&
@@ -339,6 +342,8 @@ class ProductModel extends ProductEntity {
       final parsed = _parsePriceValue(value);
       if (parsed != null && parsed > 0) prices[key] = parsed;
     });
+    // Ülke-anahtarlı fiyatları (web'in kullandığı alan) da kat.
+    _mergePricesByCountry(data, prices);
     if (prices.isEmpty) {
       final lowestPrice = (data['lowestPrice'] as num?)?.toDouble();
       final country = _countryForCurrency(
@@ -449,6 +454,32 @@ class ProductModel extends ProductEntity {
         ),
       ),
     );
+  }
+
+  /// Web paritesi: `pricesByCountry` (Typesense'te ts_backfill'in yazdığı
+  /// JSON string `{"TR":1234.56,"DE":...}`) ülke-anahtarlı fiyatları verir.
+  /// Bunu `prices` map'ine katarız ki kartlar/detay seçili ülkenin YERLİ
+  /// fiyatını gösterebilsin. Sıkı ülke kuralı korunur: yalnız gerçekten var
+  /// olan ülke anahtarları eklenir; başka ülkenin fiyatı türetilmez.
+  static void _mergePricesByCountry(
+    Map<String, dynamic> data,
+    Map<String, double> prices,
+  ) {
+    final raw = data['pricesByCountry'];
+    if (raw == null) return;
+    try {
+      final decoded = raw is String
+          ? (raw.trim().isEmpty ? null : jsonDecode(raw))
+          : raw;
+      if (decoded is Map) {
+        decoded.forEach((k, v) {
+          final parsed = _parsePriceValue(v);
+          if (parsed != null && parsed > 0) {
+            prices[k.toString().toUpperCase()] = parsed;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   static double? _parsePriceValue(dynamic value) {

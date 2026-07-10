@@ -431,7 +431,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggedIn = pb.authStore.isValid;
       final record = pb.authStore.record;
 
-      // Public routes (no auth required)
+      // Public routes (no auth required).
+      // Misafir kullanıcı alt bardaki TÜM sekmelerde gezebilir (Karşılaştır /
+      // Link Analizi / Abonelik dahil) — giriş yalnız AI AKSİYONU tetiklenince
+      // ilgili ekrandaki requireAuth() ile istenir, rota seviyesinde değil.
       const publicRoutes = [
         AppRoutes.login,
         AppRoutes.onboarding,
@@ -446,6 +449,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         AppRoutes.termsOfService,
         AppRoutes.faq,
         AppRoutes.premium,
+        AppRoutes.compare,
+        AppRoutes.linkPaste,
+        AppRoutes.subscriptions,
       ];
       final isPublicRoute =
           publicRoutes.contains(location) || location.startsWith('/product/');

@@ -20,6 +20,7 @@ import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/glass_container.dart';
+import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qor_ai/presentation/screens/link_paste/link_analysis_history_screen.dart';
@@ -455,6 +456,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   /// Single Analysis tab — start quiz flow for one URL
   Future<void> _startSingleAnalysis() async {
     if (_singleSubmitInFlight) return;
+    // Misafir AI'ı kullanamaz → giriş dialog'u aç, login'e yönlendir.
+    if (!requireAuth(context)) return;
     final startFailureMessage = _linkText(
       context,
       tr: 'Analiz başlatılamadı. Lütfen tekrar deneyin.',
@@ -506,6 +509,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
 
   /// Compare tab — analyze all URLs via background-safe provider
   Future<void> _startCompareAnalysis() async {
+    // Misafir AI'ı kullanamaz → giriş dialog'u aç, login'e yönlendir.
+    if (!requireAuth(context)) return;
     final validUrls = <String>[];
     var invalidInputCount = 0;
     for (final controller in _compareControllers.take(_visibleCompareFields)) {
@@ -626,6 +631,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
   // Routes by how many links the user supplied: exactly one → the single
   // analysis (quiz) flow; two or more → the compare flow. Backend untouched.
   Future<void> _startUnifiedAnalysis() async {
+    // Misafir AI'ı kullanamaz → giriş dialog'u aç, login'e yönlendir.
+    if (!requireAuth(context)) return;
     final filled = <int>[];
     for (var i = 0; i < _visibleCompareFields; i++) {
       if (_compareControllers[i].text.trim().isNotEmpty) filled.add(i);

@@ -41,7 +41,6 @@ import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/core/spec_corrections.dart' show isHiddenSpec;
 import 'package:qor_ai/core/spec_word_dictionary.dart' as spec_dict;
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
-import 'package:qor_ai/core/product_name_localizer.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';

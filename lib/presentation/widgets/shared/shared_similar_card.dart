@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shared/card_price_tag.dart';
 
 /// Shared product card used in similar product grids.
 /// Used by both detail screen and compare screen.
@@ -142,21 +143,7 @@ class SharedSimilarGridCard extends StatelessWidget {
                           color: context.textPrimary,
                           height: 1.15)),
                   const SizedBox(height: 6),
-                  SizedBox(
-                    width: double.infinity,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(12)),
-                      child: Text(
-                          context.l10n?.viewDetails ?? 'View Details',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10, fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                    ),
-                  ),
+                  CardPriceOrCta(product: product),
                 ],
               ),
             ),

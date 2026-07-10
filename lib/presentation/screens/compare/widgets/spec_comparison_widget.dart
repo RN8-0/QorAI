@@ -6478,25 +6478,13 @@ Rules:
     String country,
   ) {
     final countryInfo = SupportedCountries.countries[country];
+    // Sıkı ülke kuralı: yalnız SEÇİLİ ülkenin fiyatı. US/başka ülke fiyatına
+    // ASLA düşülmez (kullanıcı bunu net reddetti).
     final localPrice = product.getPriceForCountry(country);
     if (localPrice != null && localPrice > 0) {
       return (amount: localPrice, currency: countryInfo?.currency ?? 'USD');
     }
-    final usPrice = product.getPriceForCountry('US');
-    if (usPrice != null && usPrice > 0) {
-      return (amount: usPrice, currency: 'USD');
-    }
-    for (final entry in product.prices.entries) {
-      if (entry.value > 0) {
-        return (amount: entry.value, currency: _currencyForCountry(entry.key));
-      }
-    }
     return (amount: null, currency: countryInfo?.currency ?? 'USD');
-  }
-
-  String _currencyForCountry(String countryCode) {
-    return SupportedCountries.countries[countryCode.toUpperCase()]?.currency ??
-        ref.read(currencyProvider);
   }
 
   Widget _buildComparePriceCard({
@@ -6529,7 +6517,7 @@ Rules:
                 entry.value.trim().toLowerCase(),
           ),
         )
-        .take(4)
+        .take(1)
         .toList(growable: false);
     final displayAmount = bestOffer?.price ?? info.amount;
     final displayCurrency = bestOffer?.currency ?? info.currency;
@@ -6644,8 +6632,9 @@ Rules:
               ),
             )
           else if (offers.isNotEmpty)
+            // Tek en iyi teklif (seçili ülke) — çoklu market/ülke listelenmez.
             ...offers
-                .take(4)
+                .take(1)
                 .map(
                   (offer) => _buildCompareOfferRow(
                     offer: offer,
@@ -6668,18 +6657,13 @@ Rules:
     String country,
   ) {
     final selected = country.trim().toUpperCase();
-    final live = offers.where((offer) => offer.isLive).toList();
-    int rank(ProductOfferModel offer) {
-      final c = offer.country.trim().toUpperCase();
-      if (c == selected) return 0;
-      if (c.isEmpty) return 2;
-      if (c == 'US') return 3;
-      return 1;
-    }
-
+    // Sıkı ülke kuralı: yalnız SEÇİLİ ülkenin canlı teklifleri — US/UK/EUR
+    // asla karışmaz (Fiyatlar sekmesiyle birebir aynı davranış).
+    final live = offers
+        .where((offer) => offer.isLive)
+        .where((offer) => offer.country.trim().toUpperCase() == selected)
+        .toList();
     live.sort((a, b) {
-      final rankCompare = rank(a).compareTo(rank(b));
-      if (rankCompare != 0) return rankCompare;
       if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
       if (a.hasExactPrice != b.hasExactPrice) {
         return a.hasExactPrice ? -1 : 1;

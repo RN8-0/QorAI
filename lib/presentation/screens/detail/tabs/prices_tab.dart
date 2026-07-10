@@ -19,38 +19,17 @@ class _PricesTabContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final offersAsync = ref.watch(productOffersProvider(product.id));
-    final liveOffers = _sortOffersForCountry(
+    final selected = country.trim().toUpperCase();
+    // Sıkı ülke kuralı + web paritesi: yalnız SEÇİLİ (Ayarlar) / IP ile
+    // belirlenen teslimat ülkesinin teklifleri değerlendirilir; başka ülkenin
+    // (örn. US) fiyatı ASLA gösterilmez. Web'deki gibi TEK en iyi fiyat + link
+    // sunulur — aynı mağaza (Amazon) tekrar tekrar listelenmez.
+    final countryOffers = _sortOffersForCountry(
       offersAsync.valueOrNull ?? const <ProductOfferModel>[],
-      country,
+      selected,
     );
-    final stores = product.getAffiliateLinksForCountry(country);
-    final storeEntries = stores.isNotEmpty
-        ? stores.entries.toList()
-        : product.affiliateLinks.entries.toList();
-    final fallbackEntries = _dedupeStoreEntries(storeEntries, liveOffers);
-
-    final firstOfferChunk = liveOffers.take(4).toList();
-    final secondOfferChunk = liveOffers.skip(4).take(4).toList();
-    final restOfferChunk = liveOffers.skip(8).toList();
-
-    final firstStoreChunk = firstOfferChunk.isEmpty
-        ? fallbackEntries.take(4).toList()
-        : const <MapEntry<String, String>>[];
-    final secondStoreChunk = firstOfferChunk.isEmpty
-        ? fallbackEntries.skip(4).take(4).toList()
-        : fallbackEntries.take(4).toList();
-    final restStoreChunk = firstOfferChunk.isEmpty
-        ? fallbackEntries.skip(8).toList()
-        : fallbackEntries.skip(4).toList();
-
-    final hasAnyStores = liveOffers.isNotEmpty || fallbackEntries.isNotEmpty;
+    final bestOffer = countryOffers.isEmpty ? null : countryOffers.first;
     final isLoadingOffers = offersAsync is AsyncLoading;
-
-    // Amazon'u iki kez gösterme: "Canlı Fiyatlar"da zaten bir Amazon teklifi
-    // (gerçek fiyatlı) varsa, üstteki genel Amazon arama kartını gizle.
-    final hasLiveAmazon = liveOffers.any(
-      (o) => o.store.toLowerCase().contains('amazon'),
-    );
 
     return CustomScrollView(
       key: PageStorageKey<String>('prices-tab-${product.id}'),
@@ -62,50 +41,21 @@ class _PricesTabContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Country-correct Amazon link (mirrors the web): TR shoppers get
-                // amazon.com.tr (qorai-21); others their market. Canlı Fiyatlar'da
-                // zaten Amazon varsa tekrar göstermemek için gizlenir.
-                if (!hasLiveAmazon) ...[
-                  _AmazonSearchCard(product: product, country: country),
-                  const SizedBox(height: 16),
-                ],
-                if (firstOfferChunk.isNotEmpty) ...[
+                if (bestOffer != null) ...[
+                  // Seçili ülkenin TEK en iyi teklifi (fiyat + link).
                   _OfferLinksCard(
                     product: product,
                     country: country,
-                    offers: firstOfferChunk,
+                    offers: [bestOffer],
                   ),
                   const SizedBox(height: 16),
-                ] else if (firstStoreChunk.isNotEmpty) ...[
-                  _StoreLinksCard(
-                    product: product,
-                    country: country,
-                    entries: firstStoreChunk,
-                  ),
-                  const SizedBox(height: 16),
-                ] else if (isLoadingOffers && !hasAnyStores) ...[
+                ] else if (isLoadingOffers) ...[
                   _PriceLoadingCard(),
                   const SizedBox(height: 16),
-                ],
-                // "Henüz fiyat bilgisi yok" kartı kaldırıldı: zaten üstte
-                // ülkeye-uygun Amazon affiliate kartı var, kullanıcı tıklayıp
-                // fiyatı görebilir (kullanıcı isteği).
-                if (secondOfferChunk.isNotEmpty) ...[
-                  _OfferLinksCard(
-                    product: product,
-                    country: country,
-                    offers: secondOfferChunk,
-                    compact: true,
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                if (secondStoreChunk.isNotEmpty) ...[
-                  _StoreLinksCard(
-                    product: product,
-                    country: country,
-                    entries: secondStoreChunk,
-                    compact: true,
-                  ),
+                ] else ...[
+                  // Fiyat kaynağı yoksa: ülkeye-uygun TEK Amazon affiliate kartı
+                  // (mirrors the web) — kullanıcı tıklayıp güncel fiyatı görebilir.
+                  _AmazonSearchCard(product: product, country: country),
                   const SizedBox(height: 16),
                 ],
               ],
@@ -117,30 +67,6 @@ class _PricesTabContent extends ConsumerWidget {
         SliverToBoxAdapter(child: _CompactVariantsSection(product: product)),
         // Similar products — horizontal scrollable row
         SliverToBoxAdapter(child: _HorizontalSimilarSection(product: product)),
-        if (restOfferChunk.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _OfferLinksCard(
-                product: product,
-                country: country,
-                offers: restOfferChunk,
-                compact: true,
-              ),
-            ),
-          ),
-        if (restStoreChunk.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _StoreLinksCard(
-                product: product,
-                country: country,
-                entries: restStoreChunk,
-                compact: true,
-              ),
-            ),
-          ),
         SliverToBoxAdapter(
           child: SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
         ),
@@ -148,23 +74,18 @@ class _PricesTabContent extends ConsumerWidget {
     );
   }
 
+  /// Seçili ülkenin CANLI tekliflerini en iyi→en kötü sıralar (taze + gerçek
+  /// fiyatlı önce, sonra en ucuz). Sıkı ülke kuralı: yalnız `country == selected`
+  /// olan teklifler — başka pazarın fiyatı listeye HİÇ girmez.
   static List<ProductOfferModel> _sortOffersForCountry(
     List<ProductOfferModel> offers,
-    String country,
+    String selectedUpper,
   ) {
-    final selected = country.trim().toUpperCase();
-    final live = offers.where((offer) => offer.isLive).toList();
-    int rank(ProductOfferModel offer) {
-      final c = offer.country.trim().toUpperCase();
-      if (c == selected) return 0;
-      if (c.isEmpty) return 2;
-      if (c == 'US') return 3;
-      return 1;
-    }
-
+    final live = offers
+        .where((offer) => offer.isLive)
+        .where((offer) => offer.country.trim().toUpperCase() == selectedUpper)
+        .toList();
     live.sort((a, b) {
-      final rankCompare = rank(a).compareTo(rank(b));
-      if (rankCompare != 0) return rankCompare;
       if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
       if (a.hasExactPrice != b.hasExactPrice) {
         return a.hasExactPrice ? -1 : 1;
@@ -176,46 +97,22 @@ class _PricesTabContent extends ConsumerWidget {
     });
     return live;
   }
-
-  static List<MapEntry<String, String>> _dedupeStoreEntries(
-    List<MapEntry<String, String>> entries,
-    List<ProductOfferModel> offers,
-  ) {
-    final seenUrls = offers
-        .map((offer) => offer.url.trim().toLowerCase())
-        .where((url) => url.isNotEmpty)
-        .toSet();
-    final result = <MapEntry<String, String>>[];
-    for (final entry in entries) {
-      final url = entry.value.trim();
-      if (url.isEmpty) continue;
-      final normalized = url.toLowerCase();
-      if (seenUrls.contains(normalized)) continue;
-      if (result.any((e) => e.value.trim().toLowerCase() == normalized)) {
-        continue;
-      }
-      result.add(MapEntry(entry.key, url));
-    }
-    return result;
-  }
 }
 
 class _OfferLinksCard extends StatelessWidget {
   final ProductEntity product;
   final String country;
   final List<ProductOfferModel> offers;
-  final bool compact;
   const _OfferLinksCard({
     required this.product,
     required this.country,
     required this.offers,
-    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final pricedOffers = offers.where((offer) => offer.hasExactPrice).toList();
-    final bestOffer = pricedOffers.isEmpty ? null : pricedOffers.first;
+    // Başlık/çift fiyat YOK: sadece market satır(lar)ı (logo + ad + fiyat,
+    // tıklanınca o markette ürüne gider). "Fiyatlar" sekme başlığı zaten var.
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -226,54 +123,6 @@ class _OfferLinksCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!compact)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.scoreExcellent, AppTheme.accentTeal],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.local_offer_outlined,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      Localizations.localeOf(context).languageCode == 'tr'
-                          ? 'Canli Fiyatlar'
-                          : 'Live Prices',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ),
-                  if (bestOffer != null)
-                    Text(
-                      AppUtils.formatCurrency(
-                        bestOffer.price,
-                        bestOffer.currency,
-                      ),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.scoreExcellent,
-                      ),
-                    ),
-                ],
-              ),
-            ),
           ...offers.map(
             (offer) => _OfferLinkRow(
               offer: offer,
@@ -499,164 +348,6 @@ class _AmazonSearchCard extends ConsumerWidget {
                 color: context.textTertiaryColor,
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Store-links card (logo + name + link) ───────────────────────────────────
-class _StoreLinksCard extends StatelessWidget {
-  final ProductEntity product;
-  final String country;
-  final List<MapEntry<String, String>> entries;
-  final bool compact;
-  const _StoreLinksCard({
-    required this.product,
-    required this.country,
-    required this.entries,
-    this.compact = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final countryInfo = SupportedCountries.countries[country];
-    final localPrice = product.getPriceForCountry(country);
-    final usPrice = product.getPriceForCountry('US');
-    final price = localPrice ?? usPrice;
-    final currency = localPrice != null
-        ? (countryInfo?.currency ?? 'USD')
-        : 'USD';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: context.surfaceVariantColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!compact)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.scoreExcellent, AppTheme.accentTeal],
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.local_offer_outlined,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      Localizations.localeOf(context).languageCode == 'tr'
-                          ? 'Fiyatlar'
-                          : 'Prices',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ),
-                  if (price != null)
-                    Text(
-                      AppUtils.formatCurrency(price, currency),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.scoreExcellent,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ...entries.map(
-            (e) =>
-                _StoreLinkRow(name: e.key, url: e.value, productId: product.id),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Single store row: logo + name → link ────────────────────────────────────
-class _StoreLinkRow extends ConsumerWidget {
-  final String name;
-  final String url;
-  final String productId;
-  const _StoreLinkRow({
-    required this.name,
-    required this.url,
-    required this.productId,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final brand = _resolveStoreBrand(name, url: url);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            // Legacy affiliateLinks may hold Amazon URLs with stale/wrong-
-            // program tags — re-tag Amazon URLs in place at click time.
-            final visitor = ref.read(detectedCountryProvider).valueOrNull;
-            final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
-            if (uri == null) return;
-            // Track affiliate click — feeds the user's behavior signals (match
-            // score boosts) and future affiliate analytics.
-            try {
-              ref.read(behaviorTrackingProvider).trackAffiliateTap(productId);
-            } catch (_) {}
-            try {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } catch (_) {}
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: Row(
-              children: [
-                _StoreLogo(brand: brand),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    brand.displayName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.open_in_new_rounded,
-                  size: 16,
-                  color: context.textTertiaryColor,
-                ),
-              ],
-            ),
           ),
         ),
       ),

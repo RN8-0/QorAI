@@ -17,6 +17,7 @@ import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
+import 'package:qor_ai/presentation/widgets/shared/card_price_tag.dart';
 import 'package:qor_ai/presentation/widgets/shimmer_skeleton.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/core/pb_client.dart';
@@ -48,9 +49,7 @@ const int _kCategoryLoadIncrement = 6;
 const int _kMaxVisibleCategories = 30;
 
 // ── Card widget BorderRadius constants — avoids per-build allocation ─────────
-const BorderRadius _kRadius16 = BorderRadius.all(Radius.circular(16));
-const BorderRadius _kRadius12 = BorderRadius.all(Radius.circular(12));
-const BorderRadius _kRadius10 = BorderRadius.all(Radius.circular(10));
+const BorderRadius _kRadius16 = BorderRadius.all(Radius.circular(16));const BorderRadius _kRadius10 = BorderRadius.all(Radius.circular(10));
 const BorderRadius _kRadius8 = BorderRadius.all(Radius.circular(8));
 // Pre-computed border colors — withValues() cannot be const but static final
 // ensures only ONE Color instance is created for the entire app lifetime.
@@ -625,6 +624,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final remainingCredits = ref.watch(
       subscriptionServiceProvider.select((s) => s.remainingDailyCredits),
     );
+    // Misafir (giriş yapmamış) kullanıcıda Q coin bakiyesi gösterilmez —
+    // bakiye yalnız giriş yapıldıktan sonra anlamlı.
+    final isLoggedIn =
+        ref.watch(authStateProvider).valueOrNull != null ||
+        pb.authStore.isValid;
 
     return Container(
       decoration: BoxDecoration(
@@ -683,17 +687,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ],
                     ),
                   ),
-                  QorAmountBadge(
-                    amount: remainingCredits,
-                    unlimited: isPremium,
-                    color: AppTheme.brandBlue,
-                    fontSize: 12,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                  if (isLoggedIn) ...[
+                    QorAmountBadge(
+                      amount: remainingCredits,
+                      unlimited: isPremium,
+                      color: AppTheme.brandBlue,
+                      fontSize: 12,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   _NotificationButton(),
                   if (!isPremium) ...[
                     const SizedBox(width: 8),
@@ -3181,25 +3187,7 @@ class _WideProductCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        SizedBox(
-                          width: double.infinity,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: const BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
-                              borderRadius: _kRadius12,
-                            ),
-                            child: Text(
-                              context.l10n?.viewDetails ?? 'View Details',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                        CardPriceOrCta(product: product, price: price),
                       ],
                     ),
                   ),
@@ -3391,25 +3379,7 @@ class _TrendingWideCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        SizedBox(
-                          width: double.infinity,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: const BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
-                              borderRadius: _kRadius12,
-                            ),
-                            child: Text(
-                              'View Details',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                        CardPriceOrCta(product: product, price: price),
                       ],
                     ),
                   ),
