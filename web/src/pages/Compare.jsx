@@ -259,9 +259,14 @@ export default function Compare() {
     : '';
 
   // Let the chat bubble read & comment on the comparison.
-  usePageContext(ytQuery
-    ? `${lang === 'tr' ? 'Karşılaştırma' : lang === 'de' ? 'Vergleich' : 'Comparison'}: ${products.map((p) => `${displayProductName(p, lang) || p.name}${Number(p.techScore) ? ` (${Math.round(p.techScore)}/100)` : ''}`).join(' vs ')}`
-    : (lang === 'tr' ? 'Karşılaştırma sayfası' : lang === 'de' ? 'Vergleichsseite' : 'Compare page'));
+  usePageContext(
+    ytQuery
+      ? `${lang === 'tr' ? 'Karşılaştırma' : lang === 'de' ? 'Vergleich' : 'Comparison'}: ${products.map((p) => `${displayProductName(p, lang) || p.name}${Number(p.techScore) ? ` (${Math.round(p.techScore)}/100)` : ''}`).join(' vs ')}`
+      : (lang === 'tr' ? 'Karşılaştırma sayfası' : lang === 'de' ? 'Vergleichsseite' : 'Compare page'),
+    products.length
+      ? { kind: 'compare', title: ytQuery, productIds: products.map((p) => p.id).filter(Boolean) }
+      : { kind: 'compare', title: '' },
+  );
 
   useEffect(() => {
     let live = true;

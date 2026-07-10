@@ -60,9 +60,14 @@ export default function Category() {
         'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
         'Durchstöbere alle Produktkategorien auf Qor AI.');
 
-  usePageContext(cat
-    ? `${lang === 'tr' ? 'Kategori sayfası' : lang === 'de' ? 'Kategorieseite' : 'Category page'}: ${catTitle}`
-    : `${lang === 'tr' ? 'Tüm kategoriler sayfası' : lang === 'de' ? 'Alle Kategorien' : 'All categories page'}`);
+  usePageContext(
+    cat
+      ? `${lang === 'tr' ? 'Kategori sayfası' : lang === 'de' ? 'Kategorieseite' : 'Category page'}: ${catTitle}`
+      : `${lang === 'tr' ? 'Tüm kategoriler sayfası' : lang === 'de' ? 'Alle Kategorien' : 'All categories page'}`,
+    cat
+      ? { kind: 'category', title: catTitle, category: cat }
+      : { kind: 'categories', title: '' },
+  );
 
   useSeo({
     title: cat

@@ -875,14 +875,24 @@ export default function ProductDetail() {
     ? buildLoadingProductSeo(id, `${loc.pathname}${loc.search}`)
     : buildProductSeo(p, t, lang));
 
-  // Let the chat bubble read & comment on the product the user is viewing.
-  usePageContext(p ? [
-    `${lang === 'tr' ? 'Ürün' : lang === 'de' ? 'Produkt' : 'Product'}: ${displayProductName(p, lang) || cleanProductName(p.name)}`,
-    p.brand ? `${lang === 'tr' ? 'Marka' : lang === 'de' ? 'Marke' : 'Brand'}: ${p.brand}` : '',
-    p.category ? `${lang === 'tr' ? 'Kategori' : 'Category'}: ${p.category}` : '',
-    Number(p.techScore) ? `Qor AI techScore: ${Math.round(p.techScore)}/100` : '',
-    p.keySpecsText || '',
-  ].filter(Boolean).join('\n') : '');
+  // Let the chat bubble read & comment on the product the user is viewing. The
+  // structured meta drives the page-aware greeting + tells the chat to ground
+  // answers on THIS product (its Qor specs/price) before anything else.
+  usePageContext(
+    p ? [
+      `${lang === 'tr' ? 'Ürün' : lang === 'de' ? 'Produkt' : 'Product'}: ${displayProductName(p, lang) || cleanProductName(p.name)}`,
+      p.brand ? `${lang === 'tr' ? 'Marka' : lang === 'de' ? 'Marke' : 'Brand'}: ${p.brand}` : '',
+      p.category ? `${lang === 'tr' ? 'Kategori' : 'Category'}: ${p.category}` : '',
+      Number(p.techScore) ? `Qor AI techScore: ${Math.round(p.techScore)}/100` : '',
+      p.keySpecsText || '',
+    ].filter(Boolean).join('\n') : '',
+    p ? {
+      kind: 'product',
+      title: displayProductName(p, lang) || cleanProductName(p.name),
+      productIds: [p.id],
+      category: p.category || '',
+    } : null,
+  );
 
   if (loading) {
     return (

@@ -309,11 +309,18 @@ export default function BlogPost() {
   }, [body]);
 
   // Feed the whole article to the chat bubble so the assistant can read & comment.
-  usePageContext(post ? [
-    `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
-    ...products.map((p, i) => `${i + 1}. ${itemName(p)}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
-    conclusion ? conclusion.replace(/<[^>]+>/g, ' ') : '',
-  ].filter(Boolean).join('\n') : '');
+  usePageContext(
+    post ? [
+      `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
+      ...products.map((p, i) => `${i + 1}. ${itemName(p)}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
+      conclusion ? conclusion.replace(/<[^>]+>/g, ' ') : '',
+    ].filter(Boolean).join('\n') : '',
+    post ? {
+      kind: 'blog',
+      title,
+      productIds: products.map((p) => p.id || p.productId).filter(Boolean),
+    } : null,
+  );
 
   useSeo({
     title: metaTitle || (title ? `${title} | Qor AI` : 'Qor AI Blog'),
