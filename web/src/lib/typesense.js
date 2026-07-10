@@ -328,10 +328,20 @@ export function docToProduct(doc) {
     pricedOfferCount: base.pricedOfferCount || 0,
     bestOfferId: base.bestOfferId || '',
     bestOfferCheckedAt: base.bestOfferCheckedAt || '',
-    bestOfferExpiresAt: base.bestOfferExpiresAt || doc.bestOfferExpiresAt || '',
-    prices: (base.prices && Object.keys(base.prices).length)
-      ? base.prices
-      : parsePricesByCountry(doc.pricesByCountry),
+    // Price ROLLUP: prefer the INDEXED fields (doc.*) over the `_raw` snapshot.
+    // The offers pipeline refreshes pricesByCountry + bestOfferExpiresAt via
+    // partial upserts WITHOUT regenerating `_raw`, so `_raw.prices` /
+    // `_raw.bestOfferExpiresAt` are frozen at the last full upsert and go stale
+    // (often already expired) — which made rollupPriceIsFresh() fail on every
+    // surface that fetches `_raw` (product detail, compare, AI chat) while the
+    // lean-doc cards showed the correct fresh price. The indexed fields are the
+    // authoritative, most-recent rollup, so they win; `_raw` is only a fallback.
+    bestOfferExpiresAt: doc.bestOfferExpiresAt || base.bestOfferExpiresAt || '',
+    prices: (() => {
+      const indexed = parsePricesByCountry(doc.pricesByCountry);
+      if (Object.keys(indexed).length) return indexed;
+      return (base.prices && typeof base.prices === 'object') ? base.prices : {};
+    })(),
     affiliateLinksByCountry: base.affiliateLinksByCountry || {},
     source: base.source || doc.source || '',
     sourceUrl: base.sourceUrl || '',
