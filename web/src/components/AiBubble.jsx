@@ -39,8 +39,24 @@ const STOP = new Set([
 const BRAND_RE = /\b(iphone|samsung|galaxy|xiaomi|redmi|poco|apple|macbook|imac|ipad|pixel|oneplus|realme|oppo|vivo|huawei|honor|nothing|asus|zenbook|rog|acer|lenovo|thinkpad|legion|hp|omen|victus|dell|xps|alienware|msi|razer|gigabyte|nvidia|geforce|rtx|gtx|radeon|amd|ryzen|threadripper|intel|core|arc|sony|bravia|lg|oled|tcl|hisense|nokia|motorola|moto|surface|playstation|ps5|xbox|nintendo|switch|airpods|airpod|bose|jbl|sennheiser|beats|marshall|dyson|logitech|corsair|steelseries|hyperx|garmin|fitbit|kindle|roborock|dreame|ecovacs)\b/i;
 const MODEL_RE = /\b(?:[a-z]{1,4}-?\d{2,5}[a-z]{0,3}|\d{1,2}\s?(?:pro|ultra|max|plus|mini|air|gen|se)\b|m[1-9]\b)/i;
 
+// "Which is best / recommend me one" intent — these want SPECIFIC current models,
+// so they trigger a live web search even without a brand named (e.g. "best gaming
+// laptop under 30k", "hangi telefonu almalıyım", "bana bir öneri ver").
+const RECO_RE = /\b(best|top|recommend|recommendation|suggest|which|worth|budget|cheap|value|gaming|öner|oner|tavsiye|hangi|en iyi|en uygun|almalı|almali|alınır|alinir|bütçe|butce|uygun fiyat|kaç para|kac para|ne alsam)\b/i;
+const CATEGORY_RE = /\b(phone|telefon|laptop|notebook|dizüstü|dizustu|tablet|tv|televizyon|monitor|monitör|headphone|kulaklık|kulaklik|earbud|watch|saat|akıllı saat|akilli saat|camera|kamera|console|konsol|gpu|ekran kartı|ekran karti|işlemci|islemci|cpu|ssd|klavye|keyboard|mouse|fare|hoparlör|speaker|robot süpürge|supurge|drone|printer|yazıcı|yazici)\b/i;
+
+// Subscription services + generic subscription words — these need CURRENT plan
+// tiers and prices, which the model's stale memory always gets wrong.
+const SUB_RE = /\b(netflix|spotify|disney\+?|disney plus|hbo|max\b|hbo max|youtube premium|youtube music|prime video|amazon prime|apple tv|apple music|apple one|icloud|chatgpt|openai plus|gpt plus|claude pro|gemini advanced|midjourney|xbox game pass|game pass|playstation plus|ps plus|ea play|adobe|creative cloud|photoshop|microsoft 365|office 365|onedrive|google one|notion|dropbox|canva|exxen|blutv|gain|tabii|mubi|deezer|tidal|duolingo|abonelik|abone|üyelik|uyelik|subscription|premium plan|plan[ıi]|planlar)\b/i;
+
 function looksLikeProduct(q) {
   return BRAND_RE.test(q) || MODEL_RE.test(q);
+}
+function looksLikeRecommendation(q) {
+  return RECO_RE.test(q) && CATEGORY_RE.test(q);
+}
+function looksLikeSubscription(q) {
+  return SUB_RE.test(q);
 }
 
 function norm(s) {
@@ -145,8 +161,20 @@ function buildCatalogContext(results = [], lang = 'en') {
   ].join('\n');
 }
 
-function webResearchPrompt(q, lang) {
-  return `The user asked: "${q}". Using web search, report the CURRENT reality of any product/subscription named: does it exist and has it launched (or is it rumored/unreleased — say which and the expected timeframe), its official key specs, the typical current market price, and the general review/community sentiment. Be concise and factual. Reply in ${lang}.`;
+// Country/currency-aware research prompt. Forces the grounded search to return
+// SPECIFIC, currently-available named products (or subscription plans) with real
+// current prices in the visitor's market — so the chat answers with concrete
+// picks, not generic "look for an i7" advice, and never guesses launch status.
+function webResearchPrompt(q, lang, country, currency, wantsSub) {
+  const market = country ? `the ${country} market` : "the visitor's local market";
+  const money = currency ? ` in ${currency}` : ' in the local currency';
+  if (wantsSub) {
+    return `The user asked: "${q}". Using web search, report the CURRENT subscription plans for any service named or implied: the actual plan/tier names, what each includes, and each plan's current price${money} for ${market} (${new Date().getFullYear()}). If the question compares services or asks which to pick, say which is best value for the stated need. Be concise and factual — no invented prices. Reply in ${lang}.`;
+  }
+  return `The user asked: "${q}". Using web search, answer with CURRENT reality for ${market} as of ${new Date().toISOString().slice(0, 10)}:\n`
+    + `- If a SPECIFIC product is named: confirm whether it has actually launched (give the launch date; if only rumored/unreleased say so and the expected timeframe), its official key specs, its typical current price${money}, and the general review/community sentiment.\n`
+    + `- If it's a recommendation ("best/which X for a budget"): name 2-4 SPECIFIC, currently-available models by exact name that fit, each with a one-line why, key specs and an approximate current price${money}. Prefer current-generation models actually sold in ${market}.\n`
+    + `Be concise and factual. Never invent an exact price or claim a product is unreleased when it is on sale. Reply in ${lang}.`;
 }
 
 // Page-aware opening line: reads the current route + page metadata so the chat
@@ -271,11 +299,15 @@ export default function AiBubble() {
     return () => window.removeEventListener('qor-open-ai', onOpen);
   }, []);
 
-  // Decide the grounding for a message: an on-site Qor product (specs + market
-  // price) first; a live web search when the message names a specific product the
-  // catalog can't confidently match; otherwise the catalog search hits as options.
+  // Decide the grounding for a message. SITE-FIRST: an on-site Qor product (its
+  // specs + market price) is the source of truth when the catalog confidently
+  // matches. Otherwise INTERNET: a live web search returns current, specific
+  // products/plans and prices — for named products, "which is best" questions,
+  // and subscriptions — so answers are concrete and never guess launch status.
+  // Catalog options are attached to the research so the model can link Qor pages.
   async function buildGrounding(q) {
     const meta = getPageMeta();
+    const pageKind = meta?.kind || '';
     const onPageIds = Array.isArray(meta?.productIds) ? meta.productIds.slice(0, 3) : [];
     let results = [];
     try { results = await searchProducts(q, 6); } catch { results = []; }
@@ -285,13 +317,23 @@ export default function AiBubble() {
       const full = (await Promise.all(ids.map((id) => getProduct(id).catch(() => null)))).filter(Boolean);
       if (full.length) return pbGrounding(full, geoCountry, lang);
     }
-    if (looksLikeProduct(q)) {
+    // No confident on-site product → go to the internet for current facts when the
+    // message is about a product, a recommendation, or a subscription (or we're on
+    // the subscriptions page, where every question is about current plan pricing).
+    const wantsSub = looksLikeSubscription(q) || pageKind === 'subscriptions';
+    const wantsResearch = looksLikeProduct(q) || looksLikeRecommendation(q) || wantsSub;
+    if (wantsResearch) {
       try {
-        const research = await askQorAiGrounded(webResearchPrompt(q, lang), {
-          language: lang, timeoutMs: 20000, maxOutputTokens: 1200,
-        });
+        const research = await askQorAiGrounded(
+          webResearchPrompt(q, lang, geoCountry, currency, wantsSub),
+          { language: lang, timeoutMs: 22000, maxOutputTokens: 1400 },
+        );
         if (research && research.trim()) {
-          return `LIVE WEB RESEARCH — current facts for "${q}" (trust this over older memory for launch status, specs and price):\n${research.trim()}`;
+          const catalog = buildCatalogContext(results, lang);
+          const onSite = results.some((p) => p?.id && p?.name)
+            ? `\n\nON-SITE QOR OPTIONS (recommend and link these when they fit the answer):\n${catalog}`
+            : '';
+          return `LIVE WEB RESEARCH — current facts for "${q}" (trust this over older memory for launch status, specs and price):\n${research.trim()}${onSite}`;
         }
       } catch { /* grounded search unavailable — fall through to catalog options */ }
     }
