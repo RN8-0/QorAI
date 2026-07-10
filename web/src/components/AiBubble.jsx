@@ -67,18 +67,34 @@ function norm(s) {
 // tokens really appear in the product name/brand — so a typo-tolerant search
 // returning a loosely-related product for "Galaxy S99 Ultra" is NOT treated as an
 // on-site match (that message goes to web research instead).
+//
+// Crucially, we score on IDENTITY tokens (brand/model), not on the whole message:
+// a natural-language query like "iphone 17 pro 512 gb almaya değer mi fiyatı ne"
+// has the product's identity fully present (iphone/17/pro/512) but also carries
+// conversational filler (almaya/değer/fiyatı). Dividing hits by ALL tokens used to
+// push such queries below threshold, so on-site products silently missed their Qor
+// price/specs grounding and fell through to web research. We now accept a match
+// when every model-number token is present AND at least one brand/name word also
+// matches — filler words no longer dilute the score.
 function strongMatch(q, p) {
   const hay = norm(`${p?.name || ''} ${p?.brand || ''}`);
   if (!hay) return false;
   // Digit-bearing model tokens can be 2 chars ("15", "s24"); plain words need 3.
   const toks = norm(q).split(' ').filter((w) => (/\d/.test(w) ? w.length >= 2 : w.length >= 3) && !STOP.has(w));
   if (!toks.length) return false;
+  const idToks = toks.filter((w) => /\d/.test(w));
+  const wordToks = toks.filter((w) => !/\d/.test(w));
   // Model-number tokens ARE the product's identity — every one must appear, so a
   // non-existent "Galaxy S99 Ultra" never matches an on-site "Galaxy Watch Ultra".
-  const idToks = toks.filter((w) => /\d/.test(w));
   if (idToks.length && !idToks.every((w) => hay.includes(w))) return false;
-  const hit = toks.filter((w) => hay.includes(w)).length;
-  return hit >= Math.max(2, Math.ceil(toks.length * 0.6));
+  const wordHits = wordToks.filter((w) => hay.includes(w)).length;
+  if (idToks.length) {
+    // Identity numbers all matched — require at least one name/brand word too, so a
+    // bare spec number ("en iyi 512 gb telefon") can't hijack an unrelated product.
+    return wordHits >= 1;
+  }
+  // No model number in the query — need a solid name overlap to be confident.
+  return wordHits >= Math.max(2, Math.ceil(wordToks.length * 0.6));
 }
 
 function productUrl(product) {
@@ -89,8 +105,23 @@ function productUrl(product) {
   }
 }
 
+// keySpecs come in alphabetical order, so a naive "first 8" leads with low-signal
+// fields (5G, SAR, Body Ratio) and drops the ones people actually care about (RAM,
+// storage, camera, which sort late). Rank each spec: the meaningful ones first,
+// junk last, so the digest reads like a spec sheet a human would write.
+const SPEC_PROMOTE = /display|screen|ekran|resolution|çözünürlük|cozunurluk|refresh|yenileme|panel|amoled|oled|chipset|processor|işlemci|islemci|\bcpu\b|\bgpu\b|\bram\b|memory|bellek|storage|depolama|camera|kamera|battery|batarya|pil|charg|şarj|sarj|weight|ağırlık|agirlik|\bsize\b|boyut/i;
+const SPEC_DEMOTE = /\b5g\b|\b4g\b|4\.5g|3g\b|\bsar\b|sim count|sim say|body ratio|body oran|gövde|govde|water|su geçir|su gecir|dust|toz|bluetooth|\bnfc\b|\bgps\b|radio|fm |warranty|garanti/i;
+
+function specRank(key) {
+  // Demote wins ties: "Display / Body Ratio" mentions "display" but is low-signal.
+  if (SPEC_DEMOTE.test(key)) return 2;
+  if (SPEC_PROMOTE.test(key)) return 0;
+  return 1;
+}
+
 // Up to ~8 clean "Label: value" spec lines from the product's Qor data, in the
-// UI language (source Turkish when the visitor + product are both Turkish).
+// UI language (source Turkish when the visitor + product are both Turkish),
+// meaningful specs first.
 function specDigest(product, lang) {
   const specLang = String(lang || 'en').slice(0, 2).toLowerCase();
   const trSrc = String(product?.sourceLang || '').toLowerCase() === 'tr' && specLang === 'tr';
@@ -99,8 +130,11 @@ function specDigest(product, lang) {
     : (product?.keySpecs && Object.keys(product.keySpecs).length ? product.keySpecs : null);
   const rows = [];
   if (src) {
-    for (const [k, v] of Object.entries(src)) {
-      const val = localizedSpecValue(String(v ?? ''), lang).split('\n')[0];
+    const entries = Object.entries(src)
+      .map(([k, v], i) => ({ k, v, i, rank: specRank(k) }))
+      .sort((a, b) => a.rank - b.rank || a.i - b.i);
+    for (const { k, v } of entries) {
+      const val = localizedSpecValue(String(v ?? ''), lang).split('\n')[0].trim();
       if (!val) continue;
       rows.push(`${localizedSpecLabel(k, lang)}: ${val}`);
       if (rows.length >= 8) break;
