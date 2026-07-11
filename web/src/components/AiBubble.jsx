@@ -66,14 +66,14 @@ const CHAT_STRINGS = {
 // browser-detected site language. This is why a US visitor never sees a Turkish
 // "under ₺30.000" prompt and a Turkey visitor is answered in Turkish.
 function resolveChatLang(country, siteLang) {
-  let saved = '';
-  try { saved = localStorage.getItem('qor.lang') || ''; } catch { /* storage blocked */ }
-  if (['tr', 'en', 'de'].includes(saved)) return saved;
+  // Sohbet dili SİTE diline (artık tarayıcıya göre) uyar. Eski `qor.lang`
+  // localStorage override'ı KALDIRILDI — aksi halde tarayıcı İngilizce olsa
+  // bile eski 'tr' takılıp chat Türkçe cevaplıyordu (bkz. i18n/index.jsx).
+  if (['tr', 'en', 'de'].includes(siteLang)) return siteLang;
   const cc = String(country || '').toUpperCase();
   if (cc === 'TR') return 'tr';
   if (['DE', 'AT', 'CH', 'LI'].includes(cc)) return 'de';
-  if (cc) return 'en';
-  return ['tr', 'en', 'de'].includes(siteLang) ? siteLang : 'en';
+  return 'en';
 }
 
 // ── Persisted chat threads (per signed-in user) ─────────────────────

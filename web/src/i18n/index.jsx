@@ -16,11 +16,10 @@ const RTL = new Set(['ar']);
 const LANG_KEY = 'qor.lang';
 
 function detectLang() {
-  // A user-chosen language (Settings) always wins over the browser default.
-  try {
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved && STRINGS[saved]) return saved;
-  } catch { /* storage blocked */ }
+  // Site dili YALNIZCA tarayıcı diline göre (kullanıcı isteği): TR→tr, DE→de,
+  // desteklenmeyen her dil → EN. Sitede dil seçici YOK (setLang çağrılmıyor);
+  // eski sürümden kalan `qor.lang` localStorage değeri artık DİKKATE ALINMAZ —
+  // aksi halde tarayıcı İngilizce olsa bile eski 'tr' takılıp kalıyordu.
   const nav = (navigator.languages || [navigator.language || 'en'])
     .map((l) => String(l).slice(0, 2).toLowerCase());
 
