@@ -23,7 +23,6 @@ import 'package:qor_ai/presentation/widgets/glass_container.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:qor_ai/presentation/screens/link_paste/link_analysis_history_screen.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
@@ -838,15 +837,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                       },
                       tooltip: context.l10n?.startOver ?? 'Start over',
                     ),
-                  // History butonu yalnızca her iki flow da idle iken gösterilir
-                  if (!showBack)
-                    _buildAppBarAction(
-                      icon: Icons.manage_history_rounded,
-                      onPressed: _showAnalysisHistory,
-                      tooltip:
-                          context.l10n?.analysisHistoryTooltip ??
-                          'Analysis History',
-                    ),
+                  // NOT: Analiz geçmişi girişi buradan KALDIRILDI — tüm analiz
+                  // geçmişi yalnız Profil > "Analiz Geçmişi" altında toplanıyor
+                  // (kullanıcı isteği).
                   const SizedBox(width: 4),
                 ],
                 // Single/Compare tabs removed — the idle body is now one
@@ -5208,12 +5201,6 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
             .catchError((_) {});
       }
     } catch (_) {}
-  }
-
-  void _showAnalysisHistory() {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) => const LinkAnalysisHistoryScreen()),
-    );
   }
 
   // ignore: unused_element

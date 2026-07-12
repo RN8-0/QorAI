@@ -50,6 +50,23 @@ class CacheService {
     );
   }
 
+  /// Bir kez çalışan geçiş bayrağı: eski kurulumlarda test sırasında elle
+  /// kaydedilmiş (light/dark) bir tema kalmış olabiliyordu → uygulama cihaz
+  /// temasını takip etmiyordu. Kullanıcı isteği: açılışta cihaz teması esas
+  /// alınsın. Bu bayrak set edilmemişse tema bir defalığına `system`'e çekilir;
+  /// sonraki elle seçimler korunur.
+  bool getThemeFollowsDeviceMigrated() {
+    return _settingsBox.get(
+          'theme_follows_device_v1',
+          defaultValue: false,
+        )
+        as bool;
+  }
+
+  void setThemeFollowsDeviceMigrated() {
+    _settingsBox.put('theme_follows_device_v1', true);
+  }
+
   // ─── Language Settings ───
   void saveLanguage(String languageCode) {
     _settingsBox.put('language_code', languageCode);

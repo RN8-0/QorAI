@@ -535,7 +535,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     final desc = isQuiz
         ? (isTr ? 'için soruların hazır' : 'questions ready')
         : (isTr ? 'analizin hazır' : 'analysis ready');
-    final color = isQuiz ? AppTheme.premiumPurple : AppTheme.brandBlue;
+    // Tema ile uyumlu MAVI (mor değil) — hem quiz hem rapor bildirimi marka mavisi.
+    const color = AppTheme.brandBlue;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(12),

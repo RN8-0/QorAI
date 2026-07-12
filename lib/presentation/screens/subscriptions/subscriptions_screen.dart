@@ -26,7 +26,6 @@ import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
 import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
-import 'package:qor_ai/presentation/screens/subscriptions/subscription_history_screen.dart';
 import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/services/gemini_service.dart';
 
@@ -690,8 +689,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
         },
       ),
       actions: [
-        // "Baştan başla" yalnızca SONUÇ hazırken. Quiz / analiz esnasında
-        // sağ üstte hiçbir buton yok (kullanıcı isteği). Idle'da geçmiş butonu.
+        // "Baştan başla" yalnızca SONUÇ hazırken. Quiz / analiz esnasında ve
+        // idle'da sağ üstte buton yok. Analiz geçmişi artık YALNIZ Profil >
+        // "Analiz Geçmişi" altında (kullanıcı isteği).
         if (state.phase == SubFlowPhase.result)
           _buildAppBarAction(
             icon: Icons.refresh_rounded,
@@ -701,12 +701,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
               setState(() {});
             },
             tooltip: context.l10n?.startOver ?? 'Start over',
-          ),
-        if (state.phase == SubFlowPhase.idle)
-          _buildAppBarAction(
-            icon: Icons.history_rounded,
-            onPressed: _showSubscriptionHistory,
-            tooltip: 'Geçmiş',
           ),
         const SizedBox(width: 4),
       ],
@@ -1702,16 +1696,6 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
   }
 
   // ── Previous Comparisons (idle) ─────────────────────────────────────────
-
-  // ═══════════════════════════════════════════════════════════
-  // SUBSCRIPTION HISTORY — Görev 13
-  // ═══════════════════════════════════════════════════════════
-
-  void _showSubscriptionHistory() {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute(builder: (_) => const SubscriptionHistoryScreen()),
-    );
-  }
 
   Widget _buildInfoCards() {
     final items = [

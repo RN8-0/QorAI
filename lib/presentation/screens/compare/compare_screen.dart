@@ -57,7 +57,6 @@ import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:dio/dio.dart';
 import 'package:qor_ai/presentation/screens/detail/product_detail_screen.dart'
     as detail;
-import 'package:qor_ai/presentation/screens/detail/analysis_history_screen.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';

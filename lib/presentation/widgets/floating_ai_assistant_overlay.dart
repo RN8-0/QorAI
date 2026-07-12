@@ -87,6 +87,22 @@ class _FloatingAiAssistantOverlayState
     if (mounted) setState(() {});
   }
 
+  /// Kullanıcı Q butonuna bastığında açılış. MANUEL açılışta, kullanıcının
+  /// yazdığı bir mesaj YOKSA (yalnız karşılama/tarama/asistan mesajları kaldıysa)
+  /// YENİ sohbetle açar → "önceki mesajlar / önceki sohbet" birikmez (kullanıcı
+  /// isteği). Tarayıcı açılışı (chatOverlayRequest) `_toggle`'ı doğrudan çağırır,
+  /// bu yüzden tohumlanan tarama sonucu SİLİNMEZ.
+  void _toggleFromButton() {
+    if (!_isOpen) {
+      final chat = ref.read(chatSessionProvider);
+      final hasUserMsg = chat.messages.any((m) => m.role.name == 'user');
+      if (!hasUserMsg) {
+        ref.read(chatSessionProvider.notifier).newConversation();
+      }
+    }
+    _toggle();
+  }
+
   void _toggle() {
     HapticFeedback.selectionClick();
     _fabCtrl.forward(from: 0);
@@ -574,7 +590,7 @@ class _FloatingAiAssistantOverlayState
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   if (_dragging) return;
-                  _toggle();
+                  _toggleFromButton();
                 },
                 onPanStart: (_) {
                   _dragDistance = 0;

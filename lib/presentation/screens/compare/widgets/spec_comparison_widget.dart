@@ -6901,33 +6901,18 @@ Rules:
     // "Analizi Başlat" basınca _compareQuizLoading=true oluyor ama bu erken
     // return (_fullCompareRunning hâlâ false) start butonunu tekrar gösterip
     // quiz/loader'ı hiç açmıyordu → buton "çalışmıyor" görünüyordu.
-    final hasHistory =
-        ref.watch(pendingCompareAnalysisHistoryProvider).isNotEmpty ||
-        (ref.watch(compareAnalysisHistoryProvider).valueOrNull?.isNotEmpty ??
-            false);
+    // NOT: "Geçmiş analizler" girişi buradan KALDIRILDI — tüm analiz geçmişi
+    // yalnız Profil > "Analiz Geçmişi" altında toplanıyor (kullanıcı isteği).
     if (!_compareQuizLoading &&
         _compareQuiz == null &&
         !_fullCompareRunning &&
         _fullCompareReport == null &&
         _savedCompareEntry() == null) {
-      return Column(
-        children: [
-          if (hasHistory) _buildCompareHistoryBar(),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 24,
-                ),
-                child: _buildAiStartButton(
-                  _runCompareFullReport,
-                  _fullCompareError,
-                ),
-              ),
-            ),
-          ),
-        ],
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          child: _buildAiStartButton(_runCompareFullReport, _fullCompareError),
+        ),
       );
     }
     return ListView(
@@ -6937,36 +6922,7 @@ Rules:
         16,
         MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
       ),
-      children: [
-        if (hasHistory) _buildCompareHistoryBar(),
-        _buildCompareFullReportSection(),
-      ],
-    );
-  }
-
-  Widget _buildCompareHistoryBar() {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: TextButton.icon(
-        onPressed: () => Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) => const AnalysisHistoryScreen(initialTab: 1),
-          ),
-        ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          minimumSize: const Size(0, 0),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        icon: const Icon(Icons.history_rounded, size: 15),
-        label: Text(
-          _isTr ? 'Geçmiş analizler' : 'Past analyses',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      children: [_buildCompareFullReportSection()],
     );
   }
 

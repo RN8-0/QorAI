@@ -254,6 +254,15 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 
   void _loadTheme() {
+    // Bir defalık geçiş: mevcut kurulumlarda eski bir elle-tema kaydı kalmış
+    // olabilir → uygulama cihaz temasını takip etmiyordu. İlk açılışta cihaz
+    // teması esas alınsın diye bir kez `system`'e çek (sonraki seçimler kalıcı).
+    if (!_cacheService.getThemeFollowsDeviceMigrated()) {
+      _cacheService.setThemeFollowsDeviceMigrated();
+      _cacheService.saveThemeMode(ThemeMode.system);
+      state = ThemeMode.system;
+      return;
+    }
     final savedTheme = _cacheService.getThemeMode();
     state = savedTheme;
   }

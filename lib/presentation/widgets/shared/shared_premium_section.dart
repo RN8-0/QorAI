@@ -14,7 +14,6 @@ import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/providers/product_analysis_provider.dart';
-import 'package:qor_ai/presentation/screens/detail/analysis_history_screen.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_quiz_view.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -129,41 +128,10 @@ class SharedPremiumFeaturesSectionState
   Widget build(BuildContext context) {
     // Web-parity unified AI report (product_full_report). User-triggered via an
     // explicit Start button; renders identically to the website.
-    final hasHistory =
-        ref.watch(pendingProductAnalysisHistoryProvider).isNotEmpty ||
-        (ref.watch(productAnalysisHistoryProvider).valueOrNull?.isNotEmpty ??
-            false);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (hasHistory)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const AnalysisHistoryScreen(initialTab: 0),
-                ),
-              ),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                minimumSize: const Size(0, 0),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: const Icon(Icons.history_rounded, size: 15),
-              label: Text(
-                _txt(tr: 'Geçmiş analizler', en: 'Past analyses'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        RepaintBoundary(child: _buildFullReportSection()),
-      ],
-    );
+    // NOT: "Geçmiş analizler" girişi buradan KALDIRILDI — tüm analiz geçmişi
+    // (ürün/karşılaştırma/abonelik/link) yalnız Profil > "Analiz Geçmişi"
+    // altında toplanıyor (kullanıcı isteği).
+    return RepaintBoundary(child: _buildFullReportSection());
   }
 
   String get _reportLang => Localizations.localeOf(context).languageCode;

@@ -13,10 +13,12 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
+import 'package:qor_ai/presentation/screens/detail/analysis_history_screen.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -537,6 +539,23 @@ class _ProfileBody extends ConsumerWidget {
                   emptyMessage:
                       context.l10n?.noComparisonsYet ?? 'No comparisons yet',
                 ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // AI Analiz Geçmişi — ürün / karşılaştırma / abonelik / link
+              // analizlerinin TAMAMI tek yerde (kullanıcı isteği). Diğer geçmiş
+              // ekranları gibi başlığa dokununca tam liste açılır.
+              _ContentSection(
+                title: _profileText(
+                  context,
+                  tr: 'Analiz Geçmişi',
+                  en: 'Analysis History',
+                ),
+                icon: Icons.auto_awesome_rounded,
+                color: AppTheme.brandCyan,
+                onHeaderTap: () => _openAnalysisHistory(context, 0),
+                child: const _AnalysisHistoryPreviewList(),
               ),
 
               const SizedBox(height: 16),
@@ -2110,6 +2129,278 @@ class _UsageRow extends StatelessWidget {
   }
 }
 
+/// Kök navigatörde tam "Analiz Geçmişi" ekranını açar — alt gezinme çubuğunun
+/// üstünü de kaplar. tab: 0=Ürünler, 1=Karşılaştırmalar, 2=Abonelikler, 3=Linkler.
+void _openAnalysisHistory(BuildContext context, int tab) {
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(builder: (_) => AnalysisHistoryScreen(initialTab: tab)),
+  );
+}
+
+class _AnalysisPreviewEntry {
+  final String dedupKey;
+  final String title;
+  final DateTime ts;
+  final IconData icon;
+  final Color color;
+  final int tab;
+  const _AnalysisPreviewEntry({
+    required this.dedupKey,
+    required this.title,
+    required this.ts,
+    required this.icon,
+    required this.color,
+    required this.tab,
+  });
+}
+
+/// Profil'deki "Analiz Geçmişi" bölümünün önizlemesi — ürün / karşılaştırma /
+/// abonelik / link analizlerinin TAMAMINI birleştirip en yeni 3 kaydı gösterir.
+/// Bir kayda dokununca tam liste ekranı ilgili sekmede açılır (birebir restore
+/// orada). Diğer profil geçmiş bölümleriyle aynı görsel dil.
+class _AnalysisHistoryPreviewList extends ConsumerWidget {
+  const _AnalysisHistoryPreviewList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isTr =
+        Localizations.localeOf(context).languageCode.toLowerCase() == 'tr';
+
+    DateTime tsOf(Map<String, dynamic> e) =>
+        DateTime.tryParse(e['timestamp']?.toString() ?? '') ?? DateTime(2000);
+
+    final entries = <_AnalysisPreviewEntry>[];
+
+    // Ürünler
+    for (final e in [
+      ...ref.watch(pendingProductAnalysisHistoryProvider),
+      ...(ref.watch(productAnalysisHistoryProvider).valueOrNull ??
+          const <Map<String, dynamic>>[]),
+    ]) {
+      entries.add(
+        _AnalysisPreviewEntry(
+          dedupKey: 'p_${e['productId'] ?? e['id']}',
+          title: e['productName']?.toString() ?? (isTr ? 'Ürün' : 'Product'),
+          ts: tsOf(e),
+          icon: Icons.auto_awesome_rounded,
+          color: AppTheme.brandCyan,
+          tab: 0,
+        ),
+      );
+    }
+    // Karşılaştırmalar
+    for (final e in [
+      ...ref.watch(pendingCompareAnalysisHistoryProvider),
+      ...(ref.watch(compareAnalysisHistoryProvider).valueOrNull ??
+          const <Map<String, dynamic>>[]),
+    ]) {
+      entries.add(
+        _AnalysisPreviewEntry(
+          dedupKey: 'c_${e['signature'] ?? e['id']}',
+          title:
+              (e['products'] as List?)?.map((x) => x.toString()).join(' vs ') ??
+              (isTr ? 'Karşılaştırma' : 'Comparison'),
+          ts: tsOf(e),
+          icon: Icons.compare_arrows_rounded,
+          color: AppTheme.brandBlue,
+          tab: 1,
+        ),
+      );
+    }
+    // Abonelikler
+    for (final e in [
+      ...ref.watch(pendingSubscriptionHistoryProvider),
+      ...(ref.watch(subscriptionHistoryProvider).valueOrNull ??
+          const <Map<String, dynamic>>[]),
+    ]) {
+      entries.add(
+        _AnalysisPreviewEntry(
+          dedupKey: 's_${e['id'] ?? e['timestamp']}',
+          title:
+              (e['services'] as List?)?.map((x) => x.toString()).join(' vs ') ??
+              (isTr ? 'Abonelik analizi' : 'Subscription analysis'),
+          ts: tsOf(e),
+          icon: Icons.subscriptions_rounded,
+          color: const Color(0xFF10B981),
+          tab: 2,
+        ),
+      );
+    }
+    // Linkler
+    for (final e in [
+      ...ref.watch(pendingLinkAnalysisHistoryProvider),
+      ...(ref.watch(linkAnalysisHistoryProvider).valueOrNull ??
+          const <Map<String, dynamic>>[]),
+    ]) {
+      entries.add(
+        _AnalysisPreviewEntry(
+          dedupKey: 'l_${e['id'] ?? e['timestamp']}',
+          title:
+              e['productName']?.toString() ??
+              (e['products'] as List?)?.map((x) => x.toString()).join(' vs ') ??
+              (isTr ? 'Link analizi' : 'Link analysis'),
+          ts: tsOf(e),
+          icon: (e['type'] == 'compare')
+              ? Icons.compare_arrows_rounded
+              : Icons.link_rounded,
+          color: AppTheme.brandSkyBlue,
+          tab: 3,
+        ),
+      );
+    }
+
+    final seen = <String>{};
+    final unique = <_AnalysisPreviewEntry>[];
+    for (final e in entries) {
+      if (seen.add(e.dedupKey)) unique.add(e);
+    }
+    unique.sort((a, b) => b.ts.compareTo(a.ts));
+
+    if (unique.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            isTr ? 'Henüz AI analizi yok' : 'No AI analyses yet',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              color: AppTheme.slate500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    String kindLabel(int tab) => switch (tab) {
+      0 => isTr ? 'Ürün analizi' : 'Product analysis',
+      1 => isTr ? 'Karşılaştırma analizi' : 'Comparison analysis',
+      2 => isTr ? 'Abonelik analizi' : 'Subscription analysis',
+      _ => isTr ? 'Link analizi' : 'Link analysis',
+    };
+
+    return Column(
+      children: [
+        for (final e in unique.take(3))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: InkWell(
+              onTap: () => _openAnalysisHistory(context, e.tab),
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [e.color, e.color.withValues(alpha: 0.65)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(e.icon, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          kindLabel(e.tab),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 20,
+                    color: context.textTertiaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Blog yorumu (productId `blog:` ön ekli) uygulamada açılamaz — blog yalnızca
+/// web sitesinde. Kullanıcıyı bilgilendirip web sitesindeki yazıya yönlendirir.
+Future<void> _openBlogReview(
+  BuildContext context,
+  String slug,
+  bool isTr,
+) async {
+  final go = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: context.surfaceVariantColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text(
+        isTr ? 'Blog web sitesinde' : 'Blog is on the website',
+        style: GoogleFonts.plusJakartaSans(
+          fontWeight: FontWeight.w800,
+          fontSize: 17,
+          color: context.textPrimary,
+        ),
+      ),
+      content: Text(
+        isTr
+            ? 'Blog yazıları ve yorumları yalnızca web sitesinde bulunuyor. Bu yorumu web sitesinde açmak ister misin?'
+            : 'Blog articles and their comments are only available on the website. Open this comment on the website?',
+        style: GoogleFonts.inter(
+          fontSize: 13.5,
+          height: 1.5,
+          color: context.textSecondary,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: Text(
+            isTr ? 'Vazgeç' : 'Cancel',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w700,
+              color: context.textSecondary,
+            ),
+          ),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: FilledButton.styleFrom(backgroundColor: AppTheme.brandBlue),
+          child: Text(
+            isTr ? 'Web sitesinde aç' : 'Open website',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+  if (go != true) return;
+  final uri = Uri.parse('https://qorai.net/blog/$slug');
+  try {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {}
+}
+
 class _MyReviewsList extends ConsumerWidget {
   const _MyReviewsList();
 
@@ -2146,15 +2437,31 @@ class _MyReviewsList extends ConsumerWidget {
 
     return Column(
       children: [
-        // Product reviews
+        // Product reviews (blog yorumları dahil — bunlar web'e yönlendirir)
         ...productReviews.take(5).map((review) {
+          final isTr =
+              Localizations.localeOf(context).languageCode.toLowerCase() ==
+              'tr';
+          final isBlog = review.productId.startsWith('blog:');
           final product = allProducts
               .where((p) => p.id == review.productId)
               .firstOrNull;
-          final displayName = product?.name ?? review.productId;
+          final displayName = isBlog
+              ? (isTr ? 'Blog yorumu' : 'Blog comment')
+              : (product?.name ?? review.productId);
+          final accent = isBlog
+              ? AppTheme.brandBlue
+              : const Color(0xFF10B981);
 
           return GestureDetector(
-            onTap: () => context.push('/product/${review.productId}'),
+            onTap: () {
+              if (isBlog) {
+                // Blog uygulamada yok → bilgilendir + web sitesine git.
+                _openBlogReview(context, review.productId.substring(5), isTr);
+              } else {
+                context.push('/product/${review.productId}');
+              }
+            },
             child: Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -2169,13 +2476,15 @@ class _MyReviewsList extends ConsumerWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      color: accent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
-                      Icons.rate_review_rounded,
+                    child: Icon(
+                      isBlog
+                          ? Icons.article_rounded
+                          : Icons.rate_review_rounded,
                       size: 18,
-                      color: Color(0xFF10B981),
+                      color: accent,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -2206,8 +2515,10 @@ class _MyReviewsList extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
+                  Icon(
+                    isBlog
+                        ? Icons.open_in_new_rounded
+                        : Icons.chevron_right_rounded,
                     size: 18,
                     color: AppTheme.slate400,
                   ),
