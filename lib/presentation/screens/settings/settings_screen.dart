@@ -913,15 +913,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 clipBehavior: Clip.hardEdge,
                 child: ListView.separated(
-                  itemCount: SupportedCountries.countries.length,
+                  // YALNIZ Amazon'un geçerli olduğu ülkeler (web ile aynı) —
+                  // kullanıcı isteği: fiyat/teslimat seçicide Amazon-dışı ülke yok.
+                  itemCount: SupportedCountries.amazonCountryCodes.length,
                   separatorBuilder: (context, index) => Divider(
                     height: 0.5,
                     color: context.dividerColor,
                     indent: 56,
                   ),
                   itemBuilder: (context, index) {
-                    final entry = SupportedCountries.countries.entries
-                        .elementAt(index);
+                    final code = SupportedCountries.amazonCountryCodes[index];
+                    final info = SupportedCountries.countries[code];
+                    if (info == null) return const SizedBox.shrink();
+                    final entry = MapEntry(code, info);
                     final isSelected = current == entry.key;
                     return Material(
                       color: Colors.transparent,
@@ -1145,6 +1149,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onPressed: () async {
               final navigator = GoRouter.of(context);
               Navigator.pop(context);
+              // Premium + yerel kullanıcı verilerini temizle → bir sonraki
+              // hesaba SIZMASIN (hesap silme akışıyla aynı temizlik).
+              await ref.read(subscriptionServiceProvider).clearLocalPremium();
+              ref.read(selectedCountryProvider.notifier).resetToAutoDetect();
               await ref.read(authRepositoryProvider).signOut();
               if (!mounted) return;
               navigator.go(AppRoutes.login);

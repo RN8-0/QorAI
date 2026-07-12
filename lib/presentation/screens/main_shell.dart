@@ -14,7 +14,6 @@ import "package:qor_ai/core/app_keys.dart";
 import "package:qor_ai/core/constants.dart";
 import "package:qor_ai/core/pb_client.dart";
 import "package:qor_ai/presentation/providers/providers.dart";
-import "package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart";
 import "package:qor_ai/services/connectivity_service.dart";
 import "package:qor_ai/services/notification_service.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
@@ -22,6 +21,13 @@ import "package:qor_ai/routing/router.dart";
 import "package:qor_ai/core/theme.dart";
 import "package:qor_ai/core/extensions.dart";
 import "package:qor_ai/l10n/app_localizations.dart";
+import "package:qor_ai/presentation/providers/product_analysis_provider.dart";
+import "package:qor_ai/presentation/providers/analysis_hub_provider.dart";
+import "package:qor_ai/services/ai_report_service.dart";
+import "package:qor_ai/presentation/widgets/shared/ai_report_view.dart"
+    show AiReportStageLite;
+import "package:qor_ai/domain/entities/ai_entities.dart" show ProductQuiz;
+import "package:qor_ai/domain/entities/product_entity.dart";
 
 const _kNavBarHeight = AppTheme.navBarHeight;
 const _kSidebarWidth = 240.0;
@@ -41,6 +47,155 @@ class _MainShellState extends ConsumerState<MainShell>
   StreamSubscription<String>? _fcmTokenRefreshSub;
   Future<void> Function()? _productsUnsubscribe;
   Timer? _productCacheInvalidationDebounce;
+
+  // ── ANALİZ HUB besleyicileri ────────────────────────────────────────────
+  // Her akışın faz geçişini `analysisHubProvider`'a çevirir: quiz/analiz
+  // KOŞARKEN busy (Q butonu spinner), quiz/rapor HAZIR olunca chat bildirimi.
+
+  void _feedHubProduct(
+    AnalysisHubNotifier hub,
+    ProductAnalysisState? prev,
+    ProductAnalysisState next,
+    bool isTr,
+  ) {
+    const flow = AnalysisFlowKind.product;
+    final pid = next.productId;
+    final id = pid != null ? 'product:$pid' : null;
+    final label = next.productName ?? (isTr ? 'Ürün' : 'Product');
+    switch (next.phase) {
+      case ProductAnalysisPhase.startRequested:
+      case ProductAnalysisPhase.quizLoading:
+      case ProductAnalysisPhase.reportRequested:
+      case ProductAnalysisPhase.running:
+        // Quiz üretimi / analiz koşuyor → spinner, eski bildirimi temizle.
+        hub.setBusy(flow, true);
+        if (id != null) hub.clearNotice(flow, id: id);
+      case ProductAnalysisPhase.quiz:
+        hub.setBusy(flow, false);
+        if (id != null && next.quizReadySeq > (prev?.quizReadySeq ?? 0)) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.quiz,
+              label: label,
+              productId: pid,
+            ),
+          );
+        }
+      case ProductAnalysisPhase.done:
+        hub.setBusy(flow, false);
+        if (id != null && next.reportReadySeq > (prev?.reportReadySeq ?? 0)) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.report,
+              label: label,
+              productId: pid,
+            ),
+          );
+        }
+      case ProductAnalysisPhase.error:
+        hub.setBusy(flow, false);
+        if (id != null) hub.clearNotice(flow, id: id);
+      case ProductAnalysisPhase.idle:
+        hub.setBusy(flow, false);
+    }
+  }
+
+  void _feedHubLink(
+    AnalysisHubNotifier hub,
+    LinkQuizState? prev,
+    LinkQuizState next,
+    bool isTr,
+  ) {
+    const flow = AnalysisFlowKind.link;
+    const id = 'link';
+    final label = isTr ? 'Link analizi' : 'Link analysis';
+    switch (next.phase) {
+      case LinkFlowPhase.analyzing:
+      case LinkFlowPhase.quizLoading:
+        hub.setBusy(flow, true);
+      case LinkFlowPhase.computing:
+        hub.setBusy(flow, true);
+        hub.clearNotice(flow, id: id);
+      case LinkFlowPhase.quiz:
+        hub.setBusy(flow, false);
+        if (prev?.phase != LinkFlowPhase.quiz) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.quiz,
+              label: label,
+              tabIndex: 2,
+            ),
+          );
+        }
+      case LinkFlowPhase.result:
+        hub.setBusy(flow, false);
+        if (prev?.phase != LinkFlowPhase.result) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.report,
+              label: label,
+              tabIndex: 2,
+            ),
+          );
+        }
+      case LinkFlowPhase.idle:
+        hub.setBusy(flow, false);
+    }
+  }
+
+  void _feedHubSub(
+    AnalysisHubNotifier hub,
+    SubQuizState? prev,
+    SubQuizState next,
+    bool isTr,
+  ) {
+    const flow = AnalysisFlowKind.subscription;
+    const id = 'subscription';
+    final label = isTr ? 'Abonelik analizi' : 'Subscription analysis';
+    switch (next.phase) {
+      case SubFlowPhase.quizLoading:
+        hub.setBusy(flow, true);
+      case SubFlowPhase.analyzing:
+        hub.setBusy(flow, true);
+        hub.clearNotice(flow, id: id);
+      case SubFlowPhase.quiz:
+        hub.setBusy(flow, false);
+        if (prev?.phase != SubFlowPhase.quiz) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.quiz,
+              label: label,
+              tabIndex: 3,
+            ),
+          );
+        }
+      case SubFlowPhase.result:
+        hub.setBusy(flow, false);
+        if (prev?.phase != SubFlowPhase.result) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.report,
+              label: label,
+              tabIndex: 3,
+            ),
+          );
+        }
+      case SubFlowPhase.idle:
+        hub.setBusy(flow, false);
+    }
+  }
 
   @override
   void initState() {
@@ -178,6 +333,172 @@ class _MainShellState extends ConsumerState<MainShell>
     }
   }
 
+  // ── Ürün (tekli) AI analiz MOTORU ────────────────────────────────────────
+  // Ürün detay ekranı push edilmiş bir rota — pop/sekme değişince dispose olur.
+  // Analizi burada (her zaman canlı olan shell'de, WidgetRef ile) yürütürüz;
+  // durum global [productAnalysisProvider]'da. Böylece kullanıcı üründen çıksa
+  // bile analiz sürer ve bittiğinde ürün adıyla bildirim gösterebiliriz.
+  AiReportStageLite _mapProductStage(AiReportStage s) => switch (s) {
+    AiReportStage.prep => AiReportStageLite.prep,
+    AiReportStage.research => AiReportStageLite.research,
+    AiReportStage.report => AiReportStageLite.report,
+  };
+
+  Future<void> _runProductQuizPhase(ProductAnalysisState s) async {
+    final product = s.product;
+    if (product == null) return;
+    final lang = s.lang;
+    final notifier = ref.read(productAnalysisProvider.notifier);
+    notifier.setQuizLoading();
+    // HIZ: web araştırmasını quiz üretimiyle PARALEL başlat (görünüm gecikmesi
+    // kazancı korunur; rapor submit'te biten araştırmayı bekler).
+    notifier.researchFuture = AiReportService.prefetchProductResearch(
+      ref,
+      product,
+      lang,
+    );
+    final aiProfile = ref.read(userProfileProvider).valueOrNull;
+    final title = product.nameForLanguage(lang);
+    ProductQuiz? quiz;
+    try {
+      quiz = await ref
+          .read(geminiServiceProvider)
+          .generateQuiz(
+            category: product.category,
+            productTitle: title,
+            url: '',
+            language: lang,
+            profile: aiProfile,
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (e) {
+      try {
+        quiz = await ref
+            .read(deepSeekServiceProvider)
+            .generateQuiz(
+              category: product.category,
+              productTitle: title,
+              url: '',
+              language: lang,
+            )
+            .timeout(const Duration(seconds: 45));
+      } catch (_) {}
+    }
+    // Bu arada kullanıcı reset ettiyse / başka ürün başlattıysa iptal.
+    final cur = ref.read(productAnalysisProvider);
+    if (cur.productId != product.id ||
+        cur.phase != ProductAnalysisPhase.quizLoading) {
+      return;
+    }
+    if (quiz != null && quiz.questions.isNotEmpty) {
+      notifier.setQuiz(quiz);
+    } else {
+      // Quiz üretilemedi → doğrudan rapora geç (listen bunu yakalar).
+      notifier.requestReportSkippingQuiz();
+    }
+  }
+
+  Future<void> _runProductReportPhase(ProductAnalysisState s) async {
+    final product = s.product;
+    if (product == null) return;
+    final notifier = ref.read(productAnalysisProvider.notifier);
+    notifier.setRunning();
+    // Qor kataloğundan "benzer ürünler" → AI gerçek ürünleri alternatif olarak
+    // kullanabilsin (web paritesi). Best-effort.
+    List<ProductEntity> similar = const [];
+    try {
+      similar = await ref.read(similarProductsProvider(product).future);
+    } catch (_) {}
+    try {
+      // GÜVENLİK: rapor motoru asla SONSUZA kadar takılmasın (aksi halde Q
+      // butonundaki spinner hiç durmaz). 3 dk'da bitmezse hata say → spinner
+      // durur, kullanıcı "Yeniden Analiz Et" ile tekrar dener.
+      final report = await AiReportService.runProductReport(
+        ref: ref,
+        product: product,
+        lang: s.lang,
+        profile: s.profile,
+        quizAnswers: s.answers,
+        similarProducts: similar,
+        researchFuture: notifier.researchFuture,
+        onStage: (st) {
+          final cur = ref.read(productAnalysisProvider);
+          if (cur.productId == product.id) {
+            notifier.setStage(_mapProductStage(st));
+          }
+        },
+      ).timeout(const Duration(minutes: 3));
+      final cur = ref.read(productAnalysisProvider);
+      if (cur.productId != product.id) return; // başka ürünle değiştirilmiş
+      if (report != null) {
+        notifier.setReport(report);
+        _saveProductAnalysisHistory(product, s, report);
+      } else {
+        notifier.setError();
+      }
+    } catch (_) {
+      final cur = ref.read(productAnalysisProvider);
+      if (cur.productId == product.id) notifier.setError();
+    }
+  }
+
+  /// Ürün analizi bitince tam raporu + quiz cevaplarını geçmişe yazar (link/
+  /// abonelik akışıyla AYNI desen). Böylece kullanıcı ürüne dönünce BİRE BİR
+  /// aynı analizi görür ve "geçmiş analizler" listesinde çıkar.
+  void _saveProductAnalysisHistory(
+    ProductEntity product,
+    ProductAnalysisState s,
+    Map<String, dynamic> report,
+  ) {
+    final answered = s.answers
+        .where((q) => q.selectedOption != null)
+        .map(
+          (q) => {
+            'question': q.text,
+            'answer': q.selectedOption,
+            'options': q.options,
+          },
+        )
+        .toList();
+    final score =
+        (report['matchScore'] as num?)?.toDouble() ??
+        (report['overallScore'] as num?)?.toDouble() ??
+        product.techScore;
+    final entry = <String, dynamic>{
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'type': 'product',
+      'productId': product.id,
+      'productName': product.nameForLanguage(s.lang),
+      'category': product.category,
+      if (product.brand != null) 'brand': product.brand,
+      'imageUrl': product.imageUrl,
+      'score': score,
+      'report': report,
+      'quizAnswers': answered,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    try {
+      ref
+          .read(pendingProductAnalysisHistoryProvider.notifier)
+          .update(
+            (list) => [
+              entry,
+              ...list.where((e) => e['productId'] != product.id),
+            ],
+          );
+    } catch (_) {}
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        ref
+            .read(pbDataSourceProvider)
+            .saveProductAnalysisHistory(auth, entry)
+            .then((_) => ref.invalidate(productAnalysisHistoryProvider))
+            .catchError((_) {});
+      }
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -300,96 +621,35 @@ class _MainShellState extends ConsumerState<MainShell>
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final useDesktopLayout = context.isDesktop;
 
-    // Analiz ARKA PLANDA: kullanıcı analizi başlatıp başka sekmeye geçtiyse,
-    // QUIZ hazır olunca veya ANALİZ bittiğinde sayfa adıyla zengin bir bildirim
-    // göster; "Görüntüle" o analiz sekmesine direkt götürür. Link + Abonelik.
-    void notifyAnalysis(String title, IconData icon, int tabIndex) {
-      final isTr = Localizations.localeOf(context).languageCode == 'tr';
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppTheme.brandDeepBlue,
-            elevation: 8,
-            duration: const Duration(seconds: 6),
-            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            content: Row(
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            action: SnackBarAction(
-              label: isTr ? 'Görüntüle' : 'View',
-              textColor: AppTheme.brandCyan,
-              onPressed: () => _onNavTap(tabIndex),
-            ),
-          ),
-        );
-    }
+    // ── ANALİZ BİLDİRİM MERKEZİ (Qor AI chat) ──────────────────────────────
+    // KULLANICI İSTEĞİ (2026-07-12): Ekran ortası popup KALDIRILDI. Tüm akışlar
+    // (ürün / link / abonelik / karşılaştırma) `analysisHubProvider`'a besler:
+    //  • quiz üretimi veya analiz KOŞARKEN → yüzen Q butonunda mini spinner.
+    //  • quiz/rapor HAZIR olunca → Qor chat paneline "Quize git/Analize git/
+    //    Sonra" butonlu bildirim satırı düşer.
+    // Kullanıcı bu işlemleri artık YALNIZ Qor AI chat'ten kontrol eder.
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    final hub = ref.read(analysisHubProvider.notifier);
 
-    // Abonelik akışı (sekme 3)
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
-      if (!mounted || currentIndex == 3) return;
-      final isTr = Localizations.localeOf(context).languageCode == 'tr';
-      if (prev?.phase != SubFlowPhase.quiz &&
-          next.phase == SubFlowPhase.quiz) {
-        notifyAnalysis(
-          isTr ? 'Abonelik quizin hazır — yanıtla' : 'Your subscription quiz is ready',
-          Icons.quiz_rounded,
-          3,
-        );
-      } else if (prev?.phase != SubFlowPhase.result &&
-          next.phase == SubFlowPhase.result) {
-        notifyAnalysis(
-          isTr ? 'Abonelik analizin hazır' : 'Your subscription analysis is ready',
-          Icons.auto_awesome_rounded,
-          3,
-        );
-      }
+      if (!mounted) return;
+      _feedHubSub(hub, prev, next, isTr);
     });
-
-    // Link analizi akışı (sekme 2)
     ref.listen<LinkQuizState>(linkQuizProvider, (prev, next) {
-      if (!mounted || currentIndex == 2) return;
-      final isTr = Localizations.localeOf(context).languageCode == 'tr';
-      if (prev?.phase != LinkFlowPhase.quiz &&
-          next.phase == LinkFlowPhase.quiz) {
-        notifyAnalysis(
-          isTr ? 'Analiz quizin hazır — yanıtla' : 'Your analysis quiz is ready',
-          Icons.quiz_rounded,
-          2,
-        );
-      } else if (prev?.phase != LinkFlowPhase.result &&
-          next.phase == LinkFlowPhase.result) {
-        notifyAnalysis(
-          isTr ? 'Link analizin hazır' : 'Your link analysis is ready',
-          Icons.auto_awesome_rounded,
-          2,
-        );
+      if (!mounted) return;
+      _feedHubLink(hub, prev, next, isTr);
+    });
+    // Ürün akışı: MOTOR burada koşar (shell her zaman canlı) + hub'a besler.
+    ref.listen<ProductAnalysisState>(productAnalysisProvider, (prev, next) {
+      if (!mounted) return;
+      if (next.phase == ProductAnalysisPhase.startRequested &&
+          prev?.phase != ProductAnalysisPhase.startRequested) {
+        Future.microtask(() => _runProductQuizPhase(next));
+      } else if (next.phase == ProductAnalysisPhase.reportRequested &&
+          prev?.phase != ProductAnalysisPhase.reportRequested) {
+        Future.microtask(() => _runProductReportPhase(next));
       }
+      _feedHubProduct(hub, prev, next, isTr);
     });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -958,265 +1218,5 @@ class _SidebarFooterLinkState extends State<_SidebarFooterLink> {
         ),
       ),
     );
-  }
-}
-
-// ─── FLOATING AI CHAT OVERLAY ───────────────────────────────────────────────
-// Messenger-style floating bubble: tap to expand into full chat panel.
-// Context-aware: knows which page is open and passes it to the AI.
-
-class _FloatingAiOverlay extends ConsumerStatefulWidget {
-  final String currentRoute;
-  const _FloatingAiOverlay({required this.currentRoute});
-
-  @override
-  ConsumerState<_FloatingAiOverlay> createState() => _FloatingAiOverlayState();
-}
-
-class _FloatingAiOverlayState extends ConsumerState<_FloatingAiOverlay>
-    with TickerProviderStateMixin {
-  bool _isOpen = false;
-
-  // Panel animation: elastic spring (messenger-style pop)
-  late AnimationController _panelCtrl;
-  late Animation<double> _panelScale;
-  late Animation<double> _panelOpacity;
-
-  // FAB bounce animation on tap
-  late AnimationController _fabCtrl;
-  late Animation<double> _fabScale;
-
-  @override
-  void initState() {
-    super.initState();
-    _panelCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 480),
-      reverseDuration: const Duration(milliseconds: 220),
-    );
-    _panelScale = CurvedAnimation(
-      parent: _panelCtrl,
-      curve: Curves.elasticOut,
-      reverseCurve: Curves.easeInCubic,
-    );
-    _panelOpacity = CurvedAnimation(parent: _panelCtrl, curve: Curves.easeOut);
-
-    _fabCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 140),
-    );
-    _fabScale = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.82), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 0.82, end: 1.0), weight: 50),
-    ]).animate(CurvedAnimation(parent: _fabCtrl, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _panelCtrl.dispose();
-    _fabCtrl.dispose();
-    super.dispose();
-  }
-
-  void _toggle() {
-    HapticFeedback.selectionClick();
-    _fabCtrl.forward(from: 0);
-    setState(() => _isOpen = !_isOpen);
-    if (_isOpen) {
-      _panelCtrl.forward();
-    } else {
-      _panelCtrl.reverse();
-    }
-  }
-
-  Map<String, dynamic> _buildContext() {
-    final route = widget.currentRoute;
-    String pageDesc = 'home page';
-    if (route.contains('browse')) {
-      pageDesc = 'product browse/category page';
-    } else if (route.contains('compare')) {
-      pageDesc = 'product comparison page';
-    } else if (route.contains('product')) {
-      pageDesc = 'product detail page';
-    } else if (route.contains('link-paste')) {
-      pageDesc = 'Link Analysis page';
-    } else if (route.contains('subscriptions')) {
-      pageDesc = 'subscriptions page';
-    } else if (route.contains('collection')) {
-      pageDesc = 'saved collection page';
-    }
-    final pageCtx = ref.read(aiPageContextProvider);
-    return {'page': pageDesc, 'route': route, if (pageCtx != null) ...pageCtx};
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const fabSize = 50.0;
-    const fabRight = 14.0;
-    // Kategori (browse) sekmesinde alt nav yok: FAB ekranın sağ altına; diğer sekmelerde nav üstüne.
-    final isBrowse = widget.currentRoute.contains('browse');
-    final fabBottomBase = isBrowse
-        ? 10.0
-        : (AppTheme.navBarTotalClearance - 2.0);
-
-    // Hide when actively comparing (≥2 products selected — hideNavBarProvider=true)
-    final hideForCompare = ref.watch(hideNavBarProvider);
-    if (hideForCompare) {
-      return const SizedBox.shrink();
-    }
-
-    final bubbleBg = isDark ? Colors.black : Colors.white;
-    final bubbleShadow = isDark
-        ? Colors.black.withValues(alpha: 0.55)
-        : Colors.black.withValues(alpha: 0.18);
-    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
-
-    final openFabLift = _isOpen
-        ? (keyboardHeight > 0 ? keyboardHeight + 92.0 : 176.0)
-        : 0.0;
-    final panelBottomOffset = bottomPadding + fabBottomBase + fabSize + 6;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availH = constraints.maxHeight;
-        // Panel height: 70% of available, but never closer than 16px to the top
-        final maxBySpace = availH - panelBottomOffset - 16;
-        final panelH = (availH * 0.70).clamp(
-          200.0,
-          maxBySpace.clamp(200.0, 540.0),
-        );
-
-        return Stack(
-          children: [
-            // ── Backdrop ──────────────────────────────────────────────────
-            if (_isOpen)
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: _toggle,
-                  child: AnimatedOpacity(
-                    opacity: _isOpen ? 0.42 : 0,
-                    duration: const Duration(milliseconds: 280),
-                    child: Container(color: Colors.black),
-                  ),
-                ),
-              ),
-
-            // ── Chat Panel ────────────────────────────────────────────────
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-              bottom: panelBottomOffset,
-              right: fabRight - 2,
-              left: 12,
-              height: panelH,
-              child: IgnorePointer(
-                ignoring: !_isOpen,
-                child: FadeTransition(
-                  opacity: _panelOpacity,
-                  child: ScaleTransition(
-                    scale: _panelScale,
-                    alignment: Alignment.bottomRight,
-                    child: Container(
-                      clipBehavior: Clip.hardEdge,
-                      decoration: BoxDecoration(
-                        color: context.surfaceVariantColor,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: isDark ? 0.5 : 0.2,
-                            ),
-                            blurRadius: 36,
-                            offset: const Offset(0, 10),
-                          ),
-                          BoxShadow(
-                            color: AppTheme.brandCyan.withValues(alpha: 0.06),
-                            blurRadius: 20,
-                          ),
-                        ],
-                        border: Border.all(
-                          color: context.dividerColor.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(22),
-                        child: _isOpen
-                            ? AIChatScreen(
-                                isOverlay: true,
-                                pageContext: _buildContext(),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── FAB Speech Bubble ─────────────────────────────────────────
-            AnimatedPositioned(
-              // 800ms elasticOut → 250ms easeOutCubic: elasticOut her route
-              // değişiminde 800ms boyunca frame hesaplar. easeOutCubic aynı
-              // hissi çok daha düşük maliyetle verir.
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              bottom: bottomPadding + fabBottomBase + openFabLift,
-              right: fabRight,
-              child: GestureDetector(
-                onTap: _toggle,
-                child: ScaleTransition(
-                  scale: _fabScale,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Main circle
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        width: fabSize,
-                        height: fabSize,
-                        decoration: BoxDecoration(
-                          color: bubbleBg,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : AppTheme.brandCyan.withValues(alpha: 0.25),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: bubbleShadow,
-                              blurRadius: 18,
-                              offset: const Offset(0, 5),
-                            ),
-                            BoxShadow(
-                              color: AppTheme.brandCyan.withValues(
-                                alpha: _isOpen ? 0.35 : 0.15,
-                              ),
-                              blurRadius: _isOpen ? 24 : 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Image.asset(
-                            'assets/logo/qor_ai_logo.png',
-                            width: 30,
-                            height: 30,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    ); // end LayoutBuilder
   }
 }

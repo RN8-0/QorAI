@@ -268,6 +268,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         ),
         duration: const Duration(seconds: 6),
         behavior: SnackBarBehavior.floating,
+        // Alttaki yüzen nav bar'ın ÜZERİNDE dursun, onu engellemesin
+        // (kullanıcı isteği). navBarTotalClearance = nav yüksekliği + pay.
+        margin: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          bottom:
+              MediaQuery.of(context).padding.bottom +
+              AppTheme.navBarTotalClearance,
+        ),
         backgroundColor: AppTheme.brandBlue,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -1954,8 +1963,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           ),
                   ),
                   // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
-                  // döner, analiz sırasında ekran "canlı" kalır.
-                  const ScanningArc(size: 120, color: AppTheme.brandCyan),
+                  // döner, analiz sırasında ekran "canlı" kalır. İÇ halkada döner:
+                  // dıştaki gerçek-ilerleme halkasıyla (120) çakışmasın diye küçük.
+                  const ScanningArc(
+                    size: 90,
+                    strokeWidth: 4,
+                    color: AppTheme.brandCyan,
+                  ),
                   AnimatedBuilder(
                     animation: _pulseController,
                     builder: (_, ac) => Container(
@@ -2638,8 +2652,13 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                   ),
                 ),
                 // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
-                // döner, analiz sırasında ekran "canlı" kalır.
-                const ScanningArc(size: 120, color: AppTheme.brandCyan),
+                // döner, analiz sırasında ekran "canlı" kalır. İÇ halkada döner:
+                // dıştaki gerçek-ilerleme halkasıyla (120) çakışmasın diye küçük.
+                const ScanningArc(
+                  size: 90,
+                  strokeWidth: 4,
+                  color: AppTheme.brandCyan,
+                ),
                 AnimatedBuilder(
                   animation: _pulseController,
                   builder: (ctx, _) => Container(

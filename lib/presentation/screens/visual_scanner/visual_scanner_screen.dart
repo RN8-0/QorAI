@@ -80,12 +80,28 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
       if (_camCtrl != null) return;
       final cameras = await availableCameras();
       if (cameras.isEmpty) return;
+      // Arka kamerayı tercih et (ürün taramaya uygun), yoksa ilkini kullan.
+      final back = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras.first,
+      );
+      // NET GÖRÜNTÜ: high (720p) yerine veryHigh (1080p) + JPEG format.
+      // Bulanıklığın kök nedeni düşük çözünürlük + sabit odaktı.
       _camCtrl = CameraController(
-        cameras.first,
-        ResolutionPreset.high,
+        back,
+        ResolutionPreset.veryHigh,
         enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await _camCtrl!.initialize();
+      // Sürekli otomatik odak + pozlama → yakalanan kare net olsun.
+      try {
+        await _camCtrl!.setFocusMode(FocusMode.auto);
+        await _camCtrl!.setExposureMode(ExposureMode.auto);
+        await _camCtrl!.setFlashMode(FlashMode.off);
+      } catch (_) {
+        // Bazı cihazlar bu modları desteklemez — sessiz geç.
+      }
       if (mounted) setState(() => _isCameraReady = true);
     } catch (e) {
       debugPrint('Camera init error: $e');
@@ -136,6 +152,13 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     _scanAnimCtrl.repeat();
 
     try {
+      // Yakalamadan önce merkeze odaklan + pozla ve odağın oturmasını bekle →
+      // net (bulanık olmayan) kare. Desteklenmezse sessiz geç.
+      try {
+        await _camCtrl!.setFocusPoint(const Offset(0.5, 0.5));
+        await _camCtrl!.setExposurePoint(const Offset(0.5, 0.5));
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+      } catch (_) {}
       final file = await _camCtrl!.takePicture();
       _capturedImagePath = file.path;
       await _shutdownCamera();
@@ -158,14 +181,32 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
         prompt: _buildScanPrompt(),
       );
       final insight = _parseScannerInsight(response);
-      final initialMessage = _buildInitialMessage(insight);
-
-      setState(() {
-        _hasResult = true;
-        _scanInsight = insight;
-        _chatMessages.add(_ScannerChat(role: _ChatRole.ai, text: initialMessage));
-      });
-      await _persistScannerConversation();
+      if (!mounted) return;
+      _scanAnimCtrl.stop();
+      setState(() => _isScanning = false);
+      // KULLANICI İSTEĞİ: Ürün tarandıktan sonra kendi (aydınlık-tema bozuk)
+      // tarama sohbeti yerine ana QOR AI CHAT'e aktar. Tarama sonucu QOR'un
+      // ağzından (AI mesajı) verilir — "ben göndermişim gibi" SAHTE kullanıcı
+      // mesajı YAZILMAZ. Kullanıcı buradan normal yazarak devam eder.
+      final seedMessage = _buildInitialMessage(insight);
+      final pageCtx = <String, dynamic>{
+        'contextRoute': 'visual_scan',
+        'scannedTitle': insight.title,
+        'scannedBrand': insight.brand,
+        'scannedCategory': insight.category,
+        'scanConfidence': insight.confidence.toString(),
+      };
+      // KULLANICI İSTEĞİ: AYRI bir sohbet rotası PUSH etme — yüzen Q butonuyla
+      // çakışıyordu (Q'ya basınca kapanmıyordu, karşılama çift geliyordu).
+      // Bunun yerine: tarama sonucunu mevcut Qor oturumuna QOR mesajı olarak
+      // tohumla, ana yüzen overlay'i AÇ ve tarayıcı ekranını KAPAT. Böylece
+      // sohbet TEK yerde (yüzen panel) açılır ve Q butonu onu kapatır.
+      ref
+          .read(chatSessionProvider.notifier)
+          .seedScanResult(seedMessage, pageContext: pageCtx);
+      ref.read(chatOverlayRequestProvider.notifier).state = true;
+      Navigator.of(context).pop();
+      return;
     } catch (e) {
       setState(() {
         _hasResult = true;
@@ -287,12 +328,12 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   String _buildScanPrompt() {
     return '''
-You are Qor AI visual shopping assistant.
+You are Qor AI, an expert visual shopping advisor. A user pointed their camera at something and wants a genuinely useful, premium answer — not a robotic one.
 
 Task:
-- Decide whether the main subject is a real consumer product that can be identified for shopping.
-- If the image is mostly a wall, floor, person, pet, furniture, random object, abstract scene, screenshot, or too dark/blurry to verify, mark it as not a product.
-- If lighting is too low or the product is not visible enough, say so clearly.
+- Identify the main subject as precisely as possible: exact brand + model/series when you can read logos, model text, or recognize the design (e.g. "Apple iPhone 15 Pro", "Dyson V15 Detect", "Sony WH-1000XM5"). If you can only tell the category, still give your best specific guess.
+- Only mark isProduct=false when the frame is clearly NOT a shoppable product (a wall, floor, person, pet, plain furniture, abstract scene, screenshot) OR it is too dark/blurry to identify anything.
+- If lighting is too low or the item is unreadable, set lowLight=true.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -309,13 +350,19 @@ Return ONLY valid JSON with this exact shape:
   "reason": ""
 }
 
+Field guidance (write like a knowledgeable friend, in $_responseLanguageName):
+- "confidence": 0-100, how sure you are of the exact identification.
+- "title": the specific product name; "brand": manufacturer.
+- "summary": 1-2 warm, information-rich sentences on what this product is and who it suits — mention its standout trait. Never generic filler.
+- "highlights": exactly 3 concrete, real specs or strengths (e.g. "6.7-inch 120Hz OLED", "Up to 60 min runtime", "Active noise cancelling"). No vague adjectives.
+- "priceBand": rough market price range with currency if known, else "".
+- "verdict": one sharp buy-advice sentence (is it worth it, for whom).
+- "reason": only when isProduct=false — a friendly, actionable line telling the user what to do next (add light, get closer, or type the model).
+
 Rules:
-- Use plain natural $_responseLanguageName text values inside JSON.
-- No markdown, no code fences, no bullet symbols inside fields.
-- Use proper Turkish characters when the response language is Turkish.
-- If not a product, set isProduct=false and explain briefly in "reason".
-- If low light or unclear, set lowLight=true.
-- Keep summary and verdict concise and high quality.
+- Plain natural $_responseLanguageName text inside every field. Use proper Turkish characters when Turkish.
+- No markdown, no code fences, no bullet symbols, no JSON inside field values.
+- Prefer being specific and helpful over hedging. If you truly cannot tell, say so kindly in "reason".
 ''';
   }
 
@@ -469,6 +516,8 @@ Instructions:
     return cleaned.trim();
   }
 
+  /// Tarama sonucunun Qor (AI) ağzından açılış mesajı — hem hata yolundaki
+  /// tarama sohbeti hem de Qor chat'e aktarımda (seed) kullanılır.
   String _buildInitialMessage(_ScannerInsight insight) {
     if (!insight.isProduct) {
       return insight.lowLight

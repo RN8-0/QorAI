@@ -55,6 +55,8 @@ class PbDataSource {
   static const _savedAnalysesCollection = 'saved_analyses';
   static const _linkHistoryCategory = 'link_history';
   static const _subscriptionHistoryCategory = 'subscription_history';
+  static const _productHistoryCategory = 'product_history';
+  static const _compareHistoryCategory = 'compare_history';
 
   // ─── Local search result cache (recent queries, max 30, 5 min TTL) ───
   static final Map<String, ({List<ProductModel> results, DateTime time})>
@@ -523,6 +525,189 @@ class PbDataSource {
       return result.items.map(_mapLinkHistoryRecord).take(30).toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  // ─── ÜRÜN (tekli) AI analiz geçmişi ──────────────────────────────────────
+  // Link/abonelik ile AYNI desen: kullanıcı bir ürünü analiz edince tam rapor +
+  // quiz cevapları saved_analyses'e yazılır. `url` alanında productId tutulur →
+  // aynı ürün yeniden analiz edilince eski kayıt silinip güncellenir (tek/güncel
+  // analiz) ve ürüne dönünce BİRE BİR aynı analiz gösterilir.
+  Future<void> saveProductAnalysisHistory(
+    String uid,
+    Map<String, dynamic> entry,
+  ) async {
+    try {
+      final productId = entry['productId']?.toString() ?? '';
+      if (productId.isNotEmpty) {
+        try {
+          final existing = await _pb
+              .collection(_savedAnalysesCollection)
+              .getList(
+                page: 1,
+                perPage: 50,
+                filter:
+                    'userId = "$uid" && category = "$_productHistoryCategory" && url = "$productId"',
+              );
+          for (final item in existing.items) {
+            await _pb.collection(_savedAnalysesCollection).delete(item.id);
+          }
+        } catch (_) {}
+      }
+      final summary =
+          entry['summary'] as String? ??
+          ((entry['report'] as Map<String, dynamic>?)?['verdict'] as String?) ??
+          '';
+      final score = (entry['score'] as num?)?.toDouble() ?? 0.0;
+      await _pb
+          .collection(_savedAnalysesCollection)
+          .create(
+            body: {
+              'userId': uid,
+              'url': productId,
+              'title': entry['productName'] as String? ?? '',
+              'category': _productHistoryCategory,
+              'analysisData': {...entry, 'type': 'product'},
+              'aiScore': score,
+              'aiSummary': summary.substring(0, summary.length.clamp(0, 5000)),
+              'savedAt':
+                  entry['timestamp'] as String? ??
+                  DateTime.now().toIso8601String(),
+            },
+          );
+    } catch (e) {
+      debugPrint('[PB] saveProductAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<void> updateProductAnalysisHistory(
+    String uid,
+    List<Map<String, dynamic>> history,
+  ) async {
+    try {
+      await _replaceSavedHistory(
+        uid: uid,
+        category: _productHistoryCategory,
+        history: history,
+        saveEntry: saveProductAnalysisHistory,
+      );
+    } catch (e) {
+      debugPrint('[PB] updateProductAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProductAnalysisHistory(
+    String uid,
+  ) async {
+    try {
+      final result = await _pb
+          .collection(_savedAnalysesCollection)
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$uid" && category = "$_productHistoryCategory"',
+            sort: '-savedAt,-created',
+          );
+      return result.items.map(_mapProductHistoryRecord).take(40).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ─── Çoklu ürün KARŞILAŞTIRMA AI analiz geçmişi ──────────────────────────
+  // `url` alanında karşılaştırma imzası (sıralı productId'ler) tutulur → aynı
+  // karşılaştırma tekrar analiz edilince güncellenir.
+  Future<void> saveCompareAnalysisHistory(
+    String uid,
+    Map<String, dynamic> entry,
+  ) async {
+    try {
+      final signature = entry['signature']?.toString() ?? '';
+      if (signature.isNotEmpty) {
+        try {
+          final existing = await _pb
+              .collection(_savedAnalysesCollection)
+              .getList(
+                page: 1,
+                perPage: 50,
+                filter:
+                    'userId = "$uid" && category = "$_compareHistoryCategory" && url = "$signature"',
+              );
+          for (final item in existing.items) {
+            await _pb.collection(_savedAnalysesCollection).delete(item.id);
+          }
+        } catch (_) {}
+      }
+      final products =
+          (entry['products'] as List?)?.map((e) => e.toString()).toList() ??
+          const <String>[];
+      final summary =
+          entry['summary'] as String? ??
+          ((entry['report'] as Map<String, dynamic>?)?['verdict'] as String?) ??
+          '';
+      final score = (entry['score'] as num?)?.toDouble() ?? 0.0;
+      await _pb
+          .collection(_savedAnalysesCollection)
+          .create(
+            body: {
+              'userId': uid,
+              'url': signature,
+              'title': products.join(' vs '),
+              'category': _compareHistoryCategory,
+              'analysisData': {...entry, 'type': 'compare'},
+              'aiScore': score,
+              'aiSummary': summary.substring(0, summary.length.clamp(0, 5000)),
+              'savedAt':
+                  entry['timestamp'] as String? ??
+                  DateTime.now().toIso8601String(),
+            },
+          );
+    } catch (e) {
+      debugPrint('[PB] saveCompareAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<void> updateCompareAnalysisHistory(
+    String uid,
+    List<Map<String, dynamic>> history,
+  ) async {
+    try {
+      await _replaceSavedHistory(
+        uid: uid,
+        category: _compareHistoryCategory,
+        history: history,
+        saveEntry: saveCompareAnalysisHistory,
+      );
+    } catch (e) {
+      debugPrint('[PB] updateCompareAnalysisHistory failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getCompareAnalysisHistory(
+    String uid,
+  ) async {
+    try {
+      final result = await _pb
+          .collection(_savedAnalysesCollection)
+          .getList(
+            page: 1,
+            perPage: 50,
+            filter: 'userId = "$uid" && category = "$_compareHistoryCategory"',
+            sort: '-savedAt,-created',
+          );
+      return result.items.map(_mapCompareHistoryRecord).take(40).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Tek bir kayıtlı analizi (saved_analyses kaydını) siler. Optimistic (henüz
+  /// PB'ye yazılmamış) girişlerin id'si millis olduğundan sessizce başarısız olur.
+  Future<void> deleteSavedAnalysis(String recordId) async {
+    try {
+      await _pb.collection(_savedAnalysesCollection).delete(recordId);
+    } catch (e) {
+      debugPrint('[PB] deleteSavedAnalysis failed: $e');
     }
   }
 
@@ -2477,6 +2662,77 @@ class PbDataSource {
           '',
       'structured': analysisData['structured'],
       'quizAnswers': analysisData['quizAnswers'],
+    };
+  }
+
+  Map<String, dynamic> _mapProductHistoryRecord(RecordModel record) {
+    final data = record.data;
+    final analysisData =
+        (data['analysisData'] as Map?)?.map(
+          (key, value) => MapEntry(key.toString(), value),
+        ) ??
+        const <String, dynamic>{};
+    return {
+      'id': record.id,
+      'type': 'product',
+      'productId':
+          data['url']?.toString() ??
+          analysisData['productId']?.toString() ??
+          '',
+      'productName':
+          data['title']?.toString() ??
+          analysisData['productName']?.toString() ??
+          '',
+      'category': analysisData['category']?.toString() ?? '',
+      if (analysisData['brand'] != null) 'brand': analysisData['brand'],
+      if (analysisData['imageUrl'] != null)
+        'imageUrl': analysisData['imageUrl'],
+      'score':
+          (data['aiScore'] as num?)?.toDouble() ??
+          (analysisData['score'] as num?)?.toDouble() ??
+          0.0,
+      'timestamp':
+          data['savedAt']?.toString() ??
+          analysisData['timestamp']?.toString() ??
+          record.get<String>('created'),
+      if (analysisData['report'] != null) 'report': analysisData['report'],
+      if (analysisData['quizAnswers'] != null)
+        'quizAnswers': analysisData['quizAnswers'],
+    };
+  }
+
+  Map<String, dynamic> _mapCompareHistoryRecord(RecordModel record) {
+    final data = record.data;
+    final analysisData =
+        (data['analysisData'] as Map?)?.map(
+          (key, value) => MapEntry(key.toString(), value),
+        ) ??
+        const <String, dynamic>{};
+    return {
+      'id': record.id,
+      'type': 'compare',
+      'signature':
+          data['url']?.toString() ??
+          analysisData['signature']?.toString() ??
+          '',
+      'products':
+          (analysisData['products'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          <String>[],
+      if (analysisData['productIds'] != null)
+        'productIds': analysisData['productIds'],
+      'score':
+          (data['aiScore'] as num?)?.toDouble() ??
+          (analysisData['score'] as num?)?.toDouble() ??
+          0.0,
+      'timestamp':
+          data['savedAt']?.toString() ??
+          analysisData['timestamp']?.toString() ??
+          record.get<String>('created'),
+      if (analysisData['report'] != null) 'report': analysisData['report'],
+      if (analysisData['quizAnswers'] != null)
+        'quizAnswers': analysisData['quizAnswers'],
     };
   }
 

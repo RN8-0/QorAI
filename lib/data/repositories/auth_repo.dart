@@ -646,6 +646,14 @@ class AuthRepository {
 
   Future<void> signOut() async {
     _pb.authStore.clear();
+    // Yerel, CİHAZ-GENELİ kullanıcı verilerini de temizle ki bir sonraki hesaba
+    // SIZMASIN (son görüntülenenler, ip/ülke, cache'lenmiş kullanıcı kaydı).
+    // Premium bayrağı çağıran tarafta (settings) clearLocalPremium ile temizlenir.
+    try {
+      await _cache.clearUserData();
+      await _hive?.clearUserData();
+      await _hive?.clearViewedProducts();
+    } catch (_) {}
   }
 
   Future<Result<void>> requestAccountDeletion() async {

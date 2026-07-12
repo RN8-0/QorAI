@@ -59,6 +59,12 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- speech_to_text: Android 11+ paket görünürlüğü — konuşma tanıma
+             servisini GÖREBİLMEK için şart. Yoksa initialize() false döner ve
+             mikrofon "kullanılamıyor" olur (Qor chat mikrofon bug'ı). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
         <!-- url_launcher: open http/https links -->
         <intent>
             <action android:name="android.intent.action.VIEW" />

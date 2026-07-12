@@ -172,6 +172,15 @@ class AppConstants {
 class SupportedCountries {
   SupportedCountries._();
 
+  /// Fiyat/teslimat ÜLKE SEÇİCİSİNDE gösterilecek ülkeler — YALNIZ Amazon'un
+  /// (OneLink) geçerli olduğu pazarlar. Web'deki AMAZON_ONELINK_COUNTRIES ile
+  /// birebir aynı (kullanıcı isteği: "sadece amazonun geçerli olduğu ülkeler").
+  /// [countries] map'i IP-tespiti/para birimi için TÜM ülkeleri tutmaya devam
+  /// eder; bu liste yalnız seçici UI'ı içindir.
+  static const List<String> amazonCountryCodes = [
+    'TR', 'DE', 'GB', 'US', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE', 'CA',
+  ];
+
   static const Map<String, CountryInfo> countries = {
     'US': CountryInfo(
       code: 'US',

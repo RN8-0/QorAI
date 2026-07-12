@@ -210,6 +210,15 @@ final aiPageContextProvider = StateProvider<Map<String, dynamic>?>(
   (ref) => null,
 );
 
+/// Bir-atımlık "Qor sohbet panelini AÇ/KAPAT" isteği. `true`=aç, `false`=kapat,
+/// `null`=boşta. `FloatingAiAssistantOverlay` dinler, uygular ve tekrar `null`'a çeker
+/// (sonraki istek yeniden tetiklensin). Kullanımı:
+/// - Görsel tarayıcı ürünü tarayınca `true` (ayrı rota PUSH etmek yerine mevcut
+///   yüzen paneli açar — Q butonuyla çakışmaz, çift karşılama olmaz).
+/// - Chat içi analiz bildiriminde "Analize git"e basınca `false` (panel kapanır,
+///   sonra ilgili ürün/sekmeye gidilir).
+final chatOverlayRequestProvider = StateProvider<bool?>((ref) => null);
+
 /// Text scale factor for display settings
 final textScaleProvider = StateNotifierProvider<TextScaleNotifier, double>((
   ref,

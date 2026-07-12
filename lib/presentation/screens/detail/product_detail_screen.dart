@@ -35,6 +35,7 @@ import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:qor_ai/presentation/providers/product_analysis_provider.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
@@ -124,12 +125,22 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
   bool _contentReady = false;
   static const _tabWarmupDelay = Duration(milliseconds: 120);
 
+  // Notifier referansını initState'te (ref geçerliyken) sakla → dispose'ta
+  // `ref` kullanmadan "görüntüleme" işaretini temizleyebilmek için. Riverpod
+  // dispose()'ta ref'i yasaklar; ref kullanılırsa setViewing(null) ATLANIR ve
+  // viewingProductId takılı kalır → TÜM analiz bildirimleri bastırılırdı (bug).
+  ProductAnalysisNotifier? _analysisNotifier;
+
   @override
   void initState() {
     super.initState();
+    _analysisNotifier = ref.read(productAnalysisProvider.notifier);
     _syncAiPageContext();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Bu ürün detayı EKRANDA açık → MainShell bu ürün için (arka planda süren)
+      // analiz bildirimini göstermesin (kullanıcı zaten burada).
+      ref.read(productAnalysisProvider.notifier).setViewing(widget.product.id);
       _resetComparePoolIfCategoryChanged();
       if (!mounted) return;
       // Defer ALL heavy content until the route push animation fully completes.
@@ -170,7 +181,26 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
     if (oldWidget.product.id != widget.product.id) {
       _syncAiPageContext();
       _resetComparePoolIfCategoryChanged();
+      ref.read(productAnalysisProvider.notifier).setViewing(widget.product.id);
     }
+  }
+
+  @override
+  void dispose() {
+    // Ürün ekranından çıkıldı → "görüntüleniyor" işaretini kaldır ki analiz
+    // arka planda biterse MainShell ürün adıyla bildirim gösterebilsin.
+    // KRİTİK: burada `ref` KULLANMA (dispose'ta Riverpod ref'i yasaklar, atar);
+    // initState'te saklanan notifier üzerinden temizle.
+    _analysisNotifier?.clearViewingIfMatches(widget.product.id);
+    super.dispose();
+  }
+
+  /// Bildirimden ("Görüntüle") gelindiğinde ya da bu ürünün analizi zaten
+  /// sürerken/bittiğinde doğrudan AI Analizleri sekmesi (index 2) açılır.
+  int _initialTabIndex() {
+    final s = ref.read(productAnalysisProvider);
+    if (s.productId == widget.product.id && s.isActive) return 2;
+    return 0;
   }
 
   /// Havuz farklı bir kategoride başlatıldıysa, başka kategorideki ürüne
@@ -226,6 +256,7 @@ class _DetailBodyState extends ConsumerState<_DetailBody> {
 
     return DefaultTabController(
       length: 3,
+      initialIndex: _initialTabIndex(),
       child: Scaffold(
         backgroundColor: context.backgroundColor,
         body: NestedScrollView(

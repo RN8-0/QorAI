@@ -13,7 +13,8 @@ import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
-import 'package:qor_ai/services/ai_report_service.dart';
+import 'package:qor_ai/presentation/providers/product_analysis_provider.dart';
+import 'package:qor_ai/presentation/screens/detail/analysis_history_screen.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_quiz_view.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
@@ -47,25 +48,17 @@ class SharedPremiumFeaturesSectionState
   bool _predictionExpanded = false;
   bool _unifiedAiExpanded = false;
   bool _unifiedAiRunning = false;
+  // Kayıtlı analizde "verdiğin quiz cevapları" bölümü açık mı?
+  bool _savedAnswersExpanded = false;
   // ignore: unused_field
   bool _unifiedAiUserCollapsed = false;
   bool _unifiedAiAutoStarted = false;
   // ignore: unused_field
   String _unifiedAiStep = '';
 
-  // Web-parity unified product report (product_full_report).
-  Map<String, dynamic>? _fullReport;
-  bool _fullReportRunning = false;
-  bool _fullReportError = false;
-  AiReportStageLite _fullReportStage = AiReportStageLite.prep;
-  // HIZ: web araştırmasını quiz cevaplanırken paralel çalıştırmak için.
-  Future<String>? _researchFuture;
-
-  // Web-parity quiz step (shown before the report — same UI as link/sub quiz).
-  ProductQuiz? _quiz;
-  List<QuizQuestion> _quizAnswers = const [];
-  int _quizIndex = 0;
-  bool _quizLoading = false;
+  // Ürün analizi durumu ARTIK global [productAnalysisProvider]'da tutulur ve
+  // motoru MainShell yürütür → kullanıcı üründen/sekmeden çıksa bile analiz
+  // İPTAL OLMAZ. Bu görünüm yalnızca provider'ı OKUYUP çizer (thin view).
 
   // ignore: unused_field
   bool _deepAnalysisUserCollapsed = false;
@@ -117,6 +110,8 @@ class SharedPremiumFeaturesSectionState
     // No auto-start: like the website, the AI report runs only when the user
     // taps the explicit "Start analysis" button. This also stops opening the
     // tab from silently spending a product-AI credit.
+    // NOT: "hangi ürün ekranda" takibi ürün DETAY ekranında (_DetailBody)
+    // yapılır — bu görünüm sekme değişince dispose olduğundan güvenilmez.
   }
 
   // Retained for reference; the product AI is now user-triggered.
@@ -134,21 +129,44 @@ class SharedPremiumFeaturesSectionState
   Widget build(BuildContext context) {
     // Web-parity unified AI report (product_full_report). User-triggered via an
     // explicit Start button; renders identically to the website.
+    final hasHistory =
+        ref.watch(pendingProductAnalysisHistoryProvider).isNotEmpty ||
+        (ref.watch(productAnalysisHistoryProvider).valueOrNull?.isNotEmpty ??
+            false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (hasHistory)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const AnalysisHistoryScreen(initialTab: 0),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              icon: const Icon(Icons.history_rounded, size: 15),
+              label: Text(
+                _txt(tr: 'Geçmiş analizler', en: 'Past analyses'),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
         RepaintBoundary(child: _buildFullReportSection()),
       ],
     );
   }
 
   String get _reportLang => Localizations.localeOf(context).languageCode;
-
-  AiReportStageLite _mapStage(AiReportStage s) => switch (s) {
-    AiReportStage.prep => AiReportStageLite.prep,
-    AiReportStage.research => AiReportStageLite.research,
-    AiReportStage.report => AiReportStageLite.report,
-  };
 
   Map<String, dynamic> _buildAiProfile() {
     final u = ref.read(userProfileProvider).valueOrNull;
@@ -172,53 +190,261 @@ class SharedPremiumFeaturesSectionState
   }
 
   Widget _buildFullReportSection() {
-    if (_quizLoading) {
-      // TEK STANDART loader: küçük "Sorular hazırlanıyor" kartı yerine, analiz
-      // aşamasıyla (ve abonelik akışıyla) AYNI adım-listeli workboard kullan.
-      // Quiz üretimi de analiz de aynı formatta görünür.
-      return AiReportWorkboard(
-        lang: _reportLang,
-        mode: 'product',
-        stage: AiReportStageLite.prep,
-      );
-    }
-    if (_quiz != null && _fullReport == null && !_fullReportRunning) {
-      return _buildQuizCard();
-    }
-    if (_fullReportRunning) {
-      return AiReportWorkboard(
-        lang: _reportLang,
-        mode: 'product',
-        stage: _fullReportStage,
-      );
-    }
-    if (_fullReport != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AiReportView(
-            kind: 'productFull',
-            data: _fullReport!,
+    // Thin view: durumu global provider'dan oku. Motoru (async) MainShell koşar.
+    final s = ref.watch(productAnalysisProvider);
+    final isThis = s.productId == widget.product.id;
+    // Bu ürünün CANLI analizi sürüyorsa faz-bazlı görünümü çiz.
+    if (isThis) {
+      switch (s.phase) {
+        case ProductAnalysisPhase.startRequested:
+        case ProductAnalysisPhase.quizLoading:
+          // TEK STANDART loader (abonelik/link akışıyla aynı adım-listeli workboard).
+          return AiReportWorkboard(
             lang: _reportLang,
+            mode: 'product',
+            stage: AiReportStageLite.prep,
+            startedAt: s.workStartedAt,
+          );
+        case ProductAnalysisPhase.quiz:
+          return _buildQuizCard(s);
+        case ProductAnalysisPhase.reportRequested:
+        case ProductAnalysisPhase.running:
+          return AiReportWorkboard(
+            lang: _reportLang,
+            mode: 'product',
+            stage: s.stage,
+            startedAt: s.workStartedAt,
+          );
+        case ProductAnalysisPhase.done:
+          final report = s.report;
+          if (report != null) return _buildLiveReportView(report);
+          break;
+        case ProductAnalysisPhase.error:
+        case ProductAnalysisPhase.idle:
+          break;
+      }
+    }
+    // Canlı sonuç yok → bu ürünün KAYITLI analizi varsa BİRE BİR göster
+    // (kullanıcı ürüne dönünce aynı analizi + verdiği cevapları görür).
+    final saved = _savedProductEntry();
+    if (saved != null) return _buildSavedReportView(saved);
+    return _buildFullReportStartCard(
+      isError: isThis && s.phase == ProductAnalysisPhase.error,
+    );
+  }
+
+  Widget _buildLiveReportView(Map<String, dynamic> report) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AiReportView(kind: 'productFull', data: report, lang: _reportLang),
+        const SizedBox(height: 6),
+        Center(
+          child: TextButton.icon(
+            onPressed: _runProductFullReport,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: Text(
+              _txt(tr: 'Yeniden Analiz Et', en: 'Re-run analysis'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          const SizedBox(height: 6),
-          Center(
-            child: TextButton.icon(
-              onPressed: _runProductFullReport,
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: Text(
-                _txt(tr: 'Yeniden Analiz Et', en: 'Re-run analysis'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
+        ),
+      ],
+    );
+  }
+
+  /// Bu ürünün kayıtlı (geçmiş) analizini pending + Firebase geçmişten bulur.
+  Map<String, dynamic>? _savedProductEntry() {
+    final pending = ref.watch(pendingProductAnalysisHistoryProvider);
+    final saved =
+        ref.watch(productAnalysisHistoryProvider).valueOrNull ?? const [];
+    for (final e in [...pending, ...saved]) {
+      if (e['productId']?.toString() == widget.product.id &&
+          e['report'] is Map) {
+        return e;
+      }
+    }
+    return null;
+  }
+
+  Widget _buildSavedReportView(Map<String, dynamic> entry) {
+    final report = Map<String, dynamic>.from(entry['report'] as Map);
+    final answers = (entry['quizAnswers'] as List?) ?? const [];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSavedBanner(entry['timestamp']?.toString()),
+        const SizedBox(height: 10),
+        AiReportView(kind: 'productFull', data: report, lang: _reportLang),
+        if (answers.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _buildSavedQuizAnswers(answers),
+        ],
+        const SizedBox(height: 6),
+        Center(
+          child: TextButton.icon(
+            onPressed: _runProductFullReport,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: Text(
+              _txt(tr: 'Yeniden Analiz Et', en: 'Re-run analysis'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSavedBanner(String? timestamp) {
+    final dt = timestamp != null ? DateTime.tryParse(timestamp) : null;
+    final dateStr = dt != null
+        ? '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}'
+        : '';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppTheme.brandBlue.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.history_rounded,
+            size: 16,
+            color: AppTheme.brandBlue,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              dateStr.isEmpty
+                  ? _txt(tr: 'Kayıtlı analiz', en: 'Saved analysis')
+                  : _txt(
+                      tr: 'Kayıtlı analiz · $dateStr',
+                      en: 'Saved analysis · $dateStr',
+                    ),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
               ),
             ),
           ),
         ],
-      );
-    }
-    return _buildFullReportStartCard();
+      ),
+    );
+  }
+
+  Widget _buildSavedQuizAnswers(List<dynamic> answers) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () =>
+                setState(() => _savedAnswersExpanded = !_savedAnswersExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.quiz_rounded,
+                    size: 16,
+                    color: AppTheme.premiumPurple,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _txt(
+                        tr: 'Verdiğin cevaplar (${answers.length})',
+                        en: 'Your answers (${answers.length})',
+                      ),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _savedAnswersExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    size: 20,
+                    color: context.textTertiaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_savedAnswersExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final a in answers)
+                    if (a is Map)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a['question']?.toString() ?? '',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: context.textSecondary,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 13,
+                                  color: AppTheme.green500,
+                                ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    a['answer']?.toString() ?? '',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.textPrimary,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _buildQuizSurround({required Widget child}) {
@@ -288,7 +514,7 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
-  Widget _buildQuizCard() {
+  Widget _buildQuizCard(ProductAnalysisState s) {
     final p = widget.product;
     return _buildQuizSurround(
       child: SharedQuizView(
@@ -300,8 +526,8 @@ class SharedPremiumFeaturesSectionState
             subtitle: p.brand,
           ),
         ],
-        questions: _quizAnswers,
-        currentIndex: _quizIndex,
+        questions: s.answers,
+        currentIndex: s.quizIndex,
         onAnswer: _onQuizAnswer,
         onSubmit: _submitQuiz,
         onSkip: _skipQuiz,
@@ -311,123 +537,28 @@ class SharedPremiumFeaturesSectionState
     );
   }
 
-  Widget _buildFullReportStartCard() {
+  Widget _buildFullReportStartCard({required bool isError}) {
     // Tekli + karşılaştırma analizinde AYNI ortak, sayfanın ortasında duran
     // yaratıcı animasyonlu başlangıç kartı. Butona basınca normal akış devam eder.
     return AiAnalysisStartCard(
       onStart: _runProductFullReport,
       isTr: _reportLang == 'tr',
-      isError: _fullReportError,
+      isError: isError,
     );
   }
 
-  // ignore: unused_element
-  Widget _legacyFullReportStartCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.premiumPurple, AppTheme.primaryBlue],
-                  ),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(
-                  Icons.auto_awesome_rounded,
-                  color: Colors.white,
-                  size: 19,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _txt(tr: 'AI Analizi', en: 'AI Analysis'),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _txt(
-                        tr: 'Yorumlar, teknik analiz, tavsiye ve fiyat tahmini',
-                        en: 'Reviews, specs, advice and price prediction',
-                      ),
-                      style: GoogleFonts.inter(
-                        fontSize: 11.5,
-                        height: 1.35,
-                        color: context.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (_fullReportError)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(
-                _txt(
-                  tr: 'AI analizi tamamlanamadı. Lütfen tekrar dene.',
-                  en: 'AI analysis could not be completed. Please try again.',
-                ),
-                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.error),
-              ),
-            ),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _runProductFullReport,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.brandBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-              label: Text(
-                _fullReportError
-                    ? _txt(tr: 'Tekrar Dene', en: 'Try Again')
-                    : _txt(tr: 'Analizi Başlat', en: 'Start Analysis'),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// "Analizi Başlat" → web paritesi: önce ürüne özel quiz üret + göster
-  /// (link/abonelik analizindeki AYNI quiz UI'ı), sonra cevaplarla raporu
-  /// çalıştır. Quiz üretilemezse zarifçe doğrudan rapora geçer.
+  /// "Analizi Başlat" → kapı kontrolleri (onboarding quiz + Q limit) burada,
+  /// SONRA analiz GLOBAL [productAnalysisProvider]'a devredilir; motoru MainShell
+  /// koşar (üründen çıksan bile sürer). Web paritesi: quiz → rapor.
   Future<void> _runProductFullReport() async {
-    if (_fullReportRunning || _quizLoading) return;
+    final current = ref.read(productAnalysisProvider);
+    final busy =
+        current.productId == widget.product.id &&
+        (current.phase == ProductAnalysisPhase.startRequested ||
+            current.phase == ProductAnalysisPhase.quizLoading ||
+            current.phase == ProductAnalysisPhase.reportRequested ||
+            current.phase == ProductAnalysisPhase.running);
+    if (busy) return;
     // AI özelliği için önce kayıt-sonrası profil quiz'i tamamlanmalı (atlanmışsa
     // uyarı + quize yönlendir). Quiz bittikten sonra Q Coin bakiyesi izin
     // verdiği sürece tüm AI özellikleri kullanılabilir.
@@ -440,82 +571,20 @@ class SharedPremiumFeaturesSectionState
     }
     if (!await _checkAiFeatureLimit()) return;
     if (!mounted) return;
-    setState(() {
-      _quizLoading = true;
-      _quiz = null;
-      _fullReportError = false;
-    });
-    // HIZ: web araştırmasını ŞİMDİ başlat (quiz üretimi + kullanıcının quiz'i
-    // yanıtlaması ile paralel çalışsın). Submit'te rapor, biten araştırmayı
-    // beklemeden kullanır → analiz belirgin şekilde daha hızlı görünür.
-    _researchFuture = AiReportService.prefetchProductResearch(
-      ref,
-      widget.product,
-      _reportLang,
-    );
-    // Web paritesi: Gemini öncelikli (link/abonelik akışıyla aynı), DeepSeek
-    // fallback — DeepSeek proxy zaman zaman "temporarily unavailable" dönüyor.
-    final cat = widget.product.category;
-    final title = widget.product.nameForLanguage(_reportLang);
-    final aiProfile = ref.read(userProfileProvider).valueOrNull;
-    ProductQuiz? quiz;
-    try {
-      quiz = await ref
-          .read(geminiServiceProvider)
-          .generateQuiz(
-            category: cat,
-            productTitle: title,
-            url: '',
-            language: _reportLang,
-            profile: aiProfile,
-          )
-          .timeout(const Duration(seconds: 45));
-    } catch (e) {
-      debugPrint('[Qor AI] product quiz (gemini) failed, trying deepseek: $e');
-      try {
-        quiz = await ref
-            .read(deepSeekServiceProvider)
-            .generateQuiz(
-              category: cat,
-              productTitle: title,
-              url: '',
-              language: _reportLang,
-            )
-            .timeout(const Duration(seconds: 45));
-      } catch (e2) {
-        debugPrint('[Qor AI] product quiz generation failed: $e2');
-      }
-    }
-    if (!mounted) return;
-    if (quiz != null && quiz.questions.isNotEmpty) {
-      setState(() {
-        _quiz = quiz;
-        _quizAnswers = quiz!.questions.map((q) => q.copyWith()).toList();
-        _quizIndex = 0;
-        _quizLoading = false;
-      });
-    } else {
-      setState(() => _quizLoading = false);
-      await _runReport(const []);
-    }
+    // Analizi başlat: motor (MainShell) quiz üretimini + raporu yürütür.
+    ref
+        .read(productAnalysisProvider.notifier)
+        .requestStart(widget.product, _reportLang, _buildAiProfile());
   }
 
   void _onQuizAnswer(int index, String answer) {
-    if (index < 0 || index >= _quizAnswers.length) return;
-    setState(() {
-      _quizAnswers[index] =
-          _quizAnswers[index].copyWith(selectedOption: answer);
-      if (index == _quizIndex && _quizIndex < _quizAnswers.length - 1) {
-        _quizIndex++;
-      }
-    });
+    ref.read(productAnalysisProvider.notifier).answer(index, answer);
   }
 
   Future<void> _submitQuiz() async {
-    final answers = _quizAnswers;
+    final answers = ref.read(productAnalysisProvider).answers;
     _persistQuizAnswers(answers); // best-effort: profile + tanıma algoritması
-    setState(() => _quiz = null);
-    await _runReport(answers);
+    ref.read(productAnalysisProvider.notifier).requestReport();
   }
 
   /// Ürün-detay quizinin cevaplarını kullanıcı profiline (quizHistory) yazar —
@@ -552,63 +621,7 @@ class SharedPremiumFeaturesSectionState
   }
 
   Future<void> _skipQuiz() async {
-    setState(() => _quiz = null);
-    await _runReport(const []);
-  }
-
-  /// Runs the product_full_report with the collected quiz answers. The AI
-  /// feature limit is recorded by [_runProductFullReport] before the quiz, so
-  /// this does NOT re-gate.
-  Future<void> _runReport(List<QuizQuestion> quizAnswers) async {
-    if (_fullReportRunning) return;
-    if (!mounted) return;
-    final lang = _reportLang;
-    setState(() {
-      _fullReportRunning = true;
-      _fullReportError = false;
-      _fullReportStage = AiReportStageLite.prep;
-    });
-    try {
-      // Fetch Qor catalog "similar products" so the AI can reuse REAL catalog
-      // products (with their image) as smart alternatives — web parity with
-      // ProductDetail.runFullAnalysis. Best-effort: the report still runs if
-      // the lookup fails or is empty.
-      List<ProductEntity> similar = const [];
-      try {
-        similar = await ref.read(
-          similarProductsProvider(widget.product).future,
-        );
-      } catch (_) {}
-      final report = await AiReportService.runProductReport(
-        ref: ref,
-        product: widget.product,
-        lang: lang,
-        profile: _buildAiProfile(),
-        quizAnswers: quizAnswers,
-        similarProducts: similar,
-        researchFuture: _researchFuture,
-        onStage: (s) {
-          if (!mounted) return;
-          setState(() => _fullReportStage = _mapStage(s));
-        },
-      );
-      if (!mounted) return;
-      setState(() {
-        _fullReportRunning = false;
-        if (report != null) {
-          _fullReport = report;
-          _fullReportError = false;
-        } else {
-          _fullReportError = true;
-        }
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _fullReportRunning = false;
-        _fullReportError = true;
-      });
-    }
+    ref.read(productAnalysisProvider.notifier).requestReportSkippingQuiz();
   }
 
   // ignore: unused_element

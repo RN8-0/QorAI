@@ -113,6 +113,10 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   List<QuizQuestion> _compareQuizAnswers = const [];
   int _compareQuizIndex = 0;
   bool _compareQuizLoading = false;
+  // Workboard'un gerçek başlama zamanı → ilerleme senkron/kesintisiz.
+  DateTime? _compareWorkStartedAt;
+  // Kayıtlı karşılaştırma analizinde "verdiğin cevaplar" bölümü açık mı?
+  bool _compareSavedAnswersExpanded = false;
 
   // Cached reviews future — created once, avoids infinite loading on rebuild
   Future<List<RecordModel>>? _reviewsFuture;
@@ -6457,13 +6461,14 @@ Rules:
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 210,
+            // Ana sayfa rail standardı (kullanıcı isteği): 246 yükseklik / 144 en.
+            height: 212,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (context, i) => SizedBox(
-                width: 150,
+                width: 132,
                 child: SharedSimilarGridCard(product: list[i]),
               ),
             ),
@@ -6499,13 +6504,6 @@ Rules:
       offersAsync.valueOrNull ?? const <ProductOfferModel>[],
       country,
     );
-    ProductOfferModel? bestOffer;
-    for (final offer in offers) {
-      if (offer.hasExactPrice) {
-        bestOffer = offer;
-        break;
-      }
-    }
     final stores = product.getAffiliateLinksForCountry(country);
     final entries = (stores.isNotEmpty ? stores : product.affiliateLinks)
         .entries
@@ -6519,121 +6517,157 @@ Rules:
         )
         .take(1)
         .toList(growable: false);
-    final displayAmount = bestOffer?.price ?? info.amount;
-    final displayCurrency = bestOffer?.currency ?? info.currency;
-    final hasPrice = displayAmount != null && displayAmount > 0;
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    // 3-4 ürün karşılaştırılınca her kolon ~1/4 genişlik → kart içeriği taşıyordu.
-    // compact modda padding/font/logo küçülür, offer satırı dikeye geçer
-    // (hizalama bozulmaz, her fiyat+link yine kendi ürününün altında).
+    // 3-4 ürün karşılaştırılınca her kolon dar → compact fontlar/paddingler.
     final compact = widget.products.length >= 3;
 
-    return Container(
-      padding: EdgeInsets.all(compact ? 9 : 14),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isBest
-              ? AppTheme.scoreExcellent.withValues(alpha: 0.35)
-              : context.dividerColor.withValues(alpha: 0.6),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
+    // TEK TİP mağaza kutusu (kullanıcı isteği): logo → küçük mağaza adı → fiyat
+    // (fiyat yoksa "Fiyata bak"). Kaynak önceliği: canlı teklif > kayıtlı
+    // affiliate > Amazon fallback. Fiyat: kesin teklif fiyatı > seçili ülke
+    // fiyatı (info.amount). Tüm kolonlar AYNI yapıda → fiyat OLSUN OLMASIN
+    // hepsi AYNI HİZADA. "En iyi fiyat" rozeti + üstteki ayrı büyük fiyat
+    // KALDIRILDI; kırpılan "A..." adı düzeltildi (fiyat ne ise o yazar).
+    _CompareStoreBrandData brand;
+    String url = '';
+    double? shownPrice;
+    String shownCurrency = info.currency;
+
+    if (offers.isNotEmpty) {
+      final offer = offers.first;
+      brand = _resolveCompareStoreBrand(
+        '${offer.displayStore} ${offer.network} ${offer.url}',
+      );
+      url = offer.url;
+      if (offer.hasExactPrice) {
+        shownPrice = offer.price;
+        shownCurrency = offer.currency;
+      } else {
+        shownPrice = info.amount;
+      }
+    } else if (entries.isNotEmpty) {
+      brand = _resolveCompareStoreBrand(entries.first.key);
+      url = entries.first.value;
+      shownPrice = info.amount;
+    } else {
+      final visitor = ref.watch(detectedCountryProvider).valueOrNull;
+      url = amazonUrlForProduct(product, country, visitorCountry: visitor);
+      brand = _resolveCompareStoreBrand('amazon $url');
+      shownPrice = info.amount;
+    }
+
+    final loadingPrices =
+        shownPrice == null &&
+        offers.isEmpty &&
+        entries.isEmpty &&
+        offersAsync is AsyncLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (url.isNotEmpty)
+          _buildCompareStoreBox(
+            brand: brand,
+            url: url,
+            price: shownPrice,
+            currency: shownCurrency,
+            compact: compact,
+            isTr: isTr,
+            loading: loadingPrices,
           ),
-        ],
+        if (showSimilar) _buildCompareSimilarRow(product),
+      ],
+    );
+  }
+
+  /// Tek tip compare mağaza kutusu: logo → küçük mağaza adı → fiyat (yoksa
+  /// "Fiyata bak"). Tüm ürün kolonlarında AYNI yapı → hizalı; "Amazon" adı
+  /// kırpılmaz, fiyat ne ise gösterilir.
+  Widget _buildCompareStoreBox({
+    required _CompareStoreBrandData brand,
+    required String url,
+    double? price,
+    required String currency,
+    required bool compact,
+    required bool isTr,
+    bool loading = false,
+  }) {
+    final hasPrice = price != null && price > 0;
+    final priceLabel = hasPrice
+        ? AppUtils.formatCurrency(price, currency)
+        : (loading
+              ? (isTr ? 'Yükleniyor' : 'Loading')
+              : (isTr ? 'Fiyata bak' : 'See price'));
+    final logo = Container(
+      width: compact ? 26 : 30,
+      height: compact ? 26 : 30,
+      decoration: BoxDecoration(
+        color: brand.logoUrl == null
+            ? brand.color.withValues(alpha: 0.12)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: brand.color.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Ürün görseli + adı üstteki başlık kartında zaten var; burada SADECE
-          // fiyat + mağaza satırları (logo + link) gösterilir.
-          if (isBest)
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppTheme.scoreExcellent.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  isTr ? 'En iyi fiyat' : 'Best price',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.scoreExcellent,
-                  ),
-                ),
-              ),
-            ),
-          // Show the exact price when known. When there's no exact price but a
-          // store link exists, DON'T say "No price" (contradicts the link
-          // below) — show a "Check price" hint. "No price" only when there is
-          // genuinely no store/offer at all.
-          // Üstte SADECE: kesin fiyat varsa fiyat; hiç mağaza/offer yoksa
-          // "Fiyat yok". Mağaza/offer varsa redundant "Fiyatı gör →" başlığını
-          // GÖSTERME (alttaki mağaza satırı zaten linki/fiyatı taşıyor) →
-          // iç içe/hizasız görünüm giderilir.
-          // Kesin fiyat varsa fiyatı göster; yoksa fiyat alanı BOŞ kalır
-          // (kullanıcı isteği: "Fiyat yok" + uzun "mağaza/fiyat bilgisi yok"
-          // metni kaldırıldı). Sadece fiyatlar hâlâ yükleniyorsa ince bir
-          // "yükleniyor" ipucu gösterilir.
-          if (hasPrice) ...[
-            Center(
-              child: Text(
-                AppUtils.formatCurrency(displayAmount, displayCurrency),
+      alignment: Alignment.center,
+      child: _CompareStoreLogo(brand: brand),
+    );
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          // Amazon linkleri tıklama anında ziyaretçinin mağazasına göre
+          // yeniden etiketlenir (amazon_link.dart); Amazon-dışı URL'ler aynen.
+          final visitor = ref.read(detectedCountryProvider).valueOrNull;
+          final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
+          if (uri == null) return;
+          try {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 10,
+            vertical: compact ? 8 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: context.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.dividerColor),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              logo,
+              const SizedBox(height: 6),
+              Text(
+                brand.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: compact ? 15 : 18,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.scoreExcellent,
-                ),
-              ),
-            ),
-            SizedBox(height: compact ? 8 : 12),
-          ] else if (offers.isEmpty &&
-              entries.isEmpty &&
-              offersAsync is AsyncLoading) ...[
-            Center(
-              child: Text(
-                isTr ? 'Fiyatlar yükleniyor' : 'Loading prices',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
+                  fontSize: compact ? 9.5 : 11,
                   fontWeight: FontWeight.w600,
-                  color: context.textTertiaryColor,
+                  color: context.textSecondary,
                 ),
               ),
-            ),
-            SizedBox(height: compact ? 8 : 12),
-          ],
-          if (offers.isNotEmpty)
-            // Tek en iyi teklif (seçili ülke) — çoklu market/ülke listelenmez.
-            ...offers
-                .take(1)
-                .map(
-                  (offer) => _buildCompareOfferRow(
-                    offer: offer,
-                    selectedCountry: country,
-                    compact: compact,
-                  ),
-                )
-          else if (entries.isNotEmpty)
-            ...entries.map(
-              (entry) => _CompareStoreRow(name: entry.key, url: entry.value),
-            )
-          else
-            // Ne canlı teklif ne kayıtlı affiliate linki var: fiyat olmasa da
-            // ülkeye-uygun Amazon linki HER ZAMAN gösterilir (Fiyatlar sekmesi
-            // ve web ile parite). Kullanıcı: "fiyat yoksa link de gösterilmiyor,
-            // saçma — linkler eskisi gibi görünmeli".
-            _buildCompareAmazonFallback(product: product, country: country, compact: compact),
-          if (showSimilar) _buildCompareSimilarRow(product),
-        ],
+              const SizedBox(height: 3),
+              Text(
+                priceLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: compact ? 12 : 14,
+                  fontWeight: FontWeight.w900,
+                  color: hasPrice
+                      ? AppTheme.scoreExcellent
+                      : context.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -6660,263 +6694,6 @@ Rules:
       return a.displayStore.compareTo(b.displayStore);
     });
     return live;
-  }
-
-  Widget _buildCompareOfferPrice(ProductOfferModel offer) {
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final label = offer.hasExactPrice
-        ? AppUtils.formatCurrency(offer.price, offer.currency)
-        : (offer.priceText.isNotEmpty
-              ? offer.priceText
-              : (isTr ? 'Fiyatı gör' : 'Check price'));
-    return Text(
-      label,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: GoogleFonts.plusJakartaSans(
-        fontSize: 12.5,
-        fontWeight: FontWeight.w900,
-        color: offer.hasExactPrice
-            ? AppTheme.scoreExcellent
-            : context.textSecondary,
-      ),
-    );
-  }
-
-  Widget _buildCompareOfferSubtitle(
-    ProductOfferModel offer,
-    String selectedCountry,
-  ) {
-    final showCountry =
-        offer.country.isNotEmpty &&
-        offer.country != selectedCountry.trim().toUpperCase();
-    if (!showCountry && offer.priceText.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        [
-          if (showCountry) offer.country,
-          if (offer.priceText.isNotEmpty && !offer.hasExactPrice)
-            offer.priceText,
-        ].join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 10.5,
-          color: context.textTertiaryColor,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCompareOfferRow({
-    required ProductOfferModel offer,
-    required String selectedCountry,
-    bool compact = false,
-  }) {
-    final brand = _resolveCompareStoreBrand(
-      '${offer.displayStore} ${offer.network} ${offer.url}',
-    );
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            // Amazon offers are re-tagged at click time for the storefront
-            // they already point at (stored tags can be stale/wrong-program;
-            // see amazon_link.dart) — non-Amazon URLs pass through untouched.
-            final visitor = ref.read(detectedCountryProvider).valueOrNull;
-            final uri = Uri.tryParse(
-              amazonTagUrlForVisitor(offer.url, visitor),
-            );
-            if (uri == null) return;
-            try {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } catch (_) {}
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 8 : 10,
-              vertical: compact ? 8 : 10,
-            ),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: Builder(
-              builder: (_) {
-                final logo = Container(
-                  width: compact ? 26 : 32,
-                  height: compact ? 26 : 32,
-                  decoration: BoxDecoration(
-                    color: brand.logoUrl == null
-                        ? brand.color.withValues(alpha: 0.12)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: brand.color.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: _CompareStoreLogo(brand: brand),
-                );
-                final name = Text(
-                  brand.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: compact ? 11 : 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                  ),
-                );
-                if (compact) {
-                  // Dar kolon (3-4 ürün): MİNİMAL dikey — logo üstte, fiyat/CTA
-                  // altında ORTALANMIŞ. İsim ve ayrı ok ikonu YOK (logo zaten
-                  // mağazayı gösteriyor, tüm kart tıklanabilir) → yatay taşma
-                  // imkansız, her fiyat kendi ürün kolonunun altında hizalı.
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      logo,
-                      const SizedBox(height: 6),
-                      Center(child: _buildCompareOfferPrice(offer)),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    logo,
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          name,
-                          _buildCompareOfferSubtitle(offer, selectedCountry),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildCompareOfferPrice(offer),
-                    // Yönlendirme (open_in_new) ikonu kaldırıldı — tüm satır zaten
-                    // tıklanabilir; asimetrik duruyordu (kullanıcı isteği).
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Fiyat/teklif yokken bile gösterilen ülkeye-uygun Amazon linki. Detaydaki
-  /// `_AmazonSearchCard`'ın compare karşılığı — `_buildCompareOfferRow` ile aynı
-  /// görünümde (compact modda logo + CTA dikey, geniş modda satır).
-  Widget _buildCompareAmazonFallback({
-    required ProductEntity product,
-    required String country,
-    required bool compact,
-  }) {
-    final visitor = ref.watch(detectedCountryProvider).valueOrNull;
-    final url = amazonUrlForProduct(product, country, visitorCountry: visitor);
-    if (url.isEmpty) return const SizedBox.shrink();
-    final brand = _resolveCompareStoreBrand('amazon $url');
-    final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    final cta = isTr ? 'Fiyata bak' : 'See price';
-
-    final logo = Container(
-      width: compact ? 26 : 32,
-      height: compact ? 26 : 32,
-      decoration: BoxDecoration(
-        color: brand.logoUrl == null
-            ? brand.color.withValues(alpha: 0.12)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: brand.color.withValues(alpha: 0.2)),
-      ),
-      alignment: Alignment.center,
-      child: _CompareStoreLogo(brand: brand),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            final uri = Uri.tryParse(url);
-            if (uri == null) return;
-            try {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } catch (_) {}
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 8 : 10,
-              vertical: compact ? 8 : 10,
-            ),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: compact
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      logo,
-                      const SizedBox(height: 6),
-                      Text(
-                        cta,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: context.textSecondary,
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      logo,
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Amazon',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: context.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        cta,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: context.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-      ),
-    );
   }
 
   /// Detay sayfasındaki "Benzer Ürünler" satırının compare karşılığı. Fiyat
@@ -6964,13 +6741,14 @@ Rules:
               ),
               const SizedBox(height: 10),
               SizedBox(
-                height: 210,
+                // Ana sayfa rail standardı (kullanıcı isteği): 246 / 144.
+                height: 212,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: list.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) => SizedBox(
-                    width: 150,
+                    width: 132,
                     child: SharedSimilarGridCard(product: list[i]),
                   ),
                 ),
@@ -7123,15 +6901,33 @@ Rules:
     // "Analizi Başlat" basınca _compareQuizLoading=true oluyor ama bu erken
     // return (_fullCompareRunning hâlâ false) start butonunu tekrar gösterip
     // quiz/loader'ı hiç açmıyordu → buton "çalışmıyor" görünüyordu.
+    final hasHistory =
+        ref.watch(pendingCompareAnalysisHistoryProvider).isNotEmpty ||
+        (ref.watch(compareAnalysisHistoryProvider).valueOrNull?.isNotEmpty ??
+            false);
     if (!_compareQuizLoading &&
         _compareQuiz == null &&
         !_fullCompareRunning &&
-        _fullCompareReport == null) {
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-          child: _buildAiStartButton(_runCompareFullReport, _fullCompareError),
-        ),
+        _fullCompareReport == null &&
+        _savedCompareEntry() == null) {
+      return Column(
+        children: [
+          if (hasHistory) _buildCompareHistoryBar(),
+          Expanded(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 24,
+                ),
+                child: _buildAiStartButton(
+                  _runCompareFullReport,
+                  _fullCompareError,
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
     return ListView(
@@ -7142,8 +6938,35 @@ Rules:
         MediaQuery.of(context).padding.bottom + AppTheme.navBarTotalClearance,
       ),
       children: [
+        if (hasHistory) _buildCompareHistoryBar(),
         _buildCompareFullReportSection(),
       ],
+    );
+  }
+
+  Widget _buildCompareHistoryBar() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) => const AnalysisHistoryScreen(initialTab: 1),
+          ),
+        ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          minimumSize: const Size(0, 0),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: const Icon(Icons.history_rounded, size: 15),
+        label: Text(
+          _isTr ? 'Geçmiş analizler' : 'Past analyses',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 
@@ -7181,6 +7004,7 @@ Rules:
         lang: _appLang,
         mode: 'compare',
         stage: AiReportStageLite.prep,
+        startedAt: _compareWorkStartedAt,
       );
     }
     if (_compareQuiz != null &&
@@ -7193,6 +7017,7 @@ Rules:
         lang: _appLang,
         mode: 'compare',
         stage: _fullCompareStage,
+        startedAt: _compareWorkStartedAt,
       );
     }
     if (_fullCompareReport != null) {
@@ -7210,7 +7035,254 @@ Rules:
         ],
       );
     }
+    // Canlı rapor yok → bu karşılaştırmanın KAYITLI analizi varsa BİRE BİR göster.
+    final saved = _savedCompareEntry();
+    if (saved != null) return _buildSavedCompareReportView(saved);
     return Center(child: _buildAiStartButton(_runCompareFullReport, _fullCompareError));
+  }
+
+  /// Karşılaştırmanın imzası: seçili ürünlerin sıralı id'leri.
+  String get _compareSignature =>
+      (widget.products.map((p) => p.id).toList()..sort()).join('|');
+
+  /// Bu karşılaştırmanın kayıtlı (geçmiş) analizini pending + Firebase'den bulur.
+  Map<String, dynamic>? _savedCompareEntry() {
+    if (widget.products.length < 2) return null;
+    final sig = _compareSignature;
+    final pending = ref.watch(pendingCompareAnalysisHistoryProvider);
+    final saved =
+        ref.watch(compareAnalysisHistoryProvider).valueOrNull ?? const [];
+    for (final e in [...pending, ...saved]) {
+      if (e['signature']?.toString() == sig && e['report'] is Map) return e;
+    }
+    return null;
+  }
+
+  Widget _buildSavedCompareReportView(Map<String, dynamic> entry) {
+    final report = Map<String, dynamic>.from(entry['report'] as Map);
+    final answers = (entry['quizAnswers'] as List?) ?? const [];
+    final ts = entry['timestamp']?.toString();
+    final dt = ts != null ? DateTime.tryParse(ts) : null;
+    final dateStr = dt != null
+        ? '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}'
+        : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: AppTheme.brandBlue.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppTheme.brandBlue.withValues(alpha: 0.16),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.history_rounded,
+                size: 16,
+                color: AppTheme.brandBlue,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  dateStr.isEmpty
+                      ? (_isTr ? 'Kayıtlı analiz' : 'Saved analysis')
+                      : (_isTr
+                            ? 'Kayıtlı analiz · $dateStr'
+                            : 'Saved analysis · $dateStr'),
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        AiReportView(
+          kind: 'compareFull',
+          data: report,
+          lang: _appLang,
+          products: widget.products,
+        ),
+        if (answers.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _buildCompareSavedAnswers(answers),
+        ],
+        const SizedBox(height: 6),
+        _buildAiRerunButton(_runCompareFullReport),
+      ],
+    );
+  }
+
+  Widget _buildCompareSavedAnswers(List<dynamic> answers) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => setState(
+              () => _compareSavedAnswersExpanded = !_compareSavedAnswersExpanded,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.quiz_rounded,
+                    size: 16,
+                    color: AppTheme.premiumPurple,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _isTr
+                          ? 'Verdiğin cevaplar (${answers.length})'
+                          : 'Your answers (${answers.length})',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _compareSavedAnswersExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                    size: 20,
+                    color: context.textTertiaryColor,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_compareSavedAnswersExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final a in answers)
+                    if (a is Map)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              a['question']?.toString() ?? '',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: context.textSecondary,
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 13,
+                                  color: AppTheme.green500,
+                                ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    a['answer']?.toString() ?? '',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.textPrimary,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Karşılaştırma analizi bitince tam raporu + quiz cevaplarını geçmişe yazar.
+  void _saveCompareAnalysisHistory(
+    Map<String, dynamic> report,
+    List<QuizQuestion> quizAnswers,
+  ) {
+    if (widget.products.length < 2) return;
+    final ids = widget.products.map((p) => p.id).toList();
+    final signature = ([...ids]..sort()).join('|');
+    final names = widget.products
+        .map((p) => p.nameForLanguage(_appLang))
+        .toList();
+    final answered = quizAnswers
+        .where((q) => q.selectedOption != null)
+        .map(
+          (q) => {
+            'question': q.text,
+            'answer': q.selectedOption,
+            'options': q.options,
+          },
+        )
+        .toList();
+    final score =
+        (report['matchScore'] as num?)?.toDouble() ??
+        (report['overallScore'] as num?)?.toDouble() ??
+        0.0;
+    final entry = <String, dynamic>{
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'type': 'compare',
+      'signature': signature,
+      'products': names,
+      'productIds': ids,
+      'category': widget.products.first.category,
+      'score': score,
+      'report': report,
+      'quizAnswers': answered,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    try {
+      ref
+          .read(pendingCompareAnalysisHistoryProvider.notifier)
+          .update(
+            (list) => [
+              entry,
+              ...list.where((e) => e['signature'] != signature),
+            ],
+          );
+    } catch (_) {}
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        ref
+            .read(pbDataSourceProvider)
+            .saveCompareAnalysisHistory(auth, entry)
+            .then((_) => ref.invalidate(compareAnalysisHistoryProvider))
+            .catchError((_) {});
+      }
+    } catch (_) {}
   }
 
   Widget _buildCompareQuizSurround({required Widget child}) {
@@ -7323,7 +7395,9 @@ Rules:
       _compareQuizLoading = true;
       _compareQuiz = null;
       _fullCompareError = false;
+      _compareWorkStartedAt = DateTime.now();
     });
+    _setCompareBusy(true); // Q butonunda spinner: quiz üretimi başladı
     // Web paritesi: Gemini öncelikli + allProducts ile compare quizi (link
     // compare akışıyla aynı), DeepSeek fallback.
     final names =
@@ -7375,6 +7449,7 @@ Rules:
         _compareQuizIndex = 0;
         _compareQuizLoading = false;
       });
+      _signalCompareReady(AnalysisNoticeKind.quiz);
     } else {
       setState(() => _compareQuizLoading = false);
       await _runCompareReport(const []);
@@ -7442,6 +7517,40 @@ Rules:
   /// Runs the compare_full_report with collected quiz answers. The AI feature
   /// limit is recorded by [_runCompareFullReport] before the quiz, so this does
   /// NOT re-gate.
+  String get _compareLabel {
+    final title = widget.products
+        .take(2)
+        .map((p) => p.nameForLanguage(_appLang))
+        .where((n) => n.trim().isNotEmpty)
+        .join(' vs ');
+    return title.isEmpty
+        ? (_appLang == 'tr' ? 'Karşılaştırma' : 'Comparison')
+        : title;
+  }
+
+  /// Compare quiz/analiz KOŞARKEN Q butonunda spinner için hub'a busy sinyali.
+  void _setCompareBusy(bool busy) {
+    ref
+        .read(analysisHubProvider.notifier)
+        .setBusy(AnalysisFlowKind.compare, busy);
+  }
+
+  /// Compare quiz/rapor HAZIR olduğunda Qor chat bildirim merkezine (hub) düşer;
+  /// kullanıcı chat'ten "Quize/Analize git" ile compare sekmesine döner.
+  void _signalCompareReady(AnalysisNoticeKind kind) {
+    ref.read(analysisHubProvider.notifier)
+      ..setBusy(AnalysisFlowKind.compare, false)
+      ..pushNotice(
+        AnalysisNotice(
+          id: 'compare',
+          flow: AnalysisFlowKind.compare,
+          kind: kind,
+          label: _compareLabel,
+          tabIndex: 1,
+        ),
+      );
+  }
+
   Future<void> _runCompareReport(List<QuizQuestion> quizAnswers) async {
     if (_fullCompareRunning) return;
     if (!mounted) return;
@@ -7449,7 +7558,9 @@ Rules:
       _fullCompareRunning = true;
       _fullCompareError = false;
       _fullCompareStage = AiReportStageLite.prep;
+      _compareWorkStartedAt = DateTime.now();
     });
+    _setCompareBusy(true); // Q butonunda spinner: analiz koşuyor
     try {
       final report = await AiReportService.runCompareReport(
         ref: ref,
@@ -7462,7 +7573,10 @@ Rules:
           setState(() => _fullCompareStage = _mapStage(s));
         },
       );
-      if (!mounted) return;
+      if (!mounted) {
+        _setCompareBusy(false);
+        return;
+      }
       setState(() {
         _fullCompareRunning = false;
         if (report != null) {
@@ -7472,7 +7586,14 @@ Rules:
           _fullCompareError = true;
         }
       });
+      if (report != null) {
+        _saveCompareAnalysisHistory(report, quizAnswers);
+        _signalCompareReady(AnalysisNoticeKind.report); // busy'yi de kapatır
+      } else {
+        _setCompareBusy(false);
+      }
     } catch (e) {
+      _setCompareBusy(false);
       if (!mounted) return;
       setState(() {
         _fullCompareRunning = false;

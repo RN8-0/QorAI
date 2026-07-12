@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:qor_ai/core/app_keys.dart';
@@ -6,6 +7,7 @@ import 'package:qor_ai/core/email_verification_gate.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:flutter/material.dart';
@@ -16,10 +18,21 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+/// Daktilo (typewriter) efekti TAMAMLANMIŞ AI mesajı id'leri. TOP-LEVEL:
+/// panel kapanıp açılınca (AIChatScreen yeniden oluşturulur) bile korunur →
+/// sadece GERÇEKTEN YENİ mesaj yazılır, her açılışta eski mesajlar tekrar
+/// yazılmaz (kullanıcı şikayeti). Aynı id yeniden gelince anında tam metin.
+final Set<String> _kTypedAiMessageIds = <String>{};
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 class AIChatScreen extends ConsumerStatefulWidget {
   final String? initialQuery;
+
+  /// Sohbeti bir QOR (AI) mesajıyla TOHUMLAR — kullanıcı mesajı OLARAK değil.
+  /// Görsel tarayıcıdan gelir: taranan ürün bilgisi Qor'un ağzından verilir,
+  /// "ben göndermişim gibi" sahte kullanıcı mesajı olmaz.
+  final String? initialAssistantMessage;
   final bool isOverlay;
   final VoidCallback? onClose;
   final VoidCallback? onHistoryPressed;
@@ -27,6 +40,7 @@ class AIChatScreen extends ConsumerStatefulWidget {
   const AIChatScreen({
     super.key,
     this.initialQuery,
+    this.initialAssistantMessage,
     this.isOverlay = false,
     this.onClose,
     this.onHistoryPressed,
@@ -65,12 +79,26 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     );
     _ctrl.addListener(_handleTextChanged);
     _initSpeech();
-    _schedulePageContextUpdate(forceWelcome: widget.isOverlay);
-    // Auto-send initial query if provided
-    if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+    // Tarama tohumu varsa: Qor'un ağzından (AI mesajı) aç, SAHTE kullanıcı
+    // mesajı yazma. Aksi halde normal karşılama + (varsa) initialQuery.
+    if (widget.initialAssistantMessage != null &&
+        widget.initialAssistantMessage!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _send(widget.initialQuery!);
+        ref
+            .read(chatSessionProvider.notifier)
+            .seedScanResult(
+              widget.initialAssistantMessage!,
+              pageContext: widget.pageContext,
+            );
       });
+    } else {
+      _schedulePageContextUpdate(forceWelcome: widget.isOverlay);
+      // Auto-send initial query if provided
+      if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _send(widget.initialQuery!);
+        });
+      }
     }
   }
 
@@ -258,6 +286,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
           children: [
             _buildHeader(context),
             Expanded(child: _buildMessageList(chatState)),
+            // Analiz bildirimi ARTIK ALTTA (giriş kutusunun hemen üstünde) —
+            // kullanıcı isteği: uyarı aşağıda, "Quize git" / "Sonra" alt alta.
+            _buildAnalysisNoticesBanner(),
             _buildInputArea(bottom),
           ],
         ),
@@ -444,6 +475,168 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     );
   }
 
+  // ─── Analiz bildirim bandı ────────────────────────────────────────────────
+  // KULLANICI İSTEĞİ: analiz/quiz işlemleri artık ekran ortası popup yerine Qor
+  // AI chat'in içinde gösterilir. Sürerken "hazırlanıyor" satırı, hazır olunca
+  // "Quize git / Analize git" + "Sonra" butonlu satır.
+
+  Widget _buildAnalysisNoticesBanner() {
+    final hub = ref.watch(analysisHubProvider);
+    if (hub.notices.isEmpty && !hub.isBusy) return const SizedBox.shrink();
+    final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      color: AppTheme.brandBlue.withValues(alpha: 0.05),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hub.isBusy) _buildBusyRow(isTr),
+          for (final n in hub.notices) _buildNoticeRow(n, isTr),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusyRow(bool isTr) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 15,
+            height: 15,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(AppTheme.brandCyan),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              isTr ? 'Analizin hazırlanıyor…' : 'Your analysis is being prepared…',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoticeRow(AnalysisNotice n, bool isTr) {
+    final isQuiz = n.kind == AnalysisNoticeKind.quiz;
+    final goLabel = isQuiz
+        ? (isTr ? 'Quize git' : 'Go to quiz')
+        : (isTr ? 'Analize git' : 'Go to analysis');
+    final desc = isQuiz
+        ? (isTr ? 'için soruların hazır' : 'questions ready')
+        : (isTr ? 'analizin hazır' : 'analysis ready');
+    final color = isQuiz ? AppTheme.premiumPurple : AppTheme.brandBlue;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.surfaceVariantColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.40)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isQuiz ? Icons.quiz_rounded : Icons.auto_awesome_rounded,
+                size: 18,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${n.label} — $desc',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: context.textPrimary,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // İki buton ALT ALTA: önce "Quize/Analize git", altında "Sonra".
+          FilledButton(
+            onPressed: () => _goToNotice(n),
+            style: FilledButton.styleFrom(
+              backgroundColor: color,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
+              ),
+            ),
+            child: Text(
+              goLabel,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          TextButton(
+            onPressed: () =>
+                ref.read(analysisHubProvider.notifier).removeNotice(n.id),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
+              ),
+            ),
+            child: Text(
+              isTr ? 'Sonra' : 'Later',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _goToNotice(AnalysisNotice n) {
+    // 1) Bildirimi düş → Q butonundaki KIRMIZI ÜNLEM anında gitsin.
+    ref.read(analysisHubProvider.notifier).removeNotice(n.id);
+    // 2) Yüzen paneli kapat.
+    ref.read(chatOverlayRequestProvider.notifier).state = false;
+    // 3) Hedefe git. KRİTİK: bu panel app-seviyesi Overlay'de (Navigator'ın
+    // DIŞINDA) yaşar → `context.push/go` çalışmaz (buton "tepki vermiyor"du).
+    // Router'a doğrudan git.
+    final router = ref.read(routerProvider);
+    if (n.productId != null && n.productId!.isNotEmpty) {
+      router.push('/product/${n.productId}');
+    } else {
+      final route = switch (n.flow) {
+        AnalysisFlowKind.compare => AppRoutes.compare,
+        AnalysisFlowKind.link => AppRoutes.linkPaste,
+        AnalysisFlowKind.subscription => AppRoutes.subscriptions,
+        AnalysisFlowKind.product => AppRoutes.home,
+      };
+      router.go(route);
+    }
+  }
+
   // ─── Message List ─────────────────────────────────────────────────────────
 
   Widget _buildMessageList(ChatSessionState chatState) {
@@ -456,11 +649,18 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       itemCount: msgs.length + (isLoading ? 1 : 0),
       itemBuilder: (context, i) {
         if (isLoading && i == 0) return _buildTypingIndicator();
-        final msg = msgs[isLoading ? i - 1 : i];
+        final msgIndex = isLoading ? i - 1 : i;
+        final msg = msgs[msgIndex];
+        // Yalnızca EN YENİ mesaj daktilo efektiyle yazılır (geçmiş bir sohbet
+        // yüklenince tüm balonların aynı anda yazılmasını engeller); bir kez
+        // yazılan mesaj id'si işaretlenir, tekrar oynamaz.
+        final animate = msgIndex == 0 && !_kTypedAiMessageIds.contains(msg.id);
         return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: _BubbleWidget(
                 msg: msg,
+                animate: animate,
+                onTyped: (id) => _kTypedAiMessageIds.add(id),
                 onCopy: () {
                   Clipboard.setData(ClipboardData(text: msg.text));
                   HapticFeedback.lightImpact();
@@ -734,7 +934,16 @@ class _BubbleWidget extends StatelessWidget {
   final PersistedChatMsg msg;
   final VoidCallback onCopy;
 
-  const _BubbleWidget({required this.msg, required this.onCopy});
+  /// EN YENİ AI mesajı mı — daktilo efektiyle yazılsın mı?
+  final bool animate;
+  final ValueChanged<String> onTyped;
+
+  const _BubbleWidget({
+    required this.msg,
+    required this.onCopy,
+    required this.animate,
+    required this.onTyped,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -861,22 +1070,128 @@ class _BubbleWidget extends StatelessWidget {
             if (msg.text.trim().isNotEmpty) const SizedBox(height: 10),
           ],
           if (msg.text.trim().isNotEmpty)
-            SelectableText(
-              msg.text,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                height: 1.45,
-                color: isUser
-                    ? context.textPrimary
-                    : isError
-                    ? AppTheme.error
-                    : context.textPrimary,
-              ),
+            Builder(
+              builder: (context) {
+                final textStyle = GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  height: 1.45,
+                  color: isError ? AppTheme.error : context.textPrimary,
+                );
+                // Kullanıcı mesajı (kendi yazdığı) ve hata mesajları anında;
+                // QOR (AI) mesajları ChatGPT gibi yukarıdan aşağıya AKICI yazılır.
+                if (isUser || isError) {
+                  return SelectableText(msg.text, style: textStyle);
+                }
+                return _AnimatedAiText(
+                  key: ValueKey('typed-${msg.id}'),
+                  text: msg.text,
+                  style: textStyle,
+                  animate: animate,
+                  onDone: () => onTyped(msg.id),
+                );
+              },
             ),
         ],
       ),
     );
+  }
+}
+
+// ─── Animated (typewriter) AI text ──────────────────────────────────────────
+// QOR mesajlarını ChatGPT gibi karakter karakter, yukarıdan aşağıya akıcı yazar.
+// Streaming sırasında metin büyürse yazım hedefi takip eder; tamamlanınca
+// [onDone] ile id işaretlenir ve tekrar oynatılmaz.
+class _AnimatedAiText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final bool animate;
+  final VoidCallback onDone;
+
+  const _AnimatedAiText({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.animate,
+    required this.onDone,
+  });
+
+  @override
+  State<_AnimatedAiText> createState() => _AnimatedAiTextState();
+}
+
+class _AnimatedAiTextState extends State<_AnimatedAiText> {
+  Timer? _timer;
+  int _shown = 0; // gösterilen grapheme sayısı
+
+  int get _total => widget.text.characters.length;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.animate) {
+      _shown = _total;
+    } else {
+      _shown = 0;
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    // Uzunluğa göre adım: uzun metinler daha çok karakter/tik atar ki toplam
+    // süre makul kalsın (~1.2sn). Kısa metinlerde 1 karakter/tik = daktilo hissi.
+    _timer = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!mounted) {
+        _timer?.cancel();
+        return;
+      }
+      final total = _total;
+      if (_shown >= total) {
+        _timer?.cancel();
+        widget.onDone();
+        return;
+      }
+      final step = (total / 90).ceil().clamp(1, 6);
+      setState(() => _shown = (_shown + step).clamp(0, total));
+      if (_shown >= total) {
+        _timer?.cancel();
+        widget.onDone();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedAiText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Streaming: metin büyüdü → yazıma devam et (yeniden başlatma).
+    if (widget.text != oldWidget.text) {
+      if (!widget.animate) {
+        _shown = _total;
+        _timer?.cancel();
+      } else if (_shown < _total && (_timer == null || !_timer!.isActive)) {
+        _startTimer();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final full = widget.text;
+    final shownText = _shown >= _total
+        ? full
+        : full.characters.take(_shown).toString();
+    // Tamamlanınca kopyalanabilir (SelectableText); yazılırken hızlı Text.
+    if (_shown >= _total) {
+      return SelectableText(shownText, style: widget.style);
+    }
+    return Text(shownText, style: widget.style);
   }
 }
 

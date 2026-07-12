@@ -841,7 +841,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
                 ),
                 // Sürekli dönen tarama arkı — belirleyici halka beklerken bile
                 // döner, analiz sırasında ekran "canlı" kalır (kullanıcı isteği).
-                const ScanningArc(size: 180, color: _kAccent),
+                // İÇ halkada döner: dıştaki gerçek-ilerleme halkasıyla (180)
+                // ÇAKIŞMASIN diye belirgin şekilde küçük + ince.
+                const ScanningArc(size: 138, strokeWidth: 5, color: _kAccent),
                 // Pulsing inner orb
                 AnimatedBuilder(
                   animation: _pulseController,

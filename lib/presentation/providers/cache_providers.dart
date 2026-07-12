@@ -2044,12 +2044,17 @@ final localMatchScoreProvider = Provider.family<int?, ProductEntity>((
   final user = ref.watch(userProfileProvider).valueOrNull;
   // Logged-out → no personalized score.
   if (user == null) return null;
+  // KRİTİK (kullanıcı isteği): kayıt-sonrası profil QUIZ'i tamamlanmadan
+  // eşleşme puanı GÖSTERME. Quiz yokken bütçe/öncelik/ekosistem boş →
+  // algoritma techScore tabanına düşüp "teknik puanın kopyası" oluyordu
+  // (orta-segment isteyene en pahalıya ~95). Quiz yoksa kullanıcı henüz
+  // TANINMIYOR → puan gösterilmez (null → rozet gizlenir).
+  if (!user.quizCompleted) return null;
   final behavior =
       ref.watch(behaviorSignalsProvider).valueOrNull ?? BehaviorSignals.empty;
   final algo = ProfileAlgorithmService();
-  // Algorithm returns 20-100 (kullanıcı isteği). Works for users without a
-  // completed quiz too — the score will be less personalized but still
-  // meaningful. Clamp mirrors the algorithm floor so the ring never shows <20.
+  // Algorithm returns 20-100 (kullanıcı isteği). Clamp mirrors the algorithm
+  // floor so the ring never shows <20.
   final score = algo
       .calculateTotalFitScore(user: user, product: product, behavior: behavior)
       .round()

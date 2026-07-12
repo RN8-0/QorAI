@@ -129,7 +129,15 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         .where((m) => m.role == PersistedMsgRole.user)
         .length;
     final welcomeIndex = state.messages.indexWhere((m) => m.id == 'welcome');
-    if (userMsgCount > 0 || (!forceWelcome && welcomeIndex < 0)) return;
+    // Görsel tarama tohumu (scan-*) varsa ASLA karşılama ekleme — overlay
+    // açılırken forceWelcome:true gelse bile tohumun üstüne çift karşılama
+    // basılmasın (kullanıcı: "saçma sapan yazı + karşılama çift geliyor").
+    final hasScanSeed = state.messages.any((m) => m.id.startsWith('scan-'));
+    if (userMsgCount > 0 ||
+        hasScanSeed ||
+        (!forceWelcome && welcomeIndex < 0)) {
+      return;
+    }
     final updated = List<PersistedChatMsg>.from(state.messages);
     final previousWelcome = welcomeIndex >= 0
         ? updated.removeAt(welcomeIndex)
@@ -578,7 +586,7 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
         : null;
     return [
       '${product.name} (${product.brand ?? 'brand unknown'}, ${product.category}/${product.subcategory}, score ${product.techScore.round()}/100)',
-      if (priceStr != null) priceStr,
+      ?priceStr,
       if (specs.isNotEmpty) 'specs: $specs',
       if (pros.isNotEmpty) 'pros: $pros',
       if (cons.isNotEmpty) 'cons: $cons',
@@ -629,6 +637,22 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
   void newConversation() {
     state = const ChatSessionState();
     _initWelcome(_lastPageContext);
+  }
+
+  /// Görsel tarama sonucunu ana chat'e QOR (AI) mesajı olarak tohumlar —
+  /// SAHTE kullanıcı mesajı YAZMAZ (kullanıcı isteği: "ben göndermişim gibi
+  /// saçma yazı olmasın"). Kullanıcı buradan normal yazarak devam eder.
+  void seedScanResult(String text, {Map<String, dynamic>? pageContext}) {
+    _lastPageContext = pageContext;
+    state = const ChatSessionState().copyWith(
+      messages: [
+        PersistedChatMsg(
+          id: 'scan-${DateTime.now().millisecondsSinceEpoch}',
+          role: PersistedMsgRole.ai,
+          text: text,
+        ),
+      ],
+    );
   }
 }
 

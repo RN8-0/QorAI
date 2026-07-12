@@ -278,6 +278,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // SharedPreferences from a previous account don't bleed through.
         // Play Store will re-deliver any active entitlement via restorePurchases.
         await ref.read(subscriptionServiceProvider).clearLocalPremium();
+        // Önceki hesabın "quiz atlandı" bayrağı yeni hesaba SIZMASIN → aksi
+        // halde router redirect quiz'i atlar ("kayıttan sonra quiz gelmedi").
+        ref.read(cacheServiceProvider).setQuizSkipped(false);
         if (mounted) {
           // Doğrulama maili gönderildi bildirimi
           ScaffoldMessenger.of(context).showSnackBar(

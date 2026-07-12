@@ -36,7 +36,7 @@ const EdgeInsets _kHorizontalCardRowPadding = EdgeInsets.fromLTRB(20, 8, 20, 8);
 // section provider'ı ile gelir.
 // Keep the first shelf payload light; users still get enough horizontal scroll
 // while image decode and item bookkeeping stay small on mid-range devices.
-const int _kHorizontalInitialItemLimit = 8;
+const int _kHorizontalInitialItemLimit = 12; // her bölüm ≥10 ürün (kullanıcı isteği)
 // card width (132) + right margin (12) = fixed item extent avoids per-frame layout calc.
 // Daraltıldı (155 → 132): kartlar artık daha kompakt, satıra ~2.8 kart sığar ve
 // görsel kutusu (132×132) kare olur → "enine geniş/şişkin" görünüm giderildi.
@@ -2139,6 +2139,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ];
   }
 
+  /// Ham kategori adını (örn. "smartphones") görünen dile çevirir → TR'de bölüm
+  /// başlığı "Öne Çıkan Smartphones" değil "Öne Çıkan Akıllı Telefonlar" olur
+  /// (kullanıcı: TR seçiliyken İngilizce yazmasın).
+  String _homeCategoryLabel(BuildContext context, String raw) {
+    final cap = raw.isEmpty ? raw : raw[0].toUpperCase() + raw.substring(1);
+    if (Localizations.localeOf(context).languageCode != 'tr') return cap;
+    const tr = <String, String>{
+      'smartphones': 'Akıllı Telefonlar',
+      'tablets': 'Tabletler',
+      'laptops': 'Dizüstü Bilgisayarlar',
+      'headphones': 'Kulaklıklar',
+      'smartwatches': 'Akıllı Saatler',
+      'monitors': 'Monitörler',
+      'tvs': 'TV & Ekranlar',
+      'televisions': 'TV & Ekranlar',
+      'graphics_cards': 'Ekran Kartları',
+      'game_consoles': 'Oyun Konsolları',
+      'consoles': 'Oyun Konsolları',
+      'cameras': 'Kameralar',
+      'processors': 'İşlemciler',
+      'cpus': 'İşlemciler',
+      'keyboards': 'Klavyeler',
+      'mice': 'Fareler',
+      'speakers': 'Hoparlörler',
+      'powerbanks': 'Powerbank',
+      'drones': 'Dronlar',
+      'printers': 'Yazıcılar',
+      'ram': 'RAM',
+      'storage': 'Depolama',
+      'motherboards': 'Anakartlar',
+    };
+    return tr[raw.toLowerCase().trim()] ?? cap;
+  }
+
   List<Widget> _topInCategorySectionSlivers(WidgetRef ref) {
     return ref
         .watch(topInCategoryProvider)
@@ -2149,13 +2183,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             if (data.category.isEmpty || data.products.isEmpty) return [];
             final catName =
                 data.category[0].toUpperCase() + data.category.substring(1);
+            final isTr = Localizations.localeOf(context).languageCode == 'tr';
+            final locCat = _homeCategoryLabel(context, data.category);
             return [
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Top in $catName',
+                  title: isTr ? 'Öne Çıkan $locCat' : 'Top in $locCat',
                   icon: Icons.star_rounded,
                   iconColor: AppTheme.gold,
-                  subtitle: 'Based on your browsing',
+                  subtitle: isTr
+                      ? 'Gezinme geçmişine göre'
+                      : 'Based on your browsing',
                   onSeeAll: () => context.push(
                     '${AppRoutes.browse}?id=${data.category}&name=$catName',
                   ),
@@ -2318,10 +2356,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             return [
               SliverToBoxAdapter(
                 child: _SectionHeader(
-                  title: 'Best Value',
+                  title: context.l10n?.bestValue ?? 'Best Value',
                   icon: Icons.trending_up_rounded,
                   iconColor: const Color(0xFF10B981),
-                  subtitle: 'High performance, great price',
+                  subtitle:
+                      Localizations.localeOf(context).languageCode == 'tr'
+                      ? 'Yüksek performans, uygun fiyat'
+                      : 'High performance, great price',
                   onSeeAll: () => context.push(AppRoutes.search),
                 ),
               ),

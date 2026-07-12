@@ -103,6 +103,12 @@ class HiveDataSource {
     await _settingsDataBox.put('viewed_products', jsonEncode(keep));
   }
 
+  /// Cihaz-geneli "son görüntülenenler" listesini tamamen temizler. Çıkış
+  /// yapınca çağrılır → bir sonraki hesaba (farklı kullanıcı) SIZMASIN.
+  Future<void> clearViewedProducts() async {
+    await _settingsDataBox.delete('viewed_products');
+  }
+
   // ─── Freemium Usage Tracking ───
 
   String _usageKey(String feature, String period) {

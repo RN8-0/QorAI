@@ -293,6 +293,11 @@ class CacheService {
     // Reset country to unset so IP detection will re-run.
     _settingsBox.delete('country_code');
     _settingsBox.delete('country_manually_set');
+    // "Quiz'i atladı" bayrağı KULLANICIYA ÖZELDİR — bir sonraki hesaba
+    // SIZMAMALI. Aksi halde önceki hesap quizi atladıysa, yeni hesap kayıt
+    // sonrası quiz'e YÖNLENDİRİLMİYOR (router redirect quizSkipped'e bakar) →
+    // "kayıttan sonra quiz gelmedi" bug'ı. Çıkışta sıfırla.
+    _settingsBox.delete('quiz_skipped');
     // Clear local product/recently-viewed cache keys.
     try {
       final localBox = await _ensureLocalBox();

@@ -7,6 +7,7 @@ import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
 import 'package:qor_ai/routing/router.dart';
@@ -416,6 +417,32 @@ class _FloatingAiAssistantOverlayState
   @override
   Widget build(BuildContext context) {
     final route = _routePath();
+
+    // Bir-atımlık "paneli AÇ/KAPAT" isteğini dinle (görsel tarayıcı ürünü
+    // tarayınca AÇ; chat içi "Analize git"e basınca KAPAT). İşleyip sıfırla.
+    // Registered unconditionally (before early returns) so it never misses a
+    // request while the button is temporarily hidden.
+    ref.listen<bool?>(chatOverlayRequestProvider, (prev, next) {
+      if (next == null || !mounted) return;
+      if (next && !_isOpen) {
+        _toggle();
+      } else if (!next && _isOpen) {
+        _toggle();
+      }
+      Future.microtask(() {
+        if (mounted) ref.read(chatOverlayRequestProvider.notifier).state = null;
+      });
+    });
+
+    // Herhangi bir analiz/quiz üretimi SÜRÜYORSA Q butonunda mini spinner döner;
+    // bekleyen (hazır) bildirim varsa kırmızı ünlem rozeti çıkar.
+    final analysisBusy = ref.watch(
+      analysisHubProvider.select((s) => s.isBusy),
+    );
+    final hasNotice = ref.watch(
+      analysisHubProvider.select((s) => s.notices.isNotEmpty),
+    );
+
     final auth = ref.watch(authStateProvider);
     final isLoggedIn = auth.valueOrNull != null || pb.authStore.isValid;
     if (!isLoggedIn || route == '/') {
@@ -576,41 +603,106 @@ class _FloatingAiAssistantOverlayState
                 },
                 child: ScaleTransition(
                   scale: _fabScale,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    decoration: BoxDecoration(
-                      color: bubbleBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppTheme.brandCyan.withValues(
-                          alpha: _isOpen ? 0.55 : 0.25,
-                        ),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.5 : 0.18,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: _fabSize,
+                        height: _fabSize,
+                        decoration: BoxDecoration(
+                          color: bubbleBg,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.brandCyan.withValues(
+                              alpha: _isOpen ? 0.55 : 0.25,
+                            ),
+                            width: 1.5,
                           ),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.5 : 0.18,
+                              ),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
+                            ),
+                            BoxShadow(
+                              color: AppTheme.brandCyan.withValues(
+                                alpha: _isOpen ? 0.38 : 0.14,
+                              ),
+                              blurRadius: _isOpen ? 28 : 12,
+                            ),
+                          ],
                         ),
-                        BoxShadow(
-                          color: AppTheme.brandCyan.withValues(
-                            alpha: _isOpen ? 0.38 : 0.14,
+                        child: Center(
+                          child: Image.asset(
+                            'assets/logo/qor_ai_logo.png',
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.contain,
                           ),
-                          blurRadius: _isOpen ? 28 : 12,
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/logo/qor_ai_logo.png',
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.contain,
                       ),
-                    ),
+                      // Sağ üst köşe: analiz KOŞARKEN küçük dönen halka; koşmuyor
+                      // ama hazır bekleyen bildirim varsa kırmızı ünlem rozeti.
+                      if (analysisBusy)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            padding: const EdgeInsets.all(3.5),
+                            decoration: BoxDecoration(
+                              color: bubbleBg,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppTheme.brandCyan.withValues(
+                                  alpha: 0.55,
+                                ),
+                                width: 1,
+                              ),
+                            ),
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              valueColor: AlwaysStoppedAnimation(
+                                AppTheme.brandCyan,
+                              ),
+                            ),
+                          ),
+                        )
+                      else if (hasNotice)
+                        Positioned(
+                          top: -3,
+                          right: -3,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppTheme.error,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: bubbleBg, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.error.withValues(alpha: 0.5),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              '!',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

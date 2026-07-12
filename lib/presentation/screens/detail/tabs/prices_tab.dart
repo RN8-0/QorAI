@@ -192,14 +192,16 @@ class _OfferLinkRow extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Mağaza adı DAHA KÜÇÜK/ikincil (kullanıcı isteği): fiyat
+                      // asıl vurgu; mağaza adı küçük fontla yanında/üstünde durur.
                       Text(
                         brand.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: context.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: context.textSecondary,
                         ),
                       ),
                       if (showCountry || offer.priceText.isNotEmpty)
@@ -273,6 +275,15 @@ class _AmazonSearchCard extends ConsumerWidget {
     final market = amazonMarketForCountry(country);
     final flag = amazonMarketFlag[market] ?? '🌍';
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    // KRİTİK: ürünün SEÇİLİ ülke katalog fiyatı varsa (ana sayfa kartındaki
+    // ₺ değeri) burada da GÖSTER — canlı teklif yok diye "Fiyata bak"a düşüp
+    // fiyatı gizleme (kullanıcı: "fiyatı olan ürüne tıklayınca fiyat yok").
+    // Compare ekranıyla parite.
+    final localPrice = product.getPriceForCountry(country);
+    final hasPrice = localPrice != null && localPrice > 0;
+    final priceLabel = hasPrice
+        ? AppUtils.formatCurrency(localPrice, ref.watch(currencyProvider))
+        : (isTr ? 'Fiyata bak' : 'See price');
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -302,12 +313,13 @@ class _AmazonSearchCard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Mağaza adı DAHA KÜÇÜK/ikincil (kullanıcı isteği).
                     Text(
                       'Amazon',
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: context.textPrimary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.textSecondary,
                       ),
                     ),
                     Padding(
@@ -327,11 +339,13 @@ class _AmazonSearchCard extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                isTr ? 'Fiyata bak' : 'See price',
+                priceLabel,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: context.textSecondary,
+                  fontSize: hasPrice ? 15 : 13,
+                  fontWeight: hasPrice ? FontWeight.w900 : FontWeight.w800,
+                  color: hasPrice
+                      ? AppTheme.scoreExcellent
+                      : context.textSecondary,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1142,14 +1156,18 @@ class _HorizontalSimilarSection extends ConsumerWidget {
                 ),
               ),
               SizedBox(
-                height: 210,
+                // Benzer ürünler çoğu kez fiyatsız (ince kart) → 246'da altta
+                // KOCAMAN boşluk kalıyordu. Kartın içeriğine (görsel 132 + ad +
+                // fiyat) tam oturan KISA yükseklik → boşluk gider (kullanıcı isteği).
+                height: 212,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: list.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, i) => SizedBox(
-                    width: 150,
+                    // Ana sayfa kartıyla BİREBİR aynı en (132) — daha geniş değil.
+                    width: 132,
                     child: SharedSimilarGridCard(product: list[i]),
                   ),
                 ),

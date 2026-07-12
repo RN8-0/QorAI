@@ -8,6 +8,9 @@
 ///   • compare_full_report  (overview + per-product detail modals)
 library;
 
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -2013,11 +2016,19 @@ class AiReportWorkboard extends StatefulWidget {
   final String lang;
   final String mode; // 'product' | 'compare'
   final AiReportStageLite stage;
+
+  /// Analizin (arka planda) GERÇEK başlama zamanı. Verilirse ilerleme bu
+  /// zamandan TÜRETİLİR (widget-yerel sayaç yerine) → kullanıcı sayfadan çıkıp
+  /// dönse bile ilerleme sıfırlanmaz/zıplamaz, arka plandaki işle SENKRON kalır.
+  /// null ise eski adım-adım (stepper) davranışına düşer (link/abonelik).
+  final DateTime? startedAt;
+
   const AiReportWorkboard({
     super.key,
     required this.lang,
     this.mode = 'product',
     this.stage = AiReportStageLite.prep,
+    this.startedAt,
   });
 
   @override
@@ -2116,20 +2127,65 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
     return c < steps ? c : steps;
   }
 
+  bool get _timeBased => widget.startedAt != null;
+
+  // Zaman-tabanlı ilerleme için düzenli yeniden çizim (0 → asimptotik ~0.96).
+  Timer? _progressTimer;
+
+  /// Aşamaya göre ilerleme TAVANI — gerçek aşamanın önüne geçmesin
+  /// (araştırma sürerken "rapor bitti" görünmesin).
+  double get _stageCapFrac => switch (widget.stage) {
+    AiReportStageLite.prep => 0.30,
+    AiReportStageLite.research => 0.62,
+    AiReportStageLite.report => 0.96,
+  };
+
+  /// Geçen SÜREDEN türeyen ilerleme (0..1). Asimptotik: hiç 1'e ulaşmaz,
+  /// analiz bitince workboard zaten AiReportView ile değişir.
+  double get _timeFrac {
+    final started = widget.startedAt;
+    if (started == null) return 0;
+    final sec = DateTime.now().difference(started).inMilliseconds / 1000.0;
+    final t = 0.96 * (1 - math.exp(-sec / 20.0));
+    final capped = t < _stageCapFrac ? t : _stageCapFrac;
+    return capped.clamp(0.03, 0.98);
+  }
+
   @override
   void didUpdateWidget(AiReportWorkboard old) {
     super.didUpdateWidget(old);
-    _tick();
+    if (_timeBased) {
+      _startProgressTimer();
+    } else {
+      _progressTimer?.cancel();
+      _progressTimer = null;
+      _tick();
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    _tick();
+    if (_timeBased) {
+      _startProgressTimer();
+    } else {
+      _tick();
+    }
+  }
+
+  void _startProgressTimer() {
+    if (_progressTimer != null) return;
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      if (!mounted) {
+        _progressTimer?.cancel();
+        return;
+      }
+      setState(() {});
+    });
   }
 
   void _tick() {
-    if (!mounted) return;
+    if (!mounted || _timeBased) return;
     if (_active >= _ceil) return;
     Future.delayed(Duration(milliseconds: _active == 0 ? 500 : 1300), () {
       if (!mounted) return;
@@ -2150,6 +2206,7 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _pulse.dispose();
     super.dispose();
   }
@@ -2160,9 +2217,21 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
     final steps = set['steps'] as List;
     final icons = _icons[widget.mode] ?? _icons['product']!;
     final total = steps.length;
-    final done = _active.clamp(0, total);
-    final percent = total == 0 ? 0 : ((done / total) * 100).round();
-    final activeIdx = _active.clamp(0, total - 1);
+    final double ringValue;
+    final int percent;
+    final int activeStep;
+    if (_timeBased) {
+      final frac = _timeFrac;
+      ringValue = frac;
+      percent = (frac * 100).round();
+      activeStep = (frac * total).floor().clamp(0, total - 1);
+    } else {
+      final done = _active.clamp(0, total);
+      ringValue = total == 0 ? 0.0 : done / total;
+      percent = total == 0 ? 0 : ((done / total) * 100).round();
+      activeStep = _active.clamp(0, total - 1);
+    }
+    final activeIdx = activeStep;
     final activeLabel = _t(steps[activeIdx] as List);
     final activeIcon = icons[activeIdx.clamp(0, icons.length - 1)];
 
@@ -2191,10 +2260,7 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
                     child: TweenAnimationBuilder<double>(
                       duration: const Duration(milliseconds: 700),
                       curve: Curves.easeOutCubic,
-                      tween: Tween(
-                        begin: 0,
-                        end: total == 0 ? 0.0 : done / total,
-                      ),
+                      tween: Tween(begin: 0, end: ringValue),
                       builder: (ctx, value, _) => CircularProgressIndicator(
                         value: value,
                         strokeWidth: 6,
@@ -2208,7 +2274,13 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
                   ),
                   // Sürekli dönen tarama arkı — belirleyici halka bir aşamada
                   // beklerken bile bu döner, "işlem devam ediyor" hissi verir.
-                  const ScanningArc(size: 150, color: AppTheme.brandCyan),
+                  // İÇ halkada döner: dıştaki gerçek-ilerleme halkasıyla (150)
+                  // ÇAKIŞMASIN diye belirgin şekilde küçük + ince (kullanıcı isteği).
+                  const ScanningArc(
+                    size: 112,
+                    strokeWidth: 5,
+                    color: AppTheme.brandCyan,
+                  ),
                   AnimatedBuilder(
                     animation: _pulse,
                     builder: (ctx, _) => Container(
@@ -2293,18 +2365,18 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: i < _active
+                      color: i < activeStep
                           ? _green
-                          : (i == _active
+                          : (i == activeStep
                                 ? AppTheme.brandBlue
                                 : context.dividerColor),
                     ),
-                    child: i < _active
+                    child: i < activeStep
                         ? const Icon(Icons.check, size: 15, color: Colors.white)
                         : Icon(
                             icons[i.clamp(0, icons.length - 1)],
                             size: 14,
-                            color: i == _active
+                            color: i == activeStep
                                 ? Colors.white
                                 : context.textTertiaryColor,
                           ),
@@ -2315,10 +2387,10 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
                       _t(steps[i] as List),
                       style: GoogleFonts.inter(
                         fontSize: 12.5,
-                        fontWeight: i == _active
+                        fontWeight: i == activeStep
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        color: i <= _active
+                        color: i <= activeStep
                             ? context.textPrimary
                             : context.textTertiaryColor,
                       ),

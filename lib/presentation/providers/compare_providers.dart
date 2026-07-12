@@ -1816,6 +1816,30 @@ final pendingSubscriptionHistoryProvider =
 final pendingLinkAnalysisHistoryProvider =
     StateProvider<List<Map<String, dynamic>>>((ref) => []);
 
+/// Ürün (tekli) AI analiz geçmişi — giriş yapmış kullanıcı için
+final productAnalysisHistoryProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+      final authState = ref.watch(authStateProvider).valueOrNull;
+      if (authState == null) return [];
+      return ref.read(pbDataSourceProvider).getProductAnalysisHistory(authState);
+    });
+
+/// Çoklu ürün KARŞILAŞTIRMA AI analiz geçmişi — giriş yapmış kullanıcı için
+final compareAnalysisHistoryProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+      final authState = ref.watch(authStateProvider).valueOrNull;
+      if (authState == null) return [];
+      return ref.read(pbDataSourceProvider).getCompareAnalysisHistory(authState);
+    });
+
+/// Optimistic (yerel, anlık) ürün analizi geçmişi — analiz biter bitmez görünsün
+final pendingProductAnalysisHistoryProvider =
+    StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
+/// Optimistic (yerel, anlık) karşılaştırma analizi geçmişi
+final pendingCompareAnalysisHistoryProvider =
+    StateProvider<List<Map<String, dynamic>>>((ref) => []);
+
 // ════════════════════════════════════════════════════
 // ─── PROVIDER ALIASES ─── (Screen compatibility)
 // ════════════════════════════════════════════════════

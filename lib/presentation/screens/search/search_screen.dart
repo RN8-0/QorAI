@@ -85,9 +85,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     'RTX 4090',
   ];
 
+  // searchQueryProvider notifier'ını initState'te sakla → dispose'ta `ref`
+  // KULLANMADAN sorguyu temizleyebilmek için (Riverpod dispose'ta ref'i yasaklar;
+  // aksi halde `ref.read` ATAR → sorgu temizlenmez → arama→compare sızıntısı geri
+  // gelir). Bkz. product_detail dispose ref bug'ı.
+  late final StateController<String> _searchQueryCtrl;
+
   @override
   void initState() {
     super.initState();
+    _searchQueryCtrl = ref.read(searchQueryProvider.notifier);
     _focus.requestFocus();
     _resultsScrollCtrl.addListener(_handleResultsScroll);
     _emptyStateScrollCtrl.addListener(_handleEmptyStateScroll);
@@ -107,6 +114,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _emptyStateScrollCtrl.dispose();
     _ctrl.dispose();
     _focus.dispose();
+    // Arama sorgusunu temizle: aksi halde Karşılaştır ekranındaki ürün seçici
+    // (aynı GLOBAL searchQueryProvider'ı okur) bu sorguyla ÖN-FİLTRELİ açılıyordu
+    // → "diğer ürünler yok" bug'ı. Arama ekranı kapanınca sorgu sıfırlanmalı.
+    // `ref` DEĞİL saklanan notifier (dispose'ta ref yasak).
+    _searchQueryCtrl.state = '';
     super.dispose();
   }
 

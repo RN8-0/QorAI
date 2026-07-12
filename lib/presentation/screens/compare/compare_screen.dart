@@ -34,6 +34,7 @@ import 'package:qor_ai/domain/entities/comparison_entity.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_quiz_view.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
@@ -56,6 +57,7 @@ import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:dio/dio.dart';
 import 'package:qor_ai/presentation/screens/detail/product_detail_screen.dart'
     as detail;
+import 'package:qor_ai/presentation/screens/detail/analysis_history_screen.dart';
 
 // ── Part files ──
 part 'widgets/empty_search_widgets.dart';
@@ -117,6 +119,14 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     super.initState();
     _hideNavBarNotifier = ref.read(hideNavBarProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Ana sayfa aramasından SIZAN sorguyu temizle: ürün seçici (empty_search
+      // widget'ı) global searchQueryProvider'ı okuyor; boş açılıp tüm ürünleri
+      // göstermeli. Yerel arama alanı zaten boş.
+      if (_searchController.text.isEmpty &&
+          ref.read(searchQueryProvider).isNotEmpty) {
+        ref.read(searchQueryProvider.notifier).state = '';
+      }
       // Load initial comparison if provided (from history screen)
       if (widget.initialComparison != null) {
         _loadInitialComparison(widget.initialComparison!);

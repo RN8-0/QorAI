@@ -343,26 +343,27 @@ class _HeroScoreStack extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (techScore > 0) ...[
+        if (techScore > 0)
           _HeroScoreCircle(
             score: techScore,
             color: AppTheme.primaryBlue,
             kind: _ScoreKind.tech,
           ),
-          const SizedBox(height: 8),
+        // Eşleşme puanı YALNIZCA hesaplanabiliyorsa gösterilir. Quiz
+        // tamamlanmadan (kullanıcı tanınmadan) localMatchScore null döner →
+        // eşleşme halkası HİÇ gösterilmez (kullanıcı isteği: "quizsiz puan yok").
+        if (fitScore != null) ...[
+          if (techScore > 0) const SizedBox(height: 8),
+          _HeroScoreCircle(
+            score: fitScore,
+            color: fitScore >= 80
+                ? AppTheme.scoreExcellent
+                : fitScore >= 60
+                ? AppTheme.warning
+                : AppTheme.error,
+            kind: _ScoreKind.match,
+          ),
         ],
-        _HeroScoreCircle(
-          score: fitScore ?? 0,
-          color: fitScore == null
-              ? AppTheme.slate500
-              : fitScore >= 80
-              ? AppTheme.scoreExcellent
-              : fitScore >= 60
-              ? AppTheme.warning
-              : AppTheme.error,
-          kind: _ScoreKind.match,
-          dimmed: fitScore == null,
-        ),
       ],
     );
   }
@@ -374,12 +375,10 @@ class _HeroScoreCircle extends StatefulWidget {
   final int score;
   final Color color;
   final _ScoreKind kind;
-  final bool dimmed;
   const _HeroScoreCircle({
     required this.score,
     required this.color,
     required this.kind,
-    this.dimmed = false,
   });
 
   @override
@@ -513,7 +512,6 @@ class _HeroScoreCircleState extends State<_HeroScoreCircle> {
   @override
   Widget build(BuildContext context) {
     final color = widget.color;
-    final dimmed = widget.dimmed;
     return GestureDetector(
       key: _key,
       onTap: _showTooltip,
@@ -524,7 +522,7 @@ class _HeroScoreCircleState extends State<_HeroScoreCircle> {
           color: Colors.white.withValues(alpha: 0.94),
           shape: BoxShape.circle,
           border: Border.all(
-            color: color.withValues(alpha: dimmed ? 0.22 : 0.45),
+            color: color.withValues(alpha: 0.45),
             width: 1,
           ),
           boxShadow: [
