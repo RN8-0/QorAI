@@ -390,10 +390,7 @@ class _AnalysisHistoryScreenState extends ConsumerState<AnalysisHistoryScreen>
               it['productName']?.toString() ?? (_isTr ? 'Ürün' : 'Product'),
           date: _formatDate(it['timestamp']?.toString()),
           score: (it['score'] as num?)?.toDouble() ?? 0,
-          onTap: () {
-            final pid = it['productId']?.toString();
-            if (pid != null && pid.isNotEmpty) context.push('/product/$pid');
-          },
+          onTap: () => _openProduct(it),
           onDelete: () => _delete(
             it,
             pendingProductAnalysisHistoryProvider,
@@ -401,6 +398,29 @@ class _AnalysisHistoryScreenState extends ConsumerState<AnalysisHistoryScreen>
           ),
         ),
     ]);
+  }
+
+  /// Ürün analizine dokununca ÜRÜN SAYFASINA değil, DOĞRUDAN kaydedilen AI
+  /// analizine (bire bir aynı rapor) gider. Rapor JSON'u varsa salt-okunur
+  /// AiReportView ile açılır; yoksa (eski kayıt) ürün sayfasına düşer.
+  void _openProduct(Map<String, dynamic> item) {
+    final report = item['report'];
+    if (report is Map) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => _SavedReportScreen(
+            kind: 'productFull',
+            title:
+                item['productName']?.toString() ??
+                (_isTr ? 'Ürün analizi' : 'Product analysis'),
+            report: Map<String, dynamic>.from(report),
+          ),
+        ),
+      );
+      return;
+    }
+    final pid = item['productId']?.toString();
+    if (pid != null && pid.isNotEmpty) context.push('/product/$pid');
   }
 
   // ── Karşılaştırmalar ──

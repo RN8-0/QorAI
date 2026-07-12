@@ -56,7 +56,12 @@ class PbDataSource {
   static const _linkHistoryCategory = 'link_history';
   static const _subscriptionHistoryCategory = 'subscription_history';
   static const _productHistoryCategory = 'product_history';
-  static const _compareHistoryCategory = 'compare_history';
+  // Web ile BİRE BİR senkron: karşılaştırma geçmişi web'de "comparison_history"
+  // kategorisiyle yazılır. App eskiden "compare_history" kullanıyordu → yeni
+  // kayıtlar web-uyumlu kategoriyle yazılır, okuma her iki kategoriyi de kapsar
+  // (eski app kayıtları kaybolmasın).
+  static const _compareHistoryCategory = 'comparison_history';
+  static const _compareHistoryCategoryLegacy = 'compare_history';
 
   // ─── Local search result cache (recent queries, max 30, 5 min TTL) ───
   static final Map<String, ({List<ProductModel> results, DateTime time})>
@@ -631,7 +636,7 @@ class PbDataSource {
                 page: 1,
                 perPage: 50,
                 filter:
-                    'userId = "$uid" && category = "$_compareHistoryCategory" && url = "$signature"',
+                    'userId = "$uid" && (category = "$_compareHistoryCategory" || category = "$_compareHistoryCategoryLegacy") && url = "$signature"',
               );
           for (final item in existing.items) {
             await _pb.collection(_savedAnalysesCollection).delete(item.id);
@@ -692,7 +697,8 @@ class PbDataSource {
           .getList(
             page: 1,
             perPage: 50,
-            filter: 'userId = "$uid" && category = "$_compareHistoryCategory"',
+            filter:
+                'userId = "$uid" && (category = "$_compareHistoryCategory" || category = "$_compareHistoryCategoryLegacy")',
             sort: '-savedAt,-created',
           );
       return result.items.map(_mapCompareHistoryRecord).take(40).toList();
