@@ -713,7 +713,19 @@ class _MainShellState extends ConsumerState<MainShell>
                 ),
               );
               final hideNavBar = ref.watch(hideNavBarProvider);
-              final effectiveHideNavBar = isBrowseRoute || hideNavBar;
+              // Karşılaştırma sekmesinde (index 1) aktif bir karşılaştırma
+              // (2+ ürün) görüntülenirken alt bar KESİN gizlenir — compare_screen'in
+              // post-frame hideNavBar sinyaline bağlı kalmadan doğrudan burada
+              // kontrol edilir (kullanıcı isteği: compare ekranında alt bar olmasın).
+              final comparingActive =
+                  currentIndex == 1 &&
+                  ref.watch(
+                    compareSessionProvider.select(
+                      (s) => (s.comparedProducts?.length ?? 0) >= 2,
+                    ),
+                  );
+              final effectiveHideNavBar =
+                  isBrowseRoute || hideNavBar || comparingActive;
               if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!mounted) return;
