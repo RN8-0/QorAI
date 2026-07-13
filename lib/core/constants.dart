@@ -121,8 +121,8 @@ class AppConstants {
   }
 
   // Premium Pricing (3-day free trial on both plans)
-  static const double monthlyProPrice = 3.99;
-  static const double yearlyProPrice = 19.99;
+  static const double monthlyProPrice = 6.99;
+  static const double yearlyProPrice = 39.99;
   static const int trialDays = 3;
 
   // App Store (iOS) Subscription Product IDs — must match App Store Connect exactly

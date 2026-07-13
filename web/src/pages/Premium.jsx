@@ -24,7 +24,7 @@ function plans(L) {
     },
     {
       name: 'Pro',
-      price: '$3.99',
+      price: '$6.99',
       cadence: L('monthly', 'aylık', 'monatlich'),
       cta: L('Get Pro', 'Pro’ya geç', 'Pro aktivieren'),
       featured: true,
@@ -39,7 +39,7 @@ function plans(L) {
     },
     {
       name: 'Pro Yearly',
-      price: '$19.99',
+      price: '$39.99',
       cadence: L('yearly', 'yıllık', 'jährlich'),
       cta: L('Save yearly', 'Yıllık al', 'Jährlich sparen'),
       badge: L('Best value', 'En avantajlı', 'Bester Wert'),
