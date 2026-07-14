@@ -1011,7 +1011,16 @@ const SUB_CATEGORY = {
   // Figma, DaVinci etc. all compare against each other.
   'adobe creative cloud': 'productivity', canva: 'productivity', figma: 'productivity',
   'microsoft 365': 'productivity', 'office 365': 'productivity', notion: 'productivity',
-  'google workspace': 'productivity', hostinger: 'other',
+  'google workspace': 'productivity',
+  // Web hosting / domain / site services — ONE shared category so Hostinger,
+  // Cloudflare, GoDaddy etc. compare against each other (app parity: 'web-hosting').
+  // Previously hostinger was 'other' and Cloudflare was absent → mixed-category
+  // rejection of an obviously valid comparison.
+  hostinger: 'hosting', cloudflare: 'hosting', godaddy: 'hosting', namecheap: 'hosting',
+  bluehost: 'hosting', siteground: 'hosting', hostgator: 'hosting', ionos: 'hosting',
+  dreamhost: 'hosting', wix: 'hosting', squarespace: 'hosting', wordpress: 'hosting',
+  'wordpress.com': 'hosting', vercel: 'hosting', netlify: 'hosting', digitalocean: 'hosting',
+  kinsta: 'hosting', porkbun: 'hosting', wpengine: 'hosting', 'wp engine': 'hosting',
   'xbox game pass': 'gaming', 'playstation plus': 'gaming', 'ps plus': 'gaming',
   'ea play': 'gaming', 'geforce now': 'gaming', 'nintendo switch online': 'gaming',
   'ubisoft+': 'gaming', 'apple arcade': 'gaming',
@@ -1026,6 +1035,7 @@ export function subscriptionCategory(name) {
 const AI_CAT_TO_LOCAL = {
   'video-streaming': 'video', 'music-streaming': 'music', gaming: 'gaming',
   'ai-tools': 'ai', 'cloud-storage': 'cloud', productivity: 'productivity',
+  'web-hosting': 'hosting', hosting: 'hosting',
   bundles: 'bundles', news: 'news', fitness: 'fitness', education: 'education', other: 'other',
 };
 export function normalizeSubscriptionCategoryKey(value) {
@@ -1065,7 +1075,12 @@ const SUB_DISPLAY = {
   icloud: 'iCloud+', 'icloud+': 'iCloud+', 'google one': 'Google One', dropbox: 'Dropbox', onedrive: 'OneDrive',
   pcloud: 'pCloud', mega: 'MEGA',
   'adobe creative cloud': 'Adobe Creative Cloud', canva: 'Canva', 'microsoft 365': 'Microsoft 365',
-  'office 365': 'Microsoft 365', notion: 'Notion', 'google workspace': 'Google Workspace', hostinger: 'Hostinger',
+  'office 365': 'Microsoft 365', notion: 'Notion', 'google workspace': 'Google Workspace',
+  hostinger: 'Hostinger', cloudflare: 'Cloudflare', godaddy: 'GoDaddy', namecheap: 'Namecheap',
+  bluehost: 'Bluehost', siteground: 'SiteGround', hostgator: 'HostGator', ionos: 'IONOS',
+  dreamhost: 'DreamHost', wix: 'Wix', squarespace: 'Squarespace', wordpress: 'WordPress.com',
+  'wordpress.com': 'WordPress.com', vercel: 'Vercel', netlify: 'Netlify', digitalocean: 'DigitalOcean',
+  kinsta: 'Kinsta', porkbun: 'Porkbun', wpengine: 'WP Engine', 'wp engine': 'WP Engine',
   'xbox game pass': 'Xbox Game Pass', 'playstation plus': 'PlayStation Plus', 'ps plus': 'PlayStation Plus',
   'ea play': 'EA Play', 'geforce now': 'GeForce Now', 'nintendo switch online': 'Nintendo Switch Online',
   'ubisoft+': 'Ubisoft+', 'apple arcade': 'Apple Arcade',
