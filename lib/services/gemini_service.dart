@@ -291,7 +291,12 @@ class GeminiService implements AIService {
         ? researchedTitle
         : effectiveTitle;
 
-    // For known e-commerce domains, default is_product to true
+    // Known e-commerce domains (Trendyol, Hepsiburada, Amazon…) → a pasted link
+    // IS a product page. The AI sometimes returns is_product=false when it can't
+    // scrape/ground the page (Trendyol blocks bots) — that wrongly rejected real
+    // products. So for e-commerce domains we FORCE is_product=true; the AI's
+    // judgement is only used for non-shopping domains. The one exception stays:
+    // an Amazon ASIN whose identity couldn't be resolved is still rejected.
     final isEcommerce = _isEcommerceDomain(url);
     final hasUnresolvedAmazonIdentity =
         amazonProductId != null &&
@@ -299,7 +304,7 @@ class GeminiService implements AIService {
         !researchConfirmed;
     final isProduct = hasUnresolvedAmazonIdentity
         ? false
-        : (response['is_product'] as bool? ?? isEcommerce);
+        : (isEcommerce ? true : (response['is_product'] as bool? ?? false));
 
     return LinkAnalysisResult(
       url: url,

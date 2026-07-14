@@ -197,6 +197,55 @@ class _MainShellState extends ConsumerState<MainShell>
     }
   }
 
+  // Link KARŞILAŞTIRMA akışı (2+ link) ayrı bir provider (compareAnalysisProvider)
+  // kullanıyor; eskiden hub'a HİÇ beslenmiyordu → çoklu-link analizinde Q butonu
+  // spinner'ı ve chat bildirimi gelmiyordu (kullanıcı bug'ı). Tek-link ile aynı
+  // 'link' akışına beslenir (linkPaste ekranı, tabIndex 2).
+  void _feedHubCompare(
+    AnalysisHubNotifier hub,
+    CompareAnalysisState? prev,
+    CompareAnalysisState next,
+    bool isTr,
+  ) {
+    const flow = AnalysisFlowKind.link;
+    const id = 'link';
+    final label = isTr ? 'Karşılaştırma' : 'Comparison';
+    switch (next.phase) {
+      case ComparePhase.analyzingFirst:
+      case ComparePhase.analyzing:
+        hub.setBusy(flow, true);
+        hub.clearNotice(flow, id: id);
+      case ComparePhase.quiz:
+        hub.setBusy(flow, false);
+        if (prev?.phase != ComparePhase.quiz) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.quiz,
+              label: label,
+              tabIndex: 2,
+            ),
+          );
+        }
+      case ComparePhase.done:
+        hub.setBusy(flow, false);
+        if (prev?.phase != ComparePhase.done) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.report,
+              label: label,
+              tabIndex: 2,
+            ),
+          );
+        }
+      case ComparePhase.idle:
+        hub.setBusy(flow, false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -638,6 +687,11 @@ class _MainShellState extends ConsumerState<MainShell>
     ref.listen<LinkQuizState>(linkQuizProvider, (prev, next) {
       if (!mounted) return;
       _feedHubLink(hub, prev, next, isTr);
+    });
+    // Link KARŞILAŞTIRMA akışı (2+ link) → aynı 'link' hub akışına besle.
+    ref.listen<CompareAnalysisState>(compareAnalysisProvider, (prev, next) {
+      if (!mounted) return;
+      _feedHubCompare(hub, prev, next, isTr);
     });
     // Ürün akışı: MOTOR burada koşar (shell her zaman canlı) + hub'a besler.
     ref.listen<ProductAnalysisState>(productAnalysisProvider, (prev, next) {

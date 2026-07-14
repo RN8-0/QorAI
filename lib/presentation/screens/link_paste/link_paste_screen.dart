@@ -189,18 +189,22 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
         compare.phase != ComparePhase.idle) {
       return;
     }
-    // Herhangi bir alan zaten doluysa teklif etme.
-    final anyFilled = _compareControllers
-        .take(_visibleCompareFields)
-        .any((c) => c.text.trim().isNotEmpty);
-    if (anyFilled) return;
-
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final url = _extractUrlCandidate(data?.text ?? '');
     if (url == null) return;
-    if (url == _lastClipboardPrompt) return; // bu linki zaten sormuştuk
-    _lastClipboardPrompt = url;
     if (!mounted) return;
+    // Bu link zaten bir alanda varsa teklif etme (aynı linki iki kez ekleme).
+    final alreadyPresent = _compareControllers.any(
+      (c) => _extractUrlCandidate(c.text) == url,
+    );
+    if (alreadyPresent) return;
+    // Yapıştırılacak BOŞ alan yoksa (4/4 dolu) teklif etme.
+    if (_compareControllers.every((c) => c.text.trim().isNotEmpty)) return;
+    if (url == _lastClipboardPrompt) return; // aynı linki tekrar tekrar sorma
+    // KÖK NEDEN (kullanıcı bug'ı): eskiden herhangi bir alan doluysa HİÇ teklif
+    // edilmiyordu → "yapıştır bildirimi yalnız ilk link için geliyor". Artık
+    // panoda FARKLI bir link olunca sıradaki boş alana yapıştırma teklif edilir.
+    _lastClipboardPrompt = url;
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();
@@ -240,7 +244,14 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
               onPressed: () {
                 messenger.hideCurrentSnackBar();
                 if (!mounted) return;
-                final controller = _compareControllers.first;
+                // İlk BOŞ alana yapıştır (dolu alan varsa üstüne yazma → çoklu
+                // link karşılaştırması için sıradaki alana ekle).
+                final idx = _compareControllers.indexWhere(
+                  (c) => c.text.trim().isEmpty,
+                );
+                final controller = idx >= 0
+                    ? _compareControllers[idx]
+                    : _compareControllers.first;
                 controller.text = url;
                 controller.selection = TextSelection.collapsed(
                   offset: url.length,

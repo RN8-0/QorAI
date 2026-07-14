@@ -2912,12 +2912,19 @@ class _SubResultView extends StatelessWidget {
                             color: context.textTertiaryColor,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            _categoryLabel(context, category),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: context.textTertiaryColor,
-                              fontWeight: FontWeight.w500,
+                          // Flexible + ellipsis: uzun AI kategori metni ("Profesyonel
+                          // Video Düzenleme ve Post-Prodüksiyon") satırı taşırıp skor
+                          // çemberinin altına giriyordu (RenderFlex overflow).
+                          Flexible(
+                            child: Text(
+                              _categoryLabel(context, category),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                color: context.textTertiaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
