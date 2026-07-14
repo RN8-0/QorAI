@@ -516,8 +516,8 @@ function buildConclusion(lang, verdict, faq) {
   return parts.join('\n');
 }
 
-async function genOne(cat, existing, topic = null) {
-  if (!FORCE && existing) {
+async function genOne(cat, existing, topic = null, force = FORCE) {
+  if (!force && existing) {
     const ageDays = (Date.now() - Date.parse(existing.updated || 0)) / 86400000;
     if (ageDays < MAX_AGE_DAYS) return { cat, status: 'skip' };
   }
@@ -610,7 +610,9 @@ async function runNext(existing) {
     .sort((a, b) => Date.parse(a[2].updated || 0) - Date.parse(b[2].updated || 0));
   if (!published.length) { console.log('[next] nothing to refresh.'); return; }
   const [key, topic, rec] = published[0];
-  const r = await genOne(key, DRY ? null : rec, topic); // --dry: taze üret, yazma
+  // Tazeleme: en eskiyi KOŞULSUZ yeniden üret (force) — cadence değişse bile
+  // 30-gün eşiğine takılıp sessizce durmasın.
+  const r = await genOne(key, DRY ? null : rec, topic, true); // --dry: taze üret, yazma
   console.log(`[next] refresh ${key}: ${r.status}`);
   if (r.status === 'dry') printDry(topic, r.rec);
 }
