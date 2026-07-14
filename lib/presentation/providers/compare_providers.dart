@@ -1410,12 +1410,18 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     );
     String? categoryKey = GeminiService.subscriptionCategoryKey(trimmed);
 
-    // Unknown service — ask AI
+    // Unknown service — ask AI (with the current selection as context so it's
+    // grouped consistently: a new host/VPN lands in the SAME bucket as siblings).
     if (displayName == null || categoryKey == null) {
       try {
         final result = await _gemini.resolveSubscriptionSelection(
           rawNames: [trimmed],
           language: lang,
+          contextNames: existingDisplayNames,
+          contextCategory: chipCategoryMap.values.firstWhere(
+            (k) => k.trim().isNotEmpty,
+            orElse: () => '',
+          ),
         );
         if (result.invalidNames.isNotEmpty || result.normalizedNames.isEmpty) {
           return ChipAddResult(

@@ -1015,6 +1015,11 @@ MUST contain EXACTLY $questionCount items:
   Future<SubscriptionResolutionResult> resolveSubscriptionSelection({
     required List<String> rawNames,
     required String language,
+    // Already-selected services (+ their locked category) so an unknown input is
+    // grouped CONSISTENTLY with them — otherwise each service is categorised in
+    // isolation and same-type services can land in different buckets.
+    List<String> contextNames = const [],
+    String? contextCategory,
   }) async {
     final cleanedNames = rawNames
         .map((name) => name.trim())
@@ -1046,6 +1051,12 @@ MUST contain EXACTLY $questionCount items:
 
     if (unknownNames.isNotEmpty) {
       final langName = _languageName(language);
+      final ctx = contextNames.where((n) => n.trim().isNotEmpty).toList();
+      final contextLine = ctx.isEmpty
+          ? ''
+          : '\n\nCONTEXT — the user is already comparing: ${ctx.join(', ')}'
+                '${(contextCategory?.trim().isNotEmpty ?? false) ? ' (category: ${contextCategory!.trim()})' : ''}.'
+                '\nIf an input is the SAME real-world type as those, give it the SAME category. Only pick a different category when it truly is a different type.';
       final responseText = await _rawRequest(
         {
           'contents': [
@@ -1055,15 +1066,20 @@ MUST contain EXACTLY $questionCount items:
                   'text':
                       '''
 You are Qor AI's subscription validation engine.
-Classify whether each input below is a real subscription service.
+Classify whether each input below is a real subscription/service or paid digital app, software or platform.
 
 Rules:
-- Accept only real subscription-based services, memberships, or paid digital platforms.
-- Reject links, profanity, random words, products, and unrelated text.
-- If an input is a typo but clearly maps to a known subscription, normalize it.
-- Use one category only: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
+- Accept real subscription services, memberships, paid digital platforms, and paid software/apps (incl. professional/creative tools).
+- Reject links, profanity, random/gibberish words, physical products/hardware, and unrelated text.
+- If an input is a typo or alternate spelling that clearly maps to a known service, normalize it (e.g. "adobe da vinci", "davinci", "da vinci resolve" → "DaVinci Resolve").
+- Category — choose EXACTLY ONE from: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, web-hosting, vpn, news, fitness, education, bundles, other.
+- Group like-for-like services into the SAME category so they compare cleanly:
+  • web-hosting = web hosting, domain registrars, CDN/DNS, website builders (Hostinger, Cloudflare, GoDaddy, Namecheap, Vercel, Netlify, Wix, Squarespace, DigitalOcean).
+  • vpn = VPN and privacy services (NordVPN, ExpressVPN, Surfshark, Proton VPN, Mullvad).
+  • productivity = ALL design/creative/video-editing/office/professional software (Adobe, Photoshop, Premiere, DaVinci Resolve, Final Cut, Figma, Canva, Microsoft 365, Notion).
+  • Prefer a specific category; use "other" ONLY when nothing above fits.
 - "display_name" must be the clean branded service name.
-- "reason" must be short and in $langName.
+- "reason" must be short and in $langName.$contextLine
 
 Return ONLY valid JSON:
 {

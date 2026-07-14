@@ -2381,6 +2381,8 @@ class _SubResultView extends StatelessWidget {
         return _txt(context, tr: 'Paket Abonelik', en: 'Bundle');
       case 'web-hosting':
         return _txt(context, tr: 'Web Hosting / Alan Adı', en: 'Web Hosting & Domains');
+      case 'vpn':
+        return _txt(context, tr: 'VPN / Gizlilik', en: 'VPN & Privacy');
       default:
         return raw;
     }

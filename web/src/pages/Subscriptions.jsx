@@ -358,7 +358,7 @@ export default function Subscriptions() {
     setErr('');
     setAdding(true);
     try {
-      const res = await validateSubscriptionInput(v, selected, lang);
+      const res = await validateSubscriptionInput(v, selected, lang, activeCategory() || '');
       if (res.error) { setErr(res.error); return; }
       const name = res.displayName || v;
       if (selected.some((s) => s.trim().toLowerCase() === name.toLowerCase())) {

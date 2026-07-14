@@ -1035,7 +1035,7 @@ export function subscriptionCategory(name) {
 const AI_CAT_TO_LOCAL = {
   'video-streaming': 'video', 'music-streaming': 'music', gaming: 'gaming',
   'ai-tools': 'ai', 'cloud-storage': 'cloud', productivity: 'productivity',
-  'web-hosting': 'hosting', hosting: 'hosting',
+  'web-hosting': 'hosting', hosting: 'hosting', vpn: 'vpn',
   bundles: 'bundles', news: 'news', fitness: 'fitness', education: 'education', other: 'other',
 };
 export function normalizeSubscriptionCategoryKey(value) {
@@ -1119,24 +1119,33 @@ function subValidationMessages(lang) {
   };
 }
 
-function subValidationPrompt(lang) {
+function subValidationPrompt(lang, contextNames = [], contextCategory = '') {
   const langName = languageName(lang);
+  const ctx = (contextNames || []).map((n) => String(n || '').trim()).filter(Boolean);
+  const contextLine = ctx.length
+    ? `\n\nCONTEXT — the user is already comparing: ${ctx.join(', ')}${
+      contextCategory ? ` (category: ${contextCategory})` : ''}.\nIf the input is the SAME real-world type as those, give it the SAME category. Only pick a different category when it truly is a different type.`
+    : '';
   return `You are Qor AI's subscription validation engine.
 Decide whether the input below is a real digital subscription/service OR a real paid digital app, software or platform a person can subscribe to or pay for.
 
 ACCEPT (is_subscription = true):
-- Streaming, music, gaming, AI tools, cloud storage, news, fitness, education services.
+- Streaming, music, gaming, AI tools, cloud storage, web hosting/domains, VPN, news, fitness, education services.
 - Paid digital software/apps and professional/creative tools — e.g. Adobe, Photoshop, Premiere Pro, Canva, Figma, DaVinci Resolve, Final Cut, Microsoft 365, Notion, ChatGPT Plus, Xbox Game Pass.
-- If the input is an obvious typo of a known service, normalize it.
+- If the input is a typo or alternate spelling of a known service, normalize it (e.g. "adobe da vinci", "davinci", "da vinci resolve" → "DaVinci Resolve").
 
 REJECT (is_subscription = false):
 - Random/gibberish text, profanity, and generic everyday words.
 - Physical products and hardware (phones, cars, food, devices like IQOS).
 - Links/URLs and unrelated text.
 
-Category — choose exactly one: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, bundles, news, fitness, education, other.
-Put ALL design / creative / video-editing / professional software under "productivity" (so Adobe, Canva, Figma, DaVinci Resolve group together).
-"display_name" must be the clean branded service name. "reason" must be short and in ${langName}.
+Category — choose EXACTLY ONE: video-streaming, music-streaming, gaming, ai-tools, cloud-storage, productivity, web-hosting, vpn, news, fitness, education, bundles, other.
+Group like-for-like services into the SAME category so they compare cleanly:
+- web-hosting = web hosting, domain registrars, CDN/DNS, website builders (Hostinger, Cloudflare, GoDaddy, Namecheap, Vercel, Netlify, Wix, Squarespace, DigitalOcean).
+- vpn = VPN and privacy services (NordVPN, ExpressVPN, Surfshark, Proton VPN, Mullvad).
+- productivity = ALL design / creative / video-editing / office / professional software (Adobe, Canva, Figma, DaVinci Resolve, Final Cut, Microsoft 365, Notion).
+- Prefer a specific category; use "other" ONLY when nothing above fits.
+"display_name" must be the clean branded service name. "reason" must be short and in ${langName}.${contextLine}
 
 Return ONLY valid JSON:
 { "is_subscription": true|false, "display_name": "string or null", "category": "string or null", "reason": "string" }`;
@@ -1144,7 +1153,7 @@ Return ONLY valid JSON:
 
 // Validate a single typed subscription name before adding it as a chip.
 // Returns { displayName, category } when valid, or { error } when not.
-export async function validateSubscriptionInput(rawName, existingNames = [], language = 'en') {
+export async function validateSubscriptionInput(rawName, existingNames = [], language = 'en', existingCategory = '') {
   const msg = subValidationMessages(language);
   const trimmed = String(rawName || '').trim();
   if (!trimmed) return { error: msg.empty };
@@ -1169,7 +1178,7 @@ export async function validateSubscriptionInput(rawName, existingNames = [], lan
   let res;
   try {
     res = await askQorAiJson({
-      system: subValidationPrompt(language),
+      system: subValidationPrompt(language, existingNames, existingCategory),
       user: JSON.stringify({ input: trimmed }),
       maxOutputTokens: 512,
     });
