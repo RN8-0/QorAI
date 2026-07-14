@@ -2728,6 +2728,119 @@ Rules:
       category: 'music-streaming',
       context: _subscriptionContext['tidal']!,
     ),
+    // Web hosting / domain / site services. These share ONE category so they can
+    // be compared with each other (Hostinger vs Cloudflare vs GoDaddy…). Without
+    // a local entry they fell through to AI resolution, which tagged each one
+    // differently (hosting vs CDN vs domain) and the same-category check rejected
+    // an obviously valid comparison.
+    'hostinger': const _SubscriptionCatalogEntry(
+      displayName: 'Hostinger',
+      category: 'web-hosting',
+      context:
+          'Web hosting and domain provider: shared/cloud/VPS hosting, free domain, SSL, website builder, email hosting.',
+    ),
+    'cloudflare': const _SubscriptionCatalogEntry(
+      displayName: 'Cloudflare',
+      category: 'web-hosting',
+      context:
+          'Web performance and security: CDN, DDoS protection, managed DNS, SSL, domain registration, Zero Trust, Workers edge compute.',
+    ),
+    'godaddy': const _SubscriptionCatalogEntry(
+      displayName: 'GoDaddy',
+      category: 'web-hosting',
+      context:
+          'Domain registrar and web host: domains, shared/WordPress hosting, website builder, business email, SSL.',
+    ),
+    'namecheap': const _SubscriptionCatalogEntry(
+      displayName: 'Namecheap',
+      category: 'web-hosting',
+      context:
+          'Domain registrar and hosting: low-cost domains, shared/WordPress hosting, SSL, private email, VPN.',
+    ),
+    'bluehost': const _SubscriptionCatalogEntry(
+      displayName: 'Bluehost',
+      category: 'web-hosting',
+      context:
+          'Web hosting: shared/WordPress/VPS hosting, free domain, SSL, officially WordPress-recommended host.',
+    ),
+    'siteground': const _SubscriptionCatalogEntry(
+      displayName: 'SiteGround',
+      category: 'web-hosting',
+      context:
+          'Managed web hosting: fast WordPress/cloud hosting, daily backups, SSL, staging, strong support.',
+    ),
+    'hostgator': const _SubscriptionCatalogEntry(
+      displayName: 'HostGator',
+      category: 'web-hosting',
+      context:
+          'Web hosting: shared/cloud/VPS/dedicated hosting, free domain, website builder, unmetered bandwidth.',
+    ),
+    'ionos': const _SubscriptionCatalogEntry(
+      displayName: 'IONOS',
+      category: 'web-hosting',
+      context:
+          'Web hosting and domains: hosting, domains, VPS, business email, website builder, cloud servers.',
+    ),
+    'dreamhost': const _SubscriptionCatalogEntry(
+      displayName: 'DreamHost',
+      category: 'web-hosting',
+      context:
+          'Web hosting: shared/VPS/dedicated and managed WordPress hosting, free domain, SSL, unlimited bandwidth.',
+    ),
+    'wix': const _SubscriptionCatalogEntry(
+      displayName: 'Wix',
+      category: 'web-hosting',
+      context:
+          'Website builder with hosting: drag-and-drop builder, hosting, domains, e-commerce, templates, SEO tools.',
+    ),
+    'squarespace': const _SubscriptionCatalogEntry(
+      displayName: 'Squarespace',
+      category: 'web-hosting',
+      context:
+          'Website builder with hosting: designer templates, hosting, domains, e-commerce, scheduling, email campaigns.',
+    ),
+    'wordpress': const _SubscriptionCatalogEntry(
+      displayName: 'WordPress.com',
+      category: 'web-hosting',
+      context:
+          'Website platform and hosting: WordPress.com managed hosting, domains, themes, plugins, e-commerce.',
+    ),
+    'vercel': const _SubscriptionCatalogEntry(
+      displayName: 'Vercel',
+      category: 'web-hosting',
+      context:
+          'Frontend cloud hosting: deploy web apps and sites, global edge network, serverless functions, preview deploys.',
+    ),
+    'netlify': const _SubscriptionCatalogEntry(
+      displayName: 'Netlify',
+      category: 'web-hosting',
+      context:
+          'Web hosting and deployment: static/JAMstack hosting, CDN, serverless functions, forms, CI/CD.',
+    ),
+    'digitalocean': const _SubscriptionCatalogEntry(
+      displayName: 'DigitalOcean',
+      category: 'web-hosting',
+      context:
+          'Cloud hosting: droplets (VPS), managed databases, app platform, Kubernetes, object storage.',
+    ),
+    'kinsta': const _SubscriptionCatalogEntry(
+      displayName: 'Kinsta',
+      category: 'web-hosting',
+      context:
+          'Managed WordPress hosting: fast Google Cloud hosting, staging, CDN, backups, premium support.',
+    ),
+    'porkbun': const _SubscriptionCatalogEntry(
+      displayName: 'Porkbun',
+      category: 'web-hosting',
+      context:
+          'Domain registrar: low-cost domains, free SSL, email/URL forwarding, DNS management, hosting.',
+    ),
+    'wpengine': const _SubscriptionCatalogEntry(
+      displayName: 'WP Engine',
+      category: 'web-hosting',
+      context:
+          'Managed WordPress hosting: performance-tuned WordPress hosting, staging, CDN, daily backups, security.',
+    ),
   };
 
   static const _subscriptionAliases = <String, String>{
@@ -2760,6 +2873,18 @@ Rules:
     'paramount plus': 'paramount plus',
     'ps+': 'ps plus',
     'ps plus': 'ps plus',
+    // Web hosting / domain — spaced or variant spellings → canonical catalog key
+    'cloud flare': 'cloudflare',
+    'go daddy': 'godaddy',
+    'name cheap': 'namecheap',
+    'blue host': 'bluehost',
+    'site ground': 'siteground',
+    'host gator': 'hostgator',
+    'dream host': 'dreamhost',
+    'digital ocean': 'digitalocean',
+    'word press': 'wordpress',
+    'wordpress com': 'wordpress',
+    'wp engine': 'wpengine',
   };
 
   static String normalizeSubscriptionLookupKey(String value) {

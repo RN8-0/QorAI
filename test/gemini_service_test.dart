@@ -75,5 +75,50 @@ DESCRIPTION: Lightweight tripod for cameras and phones.
         'music-streaming',
       );
     });
+
+    test('web hosting / domain services share one category (Hostinger vs '
+        'Cloudflare bug)', () {
+      // Regression: Hostinger + Cloudflare are both web/hosting services but were
+      // categorised differently by AI fallback → "different categories" error.
+      const hosts = [
+        'Hostinger',
+        'Cloudflare',
+        'GoDaddy',
+        'Namecheap',
+        'Bluehost',
+        'SiteGround',
+        'HostGator',
+        'IONOS',
+        'DreamHost',
+        'Wix',
+        'Squarespace',
+        'WordPress',
+        'Vercel',
+        'Netlify',
+        'DigitalOcean',
+        'Kinsta',
+        'Porkbun',
+        'WP Engine',
+      ];
+      for (final h in hosts) {
+        expect(
+          GeminiService.subscriptionCategoryKey(h),
+          'web-hosting',
+          reason: '$h should resolve to web-hosting',
+        );
+      }
+      // The exact reported pair must match each other.
+      expect(
+        GeminiService.subscriptionCategoryKey('Hostinger'),
+        GeminiService.subscriptionCategoryKey('Cloudflare'),
+      );
+      // Spaced/variant spellings resolve too.
+      expect(GeminiService.subscriptionCategoryKey('cloud flare'), 'web-hosting');
+      expect(GeminiService.subscriptionCategoryKey('go daddy'), 'web-hosting');
+      expect(
+        GeminiService.normalizeSubscriptionDisplayName('cloudflare'),
+        'Cloudflare',
+      );
+    });
   });
 }
