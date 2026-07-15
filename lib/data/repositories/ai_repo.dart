@@ -160,16 +160,21 @@ class AIRepository {
     }
   }
 
-  /// AI analizi başarısız olduğunda en iyi çaba sonucu: geçerli bir ürün URL'si
-  /// (çıplak ana sayfa DEĞİL) her zaman ürün olarak tanınır. Böylece backend
-  /// arızası "ürün tanınamadı" hatasına dönüşmez.
+  /// AI analizi başarısız olduğunda (ağ/kota/backend) en iyi çaba sonucu.
+  /// UYDURMA YASAK: yalnız metadata'dan GERÇEK bir ürün adı çekebildiysek ürün
+  /// kabul et (aksi halde AI olmadan spec uydurulur). Böylece backend arızası
+  /// yanlış/uydurma analize DÖNÜŞMEZ — tanımlanabilen ürünse geçer, değilse
+  /// dürüstçe reddedilir.
   LinkAnalysisResult _fallbackLinkResult(String url, OgMetadata metadata) {
-    var isBareHomepage = false;
-    try {
-      final uri = Uri.parse(url);
-      final path = uri.path.replaceAll(RegExp(r'/+$'), '');
-      isBareHomepage = path.isEmpty && uri.queryParameters.isEmpty;
-    } catch (_) {}
+    final title = metadata.title?.trim() ?? '';
+    final looksDomainOnly =
+        !title.contains(' ') &&
+        RegExp(r'^[a-z0-9.-]+\.[a-z]{2,}$', caseSensitive: false).hasMatch(title);
+    final hasRealIdentity =
+        title.isNotEmpty &&
+        !title.startsWith('Amazon ASIN') &&
+        !title.startsWith('Amazon ISBN') &&
+        !looksDomainOnly;
     return LinkAnalysisResult(
       url: url,
       metadata: metadata,
@@ -177,7 +182,7 @@ class AIRepository {
       aiAnalysis: '',
       category: null,
       analyzedAt: DateTime.now(),
-      isProduct: !isBareHomepage,
+      isProduct: hasRealIdentity,
     );
   }
 

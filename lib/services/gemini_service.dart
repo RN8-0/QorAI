@@ -219,11 +219,22 @@ class GeminiService implements AIService {
                       amazonProductId.toUpperCase(),
                     )));
         researchedTitle = evidence.productName;
+        // Web araştırması GERÇEK bir ürün adı döndürdüyse (placeholder/domain
+        // değil), KESİN doğrulanmasa bile analize besle. Amazon /dp/ASIN kısa
+        // linklerinin adını almanın tek yolu bu; beslemezsek AI yalnız ASIN'den
+        // yanlış ürün/spec UYDURUYOR (kullanıcı şikayeti). Bulamazsa placeholder
+        // kalır → downstream dürüstçe reddeder.
+        final researchNameIsReal =
+            (researchedTitle?.trim().isNotEmpty ?? false) &&
+            !researchedTitle!.startsWith('Amazon ASIN') &&
+            !researchedTitle.startsWith('Amazon ISBN') &&
+            !isDomainOnlyTitle(researchedTitle);
         if (researchConfirmed) {
           metaContext['researchConfidence'] = 'verified_identifier_match';
-          if (researchedTitle?.isNotEmpty ?? false) {
-            metaContext['title'] = researchedTitle;
-          }
+        }
+        if (researchNameIsReal) {
+          metaContext['title'] = researchedTitle;
+          metaContext['researchConfidence'] ??= 'name_match';
           if ((metaContext['price']?.isEmpty ?? true) &&
               (evidence.price?.isNotEmpty ?? false)) {
             metaContext['price'] = evidence.price;
@@ -286,19 +297,37 @@ class GeminiService implements AIService {
               : finalTitle)
         : finalTitle;
 
-    final resolvedProductTitle =
-        researchConfirmed && (researchedTitle?.isNotEmpty ?? false)
+    // Web araştırması gerçek bir ad bulduysa (kesin doğrulanmasa bile) onu
+    // kullan — placeholder/domain değilse. Amazon kısa linklerinde kimlik bundan
+    // gelir; yoksa effectiveTitle (çoğunlukla placeholder) → dürüst red.
+    final researchedRealTitle =
+        (researchedTitle?.trim().isNotEmpty ?? false) &&
+            !researchedTitle!.startsWith('Amazon ASIN') &&
+            !researchedTitle.startsWith('Amazon ISBN') &&
+            !isDomainOnlyTitle(researchedTitle)
         ? researchedTitle
-        : effectiveTitle;
+        : null;
+    final resolvedProductTitle = researchedRealTitle ?? effectiveTitle;
 
-    // PERMISSIVE ürün tanıma: kullanıcı bir linki ürün-link analizine
-    // YAPIŞTIRDIYSA o bir ürün linkidir — kısaltılmış (amzn.eu/ty.gl/a.co),
-    // Amazon /dp/ASIN veya bilinmeyen mağaza linkleri DAHİL. AI'nın
-    // "is_product=false" yargısı (sayfayı kazıyamadığında) ve "adı doğrulanamayan
-    // Amazon ASIN" kuralı GERÇEK ürünleri eliyordu (kullanıcı çok kızdı: "sadece
-    // amazon/trendyol değil TÜM ürün linkleri tanınmalı"). Artık YALNIZ çıplak
-    // ana sayfa linki (path boş / "/") reddedilir; diğer her URL kabul.
-    final isProduct = !_isBareHomepageUrl(url);
+    // Ürün tanıma — UYDURMA YASAK (web paritesi: tanıyamazsan reddet, spec
+    // uydurma). Bir linki kabul etmek için ürünün GERÇEK bir kimliği (adı)
+    // olmalı; yoksa AI ASIN'den yanlış ürün/spec uyduruyordu (kullanıcı: "kafadan
+    // sallamasyon, ekran kartı yanlış"). Kabul koşulu:
+    //   • gerçek ürün adı var (placeholder "Amazon ASIN…"/domain DEĞİL), VEYA
+    //   • bilinen e-ticaret domaini + AI ürün diyor.
+    // Reddedilen: çıplak ana sayfa; kimliği çözülemeyen ürün (uydurma yerine
+    // dürüst red). Gerçek ad HERHANGİ bir mağazadan gelebilir (slug/scrape/web
+    // araştırması) → "sadece amazon/trendyol" değil.
+    final title = resolvedProductTitle?.trim() ?? '';
+    final hasRealIdentity =
+        title.isNotEmpty &&
+        !title.startsWith('Amazon ASIN') &&
+        !title.startsWith('Amazon ISBN') &&
+        !isDomainOnlyTitle(title);
+    final aiSaysProduct = response['is_product'] as bool? ?? false;
+    final isProduct =
+        !_isBareHomepageUrl(url) &&
+        (hasRealIdentity || (_isEcommerceDomain(url) && aiSaysProduct));
 
     return LinkAnalysisResult(
       url: url,
@@ -349,6 +378,23 @@ class GeminiService implements AIService {
       final uri = Uri.parse(url);
       final path = uri.path.replaceAll(RegExp(r'/+$'), '');
       return path.isEmpty && (uri.queryParameters.isEmpty);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Returns true if the URL belongs to a known e-commerce domain.
+  static bool _isEcommerceDomain(String url) {
+    try {
+      final host = Uri.parse(url).host.toLowerCase();
+      const ecommerceDomains = [
+        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
+        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'dr.com',
+        'kitapyurdu', 'idefix', 'bkmkitap', 'epey.com', 'akakce',
+        'aliexpress', 'banggood', 'bestbuy', 'walmart', 'newegg',
+        'apple.com', 'samsung.com', 'mi.com',
+      ];
+      return ecommerceDomains.any((d) => host.contains(d));
     } catch (_) {
       return false;
     }

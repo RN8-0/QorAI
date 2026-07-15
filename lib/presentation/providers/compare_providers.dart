@@ -358,8 +358,8 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
         error: _appLang == 'tr'
-            ? 'ℹ️ Bu bağlantıdaki ürünü tanıyamadık. Lütfen bir ürün sayfasının bağlantısını yapıştırmayı deneyin.'
-            : 'ℹ️ We couldn\'t identify the product from this link. Please try pasting a product page URL.',
+            ? 'ℹ️ Bu bağlantıdaki ürünü tanıyamadık (kısaltılmış link olabilir). Yanlış bilgi göstermemek için analiz durduruldu. Ürün adının göründüğü TAM bağlantıyı yapıştırmayı deneyin.'
+            : 'ℹ️ We couldn\'t identify the product from this link (it may be a shortened link). Analysis was stopped to avoid showing wrong info. Try pasting the FULL product link where the product name is visible.',
       );
       return;
     }
@@ -805,8 +805,8 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
         .join('\n• ');
     final suffix = listed.isNotEmpty ? '\n\n• $listed' : '';
     return lang == 'tr'
-        ? '⚠️ ${hasMany ? '$invalidCount bağlantı ürün olarak tanınamadı.' : 'Bir bağlantı ürün olarak tanınamadı.'} Lütfen yalnızca ürün sayfası linkleriyle tekrar deneyin.$suffix'
-        : '⚠️ ${hasMany ? '$invalidCount links could not be identified as products.' : 'One link could not be identified as a product.'} Please retry using only product page URLs.$suffix';
+        ? '⚠️ ${hasMany ? '$invalidCount bağlantıdaki ürünü tanıyamadık.' : 'Şu bağlantıdaki ürünü tanıyamadık.'} Yanlış/uydurma bilgi göstermemek için durduruldu — ürün adının göründüğü TAM linki yapıştırıp tekrar deneyin.$suffix'
+        : '⚠️ ${hasMany ? 'We couldn\'t identify the products at $invalidCount links.' : 'We couldn\'t identify the product at this link.'} Stopped to avoid showing wrong/made-up info — paste the FULL link where the product name is visible and retry.$suffix';
   }
 
   static String buildCategoryMismatchMessage(String lang) {
