@@ -91,11 +91,20 @@ class AIRepository {
       // Step 2: AI analysis (enriched with metadata so the model knows
       //         what the product actually is without browsing the URL)
       debugPrint('[AIRepo] Starting AI analysis for: $analysisUrl');
-      final result =
-          await _aiService.analyzeLink(analysisUrl, user, metadata: metadata);
-      debugPrint(
-        '[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}',
-      );
+      // DAYANIKLI: AI çağrısı patlarsa (ağ/kota/backend) linki REDDETME —
+      // kullanıcı zaten ürün linki yapıştırdı. En iyi çabayla (metadata/slug)
+      // bir sonuç üret ki "ürün tanınamadı" hatası AI arızasından kaynaklanmasın.
+      LinkAnalysisResult result;
+      try {
+        result =
+            await _aiService.analyzeLink(analysisUrl, user, metadata: metadata);
+        debugPrint(
+          '[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}',
+        );
+      } catch (e) {
+        debugPrint('[AIRepo] AI analyzeLink failed → fallback recognize: $e');
+        result = _fallbackLinkResult(analysisUrl, metadata);
+      }
 
       // Merge metadata with AI result (fill in info AI didn't return from metadata)
       final enrichedResult = LinkAnalysisResult(
@@ -149,6 +158,27 @@ class AIRepository {
       debugPrint('[AIRepo] analyzeLink unexpected error: $e');
       return Failure(ServerException(message: e.toString()));
     }
+  }
+
+  /// AI analizi başarısız olduğunda en iyi çaba sonucu: geçerli bir ürün URL'si
+  /// (çıplak ana sayfa DEĞİL) her zaman ürün olarak tanınır. Böylece backend
+  /// arızası "ürün tanınamadı" hatasına dönüşmez.
+  LinkAnalysisResult _fallbackLinkResult(String url, OgMetadata metadata) {
+    var isBareHomepage = false;
+    try {
+      final uri = Uri.parse(url);
+      final path = uri.path.replaceAll(RegExp(r'/+$'), '');
+      isBareHomepage = path.isEmpty && uri.queryParameters.isEmpty;
+    } catch (_) {}
+    return LinkAnalysisResult(
+      url: url,
+      metadata: metadata,
+      aiScore: 0,
+      aiAnalysis: '',
+      category: null,
+      analyzedAt: DateTime.now(),
+      isProduct: !isBareHomepage,
+    );
   }
 
   /// AI question-answer - Section 7.2

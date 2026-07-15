@@ -793,11 +793,20 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
   static String buildUnrecognizedCompareProductsMessage(
     String lang, {
     required int invalidCount,
+    List<String> invalidUrls = const [],
   }) {
     final hasMany = invalidCount > 1;
+    // HANGİ linkin tanınmadığını göster (kullanıcı: "hangi link tanınmadı yazmıyor").
+    final listed = invalidUrls
+        .map((u) {
+          final trimmed = u.trim();
+          return trimmed.length > 60 ? '${trimmed.substring(0, 60)}…' : trimmed;
+        })
+        .join('\n• ');
+    final suffix = listed.isNotEmpty ? '\n\n• $listed' : '';
     return lang == 'tr'
-        ? '⚠️ ${hasMany ? '$invalidCount bağlantı ürün olarak tanınamadı.' : 'Bir bağlantı ürün olarak tanınamadı.'} Lütfen yalnızca ürün sayfası linkleriyle tekrar deneyin.'
-        : '⚠️ ${hasMany ? '$invalidCount links could not be identified as products.' : 'One link could not be identified as a product.'} Please retry using only product page URLs.';
+        ? '⚠️ ${hasMany ? '$invalidCount bağlantı ürün olarak tanınamadı.' : 'Bir bağlantı ürün olarak tanınamadı.'} Lütfen yalnızca ürün sayfası linkleriyle tekrar deneyin.$suffix'
+        : '⚠️ ${hasMany ? '$invalidCount links could not be identified as products.' : 'One link could not be identified as a product.'} Please retry using only product page URLs.$suffix';
   }
 
   static String buildCategoryMismatchMessage(String lang) {
@@ -845,6 +854,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
       }
 
       final results = await Future.wait(futures);
+      final invalidUrls = <String>[];
       for (int i = 0; i < results.length; i++) {
         switch (results[i]) {
           case Success<LinkAnalysisResult>(data: final d):
@@ -854,11 +864,13 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
             } else {
               debugPrint('[Compare] URL ${urls[i]} is not a product, skipping');
               invalidProductCount++;
+              invalidUrls.add(urls[i]);
               _updateStep(i, (s) => s.withError());
             }
           case Failure<LinkAnalysisResult>(error: final err):
             debugPrint('[Compare] URL ${urls[i]} failed: ${err.message}');
             invalidProductCount++;
+            invalidUrls.add(urls[i]);
             _updateStep(i, (s) => s.withError());
         }
       }
@@ -869,6 +881,7 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
           error: buildUnrecognizedCompareProductsMessage(
             lang,
             invalidCount: invalidProductCount,
+            invalidUrls: invalidUrls,
           ),
           errorKind: CompareErrorKind.unrecognizedProducts,
           errorCategories: const [],

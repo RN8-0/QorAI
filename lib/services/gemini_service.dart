@@ -292,20 +292,13 @@ class GeminiService implements AIService {
         : effectiveTitle;
 
     // PERMISSIVE ürün tanıma: kullanıcı bir linki ürün-link analizine
-    // YAPIŞTIRDIYSA o bir ürün linkidir — kısaltılmış (amzn.eu/ty.gl) veya
-    // bilinmeyen mağaza linkleri DAHİL. AI'nın "is_product=false" yargısı
-    // (sayfayı kazıyamadığında/gremeleyemediğinde) gerçek ürünleri yanlışlıkla
-    // eliyordu; kullanıcı net istedi: "tüm ürün linklerini kısaltma olsa dahi
-    // tanı". Bu yüzden VARSAYILAN kabul; yalnız 2 istisna reddedilir:
-    //   (1) kimliği çözülemeyen Amazon ASIN (bilinmeyen ürünü uydurmamak için),
-    //   (2) çıplak ana sayfa linki (path boş / "/") — ürün sayfası değil.
-    final hasUnresolvedAmazonIdentity =
-        amazonProductId != null &&
-        _isAmazonPlaceholderTitle(resolvedProductTitle) &&
-        !researchConfirmed;
-    final isProduct = hasUnresolvedAmazonIdentity
-        ? false
-        : !_isBareHomepageUrl(url);
+    // YAPIŞTIRDIYSA o bir ürün linkidir — kısaltılmış (amzn.eu/ty.gl/a.co),
+    // Amazon /dp/ASIN veya bilinmeyen mağaza linkleri DAHİL. AI'nın
+    // "is_product=false" yargısı (sayfayı kazıyamadığında) ve "adı doğrulanamayan
+    // Amazon ASIN" kuralı GERÇEK ürünleri eliyordu (kullanıcı çok kızdı: "sadece
+    // amazon/trendyol değil TÜM ürün linkleri tanınmalı"). Artık YALNIZ çıplak
+    // ana sayfa linki (path boş / "/") reddedilir; diğer her URL kabul.
+    final isProduct = !_isBareHomepageUrl(url);
 
     return LinkAnalysisResult(
       url: url,
@@ -359,11 +352,6 @@ class GeminiService implements AIService {
     } catch (_) {
       return false;
     }
-  }
-
-  static bool _isAmazonPlaceholderTitle(String? title) {
-    return title != null &&
-        (title.startsWith('Amazon ASIN') || title.startsWith('Amazon ISBN'));
   }
 
   /// Extract a human-readable product name from the URL path structure.
