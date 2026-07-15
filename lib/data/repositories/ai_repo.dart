@@ -61,32 +61,45 @@ class AIRepository {
     required UserEntity user,
   }) async {
     try {
+      // Step 0: Resolve mobile-app / short share links (amzn.eu/d/…, ty.gl/…,
+      // a.co/…) to their canonical product URL. These carry no product slug or
+      // ASIN, so all downstream extraction fails and the AI rejects a real
+      // product as "not found". Following the redirect recovers the full URL.
+      var analysisUrl = url;
+      if (_metadataService != null) {
+        analysisUrl = await _metadataService.resolveShareUrl(url);
+        if (analysisUrl != url) {
+          debugPrint('[AIRepo] Resolved short link $url → $analysisUrl');
+        }
+      }
+
       // Step 1: Fetch metadata (including image)
       OgMetadata metadata = const OgMetadata();
       if (_metadataService != null) {
         try {
-          metadata = await _metadataService.fetchMetadataForSite(url);
+          metadata = await _metadataService.fetchMetadataForSite(analysisUrl);
           debugPrint(
-            '[AIRepo] Metadata fetched for $url: title=${metadata.title}',
+            '[AIRepo] Metadata fetched for $analysisUrl: title=${metadata.title}',
           );
         } catch (e) {
           debugPrint(
-            '[AIRepo] Metadata fetch failed for $url: $e — continuing',
+            '[AIRepo] Metadata fetch failed for $analysisUrl: $e — continuing',
           );
         }
       }
 
       // Step 2: AI analysis (enriched with metadata so the model knows
       //         what the product actually is without browsing the URL)
-      debugPrint('[AIRepo] Starting AI analysis for: $url');
-      final result = await _aiService.analyzeLink(url, user, metadata: metadata);
+      debugPrint('[AIRepo] Starting AI analysis for: $analysisUrl');
+      final result =
+          await _aiService.analyzeLink(analysisUrl, user, metadata: metadata);
       debugPrint(
         '[AIRepo] AI analysis done: score=${result.aiScore}, category=${result.category}',
       );
 
       // Merge metadata with AI result (fill in info AI didn't return from metadata)
       final enrichedResult = LinkAnalysisResult(
-        url: url,
+        url: analysisUrl,
         metadata: OgMetadata(
           title: result.metadata.title ?? metadata.title,
           description: result.metadata.description ?? metadata.description,
@@ -105,7 +118,7 @@ class AIRepository {
       final link = UserLinkModel(
         id: '',
         userId: user.uid,
-        url: url,
+        url: analysisUrl,
         ogMetadata: OgMetadataModel(
           title: enrichedResult.metadata.title,
           description: enrichedResult.metadata.description,

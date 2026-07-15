@@ -22,6 +22,185 @@ class MetadataService {
   })  : _dio = dio,
         _cacheService = cacheService;
 
+  /// Mobile-app "share" / short-link hosts. Buttons like Amazon's "Share" or
+  /// Trendyol's "Paylaş" produce opaque short links (amzn.eu/d/…, ty.gl/…,
+  /// a.co/…) that carry no product slug or ASIN. Downstream extraction (slug,
+  /// ASIN, e-commerce domain detection) then fails and the AI wrongly rejects a
+  /// real product as "not found". These must be resolved to the canonical
+  /// product URL before analysis.
+  static const Set<String> _shareLinkHosts = {
+    // Amazon app / short share
+    'amzn.to', 'amzn.eu', 'amzn.asia', 'amzn.in', 'amzn.com', 'a.co',
+    // Trendyol app
+    'ty.gl', 'tyml.gl',
+    // Hepsiburada app
+    'hb.gy',
+    // AliExpress app
+    's.click.aliexpress.com', 'a.aliexpress.com', 'star.aliexpress.com',
+    // eBay
+    'ebay.us', 'ebay.to',
+    // Temu
+    'temu.to',
+    // Generic URL shorteners commonly used for product shares
+    'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'cutt.ly', 'rebrand.ly',
+    'shorturl.at', 'is.gd', 'ow.ly', 'buff.ly', 'spr.ly', 'trib.al',
+  };
+
+  /// Deep-link / attribution hosts that DON'T HTTP-redirect to the product
+  /// page — they resolve the app deep link client-side and embed the real web
+  /// URL inside a query parameter (e.g. Trendyol's ty.gl → *.adj.st with
+  /// `adjust_redirect=https%3A%2F%2Fwww.trendyol.com…`). These must be
+  /// unwrapped, not chased.
+  static const List<String> _deepLinkTrackerSuffixes = [
+    'adj.st', 'adjust.com', 'go.link', 'onelink.me', 'app.link', 'page.link',
+    'bnc.lt', 'tlnk.io', 'sng.link',
+  ];
+
+  /// Query-parameter names (in priority order) that attribution services use to
+  /// carry the real destination web URL.
+  static const List<String> _deepLinkUrlParams = [
+    'adjust_redirect', 'redirect', 'af_web_dp', 'af_dp', 'af_r',
+    r'$desktop_url', r'$fallback_url', r'$android_url', 'url', 'link',
+    'deep_link', 'deeplink', 'dl', 'destination', 'target',
+  ];
+
+  /// True when [url]'s host is a known short/share link that must be expanded.
+  static bool _isShareShortLink(String url) {
+    try {
+      final uri = Uri.parse(url);
+      final host = uri.host.toLowerCase().replaceFirst('www.', '');
+      if (_shareLinkHosts.contains(host)) return true;
+      // AliExpress path-based short links: aliexpress.com/e/_xxxxx
+      if (host.contains('aliexpress.com') && uri.path.startsWith('/e/')) {
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// True when [url] is an attribution/deep-link tracker (adj.st, onelink.me…).
+  static bool _isDeepLinkTracker(String url) {
+    try {
+      final host = Uri.parse(url).host.toLowerCase();
+      return _deepLinkTrackerSuffixes.any(
+        (s) => host == s || host.endsWith('.$s'),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// True when [value] is a plain http(s) web URL to a real (non-tracker,
+  /// non-short, non-asset) host — i.e. a usable product destination.
+  static bool _looksLikeWebUrl(String value) {
+    final lower = value.toLowerCase();
+    if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
+      return false;
+    }
+    // Skip embedded image/asset URLs (og:image and friends).
+    if (RegExp(r'\.(jpg|jpeg|png|webp|gif|svg)(\?|$)').hasMatch(lower)) {
+      return false;
+    }
+    try {
+      final u = Uri.parse(value);
+      if (u.host.isEmpty) return false;
+      return !_isShareShortLink(value) && !_isDeepLinkTracker(value);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Extract the real destination web URL embedded in a deep-link tracker URL.
+  static String? _unwrapDeepLink(String url) {
+    try {
+      final qp = Uri.parse(url).queryParameters;
+      for (final key in _deepLinkUrlParams) {
+        final v = qp[key];
+        if (v != null && _looksLikeWebUrl(v)) return v;
+      }
+      // Fallback: any query value that is a plain product web URL.
+      for (final v in qp.values) {
+        if (_looksLikeWebUrl(v)) return v;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Resolve a mobile-app / short share link to its canonical product URL.
+  /// Returns the original URL unchanged for normal (already-full) URLs or when
+  /// resolution fails, so callers can use the result unconditionally.
+  ///
+  /// Two mechanisms are combined: (1) HTTP redirects are walked without
+  /// downloading bodies — the moment a `Location` points at a real product host
+  /// we return it; this works even where the product page blocks bot scraping,
+  /// since the short-link service still returns a 301/302. (2) Attribution
+  /// deep-links (ty.gl → *.adj.st) don't redirect to the web page, so the real
+  /// URL is unwrapped from their query parameters instead.
+  Future<String> resolveShareUrl(String url) async {
+    if (!_isShareShortLink(url) && !_isDeepLinkTracker(url)) return url;
+
+    var current = url;
+    try {
+      for (var hop = 0; hop < 8; hop++) {
+        // Already at a deep-link tracker → unwrap the embedded web URL rather
+        // than chasing more redirects (adj.st won't 3xx to the product page).
+        if (_isDeepLinkTracker(current)) {
+          final unwrapped = _unwrapDeepLink(current);
+          if (unwrapped == null || unwrapped == current) break;
+          current = unwrapped;
+          if (!_isShareShortLink(current) && !_isDeepLinkTracker(current)) {
+            break;
+          }
+          continue;
+        }
+
+        final resp = await _dio.get(
+          current,
+          options: Options(
+            headers: {
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept':
+                  'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
+            },
+            followRedirects: false,
+            // Accept 2xx and 3xx without throwing so we can read `Location`.
+            validateStatus: (s) => s != null && s < 400,
+            receiveTimeout: const Duration(seconds: 8),
+            sendTimeout: const Duration(seconds: 8),
+          ),
+        );
+
+        final status = resp.statusCode ?? 0;
+        if (status >= 300 && status < 400) {
+          final location = resp.headers.value('location');
+          if (location == null || location.isEmpty) break;
+          final next = Uri.parse(current).resolve(location).toString();
+          if (next == current) break;
+          current = next;
+          // Reached a real product URL — stop before fetching its body.
+          if (!_isShareShortLink(current) && !_isDeepLinkTracker(current)) {
+            break;
+          }
+          continue;
+        }
+
+        // Non-redirect (200) — already at the destination page. `realUri`
+        // reflects any redirects Dio itself followed; prefer it when present.
+        final real = resp.realUri.toString();
+        if (real.isNotEmpty && real != current) current = real;
+        break;
+      }
+    } catch (_) {
+      // On any failure keep the original link; analysis still attempts it.
+      return url;
+    }
+    return current;
+  }
+
   /// Fetch OG Metadata from URL
   Future<OgMetadata> fetchMetadata(String url) async {
     // Cache check
