@@ -316,6 +316,11 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
   /// Step 1: Analyze link + validate product + generate quiz.
   Future<void> analyzeAndStartQuiz(String url, UserEntity user) async {
+    // Aynı anda tek analiz: başka bir analiz sürüyorsa engelle + chat'te uyar.
+    if (_ref.read(analysisHubProvider).isBusy) {
+      _ref.read(chatSessionProvider.notifier).notifyAnalysisBusy();
+      return;
+    }
     // Rate limit
     final limitResult = _ref
         .read(subscriptionServiceProvider)
@@ -1483,6 +1488,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     List<String> names, {
     bool skipResolution = false,
   }) async {
+    // Aynı anda tek analiz: başka bir analiz sürüyorsa engelle + chat'te uyar.
+    if (_ref.read(analysisHubProvider).isBusy) {
+      _ref.read(chatSessionProvider.notifier).notifyAnalysisBusy();
+      return;
+    }
     final validation = validateSubscriptionSelection(names, _appLang);
     if (!validation.isValid) {
       showValidationError(validation.error!);

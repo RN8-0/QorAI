@@ -47,20 +47,35 @@ class AnalysisHubState {
   /// Hazır olup kullanıcının aksiyonunu bekleyen bildirimler (en yeni önde).
   final List<AnalysisNotice> notices;
 
-  const AnalysisHubState({this.busy = const {}, this.notices = const []});
+  /// Geçici uyarı/hata satırı — Qor chat panelinin bandında gösterilir
+  /// (ör. "analiz sürüyor" bloğu veya bir analiz hatası "ürün tanınamadı").
+  /// Thread'e YAZILMAZ (kalıcı geçmişi kirletmez), yeni analiz başlayınca ya da
+  /// sonuç gelince temizlenir.
+  final String? alert;
+
+  const AnalysisHubState({
+    this.busy = const {},
+    this.notices = const [],
+    this.alert,
+  });
 
   bool get isBusy => busy.isNotEmpty;
 
   AnalysisHubState copyWith({
     Set<AnalysisFlowKind>? busy,
     List<AnalysisNotice>? notices,
+    Object? alert = _noAlertChange,
   }) {
     return AnalysisHubState(
       busy: busy ?? this.busy,
       notices: notices ?? this.notices,
+      alert: identical(alert, _noAlertChange) ? this.alert : alert as String?,
     );
   }
 }
+
+/// copyWith'te `alert`'i null'a çekmekle "değiştirme" ayrımı için sentinel.
+const Object _noAlertChange = Object();
 
 class AnalysisHubNotifier extends StateNotifier<AnalysisHubState> {
   AnalysisHubNotifier() : super(const AnalysisHubState());
@@ -69,14 +84,29 @@ class AnalysisHubNotifier extends StateNotifier<AnalysisHubState> {
     final next = {...state.busy};
     final changed = busy ? next.add(flow) : next.remove(flow);
     if (!changed) return;
-    state = state.copyWith(busy: next);
+    // Yeni analiz başladıysa eski uyarı/hata satırı bayat → temizle.
+    state = state.copyWith(busy: next, alert: busy ? null : state.alert);
   }
 
   /// Bildirim ekle/güncelle. Aynı [AnalysisNotice.id] varsa YERİNE geçer
   /// (quiz bildirimi → rapor bildirimi dönüşümü tek satır olur) ve en öne alınır.
+  /// Sonuç geldi → varsa geçici uyarı/hata satırını temizle.
   void pushNotice(AnalysisNotice n) {
     final list = state.notices.where((x) => x.id != n.id).toList()..insert(0, n);
-    state = state.copyWith(notices: list);
+    state = state.copyWith(notices: list, alert: null);
+  }
+
+  /// Geçici uyarı/hata satırı ayarla (chat bandında görünür). Aynı metni tekrar
+  /// basma.
+  void setAlert(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || state.alert == trimmed) return;
+    state = state.copyWith(alert: trimmed);
+  }
+
+  void clearAlert() {
+    if (state.alert == null) return;
+    state = state.copyWith(alert: null);
   }
 
   void removeNotice(String id) {

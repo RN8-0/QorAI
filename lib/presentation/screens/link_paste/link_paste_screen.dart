@@ -642,6 +642,9 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     if (!await ensureOnboardingQuizGate(context, ref)) return;
     if (!mounted) return;
 
+    // Aynı anda tek analiz: başka bir analiz sürüyorsa engelle + chat'te uyar.
+    if (blockIfAnalysisBusy(ref)) return;
+
     ref.read(compareAnalysisProvider.notifier).reset();
 
     for (final fn in _compareFocusNodes) {

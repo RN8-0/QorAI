@@ -527,6 +527,9 @@ class SharedPremiumFeaturesSectionState
             current.phase == ProductAnalysisPhase.reportRequested ||
             current.phase == ProductAnalysisPhase.running);
     if (busy) return;
+    // Aynı anda tek analiz: başka bir akış (link/abonelik/karşılaştırma ya da
+    // başka bir ürün) analiz koşuyorsa engelle + Qor chat'e uyarı düşür.
+    if (blockIfAnalysisBusy(ref)) return;
     // AI özelliği için önce kayıt-sonrası profil quiz'i tamamlanmalı (atlanmışsa
     // uyarı + quize yönlendir). Quiz bittikten sonra Q Coin bakiyesi izin
     // verdiği sürece tüm AI özellikleri kullanılabilir.

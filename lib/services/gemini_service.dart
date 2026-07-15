@@ -291,20 +291,21 @@ class GeminiService implements AIService {
         ? researchedTitle
         : effectiveTitle;
 
-    // Known e-commerce domains (Trendyol, Hepsiburada, Amazon…) → a pasted link
-    // IS a product page. The AI sometimes returns is_product=false when it can't
-    // scrape/ground the page (Trendyol blocks bots) — that wrongly rejected real
-    // products. So for e-commerce domains we FORCE is_product=true; the AI's
-    // judgement is only used for non-shopping domains. The one exception stays:
-    // an Amazon ASIN whose identity couldn't be resolved is still rejected.
-    final isEcommerce = _isEcommerceDomain(url);
+    // PERMISSIVE ürün tanıma: kullanıcı bir linki ürün-link analizine
+    // YAPIŞTIRDIYSA o bir ürün linkidir — kısaltılmış (amzn.eu/ty.gl) veya
+    // bilinmeyen mağaza linkleri DAHİL. AI'nın "is_product=false" yargısı
+    // (sayfayı kazıyamadığında/gremeleyemediğinde) gerçek ürünleri yanlışlıkla
+    // eliyordu; kullanıcı net istedi: "tüm ürün linklerini kısaltma olsa dahi
+    // tanı". Bu yüzden VARSAYILAN kabul; yalnız 2 istisna reddedilir:
+    //   (1) kimliği çözülemeyen Amazon ASIN (bilinmeyen ürünü uydurmamak için),
+    //   (2) çıplak ana sayfa linki (path boş / "/") — ürün sayfası değil.
     final hasUnresolvedAmazonIdentity =
         amazonProductId != null &&
         _isAmazonPlaceholderTitle(resolvedProductTitle) &&
         !researchConfirmed;
     final isProduct = hasUnresolvedAmazonIdentity
         ? false
-        : (isEcommerce ? true : (response['is_product'] as bool? ?? false));
+        : !_isBareHomepageUrl(url);
 
     return LinkAnalysisResult(
       url: url,
@@ -347,36 +348,14 @@ class GeminiService implements AIService {
     return generics.any((g) => t == g);
   }
 
-  /// Returns true if the URL belongs to a known e-commerce domain
-  static bool _isEcommerceDomain(String url) {
+  /// True only for a bare site homepage (no product path), e.g.
+  /// `https://www.amazon.com.tr/` — the single case we still reject, since a
+  /// homepage is not a product page. Any URL with a real path is accepted.
+  static bool _isBareHomepageUrl(String url) {
     try {
-      final host = Uri.parse(url).host.toLowerCase();
-      const ecommerceDomains = [
-        'amazon',
-        'trendyol',
-        'hepsiburada',
-        'n11',
-        'gittigidiyor',
-        'mediamarkt',
-        'teknosa',
-        'vatan',
-        'ciceksepeti',
-        'dr.com',
-        'kitapyurdu',
-        'idefix',
-        'bkmkitap',
-        'epey.com',
-        'akakce',
-        'aliexpress',
-        'banggood',
-        'bestbuy',
-        'walmart',
-        'newegg',
-        'apple.com/shop',
-        'samsung.com',
-        'mi.com',
-      ];
-      return ecommerceDomains.any((d) => host.contains(d));
+      final uri = Uri.parse(url);
+      final path = uri.path.replaceAll(RegExp(r'/+$'), '');
+      return path.isEmpty && (uri.queryParameters.isEmpty);
     } catch (_) {
       return false;
     }

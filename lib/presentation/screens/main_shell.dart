@@ -99,9 +99,29 @@ class _MainShellState extends ConsumerState<MainShell>
       case ProductAnalysisPhase.error:
         hub.setBusy(flow, false);
         if (id != null) hub.clearNotice(flow, id: id);
+        // Ekrandaki hatayı Qor chat bandına da yansıt.
+        hub.setAlert(
+          isTr
+              ? '⚠️ $label için analiz tamamlanamadı. Lütfen tekrar deneyin.'
+              : '⚠️ Analysis for $label could not be completed. Please try again.',
+        );
       case ProductAnalysisPhase.idle:
         hub.setBusy(flow, false);
     }
+  }
+
+  /// Bir akışın hata metni değiştiğinde (yeni hata) Qor chat bandına yansıtır —
+  /// kullanıcı: "ekrandaki hata qor chat'te de gözüksün". [prevError]==[nextError]
+  /// ise tekrar basmaz.
+  void _mirrorAnalysisError(
+    AnalysisHubNotifier hub,
+    String? prevError,
+    String? nextError,
+  ) {
+    final err = nextError?.trim();
+    if (err == null || err.isEmpty) return;
+    if (err == prevError?.trim()) return;
+    hub.setAlert(err);
   }
 
   void _feedHubLink(
@@ -683,15 +703,18 @@ class _MainShellState extends ConsumerState<MainShell>
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
       if (!mounted) return;
       _feedHubSub(hub, prev, next, isTr);
+      _mirrorAnalysisError(hub, prev?.error, next.error);
     });
     ref.listen<LinkQuizState>(linkQuizProvider, (prev, next) {
       if (!mounted) return;
       _feedHubLink(hub, prev, next, isTr);
+      _mirrorAnalysisError(hub, prev?.error, next.error);
     });
     // Link KARŞILAŞTIRMA akışı (2+ link) → aynı 'link' hub akışına besle.
     ref.listen<CompareAnalysisState>(compareAnalysisProvider, (prev, next) {
       if (!mounted) return;
       _feedHubCompare(hub, prev, next, isTr);
+      _mirrorAnalysisError(hub, prev?.error, next.error);
     });
     // Ürün akışı: MOTOR burada koşar (shell her zaman canlı) + hub'a besler.
     ref.listen<ProductAnalysisState>(productAnalysisProvider, (prev, next) {

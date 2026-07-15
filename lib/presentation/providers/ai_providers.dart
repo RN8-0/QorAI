@@ -60,34 +60,86 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final subscriptions = data['subscriptionServices']?.toString().trim();
 
     final isTr = langCode == 'tr';
-    if (route.contains('subscriptions') ||
-        activeScreen.contains('subscription') ||
-        subscriptions?.isNotEmpty == true) {
+    final category = data['productCategory']?.toString().trim();
+
+    String subGreeting() {
+      final suffix = subscriptions?.isNotEmpty == true
+          ? (isTr ? ': $subscriptions' : ': $subscriptions')
+          : '';
       return isTr
-          ? 'Şu an Abonelik Analizi ekranındasınız; seçili servisleri ve quiz cevaplarını yorumlayabilirim.'
-          : 'You are on the Subscription Analysis screen; I can interpret the selected services and quiz answers.';
+          ? 'Abonelik Analizi ekranındasınız$suffix; seçili servisleri ve quiz cevaplarını yorumlayabilirim.'
+          : 'You are on the Subscription Analysis screen$suffix; I can interpret the selected services and quiz answers.';
     }
-    if (route.contains('link-paste') ||
-        activeScreen.contains('link') ||
-        linkProducts?.isNotEmpty == true) {
+
+    String linkGreeting() {
       final suffix = linkProducts?.isNotEmpty == true ? ' ($linkProducts)' : '';
       return isTr
-          ? 'Şu an Link Analizi ekranındasınız$suffix; linkleri ve analiz sonucunu okuyabilirim.'
-          : 'You are on the Link Analysis screen$suffix; I can read the links and analysis result.';
+          ? 'Link Analizi ekranındasınız$suffix; yapıştırdığınız ürün linklerini ve analiz sonucunu okuyabilirim.'
+          : 'You are on the Link Analysis screen$suffix; I can read the pasted product links and analysis result.';
     }
-    if (product?.isNotEmpty == true) {
+
+    String productGreeting() => isTr
+        ? '$product ürün detayındasınız; özellikleri, fiyatı ve alternatifleri yorumlayabilirim.'
+        : 'You are on the $product product detail page; I can review its specs, price and alternatives.';
+    String compareGreeting() {
+      if (compareProducts?.isNotEmpty == true) {
+        return isTr
+            ? 'Karşılaştırma ekranındasınız: $compareProducts. Farklarını netleştirebilirim.'
+            : 'You are on the Comparison screen: $compareProducts. I can clarify the differences.';
+      }
       return isTr
-          ? 'Şu an $product ürün detayındasınız; özellikleri ve alternatifleri yorumlayabilirim.'
-          : 'You are on the $product product detail screen; I can review specs and alternatives.';
+          ? 'Karşılaştırma ekranındasınız; eklediğiniz ürünlerin farklarını ve hangisinin size uygun olduğunu netleştirebilirim.'
+          : 'You are on the Comparison screen; I can clarify the differences between the products you add and which fits you best.';
     }
-    if (compareProducts?.isNotEmpty == true) {
-      return isTr
-          ? 'Şu an Karşılaştırma ekranındasınız: $compareProducts. Farkları netleştirebilirim.'
-          : 'You are on the Comparison screen: $compareProducts. I can clarify the differences.';
+
+    String homeGreeting() => isTr
+        ? 'Ana Sayfadasınız; öne çıkan ürünler, kategoriler ve size özel öneriler konusunda yardımcı olabilirim.'
+        : 'You are on the Home screen; I can help with featured products, categories and personalized picks.';
+    String categoryGreeting() => isTr
+        ? '${category?.isNotEmpty == true ? '$category kategorisindesiniz' : 'Kategori sayfasındasınız'}; bu kategorideki ürünleri karşılaştırıp önerebilirim.'
+        : '${category?.isNotEmpty == true ? 'You are browsing the $category category' : 'You are on a category page'}; I can compare and recommend products here.';
+    String searchGreeting() => isTr
+        ? 'Arama ekranındasınız; aradığınız ürünü bulup karşılaştırabilir veya alternatif önerebilirim.'
+        : 'You are on the Search screen; I can find the product you are looking for, compare it or suggest alternatives.';
+    String collectionGreeting() => isTr
+        ? 'Koleksiyonunuzdasınız; kaydettiğiniz ürünler hakkında yardımcı olabilirim.'
+        : 'You are in your Collection; I can help with the products you saved.';
+    String savedComparesGreeting() => isTr
+        ? 'Karşılaştırmalarınızdasınız; kayıtlı karşılaştırmaları yorumlayabilirim.'
+        : 'You are in your Comparisons; I can interpret your saved comparisons.';
+    String defaultGreeting() => isTr
+        ? 'Ürünler, karşılaştırmalar ve alışveriş kararlarınız konusunda yardımcı olabilirim.'
+        : 'I can help with products, comparisons and your shopping decisions.';
+
+    // ── ROUTE-AUTHORITATIVE ── (route = kullanıcının GERÇEKTEN bulunduğu sayfa)
+    // Her sayfa için SPESİFİK karşılama; asla "bu sayfadasınız" deme. Sıra
+    // önemli: '/home/browse' hem 'browse' hem 'home' içerir → browse önce.
+    if (route.isNotEmpty) {
+      if (route.contains('product')) {
+        return product?.isNotEmpty == true ? productGreeting() : defaultGreeting();
+      }
+      if (route.contains('link-paste')) return linkGreeting();
+      if (route.contains('subscriptions') || route.contains('premium')) {
+        return subGreeting();
+      }
+      if (route.contains('browse') || route.contains('categor')) {
+        return categoryGreeting();
+      }
+      if (route.contains('search')) return searchGreeting();
+      if (route.contains('collection')) return collectionGreeting();
+      if (route.contains('comparison')) return savedComparesGreeting();
+      if (route.contains('compare')) return compareGreeting();
+      if (route.contains('home')) return homeGreeting();
     }
-    return isTr
-        ? 'Şu an bu sayfadasınız; ekrandaki ürün ve alışveriş bağlamına göre yardımcı olabilirim.'
-        : 'You are on this screen; I can use the current product and shopping context.';
+
+    // ── DATA FALLBACK (route bilinmiyor/belirsiz) ──
+    if (activeScreen.contains('subscription')) return subGreeting();
+    if (activeScreen.contains('link')) return linkGreeting();
+    if (product?.isNotEmpty == true) return productGreeting();
+    if (subscriptions?.isNotEmpty == true) return subGreeting();
+    if (linkProducts?.isNotEmpty == true) return linkGreeting();
+    if (compareProducts?.isNotEmpty == true) return compareGreeting();
+    return defaultGreeting();
   }
 
   String _welcomeText([Map<String, dynamic>? pageContext]) {
@@ -634,9 +686,28 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     }
   }
 
-  void newConversation() {
+  void newConversation({Map<String, dynamic>? pageContext}) {
+    // Fresh conversation → greet for the CURRENT page. Callers (the floating
+    // overlay) pass the live page context so the greeting never describes a
+    // page the user already navigated away from; fall back to the last known
+    // context only when none is supplied.
+    if (pageContext != null) _lastPageContext = pageContext;
     state = const ChatSessionState();
-    _initWelcome(_lastPageContext);
+    _initWelcome(pageContext ?? _lastPageContext);
+  }
+
+  /// Kullanıcı bir analiz sürerken yenisini başlatmaya çalıştı. Qor chat
+  /// bandına "analiz sürüyor" uyarısı düşürür (analysisHub.alert) ve paneli açar
+  /// ki kullanıcı görsün. Yeni analiz ÇAĞRILMAZ. (Thread'e mesaj YAZILMAZ →
+  /// kalıcı geçmiş kirlenmez.)
+  void notifyAnalysisBusy() {
+    final isTr = _activeLanguageCode() == 'tr';
+    final text = isTr
+        ? '⏳ Şu anda bir analiz işlemi sürüyor. Yeni bir analiz başlatmadan önce mevcut analizin tamamlanmasını bekleyin.'
+        : '⏳ An analysis is already in progress. Please wait for it to finish before starting a new one.';
+    _ref.read(analysisHubProvider.notifier).setAlert(text);
+    // Paneli aç (kullanıcı uyarıyı görsün). Zaten açıksa dinleyici no-op.
+    _ref.read(chatOverlayRequestProvider.notifier).state = true;
   }
 
   /// Görsel tarama sonucunu ana chat'e QOR (AI) mesajı olarak tohumlar —
@@ -660,6 +731,17 @@ final chatSessionProvider =
     StateNotifierProvider<ChatSessionNotifier, ChatSessionState>((ref) {
       return ChatSessionNotifier(ref);
     });
+
+/// Aynı anda birden fazla analiz koşmasını engeller. Zaten bir analiz
+/// sürüyorsa (`analysisHubProvider.isBusy`) Qor chat'e uyarı düşürüp `true`
+/// (engellendi) döner; çağıran yeni analizi BAŞLATMAMALIDIR. Analiz yoksa
+/// `false` döner. UI tetikleyicileri (ürün analizi butonu, çoklu-link
+/// karşılaştırma) için; `_ref`'i olan notifier'lar aynı kontrolü satır içi yapar.
+bool blockIfAnalysisBusy(WidgetRef ref) {
+  if (!ref.read(analysisHubProvider).isBusy) return false;
+  ref.read(chatSessionProvider.notifier).notifyAnalysisBusy();
+  return true;
+}
 
 final chatHistoryProvider = FutureProvider.autoDispose
     .family<List<ChatConversation>, String>((ref, userId) {

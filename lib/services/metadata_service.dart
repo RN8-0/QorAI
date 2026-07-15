@@ -170,7 +170,9 @@ class MetadataService {
             // Accept 2xx and 3xx without throwing so we can read `Location`.
             validateStatus: (s) => s != null && s < 400,
             receiveTimeout: const Duration(seconds: 8),
-            sendTimeout: const Duration(seconds: 8),
+            // NOT: sendTimeout YOK — gövdesiz GET'te bazı Dio sürümleri
+            // "sendTimeout without a request body" ile PATLIYOR → çözümleme
+            // sessizce başarısız olup kısa link tanınmıyordu.
           ),
         );
 

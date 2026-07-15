@@ -8,6 +8,7 @@ import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
+import 'package:qor_ai/presentation/providers/product_analysis_provider.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/ai_chat_screen.dart';
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
 import 'package:qor_ai/routing/router.dart';
@@ -96,8 +97,15 @@ class _FloatingAiAssistantOverlayState
     if (!_isOpen) {
       final chat = ref.read(chatSessionProvider);
       final hasUserMsg = chat.messages.any((m) => m.role.name == 'user');
-      if (!hasUserMsg) {
-        ref.read(chatSessionProvider.notifier).newConversation();
+      final hasScanSeed = chat.messages.any((m) => m.id.startsWith('scan-'));
+      // Konuşma boşsa (yalnız karşılama) paneli açarken karşılamayı GÜNCEL sayfa
+      // bağlamıyla yeniden tohumla → chat, kullanıcının az önce ayrıldığı sayfayı
+      // değil, ŞU AN bulunduğu sayfayı anlatır. Tarama tohumu (scan-*) varsa
+      // dokunma (kullanıcı: "çift/saçma karşılama olmasın").
+      if (!hasUserMsg && !hasScanSeed) {
+        ref
+            .read(chatSessionProvider.notifier)
+            .newConversation(pageContext: _buildContext(_routePath()));
       }
     }
     _toggle();
@@ -131,8 +139,24 @@ class _FloatingAiAssistantOverlayState
   }
 
   String _routePath() {
+    // KRİTİK: go_router'ın `routeInformationProvider.value` VE
+    // `currentConfiguration.uri`'si StatefulShellRoute'ta yalnız aktif SEKME'yi
+    // döndürür — shell'in ÜSTÜNE push edilen /product/:id'yi DEĞİL (ör. link
+    // sekmesi üstünde bir ürün açıkken ikisi de /link-paste der). Bu yüzden chat
+    // "yanlış/eski sayfa"yı anlatıyordu. Ürün detayı, initState'te set edilip
+    // dispose'ta temizlenen `viewingProductId` ile GÜVENİLİR biçimde saptanır →
+    // bir ürün açıksa efektif route her zaman /product/<id>.
     try {
-      return ref.read(routerProvider).routeInformationProvider.value.uri.path;
+      final viewing = ref.read(productAnalysisProvider).viewingProductId;
+      if (viewing != null && viewing.isNotEmpty) return '/product/$viewing';
+    } catch (_) {}
+    final router = ref.read(routerProvider);
+    try {
+      final path = router.routerDelegate.currentConfiguration.uri.path;
+      if (path.isNotEmpty) return path;
+    } catch (_) {}
+    try {
+      return router.routeInformationProvider.value.uri.path;
     } catch (_) {
       return '';
     }
@@ -203,8 +227,8 @@ class _FloatingAiAssistantOverlayState
   Map<String, dynamic> _linkAnalysisContext(String route) {
     if (!route.contains('link-paste')) return const {};
 
-    final single = ref.watch(linkQuizProvider);
-    final compare = ref.watch(compareAnalysisProvider);
+    final single = ref.read(linkQuizProvider);
+    final compare = ref.read(compareAnalysisProvider);
     final context = <String, dynamic>{
       'contextRoute': 'link-paste',
       'activeScreen': 'Link AI analysis screen',
@@ -294,8 +318,8 @@ class _FloatingAiAssistantOverlayState
   Map<String, dynamic> _subscriptionAnalysisContext(String route) {
     if (!route.contains('subscriptions')) return const {};
 
-    final state = ref.watch(subQuizProvider);
-    final subscription = ref.watch(subscriptionServiceProvider);
+    final state = ref.read(subQuizProvider);
+    final subscription = ref.read(subscriptionServiceProvider);
     final context = <String, dynamic>{
       'contextRoute': 'subscriptions',
       'activeScreen': 'subscription analysis screen',
@@ -332,7 +356,7 @@ class _FloatingAiAssistantOverlayState
 
   Map<String, dynamic> _premiumPageContext(String route) {
     if (!route.contains('premium')) return const {};
-    final subscription = ref.watch(subscriptionServiceProvider);
+    final subscription = ref.read(subscriptionServiceProvider);
     return {
       'contextRoute': 'premium',
       'activeScreen': 'premium subscription page',
@@ -349,11 +373,15 @@ class _FloatingAiAssistantOverlayState
   }
 
   Map<String, dynamic> _buildContext(String route) {
+    // NOT: ref.read (watch değil) — bu bağlam paneli açarken (event handler
+    // `_toggleFromButton`) da hesaplanır; ref.watch build dışında patlar. Panel
+    // kapalıyken zaten SizedBox; açıkken hub.watch (Q spinner) rebuild tetikler
+    // ve bağlam her rebuild'de tazelenir.
     final pageCtx = _routeScopedPageContext(
       route,
-      ref.watch(aiPageContextProvider),
+      ref.read(aiPageContextProvider),
     );
-    final compare = ref.watch(compareSessionProvider);
+    final compare = ref.read(compareSessionProvider);
     final chatState = ref.read(chatSessionProvider);
 
     return {
@@ -363,7 +391,11 @@ class _FloatingAiAssistantOverlayState
       ..._linkAnalysisContext(route),
       ..._subscriptionAnalysisContext(route),
       ..._premiumPageContext(route),
-      if (compare.comparedProducts != null &&
+      // Karşılaştırma oturumunu YALNIZ karşılaştırma ekranında bağlama ekle;
+      // aksi halde biten bir karşılaştırma başka sayfaların (ürün/ana sayfa)
+      // karşılama ve bağlamına sızıp "yanlış sayfa" anlatımına yol açıyordu.
+      if (route.contains('compare') &&
+          compare.comparedProducts != null &&
           compare.comparedProducts!.isNotEmpty)
         'compareProducts': compare.comparedProducts!
             .map((p) => '${p.name} (${p.techScore.round()}/100)')
@@ -456,7 +488,7 @@ class _FloatingAiAssistantOverlayState
       analysisHubProvider.select((s) => s.isBusy),
     );
     final hasNotice = ref.watch(
-      analysisHubProvider.select((s) => s.notices.isNotEmpty),
+      analysisHubProvider.select((s) => s.notices.isNotEmpty || s.alert != null),
     );
 
     final auth = ref.watch(authStateProvider);

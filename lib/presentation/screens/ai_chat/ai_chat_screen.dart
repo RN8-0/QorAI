@@ -482,7 +482,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
 
   Widget _buildAnalysisNoticesBanner() {
     final hub = ref.watch(analysisHubProvider);
-    if (hub.notices.isEmpty && !hub.isBusy) return const SizedBox.shrink();
+    if (hub.notices.isEmpty && !hub.isBusy && hub.alert == null) {
+      return const SizedBox.shrink();
+    }
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
     return Container(
       width: double.infinity,
@@ -491,8 +493,54 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (hub.alert != null) _buildAlertRow(hub.alert!),
           if (hub.isBusy) _buildBusyRow(isTr),
           for (final n in hub.notices) _buildNoticeRow(n, isTr),
+        ],
+      ),
+    );
+  }
+
+  /// Geçici uyarı/hata satırı (analiz sürüyor bloğu, "ürün tanınamadı" vb.).
+  /// Ekranda gösterilen hatalar burada da görünür; sağdaki × ile kapatılır.
+  Widget _buildAlertRow(String text) {
+    final color = AppTheme.error;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.40)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, size: 17, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary,
+                height: 1.3,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () => ref.read(analysisHubProvider.notifier).clearAlert(),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: context.textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );

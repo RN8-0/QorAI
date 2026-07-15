@@ -57,6 +57,7 @@ import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/data/models/product_model.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
+import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
 
 // ── Part files ──
 part 'auth_providers.dart';
