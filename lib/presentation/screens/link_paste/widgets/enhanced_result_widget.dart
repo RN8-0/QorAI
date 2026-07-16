@@ -215,13 +215,18 @@ class _EnhancedResultViewState extends ConsumerState<_EnhancedResultView>
                               vertical: 7,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
+                              color: Colors.black.withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               category,
+                              // Rozetin zemini HER ZAMAN siyah → yazı da HER ZAMAN
+                              // beyaz olmalı. Önceden temaya bağlı
+                              // `surfaceVariantColor` kullanılıyordu; koyu temada
+                              // bu KOYU bir renk → siyah zeminde okunmuyordu
+                              // (kullanıcı: "sol üstte okunamayan siyah kısım").
                               style: GoogleFonts.plusJakartaSans(
-                                color: context.surfaceVariantColor,
+                                color: Colors.white,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),

@@ -33,10 +33,12 @@ class MetadataService {
   static const Set<String> _shareLinkHosts = {
     // Amazon app / short share
     'amzn.to', 'amzn.eu', 'amzn.asia', 'amzn.in', 'amzn.com', 'a.co',
-    // Trendyol app
+    // Trendyol app (→ *.adj.st tracker'ına gider, unwrap edilir)
     'ty.gl', 'tyml.gl',
-    // Hepsiburada app
-    'hb.gy',
+    // NOT: 'hb.gy' BURADA DEĞİL — Hepsiburada sanıp eklemiştim ama ölçtüm:
+    // hacksburg.org'a gidiyor, Hepsiburada ile ilgisi yok. Hepsiburada zaten
+    // tam URL paylaşıyor; bilinmeyen kısaltıcılar da metadata çekiminde
+    // followRedirects ile zaten çözülüyor.
     // AliExpress app
     's.click.aliexpress.com', 'a.aliexpress.com', 'star.aliexpress.com',
     // eBay
