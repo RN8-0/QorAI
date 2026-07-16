@@ -172,7 +172,10 @@ class GeminiService implements AIService {
         resolvedTitle.startsWith('Amazon ASIN') ||
         resolvedTitle.startsWith('Amazon ISBN') ||
         (scrapedTitle == null && slugTitle == null);
-    if (needsResearch || amazonProductId != null) {
+    // HIZ: cihaz scrape'i (JSON-LD/og) gerçek adı aldıysa yavaş web araştırmasını
+    // (googleSearch ~30sn) ATLA. Yalnız kimlik eksikse araştır. Önceki kod Amazon
+    // için (amazonProductId!=null) HER ZAMAN araştırıp analizi yavaşlatıyordu.
+    if (needsResearch) {
       try {
         debugPrint('[Qor AI] URL research phase — looking up: $url');
         final runtimeResearchPrompt = _buildLinkResearchPrompt(

@@ -8,6 +8,8 @@
 /// - Price detection (price, amount)
 library;
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/services/cache_service.dart';
@@ -275,10 +277,20 @@ class MetadataService {
     String? price;
     String? siteName;
 
+    // ─── JSON-LD (schema.org Product) — EN GÜVENİLİR, evrensel ───
+    // Dünya genelindeki e-ticaret siteleri (Trendyol, Hepsiburada, Shopify,
+    // WooCommerce, çoğu mağaza) ürün adı/fiyat/marka/görselini server-render
+    // JSON-LD olarak gömer → JS gerektirmez, cihazın kendi isteğiyle okunur.
+    final jsonLd = _extractJsonLdProduct(html);
+    title = jsonLd.title;
+    price = jsonLd.price;
+    image = jsonLd.image;
+    description = jsonLd.description;
+
     // ─── Open Graph Tags ───
-    title = _extractMetaContent(html, 'og:title');
-    description = _extractMetaContent(html, 'og:description');
-    image = _extractMetaContent(html, 'og:image');
+    title ??= _extractMetaContent(html, 'og:title');
+    description ??= _extractMetaContent(html, 'og:description');
+    image ??= _extractMetaContent(html, 'og:image');
     siteName = _extractMetaContent(html, 'og:site_name');
 
     // ─── Twitter Card Fallback ───
@@ -294,7 +306,7 @@ class MetadataService {
     title ??= _extractTitleTag(html);
 
     // ─── Price Detection ───
-    price = _extractPrice(html);
+    price ??= _extractPrice(html);
 
     // ─── Fix Image URL ───
     if (image != null && !image.startsWith('http')) {
@@ -318,6 +330,112 @@ class MetadataService {
       price: price,
       siteName: siteName,
     );
+  }
+
+  /// Extract product info from JSON-LD (schema.org Product). Universal across
+  /// e-commerce sites worldwide; returns nulls when no Product node is found.
+  ({String? title, String? price, String? image, String? brand, String? description})
+  _extractJsonLdProduct(String html) {
+    final blocks = RegExp(
+      r'''<script[^>]*type\s*=\s*["']application/ld\+json["'][^>]*>(.*?)</script>''',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(html);
+    for (final block in blocks) {
+      var raw = block.group(1)?.trim();
+      if (raw == null || raw.isEmpty) continue;
+      // Bazı siteler JSON-LD içinde satır sonları/HTML yorumları bırakır.
+      raw = raw.replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '').trim();
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(raw);
+      } catch (_) {
+        continue;
+      }
+      final product = _findProductNode(decoded);
+      if (product == null) continue;
+      final title = _jsonLdString(product['name']);
+      if (title == null || title.trim().isEmpty) continue;
+      return (
+        title: _decodeHtmlEntities(title),
+        price: _jsonLdPrice(product['offers']),
+        image: _jsonLdImage(product['image']),
+        brand: _jsonLdString(product['brand']) ??
+            _jsonLdString((product['brand'] is Map)
+                ? (product['brand'] as Map)['name']
+                : null),
+        description: () {
+          final d = _jsonLdString(product['description']);
+          return d == null ? null : _decodeHtmlEntities(d);
+        }(),
+      );
+    }
+    return (title: null, price: null, image: null, brand: null, description: null);
+  }
+
+  /// Recursively find a schema.org Product node (handles arrays + @graph).
+  Map<String, dynamic>? _findProductNode(dynamic node, [int depth = 0]) {
+    if (depth > 6 || node == null) return null;
+    if (node is List) {
+      for (final item in node) {
+        final found = _findProductNode(item, depth + 1);
+        if (found != null) return found;
+      }
+      return null;
+    }
+    if (node is Map) {
+      final map = node.cast<String, dynamic>();
+      final type = map['@type'];
+      final isProduct = type == 'Product' ||
+          (type is List && type.contains('Product')) ||
+          (map.containsKey('name') &&
+              (map.containsKey('offers') || map.containsKey('sku')));
+      if (isProduct && (map['name'] != null)) return map;
+      // @graph veya iç içe düğümler
+      if (map['@graph'] != null) {
+        final found = _findProductNode(map['@graph'], depth + 1);
+        if (found != null) return found;
+      }
+      for (final v in map.values) {
+        if (v is List || v is Map) {
+          final found = _findProductNode(v, depth + 1);
+          if (found != null) return found;
+        }
+      }
+    }
+    return null;
+  }
+
+  String? _jsonLdString(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v.trim().isEmpty ? null : v.trim();
+    if (v is List && v.isNotEmpty) return _jsonLdString(v.first);
+    if (v is Map) return _jsonLdString(v['name'] ?? v['@value']);
+    return null;
+  }
+
+  String? _jsonLdImage(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v.trim().isEmpty ? null : v.trim();
+    if (v is List && v.isNotEmpty) return _jsonLdImage(v.first);
+    if (v is Map) return _jsonLdImage(v['url'] ?? v['contentUrl']);
+    return null;
+  }
+
+  String? _jsonLdPrice(dynamic offers) {
+    if (offers == null) return null;
+    if (offers is List && offers.isNotEmpty) return _jsonLdPrice(offers.first);
+    if (offers is Map) {
+      final p = offers['price'] ??
+          offers['lowPrice'] ??
+          (offers['priceSpecification'] is Map
+              ? (offers['priceSpecification'] as Map)['price']
+              : null);
+      if (p == null) return null;
+      final s = p.toString().trim();
+      return s.isEmpty ? null : s;
+    }
+    return null;
   }
 
   /// Extract meta tag content
@@ -358,6 +476,27 @@ class MetadataService {
       return _decodeHtmlEntities(match.group(1)!);
     }
     return null;
+  }
+
+  /// Amazon <title> genelde "Amazon.com.tr: <ürün> : Elektronik" gibi önek/sonek
+  /// taşır → ürün adını temizle. Boş/başlıksız için null.
+  String? _cleanAmazonTitleTag(String? raw) {
+    if (raw == null) return null;
+    var t = raw.trim();
+    if (t.isEmpty) return null;
+    // "Amazon.com.tr:", "Amazon.com:", "Amazon:" öneki
+    t = t.replaceFirst(
+      RegExp(r'^\s*Amazon[^:]*:\s*', caseSensitive: false),
+      '',
+    );
+    // " : Amazon..." veya " - Amazon..." soneki (kategori kuyruğu dahil)
+    t = t.replaceFirst(RegExp(r'\s*[:|-]\s*Amazon.*$', caseSensitive: false), '');
+    t = t.trim();
+    // Yalnız "Amazon.com.tr" kaldıysa geçersiz.
+    if (t.isEmpty || RegExp(r'^amazon', caseSensitive: false).hasMatch(t)) {
+      return null;
+    }
+    return t;
   }
 
   /// Extract price information
@@ -483,31 +622,40 @@ class MetadataService {
 
       final html = response.data.toString();
 
-      // Return empty metadata if Amazon returned bot page
-      if (_isAmazonBotPage(html)) {
-        return OgMetadata(
-          title: _extractAmazonTitleFromUrl(url),
-          siteName: 'Amazon',
-        );
-      }
-
       String? title;
       String? description;
       String? image;
       String? price;
       const siteName = 'Amazon';
 
+      // TÜM yöntemleri dene — "bot sayfası" olsa bile og:title/productTitle
+      // sıklıkla yine bulunur; erken çıkıp ürün adını kaybetme (kullanıcı:
+      // "ürün adı nerede"). Amazon JSON-LD nadir ama zararsız, önce dene.
+      final jsonLd = _extractJsonLdProduct(html);
+      title = jsonLd.title;
+      description = jsonLd.description;
+      image = jsonLd.image;
+      price = jsonLd.price;
+
       // OG tags (Amazon usually fills these)
-      title = _extractMetaContent(html, 'og:title');
-      description = _extractMetaContent(html, 'og:description');
-      image = _extractMetaContent(html, 'og:image');
+      title ??= _extractMetaContent(html, 'og:title');
+      description ??= _extractMetaContent(html, 'og:description');
+      image ??= _extractMetaContent(html, 'og:image');
 
       // Amazon-specific title fallback
       title ??= _extractAmazonTitle(html);
-      title ??= _extractTitleTag(html);
+      title ??= _cleanAmazonTitleTag(_extractTitleTag(html));
 
-      // Amazon-specific price extraction
-      price = _extractAmazonPrice(html);
+      // Hiçbir gerçek başlık yok VE bot/captcha sayfası → URL/ASIN'e düş.
+      if ((title == null || title.trim().isEmpty) && _isAmazonBotPage(html)) {
+        return OgMetadata(
+          title: _extractAmazonTitleFromUrl(url),
+          siteName: 'Amazon',
+        );
+      }
+
+      // Amazon-specific price extraction (JSON-LD fiyatını ezme)
+      price ??= _extractAmazonPrice(html);
       price ??= _extractPrice(html);
 
       // Amazon-specific image fallback
