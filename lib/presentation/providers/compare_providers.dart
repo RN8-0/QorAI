@@ -767,11 +767,27 @@ class CompareAnalysisNotifier extends StateNotifier<CompareAnalysisState> {
        super(const CompareAnalysisState());
 
   static String normalizeCompareCategory(String? category) {
-    final normalized = category?.trim().toLowerCase();
-    if (normalized == null || normalized.isEmpty) {
-      return '';
-    }
-    return normalized;
+    final raw = category?.trim() ?? '';
+    if (raw.isEmpty) return '';
+    // Uygulamanın KANONİK taksonomisine çöz. AI kategoriyi SERBEST METİN olarak
+    // döndürüyor ("Gaming Laptop" / "Gaming Laptops" / "Dizüstü Bilgisayar") →
+    // resolveCategory hepsini 'laptops'a indirger (alias + substring eşleşmesi).
+    // ÖNCEDEN yalnız trim+lowercase vardı → SIRF tekil/çoğul farkı yüzünden
+    // ("gaming laptop" vs "gaming laptops") aynı kategorideki iki ürün
+    // "Bu ürünler aynı kategoride değil" ile REDDEDİLİYORDU (kullanıcı bug'ı).
+    final canonical = key_specs.resolveCategory(raw);
+    if (canonical.isNotEmpty) return canonical;
+    // Taksonomide yoksa: en azından noktalama + tekil/çoğul farkını sil.
+    var n = raw
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9çğıöşü ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    n = n
+        .split(' ')
+        .map((w) => (w.length > 3 && w.endsWith('s')) ? w.substring(0, w.length - 1) : w)
+        .join(' ');
+    return n;
   }
 
   static String buildInvalidCompareLinksMessage(
