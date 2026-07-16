@@ -601,6 +601,42 @@ class MetadataService {
     return fetchMetadata(url);
   }
 
+  /// Cihaz bir telefon → mobil UA en meşru görünen istektir ve Amazon'da ~5x
+  /// küçük (dolayısıyla hızlı) mobil sayfayı getirir.
+  static const _mobileUa =
+      'Mozilla/5.0 (Linux; Android 14; SM-S918B) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36';
+  static const _desktopUa =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+  /// Tek bir Amazon HTML çekimi. Hata olursa null (çağıran yeniden dener).
+  /// NOT: `Accept-Encoding`'de 'br' REKLAMI YAPMA — Dart brotli'yi açamaz,
+  /// yanıt çöpe döner ve hiçbir regex tutmaz. gzip'i Dart zaten otomatik açar.
+  Future<String?> _fetchAmazonHtml(String url, String ua) async {
+    try {
+      final response = await _dio.get(
+        url,
+        options: Options(
+          headers: {
+            'User-Agent': ua,
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            'Upgrade-Insecure-Requests': '1',
+          },
+          followRedirects: true,
+          maxRedirects: 5,
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+      final body = response.data?.toString();
+      return (body == null || body.isEmpty) ? null : body;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Amazon custom metadata fetcher
   Future<OgMetadata> _fetchAmazonMetadata(String url) async {
     // Cache check
@@ -619,32 +655,26 @@ class MetadataService {
     }
 
     try {
-      final response = await _dio.get(
-        url,
-        options: Options(
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            'Accept':
-                'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9,tr;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0',
-            'DNT': '1',
-          },
-          followRedirects: true,
-          maxRedirects: 5,
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
+      // 1) MOBİL UA ile dene. Cihaz zaten bir telefon → mobil istek en meşru
+      //    görünendir; Amazon mobil sayfayı verir: ~222KB (masaüstü 1.2MB) →
+      //    ~5x daha hızlı. NOT: mobil sayfada id="productTitle" YOKTUR, ürün adı
+      //    <title>'da gelir → _cleanAmazonTitleTag yakalar (cihazda ölçüldü).
+      var html = await _fetchAmazonHtml(url, _mobileUa);
 
-      final html = response.data.toString();
+      // 2) Amazon AYNI IP'den art arda isteklerde hız-sınırı uygulayıp ~1.5KB'lık
+      //    bot/captcha sayfası döndürüyor (ölçüldü; kısa bir bekleme sonrası aynı
+      //    IP gerçek sayfayı yeniden veriyor). Bot sayfası geldiyse kısa bekle ve
+      //    MASAÜSTÜ UA ile bir kez daha dene.
+      if (html == null || _isAmazonBotPage(html)) {
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        html = await _fetchAmazonHtml(url, _desktopUa) ?? html;
+      }
+      if (html == null) {
+        return OgMetadata(
+          title: _extractAmazonTitleFromUrl(url),
+          siteName: 'Amazon',
+        );
+      }
 
       String? title;
       String? description;
