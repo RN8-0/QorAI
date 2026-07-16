@@ -208,7 +208,9 @@ class MetadataService {
   /// Fetch OG Metadata from URL
   Future<OgMetadata> fetchMetadata(String url) async {
     // Cache check
-    final cacheKey = 'og_meta_${url.hashCode}';
+    // v2: eski anahtarlardaki ZEHİRLİ (title=null) kayıtları geçersiz kılar —
+    // cihazlarda saatlerce "ürün tanınamadı" olarak yapışıp kalmışlardı.
+    final cacheKey = 'og_meta_v2_${url.hashCode}';
     final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
     if (cached != null) {
       return OgMetadata(
@@ -241,18 +243,23 @@ class MetadataService {
       final html = response.data.toString();
       final metadata = _parseMetadata(html, url);
 
-      // Save to cache - 24 hours
-      await _cacheService.set(
-        cacheKey,
-        {
-          'title': metadata.title,
-          'description': metadata.description,
-          'image': metadata.image,
-          'price': metadata.price,
-          'siteName': metadata.siteName,
-        },
-        duration: const Duration(hours: 24),
-      );
+      // Save to cache - 24 hours. SADECE kullanılabilir bir başlık varsa!
+      // Başarısız/boş sonucu cache'lemek, tek bir kötü denemeyi SAATLERCE
+      // kalıcılaştırıyordu (kullanıcı kaç kez denerse denesin aynı null döner,
+      // yeni build kursa bile) → "ürün tanınamadı" yapışıp kalıyordu.
+      if (_isUsableTitle(metadata.title, url)) {
+        await _cacheService.set(
+          cacheKey,
+          {
+            'title': metadata.title,
+            'description': metadata.description,
+            'image': metadata.image,
+            'price': metadata.price,
+            'siteName': metadata.siteName,
+          },
+          duration: const Duration(hours: 24),
+        );
+      }
 
       return metadata;
     } on DioException {
@@ -534,6 +541,21 @@ class MetadataService {
     return null;
   }
 
+  /// Cache'lenmeye değer GERÇEK bir ürün başlığı mı? Boş, domain adı veya
+  /// "Amazon ASIN…" placeholder'ı KULLANILAMAZ — bunları cache'lemek başarısız
+  /// bir denemeyi saatlerce kalıcı hale getirir.
+  bool _isUsableTitle(String? title, String url) {
+    final t = title?.trim() ?? '';
+    if (t.isEmpty) return false;
+    if (t.startsWith('Amazon ASIN') || t.startsWith('Amazon ISBN')) return false;
+    if (t.toLowerCase() == _extractDomainName(url).toLowerCase()) return false;
+    if (!t.contains(' ') &&
+        RegExp(r'^[a-z0-9.-]+\.[a-z]{2,}$', caseSensitive: false).hasMatch(t)) {
+      return false;
+    }
+    return true;
+  }
+
   /// Extract domain name
   String _extractDomainName(String url) {
     try {
@@ -582,7 +604,9 @@ class MetadataService {
   /// Amazon custom metadata fetcher
   Future<OgMetadata> _fetchAmazonMetadata(String url) async {
     // Cache check
-    final cacheKey = 'og_meta_${url.hashCode}';
+    // v2: eski anahtarlardaki ZEHİRLİ (title=null) kayıtları geçersiz kılar —
+    // cihazlarda saatlerce "ürün tanınamadı" olarak yapışıp kalmışlardı.
+    final cacheKey = 'og_meta_v2_${url.hashCode}';
     final cached = await _cacheService.get<Map<String, dynamic>>(cacheKey);
     if (cached != null) {
       return OgMetadata(
@@ -681,18 +705,22 @@ class MetadataService {
         siteName: siteName,
       );
 
-      // Save to cache - 6 hours (Amazon prices can change)
-      await _cacheService.set(
-        cacheKey,
-        {
-          'title': metadata.title,
-          'description': metadata.description,
-          'image': metadata.image,
-          'price': metadata.price,
-          'siteName': metadata.siteName,
-        },
-        duration: const Duration(hours: 6),
-      );
+      // Save to cache - 6 hours (Amazon prices can change). SADECE kullanılabilir
+      // başlık varsa — başarısız sonucu cache'lemek "tanınamadı"yı saatlerce
+      // yapıştırıyordu (bkz. fetchMetadata'daki aynı not).
+      if (_isUsableTitle(metadata.title, url)) {
+        await _cacheService.set(
+          cacheKey,
+          {
+            'title': metadata.title,
+            'description': metadata.description,
+            'image': metadata.image,
+            'price': metadata.price,
+            'siteName': metadata.siteName,
+          },
+          duration: const Duration(hours: 6),
+        );
+      }
 
       return metadata;
     } catch (_) {

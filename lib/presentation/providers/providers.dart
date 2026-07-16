@@ -133,10 +133,21 @@ final hiveDataSourceProvider = Provider<HiveDataSource>((ref) {
 /// Dio HTTP Client
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio();
+  final pbHost = Uri.parse(kPbBaseUrl).host;
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
-        options.headers = withPbAuthHeaders(options.headers);
+        // KRİTİK: PocketBase auth başlığını YALNIZ kendi backend'imize gönder.
+        // Önceden HER isteğe ekleniyordu ve iki ciddi soruna yol açıyordu:
+        //  (1) TANIMA BUG'I: Amazon beklenmedik bir `Authorization` başlığı
+        //      görünce ürün başlığı OLMAYAN kırpılmış sayfa döndürüyordu
+        //      (245KB vs 1.26MB, id="productTitle" YOK) → metadata title=null →
+        //      "ürün tanınamadı". Cihazdan ölçülerek kanıtlandı.
+        //  (2) GÜVENLİK: kullanıcının PB oturum token'ı Amazon/Trendyol gibi
+        //      ÜÇÜNCÜ TARAF sitelere sızıyordu.
+        if (options.uri.host == pbHost) {
+          options.headers = withPbAuthHeaders(options.headers);
+        }
         handler.next(options);
       },
     ),

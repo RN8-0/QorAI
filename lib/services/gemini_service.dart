@@ -205,7 +205,19 @@ class GeminiService implements AIService {
             'tools': [
               {'googleSearch': {}},
             ],
-            'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 512},
+            // KRİTİK BUG FIX: gemini-2.5-flash DÜŞÜNEN model ve thinking
+            // token'ları maxOutputTokens'a DAHİL. `_rawRequest` thinkingConfig
+            // verilmemişse heavy tier'e thinkingBudget:1024 enjekte ediyordu →
+            // 1024 > maxOutputTokens:512 → tüm bütçe düşünmeye gidip METİN
+            // KALMIYORDU ("No parts in content" → "AI returned no content").
+            // Sonuç: Amazon /dp/ASIN kısa linklerinin TEK tanıma yolu olan web
+            // araştırması HİÇ çalışmıyordu. Bu olgusal bir arama — düşünme
+            // gerekmez: thinkingBudget 0 + yeterli çıktı bütçesi.
+            'generationConfig': {
+              'temperature': 0.1,
+              'maxOutputTokens': 1024,
+              'thinkingConfig': {'thinkingBudget': 0},
+            },
           },
           receiveTimeout: const Duration(seconds: 30),
           tier: AiTier.heavy,
@@ -1980,7 +1992,17 @@ $jsonSchema
     // Thinking tokens are billed at output price ($2.50/1M for flash).
     final genConfig = body['generationConfig'] as Map<String, dynamic>? ?? {};
     if (!genConfig.containsKey('thinkingConfig')) {
-      final budget = tier == AiTier.heavy ? 1024 : 0;
+      var budget = tier == AiTier.heavy ? 1024 : 0;
+      // KRİTİK: gemini-2.5-flash'ta thinking token'ları maxOutputTokens'a DAHİL.
+      // Bütçe çıktı sınırına yakın/eşitse model TÜM bütçeyi düşünmeye harcayıp
+      // HİÇ metin döndürmez ("No parts in content" → "AI returned no content").
+      // Bu, grounded aramaları sessizce öldürüyordu (Amazon ASIN tanıma).
+      // Düşünmeye en fazla çıktının yarısını ver, kalanı metne kalsın.
+      final maxOut = (genConfig['maxOutputTokens'] as num?)?.toInt();
+      if (maxOut != null && budget > 0) {
+        final cap = maxOut ~/ 2;
+        if (budget > cap) budget = cap;
+      }
       body = {
         ...body,
         'generationConfig': {
