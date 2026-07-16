@@ -24,65 +24,30 @@ class MetadataService {
   })  : _dio = dio,
         _cacheService = cacheService;
 
-  /// Mobile-app "share" / short-link hosts. Buttons like Amazon's "Share" or
-  /// Trendyol's "Paylaş" produce opaque short links (amzn.eu/d/…, ty.gl/…,
-  /// a.co/…) that carry no product slug or ASIN. Downstream extraction (slug,
-  /// ASIN, e-commerce domain detection) then fails and the AI wrongly rejects a
-  /// real product as "not found". These must be resolved to the canonical
-  /// product URL before analysis.
-  static const Set<String> _shareLinkHosts = {
-    // Amazon app / short share
-    'amzn.to', 'amzn.eu', 'amzn.asia', 'amzn.in', 'amzn.com', 'a.co',
-    // Trendyol app (→ *.adj.st tracker'ına gider, unwrap edilir)
-    'ty.gl', 'tyml.gl',
-    // NOT: 'hb.gy' BURADA DEĞİL — Hepsiburada sanıp eklemiştim ama ölçtüm:
-    // hacksburg.org'a gidiyor, Hepsiburada ile ilgisi yok. Hepsiburada zaten
-    // tam URL paylaşıyor; bilinmeyen kısaltıcılar da metadata çekiminde
-    // followRedirects ile zaten çözülüyor.
-    // AliExpress app
-    's.click.aliexpress.com', 'a.aliexpress.com', 'star.aliexpress.com',
-    // eBay
-    'ebay.us', 'ebay.to',
-    // Temu
-    'temu.to',
-    // Generic URL shorteners commonly used for product shares
-    'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'cutt.ly', 'rebrand.ly',
-    'shorturl.at', 'is.gd', 'ow.ly', 'buff.ly', 'spr.ly', 'trib.al',
-  };
-
   /// Deep-link / attribution hosts that DON'T HTTP-redirect to the product
   /// page — they resolve the app deep link client-side and embed the real web
-  /// URL inside a query parameter (e.g. Trendyol's ty.gl → *.adj.st with
-  /// `adjust_redirect=https%3A%2F%2Fwww.trendyol.com…`). These must be
-  /// unwrapped, not chased.
+  /// URL inside a query parameter. Bunlar KOVALANMAZ, AÇILIR (unwrap).
+  /// Örnekler (ölçüldü): Trendyol `ty.gl → *.adj.st?adjust_redirect=…`,
+  /// Sahibinden `shbd.io → sahibinden.com/s/… → *.adj.st?adj_redirect=…`.
   static const List<String> _deepLinkTrackerSuffixes = [
     'adj.st', 'adjust.com', 'go.link', 'onelink.me', 'app.link', 'page.link',
     'bnc.lt', 'tlnk.io', 'sng.link',
   ];
 
-  /// Query-parameter names (in priority order) that attribution services use to
-  /// carry the real destination web URL.
+  /// Attribution servislerinin gerçek hedef URL'yi taşıdığı query parametreleri
+  /// (öncelik sırasıyla). NOT: Adjust'ın İKİ ayrı adlandırması var —
+  /// Trendyol `adjust_redirect`, Sahibinden `adj_redirect`/`adj_fallback`.
   static const List<String> _deepLinkUrlParams = [
-    'adjust_redirect', 'redirect', 'af_web_dp', 'af_dp', 'af_r',
-    r'$desktop_url', r'$fallback_url', r'$android_url', 'url', 'link',
-    'deep_link', 'deeplink', 'dl', 'destination', 'target',
+    // Adjust
+    'adjust_redirect', 'adj_redirect', 'adj_fallback', 'adj_redirect_macos',
+    // AppsFlyer
+    'af_web_dp', 'af_dp', 'af_r',
+    // Branch
+    r'$desktop_url', r'$fallback_url', r'$android_url',
+    // Genel
+    'redirect', 'url', 'link', 'deep_link', 'deeplink', 'dl',
+    'destination', 'target',
   ];
-
-  /// True when [url]'s host is a known short/share link that must be expanded.
-  static bool _isShareShortLink(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final host = uri.host.toLowerCase().replaceFirst('www.', '');
-      if (_shareLinkHosts.contains(host)) return true;
-      // AliExpress path-based short links: aliexpress.com/e/_xxxxx
-      if (host.contains('aliexpress.com') && uri.path.startsWith('/e/')) {
-        return true;
-      }
-      return false;
-    } catch (_) {
-      return false;
-    }
-  }
 
   /// True when [url] is an attribution/deep-link tracker (adj.st, onelink.me…).
   static bool _isDeepLinkTracker(String url) {
@@ -96,8 +61,9 @@ class MetadataService {
     }
   }
 
-  /// True when [value] is a plain http(s) web URL to a real (non-tracker,
-  /// non-short, non-asset) host — i.e. a usable product destination.
+  /// True when [value] is a plain http(s) web URL — tracker'ın içinden çıkarılan
+  /// hedef için. Kısa link olabilir (döngü onu da çözer); yalnız tracker'ın
+  /// kendisi ve görsel/asset URL'leri elenir.
   static bool _looksLikeWebUrl(String value) {
     final lower = value.toLowerCase();
     if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
@@ -110,7 +76,7 @@ class MetadataService {
     try {
       final u = Uri.parse(value);
       if (u.host.isEmpty) return false;
-      return !_isShareShortLink(value) && !_isDeepLinkTracker(value);
+      return !_isDeepLinkTracker(value);
     } catch (_) {
       return false;
     }
@@ -132,79 +98,72 @@ class MetadataService {
     return null;
   }
 
-  /// Resolve a mobile-app / short share link to its canonical product URL.
-  /// Returns the original URL unchanged for normal (already-full) URLs or when
-  /// resolution fails, so callers can use the result unconditionally.
+  /// Herhangi bir paylaşım/kısa linki gerçek ürün URL'sine çözer.
   ///
-  /// Two mechanisms are combined: (1) HTTP redirects are walked without
-  /// downloading bodies — the moment a `Location` points at a real product host
-  /// we return it; this works even where the product page blocks bot scraping,
-  /// since the short-link service still returns a 301/302. (2) Attribution
-  /// deep-links (ty.gl → *.adj.st) don't redirect to the web page, so the real
-  /// URL is unwrapped from their query parameters instead.
+  /// **DOMAIN EZBERİ YOK.** Önceden yalnızca elle yazılmış bir kısa-link host
+  /// listesi çözümleniyordu → listede olmayan HER platform patlıyordu (ölçülen
+  /// örnek: Sahibinden `shbd.io/s/… → sahibinden.com/s/… → *.adj.st` — tracker'da
+  /// takılıp 725 byte'lık boş sayfa alınıyordu, ürün tanınmıyordu). Artık HER
+  /// link için yönlendirme zinciri takip edilir; hangi platform olursa olsun
+  /// çalışır.
+  ///
+  /// Ucuz: zincir **HEAD** ile yürünür → gövde İNMEZ, dolayısıyla zaten tam olan
+  /// URL'lerde maliyet ~tek küçük istek. HEAD reddedilirse GET'e düşer.
+  /// Tracker (adj.st vb.) HTTP ile ürün sayfasına yönlendirmez → query'den
+  /// açılır (unwrap). Hata olursa orijinal URL döner (çağıran koşulsuz kullanır).
   Future<String> resolveShareUrl(String url) async {
-    if (!_isShareShortLink(url) && !_isDeepLinkTracker(url)) return url;
-
     var current = url;
     try {
       for (var hop = 0; hop < 8; hop++) {
-        // Already at a deep-link tracker → unwrap the embedded web URL rather
-        // than chasing more redirects (adj.st won't 3xx to the product page).
+        // Tracker'a geldiysek: kovalama, içindeki gerçek web URL'sini aç.
         if (_isDeepLinkTracker(current)) {
           final unwrapped = _unwrapDeepLink(current);
           if (unwrapped == null || unwrapped == current) break;
           current = unwrapped;
-          if (!_isShareShortLink(current) && !_isDeepLinkTracker(current)) {
-            break;
-          }
-          continue;
+          continue; // açılan URL de kısa/tracker olabilir → döngü sürsün
         }
-
-        final resp = await _dio.get(
-          current,
-          options: Options(
-            headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-              'Accept':
-                  'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-              'Accept-Language': 'tr,en-US;q=0.9,en;q=0.8',
-            },
-            followRedirects: false,
-            // Accept 2xx and 3xx without throwing so we can read `Location`.
-            validateStatus: (s) => s != null && s < 400,
-            receiveTimeout: const Duration(seconds: 8),
-            // NOT: sendTimeout YOK — gövdesiz GET'te bazı Dio sürümleri
-            // "sendTimeout without a request body" ile PATLIYOR → çözümleme
-            // sessizce başarısız olup kısa link tanınmıyordu.
-          ),
-        );
-
-        final status = resp.statusCode ?? 0;
-        if (status >= 300 && status < 400) {
-          final location = resp.headers.value('location');
-          if (location == null || location.isEmpty) break;
-          final next = Uri.parse(current).resolve(location).toString();
-          if (next == current) break;
-          current = next;
-          // Reached a real product URL — stop before fetching its body.
-          if (!_isShareShortLink(current) && !_isDeepLinkTracker(current)) {
-            break;
-          }
-          continue;
-        }
-
-        // Non-redirect (200) — already at the destination page. `realUri`
-        // reflects any redirects Dio itself followed; prefer it when present.
-        final real = resp.realUri.toString();
-        if (real.isNotEmpty && real != current) current = real;
-        break;
+        final next = await _redirectTarget(current);
+        if (next == null || next == current) break; // 2xx → zaten final
+        current = next;
       }
     } catch (_) {
-      // On any failure keep the original link; analysis still attempts it.
       return url;
     }
     return current;
+  }
+
+  /// Tek hop: 3xx ise `Location`'ı (mutlak) döndürür; 2xx (final) veya hata ise
+  /// null. HEAD kullanır ki tam URL'lerde koca sayfa boşuna inmesin.
+  Future<String?> _redirectTarget(String url) async {
+    for (final method in ['HEAD', 'GET']) {
+      try {
+        final resp = await _dio.request<dynamic>(
+          url,
+          options: Options(
+            method: method,
+            headers: {
+              'User-Agent': _mobileUa,
+              'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+              'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            },
+            followRedirects: false,
+            // 3xx'i istisna saymadan al ki `Location` okunabilsin.
+            validateStatus: (s) => s != null && s < 400,
+            receiveTimeout: const Duration(seconds: 8),
+          ),
+        );
+        final code = resp.statusCode ?? 0;
+        if (code >= 300 && code < 400) {
+          final loc = resp.headers.value('location');
+          if (loc == null || loc.isEmpty) return null;
+          return Uri.parse(url).resolve(loc).toString();
+        }
+        return null; // 2xx → hedefteyiz
+      } catch (_) {
+        continue; // HEAD desteklenmiyor/engelli → GET ile dene
+      }
+    }
+    return null;
   }
 
   /// Fetch OG Metadata from URL
