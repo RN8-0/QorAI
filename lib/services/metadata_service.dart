@@ -13,6 +13,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/services/cache_service.dart';
+import 'package:qor_ai/services/webview_resolver.dart'
+    show embeddedWebUrl, isDeepLinkTracker, isInterstitialTitle;
 
 class MetadataService {
   final Dio _dio;
@@ -24,78 +26,23 @@ class MetadataService {
   })  : _dio = dio,
         _cacheService = cacheService;
 
-  /// Deep-link / attribution hosts that DON'T HTTP-redirect to the product
-  /// page — they resolve the app deep link client-side and embed the real web
-  /// URL inside a query parameter. Bunlar KOVALANMAZ, AÇILIR (unwrap).
-  /// Örnekler (ölçüldü): Trendyol `ty.gl → *.adj.st?adjust_redirect=…`,
-  /// Sahibinden `shbd.io → sahibinden.com/s/… → *.adj.st?adj_redirect=…`.
-  static const List<String> _deepLinkTrackerSuffixes = [
-    'adj.st', 'adjust.com', 'go.link', 'onelink.me', 'app.link', 'page.link',
-    'bnc.lt', 'tlnk.io', 'sng.link',
-  ];
-
-  /// Attribution servislerinin gerçek hedef URL'yi taşıdığı query parametreleri
-  /// (öncelik sırasıyla). NOT: Adjust'ın İKİ ayrı adlandırması var —
-  /// Trendyol `adjust_redirect`, Sahibinden `adj_redirect`/`adj_fallback`.
-  static const List<String> _deepLinkUrlParams = [
-    // Adjust
-    'adjust_redirect', 'adj_redirect', 'adj_fallback', 'adj_redirect_macos',
-    // AppsFlyer
-    'af_web_dp', 'af_dp', 'af_r',
-    // Branch
-    r'$desktop_url', r'$fallback_url', r'$android_url',
-    // Genel
-    'redirect', 'url', 'link', 'deep_link', 'deeplink', 'dl',
-    'destination', 'target',
-  ];
-
-  /// True when [url] is an attribution/deep-link tracker (adj.st, onelink.me…).
-  static bool _isDeepLinkTracker(String url) {
+  /// [next] bizi [current]'a GERİ döndüren bir ara sayfa mı (bot kapısı, giriş
+  /// duvarı, çerez/bölge kapısı)? Evrensel imza: hedefin query'sinde bulunduğumuz
+  /// URL'nin kendisi taşınır (`checkLoading?returnUrl=<current>`). Böyle bir hop
+  /// KOVALANMAZ — ürün URL'si elimizdeyken kapının URL'sine geçmek kimliği
+  /// (slug'ı) kaybettirir ve link "tanınamadı" olur.
+  static bool _pointsBackTo(String next, String current) {
     try {
-      final host = Uri.parse(url).host.toLowerCase();
-      return _deepLinkTrackerSuffixes.any(
-        (s) => host == s || host.endsWith('.$s'),
-      );
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// True when [value] is a plain http(s) web URL — tracker'ın içinden çıkarılan
-  /// hedef için. Kısa link olabilir (döngü onu da çözer); yalnız tracker'ın
-  /// kendisi ve görsel/asset URL'leri elenir.
-  static bool _looksLikeWebUrl(String value) {
-    final lower = value.toLowerCase();
-    if (!lower.startsWith('http://') && !lower.startsWith('https://')) {
-      return false;
-    }
-    // Skip embedded image/asset URLs (og:image and friends).
-    if (RegExp(r'\.(jpg|jpeg|png|webp|gif|svg)(\?|$)').hasMatch(lower)) {
-      return false;
-    }
-    try {
-      final u = Uri.parse(value);
-      if (u.host.isEmpty) return false;
-      return !_isDeepLinkTracker(value);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Extract the real destination web URL embedded in a deep-link tracker URL.
-  static String? _unwrapDeepLink(String url) {
-    try {
-      final qp = Uri.parse(url).queryParameters;
-      for (final key in _deepLinkUrlParams) {
-        final v = qp[key];
-        if (v != null && _looksLikeWebUrl(v)) return v;
-      }
-      // Fallback: any query value that is a plain product web URL.
-      for (final v in qp.values) {
-        if (_looksLikeWebUrl(v)) return v;
+      final cur = Uri.parse(current);
+      final bare = '${cur.origin}${cur.path}';
+      for (final v in Uri.parse(next).queryParameters.values) {
+        if (v.isEmpty) continue;
+        if (v == current || v == bare) return true;
+        final vb = Uri.tryParse(v);
+        if (vb != null && vb.host == cur.host && vb.path == cur.path) return true;
       }
     } catch (_) {}
-    return null;
+    return false;
   }
 
   /// Herhangi bir paylaşım/kısa linki gerçek ürün URL'sine çözer.
@@ -107,23 +54,65 @@ class MetadataService {
   /// link için yönlendirme zinciri takip edilir; hangi platform olursa olsun
   /// çalışır.
   ///
-  /// Ucuz: zincir **HEAD** ile yürünür → gövde İNMEZ, dolayısıyla zaten tam olan
-  /// URL'lerde maliyet ~tek küçük istek. HEAD reddedilirse GET'e düşer.
-  /// Tracker (adj.st vb.) HTTP ile ürün sayfasına yönlendirmez → query'den
-  /// açılır (unwrap). Hata olursa orijinal URL döner (çağıran koşulsuz kullanır).
+  /// **HEAD KULLANILMAZ.** Ölçülen kanıt (Sahibinden `shbd.io/s/…`): aynı link
+  /// HEAD ve GET'e FARKLI zincir veriyor —
+  ///   HEAD → `sahibinden.com/s/…` → `cs/checkLoading` (bot kapısı) → 403 ÇIKMAZ
+  ///   GET  → `sahibinden.com/s/…` → `*.adj.st?adj_fallback=<gerçek ürün>` ✓
+  /// Bot korumalı siteler HEAD'i şüpheli sayar (hiçbir tarayıcı HEAD atmaz) ve
+  /// kapıya yollar. Eski kod HEAD'i önce deneyip "başarılı" (301) sayıyordu →
+  /// GET'e HİÇ düşmüyor, kapıda ölüyordu. Ucuzluk GET + stream ile korunur:
+  /// başlıklar gelir gelmez gövde iptal edilir → 3xx'te zaten gövde yok, 2xx'te
+  /// de koca sayfa inmez.
+  ///
+  /// Hata olursa orijinal URL döner (çağıran koşulsuz kullanır).
   Future<String> resolveShareUrl(String url) async {
     var current = url;
     try {
-      for (var hop = 0; hop < 8; hop++) {
-        // Tracker'a geldiysek: kovalama, içindeki gerçek web URL'sini aç.
-        if (_isDeepLinkTracker(current)) {
-          final unwrapped = _unwrapDeepLink(current);
-          if (unwrapped == null || unwrapped == current) break;
-          current = unwrapped;
+      for (var hop = 0; hop < 10; hop++) {
+        final embedded = embeddedWebUrl(current);
+
+        // Tracker'a geldiysek: kovalama (HTTP ile ürüne değil, app'e yönlendirir
+        // → `intent://`), içindeki gerçek web URL'sini aç.
+        if (isDeepLinkTracker(current)) {
+          if (embedded == null || embedded == current) break;
+          current = embedded;
           continue; // açılan URL de kısa/tracker olabilir → döngü sürsün
         }
-        final next = await _redirectTarget(current);
-        if (next == null || next == current) break; // 2xx → zaten final
+
+        final hopResult = await _hop(current);
+        final status = hopResult.status;
+
+        // Bloklandı/kapı (403/429/5xx) veya ağ hatası (-1): daha ileri gidemeyiz.
+        // Kapı URL'sinin içinde gerçek hedef varsa oradan devam et, yoksa
+        // elimizdeki `current` en iyisi — sayfa kazınamasa bile slug'ından ürün
+        // adı çıkar.
+        if (status >= 400 || status <= 0) {
+          if (embedded != null && embedded != current) {
+            current = embedded;
+            continue;
+          }
+          break;
+        }
+
+        final loc = hopResult.location;
+        if (loc == null || loc.isEmpty) break; // 2xx → hedefteyiz
+
+        final next = _absolutize(current, loc);
+        if (next == null) {
+          // Location http(s) DEĞİL (`intent://`, `sahibinden://`, `myapp://`) →
+          // Uri.resolve bunda çöp üretir. Deep-link'in içindeki web fallback'ini
+          // aç (Android intent'i `S.browser_fallback_url` taşır).
+          final viaDeepLink = embeddedWebUrl(loc) ?? embedded;
+          if (viaDeepLink != null && viaDeepLink != current) {
+            current = viaDeepLink;
+            continue;
+          }
+          break;
+        }
+        if (next == current) break;
+        // Bizi geldiğimiz yere geri döndüren ara sayfa (bot kapısı/giriş duvarı)
+        // → kovalama, ürün URL'sinde kal.
+        if (_pointsBackTo(next, current)) break;
         current = next;
       }
     } catch (_) {
@@ -132,38 +121,51 @@ class MetadataService {
     return current;
   }
 
-  /// Tek hop: 3xx ise `Location`'ı (mutlak) döndürür; 2xx (final) veya hata ise
-  /// null. HEAD kullanır ki tam URL'lerde koca sayfa boşuna inmesin.
-  Future<String?> _redirectTarget(String url) async {
-    for (final method in ['HEAD', 'GET']) {
-      try {
-        final resp = await _dio.request<dynamic>(
-          url,
-          options: Options(
-            method: method,
-            headers: {
-              'User-Agent': _mobileUa,
-              'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
-              'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-            },
-            followRedirects: false,
-            // 3xx'i istisna saymadan al ki `Location` okunabilsin.
-            validateStatus: (s) => s != null && s < 400,
-            receiveTimeout: const Duration(seconds: 8),
-          ),
-        );
-        final code = resp.statusCode ?? 0;
-        if (code >= 300 && code < 400) {
-          final loc = resp.headers.value('location');
-          if (loc == null || loc.isEmpty) return null;
-          return Uri.parse(url).resolve(loc).toString();
-        }
-        return null; // 2xx → hedefteyiz
-      } catch (_) {
-        continue; // HEAD desteklenmiyor/engelli → GET ile dene
-      }
+  /// `Location`'ı mutlak http(s) URL'ye çevirir. http(s) DIŞI şema (intent://,
+  /// özel app şeması) için null → çağıran deep-link olarak ele alır.
+  static String? _absolutize(String base, String location) {
+    try {
+      final resolved = Uri.parse(base).resolve(location);
+      final scheme = resolved.scheme.toLowerCase();
+      if (scheme != 'http' && scheme != 'https') return null;
+      return resolved.toString();
+    } catch (_) {
+      return null;
     }
-    return null;
+  }
+
+  /// Tek hop: durum kodu + ham `Location`. GET atar ama gövdeyi İNDİRMEZ —
+  /// yanıt stream olarak açılır ve başlıklar gelir gelmez iptal edilir.
+  Future<({int status, String? location})> _hop(String url) async {
+    try {
+      final resp = await _dio.get<ResponseBody>(
+        url,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'User-Agent': _mobileUa,
+            'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            'Upgrade-Insecure-Requests': '1',
+          },
+          followRedirects: false,
+          // 3xx/4xx/5xx'i istisna saymadan al ki `Location` ve kapı durumu
+          // okunabilsin.
+          validateStatus: (s) => s != null && s < 600,
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      // Gövdeyi ISTEMIYORUZ: bağlantıyı hemen kapat (koca sayfa inmesin).
+      try {
+        await resp.data?.stream.listen(null, cancelOnError: true).cancel();
+      } catch (_) {}
+      return (
+        status: resp.statusCode ?? 0,
+        location: resp.headers.value('location'),
+      );
+    } catch (_) {
+      return (status: -1, location: null);
+    }
   }
 
   /// Fetch OG Metadata from URL
@@ -509,6 +511,11 @@ class MetadataService {
     final t = title?.trim() ?? '';
     if (t.isEmpty) return false;
     if (t.startsWith('Amazon ASIN') || t.startsWith('Amazon ISBN')) return false;
+    // Bot kapısı/sınama sayfasının başlığı ("Just a moment…", "Erişim
+    // engellendi") ürün adı DEĞİLDİR. Bunu cache'lemek tek bir engellenmiş
+    // denemeyi SAATLERCE kalıcılaştırır ve AI'a ürün adı diye "Just a moment..."
+    // besler.
+    if (isInterstitialTitle(t)) return false;
     if (t.toLowerCase() == _extractDomainName(url).toLowerCase()) return false;
     if (!t.contains(' ') &&
         RegExp(r'^[a-z0-9.-]+\.[a-z]{2,}$', caseSensitive: false).hasMatch(t)) {

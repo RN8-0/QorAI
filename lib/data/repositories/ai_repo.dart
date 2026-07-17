@@ -9,20 +9,25 @@ import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/services/ai_service.dart';
+import 'package:qor_ai/services/gemini_service.dart';
 import 'package:qor_ai/services/metadata_service.dart';
+import 'package:qor_ai/services/webview_resolver.dart';
 
 class AIRepository {
   final AIService _aiService;
   final PbDataSource _pbDS;
   final MetadataService? _metadataService;
+  final WebViewResolver? _webViewResolver;
 
   AIRepository({
     required AIService aiService,
     required PbDataSource pbDS,
     MetadataService? metadataService,
+    WebViewResolver? webViewResolver,
   }) : _aiService = aiService,
        _pbDS = pbDS,
-       _metadataService = metadataService;
+       _metadataService = metadataService,
+       _webViewResolver = webViewResolver;
 
   /// Get recommendations - Section 7.2
   Future<Result<RecommendationResult>> getRecommendations({
@@ -85,6 +90,40 @@ class AIRepository {
           debugPrint(
             '[AIRepo] Metadata fetch failed for $analysisUrl: $e — continuing',
           );
+        }
+      }
+
+      // Step 1b: HTTP ile kimlik çıkmadıysa GERÇEK TARAYICI ile çöz.
+      // Sebep (ölçüldü): bot korumalı mağazalar istemciyi TLS parmak izinden
+      // tanıyor — aynı IP/başlıkla curl 301 alırken Dart (Dio ve ham dart:io)
+      // 403 alıyor. Başlıkla aşılamaz. Sistem WebView'ı gerçek Chrome motoru +
+      // kullanıcının kendi IP'si → kapıları geçer, Cloudflare sınamasını kendi
+      // çözer, JS ile render edilen mağazalarda da çalışır.
+      // PAHALI değil: yalnız kimlik GERÇEKTEN yoksa çalışır (Amazon/Trendyol gibi
+      // HTTP'den okunabilen linklerde hiç kurulmaz).
+      if (_webViewResolver != null &&
+          _identityIsMissing(analysisUrl, metadata)) {
+        debugPrint('[AIRepo] No identity from HTTP → WebView resolve: $url');
+        try {
+          final wv = await _webViewResolver.resolve(url);
+          if (wv != null) {
+            if (wv.finalUrl.startsWith('http') && wv.finalUrl != analysisUrl) {
+              debugPrint('[AIRepo] WebView resolved → ${wv.finalUrl}');
+              analysisUrl = wv.finalUrl;
+            }
+            if (wv.hasIdentity) {
+              debugPrint('[AIRepo] WebView identity: ${wv.title}');
+              metadata = OgMetadata(
+                title: wv.title,
+                description: wv.description ?? metadata.description,
+                image: wv.image ?? metadata.image,
+                price: wv.price ?? metadata.price,
+                siteName: wv.siteName ?? metadata.siteName,
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('[AIRepo] WebView resolve failed (continuing): $e');
         }
       }
 
@@ -158,6 +197,22 @@ class AIRepository {
       debugPrint('[AIRepo] analyzeLink unexpected error: $e');
       return Failure(ServerException(message: e.toString()));
     }
+  }
+
+  /// Elimizde ürünün GERÇEK kimliği (adı) var mı? Yoksa pahalı ama kesin yola
+  /// (gerçek tarayıcı) düşmeye değer. İki kaynak yeter:
+  ///   • kazınan başlık — ara/engel sayfası ("Just a moment…") ve çıplak domain
+  ///     SAYILMAZ, bunlar kimlik değil,
+  ///   • URL slug'ı — çoğu mağaza ürün adını yola yazar (uydurma değil, gerçek).
+  /// Amazon ASIN/ISBN placeholder'ı kimlik değildir (ASIN'den ad uydurulamaz).
+  bool _identityIsMissing(String url, OgMetadata metadata) {
+    if (isUsablePageTitle(metadata.title)) return false;
+    final slug = GeminiService.extractProductNameFromUrl(url);
+    if (slug == null || slug.trim().isEmpty) return true;
+    if (slug.startsWith('Amazon ASIN') || slug.startsWith('Amazon ISBN')) {
+      return true;
+    }
+    return !isUsablePageTitle(slug);
   }
 
   /// AI analizi başarısız olduğunda (ağ/kota/backend) en iyi çaba sonucu.

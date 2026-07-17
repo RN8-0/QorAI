@@ -40,6 +40,7 @@ import 'package:qor_ai/services/cache_service.dart';
 import 'package:qor_ai/services/subscription_service.dart';
 import 'package:qor_ai/services/remote_config_service.dart';
 import 'package:qor_ai/services/metadata_service.dart';
+import 'package:qor_ai/services/webview_resolver.dart';
 import 'package:qor_ai/services/profile_algorithm_service.dart';
 import 'package:qor_ai/services/tech_score_service.dart';
 import 'package:qor_ai/services/youtube_service.dart';
@@ -396,7 +397,15 @@ final aiRepositoryProvider = Provider<AIRepository>((ref) {
     aiService: ref.read(geminiServiceProvider),
     pbDS: ref.read(pbDataSourceProvider),
     metadataService: ref.read(metadataServiceProvider),
+    webViewResolver: ref.read(webViewResolverProvider),
   );
+});
+
+/// Gerçek tarayıcı motoruyla (sistem WebView) link çözümleyici — bot korumalı
+/// mağazalar Dart'ın TLS parmak izini bloklarken bu geçer. Yalnız HTTP yolundan
+/// kimlik çıkmadığında kullanılır (bkz. AIRepository._identityIsMissing).
+final webViewResolverProvider = Provider<WebViewResolver>((ref) {
+  return WebViewResolver();
 });
 
 /// Scraper Repository
