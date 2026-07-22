@@ -1,71 +1,77 @@
 {
   "category": "mice",
   "label": "Mouse",
-  "title": "2026'nın En İyi Mouse Modelleri: Hangi Fareyi Seçmelisiniz?",
-  "lead": "İster oyun ister ofis işleri için olsun, doğru fareyi seçmek verimliliğinizi ve konforunuzu doğrudan etkiler. Bu rehberde, bütçenize ve ihtiyaçlarınıza uygun en iyi seçenekleri inceliyoruz.",
+  "title": "En İyi Mouse Seçimi: 2026 Rehberi",
+  "lead": "Bilgisayar deneyiminizin temelini oluşturan mouse, doğru seçildiğinde verimliliğinizi ve konforunuzu katlar. İster iş ister oyun için olsun, elinize en uygun fareyi bulmak düşündüğünüzden daha kritik.",
   "sections": [
     {
-      "h": "Fare Seçerken Nelere Dikkat Etmeli?",
-      "body": "Öncelikle kullanım amacınızı belirleyin: oyun, ofis veya günlük kullanım. Ergonomi ve tutuş stili (palmiye, pençe, parmak ucu) önemli. DPI (çözünürlük) oyuncular için kritikken, ofis kullanıcıları için sessiz tıklama daha önemli olabilir. Kablolu/kablosuz bağlantı ve pil ömrü de göz ardı edilmemeli."
+      "h": "Kullanım Amacınız Ne?",
+      "body": "Mouse seçerken ilk adım, onu ne için kullanacağınızı belirlemektir. Yoğun oyun seansları için düşük gecikmeli, yüksek DPI'lı bir model ararken, ofis ve genel kullanım için ergonomi ve pil ömrü ön plana çıkar. Tasarımcılar ve mühendisler ise özel tuşlara ve hassas takibe sahip farelere ihtiyaç duyar."
     },
     {
-      "h": "Oyun ve Ofis için En İyi Seçenekler",
-      "body": "Oyuncular için yüksek DPI ve hassas sensörler ön planda. Örneğin, Onikuma CW906 yüksek performansıyla dikkat çekiyor. Ofis kullanıcıları içinse Kensington Pro Fit Mouse, ergonomik yapısıyla uzun çalışma saatlerinde konfor sağlıyor. Trust modelleri ise sessiz tıklama ve uygun fiyat dengesi sunuyor."
+      "h": "Ergonomi ve Konfor Önceliğiniz Olsun",
+      "body": "Saatler süren kullanımlarda el ve bilek sağlığınızı korumak için ergonomi hayati önem taşır. Elinizin büyüklüğüne ve tutuş şeklinize (palm, claw, fingertip) uygun bir mouse, uzun vadede oluşabilecek rahatsızlıkları engeller. Dikey fareler gibi özel tasarımlar, bilek pozisyonunu iyileştirerek fark yaratabilir."
     },
     {
-      "h": "Fiyat/Performans Canavarları",
-      "body": "Everest, farklı modelleriyle geniş bir yelpazede kullanıcıları hedefliyor. SM-161 gibi uygun fiyatlı modeller temel ihtiyaçları karşılarken, CM-890G oyuncular için makro tuşları ve RGB aydınlatma sunuyor. Warp modelleri ise sağlam yapılarıyla öne çıkıyor."
+      "h": "Bağlantı ve Ek Özellikler Neler Sunuyor?",
+      "body": "Kablosuz mouse'lar hareket özgürlüğü sunarken, bazı modellerde gecikme endişesi taşıyabilir. Bluetooth veya 2.4 GHz USB alıcılı modeller arasında seçim yaparken, pil ömrü ve şarj edilebilir olup olmaması da önemlidir. Programlanabilir tuşlar, ayarlanabilir DPI ve farklı yüzeylerde çalışma yeteneği gibi ek özellikler, kullanım deneyiminizi zenginleştirir."
     }
   ],
   "picks": [
     {
-      "name": "Kensington Pro Fit Mouse (K72405EU)",
-      "why": "Ergonomik tasarımı ve yüksek kalite standartlarıyla ofis kullanımı için en iyi seçim.",
-      "id": "0blp3739p3f9f7k",
-      "slug": "kensington-pro-fit"
+      "name": "Razer Pro Click V2 Vertical Mouse (RZ01-05250100-R3G1)",
+      "why": "Ergonomik dikey tasarımı sayesinde bilek yorgunluğunu azaltırken, üst düzey hassasiyet sunar.",
+      "id": "e2lncy13mpckmk3",
+      "slug": "razer-pro-click-v2-vertical"
     },
     {
-      "name": "Onikuma CW906 Mouse",
-      "why": "Yüksek DPI ve hassas sensörüyle oyunlarda üstün performans vadediyor.",
-      "id": "3e2vgddmcdb24t0",
-      "slug": "onikuma-cw906"
+      "name": "Logitech G604 Lightspeed Mouse (910-005650)",
+      "why": "Hem oyuncular hem de üretkenlik odaklı kullanıcılar için programlanabilir tuşları ve uzun pil ömrüyle öne çıkar.",
+      "id": "lcscqekionufyls",
+      "slug": "logitech-g604-lightspeed"
     },
     {
-      "name": "Everest SM-161 Mouse",
-      "why": "Giriş seviyesi fiyatıyla temel ihtiyaçları karşılayan güvenilir bir model.",
-      "id": "2734y8p3iyvm97e",
-      "slug": "everest-sm-161"
+      "name": "3Dconnexion CadMouse Pro Wireless Mouse (3DX-700116)",
+      "why": "CAD ve 3D tasarım profesyonelleri için özel olarak geliştirilmiş hassasiyet ve işlevsellik sunar.",
+      "id": "77l5mhenmhwbbqo",
+      "slug": "3dconnexion-cadmouse-pro-wireless"
     },
     {
-      "name": "Trust Sula Mouse",
-      "why": "Sessiz tıklama ve şık tasarımıyla ofis ve ev kullanımına uygun.",
-      "id": "1szuhi7gzvf8x3n",
-      "slug": "trust-sula"
+      "name": "Roccat Kone Air Mouse (ROC-11-452-05)",
+      "why": "Uzun pil ömrü ve konforlu tasarımıyla günlük kullanım ve hafif oyunlar için ideal bir kablosuz çözümdür.",
+      "id": "6noiejiwcn4swxw",
+      "slug": "roccat-kone-air"
     },
     {
-      "name": "Warp WRP-S12800 Mouse",
-      "why": "Sağlam yapısı ve uygun fiyatıyla günlük kullanım için ideal.",
-      "id": "58f2vued9jxsicu",
-      "slug": "warp-wrp-s12800"
+      "name": "Dareu A950 Pro 4K Mouse",
+      "why": "Hafif magnezyum kasası ve yüksek performansıyla özellikle e-spor oyuncularının beklentilerini karşılar.",
+      "id": "p9lk9znfwr2qc72",
+      "slug": "dareu-a950-pro-4k"
+    },
+    {
+      "name": "Dell Premier MS900 Mouse (570-BBCB)",
+      "why": "Modern ofis ortamları için tasarlanmış, şık görünümü ve kullanışlı özellikleriyle dikkat çeken bir modeldir.",
+      "id": "qimhzublxhkaych",
+      "slug": "dell-premier-ms900"
     }
   ],
   "faq": [
     {
-      "q": "Kablolu mu yoksa kablosuz mu fare tercih etmeliyim?",
-      "a": "Kablolu fareler daha düşük gecikme ve pil derdi olmaması sunar, oyuncular için idealdir. Kablosuz fareler ise daha düzenli bir masa ve taşınabilirlik sağlar."
+      "q": "DPI nedir ve benim için ne kadar önemli?",
+      "a": "DPI (dots per inch), mouse'un bir inçlik harekette imleci ekranda kaç piksel hareket ettirdiğini gösterir; yüksek DPI daha hızlı imleç hareketi anlamına gelir ve özellikle oyuncular için önemlidir."
     },
     {
-      "q": "DPI nedir ve kaç olmalı?",
-      "a": "DPI, farenin hassasiyetini belirler. Ofis kullanımı için 800-1600 DPI yeterliyken, oyuncular 3200 DPI ve üzerini tercih edebilir."
+      "q": "Kablolu mu, kablosuz mu mouse tercih etmeliyim?",
+      "a": "Kablosuz mouse'lar hareket özgürlüğü sunarken, kablolu modeller genellikle daha düşük gecikme süresi ve pil derdi olmamasıyla öne çıkar; seçim kullanım amacınıza ve önceliklerinize bağlıdır."
     },
     {
-      "q": "Ergonomi neden önemli?",
-      "a": "Yanlış tutuş uzun vadede el, bilek ve kol ağrılarına yol açabilir. Fare seçerken el büyüklüğünüze uygun ve rahat bir tutuş sunan modelleri tercih edin."
+      "q": "Ergonomik mouse ne işe yarar?",
+      "a": "Ergonomik mouse'lar, el ve bileğin doğal pozisyonunu koruyarak uzun süreli kullanımlarda ağrı ve yorgunluğu azaltmaya yardımcı olur, özellikle uzun saatler bilgisayar başında olanlar için faydalıdır."
     },
     {
-      "q": "Sessiz tıklama farkı nedir?",
-      "a": "Sessiz tıklamalı fareler, ofis ortamında veya gece kullanımda rahatsızlık vermez. Trust modelleri bu konuda öne çıkar."
+      "q": "Mouse'umun pil ömrünü nasıl uzatırım?",
+      "a": "Mouse'unuzu kullanmadığınız zamanlarda kapatmak, enerji tasarrufu modlarını kullanmak ve yüksek performans ayarlarından kaçınmak pil ömrünü önemli ölçüde uzatır."
     }
   ],
-  "updatedAt": "2026-06-21T09:09:24.840Z"
+  "updatedAt": "2026-07-22T01:18:07.477Z"
 }

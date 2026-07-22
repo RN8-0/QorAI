@@ -1,65 +1,71 @@
 {
   "category": "microphones",
   "label": "Mikrofon",
-  "title": "En İyi Mikrofon 2026: Stüdyo ve Yayın İçin Seçenekler",
-  "lead": "Mikrofon seçimi, kayıt kalitesinden canlı yayın deneyimine kadar her şeyi etkiler. İster podcast yapın ister şarkı kaydedin, doğru mikrofonu bulmak için bu rehberi takip edin.",
+  "title": "En İyi Mikrofonlar 2024: Sesinizi Yükseltin",
+  "lead": "İster profesyonel yayıncı olun, ister oyun tutkunu ya da sadece uzaktan toplantılar için net bir sese ihtiyacınız olsun, doğru mikrofon seçimi deneyiminizi tamamen değiştirebilir. Piyasada birbirinden farklı özelliklere sahip birçok model varken, ihtiyaçlarınıza en uygun olanı bulmak kafa karıştırıcı olabilir.",
   "sections": [
     {
-      "h": "Nelere Dikkat Etmeli",
-      "body": "Mikrofon alırken kullanım amacınızı belirleyin: vokal için kondenser, enstrüman için dinamik modeller öne çıkar. Bağlantı tipi (USB mi XLR mi) ve kutup deseni (kardioid, çift yönlü) kayıt ortamınıza uygun olmalı. Frekans tepkisi ve hassasiyet değerlerini kontrol edin."
+      "h": "Neden Kaliteli Bir Mikrofona İhtiyacınız Var?",
+      "body": "İnternet çağında ses kalitesi, görsel içerik kadar kritik hale geldi. Profesyonel görünen bir video bile kötü sesle izleyiciyi kaçırabilir. Net, anlaşılır ve arka plan gürültüsünden arındırılmış bir ses, mesajınızın etkili bir şekilde iletilmesini sağlar ve dinleyicilerinizle daha güçlü bir bağ kurmanıza yardımcı olur."
     },
     {
-      "h": "Stüdyo ve Yayın İçin Modeller",
-      "body": "Rode NT4 gibi çift diyaframlı kondenser mikrofonlar, stereo kayıt için idealdir. JLab Talk ise USB bağlantısıyla yayıncılar için pratik bir seçenek sunar. Her iki model de yüksek Qor AI skoruyla dikkat çeker."
+      "h": "Mikrofon Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle kullanım amacınızı belirlemelisiniz: yayıncılık, vokal, enstrüman kaydı veya günlük kullanım. Bağlantı tipi (USB, 3.5mm, XLR), ses alma karakteristiği (kardioid, çok yönlü), kablosuz menzil, pil ömrü ve gürültü engelleme gibi özellikler, seçeceğiniz modelin performansını doğrudan etkiler. Ayrıca, mikrofonun taşınabilirliği ve ek özellikler (dahili kayıt, uygulama desteği) de karar verme sürecinizde rol oynayabilir."
     },
     {
-      "h": "Taşınabilir ve Uygun Fiyatlı Alternatifler",
-      "body": "Comica CVM-D02 gibi lavalier mikrofonlar, röportaj ve mobil çekimler için hafif ve etkilidir. Techstorm Xiaokoa Q18 ise oyuncular için uygun fiyatlı bir USB mikrofon arayanlara hitap eder."
+      "h": "Kablosuz Mikrofon Sistemlerinin Avantajları",
+      "body": "Özellikle hareketli içerik üreticileri ve sunum yapanlar için kablosuz mikrofonlar büyük bir özgürlük sunar. Gelişen teknoloji sayesinde, günümüz kablosuz sistemleri hem ses kalitesinden ödün vermiyor hem de uzun menzil ve stabil bağlantı sağlıyor. Kompakt tasarımları ve kolay kurulumlarıyla, profesyonel kalitede sesi her yere taşımak artık çok daha pratik."
     }
   ],
   "picks": [
     {
-      "name": "Rode NT4 Mikrofon",
-      "why": "Stereo kayıt yeteneği ve sağlam yapısıyla stüdyo kalitesinde sonuçlar verir.",
-      "id": "0jlygwoz4d55z0d",
-      "slug": "rode-nt4"
+      "name": "DJI Mic 3 Mikrofon",
+      "why": "Profesyonel içerik üreticileri için tasarlanan bu model, gelişmiş ses kalitesi ve uzun pil ömrü ile öne çıkıyor.",
+      "id": "0w5i14warxc7euy",
+      "slug": "dji-mic-3"
     },
     {
-      "name": "JLab Talk Mikrofon",
-      "why": "USB bağlantısı ve üç farklı kutup deseniyle yayıncılar için çok yönlü bir seçenek.",
-      "id": "42dawtinb4dy7b6",
-      "slug": "jlab-talk"
+      "name": "Sony ECM-W3 Mikrofon (2 Adet)",
+      "why": "İki kişilik röportajlar ve dinamik içerikler için ideal olan bu set, Sony kalitesiyle güvenilir bir kablosuz deneyim sunar.",
+      "id": "las3v1cq32hj5aa",
+      "slug": "sony-ecm-w3"
     },
     {
-      "name": "Comica CVM-D02 Mikrofon",
-      "why": "Kablosuz kullanım kolaylığı ve net ses kalitesiyle mobil çekimlerde öne çıkar.",
-      "id": "1s89unciew2g566",
-      "slug": "comica-cvm-d02"
+      "name": "Razer Seiren BT Mikrofon (RZ19-04150100-R3U1)",
+      "why": "Mobil yayıncılar ve oyuncular için optimize edilmiş bu Bluetooth mikrofon, taşınabilirlik ve net ses dengesini başarıyla yakalıyor.",
+      "id": "2941g0oe8eyufdq",
+      "slug": "razer-seiren-bt"
     },
     {
-      "name": "Techstorm Xiaokoa Q18 Mikrofon",
-      "why": "RGB aydınlatmalı tasarımı ve uygun fiyatıyla oyuncular arasında popüler.",
-      "id": "4a3ploggi1gwcgq",
-      "slug": "techstorm-xiaokoa-q18"
+      "name": "Synco G3 Mikrofon",
+      "why": "Farklı kullanım senaryolarına uygun çok yönlülüğü ve sağlam yapısıyla dikkat çeken Synco G3, iyi bir fiyat/performans dengesi sunuyor.",
+      "id": "sdjcjv0riyha8p1",
+      "slug": "synco-g3"
+    },
+    {
+      "name": "DJI Mic Mini 2 Kişilik Mikrofon (2 Adet)",
+      "why": "Kompakt boyutuyla her yere taşınabilen bu ikili set, vlog çekimleri ve mobil röportajlar için pratik ve yüksek kaliteli bir çözüm sunuyor.",
+      "id": "dqx2ysfavudv017",
+      "slug": "dji-mic-mini-2-kisilik"
     }
   ],
   "faq": [
     {
-      "q": "USB mikrofon mu XLR mikrofon mu tercih etmeliyim?",
-      "a": "USB mikrofonlar tak-çalıştır olduğu için yeni başlayanlar için idealdir. XLR mikrofonlar ise ses arabirimi gerektirir ancak daha profesyonel ses kalitesi ve esneklik sunar."
+      "q": "Kablosuz mikrofonlar kablolular kadar iyi mi ses verir?",
+      "a": "Günümüz kablosuz mikrofonları, çoğu senaryoda kablolu rakipleri kadar yüksek kaliteli ses sunabilir; önemli olan, modelin teknolojisi ve kullanım ortamıdır."
     },
     {
-      "q": "Kardioid kutup deseni ne işe yarar?",
-      "a": "Kardioid desen, sadece mikrofonun önünden gelen sesi alır, arka ve yanlardaki gürültüyü bastırır. Bu sayede yalıtımı artar, özellikle ev stüdyolarında tercih edilir."
+      "q": "Yaka mikrofonu ne zaman tercih edilmeli?",
+      "a": "Konuşmacının serbestçe hareket etmesi gereken sunumlar, röportajlar veya vlog çekimleri gibi durumlarda, ses kaynağına yakınlığı sayesinde yaka mikrofonları idealdir."
     },
     {
-      "q": "Mikrofonumda pop filtresi gerekli mi?",
-      "a": "Evet, özellikle vokal kayıtlarında patlamalı sesleri (p, b, t) yumuşatmak için pop filtresi kullanmanız önerilir."
+      "q": "Mikrofonumun pil ömrü neden önemli?",
+      "a": "Özellikle dış çekimler veya uzun kayıt seansları için kesintisiz çalışma imkanı sunar; yeterli pil ömrü, yarıda kesilen kayıtları önler ve güvenilir bir kullanım sağlar."
     },
     {
-      "q": "En iyi mikrofon markası hangisi?",
-      "a": "Rode, JLab ve Comica gibi markalar hem amatör hem profesyonel kullanıcılar için güvenilir seçenekler sunar. Seçim, bütçenize ve ihtiyacınıza bağlıdır."
+      "q": "Stüdyo mikrofonunu dışarıda kullanabilir miyim?",
+      "a": "Stüdyo mikrofonları genellikle hassas ve ortam gürültüsüne açık olduğundan, dış mekan kullanımı için rüzgar koruması ve iyi bir izolasyon gerektirebilir; kablosuz yaka mikrofonları daha pratik bir alternatif olabilir."
     }
   ],
-  "updatedAt": "2026-06-21T09:10:05.290Z"
+  "updatedAt": "2026-07-22T01:19:03.559Z"
 }
