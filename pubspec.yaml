@@ -1,7 +1,7 @@
 name: qor_ai
 description: "Qor AI - AI Product Advisor. Your personal decision engine."
 publish_to: 'none'
-version: 2.0.6+13
+version: 2.0.7+14
 
 environment:
   sdk: ^3.10.4
@@ -33,7 +33,9 @@ dependencies:
   shared_preferences: ^2.3.3
 
   # Subscriptions
-  in_app_purchase: ^3.2.0
+  # 3.3.0 => in_app_purchase_android 0.5.x => Google Play Billing Library 8.0.0
+  # (Billing 7 desteği 31 Ağu 2026'da bitiyor — Play Console uyarısı).
+  in_app_purchase: ^3.3.0
 
   # UI & Animations
   cupertino_icons: ^1.0.8
