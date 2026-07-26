@@ -1292,8 +1292,8 @@ GÖREV: Bu konuda 3 dilde (Türkçe, İngilizce, Almanca) eksiksiz bir makale ya
       "lead": "<özet, 120-160 karakter>",
       "body_md": "<GİRİŞ bölümü markdown: neden bu liste/konu, nasıl seçildi. 150-300 kelime. ## alt başlıklar, **kalın**, - maddeler, | tablolar | desteklenir. Ürün anlatımlarını BURAYA YAZMA — ürünler items'ta>",
       "conclusion_md": "<SONUÇ bölümü markdown: özet + öneri, 80-150 kelime>",
-      "metaTitle": "<SEO başlık, maks 60 karakter>",
-      "metaDescription": "<SEO açıklama, maks 155 karakter>",
+      "metaTitle": "<SEO başlık — KESİNLİKLE 60 KARAKTERİ AŞMASIN, karakterleri say>",
+      "metaDescription": "<SEO açıklama — KESİNLİKLE 155 KARAKTERİ AŞMASIN, karakterleri say>",
       "tags": "<virgülle 4-6 etiket>"
     },
     "en": { <aynı alanlar İngilizce> },
@@ -1318,6 +1318,7 @@ KURALLAR:
 - Fiyat YAZMA (site canlı fiyatı kendisi gösterir); "yaklaşık", "civarı" gibi fiyat cümleleri kurma.
 - 3 dil birbirinin çevirisi olsun ama doğal aksın (kelime kelime çeviri değil).
 - body_md içinde bir karşılaştırma tablosu (| Model | Ekran | Pil |…) varsa süper — tablolar destekleniyor.
+- metaTitle/metaDescription sınırlarını yazmadan önce karakter say; sınırı aşan metin Google'da kesilir. Ürün adlarını meta başlığa doldurma, kısa ve net tut.
 - JSON string'lerinde gerçek satır sonu için \\n kullan.`;
   }
   function blogPromptCopy() {
