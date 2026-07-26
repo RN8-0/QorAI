@@ -211,13 +211,23 @@ async function main() {
         // hit"). Skip is how amazon_direct avoids re-scraping already-fresh
         // prices, which keeps nightly Amazon volume — and the bot wall — low.
         if (offers == null) { skipped++; continue; }
-        const cleanup = await deleteOffersForProductNetwork(p.id, conn.id, { refresh: false });
+        // Bir connector birden çok network'e yazabilir (epey_amazon +
+        // epey_store) — hepsinin bayat satırları temizlenir.
+        let cleanupDeleted = 0;
+        for (const net of (conn.networks || [conn.id])) {
+          const c = await deleteOffersForProductNetwork(p.id, net, { refresh: false });
+          cleanupDeleted += c.deleted || 0;
+        }
+        let wroteAny = false;
         for (const offer of offers) {
           offer.productId = offer.productId || p.id;
           // Kategori ipucu — rollup taban kontrolü için (ekstra PB GET'inden kaçınır).
           offer.category = offer.category || p.category || '';
-          const res = await upsertOffer(offer);
+          // Rollup burada DEĞİL — connector'ın tüm offer'ları yazıldıktan
+          // sonra ürün başına TEK kez koşar (4 offer = 4 yerine 1 rollup).
+          const res = await upsertOffer(offer, { refreshRollup: false });
           if (res.ok) {
+            wroteAny = true;
             offersWritten++;
             productOffers++;
             if (offer.country) {
@@ -229,7 +239,7 @@ async function main() {
             noMatch++;
           }
         }
-        if (!offers.length || cleanup.deleted) await refreshProductRollup(p.id, p.category);
+        if (wroteAny || !offers.length || cleanupDeleted) await refreshProductRollup(p.id, p.category);
       } catch (e) {
         errors++;
         log(`  ! ${tag} ${label} — ${conn.id}: ${e.message}`);

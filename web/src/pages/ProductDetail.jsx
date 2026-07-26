@@ -1204,14 +1204,27 @@ export default function ProductDetail() {
             // link for that market.
             // Other retailers shippable to the SELECTED country. Amazon is shown
             // once as its own row (real offer or geo link), so its stored offers
-            // are dropped here.
-            const priced = offers.filter((o) => {
-              if (!o.url) return false;
-              if (isAmazonOffer(o)) return false;
-              const oc = String(o.country || '').toUpperCase();
-              if (oc && sel && oc !== sel) return false;
-              return true;
-            });
+            // are dropped here. Linksiz vitrin satırları (epey_store — Epey'in
+            // en ucuz 3 TR mağazası) yalnız gerçek fiyatla listelenir ve
+            // TIKLANMAZ (affiliate yalnız Amazon'da var).
+            const priced = offers
+              .filter((o) => {
+                if (isAmazonOffer(o)) return false;
+                if (!o.url && !o.hasExactPrice) return false;
+                const oc = String(o.country || '').toUpperCase();
+                if (oc && sel && oc !== sel) return false;
+                return true;
+              })
+              .sort((a, b) => {
+                if (a.hasExactPrice !== b.hasExactPrice) return a.hasExactPrice ? -1 : 1;
+                return (a.price || Infinity) - (b.price || Infinity);
+              });
+            // Mağaza logosu: epey_store satırları domaini kayıttan taşır,
+            // linkli satırlarda url'nin hostname'i kullanılır.
+            const storeFavDomain = (o) => {
+              if (o.storeDomain) return o.storeDomain;
+              try { return new URL(o.directUrl || o.url).hostname.replace(/^www\./, ''); } catch { return ''; }
+            };
             if (!amazonUrl && !amazonOffer && priced.length === 0 && countryOptions.length <= 1) return null;
             return (
               <section className="pd-block">
@@ -1246,14 +1259,32 @@ export default function ProductDetail() {
                       <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
                     </a>
                   )}
-                  {priced.map((o) => (
-                    <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o, geoCountry)} target="_blank" rel="sponsored noopener">
-                      <span className="pd-price-store">{o.store || L('Store', 'Mağaza', 'Shop')}</span>
-                      {o.hasExactPrice
-                        ? <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
-                        : <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>}
-                    </a>
-                  ))}
+                  {priced.map((o) => {
+                    const dom = storeFavDomain(o);
+                    const storeCell = (
+                      <span className="pd-price-store">
+                        {dom ? <img className="pd-store-fav" src={`https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(dom)}`} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} /> : null}
+                        {o.store || L('Store', 'Mağaza', 'Shop')}
+                      </span>
+                    );
+                    // Linksiz vitrin satırı: sadece logo + fiyat, tıklanmaz.
+                    if (!o.url) {
+                      return (
+                        <div key={o.id || `${o.store}-${o.price}`} className="pd-price-row pd-price-row-static">
+                          {storeCell}
+                          <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o, geoCountry)} target="_blank" rel="sponsored noopener">
+                        {storeCell}
+                        {o.hasExactPrice
+                          ? <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
+                          : <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>}
+                      </a>
+                    );
+                  })}
                 </div>
               </section>
             );

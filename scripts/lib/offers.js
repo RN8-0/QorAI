@@ -144,6 +144,11 @@ async function refreshProductRollup(productId, categoryHint = null) {
   };
 
   for (const o of pricedLive) {
+    // Linksiz vitrin satırları (epey_store: mağaza logosu+fiyat, affiliate yok)
+    // rollup'a GİRMEZ — lowestPrice/prices{} kart, blog ve app fiyatlarını
+    // besler ve oradaki satın alma yolu Amazon linkidir; linksiz bir mağazanın
+    // daha ucuz fiyatı vitrin fiyatıyla buy-box linkini ayrıştırırdı.
+    if (!(o.affiliateUrl || o.url)) continue;
     const price = effectivePrice(o);
     const usd = toUsd(price, o.currency);
     // Kategori taban kontrolü: pahalı bir üründe aksesuar fiyatı (₺200 telefon
@@ -190,6 +195,9 @@ async function refreshProductRollup(productId, categoryHint = null) {
 async function writePriceSnapshot(offerId, rec) {
   const price = effectivePrice(rec);
   if (!offerId || price <= 0 || rec.priceUnknown) return;
+  // Linksiz vitrin satırları (epey_store) tarih grafiğine yazılmaz — gecede
+  // ürün başına 3 ekstra snapshot, koleksiyonu yılda milyonlarca satır büyütür.
+  if (!(rec.affiliateUrl || rec.url)) return;
   const payload = {
     offerId,
     productId: rec.productId || '',
@@ -217,9 +225,12 @@ async function writePriceSnapshot(offerId, rec) {
  * Upsert one retailer offer and refresh the product rollup.
  * offer = { productId?|gtin?|mpn?+brand?, store, network, country, price,
  *           currency, priceText?, url, affiliateUrl?, condition?, inStock?, source }
+ * opts.refreshRollup=false → rollup'ı atla; çağıran (sync_offers) ürün başına
+ * TEK rollup koşar. Ürün başına 4 offer yazan Epey akışında PB yükünü 4'te 1'e
+ * indirir. Varsayılan true (eski çağıranlar değişmeden çalışır).
  * Returns { ok, productId } or { skipped:'no-product' }.
  */
-async function upsertOffer(offer) {
+async function upsertOffer(offer, opts = {}) {
   const productId = await resolveProductId(offer);
   if (!productId) return { skipped: 'no-product' };
 
@@ -269,7 +280,7 @@ async function upsertOffer(offer) {
     throw new Error(`offer upsert failed: ${JSON.stringify(res.body).slice(0, 200)}`);
   }
   await writePriceSnapshot(res.body.id, rec);
-  await refreshProductRollup(productId, offer.category || null);
+  if (opts.refreshRollup !== false) await refreshProductRollup(productId, offer.category || null);
   return { ok: true, productId };
 }
 

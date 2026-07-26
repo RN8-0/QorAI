@@ -731,6 +731,13 @@
 }
 .pd-price-row:active { transform: translateY(1px); }
 .pd-price-store { font-weight: 850; font-size: 16px; display: inline-flex; align-items: center; }
+/* Mağaza favicon'u (Epey vitrin satırları + linkli mağazalar) */
+.pd-store-fav { width: 22px; height: 22px; border-radius: 6px; margin-right: 10px; background: #fff; object-fit: contain; flex: 0 0 22px; }
+/* Linksiz vitrin satırı (epey_store): logo + fiyat, tıklanmaz — hover/basma
+   geri bildirimi yok ki link sanılmasın. */
+.pd-price-row-static { cursor: default; }
+.pd-price-row-static:hover { border-color: var(--border); box-shadow: none; }
+.pd-price-row-static:active { transform: none; }
 /* Country tag on cross-market Amazon rows (e.g. 🇩🇪 DE next to the logo) so
    the visitor can always tell WHICH storefront a price belongs to. */
 .pd-price-cc { margin-left: 10px; font-size: 13px; font-weight: 800; opacity: 0.75; letter-spacing: 0.4px; }

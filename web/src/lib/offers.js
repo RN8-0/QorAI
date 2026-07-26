@@ -60,6 +60,9 @@ export function normalizeOffer(record) {
     id: record.id || '',
     productId: record.productId || '',
     store: record.store || '',
+    // epey_store vitrin satırları mağaza domainini merchantProductId'de taşır
+    // (favicon kaynağı). Linkli satırlarda domain zaten url'den çıkarılır.
+    storeDomain: String(record.network || '') === 'epey_store' ? (record.merchantProductId || '') : '',
     network: record.network || '',
     country: String(record.country || '').toUpperCase(),
     price,
@@ -91,11 +94,14 @@ export async function fetchProductOffers(productId) {
         'id', 'productId', 'store', 'network', 'country',
         'price', 'shipping', 'totalPrice', 'currency', 'priceText',
         'url', 'affiliateUrl', 'condition', 'availability', 'inStock',
-        'priceUnknown', 'matchConfidence', 'lastCheckedAt',
+        'priceUnknown', 'matchConfidence', 'lastCheckedAt', 'merchantProductId',
         'priceUpdatedAt', 'expiresAt', 'scrapedAt', 'updated', 'source',
       ].join(','),
     });
-    return records.map(normalizeOffer).filter(o => o.url && isLiveOffer(o));
+    // Linksiz vitrin satırları (epey_store: mağaza logosu + fiyat, tıklanmaz)
+    // yalnız TAZE fiyatla anlamlıdır; linkli satırlar fiyatsızken de kalır
+    // ("fiyata bak" linki).
+    return records.map(normalizeOffer).filter(o => (o.url || o.hasExactPrice) && isLiveOffer(o));
   } catch (err) {
     console.warn('[offers] fetch failed', err);
     return [];
