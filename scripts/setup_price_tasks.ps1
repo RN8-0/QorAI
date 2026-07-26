@@ -1,4 +1,4 @@
-# ══════════════════════════════════════════════════════════════════
+﻿# ══════════════════════════════════════════════════════════════════
 #  Qor AI — fiyat görevlerini YENİ PC'ye kuran script
 #
 #  Bu PC'nin fiyat sistemindeki TEK rolü Epey tabanlı TR mağaza
