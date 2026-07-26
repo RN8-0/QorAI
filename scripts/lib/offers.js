@@ -143,22 +143,37 @@ async function refreshProductRollup(productId, categoryHint = null) {
     for (const target of mirrors) putLink(target, label, link);
   };
 
+  // İki kaynak, iki farklı iş:
+  //  • LİNKLİ teklifler (Amazon) → hem GÖSTERİLEN fiyat hem SATIN ALMA linki.
+  //  • LİNKSİZ vitrin satırları (epey_store: mağaza logosu+fiyat, affiliate yok)
+  //    → yalnız GÖSTERİLEN fiyat; asla buy-box linki üretmez.
+  // Öncelik linklide: Amazon fiyatı varsa kartta o görünür, böylece kart fiyatı
+  // tıklanınca gidilen fiyatla TUTAR. Amazon hiç yoksa fiyatı gizlemek yerine
+  // en ucuz mağaza fiyatını gösteririz (fiyatsız kart en kötü seçenek) — o
+  // durumda lowestOfferUrl BOŞ kalır, yani yanlış bir linke yönlendirme olmaz.
+  const isLinked = (o) => Boolean(o.affiliateUrl || o.url);
+  const pricesLinkless = {};
+  let bestLinkless = null, bestLinklessUsd = Infinity;
   for (const o of pricedLive) {
-    // Linksiz vitrin satırları (epey_store: mağaza logosu+fiyat, affiliate yok)
-    // rollup'a GİRMEZ — lowestPrice/prices{} kart, blog ve app fiyatlarını
-    // besler ve oradaki satın alma yolu Amazon linkidir; linksiz bir mağazanın
-    // daha ucuz fiyatı vitrin fiyatıyla buy-box linkini ayrıştırırdı.
-    if (!(o.affiliateUrl || o.url)) continue;
     const price = effectivePrice(o);
     const usd = toUsd(price, o.currency);
     // Kategori taban kontrolü: pahalı bir üründe aksesuar fiyatı (₺200 telefon
     // gibi) hem lowestPrice'a hem ülke fiyatına girmesin. usd=0 (dönüştürülemeyen)
     // teklifler eskisi gibi geçer — muhafazakâr.
     if (usd > 0 && !isPlausibleUsd(category, usd)) continue;
-    if (usd > 0 && usd < bestUsd) { bestUsd = usd; best = o; }
     const c = String(o.country || '').toUpperCase();
-    const pr = price;
-    if (c && pr > 0 && (prices[c] === undefined || pr < prices[c])) prices[c] = pr;
+    if (isLinked(o)) {
+      if (usd > 0 && usd < bestUsd) { bestUsd = usd; best = o; }
+      if (c && price > 0 && (prices[c] === undefined || price < prices[c])) prices[c] = price;
+    } else {
+      if (usd > 0 && usd < bestLinklessUsd) { bestLinklessUsd = usd; bestLinkless = o; }
+      if (c && price > 0 && (pricesLinkless[c] === undefined || price < pricesLinkless[c])) pricesLinkless[c] = price;
+    }
+  }
+  // Linkli fiyatı OLMAYAN ülkeleri vitrin fiyatıyla doldur (ülke kuralı korunur:
+  // yalnız kendi ülkesinin fiyatı, çapraz pazar aktarımı YOK).
+  for (const [c, p] of Object.entries(pricesLinkless)) {
+    if (prices[c] === undefined) prices[c] = p;
   }
 
   for (const o of live) {
@@ -169,14 +184,19 @@ async function refreshProductRollup(productId, categoryHint = null) {
   }
   // Stash the cheapest offer's store + affiliate link on the product so the
   // catalog list can show a price and a buy link without querying offers.
-  const payload = best
+  const display = best || bestLinkless; // fiyat kaynağı (link olmayabilir)
+  const displayUsd = best ? bestUsd : bestLinklessUsd;
+  const payload = display
     ? {
-        lowestPrice: effectivePrice(best), lowestPriceCurrency: best.currency, lowestPriceUSD: bestUsd,
+        lowestPrice: effectivePrice(display), lowestPriceCurrency: display.currency,
+        lowestPriceUSD: Number.isFinite(displayUsd) ? displayUsd : 0,
         offerCount: live.length, pricedOfferCount: pricedLive.length,
-        bestOfferId: best.id || '', bestOfferCheckedAt: best.lastCheckedAt || best.priceUpdatedAt || best.scrapedAt || '',
-        bestOfferExpiresAt: best.expiresAt || '',
-        lowestOfferUrl: best.affiliateUrl || best.url || '',
-        lowestOfferStore: best.store || '',
+        bestOfferId: best ? (best.id || '') : '',
+        bestOfferCheckedAt: display.lastCheckedAt || display.priceUpdatedAt || display.scrapedAt || nowIso(),
+        bestOfferExpiresAt: display.expiresAt || '',
+        // Satın alma linki YALNIZ linkli tekliften; vitrin satırı link üretmez.
+        lowestOfferUrl: best ? (best.affiliateUrl || best.url || '') : '',
+        lowestOfferStore: display.store || '',
         prices, affiliateLinksByCountry,
       }
     : {
