@@ -294,7 +294,10 @@
       const numbered = sec.head.match(/^(\d+)[.)]\s+(.+)$/);
       if (o.splitConclusion && CONCL.test(sec.head)) { conclusionMd += (conclusionMd ? '\n\n' : '') + content; continue; }
       if (o.detectItems && numbered) {
-        items.push({ name: cleanItemName(numbered[2]), md: content });
+        // Görünen ad YAZARIN yazdığı gibi kalır (VPN/abonelik gibi katalog dışı
+        // öğelerde başlıktaki fiyat tek fiyat bilgisidir). Fiyat eki yalnızca
+        // KATALOG ARAMASINDA temizlenir — bkz. importItems.
+        items.push({ name: numbered[2].replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim(), md: content });
         continue;
       }
       bodyParts.push('## ' + sec.head + '\n' + content);
@@ -1351,7 +1354,10 @@ KURALLAR:
     const report = [];
     for (const it of items) {
       const kind = it.kind || 'product';
-      const q = String(it.search || it.name || '').trim();
+      // Katalog/abonelik araması fiyat ekinden arındırılmış adla yapılır
+      // ("NordVPN — 12,99 $/ay" → "NordVPN"); eşleşme bulunursa görünen ad
+      // zaten katalogdan gelir, bulunmazsa yazarın yazdığı ham ad korunur.
+      const q = cleanItemName(String(it.search || it.name || '').trim());
       if (kind === 'subscription' && q) {
         try {
           const r = await getPb().collection('subscriptions').getList(1, 1, { filter: `name ~ "${q.replace(/"/g, '\\"')}"`, $autoCancel: false });
@@ -1372,7 +1378,7 @@ KURALLAR:
           continue;
         }
       }
-      // bulunamadı → özel öğe (isim + bloklar korunur)
+      // bulunamadı → özel öğe (yazarın YAZDIĞI ham ad korunur: fiyat/etiket eki dahil)
       const nm = String(it.name || q || 'Öğe');
       _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm, name_de: it.name_de || nm, link: it.link || '', image: it.image || '', imageUrl: '', blocks: it.blocks });
       report.push({ q: nm, ok: false, label: `${nm} — katalogda bulunamadı, özel öğe olarak eklendi` });
@@ -1453,8 +1459,8 @@ KURALLAR:
       toast(`İçerik aktarıldı — ${items.length} öğe eşleştiriliyor…`, 's');
       const norm = items.map((it) => ({
         kind: it.kind || 'product',
-        search: cleanItemName(it.search || it.name || ''),
-        name: cleanItemName(it.name || it.search || ''),
+        search: it.search || it.name || '',
+        name: it.name || it.search || '',
         name_tr: it.name_tr, name_en: it.name_en, name_de: it.name_de,
         link: it.link || '',
         image: it.image || '',
