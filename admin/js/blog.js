@@ -126,7 +126,10 @@
       /* RTE */
       .ba-rte-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
       .ba-rte{border-radius:9px;overflow:hidden}
-      .ba-rte .ql-toolbar{border:1px solid var(--border,#2a3140);border-bottom:none;border-radius:9px 9px 0 0;background:#0e131a;position:sticky;top:64px;z-index:20}
+      /* NOT: toolbar bir zamanlar position:sticky idi — uzun yazıda sayfa
+         kaydırılınca araç çubuğu ekranda sabitlenip metnin ÜSTÜNE biniyor,
+         yazı kutunun dışında/arkasında kalmış gibi görünüyordu. Sabit akışta. */
+      .ba-rte .ql-toolbar{border:1px solid var(--border,#2a3140);border-bottom:none;border-radius:9px 9px 0 0;background:#0e131a}
       .ba-rte .ql-container{border:1px solid var(--border,#2a3140);border-radius:0 0 9px 9px;font:inherit;font-size:15px;background:#0e131a}
       .ba-rte .ql-editor{min-height:220px;color:#e2e8f0;line-height:1.7}
       .ba-rte .ql-editor.ql-blank::before{color:#64748b;font-style:normal}
@@ -313,6 +316,33 @@
     n = n.replace(/\s+[—–-]\s+[^—–-]*(?:\$|€|₺|£|\bTL\b|\bUSD\b|\bEUR\b|\/ay|\/yıl|\/month|\/Monat|month|Monat)\S*.*$/i, '').trim();
     n = n.replace(/\s*\((?:[^)]*(?:\$|€|₺|£|\bTL\b|fiyat|price)[^)]*)\)\s*$/i, '').trim();
     return n;
+  }
+
+  // İçe aktarma sonrası ZORUNLU temizlik. Modelin kurallara uymasına GÜVENMEYİZ:
+  // sınırlar burada deterministik olarak uygulanır.
+  //  • Öğe adındaki "1. " öneki silinir — site zaten sıra numarasını kendi basar
+  //    (yoksa "1. 1. iPad Pro" görünür).
+  //  • metaTitle 60 / metaDescription 155 karakterde kelime sınırından kırpılır.
+  function stripLeadingNumber(s) {
+    return String(s || '').replace(/^\s*\d+\s*[.)\-–—:]\s*/, '').trim();
+  }
+  function clampText(s, max) {
+    const t = String(s || '').trim();
+    if (t.length <= max) return t;
+    const cut = t.slice(0, max);
+    const sp = cut.lastIndexOf(' ');
+    return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,;:–—-]+$/, '');
+  }
+  function sanitizeImported() {
+    LANGS.forEach(([c]) => {
+      if (_editing['metaTitle_' + c]) _editing['metaTitle_' + c] = clampText(_editing['metaTitle_' + c], 60);
+      if (_editing['metaDescription_' + c]) _editing['metaDescription_' + c] = clampText(_editing['metaDescription_' + c], 155);
+    });
+    for (const p of _products) {
+      if ((p.kind || 'product') !== 'custom') continue;
+      LANGS.forEach(([c]) => { if (p['name_' + c]) p['name_' + c] = stripLeadingNumber(p['name_' + c]); });
+      if (p.name) p.name = stripLeadingNumber(p.name);
+    }
   }
 
   // Öğe bölümü markdown'ı → blocks[] (görseller ayrı image bloğu; metin sitenin
@@ -1235,20 +1265,33 @@
           <button class="ba-mini" onclick="blogImportClose()">✕ Kapat</button>
         </div>
         <div class="be-modal-tabs">
+          <button class="ba-mini bk-tab" data-t="auto" onclick="blogImportTab('auto')">🪄 Akıllı — ne yapıştırırsan</button>
           <button class="ba-mini bk-tab" data-t="md" onclick="blogImportTab('md')">📝 Markdown (aktif dil: ${_lang.toUpperCase()})</button>
-          <button class="ba-mini bk-tab" data-t="json" onclick="blogImportTab('json')">🧩 JSON (3 dil, tam makale)</button>
+          <button class="ba-mini bk-tab" data-t="json" onclick="blogImportTab('json')">🧩 JSON şeması</button>
           <button class="ba-mini bk-tab" data-t="prompt" onclick="blogImportTab('prompt')">✨ Claude prompt'u</button>
         </div>
         <div id="be_imp_body"></div>
       </div>`;
     document.body.appendChild(m);
-    blogImportTab(tab || 'md');
+    blogImportTab(tab || 'auto');
   }
   function blogImportClose() { const m = document.getElementById('be_import_modal'); if (m) m.remove(); }
   function blogImportTab(t) {
     document.querySelectorAll('#be_import_modal .bk-tab').forEach((b) => b.classList.toggle('on', b.getAttribute('data-t') === t));
     const box = document.getElementById('be_imp_body'); if (!box) return;
-    if (t === 'md') {
+    if (t === 'auto') {
+      box.innerHTML = `
+        <p style="font-size:13px;opacity:.75;margin:0 0 10px">Claude (ya da başka bir yerden) aldığın metni <b>olduğu gibi</b> yapıştır — biçimi hiç önemli değil.
+        Başlıklı bölümler, "TITLE:/SLUG:" etiketleri, 3 dil arka arkaya, düz markdown, hatta dağınık not… yapay zekâ okuyup doğru alanlara yerleştirir:
+        her dilin başlığı/özeti/gövdesi, SEO metaları, etiketler ve <b>ürün bölümleri</b> (katalogla otomatik eşleştirilir).</p>
+        <textarea id="be_imp_auto" class="be-imp-ta" placeholder="Metni buraya yapıştır — 3 dil bir arada olabilir, başlık etiketleri olabilir, hiç fark etmez…"></textarea>
+        <div class="be-imp-opt">
+          <label><input type="checkbox" id="be_opt_areplace" checked> Mevcut içeriğin üzerine yaz</label>
+          <span style="opacity:.55">Uzun metinlerde 20-60 saniye sürebilir.</span>
+        </div>
+        <button class="btn btn-primary btn-purple" id="be_auto_btn" onclick="blogImportRunAuto()">🪄 Oku ve makaleye dönüştür</button>
+        <div id="be_auto_status" style="font-size:12.5px;opacity:.75;margin-top:10px"></div>`;
+    } else if (t === 'md') {
       box.innerHTML = `
         <p style="font-size:13px;opacity:.7;margin:0 0 10px">Claude'un yazdığı makaleyi olduğu gibi yapıştır. <b># Başlık</b> → başlık, ilk paragraf → özet, <b>## 1. Ürün Adı</b> bölümleri → ürün öğeleri (katalogdan otomatik eşleştirilir), <b>## Sonuç</b> → bitiş yazısı olur. Tablolar desteklenir.</p>
         <textarea id="be_imp_md" class="be-imp-ta" placeholder="# 2026'nın En İyi 5 Telefonu&#10;&#10;Kısa özet paragrafı…&#10;&#10;## Neden bu liste?&#10;…&#10;&#10;## 1. iPhone 15&#10;Açıklama… **kalın** ve - maddeler desteklenir&#10;&#10;## Sonuç&#10;…"></textarea>
@@ -1358,7 +1401,7 @@ KURALLAR:
       // Katalog/abonelik araması fiyat ekinden arındırılmış adla yapılır
       // ("NordVPN — 12,99 $/ay" → "NordVPN"); eşleşme bulunursa görünen ad
       // zaten katalogdan gelir, bulunmazsa yazarın yazdığı ham ad korunur.
-      const q = cleanItemName(String(it.search || it.name || '').trim());
+      const q = cleanItemName(stripLeadingNumber(String(it.search || it.name || '').trim()));
       if (kind === 'subscription' && q) {
         try {
           const r = await getPb().collection('subscriptions').getList(1, 1, { filter: `name ~ "${q.replace(/"/g, '\\"')}"`, $autoCancel: false });
@@ -1379,8 +1422,10 @@ KURALLAR:
           continue;
         }
       }
-      // bulunamadı → özel öğe (yazarın YAZDIĞI ham ad korunur: fiyat/etiket eki dahil)
-      const nm = String(it.name || q || 'Öğe');
+      // bulunamadı → özel öğe. Yazarın yazdığı ad korunur (fiyat/etiket eki
+      // dahil — VPN gibi katalog dışı öğelerde tek fiyat bilgisi odur) ama
+      // baştaki sıra numarası atılır: site numarayı kendi basar.
+      const nm = stripLeadingNumber(String(it.name || q || 'Öğe'));
       _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm, name_de: it.name_de || nm, link: it.link || '', image: it.image || '', imageUrl: '', blocks: it.blocks });
       report.push({ q: nm, ok: false, label: `${nm} — katalogda bulunamadı, özel öğe olarak eklendi` });
     }
@@ -1399,6 +1444,109 @@ KURALLAR:
     </div>`;
   }
   function blogImportReportClose() { _importReport = null; renderImportReport(); }
+
+  // ── AKILLI İÇE AKTARMA (her format) ───────────────────────────
+  // Claude her seferinde aynı biçimi vermez: bazen "# Başlık", bazen
+  // "TITLE:/SLUG:" etiketli bölümler, bazen 3 dil arka arkaya. Katı ayrıştırıcı
+  // yerine metni olduğu gibi Gemini'ye verip ŞEMAYA çevirtiyoruz — biçim
+  // serbest, çıktı her zaman aynı.
+  const AUTO_SCHEMA_PROMPT = `Sen bir içerik dönüştürücüsün. Aşağıdaki HAM METİN bir blog makalesidir; biçimi serbesttir (başlık etiketleri, birden çok dil, markdown, dağınık notlar olabilir).
+
+GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK.
+
+ŞEMA:
+{
+  "category": "<varsa uygun kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
+  "langs": {
+    "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
+    "en": { ... }, "de": { ... }
+  },
+  "items": [
+    { "kind": "product", "search": "<sade model adı: marka + model, FİYAT/ek İÇERMEZ>", "name": "<yazarın yazdığı görünen başlık, aynen>",
+      "blocks": [ { "type": "text", "style": "paragraph", "tr": "", "en": "", "de": "" } ] }
+  ]
+}
+
+KURALLAR — ÇOK ÖNEMLİ:
+1. HİÇBİR CÜMLEYİ ATLAMA, ÖZETLEME, KISALTMA. Metnin tamamı çıktıda yer almalı. Bu bir çeviri/biçimlendirme işidir, yeniden yazma değil.
+2. Ham metinde KAÇ DİL varsa o kadarını doldur. Olmayan dili boş obje bırak ({}). Kendin ÇEVİRİ YAPMA.
+3. Numaralı ürün/hizmet bölümleri ("1. Apple iPad Pro (M5) — ...", "## 2. NordVPN" gibi) items dizisine gider; o bölümün TÜM metni (paragraflar, Artıları/Eksileri listeleri, "Kime Uygun?" kısmı) o öğenin blocks[0] metnine girer.
+   - Aynı ürünün farklı dillerdeki bölümleri AYNI item'ın blocks[0] içinde tr/en/de olarak eşleşmeli (sıra aynıdır).
+   - "search": mağaza/fiyat eki olmadan sade model adı ("Apple iPad Pro (M5)" -> "Apple iPad Pro M5").
+   - "name": yazarın yazdığı başlık aynen korunur.
+4. Ürün bölümlerinden ÖNCEKİ giriş/genel yazı body_html'e; ürünlerden SONRAKİ sonuç/özet bölümü conclusion_html'e gider.
+5. body_html ve conclusion_html GEÇERLİ HTML olsun: <h2>/<h3> başlıklar, <p> paragraflar, <ul><li> listeler, <strong>, <a href="...">bağlantılar</a>, <table> tablolar. Ham metindeki markdown bağlantılarını [Ad](url) -> <a href="url" target="_blank" rel="noopener">Ad</a> yap. Kaynak/atıf bağlantılarını KORU.
+6. items içindeki blocks metinleri HTML DEĞİL düz metindir: kalın için **yıldız**, madde için satır başına "- ", ara başlık için satır başına "## " kullan. Satır sonlarını koru.
+7. slug boşsa başlıktan üret (küçük harf, tireli, Türkçe karakterler sadeleştirilmiş).
+8. metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN — aşıyorsa kısalt.
+
+HAM METİN:
+`;
+  async function blogImportRunAuto() {
+    const ta = document.getElementById('be_imp_auto');
+    const raw = ta ? ta.value.trim() : '';
+    if (!raw) { toast('Önce metni yapıştır', 'w'); return; }
+    const replace = (() => { const el = document.getElementById('be_opt_areplace'); return el ? el.checked : true; })();
+    const btn = document.getElementById('be_auto_btn');
+    const st = document.getElementById('be_auto_status');
+    const say = (s) => { if (st) st.textContent = s; };
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Okunuyor…'; }
+    say(`Metin ${raw.length.toLocaleString('tr-TR')} karakter — yapay zekâ ayrıştırıyor…`);
+    let data;
+    try {
+      data = await callGeminiJson(AUTO_SCHEMA_PROMPT + raw, 60000);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = '🪄 Oku ve makaleye dönüştür'; }
+      say('');
+      toast('Ayrıştırma başarısız: ' + e.message, 'e');
+      return;
+    }
+    const langs = data.langs || {};
+    const filled = ['tr', 'en', 'de'].filter((c) => langs[c] && String(langs[c].title || '').trim());
+    if (!filled.length) {
+      if (btn) { btn.disabled = false; btn.textContent = '🪄 Oku ve makaleye dönüştür'; }
+      say('');
+      toast('Metinden başlık çıkarılamadı — metni kontrol et', 'e');
+      return;
+    }
+    say(`${filled.map((c) => c.toUpperCase()).join(' + ')} bulundu · ${(data.items || []).length} öğe eşleştiriliyor…`);
+    flushEditors(); syncPane();
+    for (const c of filled) {
+      const L = langs[c];
+      const set = (f, v) => { if (v != null && String(v).trim() && (replace || !_editing[f])) _editing[f] = String(v); };
+      set('title_' + c, L.title);
+      set('lead_' + c, L.lead);
+      set('slug_' + c, slugify(L.slug || L.title || ''));
+      set('metaTitle_' + c, L.metaTitle);
+      set('metaDescription_' + c, L.metaDescription);
+      set('tags_' + c, Array.isArray(L.tags) ? L.tags.join(', ') : L.tags);
+      const body = L.body_html || L.body_md || L.body || '';
+      if (body && (replace || !_editing['body_' + c])) _editing['body_' + c] = /<\w+[^>]*>/.test(body) ? body : mdToHtml(body);
+      const concl = L.conclusion_html || L.conclusion_md || L.conclusion || '';
+      if (concl && (replace || !_editing['conclusion_' + c])) _editing['conclusion_' + c] = /<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl);
+    }
+    if (data.category && (replace || !_editing.category)) _editing.category = data.category;
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (items.length) {
+      const norm = items.map((it) => ({
+        kind: it.kind || 'product',
+        search: it.search || it.name || '',
+        name: it.name || it.search || '',
+        link: it.link || '',
+        blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
+          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '', cap_de: b.cap_de || '' };
+          return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '', de: b.de || '' };
+        }),
+      }));
+      await importItems(norm, replace);
+    }
+    blogImportClose();
+    sanitizeImported(); // sinirlar ve sira-numarasi onekleri deterministik olarak uygulanir
+    _srcMode = { body: false, concl: false };
+    renderEditor();
+    blogMarkDirty();
+    toast(`İçe aktarıldı — ${filled.map((c) => c.toUpperCase()).join('/')} · ${items.length} öğe. Kontrol et ve kaydet.`, 's');
+  }
 
   async function blogImportRunMd() {
     const ta = document.getElementById('be_imp_md'); if (!ta || !ta.value.trim()) { toast('Önce markdown yapıştır', 'w'); return; }
@@ -1419,6 +1567,7 @@ KURALLAR:
       const items = parsed.items.map((it) => ({ kind: 'product', search: it.name, name: it.name, blocks: mdSectionToBlocks(it.md, c) }));
       await importItems(items, replace);
     }
+    sanitizeImported(); // sinirlar ve sira-numarasi onekleri deterministik olarak uygulanir
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
@@ -1472,6 +1621,7 @@ KURALLAR:
       }));
       await importItems(norm, replace);
     }
+    sanitizeImported(); // sinirlar ve sira-numarasi onekleri deterministik olarak uygulanir
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
@@ -1587,6 +1737,7 @@ ${JSON.stringify(payload)}`;
         return;
       }
     }
+    sanitizeImported(); // sinirlar ve sira-numarasi onekleri deterministik olarak uygulanir
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
@@ -1711,6 +1862,7 @@ ${JSON.stringify(payload)}`;
   window.blogDeleteComment = blogDeleteComment;
   window.blogImportOpen = blogImportOpen; window.blogImportClose = blogImportClose; window.blogImportTab = blogImportTab;
   window.blogImportRunMd = blogImportRunMd; window.blogImportRunJson = blogImportRunJson;
+  window.blogImportRunAuto = blogImportRunAuto;
   window.blogPromptCopy = blogPromptCopy; window.blogImportReportClose = blogImportReportClose;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
   window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
