@@ -326,6 +326,26 @@
   function stripLeadingNumber(s) {
     return String(s || '').replace(/^\s*\d+\s*[.)\-–—:]\s*/, '').trim();
   }
+  // Öğe blokları DÜZ METİNDİR (site markdown-benzeri kurallarla render eder).
+  // AI bazen içine ham HTML sıkıştırıyor — özellikle kaynak atıflarını
+  // <a href="#">Ad</a> olarak (gerçek URL'i de kaybederek). Bunlar sayfada
+  // etiketiyle birlikte yazı olarak görünüyordu. Deterministik olarak temizle:
+  // linkler metne iner, blok etiketleri satır sonuna, kalanı silinir.
+  function htmlToPlain(s) {
+    let t = String(s || '');
+    if (!/<[a-z!/]/i.test(t) && !/&[a-z#][a-z0-9]{1,8};/i.test(t)) return t;
+    t = t.replace(/<br\s*\/?>/gi, '\n');
+    t = t.replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n');
+    t = t.replace(/<li[^>]*>/gi, '- ');
+    t = t.replace(/<(strong|b)>([\s\S]*?)<\/\1>/gi, '**$2**');
+    // Anlamsız yer tutucu linkleri (href="#") tamamen at, gerçek linkleri
+    // metne indir — blok metni link render etmez.
+    t = t.replace(/<a[^>]*href=["']#["'][^>]*>([\s\S]*?)<\/a>/gi, '');
+    t = t.replace(/<a[^>]*>([\s\S]*?)<\/a>/gi, '$1');
+    t = t.replace(/<[^>]+>/g, '');
+    t = t.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'");
+    return t.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
   function clampText(s, max) {
     const t = String(s || '').trim();
     if (t.length <= max) return t;
@@ -338,11 +358,25 @@
       if (_editing['metaTitle_' + c]) _editing['metaTitle_' + c] = clampText(_editing['metaTitle_' + c], 60);
       if (_editing['metaDescription_' + c]) _editing['metaDescription_' + c] = clampText(_editing['metaDescription_' + c], 155);
     });
-    for (const p of _products) {
-      if ((p.kind || 'product') !== 'custom') continue;
-      LANGS.forEach(([c]) => { if (p['name_' + c]) p['name_' + c] = stripLeadingNumber(p['name_' + c]); });
-      if (p.name) p.name = stripLeadingNumber(p.name);
-    }
+    _products.forEach((p, i) => {
+      if ((p.kind || 'product') === 'custom') {
+        LANGS.forEach(([c]) => { if (p['name_' + c]) p['name_' + c] = stripLeadingNumber(p['name_' + c]); });
+        if (p.name) p.name = stripLeadingNumber(p.name);
+      }
+      ensureBlocks(p);
+      // Metin bloklarındaki ham HTML'i düz metne indir.
+      for (const b of p.blocks) {
+        if (b.t !== 'text') continue;
+        LANGS.forEach(([c]) => { if (b[c]) b[c] = htmlToPlain(b[c]); });
+      }
+      // GÖRSEL: katalogdan/abonelikten gelen öğenin kendi görseli varsa ve
+      // bloklarında hiç görsel yoksa OTOMATİK ekle — yoksa yayınlanan yazıda
+      // ürün görseli hiç çıkmıyordu. Dergi düzeni için sağ/sol dönüşümlü.
+      const img = p.image || p.imageUrl || p.logo || '';
+      if (img && !p.blocks.some((b) => b.t === 'image' && b.url)) {
+        p.blocks.unshift({ t: 'image', url: img, pos: i % 2 === 0 ? 'right' : 'left', size: 'm' });
+      }
+    });
   }
 
   // Öğe bölümü markdown'ı → blocks[] (görseller ayrı image bloğu; metin sitenin
@@ -1416,7 +1450,9 @@ KURALLAR:
       if (kind === 'product' && q) {
         const hit = await resolveCatalogItem(q);
         if (hit) {
-          _products.push({ ...hit, kind: 'product', blocks: it.blocks });
+          // Katalog görselini öğeye taşı — sanitizeImported() bunu ilk görsel
+          // bloğu olarak yerleştirir (yayınlanan yazıda ürün görseli çıksın).
+          _products.push({ ...hit, kind: 'product', image: hit.imageUrl || '', blocks: it.blocks });
           report.push({ q, ok: true, label: `${q} → ${hit.name} (katalog)` });
           blogProdFetchPrice(hit.id);
           continue;
@@ -1476,7 +1512,7 @@ KURALLAR — ÇOK ÖNEMLİ:
    - "name": yazarın yazdığı başlık aynen korunur.
 4. Ürün bölümlerinden ÖNCEKİ giriş/genel yazı body_html'e; ürünlerden SONRAKİ sonuç/özet bölümü conclusion_html'e gider.
 5. body_html ve conclusion_html GEÇERLİ HTML olsun: <h2>/<h3> başlıklar, <p> paragraflar, <ul><li> listeler, <strong>, <a href="...">bağlantılar</a>, <table> tablolar. Ham metindeki markdown bağlantılarını [Ad](url) -> <a href="url" target="_blank" rel="noopener">Ad</a> yap. Kaynak/atıf bağlantılarını KORU.
-6. items içindeki blocks metinleri HTML DEĞİL düz metindir: kalın için **yıldız**, madde için satır başına "- ", ara başlık için satır başına "## " kullan. Satır sonlarını koru.
+6. items içindeki blocks metinleri HTML DEĞİL DÜZ METİNDİR. İçine <a>, <p>, <strong> gibi HİÇBİR ETİKET KOYMA. Kalın için **yıldız**, madde için satır başına "- ", ara başlık için satır başına "## " kullan; satır sonlarını koru. Ürün bölümlerindeki kaynak/atıf bağlantılarını buraya YAZMA, sadece metni al.
 7. slug boşsa başlıktan üret (küçük harf, tireli, Türkçe karakterler sadeleştirilmiş).
 8. metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN — aşıyorsa kısalt.
 
