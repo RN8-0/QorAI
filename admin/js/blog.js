@@ -112,7 +112,9 @@
       .ba-tab.on{opacity:1;background:var(--surface,#161b24);font-weight:800}
       .ba-tab .dot{width:7px;height:7px;border-radius:50%;background:#64748b}
       .ba-tab .dot.on{background:#4ade80}
-      .ba-wc{margin-left:auto;font-size:12px;opacity:.6;white-space:nowrap}
+      .ba-wc{font-size:12px;opacity:.6;white-space:nowrap}
+      #be_tr_btn{border-color:#7c3aed66;color:#a78bfa;font-weight:700}
+      #be_tr_btn:disabled{opacity:.6;cursor:progress}
       .ba-pane{border:1px solid var(--border,#262c38);border-radius:0 12px 12px 12px;padding:18px;background:var(--surface,#161b24)}
       .ba-field{margin:0 0 14px}
       .ba-field label{display:block;font-size:12px;font-weight:600;opacity:.8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
@@ -633,7 +635,8 @@
           <div class="be-main">
             <div class="ba-tabs">
               ${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')" data-lang="${c}"><span class="dot ${langDone(a, c) ? 'on' : ''}"></span>${n}</div>`).join('')}
-              <span class="ba-wc" id="be_wc"></span>
+              <button type="button" class="ba-mini" id="be_tr_btn" style="margin-left:auto" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizce ve Almancaya çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN + DE çevir</button>
+              <span class="ba-wc" id="be_wc" style="margin-left:10px"></span>
             </div>
             <div class="ba-pane" id="b_pane"></div>
             <div id="be_import_report"></div>
@@ -1468,6 +1471,125 @@ KURALLAR:
     toast('JSON içe aktarma tamam — 3 dili sekmelerden kontrol et', 's');
   }
 
+  // ── AI ÇEVİRİ (TR → EN/DE) ────────────────────────────────────
+  // Sunucudaki Gemini proxy'si (pb_hooks/gemini.pb.js) üzerinden. Anahtar
+  // istemciye HİÇ inmez. thinkingBudget=0: çeviri düşünme gerektirmez ve
+  // budget>maxOutputTokens kombinasyonu "boş yanıt" hatasına yol açıyordu.
+  async function callGeminiJson(prompt, maxOutputTokens) {
+    const pb = getPb();
+    const res = await fetch(pb.baseUrl.replace(/\/$/, '') + '/api/ai/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+      body: JSON.stringify({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.25,
+          maxOutputTokens: maxOutputTokens || 32768,
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.error) throw new Error((data.error && (data.error.message || data.error)) || data.message || `AI isteği başarısız (${res.status})`);
+    const cand = (data.candidates || [])[0] || {};
+    const text = ((cand.content || {}).parts || []).map((p) => p.text || '').join('').trim();
+    if (!text) throw new Error('AI boş yanıt döndü (içerik çok uzun olabilir)');
+    try { return JSON.parse(text); } catch (_) {
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) { try { return JSON.parse(m[0]); } catch (__) { /* düş */ } }
+      throw new Error('AI yanıtı çözülemedi');
+    }
+  }
+  const LANG_NAME = { en: 'İngilizce (English)', de: 'Almanca (Deutsch)' };
+  // Kaynak dildeki tüm metinleri toplayıp tek JSON'da çevirtir, sonra aynı
+  // yapıya geri yazar. HTML etiketleri korunur (gövde/sonuç zengin metin).
+  function collectTranslatable(src) {
+    const a = _editing;
+    const payload = {
+      title: a['title_' + src] || '',
+      lead: a['lead_' + src] || '',
+      body_html: a['body_' + src] || '',
+      conclusion_html: a['conclusion_' + src] || '',
+      metaTitle: a['metaTitle_' + src] || '',
+      metaDescription: a['metaDescription_' + src] || '',
+      tags: a['tags_' + src] || '',
+      items: [],
+    };
+    _products.forEach((p, i) => {
+      const item = { i, blocks: [] };
+      if ((p.kind || 'product') === 'custom') item.name = p['name_' + src] || p.name || '';
+      (p.blocks || []).forEach((b, j) => {
+        if (b.t === 'text' && String(b[src] || '').trim()) item.blocks.push({ j, kind: 'text', text: b[src] });
+        if (b.t === 'image' && String(b['cap_' + src] || '').trim()) item.blocks.push({ j, kind: 'cap', text: b['cap_' + src] });
+      });
+      if (item.name || item.blocks.length) payload.items.push(item);
+    });
+    return payload;
+  }
+  function applyTranslation(out, dst) {
+    const a = _editing;
+    const set = (f, v) => { if (v != null && String(v).trim()) a[f + '_' + dst] = String(v); };
+    set('title', out.title); set('lead', out.lead);
+    set('body', out.body_html); set('conclusion', out.conclusion_html);
+    set('metaTitle', out.metaTitle); set('metaDescription', out.metaDescription);
+    set('tags', Array.isArray(out.tags) ? out.tags.join(', ') : out.tags);
+    for (const it of (out.items || [])) {
+      const p = _products[it.i]; if (!p) continue;
+      if (it.name && (p.kind || 'product') === 'custom') p['name_' + dst] = String(it.name);
+      for (const b of (it.blocks || [])) {
+        const blk = (p.blocks || [])[b.j]; if (!blk) continue;
+        if (b.kind === 'cap') blk['cap_' + dst] = String(b.text || '');
+        else if (blk.t === 'text') blk[dst] = String(b.text || '');
+      }
+    }
+  }
+  async function blogTranslate(targets, srcArg) {
+    flushEditors(); syncPane();
+    const src = srcArg || 'tr';
+    if (!(_editing['title_' + src] || '').trim()) { toast(src.toUpperCase() + ' başlık boşken çeviri yapılamaz', 'w'); return; }
+    const list = (targets || ['en', 'de']).filter((c) => c !== src);
+    const btn = document.getElementById('be_tr_btn');
+    const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = !!dis; } };
+    const payload = collectTranslatable(src);
+    const approxWords = wordCount(JSON.stringify(payload));
+    if (approxWords > 6000) toast('Uzun makale — çeviri biraz sürebilir', 'w');
+    for (const dst of list) {
+      setBtn(`⏳ ${dst.toUpperCase()} çevriliyor…`, true);
+      const prompt = `Sen teknoloji sitesi Qor AI için profesyonel bir çevirmensin. Aşağıdaki JSON'daki TÜM metinleri ${LANG_NAME[dst] || dst} diline çevir.
+
+KESİN KURALLAR:
+- Çıktı SADECE geçerli JSON olsun; girdiyle BİREBİR aynı yapı ve aynı anahtarlar (items dizisindeki "i" ve "j" sayıları AYNEN korunacak).
+- HTML etiketlerini (<p>, <h2>, <ul>, <li>, <strong>, <table>, <a href="...">…) AYNEN koru; sadece etiketler ARASINDAKİ metni çevir.
+- Markdown işaretlerini koru: **kalın**, satır başındaki "- " maddeleri, "## " başlıkları, satır sonları.
+- Ürün/marka/model adlarını, teknik birimleri (mAh, GB, Hz, nit) ve sayıları ÇEVİRME.
+- Doğal ve akıcı yaz — kelimesi kelimesine değil, hedef dilde bir editörün yazacağı gibi.
+- metaTitle 60 karakteri, metaDescription 155 karakteri AŞMASIN.
+- Boş gelen alanları boş bırak.
+
+ÇEVRİLECEK JSON:
+${JSON.stringify(payload)}`;
+      try {
+        const out = await callGeminiJson(prompt);
+        applyTranslation(out, dst);
+        toast(`${dst.toUpperCase()} çevirisi tamam`, 's');
+      } catch (e) {
+        setBtn('🌍 TR → EN + DE çevir', false);
+        toast(`${dst.toUpperCase()} çevirisi başarısız: ${e.message}`, 'e');
+        return;
+      }
+    }
+    _srcMode = { body: false, concl: false };
+    renderEditor();
+    blogMarkDirty();
+    toast('Çeviri bitti — sekmelerden kontrol et ve kaydet', 's');
+  }
+  function blogTranslateMenu() {
+    if (!confirm('TR içerik EN ve DE dillerine çevrilecek.\n\nHedef dillerdeki MEVCUT metinlerin üzerine yazılır. Devam edilsin mi?')) return;
+    blogTranslate(['en', 'de'], 'tr');
+  }
+
   // ── kaydet / önizle ───────────────────────────────────────────
   async function blogSave(forceStatus, silent) {
     syncPane();
@@ -1584,4 +1706,5 @@ KURALLAR:
   window.blogImportRunMd = blogImportRunMd; window.blogImportRunJson = blogImportRunJson;
   window.blogPromptCopy = blogPromptCopy; window.blogImportReportClose = blogImportReportClose;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
+  window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
 })();
