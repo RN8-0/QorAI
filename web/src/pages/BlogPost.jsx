@@ -459,9 +459,14 @@ export default function BlogPost() {
               const pos = b.pos || 'full';
               const bsize = b.size || 'm';
               const nu = normalizeImageUrl(u);
+              // Yeni editör kontrolleri: manuel genişlik (%) + dil-farkında altyazı.
+              const w = Number(b.w) || 0;
+              const st = w >= 15 && w <= 100 ? { width: `${w}%` } : undefined;
+              const cap = b[`cap_${lang}`] || b.cap_tr || b.cap_en || b.cap_de || b.cap || '';
               return (
-                <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`}>
-                  {linkFig(<img src={nu} data-orig={nu} alt={name} loading="lazy" onError={imageOnError} />)}
+                <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`} style={st}>
+                  {linkFig(<img src={nu} data-orig={nu} alt={cap || name} loading="lazy" onError={imageOnError} />)}
+                  {cap ? <figcaption>{cap}</figcaption> : null}
                 </figure>
               );
             }

@@ -40,6 +40,7 @@
   let _saving = false;
   let _lastSavedJson = '';
   let _importReport = null; // içe aktarma ürün eşleştirme raporu
+  let _pendingBackup = null; // düzenleme açılışında bulunan daha yeni yerel yedek
 
   // ── utils ─────────────────────────────────────────────────────
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -173,6 +174,8 @@
       .be-tpl .ic{font-size:28px}
       .be-tpl b{display:block;margin:10px 0 6px;font-size:15px}
       .be-tpl p{margin:0;font-size:12.5px;opacity:.65;line-height:1.5}
+      .be-tpl-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+      .be-tpl-tags span{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:12px;background:#7c3aed22;color:#a78bfa}
       /* içe aktar modal */
       .be-modal{position:fixed;inset:0;background:rgba(2,6,23,.7);z-index:90;display:flex;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto}
       .be-modal-box{background:var(--surface,#161b24);border:1px solid var(--border,#2a3140);border-radius:16px;max-width:860px;width:100%;padding:20px}
@@ -289,13 +292,24 @@
       const numbered = sec.head.match(/^(\d+)[.)]\s+(.+)$/);
       if (o.splitConclusion && CONCL.test(sec.head)) { conclusionMd += (conclusionMd ? '\n\n' : '') + content; continue; }
       if (o.detectItems && numbered) {
-        items.push({ name: numbered[2].replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim(), md: content });
+        items.push({ name: cleanItemName(numbered[2]), md: content });
         continue;
       }
       bodyParts.push('## ' + sec.head + '\n' + content);
     }
     return { title, lead, bodyMd: bodyParts.join('\n\n').trim(), items, conclusionMd };
   }
+  // Öğe başlığından markdown süslerini VE fiyat eklerini temizle:
+  // "NordVPN — 12,99 $/ay (2 yıllıkta 3,49 $)" → "NordVPN". Fiyat eki, tireden
+  // sonrası para birimi/rakam içeriyorsa atılır; "Sony WH-1000XM5" gibi
+  // boşluksuz tireler dokunulmaz kalır.
+  function cleanItemName(raw) {
+    let n = String(raw || '').replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').trim();
+    n = n.replace(/\s+[—–-]\s+[^—–-]*(?:\$|€|₺|£|\bTL\b|\bUSD\b|\bEUR\b|\/ay|\/yıl|\/month|\/Monat|month|Monat)\S*.*$/i, '').trim();
+    n = n.replace(/\s*\((?:[^)]*(?:\$|€|₺|£|\bTL\b|fiyat|price)[^)]*)\)\s*$/i, '').trim();
+    return n;
+  }
+
   // Öğe bölümü markdown'ı → blocks[] (görseller ayrı image bloğu; metin sitenin
   // renderRichText'inin anladığı düz-markdown olarak kalır: **bold**, "- ", "### ")
   function mdSectionToBlocks(md, lang) {
@@ -353,8 +367,13 @@
           ],
           handlers: {
             image() {
-              const url = prompt('Görsel URL (cihazdan yüklemek için kapak alanını kullan)');
-              if (url) { const r = this.quill.getSelection(true); this.quill.insertEmbed(r.index, 'image', url, 'user'); this.quill.setSelection(r.index + 1); }
+              const quill = this.quill;
+              openBodyImageDialog((url) => {
+                if (!url) return;
+                const r = quill.getSelection(true) || { index: quill.getLength() };
+                quill.insertEmbed(r.index, 'image', url, 'user');
+                quill.setSelection(r.index + 1);
+              });
             },
           },
         },
@@ -520,21 +539,32 @@
 
   // ── ŞABLONLAR ─────────────────────────────────────────────────
   const TPL = [
-    { id: 'blank', ic: '📄', name: 'Boş Sayfa', desc: 'Sıfırdan başla — hiçbir hazır yapı yok.' },
-    { id: 'topn', ic: '🏆', name: 'Top-N Liste', desc: '"2026\'nın En İyi 5 Telefonu" tarzı sıralı liste. Giriş + ürün öğeleri + sonuç yapısı hazır gelir.' },
-    { id: 'review', ic: '🔬', name: 'Ürün İncelemesi', desc: 'Tek ürün derin inceleme: tasarım, ekran, performans, pil, kamera, artı/eksi, karar.' },
-    { id: 'vs', ic: '⚔️', name: 'Karşılaştırma (X vs Y)', desc: 'İki ürünü kafa kafaya kıyasla: özellik tablosu, kategori kategori karşılaştırma, hangisini al.' },
-    { id: 'guide', ic: '🧭', name: 'Satın Alma Rehberi', desc: '"Nasıl seçilir?" rehberi: nelere dikkat, bütçe sınıfları, öneriler, SSS.' },
-    { id: 'claude', ic: '✨', name: 'Claude ile Yaz', desc: 'Hazır prompt\'u kopyala → Claude\'a ver → dönen JSON\'u içe aktar. 3 dil + ürünler tek yapıştırmada dolar.' },
+    { id: 'topn', ic: '🏆', name: 'Top-N Liste', desc: '"2026\'nın En İyi 5 Telefonu" tarzı sıralı liste. Giriş + ürün öğeleri + sonuç yapısı hazır gelir.', tags: ['Giriş', 'Kriterler', 'N ürün', 'Sonuç'] },
+    { id: 'review', ic: '🔬', name: 'Ürün İncelemesi', desc: 'Tek ürün derin inceleme: tasarım, ekran, performans, pil, kamera, artı/eksi, karar.', tags: ['7 bölüm', 'Artı/Eksi', 'Puan tablosu'] },
+    { id: 'vs', ic: '⚔️', name: 'Karşılaştırma (X vs Y)', desc: 'İki ürünü kafa kafaya kıyasla: özellik tablosu, kategori kategori karşılaştırma, hangisini al.', tags: ['Özellik tablosu', 'Kazanan'] },
+    { id: 'guide', ic: '🧭', name: 'Satın Alma Rehberi', desc: '"Nasıl seçilir?" rehberi: nelere dikkat, bütçe sınıfları, öneriler, SSS.', tags: ['Kriterler', 'Bütçe sınıfları', 'SSS'] },
+    { id: 'howto', ic: '🛠️', name: 'Nasıl Yapılır', desc: 'Adım adım anlatım: gerekenler listesi, numaralı adımlar, sık yapılan hatalar, ipuçları.', tags: ['Gerekenler', 'Adımlar', 'İpuçları'] },
+    { id: 'faq', ic: '❓', name: 'Soru-Cevap', desc: 'Bir konudaki en çok sorulan soruları toplayan makale — her soru bir bölüm, kısa net cevaplar.', tags: ['8-10 soru', 'Kısa cevap'] },
+    { id: 'deals', ic: '💰', name: 'Fırsat / İndirim Listesi', desc: 'Dönemsel fırsat derlemesi: hangi ürün neden fırsat, kimin almalı, nelere dikkat.', tags: ['Fırsat listesi', 'Uyarılar'] },
+    { id: 'alt', ic: '🔄', name: 'Alternatifler', desc: '"X yerine ne alınır?" makalesi: pahalı/stokta olmayan bir ürünün mantıklı alternatifleri.', tags: ['Referans ürün', 'Alternatifler'] },
+    { id: 'news', ic: '📰', name: 'Haber / Duyuru', desc: 'Yeni çıkan ürün, fiyat değişikliği ya da sektör haberi: ne oldu, neden önemli, ne beklenmeli.', tags: ['Ne oldu', 'Neden önemli'] },
+    { id: 'claude', ic: '✨', name: 'Claude ile Yaz', desc: 'Hazır prompt\'u kopyala → Claude\'a ver → dönen JSON\'u içe aktar. 3 dil + ürünler tek yapıştırmada dolar.', tags: ['3 dil otomatik', 'Tek yapıştırma'] },
+    { id: 'blank', ic: '📄', name: 'Boş Sayfa', desc: 'Sıfırdan başla — hiçbir hazır yapı yok.', tags: [] },
   ];
   const TPL_BODIES = {
     topn: '<p>Neden bu liste? Kısa bir giriş: kimin için, hangi kriterlerle seçildi (fiyat/performans, pil, ekran…), fiyatların tarihi.</p><h2>Nasıl seçtik?</h2><p>Seçim kriterlerini 3-4 cümleyle anlat — okuyucu güveni için önemli.</p>',
-    review: '<h2>Kutudan çıkanlar ve ilk izlenim</h2><p>…</p><h2>Tasarım ve ekran</h2><p>…</p><h2>Performans</h2><p>…</p><h2>Pil ve şarj</h2><p>…</p><h2>Kamera</h2><p>…</p><h2>Artılar ve eksiler</h2><ul><li><strong>+</strong> …</li><li><strong>−</strong> …</li></ul>',
-    vs: '<p>İki cihazı kısaca tanıt ve kimin bu karşılaştırmayı okuması gerektiğini söyle.</p><h2>Özellik tablosu</h2><table><thead><tr><th>Özellik</th><th>Model A</th><th>Model B</th></tr></thead><tbody><tr><td>Ekran</td><td>…</td><td>…</td></tr><tr><td>İşlemci</td><td>…</td><td>…</td></tr><tr><td>Pil</td><td>…</td><td>…</td></tr></tbody></table><h2>Ekran</h2><p>…</p><h2>Performans</h2><p>…</p><h2>Hangisini almalı?</h2><p>…</p>',
+    review: '<h2>Kutudan çıkanlar ve ilk izlenim</h2><p>…</p><h2>Tasarım ve ekran</h2><p>…</p><h2>Performans</h2><p>…</p><h2>Pil ve şarj</h2><p>…</p><h2>Kamera</h2><p>…</p><h2>Puan tablosu</h2><table><thead><tr><th>Kategori</th><th>Puan (10)</th><th>Not</th></tr></thead><tbody><tr><td>Tasarım</td><td>…</td><td>…</td></tr><tr><td>Ekran</td><td>…</td><td>…</td></tr><tr><td>Performans</td><td>…</td><td>…</td></tr><tr><td>Pil</td><td>…</td><td>…</td></tr></tbody></table><h2>Artılar ve eksiler</h2><ul><li><strong>+</strong> …</li><li><strong>+</strong> …</li><li><strong>−</strong> …</li></ul>',
+    vs: '<p>İki cihazı kısaca tanıt ve kimin bu karşılaştırmayı okuması gerektiğini söyle.</p><h2>Özellik tablosu</h2><table><thead><tr><th>Özellik</th><th>Model A</th><th>Model B</th></tr></thead><tbody><tr><td>Ekran</td><td>…</td><td>…</td></tr><tr><td>İşlemci</td><td>…</td><td>…</td></tr><tr><td>Pil</td><td>…</td><td>…</td></tr><tr><td>Fiyat</td><td>…</td><td>…</td></tr></tbody></table><h2>Ekran</h2><p>…</p><h2>Performans</h2><p>…</p><h2>Pil ve şarj</h2><p>…</p><h2>Hangisini almalı?</h2><p><strong>Model A\'yı al eğer:</strong> …</p><p><strong>Model B\'yi al eğer:</strong> …</p>',
     guide: '<p>Bu rehber kimin için ve neyi çözecek — 2-3 cümle.</p><h2>Alırken nelere dikkat etmeli?</h2><ul><li><strong>Kriter 1:</strong> …</li><li><strong>Kriter 2:</strong> …</li><li><strong>Kriter 3:</strong> …</li></ul><h2>Bütçenize göre sınıflar</h2><h3>Giriş seviyesi</h3><p>…</p><h3>Orta segment</h3><p>…</p><h3>Üst segment</h3><p>…</p><h2>Sık sorulan sorular</h2><h3>Soru 1?</h3><p>…</p><h3>Soru 2?</h3><p>…</p>',
+    howto: '<p>Bu rehberin sonunda ne başarmış olacaksın — 1-2 cümle. Tahmini süre ve zorluk.</p><h2>Gerekenler</h2><ul><li>…</li><li>…</li></ul><h2>Adım 1: …</h2><p>…</p><h2>Adım 2: …</h2><p>…</p><h2>Adım 3: …</h2><p>…</p><h2>Sık yapılan hatalar</h2><ul><li><strong>Hata:</strong> … <strong>Çözüm:</strong> …</li></ul><h2>İpuçları</h2><ul><li>…</li></ul>',
+    faq: '<p>Bu konuda en çok merak edilenleri tek yerde topladık — kısa, net cevaplarla.</p><h2>Soru 1?</h2><p>Net cevap 2-4 cümle.</p><h2>Soru 2?</h2><p>…</p><h2>Soru 3?</h2><p>…</p><h2>Soru 4?</h2><p>…</p><h2>Soru 5?</h2><p>…</p>',
+    deals: '<p>Bu dönemin öne çıkan fırsatları: hangi ürün gerçekten indirimde, hangisi "sahte indirim". Fiyatlar yazı tarihine aittir — güncel fiyatı ürün kartındaki canlı fiyat gösterir.</p><h2>Fırsat mı, değil mi? Nasıl anlarsın</h2><ul><li><strong>Fiyat geçmişine bak:</strong> …</li><li><strong>Sürüm/varyanta dikkat:</strong> …</li></ul>',
+    alt: '<p>Referans ürünü ve neden alternatif arandığını anlat (fiyat, stok, ihtiyaç farkı).</p><h2>Neye göre alternatif seçtik?</h2><p>…</p>',
+    news: '<h2>Ne oldu?</h2><p>Haberin özü — 2-3 cümle, abartısız.</p><h2>Neden önemli?</h2><p>Kullanıcı için pratik anlamı: fiyat mı düşer, beklemek mi mantıklı…</p><h2>Ne beklenmeli?</h2><p>Tarihler, tahminler (tahminleri tahmin olarak işaretle).</p>',
   };
   function renderTplGallery() {
     const el = root(); if (!el) return;
+    const bak = loadBackup('new');
     el.innerHTML = `
       <div class="be-wrap">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
@@ -542,8 +572,12 @@
           <h2 style="margin:0;font-size:20px">Nasıl başlamak istersin?</h2>
         </div>
         <p style="opacity:.6;margin:4px 0 0">Şablonlar sadece başlangıç yapısı kurar — her şeyi sonra değiştirebilirsin.</p>
+        ${bak ? `<div class="be-report" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <span>💾 <b>Yarım kalan kaydedilmemiş taslağın var</b> (${esc(backupTimeLabel(bak))}${bak.e && bak.e.title_tr ? ` · "${esc(String(bak.e.title_tr).slice(0, 60))}"` : ''})</span>
+          <span style="display:flex;gap:8px;flex-shrink:0"><button class="btn btn-primary btn-purple btn-sm" onclick="blogBackupRestore('new')">Devam et</button><button class="ba-mini" onclick="blogBackupDiscard('new')">Sil</button></span>
+        </div>` : ''}
         <div class="be-tpl-grid">
-          ${TPL.map((t) => `<div class="be-tpl" onclick="blogTplPick('${t.id}')"><span class="ic">${t.ic}</span><b>${t.name}</b><p>${t.desc}</p></div>`).join('')}
+          ${TPL.map((t) => `<div class="be-tpl" onclick="blogTplPick('${t.id}')"><span class="ic">${t.ic}</span><b>${t.name}</b><p>${t.desc}</p>${(t.tags || []).length ? `<div class="be-tpl-tags">${t.tags.map((g) => `<span>${g}</span>`).join('')}</div>` : ''}</div>`).join('')}
         </div>
       </div>`;
   }
@@ -568,6 +602,9 @@
       _products = Array.isArray(a.products) ? a.products.map((p) => ({ ...p })) : [];
       _editing.publishedAt = toDtLocal(a.publishedAt);
       _lastSavedJson = saveSnapshotJson();
+      // Kayıttan sonra değişip kaydedilmeden kapanmış yerel yedek var mı?
+      const bak = loadBackup(id);
+      _pendingBackup = (bak && bak.at > (Date.parse(String(a.updated || '').replace(' ', 'T')) || 0)) ? bak : null;
       renderEditor();
       for (const p of _products) { if (p && p.id && (p.kind || 'product') === 'product') blogProdFetchPrice(p.id); }
     } catch (e) { toast('Yüklenemedi: ' + e.message, 'e'); }
@@ -588,6 +625,10 @@
           <button class="btn btn-ghost" onclick="blogSave('draft')">Taslak Kaydet</button>
           <button class="btn btn-primary btn-purple" onclick="blogSave('published')">🚀 Yayınla</button>
         </div>
+        ${_pendingBackup ? `<div class="be-report" style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px">
+          <span>💾 <b>Bu makalenin kaydedilmemiş yerel yedeği var</b> (${esc(backupTimeLabel(_pendingBackup))}) — son kayıttan daha yeni.</span>
+          <span style="display:flex;gap:8px;flex-shrink:0"><button class="btn btn-primary btn-purple btn-sm" onclick="blogBackupRestore('${esc(a.id)}')">Geri yükle</button><button class="ba-mini" onclick="blogBackupDiscard('${esc(a.id)}')">Yoksay</button></span>
+        </div>` : ''}
         <div class="be-grid">
           <div class="be-main">
             <div class="ba-tabs">
@@ -802,15 +843,59 @@
   }
   function blogMarkDirty() {
     _dirty = true;
+    flushEditors();
+    saveBackup(); // çökme koruması: her değişiklik ~1 sn içinde yerel yedeğe
     setSaveState('dirty', _editing && _editing.status === 'published' ? '● Kaydedilmemiş değişiklik — Kaydet/Yayınla' : '● Kaydedilmemiş…');
     clearTimeout(_autoTimer);
     // Otokayıt YALNIZ taslaklar için — yayındaki makaleye yarım değişiklik basılmaz.
     if (_editing && _editing.status !== 'published') {
-      _autoTimer = setTimeout(autoSave, 3000);
+      _autoTimer = setTimeout(autoSave, 2000);
     }
     updateChecklist();
   }
-  function stopAutosave() { clearTimeout(_autoTimer); _autoTimer = null; _dirty = false; }
+  function stopAutosave() { clearTimeout(_autoTimer); _autoTimer = null; clearTimeout(_backupTimer); _dirty = false; }
+
+  // ── ÇÖKME KORUMASI: localStorage yedekleri ────────────────────
+  // Her değişiklik ~1 sn içinde yerel yedeğe yazılır; sekme kapanması,
+  // tarayıcı çökmesi, elektrik kesintisi veri kaybettirmez. Başarılı PB
+  // kaydında yedek silinir; editör/galeri açılışında kalan yedek sunulur.
+  function backupKey(id) { return 'qor.blogDraft.' + (id || 'new'); }
+  let _backupTimer = null;
+  function saveBackup() {
+    clearTimeout(_backupTimer);
+    _backupTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(backupKey(_editing && _editing.id), JSON.stringify({ e: _editing, p: _products, at: Date.now() }));
+      } catch (_) { /* dolu localStorage sessiz geçilir */ }
+    }, 800);
+  }
+  function loadBackup(id) {
+    try {
+      const b = JSON.parse(localStorage.getItem(backupKey(id)) || 'null');
+      return (b && b.e) ? b : null;
+    } catch (_) { return null; }
+  }
+  function clearBackup(id) { try { localStorage.removeItem(backupKey(id)); } catch (_) { /* */ } }
+  function backupTimeLabel(b) {
+    try { const d = new Date(b.at); return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; } catch (_) { return ''; }
+  }
+  function blogBackupRestore(id) {
+    const b = loadBackup(id); if (!b) { toast('Yedek bulunamadı', 'w'); return; }
+    _pendingBackup = null;
+    _editing = b.e; _products = Array.isArray(b.p) ? b.p : [];
+    _lang = 'tr'; _srcMode = { body: false, concl: false }; _importReport = null;
+    renderEditor();
+    _dirty = true; setSaveState('dirty', '● Yerel yedekten geri yüklendi — kaydetmeyi unutma');
+    toast('Yedek geri yüklendi — kontrol et ve kaydet', 's');
+  }
+  function blogBackupDiscard(id) {
+    clearBackup(id); _pendingBackup = null; toast('Yedek silindi', 's');
+    if (id === 'new' && (!_editing || !_editing.id)) renderTplGallery(); else renderEditor();
+  }
+  // Sekme kapanırken kaydedilmemiş değişiklik uyarısı (yedek yine de durur).
+  window.addEventListener('beforeunload', (e) => {
+    if (_dirty && _editing) { e.preventDefault(); e.returnValue = ''; }
+  });
   async function autoSave() {
     if (_saving || !_editing) return;
     syncPane();
@@ -847,6 +932,50 @@
     const ci = document.getElementById('b_cover'); if (ci && ci.value !== (url || '')) ci.value = url || '';
     renderCoverThumbs(); blogMarkDirty();
   }
+  // Ortak medya yükleme: dosyayı makalenin media alanına ekler, URL döner.
+  async function uploadMediaFile(file) {
+    if (!_editing.id) { flushEditors(); syncPane(); await blogSave('draft', true); }
+    if (!_editing.id) { toast('Önce TR başlık yaz (taslak otomatik kaydedilir)', 'w'); return ''; }
+    const fd = new FormData(); fd.append('media+', file);
+    const rec = await getPb().collection('articles').update(_editing.id, fd, { $autoCancel: false });
+    const fname = Array.isArray(rec.media) ? rec.media[rec.media.length - 1] : rec.media;
+    return pbFileUrl(rec, fname);
+  }
+  // Gövde editörünün 🖼 butonu: URL yapıştır YA DA cihazdan yükle.
+  function openBodyImageDialog(cb) {
+    let m = document.getElementById('be_img_dialog'); if (m) m.remove();
+    m = document.createElement('div');
+    m.id = 'be_img_dialog'; m.className = 'be-modal';
+    m.onclick = (e) => { if (e.target === m) m.remove(); };
+    m.innerHTML = `
+      <div class="be-modal-box" style="max-width:520px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <strong>🖼 Görsel ekle</strong>
+          <button class="ba-mini" onclick="document.getElementById('be_img_dialog').remove()">✕</button>
+        </div>
+        <div class="ba-field"><label>Görsel URL</label>
+          <div style="display:flex;gap:8px">
+            <input class="ba-input" id="be_img_url" placeholder="https://…" style="flex:1" />
+            <button class="btn btn-primary btn-purple" id="be_img_add">Ekle</button>
+          </div>
+        </div>
+        <div style="text-align:center;opacity:.5;font-size:12px;margin:4px 0">— veya —</div>
+        <label class="ba-mini" style="cursor:pointer;display:block;text-align:center;padding:14px;font-size:13px">📷 Cihazdan yükle<input type="file" accept="image/*" id="be_img_file" style="display:none"></label>
+        <div id="be_img_busy" style="display:none;opacity:.6;font-size:12px;text-align:center;margin-top:8px">Yükleniyor…</div>
+      </div>`;
+    document.body.appendChild(m);
+    const done = (url) => { m.remove(); cb(url); };
+    m.querySelector('#be_img_add').onclick = () => { const u = m.querySelector('#be_img_url').value.trim(); if (u) done(u); };
+    m.querySelector('#be_img_url').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const u = e.target.value.trim(); if (u) done(u); } });
+    m.querySelector('#be_img_file').addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      m.querySelector('#be_img_busy').style.display = 'block';
+      try { const url = await uploadMediaFile(f); if (url) done(url); else m.remove(); }
+      catch (err) { toast('Yükleme başarısız: ' + err.message, 'e'); m.remove(); }
+    });
+    setTimeout(() => m.querySelector('#be_img_url').focus(), 50);
+  }
+
   async function uploadCover(input) {
     const file = input.files && input.files[0]; if (!file) return;
     try {
@@ -965,13 +1094,17 @@
                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
                      <input class="ba-input" style="flex:1;min-width:150px;font-size:12px" placeholder="Görsel URL" value="${esc(b.url || '')}" oninput="blogBlockField(${i},${j},'url',this.value)" />
                      <label class="ba-mini" style="cursor:pointer;white-space:nowrap">📷 Yükle<input type="file" accept="image/*" style="display:none" onchange="blogUploadBlockImage(this,${i},${j})"></label>
-                     <select class="ba-input" style="width:165px;font-size:12px" onchange="blogBlockField(${i},${j},'pos',this.value)" title="Konum">
-                       ${[['left', '◧ Solda · yazı sağda'], ['right', '◨ Sağda · yazı solda'], ['full', '▭ Tam genişlik']].map(([v, n]) => `<option value="${v}"${(b.pos || 'full') === v ? ' selected' : ''}>${n}</option>`).join('')}
+                     <select class="ba-input" style="width:160px;font-size:12px" onchange="blogBlockField(${i},${j},'pos',this.value)" title="Konum">
+                       ${[['left', '◧ Solda · yazı sağda'], ['right', '◨ Sağda · yazı solda'], ['center', '▣ Ortada'], ['full', '▭ Tam genişlik']].map(([v, n]) => `<option value="${v}"${(b.pos || 'full') === v ? ' selected' : ''}>${n}</option>`).join('')}
                      </select>
-                     <select class="ba-input" style="width:95px;font-size:12px" onchange="blogBlockField(${i},${j},'size',this.value)" title="Boyut">
-                       ${[['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük']].map(([v, n]) => `<option value="${v}"${(b.size || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
+                     <select class="ba-input" style="width:100px;font-size:12px" onchange="blogBlockField(${i},${j},'size',this.value)" title="Yükseklik sınırı">
+                       ${[['s', 'Küçük'], ['m', 'Orta'], ['l', 'Büyük'], ['xl', 'Çok büyük']].map(([v, n]) => `<option value="${v}"${(b.size || 'm') === v ? ' selected' : ''}>🖼 ${n}</option>`).join('')}
                      </select>
+                     <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;opacity:.85" title="Genişlik — boş bırakılırsa konuma göre otomatik">↔
+                       <input class="ba-input" type="number" min="15" max="100" step="5" style="width:70px;font-size:12px;padding:6px 8px" placeholder="oto" value="${b.w ? esc(b.w) : ''}" oninput="blogBlockField(${i},${j},'w',this.value ? Number(this.value) : '')" />%
+                     </label>
                    </div>
+                   <input class="ba-input" style="font-size:12px;margin-top:6px" placeholder="Altyazı (opsiyonel, ${esc(langName)}) — görselin altında küçük yazıyla görünür" value="${esc(b['cap_' + _lang] || '')}" oninput="blogBlockField(${i},${j},'cap_${_lang}',this.value)" />
                    ${_imgPreviewHtml(b.url)}
                  </div>`
               : `<div class="bk-block">
@@ -1317,13 +1450,13 @@ KURALLAR:
       toast(`İçerik aktarıldı — ${items.length} öğe eşleştiriliyor…`, 's');
       const norm = items.map((it) => ({
         kind: it.kind || 'product',
-        search: it.search || it.name || '',
-        name: it.name || it.search || '',
+        search: cleanItemName(it.search || it.name || ''),
+        name: cleanItemName(it.name || it.search || ''),
         name_tr: it.name_tr, name_en: it.name_en, name_de: it.name_de,
         link: it.link || '',
         image: it.image || '',
         blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
-          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm' };
+          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || b.cap || '', cap_en: b.cap_en || '', cap_de: b.cap_de || '' };
           return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '', de: b.de || '' };
         }),
       }));
@@ -1376,6 +1509,10 @@ KURALLAR:
       _editing.status = data.status;
       _dirty = false;
       _lastSavedJson = saveSnapshotJson();
+      // Başarılı kayıt → yerel çökme yedekleri artık gereksiz.
+      clearTimeout(_backupTimer);
+      clearBackup('new'); clearBackup(_editing.id);
+      _pendingBackup = null;
       const badge = document.getElementById('be_status_badge');
       if (badge) { badge.textContent = data.status === 'published' ? 'YAYINDA' : 'TASLAK'; badge.classList.toggle('pub', data.status === 'published'); }
       const stSel = document.getElementById('b_status'); if (stSel) stSel.value = data.status;
@@ -1446,4 +1583,5 @@ KURALLAR:
   window.blogImportOpen = blogImportOpen; window.blogImportClose = blogImportClose; window.blogImportTab = blogImportTab;
   window.blogImportRunMd = blogImportRunMd; window.blogImportRunJson = blogImportRunJson;
   window.blogPromptCopy = blogPromptCopy; window.blogImportReportClose = blogImportReportClose;
+  window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
 })();

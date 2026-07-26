@@ -133,6 +133,15 @@
 .post-prod-fig.fig-full.pp-s img { max-height: 220px; }
 .post-prod-fig.fig-full.pp-m img { max-height: 340px; }
 .post-prod-fig.fig-full.pp-l img { max-height: 520px; }
+/* Yeni editör seçenekleri: ortalanmış görsel, XL boyut, altyazı */
+.post-prod-fig.fig-center { float: none; clear: both; margin: 10px auto 16px; text-align: center; }
+.post-prod-fig.fig-center img { margin: 0 auto; }
+.post-prod-fig.fig-center.pp-s img { max-height: 200px; }
+.post-prod-fig.fig-center.pp-m img { max-height: 320px; }
+.post-prod-fig.fig-center.pp-l img { max-height: 480px; }
+.post-prod-fig.pp-xl img { max-height: 640px; }
+.post-prod-fig.fig-left.pp-xl img, .post-prod-fig.fig-right.pp-xl img { max-height: 440px; max-width: 560px; }
+.post-prod-fig figcaption { font-size: 13px; opacity: .65; margin-top: 7px; line-height: 1.4; text-align: center; }
 .post-prod-clear { clear: both; }
 @media (max-width: 640px) {
   .post-prod-fig.fig-left, .post-prod-fig.fig-right { float: none; margin: 8px 0 14px; max-width: 100%; }
