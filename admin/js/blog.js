@@ -1552,6 +1552,7 @@ KURALLAR — ÇOK ÖNEMLİ:
 6. items içindeki blocks metinleri HTML DEĞİL DÜZ METİNDİR. İçine <a>, <p>, <strong> gibi HİÇBİR ETİKET KOYMA. Kalın için **yıldız**, madde için satır başına "- ", ara başlık için satır başına "## " kullan; satır sonlarını koru. Ürün bölümlerindeki kaynak/atıf bağlantılarını buraya YAZMA, sadece metni al.
 7. slug boşsa başlıktan üret (küçük harf, tireli, Türkçe karakterler sadeleştirilmiş).
 8. metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN — aşıyorsa kısalt.
+9. KAYNAK ADI ÇÖPÜNÜ AT: Ham metin bir sohbet ekranından kopyalanmış olabilir; bu durumda kaynak bağlantıları düz metne dönüşüp tek başına satır olarak kalır ("MacRumors", "The Gadgeteer", "phonearena", "Tech Advisor", "6 Months Later", "Mark Ellis Reviews", "GSMArena" gibi yayın/site adları). Bunları çıktıya HİÇ ALMA — ne gövdeye ne öğe metinlerine. Gerçek cümleleri ve ara başlıkları ("Artıları:", "Kime Uygun?") aynen koru.
 
 HAM METİN:
 `;
@@ -1715,6 +1716,40 @@ HAM METİN:
   // Metni DEĞİŞTİRMEZ — yalnız yerleşim + rapor. (Kullanıcı: "ai yazıların
   // anlam bütünlüğüne ve görselin nereye geleceğine bakıyor mu")
   let _qaReport = null;
+  // Başıboş kaynak adı ADAYLARINI kod çıkarır (AI'a özet göndermek yetmiyordu:
+  // 180 çöp satırın yalnız 3'ünü görebiliyordu). Aday = tek başına duran kısa
+  // satır; cümle değil, madde değil, ara başlık değil. AI sonra bu KISA LİSTEYİ
+  // sınıflandırır — böylece hiçbiri kaçmaz ve gerçek içerik riske girmez.
+  function junkCandidates() {
+    const seen = new Map();
+    const scan = (txt) => {
+      for (const raw of String(txt || '').split(/\r?\n/)) {
+        const t = raw.trim();
+        if (!t || t.length > 60) continue;
+        if (/[.!?:;,]$/.test(t)) continue;          // cümle ya da ara başlık
+        if (/^[-*•#>]/.test(t)) continue;            // madde / başlık işareti
+        if (/^\d+\s*[.)]/.test(t)) continue;         // "1." / "2)" numaralı satır
+        // NOT: rakamla BAŞLAYAN her satırı elemiyoruz — "6 Months Later" gibi
+        // kaynak adları aksi hâlde aday listesine hiç giremiyordu.
+        if (t.split(/\s+/).length > 6) continue;     // uzun ifade = içerik
+        if (/\*\*/.test(t)) continue;                // vurgulu içerik satırı
+        seen.set(t, (seen.get(t) || 0) + 1);
+      }
+    };
+    for (const p of _products) {
+      ensureBlocks(p);
+      for (const b of p.blocks) {
+        if (b.t !== 'text') continue;
+        LANGS.forEach(([c]) => scan(b[c]));
+      }
+    }
+    LANGS.forEach(([c]) => {
+      const toLines = (h) => String(h || '').replace(/<\/(p|li|h[1-6]|div)>/gi, '\n').replace(/<[^>]+>/g, '');
+      scan(toLines(_editing['body_' + c]));
+      scan(toLines(_editing['conclusion_' + c]));
+    });
+    return [...seen.keys()].slice(0, 120);
+  }
   function articleOutline() {
     const c = _lang;
     const plain = (h) => stripHtml(h).replace(/\s+/g, ' ').trim();
@@ -1740,6 +1775,28 @@ HAM METİN:
         };
       }),
     };
+  }
+  // Kaynak adı sınıflandırması AYRI ve ODAKLI bir çağrı. Aynı isteğe düzen +
+  // kalite ile birlikte konduğunda model dikkatini yapıya verip listeyi
+  // savsaklıyordu (19 adayın yalnız 3'ünü işaretledi). Tek işe odaklanınca
+  // 18/19 doğru, gerçek içerikten hiçbiri yanlış işaretlenmedi (ölçüldü).
+  async function classifyJunkLines(cands) {
+    if (!cands.length) return [];
+    const prompt = `Aşağıdaki liste, bir teknoloji blog yazısında TEK BAŞINA satır olarak duran kısa metinlerdir. Bir kısmı, yazı kopyalanırken kaynak bağlantılarından arta kalan YAYIN/SİTE/İNCELEME KANALI ADLARIDIR ve yazıya ait değildir; bir kısmı ise gerçek içeriktir (ara başlık, ürün adı, teknik terim).
+
+HER SATIRI TEK TEK sınıflandır. Atlama, hepsi için karar ver.
+
+SADECE şu JSON: {"junk":["<yayın/kaynak adı olanlar>"],"keep":["<gerçek içerik olanlar>"]}
+
+SATIRLAR:
+${JSON.stringify(cands)}`;
+    try {
+      const out = await callGeminiJson(prompt, 4000);
+      const allowed = new Set(cands.map((s) => s.toLowerCase()));
+      return (Array.isArray(out.junk) ? out.junk : [])
+        .map((s) => String(s || '').trim())
+        .filter((s) => allowed.has(s.toLowerCase()));
+    } catch (_) { return []; }
   }
   async function blogAiQa(auto) {
     flushEditors(); syncPane();
@@ -1781,12 +1838,45 @@ ${JSON.stringify(outline)}`;
         if (['s', 'm', 'l', 'xl'].includes(L.size)) img.size = L.size;
         applied++;
       }
-      _qaReport = { issues: Array.isArray(out.issues) ? out.issues : [], verdict: out.verdict || '', applied };
+      // Başıboş kaynak adlarını SİL. AI hangi TAM SATIRLARIN çöp olduğunu
+      // söyler, silme işini kod yapar → sezgisel tahmin yok, gerçek cümleler
+      // asla kaybolmaz. (Claude'un ekranından kopyalarken markdown linkler düz
+      // metne dönüştüğü için "MacRumors" gibi adlar linksiz kalıyor ve ham
+      // metinden sökülemiyor; tek güvenilir yakalama noktası burası.)
+      // Kaynak adı temizliği: adayları KOD çıkarır, AI yalnız sınıflandırır.
+      // Listede olmayan bir metin asla silinemez → gerçek içerik kaybolmaz.
+      const junk = await classifyJunkLines(junkCandidates());
+      let removed = 0;
+      if (junk.length) {
+        const junkSet = new Set(junk.map((s) => s.toLowerCase()));
+        const clean = (txt) => String(txt || '').split(/\r?\n/).filter((line) => {
+          if (!junkSet.has(line.trim().toLowerCase())) return true;
+          removed++; return false;
+        }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+        for (const p of _products) {
+          ensureBlocks(p);
+          for (const b of p.blocks) {
+            if (b.t !== 'text') continue;
+            LANGS.forEach(([c]) => { if (b[c]) b[c] = clean(b[c]); });
+          }
+        }
+        // Gövde/sonuç HTML'inde de tek başına paragraf olarak kalmış olabilir.
+        const cleanHtml = (html) => String(html || '').replace(/<p>([\s\S]*?)<\/p>/gi, (m0, inner) => {
+          const plain = stripHtml(inner).trim();
+          if (junkSet.has(plain.toLowerCase())) { removed++; return ''; }
+          return m0;
+        });
+        LANGS.forEach(([c]) => {
+          if (_editing['body_' + c]) _editing['body_' + c] = cleanHtml(_editing['body_' + c]);
+          if (_editing['conclusion_' + c]) _editing['conclusion_' + c] = cleanHtml(_editing['conclusion_' + c]);
+        });
+      }
+      _qaReport = { issues: Array.isArray(out.issues) ? out.issues : [], verdict: out.verdict || '', applied, removed, junk };
       renderProducts();
       renderQaReport();
       blogMarkDirty();
       const errs = _qaReport.issues.filter((x) => x.level === 'error').length;
-      toast(`Düzen kuruldu (${applied} görsel) · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
+      toast(`Düzen kuruldu (${applied} görsel)${removed ? ` · ${removed} kaynak artığı silindi` : ''} · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
     } catch (e) {
       toast('AI kontrolü başarısız: ' + e.message, 'e');
     } finally {
@@ -1805,7 +1895,7 @@ ${JSON.stringify(outline)}`;
         <button class="ba-mini" onclick="blogQaClose()">✕</button>
       </div>
       ${_qaReport.verdict ? `<div style="margin-bottom:6px;opacity:.9">${esc(_qaReport.verdict)}</div>` : ''}
-      <div style="opacity:.75;font-size:12px;margin-bottom:6px">${_qaReport.applied} görselin yeri ve boyutu metne göre ayarlandı.</div>
+      <div style="opacity:.75;font-size:12px;margin-bottom:6px">${_qaReport.applied} görselin yeri ve boyutu metne göre ayarlandı.${_qaReport.removed ? ` <span style="color:#4ade80">${_qaReport.removed} başıboş kaynak satırı silindi${(_qaReport.junk || []).length ? ` (${esc((_qaReport.junk || []).slice(0, 6).join(', '))})` : ''}.</span>` : ''}</div>
       ${_qaReport.issues.length
         ? _qaReport.issues.map((x) => `<div style="color:${col[x.level] || '#cbd5e1'}">${ic[x.level] || '•'} ${esc(x.text)}</div>`).join('')
         : '<div style="color:#4ade80">✓ Yayına engel bir sorun bulunmadı.</div>'}
