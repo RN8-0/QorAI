@@ -122,11 +122,23 @@ function curlGet(url) {
 
 // Module-level pacing: one Epey fetch per GAP_MS across ALL workers, so the
 // runner's concurrency only parallelises PocketBase writes, never the scrape.
+//
+// UYARLANABILIR HIZ (2026-07-27): saatler süren koşularda Epey bizi kısmaya
+// başlıyor — 2000 ürünlük turda 112 istek `status 0` (curl bağlantıyı hiç
+// tamamlayamadı) ile düştü ve hız 0,8/s → 0,4/s'ye indi. Ardışık geçici
+// hatalarda bekleme süresini kademeli artırıp başarıda geri indiriyoruz;
+// böylece kısıtlamaya çarpınca yavaşlayıp kendimizi toparlıyoruz.
 let fetchChain = Promise.resolve();
 let lastFetchAt = 0;
+let extraGapMs = 0;          // uyarlanabilir ek bekleme
+const EXTRA_GAP_MAX = 6000;
+function noteFetchOutcome(ok) {
+  if (ok) extraGapMs = Math.max(0, Math.floor(extraGapMs * 0.6) - 100);
+  else extraGapMs = Math.min(EXTRA_GAP_MAX, extraGapMs ? extraGapMs * 2 : 800);
+}
 function politeFetch(url) {
   const run = async () => {
-    const wait = lastFetchAt + GAP_MS - Date.now();
+    const wait = lastFetchAt + GAP_MS + extraGapMs - Date.now();
     if (wait > 0) await new Promise(r => setTimeout(r, wait + Math.floor(Math.random() * 250)));
     lastFetchAt = Date.now();
     return curlGet(url);
@@ -135,6 +147,25 @@ function politeFetch(url) {
   // Keep the chain alive even when a fetch rejects (timeouts, 5xx…).
   fetchChain = p.catch(() => {});
   return p;
+}
+// Geçici hatalarda (bağlantı düşmesi, 429, 5xx) ürünü hemen yakmadan yeniden
+// dene. Kalıcı durumlar (200/404/410) ilk turda döner.
+const TRANSIENT = new Set([0, 408, 425, 429, 500, 502, 503, 504]);
+async function fetchWithRetry(url, tries = 3) {
+  let last = { status: 0, text: '' };
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await politeFetch(url);
+      last = res;
+      if (!TRANSIENT.has(res.status)) { noteFetchOutcome(true); return res; }
+      noteFetchOutcome(false);
+    } catch (e) {
+      noteFetchOutcome(false);
+      last = { status: 0, text: '', err: e };
+    }
+    if (i < tries - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1) + Math.floor(Math.random() * 700)));
+  }
+  return last;
 }
 
 function amazonUrlsFrom(decodedLink) {
@@ -209,7 +240,7 @@ module.exports = {
   async searchOffers(product) {
     const src = String(product.sourceUrl || '').trim();
     if (!src || !/epey\.com\//i.test(src)) return [];
-    const res = await politeFetch(src);
+    const res = await fetchWithRetry(src);
     if (res.status === 404 || res.status === 410) return []; // page gone → clear
     if (res.status !== 200) throw new Error(`epey ${res.status}`);
     const rows = parseRows(res.text);
