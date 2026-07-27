@@ -42,8 +42,14 @@ export function useSeo(seo = {}) {
   const {
     title, description, image, imageAlt, path, type = 'website',
     noindex = false, jsonLd = null,
+    // Çok dilli sayfalar için: htmlLang <html lang> değerini, alternates ise
+    // hreflang bağlantılarını kurar. Blog yazıları dil başına AYRI adreste
+    // yayınlanıyor (slug_tr/en/de); bunlar olmadan Google Türkçe adreste
+    // İngilizce içerik görüp sayfanın dilini çözemiyordu.
+    htmlLang = '', alternates = null,
   } = seo;
   const ld = jsonLd ? JSON.stringify(jsonLd) : '';
+  const altKey = alternates ? JSON.stringify(alternates) : '';
 
   useEffect(() => {
     const url = SITE_URL + (path || window.location.pathname);
@@ -53,6 +59,21 @@ export function useSeo(seo = {}) {
     upsertMeta('name', 'description', description);
     upsertMeta('name', 'robots', noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
     upsertLink('canonical', url);
+
+    // <html lang> — sayfanın GERÇEK içerik dili (tarayıcı dili değil).
+    if (htmlLang) document.documentElement.setAttribute('lang', htmlLang);
+
+    // hreflang alternatifleri: her dilin kendi adresi. Önce eskileri temizle,
+    // sonra bu sayfaya ait olanları yaz (SPA'da sayfa değişince kalmasınlar).
+    document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
+    for (const alt of (alternates || [])) {
+      if (!alt || !alt.hreflang || !alt.href) continue;
+      const el = document.createElement('link');
+      el.setAttribute('rel', 'alternate');
+      el.setAttribute('hreflang', alt.hreflang);
+      el.setAttribute('href', alt.href);
+      document.head.appendChild(el);
+    }
 
     upsertMeta('property', 'og:type', type);
     upsertMeta('property', 'og:site_name', 'Qor AI');
@@ -80,5 +101,5 @@ export function useSeo(seo = {}) {
     } else if (script) {
       script.remove();
     }
-  }, [title, description, image, imageAlt, path, type, noindex, ld]);
+  }, [title, description, image, imageAlt, path, type, noindex, ld, htmlLang, altKey]);
 }

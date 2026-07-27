@@ -172,7 +172,6 @@ export default function BlogPost() {
   const { lang } = useI18n();
   const t = useT();
   const geoCountry = useGeoCountry();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [post, setPost] = useState(null);
   const [livePrices, setLivePrices] = useState({}); // id → product's per-country prices rollup
   const [status, setStatus] = useState('loading');
@@ -186,7 +185,24 @@ export default function BlogPost() {
   const readSent = useRef(false);
   const likeEventId = useRef(null);
 
-  const pick = (a, f) => (a ? (a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
+  // ARTICLE LANGUAGE COMES FROM THE URL, NOT THE BROWSER.
+  // Each article is published under one slug per language (slug_tr/en/de).
+  // Rendering by browser language meant /blog/2026-en-iyi-tabletler (a Turkish
+  // URL) served English text to an English browser — Google then can't tell
+  // what language the page is, and the prerendered Turkish shell disagreed with
+  // the JS-rendered English body. The URL is the single source of truth.
+  const postLang = useMemo(() => {
+    if (!post) return lang;
+    const s = String(slug || '');
+    if (post.slug_tr === s) return 'tr';
+    if (post.slug_en === s) return 'en';
+    if (post.slug_de === s) return 'de';
+    if (post.slug === s) return 'tr'; // canonical slug is derived from the TR title
+    return lang; // preview by id → follow the UI language
+  }, [post, slug, lang]);
+  // UI etiketleri de makalenin diline uyar — Türkçe adreste "Share" yazmasın.
+  const L = (en, tr, de) => (postLang === 'tr' ? tr : postLang === 'de' ? de : en);
+  const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
   useEffect(() => {
     let live = true;
@@ -278,17 +294,17 @@ export default function BlogPost() {
   const conclusion = pick(post, 'conclusion');
   // Custom items have a per-language name (name_tr/en/de); products/subscriptions
   // use their single catalog name. Resolve to the active language with fallbacks.
-  const itemName = (p) => p[`name_${lang}`] || p.name_tr || p.name_en || p.name_de || p.name || '';
+  const itemName = (p) => p[`name_${postLang}`] || p.name_tr || p.name_en || p.name_de || p.name || '';
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && itemName(p)) : [];
   const cover = post?.cover || (post?.coverFile ? fileUrl(post, post.coverFile) : (products[0]?.image || products[0]?.imageUrl || ''));
   const url = `${SITE_URL}/blog/${slug}`;
-  const pdesc = (p) => p[`desc_${lang}`] || p.desc_tr || p.desc_en || '';
-  const pdesc2 = (p) => p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '';
+  const pdesc = (p) => p[`desc_${postLang}`] || p.desc_tr || p.desc_en || '';
+  const pdesc2 = (p) => p[`desc2_${postLang}`] || p.desc2_tr || p.desc2_en || '';
   const pimg = (p) => p.image || p.imageUrl || '';
   // Plain text for SEO / chat context, from the new blocks model or legacy descs.
   const blockText = (p) => {
     if (Array.isArray(p.blocks) && p.blocks.length) {
-      return p.blocks.filter((b) => b.t === 'text').map((b) => b[lang] || b.tr || b.en || b.de || '').filter(Boolean).join(' ');
+      return p.blocks.filter((b) => b.t === 'text').map((b) => b[postLang] || b.tr || b.en || b.de || '').filter(Boolean).join(' ');
     }
     return `${pdesc(p)} ${pdesc2(p)}`.trim();
   };
@@ -322,6 +338,23 @@ export default function BlogPost() {
     } : null,
   );
 
+  // Aynı makalenin diğer dillerdeki adresleri. Google bunlarla üç sayfayı TEK
+  // makalenin çevirileri olarak görür ve her aramacıya kendi dilindeki adresi
+  // gösterir; x-default TR'dir (sitenin ana dili).
+  const langSlugs = post ? {
+    tr: post.slug_tr || post.slug,
+    en: post.slug_en || post.slug,
+    de: post.slug_de || post.slug,
+  } : null;
+  const seoAlternates = useMemo(() => {
+    if (!langSlugs || previewId) return null;
+    const out = ['tr', 'en', 'de']
+      .filter((c) => langSlugs[c])
+      .map((c) => ({ hreflang: c, href: `${SITE_URL}/blog/${langSlugs[c]}` }));
+    if (langSlugs.tr) out.push({ hreflang: 'x-default', href: `${SITE_URL}/blog/${langSlugs.tr}` });
+    return out;
+  }, [langSlugs && langSlugs.tr, langSlugs && langSlugs.en, langSlugs && langSlugs.de, previewId]);
+
   useSeo({
     title: metaTitle || (title ? `${title} | Qor AI` : 'Qor AI Blog'),
     description: metaDescription || lead,
@@ -329,10 +362,13 @@ export default function BlogPost() {
     path: `/blog/${slug}`,
     type: 'article',
     noindex: status === 'notfound' || !!previewId,
+    htmlLang: post ? postLang : '',
+    alternates: seoAlternates,
     jsonLd: post ? {
       '@context': 'https://schema.org', '@type': 'Article', '@id': `${url}#article`,
       headline: title, description: metaDescription || lead, ...(cover ? { image: [cover] } : {}),
       datePublished: publishedAt, dateModified: post.updated,
+      inLanguage: postLang,
       author: { '@type': 'Organization', name: author || 'Qor AI' },
       publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: `${SITE_URL}/assets/qor_logo_512.png?v=20260605a` } },
       mainEntityOfPage: url,
@@ -388,8 +424,8 @@ export default function BlogPost() {
     return <div className="container blog-page"><div className="blog-article"><div className="blog-card-skel" style={{ minHeight: 360, borderRadius: 18 }} /></div></div>;
   }
 
-  const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-  const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
+  const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(postLang === 'tr' ? 'tr-TR' : postLang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const nf = (n) => Number(n || 0).toLocaleString(postLang === 'tr' ? 'tr-TR' : postLang === 'de' ? 'de-DE' : 'en-US');
 
   // One content block (product / subscription / custom), per its layout template.
   const renderProd = (p, i) => {
@@ -462,7 +498,7 @@ export default function BlogPost() {
               // Yeni editör kontrolleri: manuel genişlik (%) + dil-farkında altyazı.
               const w = Number(b.w) || 0;
               const st = w >= 15 && w <= 100 ? { width: `${w}%` } : undefined;
-              const cap = b[`cap_${lang}`] || b.cap_tr || b.cap_en || b.cap_de || b.cap || '';
+              const cap = b[`cap_${postLang}`] || b.cap_tr || b.cap_en || b.cap_de || b.cap || '';
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`} style={st}>
                   {linkFig(<img src={nu} data-orig={nu} alt={cap || name} loading="lazy" onError={imageOnError} />)}
@@ -470,7 +506,7 @@ export default function BlogPost() {
                 </figure>
               );
             }
-            const txt = b[lang] || b.tr || b.en || b.de || '';
+            const txt = b[postLang] || b.tr || b.en || b.de || '';
             if (!String(txt).trim()) return null;
             return <div key={bi} className="post-prod-rich">{renderBlockText(txt, b.style, `${p.id || i}-${bi}`)}</div>;
           })}
@@ -517,6 +553,22 @@ export default function BlogPost() {
           </div>
         </div>
 
+        {/* Dil bağlantıları — okuyucu yanlış dildeki adrese düştüyse kendi
+            diline geçebilsin; aynı zamanda Google için iç hreflang sinyali. */}
+        {langSlugs && !previewId && (() => {
+          const others = ['tr', 'en', 'de'].filter((c) => c !== postLang && langSlugs[c] && langSlugs[c] !== slug);
+          if (!others.length) return null;
+          const LBL = { tr: 'Türkçe', en: 'English', de: 'Deutsch' };
+          return (
+            <div className="blog-langs">
+              <span className="blog-langs-cur" lang={postLang}>{LBL[postLang]}</span>
+              {others.map((c) => (
+                <Link key={c} to={`/blog/${langSlugs[c]}`} hrefLang={c} lang={c} className="blog-lang-link">{LBL[c]}</Link>
+              ))}
+            </div>
+          );
+        })()}
+
         <h1>{title}</h1>
         {lead ? <p className="blog-lead">{lead}</p> : null}
 
@@ -561,7 +613,7 @@ export default function BlogPost() {
                 const mp = Array.isArray(m.products) ? m.products : [];
                 const mcover = m.cover || (m.coverFile ? fileUrl(m, m.coverFile) : (mp[0]?.image || mp[0]?.imageUrl || ''));
                 return (
-                  <Link key={m.slug} to={articlePath(m, lang)} className="blog-simrow">
+                  <Link key={m.slug} to={articlePath(m, postLang)} className="blog-simrow">
                     {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
                     <div className="blog-simrow-body">
                       <h3>{pick(m, 'title')}</h3>
