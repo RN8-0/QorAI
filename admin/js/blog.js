@@ -331,6 +331,21 @@
   // <a href="#">Ad</a> olarak (gerçek URL'i de kaybederek). Bunlar sayfada
   // etiketiyle birlikte yazı olarak görünüyordu. Deterministik olarak temizle:
   // linkler metne iner, blok etiketleri satır sonuna, kalanı silinir.
+  // Claude'un kaynak atıfları ([GadgetBond](url) gibi) gövdeye <a> olarak
+  // giriyor; kullanıcı bunları istemiyor (rakip sitelere dış link + görsel
+  // kirlilik). Etiketi VE metnini birlikte söker, ardından kalan boş parantez,
+  // çift boşluk ve boşalan <p> kabuklarını temizler.
+  function stripCitationLinks(html) {
+    let t = String(html || '');
+    if (!/<a\b/i.test(t)) return t;
+    t = t.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, '');
+    t = t.replace(/[([]\s*[)\]]/g, '');
+    t = t.replace(/[ \t]{2,}/g, ' ');
+    t = t.replace(/\s+([.,;:!?])/g, '$1');
+    t = t.replace(/[ \t]+(<\/(?:p|li|h[1-6]|td|th|div)>)/gi, '$1'); // etiket öncesi artık boşluk
+    t = t.replace(/<p>\s*<\/p>/gi, '');
+    return t.trim();
+  }
   function htmlToPlain(s) {
     let t = String(s || '');
     if (!/<[a-z!/]/i.test(t) && !/&[a-z#][a-z0-9]{1,8};/i.test(t)) return t;
@@ -976,7 +991,7 @@
       await blogSave('draft', true);
       const t = new Date();
       setSaveState('ok', `✓ Otomatik kaydedildi ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`);
-    } catch (_) { setSaveState('dirty', '⚠ Otokayıt başarısız — elle kaydet'); }
+    } catch (e) { setSaveState('dirty', '⚠ Otokayıt başarısız: ' + pbErrText(e)); }
   }
 
   // ── kapak ─────────────────────────────────────────────────────
@@ -1321,6 +1336,7 @@
         <textarea id="be_imp_auto" class="be-imp-ta" placeholder="Metni buraya yapıştır — 3 dil bir arada olabilir, başlık etiketleri olabilir, hiç fark etmez…"></textarea>
         <div class="be-imp-opt">
           <label><input type="checkbox" id="be_opt_areplace" checked> Mevcut içeriğin üzerine yaz</label>
+          <label><input type="checkbox" id="be_opt_nolinks" checked> Kaynak/atıf linklerini temizle <span style="opacity:.55">(GadgetBond, MacRumors… gibi dış siteler)</span></label>
           <span style="opacity:.55">Uzun metinlerde 20-60 saniye sürebilir.</span>
         </div>
         <button class="btn btn-primary btn-purple" id="be_auto_btn" onclick="blogImportRunAuto()">🪄 Oku ve makaleye dönüştür</button>
@@ -1523,6 +1539,7 @@ HAM METİN:
     const raw = ta ? ta.value.trim() : '';
     if (!raw) { toast('Önce metni yapıştır', 'w'); return; }
     const replace = (() => { const el = document.getElementById('be_opt_areplace'); return el ? el.checked : true; })();
+    const noLinks = (() => { const el = document.getElementById('be_opt_nolinks'); return el ? el.checked : true; })();
     const btn = document.getElementById('be_auto_btn');
     const st = document.getElementById('be_auto_status');
     const say = (s) => { if (st) st.textContent = s; };
@@ -1556,10 +1573,11 @@ HAM METİN:
       set('metaTitle_' + c, L.metaTitle);
       set('metaDescription_' + c, L.metaDescription);
       set('tags_' + c, Array.isArray(L.tags) ? L.tags.join(', ') : L.tags);
+      const clean = (h) => (noLinks ? stripCitationLinks(h) : h);
       const body = L.body_html || L.body_md || L.body || '';
-      if (body && (replace || !_editing['body_' + c])) _editing['body_' + c] = /<\w+[^>]*>/.test(body) ? body : mdToHtml(body);
+      if (body && (replace || !_editing['body_' + c])) _editing['body_' + c] = clean(/<\w+[^>]*>/.test(body) ? body : mdToHtml(body));
       const concl = L.conclusion_html || L.conclusion_md || L.conclusion || '';
-      if (concl && (replace || !_editing['conclusion_' + c])) _editing['conclusion_' + c] = /<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl);
+      if (concl && (replace || !_editing['conclusion_' + c])) _editing['conclusion_' + c] = clean(/<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl));
     }
     if (data.category && (replace || !_editing.category)) _editing.category = data.category;
     const items = Array.isArray(data.items) ? data.items : [];
@@ -1785,6 +1803,36 @@ ${JSON.stringify(payload)}`;
   }
 
   // ── kaydet / önizle ───────────────────────────────────────────
+  // PB hata gövdesindeki ALAN BAZLI hataları okunur metne çevir. SDK'nın
+  // `message`'ı hep "Failed to create record." — asıl bilgi data'da.
+  function pbErrText(e) {
+    const d = (e && (e.data || e.response)) || {};
+    const fields = d.data || (d.data === undefined ? null : d.data);
+    if (fields && typeof fields === 'object' && Object.keys(fields).length) {
+      return Object.entries(fields)
+        .map(([k, v]) => `${k}: ${(v && (v.message || v.code)) || 'geçersiz'}`)
+        .join(' · ');
+    }
+    return (e && e.message) || 'bilinmeyen hata';
+  }
+  // `slug` PB'de BENZERSIZ indeksli. Ayni basliktan ikinci kez makale
+  // olusturulmaya calisilinca PB 400 + validation_not_unique donuyordu ve
+  // kullaniciya yalnizca "Failed to create record" gorunuyordu (kayit/onizleme
+  // /otokayit hepsi oluyordu). Yeni kayitta bos slug bulunur: slug, slug-2, …
+  async function freeSlug(base) {
+    const root = base.slice(0, 74);
+    for (let i = 1; i <= 30; i++) {
+      const cand = i === 1 ? base : `${root}-${i}`;
+      try {
+        await getPb().collection('articles').getFirstListItem(`slug="${cand.replace(/"/g, '\\"')}"`, { $autoCancel: false });
+      } catch (err) {
+        if (err && (err.status === 404 || err.status === 0)) return cand; // bos
+        return cand; // sorgu basarisizsa denemeye devam etme, PB son sozu soyler
+      }
+    }
+    return `${root}-${Date.now().toString(36)}`;
+  }
+
   async function blogSave(forceStatus, silent) {
     syncPane();
     const a = _editing;
@@ -1818,9 +1866,22 @@ ${JSON.stringify(payload)}`;
       });
       if (a.id) await getPb().collection('articles').update(a.id, data, { $autoCancel: false });
       else {
+        // Yeni kayıtta slug çakışmasını ÖNCEDEN çöz (benzersiz indeks).
+        const free = await freeSlug(data.slug);
+        const bumped = free !== data.slug;
+        if (bumped) {
+          data.slug = free;
+          LANGS.forEach(([c]) => { if (data['slug_' + c] === slug) data['slug_' + c] = free; });
+        }
         const rec = await getPb().collection('articles').create(data, { $autoCancel: false });
         _editing.id = rec.id; _editing.coverFile = rec.coverFile; _editing.publishedAt = toDtLocal(rec.publishedAt);
+        _editing.slug = rec.slug;
+        LANGS.forEach(([c]) => { if (data['slug_' + c]) _editing['slug_' + c] = data['slug_' + c]; });
         const cm = document.getElementById('b_comments'); if (cm && cm.textContent.includes('kaydet')) { cm.textContent = 'Henüz yorum yok.'; }
+        if (bumped) {
+          toast(`Bu adres kullanımda olduğu için makale "${free}" olarak kaydedildi — aynı konuda eski bir taslağın olabilir.`, 'w');
+          renderPane();
+        }
       }
       _editing.status = data.status;
       _dirty = false;
@@ -1837,7 +1898,7 @@ ${JSON.stringify(payload)}`;
         toast(data.status === 'published' ? '🚀 Yayınlandı — sitede canlı' : 'Taslak kaydedildi', 's');
       }
     } catch (e) {
-      if (!silent) toast('Kaydedilemedi: ' + e.message, 'e');
+      if (!silent) toast('Kaydedilemedi — ' + pbErrText(e), 'e');
       if (silent) throw e;
     } finally { _saving = false; }
   }
@@ -1849,7 +1910,7 @@ ${JSON.stringify(payload)}`;
       const slug = _editing.slug || slugify(_editing.title_tr || '');
       setSaveState('ok', '✓ Kaydedildi');
       window.open(`${SITE}/blog/${encodeURIComponent(slug)}?previewId=${_editing.id}`, '_blank');
-    } catch (e) { toast('Önizleme başarısız: ' + e.message, 'e'); }
+    } catch (e) { toast('Önizleme başarısız — ' + pbErrText(e), 'e'); }
   }
 
   // ── yorumlar ──────────────────────────────────────────────────
