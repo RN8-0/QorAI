@@ -51,12 +51,6 @@
 @media (max-width: 560px) { .blog-stats-actions { margin-left: 0; width: 100%; } }
 .blog-article h1 { font-size: 40px; font-weight: 800; line-height: 1.12; margin: 0 0 14px; letter-spacing: -.01em; }
 .blog-lead { font-size: 20px; color: var(--text-soft,#475569); line-height: 1.6; margin: 0 0 24px; }
-/* Dil bağlantıları — makale dili URL'den gelir, okuyucu buradan geçiş yapar */
-.blog-langs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; font-size: 13px; }
-.blog-langs-cur { font-weight: 800; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--brand,#2563eb) 12%, transparent); color: var(--brand,#2563eb); }
-.blog-lang-link { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border,#e2e8f0); color: var(--text-soft,#475569); text-decoration: none; font-weight: 600; }
-.blog-lang-link:hover { border-color: var(--brand,#2563eb); color: var(--brand,#2563eb); }
-
 .blog-body { font-size: 17.5px; line-height: 1.85; color: var(--text,#1e293b); }
 .blog-body h2 { font-size: 26px; font-weight: 800; margin: 34px 0 12px; }
 .blog-body h3 { font-size: 21px; font-weight: 800; margin: 28px 0 10px; }

@@ -185,22 +185,14 @@ export default function BlogPost() {
   const readSent = useRef(false);
   const likeEventId = useRef(null);
 
-  // ARTICLE LANGUAGE COMES FROM THE URL, NOT THE BROWSER.
-  // Each article is published under one slug per language (slug_tr/en/de).
-  // Rendering by browser language meant /blog/2026-en-iyi-tabletler (a Turkish
-  // URL) served English text to an English browser — Google then can't tell
-  // what language the page is, and the prerendered Turkish shell disagreed with
-  // the JS-rendered English body. The URL is the single source of truth.
-  const postLang = useMemo(() => {
-    if (!post) return lang;
-    const s = String(slug || '');
-    if (post.slug_tr === s) return 'tr';
-    if (post.slug_en === s) return 'en';
-    if (post.slug_de === s) return 'de';
-    if (post.slug === s) return 'tr'; // canonical slug is derived from the TR title
-    return lang; // preview by id → follow the UI language
-  }, [post, slug, lang]);
-  // UI etiketleri de makalenin diline uyar — Türkçe adreste "Share" yazmasın.
+  // Makale dili = SİTE dili = TARAYICI dili (TR→tr, DE→de, diğerleri→en).
+  // Sitenin tamamı bu kural üzerine kurulu: ziyaretçi hangi slug'a girerse
+  // girsin kendi dilinde okur, manuel dil seçimi YOKTUR.
+  // SEO tarafı bundan bağımsız çalışır — web/scripts/seo.mjs her makaleyi dil
+  // başına AYRI adreste ön-üretir (slug_tr/en/de), her sayfaya kendi
+  // <html lang> değerini, canonical'ını ve hreflang alternatiflerini yazar;
+  // arama motoru böylece her dil için doğru adresi indeksler.
+  const postLang = lang;
   const L = (en, tr, de) => (postLang === 'tr' ? tr : postLang === 'de' ? de : en);
   const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
@@ -552,22 +544,6 @@ export default function BlogPost() {
             <button className="blog-act" onClick={onShare} aria-label="share">↗ {L('Share', 'Paylaş', 'Teilen')}</button>
           </div>
         </div>
-
-        {/* Dil bağlantıları — okuyucu yanlış dildeki adrese düştüyse kendi
-            diline geçebilsin; aynı zamanda Google için iç hreflang sinyali. */}
-        {langSlugs && !previewId && (() => {
-          const others = ['tr', 'en', 'de'].filter((c) => c !== postLang && langSlugs[c] && langSlugs[c] !== slug);
-          if (!others.length) return null;
-          const LBL = { tr: 'Türkçe', en: 'English', de: 'Deutsch' };
-          return (
-            <div className="blog-langs">
-              <span className="blog-langs-cur" lang={postLang}>{LBL[postLang]}</span>
-              {others.map((c) => (
-                <Link key={c} to={`/blog/${langSlugs[c]}`} hrefLang={c} lang={c} className="blog-lang-link">{LBL[c]}</Link>
-              ))}
-            </div>
-          );
-        })()}
 
         <h1>{title}</h1>
         {lead ? <p className="blog-lead">{lead}</p> : null}
