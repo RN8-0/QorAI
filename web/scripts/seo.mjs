@@ -1544,6 +1544,10 @@ async function main() {
         writeHtml(`blog/${s}`, renderPage(template, {
           title: metaT || truncate(`${t('title')} | Qor AI`, 70), description: truncate(metaD || t('lead')),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
+          // <html lang> bu sayfanin GERCEK dili olsun: JS calistirmayan bir
+          // tarayici/tarayici-botu Ingilizce govdeyi lang="tr" altinda
+          // gormesin (2026-07-27: uc dil de lang="tr" ile yayindaydi).
+          lang,
           jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
         }, blogArticleBody(a, lang, blogPriceMap)));
         blogUrls.push({ loc: url, lastmod: String(a.updated || a.publishedAt || '').slice(0, 10), changefreq: 'weekly', priority: '0.7' });
