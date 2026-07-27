@@ -346,6 +346,24 @@
     t = t.replace(/<p>\s*<\/p>/gi, '');
     return t.trim();
   }
+  // Kaynak atıflarını AI'a HİÇ GÖSTERME. Modele "linkleri yazma" demek yetmiyor:
+  // linki atıp adını ("The Gadgeteer", "MacRumors") başıboş bir satır olarak
+  // bırakıyor ve yayınlanan yazıda öylece duruyordu. Ham metinden markdown
+  // linkleri, çıplak URL'leri ve tek başına kalan kaynak-adı satırlarını
+  // içe aktarmadan ÖNCE söküyoruz.
+  function stripSourcesFromRaw(text) {
+    let t = String(text || '');
+    // [Ad](url) → tamamen sil (cümle sonundaki atıflar); (url) ve çıplak URL de.
+    t = t.replace(/\[[^\]\n]{1,60}\]\(\s*https?:\/\/[^)\s]+\s*\)/g, '');
+    t = t.replace(/\(\s*https?:\/\/[^)\s]+\s*\)/g, '');
+    t = t.replace(/https?:\/\/\S+/g, '');
+    // "[Ad + 2]" gibi kalıntı atıf kümeleri
+    t = t.replace(/\[[^\]\n]{1,60}\s\+\s\d+\]/g, '');
+    // Atıf sonrası kalan boşluk/noktalama artıkları
+    t = t.replace(/[ \t]{2,}/g, ' ').replace(/\s+([.,;:!?])/g, '$1');
+    t = t.replace(/^[ \t]+$/gm, '');
+    return t;
+  }
   function htmlToPlain(s) {
     let t = String(s || '');
     if (!/<[a-z!/]/i.test(t) && !/&[a-z#][a-z0-9]{1,8};/i.test(t)) return t;
@@ -717,10 +735,12 @@
           <div class="be-main">
             <div class="ba-tabs">
               ${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')" data-lang="${c}"><span class="dot ${langDone(a, c) ? 'on' : ''}"></span>${n}</div>`).join('')}
-              <button type="button" class="ba-mini" id="be_tr_btn" style="margin-left:auto" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizce ve Almancaya çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN + DE çevir</button>
+              <button type="button" class="ba-mini" id="be_qa_btn" style="margin-left:auto" onclick="blogAiQa()" title="Yapay zekâ makaleyi okur: her görselin nereye/ne boyutta geleceğine metne göre karar verir ve yayın öncesi sorunları listeler">🤖 AI düzen &amp; kontrol</button>
+              <button type="button" class="ba-mini" id="be_tr_btn" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizce ve Almancaya çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN + DE çevir</button>
               <span class="ba-wc" id="be_wc" style="margin-left:10px"></span>
             </div>
             <div class="ba-pane" id="b_pane"></div>
+            <div id="be_qa_report"></div>
             <div id="be_import_report"></div>
             <h3 style="margin:20px 0 8px">İçerik öğeleri <span style="opacity:.5;font-weight:400;font-size:13px">— ürün, abonelik veya özel öğe · sıralı</span></h3>
             <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
@@ -797,6 +817,7 @@
     renderProducts();
     renderCoverThumbs();
     renderSeoCard();
+    renderQaReport();
     renderImportReport();
     initEditors();
     updateWordCount();
@@ -1545,9 +1566,11 @@ HAM METİN:
     const say = (s) => { if (st) st.textContent = s; };
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Okunuyor…'; }
     say(`Metin ${raw.length.toLocaleString('tr-TR')} karakter — yapay zekâ ayrıştırıyor…`);
+    // Kaynak atıfları modele HİÇ gitmesin (bkz. stripSourcesFromRaw).
+    const feed = noLinks ? stripSourcesFromRaw(raw) : raw;
     let data;
     try {
-      data = await callGeminiJson(AUTO_SCHEMA_PROMPT + raw, 60000);
+      data = await callGeminiJson(AUTO_SCHEMA_PROMPT + feed, 60000);
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = '🪄 Oku ve makaleye dönüştür'; }
       say('');
@@ -1599,7 +1622,10 @@ HAM METİN:
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
-    toast(`İçe aktarıldı — ${filled.map((c) => c.toUpperCase()).join('/')} · ${items.length} öğe. Kontrol et ve kaydet.`, 's');
+    toast(`İçe aktarıldı — ${filled.map((c) => c.toUpperCase()).join('/')} · ${items.length} öğe. Düzen kuruluyor…`, 's');
+    // İçe aktarmanın DEVAMI: yapay zekâ düzeni kurar + kaliteyi denetler.
+    // Kullanıcı ayrıca butondan istediği zaman tekrar çalıştırabilir.
+    if (items.length) await blogAiQa(true);
   }
 
   async function blogImportRunMd() {
@@ -1681,6 +1707,111 @@ HAM METİN:
     blogMarkDirty();
     toast('JSON içe aktarma tamam — 3 dili sekmelerden kontrol et', 's');
   }
+
+  // ── AI DÜZEN & KALİTE KONTROLÜ ────────────────────────────────
+  // Şablon hep aynı görünmesin ve görsel yerleşimi mekanik olmasın diye:
+  // yapay zekâ makaleyi OKUR, her öğe için görselin nereye/ne boyutta
+  // geleceğine METNE BAKARAK karar verir ve yayın öncesi sorunları listeler.
+  // Metni DEĞİŞTİRMEZ — yalnız yerleşim + rapor. (Kullanıcı: "ai yazıların
+  // anlam bütünlüğüne ve görselin nereye geleceğine bakıyor mu")
+  let _qaReport = null;
+  function articleOutline() {
+    const c = _lang;
+    const plain = (h) => stripHtml(h).replace(/\s+/g, ' ').trim();
+    return {
+      lang: c,
+      title: _editing['title_' + c] || '',
+      lead: _editing['lead_' + c] || '',
+      bodyExcerpt: plain(_editing['body_' + c]).slice(0, 1200),
+      bodyLen: plain(_editing['body_' + c]).length,
+      conclusionLen: plain(_editing['conclusion_' + c]).length,
+      hasCover: Boolean(effectiveCover()),
+      items: _products.map((p, i) => {
+        ensureBlocks(p);
+        const txt = p.blocks.filter((b) => b.t === 'text').map((b) => b[c] || '').join('\n');
+        const imgs = p.blocks.filter((b) => b.t === 'image' && b.url).length;
+        return {
+          i,
+          name: p['name_' + c] || p.name || '',
+          kind: p.kind || 'product',
+          textLen: txt.length,
+          images: imgs,
+          excerpt: txt.replace(/\s+/g, ' ').slice(0, 260),
+        };
+      }),
+    };
+  }
+  async function blogAiQa(auto) {
+    flushEditors(); syncPane();
+    if (!_products.length && !(_editing['body_' + _lang] || '').trim()) {
+      if (!auto) toast('Önce içerik ekle', 'w');
+      return;
+    }
+    const btn = document.getElementById('be_qa_btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ İnceleniyor…'; }
+    const outline = articleOutline();
+    const prompt = `Sen bir yayın editörü ve sayfa tasarımcısısın. Aşağıda bir blog makalesinin yapısı JSON olarak veriliyor (dil: ${outline.lang}).
+
+GÖREVİN İKİ PARÇA:
+
+A) GÖRSEL YERLEŞİMİ: Her öğe için görselin nereye ve ne büyüklükte konacağına METNİN UZUNLUĞUNA ve ritmine bakarak karar ver.
+   - "pos": "left" | "right" | "center" | "full"
+   - "size": "s" | "m" | "l" | "xl"
+   - Kurallar: Kısa metinde (<400 karakter) yana sarma kötü durur → "center" veya "full" tercih et. Uzun metinde (>600 karakter) yana sarma iyidir → "left"/"right". ARDIŞIK öğelerde aynı tarafı tekrarlama, sağ-sol dönüşümlü bir ritim kur. Listenin ilk öğesi öne çıksın (daha büyük). Öğe metni çok kısaysa görseli küçült.
+
+B) KALİTE DENETİMİ: Yayın öncesi gerçek sorunları bul. Uydurma sorun YAZMA; sorun yoksa boş dizi dön. Her sorun: {"level":"error"|"warn"|"info","text":"<tek cümle, Türkçe, ne yapılacağını söyle>"}
+   Bakılacaklar: giriş yazısı var mı ve konuyu kuruyor mu; öğe metinleri arasında ciddi uzunluk dengesizliği; anlam bütünlüğü (giriş listede vaat edileni tutuyor mu, sonuç öğelerle çelişiyor mu); başıboş kalmış kaynak adı/atıf artığı satırlar; tekrar eden kalıp cümleler; sonuç yazısı eksik mi; kapak görseli yok mu; başlık ile içerik uyumsuzluğu.
+
+SADECE şu JSON'u döndür:
+{"layout":[{"i":<öğe indeksi>,"pos":"...","size":"...","why":"<çok kısa gerekçe>"}],"issues":[{"level":"...","text":"..."}],"verdict":"<tek cümle genel değerlendirme>"}
+
+MAKALE YAPISI:
+${JSON.stringify(outline)}`;
+    try {
+      const out = await callGeminiJson(prompt, 8000);
+      // Yerleşimi uygula (yalnız görsel blokları; metne DOKUNMA)
+      let applied = 0;
+      for (const L of (out.layout || [])) {
+        const p = _products[Number(L.i)];
+        if (!p) continue;
+        ensureBlocks(p);
+        const img = p.blocks.find((b) => b.t === 'image' && b.url);
+        if (!img) continue;
+        if (['left', 'right', 'center', 'full'].includes(L.pos)) img.pos = L.pos;
+        if (['s', 'm', 'l', 'xl'].includes(L.size)) img.size = L.size;
+        applied++;
+      }
+      _qaReport = { issues: Array.isArray(out.issues) ? out.issues : [], verdict: out.verdict || '', applied };
+      renderProducts();
+      renderQaReport();
+      blogMarkDirty();
+      const errs = _qaReport.issues.filter((x) => x.level === 'error').length;
+      toast(`Düzen kuruldu (${applied} görsel) · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
+    } catch (e) {
+      toast('AI kontrolü başarısız: ' + e.message, 'e');
+    } finally {
+      const b2 = document.getElementById('be_qa_btn');
+      if (b2) { b2.disabled = false; b2.textContent = '🤖 AI düzen & kontrol'; }
+    }
+  }
+  function renderQaReport() {
+    const box = document.getElementById('be_qa_report'); if (!box) return;
+    if (!_qaReport) { box.innerHTML = ''; return; }
+    const ic = { error: '⛔', warn: '⚠', info: 'ℹ' };
+    const col = { error: '#f87171', warn: '#f59e0b', info: '#93c5fd' };
+    box.innerHTML = `<div class="be-report" style="border-color:#38bdf855;background:#38bdf811">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <b>🤖 AI düzen & kalite raporu</b>
+        <button class="ba-mini" onclick="blogQaClose()">✕</button>
+      </div>
+      ${_qaReport.verdict ? `<div style="margin-bottom:6px;opacity:.9">${esc(_qaReport.verdict)}</div>` : ''}
+      <div style="opacity:.75;font-size:12px;margin-bottom:6px">${_qaReport.applied} görselin yeri ve boyutu metne göre ayarlandı.</div>
+      ${_qaReport.issues.length
+        ? _qaReport.issues.map((x) => `<div style="color:${col[x.level] || '#cbd5e1'}">${ic[x.level] || '•'} ${esc(x.text)}</div>`).join('')
+        : '<div style="color:#4ade80">✓ Yayına engel bir sorun bulunmadı.</div>'}
+    </div>`;
+  }
+  function blogQaClose() { _qaReport = null; renderQaReport(); }
 
   // ── AI ÇEVİRİ (TR → EN/DE) ────────────────────────────────────
   // Sunucudaki Gemini proxy'si (pb_hooks/gemini.pb.js) üzerinden. Anahtar
@@ -1963,4 +2094,5 @@ ${JSON.stringify(payload)}`;
   window.blogPromptCopy = blogPromptCopy; window.blogImportReportClose = blogImportReportClose;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
   window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
+  window.blogAiQa = blogAiQa; window.blogQaClose = blogQaClose;
 })();
