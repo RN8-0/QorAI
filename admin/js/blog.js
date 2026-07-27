@@ -584,6 +584,10 @@
       <input class="ba-search" placeholder="🔍 Makale ara (başlık, slug, kategori)…" value="${esc(_listQ)}" oninput="blogListSearch(this.value)" />
       ${[['all', 'Tümü'], ['published', 'Yayında'], ['draft', 'Taslak']].map(([v, n]) =>
         `<button class="ba-chip ${_listStatus === v ? 'on' : ''}" onclick="blogListFilter('${v}')">${n}</button>`).join('')}
+      <button class="ba-chip" onclick="blogAuditAll()" title="Tüm makalelerde dil/slug, SEO, görsel ve içerik sorunlarını tarar">🔍 Tümünü denetle${(() => {
+        const n = _items.reduce((s, a) => s + articleHealth(a, a.products).filter((x) => x.level === 'error').length, 0);
+        return n ? ` <b style="color:#f87171">(${n})</b>` : '';
+      })()}</button>
     </div>`;
     if (!_items.length) { el.innerHTML = '<div style="padding:32px;text-align:center;opacity:.6">Henüz makale yok.<br>“+ New article” ile ilkini yaz.</div>'; return; }
     el.innerHTML = summary + toolbar + (items.length ? `<div class="ba-grid">${items.map((a) => {
@@ -615,6 +619,40 @@
         </div></div>`;
     }).join('')}</div>` : '<div style="padding:32px;text-align:center;opacity:.6">Filtreye uyan makale yok.</div>');
   }
+  // TÜM MAKALELERİ DENETLE — düzeltmeler tek makaleye özel kalmasın.
+  // Aynı deterministik articleHealth() her kayda uygulanır; sorunlu makaleler
+  // listelenir ve tıklayınca doğrudan o makale açılır.
+  function blogAuditAll() {
+    const el = root(); if (!el) return;
+    const rows = _items.map((a) => ({ a, issues: articleHealth(a, a.products) }));
+    const withIssues = rows.filter((r) => r.issues.length);
+    const errCount = rows.reduce((n, r) => n + r.issues.filter((x) => x.level === 'error').length, 0);
+    const warnCount = rows.reduce((n, r) => n + r.issues.filter((x) => x.level === 'warn').length, 0);
+    const ic = { error: '⛔', warn: '⚠', info: 'ℹ' };
+    const col = { error: '#f87171', warn: '#f59e0b', info: '#93c5fd' };
+    el.innerHTML = `
+      <div class="be-wrap">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <button class="btn btn-ghost" onclick="loadBlogAdmin()">← Geri</button>
+          <h2 style="margin:0;font-size:20px">🔍 Tüm makaleler denetlendi</h2>
+          <span style="opacity:.6">${_items.length} makale · ${errCount} kritik · ${warnCount} uyarı</span>
+        </div>
+        ${!withIssues.length
+          ? '<div class="be-card" style="color:#4ade80">✓ Hiçbir makalede yapısal sorun bulunamadı.</div>'
+          : withIssues.map(({ a, issues }) => `
+            <div class="be-card" style="margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px">
+                <b style="font-size:15px">${esc(a.title_tr || a.slug)}</b>
+                <span style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+                  <span class="ba-badge ${a.status === 'published' ? 'pub' : ''}">${a.status === 'published' ? 'YAYINDA' : 'TASLAK'}</span>
+                  <button class="btn btn-primary btn-sm" onclick="blogEdit('${a.id}')">Düzelt</button>
+                </span>
+              </div>
+              ${issues.map((x) => `<div style="color:${col[x.level] || '#cbd5e1'};font-size:13px;padding:2px 0">${ic[x.level] || '•'} ${esc(x.text)}</div>`).join('')}
+            </div>`).join('')}
+      </div>`;
+  }
+
   function blogListSearch(v) { _listQ = v; renderList(); const inp = root().querySelector('.ba-search'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
   function blogListFilter(v) { _listStatus = v; renderList(); }
   async function blogDuplicate(id) {
@@ -1716,6 +1754,75 @@ HAM METİN:
   // Metni DEĞİŞTİRMEZ — yalnız yerleşim + rapor. (Kullanıcı: "ai yazıların
   // anlam bütünlüğüne ve görselin nereye geleceğine bakıyor mu")
   let _qaReport = null;
+
+  // ── DETERMINISTIK SAĞLIK DENETİMİ ─────────────────────────────
+  // Yapısal sorunları AI'a SORMAYIZ — veriye bakıp kesin karar veririz.
+  // (Kullanıcı: "ai tüm parametreleri görecek, sorunları tespit edecek".
+  // Yargı gerektiren şeyler AI'da; ölçülebilir olanlar burada, çünkü burada
+  // atlama ve uydurma olmaz.) Aynı fonksiyon hem editörde hem toplu taramada
+  // kullanılır → tek makaleye özel düzeltme olmaz, HER makale denetlenir.
+  function articleHealth(a, products) {
+    const out = [];
+    const add = (level, text) => out.push({ level, text });
+    const plain = (h) => stripHtml(h).replace(/\s+/g, ' ').trim();
+    const prods = Array.isArray(products) ? products : (Array.isArray(a.products) ? a.products : []);
+    const langName = { tr: 'TR', en: 'EN', de: 'DE' };
+
+    // 1) Dil bütünlüğü + slug'lar (URL ile içerik dilinin eşleşmesi buna bağlı)
+    const slugs = {};
+    for (const [c] of LANGS) {
+      const hasTitle = Boolean((a['title_' + c] || '').trim());
+      const hasBody = Boolean(plain(a['body_' + c]) || prods.some((p) => (p.blocks || []).some((b) => b.t === 'text' && (b[c] || '').trim())));
+      const s = (a['slug_' + c] || '').trim();
+      if (!hasTitle) { add(c === 'tr' ? 'error' : 'warn', `${langName[c]} başlığı yok — bu dilde yayınlanamaz.`); continue; }
+      if (!hasBody) add('warn', `${langName[c]} başlığı var ama metni boş.`);
+      if (!s) add('error', `${langName[c]} adresi (slug) boş — bu dildeki ziyaretçi doğru URL'e yönlenemez.`);
+      else {
+        if (slugs[s]) add('error', `${langName[c]} ve ${slugs[s]} aynı adresi kullanıyor ("${s}") — diller ayrı URL'de olmalı.`);
+        slugs[s] = langName[c];
+      }
+      const mt = (a['metaTitle_' + c] || '').trim();
+      const md = (a['metaDescription_' + c] || '').trim();
+      if (mt.length > 60) add('warn', `${langName[c]} meta başlığı ${mt.length} karakter (Google 60'ta keser).`);
+      if (md.length > 155) add('warn', `${langName[c]} meta açıklaması ${md.length} karakter (Google 155'te keser).`);
+      if (!md && !(a['lead_' + c] || '').trim()) add('warn', `${langName[c]} meta açıklaması ve özeti yok — arama sonucunda metin çıkmaz.`);
+      if (!(a['tags_' + c] || '').trim()) add('info', `${langName[c]} etiketleri boş.`);
+    }
+    // Kanonik slug TR slug'ıyla aynı olmalı (site TR'yi ana dil sayar)
+    if ((a.slug || '') && (a.slug_tr || '') && a.slug !== a.slug_tr) {
+      add('warn', `Ana adres "${a.slug}" ile TR adresi "${a.slug_tr}" farklı — TR ziyaretçi beklenmedik URL görebilir.`);
+    }
+
+    // 2) Görsel ve künye
+    const cover = a.cover || a.coverFile || prods.find((p) => p.image || p.imageUrl)?.image;
+    if (!cover) add('error', 'Kapak görseli yok — paylaşımlarda ve listede boş görünür.');
+    if (!(a.category || '').trim()) add('warn', 'Kategori boş — benzer ürün önerileri ve kategori bağlantıları çalışmaz.');
+
+    // 3) İçerik öğeleri
+    if (!prods.length) add('warn', 'Hiç içerik öğesi yok (ürün/abonelik).');
+    prods.forEach((p, i) => {
+      const nm = p.name || p.name_tr || `Öğe ${i + 1}`;
+      const blocks = Array.isArray(p.blocks) ? p.blocks : [];
+      if (!blocks.some((b) => b.t === 'image' && b.url)) add('warn', `"${nm}" öğesinde görsel yok.`);
+      for (const [c] of LANGS) {
+        if (!(a['title_' + c] || '').trim()) continue; // o dil zaten yayınlanmıyor
+        const hasText = blocks.some((b) => b.t === 'text' && (b[c] || '').trim());
+        if (!hasText) add('warn', `"${nm}" öğesinin ${langName[c]} metni boş.`);
+      }
+      if ((p.kind || 'product') === 'custom') add('info', `"${nm}" katalogda eşleşmedi (özel öğe) — ürün sayfasına iç link vermiyor.`);
+    });
+
+    // 4) Uzunluk ve tarih
+    const w = (s) => (String(s || '').trim().match(/\S+/g) || []).length;
+    let words = w(a.title_tr) + w(a.lead_tr) + w(plain(a.body_tr)) + w(plain(a.conclusion_tr));
+    for (const p of prods) for (const b of (p.blocks || [])) if (b.t === 'text') words += w(b.tr);
+    if (words < 300) add('warn', `TR içerik ${words} kelime — 300'ün altı arama motorunda "ince içerik" sayılır.`);
+    const pub = Date.parse(String(a.publishedAt || '').replace(' ', 'T'));
+    if (Number.isFinite(pub) && pub > Date.now() + 60000 && a.status === 'published') {
+      add('warn', 'Yayın tarihi gelecekte — yayında görünse de tarih ileri bir günü gösteriyor.');
+    }
+    return out;
+  }
   // Başıboş kaynak adı ADAYLARINI kod çıkarır (AI'a özet göndermek yetmiyordu:
   // 180 çöp satırın yalnız 3'ünü görebiliyordu). Aday = tek başına duran kısa
   // satır; cümle değil, madde değil, ara başlık değil. AI sonra bu KISA LİSTEYİ
@@ -1871,14 +1978,21 @@ ${JSON.stringify(outline)}`;
           if (_editing['conclusion_' + c]) _editing['conclusion_' + c] = cleanHtml(_editing['conclusion_' + c]);
         });
       }
-      _qaReport = { issues: Array.isArray(out.issues) ? out.issues : [], verdict: out.verdict || '', applied, removed, junk };
+      // Yapısal denetim (kesin) ÖNCE, AI'ın yargı notları sonra.
+      const structural = articleHealth(_editing, _products);
+      const aiNotes = Array.isArray(out.issues) ? out.issues : [];
+      _qaReport = { issues: [...structural, ...aiNotes], structuralCount: structural.length, verdict: out.verdict || '', applied, removed, junk };
       renderProducts();
       renderQaReport();
       blogMarkDirty();
       const errs = _qaReport.issues.filter((x) => x.level === 'error').length;
       toast(`Düzen kuruldu (${applied} görsel)${removed ? ` · ${removed} kaynak artığı silindi` : ''} · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
     } catch (e) {
-      toast('AI kontrolü başarısız: ' + e.message, 'e');
+      // AI erişilemese bile YAPISAL denetim çalışır — sorunlar gizli kalmaz.
+      const structural = articleHealth(_editing, _products);
+      _qaReport = { issues: structural, structuralCount: structural.length, verdict: 'Yapay zekâya ulaşılamadı; yapısal denetim yine de yapıldı.', applied: 0, removed: 0, junk: [] };
+      renderQaReport();
+      toast('AI kontrolü başarısız (' + e.message + ') — yapısal denetim yapıldı: ' + structural.length + ' not', 'w');
     } finally {
       const b2 = document.getElementById('be_qa_btn');
       if (b2) { b2.disabled = false; b2.textContent = '🤖 AI düzen & kontrol'; }
@@ -2060,6 +2174,19 @@ ${JSON.stringify(payload)}`;
     const slug = slugify(a.slug_tr || a.title_tr || '');
     if (!slug) { if (!silent) toast('TR başlık (ya da TR slug) gerekli', 'w'); return; }
     if (!a.title_tr) { if (!silent) toast('TR başlık gerekli', 'w'); return; }
+    // YAYINLAMADAN ÖNCE kritik yapısal sorun varsa uyar (otokayıtta değil).
+    // Sessiz kalıp bozuk makale yayınlamaktansa bir kez sormak daha iyi.
+    if (!silent && forceStatus === 'published') {
+      const crit = articleHealth(a, _products).filter((x) => x.level === 'error');
+      if (crit.length) {
+        const list = crit.slice(0, 6).map((x) => '• ' + x.text).join('\n');
+        if (!confirm(`Bu makalede ${crit.length} kritik sorun var:\n\n${list}${crit.length > 6 ? '\n…' : ''}\n\nYine de yayınlansın mı?`)) {
+          _qaReport = { issues: articleHealth(a, _products), structuralCount: crit.length, verdict: 'Yayın öncesi denetim — kritik sorunlar aşağıda.', applied: 0, removed: 0, junk: [] };
+          renderQaReport();
+          return;
+        }
+      }
+    }
     if (_saving) return;
     _saving = true;
     try {
@@ -2184,5 +2311,5 @@ ${JSON.stringify(payload)}`;
   window.blogPromptCopy = blogPromptCopy; window.blogImportReportClose = blogImportReportClose;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
   window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
-  window.blogAiQa = blogAiQa; window.blogQaClose = blogQaClose;
+  window.blogAiQa = blogAiQa; window.blogQaClose = blogQaClose; window.blogAuditAll = blogAuditAll;
 })();
