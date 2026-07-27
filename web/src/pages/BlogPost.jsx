@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { pb, currentUser, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
-import { productPath, articlePath } from '../lib/routes';
+import { productPath, articlePath, articleSlug } from '../lib/routes';
 import { amazonGoPath } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { getSimilar } from '../lib/typesense';
@@ -194,6 +194,7 @@ export default function BlogPost() {
   // arama motoru böylece her dil için doğru adresi indeksler.
   const postLang = lang;
   const L = (en, tr, de) => (postLang === 'tr' ? tr : postLang === 'de' ? de : en);
+  const navigate = useNavigate();
   const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
   useEffect(() => {
@@ -260,6 +261,18 @@ export default function BlogPost() {
       .catch(() => { if (live) setStatus('notfound'); });
     return () => { live = false; };
   }, [slug, previewId]);
+
+  // ADRES SITE DILINE ESITLENIR. Icerik zaten tarayici diline gore gosteriliyor;
+  // ziyaretci baska bir dilin slug'ina girdiyse (ornegin Ingilizce tarayiciyla
+  // /blog/2026-en-iyi-tabletler) adres o dilin slug'iyla degistirilir
+  // (/blog/best-tablets-2026). Boylece adres ile icerik hep ayni dilde olur ve
+  // paylasilan/kaydedilen baglanti dogru dilin adresi olur.
+  // replace: geri tusu kirilmasin. Onizlemede (previewId) dokunulmaz.
+  useEffect(() => {
+    if (!post || previewId) return;
+    const want = articleSlug(post, lang);
+    if (want && want !== slug) navigate(`/blog/${want}`, { replace: true });
+  }, [post, lang, slug, previewId, navigate]);
 
   const canonKey = post?.slug || slug;
 
