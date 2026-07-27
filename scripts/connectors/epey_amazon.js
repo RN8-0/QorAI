@@ -52,9 +52,14 @@ const ENV = { ...loadEnv(), ...process.env };
 const TAG = ENV.AMAZON_TR_TAG || 'qorai-21';
 const GAP_MS = Math.max(400, Number(ENV.EPEY_FETCH_GAP_MS || 1100));
 const STORE_ROWS = Math.max(0, Math.min(6, Number(ENV.EPEY_STORE_ROWS ?? 3)));
-// 50 h: gece görevi bir gün atlarsa (PC kapalı) fiyatlar ertesi güne kadar
-// kaybolmasın; StartWhenAvailable telafisi gelene dek fiyat görünür kalır.
-const EXPIRES_MS = 50 * 60 * 60 * 1000;
+// 72 h. Neden 50 değil (2026-07-26 ölçümü): kart fiyatını gösteren kapı
+// `bestOfferExpiresAt` (web/src/lib/format.js rollupPriceIsFresh). Fiyatlı ürün
+// ~9.900, gecelik tazeleme kotası 4000-6000 → her ürüne ~2 günde bir dokunulur.
+// 50 saatlik ömür bu turla nefes nefese olduğu için sürekli "damgası dolmuş"
+// bir kuyruk birikiyor ve o ürünler kartlarda fiyatsız görünüyordu. 72 saat,
+// tur süresinin üstünde kalarak boşluğu kapatır; Epey fiyatları bu ölçekte
+// gün içinde nadiren değişir, ürün sayfası zaten canlı teklifleri gösterir.
+const EXPIRES_MS = 72 * 60 * 60 * 1000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Epey'in listelediği mağazaların görünen adları. Listede olmayan bir domain
