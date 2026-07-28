@@ -1,7 +1,7 @@
 name: qor_ai
 description: "Qor AI - AI Product Advisor. Your personal decision engine."
 publish_to: 'none'
-version: 2.0.7+14
+version: 2.0.8+15
 
 environment:
   sdk: ^3.10.4
