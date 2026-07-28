@@ -293,6 +293,7 @@ export default function Subscriptions() {
   const customRef = useRef(null); // "Ekle" input — eklemeden sonra odakta kalsın
   // phase: select | quizLoading | quiz | analyzing | result | history
   const [phase, setPhase] = useState('select');
+  const [starting, setStarting] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [pendingItems, setPendingItems] = useState([]);
   const [result, setResult] = useState(null);
@@ -386,6 +387,18 @@ export default function Subscriptions() {
   async function startAnalysis(items = selected) {
     setErr('');
     if (items.length < 1) return;
+    // Ücret analiz başlamadan alınıyor → butona iki kez basmak Q'yu İKİ kez
+    // düşürüyordu. Kilit her şeyden önce kurulur, çıkışta serbest bırakılır.
+    if (starting) return;
+    setStarting(true);
+    try {
+      await _startAnalysis(items);
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function _startAnalysis(items) {
     if (subscriptionsMixCategories(items)) {
       setErr(L('Only services of the same type can be compared (e.g. Netflix vs Disney+).',
         'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).',
@@ -527,7 +540,7 @@ export default function Subscriptions() {
             {err && <div className="subs-err">{err}</div>}
 
             <button className="btn btn-grad btn-lg btn-shine subs-go"
-              onClick={() => startAnalysis()} disabled={selected.length < 1}>
+              onClick={() => startAnalysis()} disabled={selected.length < 1 || starting}>
               {selected.length < 1 ? t('subs.goMin') : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
             </button>
           </Reveal>

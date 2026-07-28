@@ -807,7 +807,10 @@ class SubscriptionService extends ChangeNotifier {
         return;
       }
 
-      final record = await pb.collection(AppConstants.usersCollection).getOne(uid);
+      final record = await pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid)
+          .timeout(_qNetworkTimeout);
       // Lifetime model: `dailyAiCreditsUsed` is dead weight kept only for
       // back-compat with older clients. `bonusQCoins` IS the balance and it
       // never resets — the user spends it until it runs out.
@@ -820,23 +823,49 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
+  /// Q ile ilgili HER ağ çağrısı zaman aşımlı olmalı: harcamalar tek bir
+  /// kuyrukta seri koşuyor, takılan tek bir istek TÜM AI'ı kilitlerdi.
+  static const Duration _qNetworkTimeout = Duration(seconds: 12);
+
   Future<void> _persistQBalance(double balance) async {
     final uid = pb.authStore.record?.id;
     if (uid == null || uid.isEmpty) return;
 
-    await pb.collection(AppConstants.usersCollection).update(
-      uid,
-      body: {
-        _bonusQCoinsField: balance,
-        _dailyCreditsUsedField: 0,
-      },
-    );
+    await pb
+        .collection(AppConstants.usersCollection)
+        .update(
+          uid,
+          body: {
+            _bonusQCoinsField: balance,
+            _dailyCreditsUsedField: 0,
+          },
+        )
+        .timeout(_qNetworkTimeout);
   }
+
+  /// Harcamalar SERİ koşar. Aksi halde iki eşzamanlı istek (çift dokunuş, aynı
+  /// anda iki panel) aynı bakiyeyi okur, ikisi de "yeter" der ve kullanıcı
+  /// bakiyesinden fazlasını harcar — ikinci yazma birincinin düşüşünü de ezer.
+  Future<void> _spendQueue = Future<void>.value();
 
   /// Authoritative spend — mirrors `spendQorCoins()` on the website:
   /// read the live record, compare against the cost, debit, log the ledger.
   /// Reading the server on every spend is what keeps app and web in sync.
-  Future<Result<void>> spendQCoins(String featureName) async {
+  Future<Result<void>> spendQCoins(String featureName) {
+    final completer = Completer<Result<void>>();
+    _spendQueue = _spendQueue.then((_) async {
+      try {
+        completer.complete(await _spendQCoinsLocked(featureName));
+      } catch (e) {
+        completer.complete(
+          Failure(ServerException(message: 'Q spend failed: $e')),
+        );
+      }
+    });
+    return completer.future;
+  }
+
+  Future<Result<void>> _spendQCoinsLocked(String featureName) async {
     if (isPremium) return const Success(null);
 
     final cost = AppConstants.creditCostForFeature(featureName).toDouble();
@@ -851,8 +880,10 @@ class SubscriptionService extends ChangeNotifier {
 
     double? balance;
     try {
-      final record =
-          await pb.collection(AppConstants.usersCollection).getOne(uid);
+      final record = await pb
+          .collection(AppConstants.usersCollection)
+          .getOne(uid)
+          .timeout(_qNetworkTimeout);
       if (record.data['isPremium'] == true) {
         _hasSyncedCredits = true;
         _bonusQCoins = _asDouble(record.data[_bonusQCoinsField]);
@@ -920,16 +951,19 @@ class SubscriptionService extends ChangeNotifier {
     final uid = pb.authStore.record?.id;
     if (uid == null || uid.isEmpty) return;
     try {
-      await pb.collection('qcoin_transactions').create(
-        body: {
-          'userId': uid,
-          'type': 'spend',
-          'feature': feature,
-          'amount': -cost,
-          'balanceAfter': balanceAfter,
-          'source': 'app',
-        },
-      );
+      await pb
+          .collection('qcoin_transactions')
+          .create(
+            body: {
+              'userId': uid,
+              'type': 'spend',
+              'feature': feature,
+              'amount': -cost,
+              'balanceAfter': balanceAfter,
+              'source': 'app',
+            },
+          )
+          .timeout(_qNetworkTimeout);
     } catch (_) {}
   }
 

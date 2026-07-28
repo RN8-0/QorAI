@@ -551,6 +551,9 @@ export default function LinkAnalysis() {
   const [urls, setUrls] = useState(['']);
   // phase: input | identifying | quizLoading | quiz | analyzing | result
   const [phase, setPhase] = useState('input');
+  // Analiz başlatma sürerken butonu kilitler. Olmadığında butona iki kez basmak
+  // Q'yu İKİ kez düşürüyordu (ücret analiz başlamadan önce alınıyor).
+  const [starting, setStarting] = useState(false);
   const [base, setBase] = useState(null);
   const [compareBases, setCompareBases] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -622,6 +625,7 @@ export default function LinkAnalysis() {
   async function startSingle(url) {
     setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: 1 });
+    setStarting(true);
     try {
       const access = await requireAiAccess('link_analysis', { onMessage: setErr });
       if (!access.ok) { setPhase('input'); return; }
@@ -629,6 +633,8 @@ export default function LinkAnalysis() {
       startSingleLinkAnalysisJob({ url, language: lang, userProfile: profile });
     } catch {
       setErr(t('la.errFail')); setPhase('input');
+    } finally {
+      setStarting(false);
     }
   }
 
@@ -636,17 +642,21 @@ export default function LinkAnalysis() {
   async function runCompare(list) {
     setErr(''); setEnhanced(null); setCompareResult(null); setCompareText('');
     trackEvent('link_analysis', { count: list.length });
+    setStarting(true);
     try {
       const access = await requireAiAccess('link_compare', { onMessage: setErr });
       if (!access.ok) { setPhase('input'); return; }
       startCompareLinkAnalysisJob({ urls: list, language: lang, userProfile: aiUserProfile(user) });
     } catch {
       setErr(t('la.errFail')); setPhase('input');
+    } finally {
+      setStarting(false);
     }
   }
 
   function analyze(e) {
     e.preventDefault();
+    if (starting) return;
     const list = urls.map((u) => u.trim()).filter(Boolean).slice(0, MAX_LINKS);
     if (!list.length) return;
     if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
@@ -735,7 +745,7 @@ export default function LinkAnalysis() {
               </div>
 
               <div className="la-actions">
-                <button type="submit" className="btn btn-grad btn-lg btn-shine la-go" disabled={!filled}>
+                <button type="submit" className="btn btn-grad btn-lg btn-shine la-go" disabled={!filled || starting}>
                   {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
                 </button>
               </div>

@@ -2085,6 +2085,11 @@ class _GeminiMatchScoreNotifier
           : key.normalizedLanguageCode,
       super(const AsyncValue.data(null));
 
+  /// Bu notifier'da bir istek zaten yolda mı? `state` ancak harcamadan SONRA
+  /// `AsyncLoading`e geçtiği için tek başına yeterli değildi: `await`ler
+  /// sırasında ikinci bir dokunuş guard'ları geçip Q'yu İKİNCİ kez düşürüyordu.
+  bool _requestInFlight = false;
+
   Future<void> fetchMatchScore({
     required ProductEntity product,
 
@@ -2092,9 +2097,24 @@ class _GeminiMatchScoreNotifier
     /// ürün detay `detailMatchAi` tüketimi yapılmaz.
     bool forCompareBatch = false,
   }) async {
+    if (_requestInFlight) return;
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
+    _requestInFlight = true;
+    try {
+      await _fetchMatchScoreGuarded(
+        product: product,
+        forCompareBatch: forCompareBatch,
+      );
+    } finally {
+      _requestInFlight = false;
+    }
+  }
 
+  Future<void> _fetchMatchScoreGuarded({
+    required ProductEntity product,
+    required bool forCompareBatch,
+  }) async {
     // Profil stream'i auth yüklenirken null yayınlıyor → doğrudan valueOrNull
     // okumak "quiz yapılmamış" sanıp eşleşme puanını sessizce iptal ediyordu.
     final user = await resolveUserProfileRef(_ref);

@@ -215,10 +215,26 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     return t.length > 45 ? '${t.substring(0, 45)}...' : t;
   }
 
+  /// Bir gönderim yolda mı? `state.isLoading` harcamadan SONRA set edildiği
+  /// için tek başına yetmiyordu: hızlı iki gönderim Q'yu iki kez düşürüyordu.
+  bool _sendInFlight = false;
+
   Future<void> send(String text, {Map<String, dynamic>? pageContext}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    if (_sendInFlight) return;
+    _sendInFlight = true;
+    try {
+      await _sendGuarded(trimmed, pageContext: pageContext);
+    } finally {
+      _sendInFlight = false;
+    }
+  }
 
+  Future<void> _sendGuarded(
+    String trimmed, {
+    Map<String, dynamic>? pageContext,
+  }) async {
     // Profil stream'i auth yüklenirken null yayınlıyor; doğrudan valueOrNull
     // okumak, GİRİŞ YAPMIŞ kullanıcıya "giriş yapın" dedirtip chat'i öldürüyordu.
     final user = await resolveUserProfileRef(_ref);

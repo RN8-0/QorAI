@@ -904,15 +904,16 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
 
     // Only check limit when actually fetching new AI data
     if (shouldFetch) {
-      if (!await ensureEmailVerified(context, ref)) return;
-      if (!mounted) return;
-      final sub = ref.read(subscriptionServiceProvider);
-      final spend = await sub.recordCompareAi();
-      if (!mounted) return;
-      if (spend.isFailure) {
-        _showQSpendFailure(context, feature: 'compare_ai', result: spend);
-        return;
+      // Kilit harcamadan ÖNCE: panel "loading" bayrağı aşağıda set edildiği
+      // için `await` sırasında ikinci dokunuş Q'yu iki kez düşürebiliyordu.
+      if (_panelChargeInFlight) return;
+      _panelChargeInFlight = true;
+      try {
+        if (!await _chargeUnifiedCompareAi()) return;
+      } finally {
+        _panelChargeInFlight = false;
       }
+      if (!mounted) return;
     }
 
     setState(() {
@@ -963,6 +964,22 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     });
   }
 
+  bool _panelChargeInFlight = false;
+
+  /// E-posta kapısı + Q harcaması. `true` → devam edilebilir.
+  Future<bool> _chargeUnifiedCompareAi() async {
+    if (!await ensureEmailVerified(context, ref)) return false;
+    if (!mounted) return false;
+    final sub = ref.read(subscriptionServiceProvider);
+    final spend = await sub.recordCompareAi();
+    if (!mounted) return false;
+    if (spend.isFailure) {
+      _showQSpendFailure(context, feature: 'compare_ai', result: spend);
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _toggleUnifiedCompareAi({bool autoStart = false}) async {
     if (_unifiedAiRunning) return;
     if (_unifiedAiExpanded) {
@@ -976,13 +993,14 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     final shouldFetch = !_hasAllUnifiedCompareAiData;
     if (shouldFetch) {
       if (!requireAuth(context)) return;
-      if (!await ensureEmailVerified(context, ref)) return;
+      // Kilit harcamadan ÖNCE: `await` sırasında ikinci dokunuş buraya tekrar
+      // girip Q'yu ikinci kez düşürebilirdi (`_unifiedAiRunning` aşağıda,
+      // harcamadan SONRA set ediliyordu).
+      setState(() => _unifiedAiRunning = true);
+      final proceed = await _chargeUnifiedCompareAi();
       if (!mounted) return;
-      final sub = ref.read(subscriptionServiceProvider);
-      final spend = await sub.recordCompareAi();
-      if (!mounted) return;
-      if (spend.isFailure) {
-        _showQSpendFailure(context, feature: 'compare_ai', result: spend);
+      if (!proceed) {
+        setState(() => _unifiedAiRunning = false);
         return;
       }
     }
@@ -7335,6 +7353,19 @@ Rules:
     if (_fullCompareRunning) return;
     if (widget.products.length < 2) return;
     if (!requireAuth(context)) return;
+    // Kilit harcamadan ÖNCE: `_fullCompareRunning` ancak rapor koşarken true
+    // olduğu için quiz/e-posta await'leri sırasında ikinci dokunuş Q'yu iki
+    // kez düşürebiliyordu.
+    if (_panelChargeInFlight) return;
+    _panelChargeInFlight = true;
+    try {
+      await _runCompareFullReportGuarded();
+    } finally {
+      _panelChargeInFlight = false;
+    }
+  }
+
+  Future<void> _runCompareFullReportGuarded() async {
     // AI özelliği için önce kayıt-sonrası profil quiz'i tamamlanmalı (atlanmışsa
     // uyarı + quize yönlendir). Sonra Q Coin bakiyesi izin verdiğince kullanılır.
     if (!mounted) return;
@@ -7904,10 +7935,18 @@ Rules:
               if (!requireAuth(context)) return;
               final willExpand = !_matchScoreExpanded;
               if (willExpand && quizCompleted && hasMissingAiScore) {
-                if (!await ensureEmailVerified(context, ref)) return;
-                if (!mounted) return;
-                final sub = ref.read(subscriptionServiceProvider);
-                final spend = await sub.recordCompareAi();
+                // Kilit harcamadan ÖNCE (çift dokunuş = çift Q).
+                if (_panelChargeInFlight) return;
+                _panelChargeInFlight = true;
+                Result<void> spend;
+                try {
+                  if (!await ensureEmailVerified(context, ref)) return;
+                  if (!mounted) return;
+                  final sub = ref.read(subscriptionServiceProvider);
+                  spend = await sub.recordCompareAi();
+                } finally {
+                  _panelChargeInFlight = false;
+                }
                 if (!mounted) return;
                 if (spend.isFailure) {
                   // ignore: use_build_context_synchronously

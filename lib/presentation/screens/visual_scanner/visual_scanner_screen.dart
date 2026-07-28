@@ -133,18 +133,21 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
 
   Future<void> _captureAndScan() async {
     if (_camCtrl == null || _isScanning) return;
+    // Kilit harcamadan ÖNCE kurulur: `await` sırasında ikinci bir dokunuş
+    // buraya tekrar girip Q'yu İKİNCİ kez düşürebilirdi.
+    setState(() => _isScanning = true);
 
     final sub = ref.read(subscriptionServiceProvider);
     final quota = await sub.recordProductScan();
     if (!mounted) return;
     if (quota.isFailure) {
+      setState(() => _isScanning = false);
       showQSpendFailure(context, ref, feature: 'product_scan', result: quota);
       return;
     }
 
     HapticFeedback.heavyImpact();
     setState(() {
-      _isScanning = true;
       _hasResult = false;
       _scanInsight = null;
       _linkedConversationId = null;

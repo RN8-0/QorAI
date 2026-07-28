@@ -2697,18 +2697,28 @@ class SharedPremiumFeaturesSectionState
   /// Spend the Q coins this AI action costs — returns true if allowed.
   /// Free users run AI as long as their Q balance covers it; Premium is
   /// unlimited. There is no daily quota.
+  /// Bir harcama yolda mı? Panel açma bayrakları harcamadan SONRA set edildiği
+  /// için, `await` sırasında ikinci bir dokunuş Q'yu iki kez düşürebiliyordu.
+  bool _aiChargeInFlight = false;
+
   Future<bool> _checkAiFeatureLimit() async {
     if (!requireAuth(context)) return false;
-    if (!await ensureEmailVerified(context, ref)) return false;
-    if (!mounted) return false;
-    final sub = ref.read(subscriptionServiceProvider);
-    final spend = await sub.recordDetailAi();
-    if (!mounted) return false;
-    if (spend.isFailure) {
-      showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
-      return false;
+    if (_aiChargeInFlight) return false;
+    _aiChargeInFlight = true;
+    try {
+      if (!await ensureEmailVerified(context, ref)) return false;
+      if (!mounted) return false;
+      final sub = ref.read(subscriptionServiceProvider);
+      final spend = await sub.recordDetailAi();
+      if (!mounted) return false;
+      if (spend.isFailure) {
+        showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
+        return false;
+      }
+      return true;
+    } finally {
+      _aiChargeInFlight = false;
     }
-    return true;
   }
 }
 

@@ -236,6 +236,7 @@ class _AIReviewAnalysisCard extends ConsumerStatefulWidget {
 
 class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
   bool _expanded = false;
+  bool _chargeInFlight = false;
 
   Future<void> _handleTap() async {
     if (!requireAuth(context)) return;
@@ -253,16 +254,25 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
       setState(() => _expanded = !_expanded);
       return;
     }
-    if (!await ensureEmailVerified(context, ref)) return;
-    if (!mounted) return;
-    // Spend the Q coins this analysis costs (Premium = free/unlimited).
-    final sub = ref.read(subscriptionServiceProvider);
-    final spend = await sub.recordDetailAi();
-    if (!mounted) return;
-    if (spend.isFailure) {
-      showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
-      return;
+    // Kilit harcamadan ÖNCE: `isLoading` ancak analiz başlayınca true olduğu
+    // için `await` sırasında ikinci dokunuş Q'yu iki kez düşürebiliyordu.
+    if (_chargeInFlight) return;
+    _chargeInFlight = true;
+    try {
+      if (!await ensureEmailVerified(context, ref)) return;
+      if (!mounted) return;
+      // Spend the Q coins this analysis costs (Premium = free/unlimited).
+      final sub = ref.read(subscriptionServiceProvider);
+      final spend = await sub.recordDetailAi();
+      if (!mounted) return;
+      if (spend.isFailure) {
+        showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
+        return;
+      }
+    } finally {
+      _chargeInFlight = false;
     }
+    if (!mounted) return;
     setState(() => _expanded = true);
     ref
         .read(aiReviewCacheProvider(reviewKey).notifier)

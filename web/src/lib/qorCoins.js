@@ -186,7 +186,21 @@ export function aiUserProfile(user) {
   };
 }
 
-export async function spendQorCoins(feature) {
+// Harcamalar SERİ koşar. Aksi halde iki eşzamanlı istek (çift tıklama, iki
+// panel) aynı bakiyeyi okur, ikisi de "yeter" der ve ikinci yazma birincinin
+// düşüşünü ezer → kullanıcı bakiyesinden fazlasını harcar. Mobil taraftaki
+// `SubscriptionService.spendQCoins` kuyruğuyla aynı desen.
+let _spendQueue = Promise.resolve();
+
+export function spendQorCoins(feature) {
+  const run = () => _spendQorCoinsLocked(feature);
+  // Kuyruk bir hatayla kırılmamalı: sonraki harcamalar yine sıraya girebilmeli.
+  const result = _spendQueue.then(run, run);
+  _spendQueue = result.catch(() => {});
+  return result;
+}
+
+async function _spendQorCoinsLocked(feature) {
   const authUser = currentUser();
   if (!authUser?.id) throw err('AUTH_REQUIRED');
 
