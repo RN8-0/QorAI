@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/user_profile_resolver.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/l10n/app_localizations.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -23,9 +24,13 @@ bool isUserAllowedForAi(UserEntity? user) {
 /// Bir AI özelliği tetiklemeden önce çağır. Kullanıcı doğrulanmamışsa
 /// modal diyalog gösterir ve `false` döner. Doğrulanmışsa `true` döner.
 Future<bool> ensureEmailVerified(BuildContext context, WidgetRef ref) async {
-  final user = ref.read(userProfileProvider).valueOrNull;
+  // DİKKAT: `valueOrNull` tek başına yeterli DEĞİL — profil stream'i auth
+  // yüklenirken null yayınlıyor, yani giriş yapmış kullanıcı da bir an "yok"
+  // görünüyordu ve bu fonksiyon SESSİZCE false dönüp AI'ı öldürüyordu.
+  final user = await resolveUserProfile(ref);
   if (isUserAllowedForAi(user)) return true;
-  if (user == null) return false; // No session — caller handles login
+  if (user == null) return false; // Gerçekten oturum yok — çağıran login'e alır
+  if (!context.mounted) return false;
   await showDialog<void>(
     context: context,
     barrierDismissible: false,

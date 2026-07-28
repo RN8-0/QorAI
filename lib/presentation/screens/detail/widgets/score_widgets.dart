@@ -403,43 +403,51 @@ class _ScoreDuoState extends ConsumerState<_ScoreDuo>
         ),
       );
     } else if (showFreeAiRequest && _cachedFitScore == null) {
-      matchChild = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 44,
-              height: 44,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation(AppTheme.primaryBlue),
-                  ),
-                  const Icon(
-                    Icons.calculate_outlined,
-                    size: 16,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                context.l10n?.yourMatch ?? 'Your Match',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.primaryBlue,
+      // ÖNCEDEN: burada hiçbir şey tetiklemeyen, dokunulamayan SONSUZ bir
+      // spinner vardı — Premium olmayan kullanıcı AI eşleşme puanını hiçbir
+      // şekilde başlatamıyordu (tek tetikleyici `_requestDetailAiMatch` hiçbir
+      // yerden çağrılmıyordu). Bakiyesi olan kullanıcı özelliği kullanabilmeli.
+      matchChild = GestureDetector(
+        onTap: () => _requestDetailAiMatch(context, ref, widget.product),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: 1.0,
+                      strokeWidth: 3,
+                      color: AppTheme.primaryBlue.withValues(alpha: 0.22),
+                    ),
+                    const Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.l10n?.yourMatch ?? 'Your Match',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryBlue,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     } else {

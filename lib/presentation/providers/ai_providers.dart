@@ -219,13 +219,17 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
 
-    final user = _ref.read(userProfileProvider).valueOrNull;
+    // Profil stream'i auth yüklenirken null yayınlıyor; doğrudan valueOrNull
+    // okumak, GİRİŞ YAPMIŞ kullanıcıya "giriş yapın" dedirtip chat'i öldürüyordu.
+    final user = await resolveUserProfileRef(_ref);
     if (user == null) {
       _addMsg(
         PersistedChatMsg(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: PersistedMsgRole.system,
-          text: 'Please sign in to use AI Chat.',
+          text: buildSignInRequiredMessage(
+            _ref.read(localeProvider)?.languageCode,
+          ),
           status: PersistedMsgStatus.error,
         ),
       );

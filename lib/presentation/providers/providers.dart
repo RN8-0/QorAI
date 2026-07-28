@@ -53,6 +53,7 @@ import 'package:qor_ai/core/search_ranking.dart'
     show categorySearchPriorityBonus;
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
+import 'package:qor_ai/core/user_profile_resolver.dart';
 import 'package:qor_ai/core/category_key_specs.dart' as key_specs;
 
 import 'package:qor_ai/data/models/other_models.dart';

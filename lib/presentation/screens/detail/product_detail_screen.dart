@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
+import 'package:qor_ai/core/user_profile_resolver.dart';
 import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/amazon_link.dart';

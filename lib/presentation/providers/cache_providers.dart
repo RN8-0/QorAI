@@ -2095,8 +2095,10 @@ class _GeminiMatchScoreNotifier
     if (state is AsyncLoading) return;
     if (state.valueOrNull != null) return;
 
-    final userAsync = _ref.read(userProfileProvider);
-    final user = userAsync.valueOrNull;
+    // Profil stream'i auth yüklenirken null yayınlıyor → doğrudan valueOrNull
+    // okumak "quiz yapılmamış" sanıp eşleşme puanını sessizce iptal ediyordu.
+    final user = await resolveUserProfileRef(_ref);
+    if (!mounted) return;
     if (user == null || !user.quizCompleted) return;
     final sub = _ref.read(subscriptionServiceProvider);
     // Q is spent UP FRONT (authoritative server read + debit). Compare-screen

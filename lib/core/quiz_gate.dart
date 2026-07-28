@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
-import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/core/user_profile_resolver.dart';
 import 'package:qor_ai/routing/router.dart' show AppRoutes;
 
 /// AI özellikleri (ürün/karşılaştırma/link/abonelik analizi) kayıt-sonrası
@@ -21,7 +21,10 @@ Future<bool> ensureOnboardingQuizGate(
   // Geriye dönük uyumluluk için tutuldu; dil artık context'ten çözülüyor.
   bool? isTr,
 }) async {
-  final user = ref.read(userProfileProvider).valueOrNull;
+  // Profil stream'i auth yüklenirken null yayınlıyor → `valueOrNull` tek başına
+  // "quiz yapılmamış" yanılgısı üretiyordu. resolveUserProfile yalnızca gerçekten
+  // oturum yoksa null döner.
+  final user = await resolveUserProfile(ref);
   // Giriş yok / anonim misafir / zaten tamamlamış → engelleme yok.
   if (user == null || user.quizCompleted) return true;
   if (!context.mounted) return false;

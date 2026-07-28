@@ -16,7 +16,9 @@ LocalizedProductKey _detailLocalizedProductKey(
   return LocalizedProductKey(productId: product.id, languageCode: languageCode);
 }
 
-// ignore: unused_element
+/// Ürün detayındaki AI eşleşme puanını KULLANICI isteğiyle başlatır.
+/// Premium'da puan otomatik hesaplanır; ücretsiz kullanıcı bu yolla, Q bakiyesi
+/// yettiği sürece aynı özelliği alır (score_widgets'teki eşleşme kartına dokunma).
 Future<void> _requestDetailAiMatch(
   BuildContext context,
   WidgetRef ref,
@@ -28,7 +30,10 @@ Future<void> _requestDetailAiMatch(
     return;
   }
 
-  final user = ref.read(userProfileProvider).valueOrNull;
+  // Profil henüz stream'den gelmemiş olabilir; `valueOrNull` o anda null döner
+  // ve quizini ÇOKTAN bitirmiş kullanıcı haksız yere quiz ekranına atılıyordu.
+  final user = await resolveUserProfile(ref);
+  if (!context.mounted) return;
   if (user == null || !user.quizCompleted) {
     context.push(AppRoutes.quiz);
     return;

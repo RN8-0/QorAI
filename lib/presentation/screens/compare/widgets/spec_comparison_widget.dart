@@ -7404,7 +7404,14 @@ Rules:
         debugPrint('[Qor AI] compare quiz generation failed: $e2');
       }
     }
-    if (!mounted) return;
+    // KRİTİK: quiz üretilirken kullanıcı ekrandan çıkarsa burada `mounted`
+    // false olur. Busy bayrağı GLOBAL hub'da duruyor ve autoDispose değil —
+    // temizlemeden dönersek "analiz sürüyor" kilidi uygulama kapanana kadar
+    // takılı kalır ve kullanıcı bir daha HİÇBİR analiz başlatamaz.
+    if (!mounted) {
+      _setCompareBusy(false);
+      return;
+    }
     if (quiz != null && quiz.questions.isNotEmpty) {
       setState(() {
         _compareQuiz = quiz;
