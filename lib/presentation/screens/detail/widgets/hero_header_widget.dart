@@ -37,9 +37,12 @@ Future<void> _requestDetailAiMatch(
   if (!await ensureEmailVerified(context, ref)) return;
   if (!context.mounted) return;
 
+  // Optimistic hint only — the authoritative balance check + debit happens in
+  // fetchMatchScore(). `canAfford` is false ONLY when we already know the
+  // synced balance is short, never merely because it hasn't loaded yet.
   final subscription = ref.read(subscriptionServiceProvider);
-  if (!subscription.canUseDetailMatchAi) {
-    showLimitReachedDialog(context, featureName: 'detail-match');
+  if (!subscription.canAfford('detail_match')) {
+    showInsufficientQDialog(context, ref, feature: 'detail_match');
     return;
   }
 

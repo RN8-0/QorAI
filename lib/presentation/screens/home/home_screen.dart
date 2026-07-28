@@ -644,7 +644,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       subscriptionServiceProvider.select((s) => s.isPremium),
     );
     final remainingCredits = ref.watch(
-      subscriptionServiceProvider.select((s) => s.remainingDailyCredits),
+      subscriptionServiceProvider.select((s) => s.qBalance),
     );
     // Misafir (giriş yapmamış) kullanıcıda Q coin bakiyesi gösterilmez —
     // bakiye yalnız giriş yapıldıktan sonra anlamlı.

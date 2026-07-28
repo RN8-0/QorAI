@@ -63,8 +63,12 @@ class AppConstants {
 
   // Free Tier Limits - Section 12.2
   static const int freeComparisonLimit = 5; // per day
-  static const int freeDailyAiCreditLimit =
-      10; // [LEGACY — daily reset disabled in lifetime model]
+  @Deprecated(
+    'No daily AI quota exists. AI access is gated only by the users.bonusQCoins '
+    'balance, which never resets. Kept solely so the remote-config key keeps a '
+    'default value.',
+  )
+  static const int freeDailyAiCreditLimit = 0;
   // Lifetime credit model: one-time welcome bonus granted on signup.
   // No daily refresh. Configurable via remote config `signup_bonus_q_coins`.
   static const int signupBonusQCoins = 20;

@@ -533,20 +533,21 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
       if (!mounted || next.error == null || next.error == prev?.error) return;
       final langCode = ref.read(localeProvider)?.languageCode;
-      if (!isDailyQLimitMessage(next.error, langCode)) return;
+      if (!isInsufficientQMessage(next.error, langCode)) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ref.read(subQuizProvider.notifier).clearError();
-        showLimitReachedDialog(
+        showInsufficientQDialog(
           context,
-          featureName: 'subscription-analysis',
+          ref,
+          feature: 'subscription_analysis',
         );
       });
     });
 
     final langCode = ref.read(localeProvider)?.languageCode;
     final hasInlineError =
-        state.error != null && !isDailyQLimitMessage(state.error, langCode);
+        state.error != null && !isInsufficientQMessage(state.error, langCode);
 
     return Scaffold(
       backgroundColor: context.backgroundColor,
@@ -1279,10 +1280,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
 
-    final remaining = sub.remainingDailyCredits;
-    final total = sub.totalDailyCredits;
-    final used = sub.usedDailyCredits;
-    final progress = total == 0 ? 0.0 : (used / total).clamp(0.0, 1.0);
+    final remaining = sub.qBalance;
+    final total = remaining;
+    final progress = remaining <= 0 ? 0.0 : 1.0;
     final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : _kAccent;
     final barColorAi = isLow ? AppTheme.error : _kPrimary;

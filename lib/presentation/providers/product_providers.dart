@@ -3230,7 +3230,8 @@ Future<void> recordProductView(WidgetRef ref, String productId) async {
 
 class FreemiumLimits {
   // Single source of truth → AppConstants.
-  static int get dailyCredits => AppConstants.freeDailyAiCreditLimit;
+  // NOTE: there is no daily AI quota. AI access is gated purely by the user's
+  // Q balance (`SubscriptionService.qBalance`), which never resets.
   static int get comparisonsPerDay => AppConstants.freeComparisonLimit;
   static int get aiChatsPerDay => AppConstants.freeAiQuestionLimit;
   static int get compareAiPerDay => AppConstants.freeCompareAiLimit;
@@ -3264,8 +3265,8 @@ final freemiumUsageProvider = Provider.family<int, String>((ref, feature) {
 
 Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
   final subscription = ref.read(subscriptionServiceProvider);
-  final result = switch (feature) {
-    'comparison' => subscription.recordComparison(),
+  final result = await switch (feature) {
+    'comparison' => Future<Result<void>>.value(subscription.recordComparison()),
     'ai_chat' => subscription.recordAIQuestion(),
     'compare_ai' => subscription.recordCompareAi(),
     'detail_ai' => subscription.recordDetailAi(),
@@ -3274,7 +3275,7 @@ Future<bool> checkAndIncrementUsage(WidgetRef ref, String feature) async {
     'subscription_analysis' => subscription.recordSubscriptionAnalysis(),
     'product_scan' => subscription.recordProductScan(),
     'detail_match' => subscription.recordDetailMatchAi(),
-    _ => const Success<void>(null),
+    _ => Future<Result<void>>.value(const Success<void>(null)),
   };
   return result.isSuccess;
 }

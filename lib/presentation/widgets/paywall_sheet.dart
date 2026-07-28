@@ -589,10 +589,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     };
   }
 
-  String _limitedDailyCreditLabel(int count) {
+  String _limitedByBalanceLabel() {
     return _txt(
-      tr: 'Sınırlı ${AppConstants.qorCurrencyName} ile ($count ${AppConstants.qorCurrencyName}/gün)',
-      en: 'Limited by daily ${AppConstants.qorCurrencyName} ($count ${AppConstants.qorCurrencyName}/day)',
+      tr: '${AppConstants.qorCurrencyName} bakiyeniz yettiği kadar',
+      en: 'As long as your ${AppConstants.qorCurrencyName} balance lasts',
     );
   }
 
@@ -1596,8 +1596,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
   Widget _buildComparisonTable() {
     final l = context.l10n;
     final unlimited = l?.unlimited ?? 'Unlimited';
-    final totalCredits = AppConstants.freeDailyAiCreditLimit;
-    final limitedCredits = _limitedDailyCreditLabel(totalCredits);
+    final limitedCredits = _limitedByBalanceLabel();
     final rows = [
       _TableRow(
         _txt(tr: 'Qor AI Chat', en: 'Qor AI Chat'),

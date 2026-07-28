@@ -89,6 +89,22 @@ class ValidationException extends AppException {
   });
 }
 
+/// The user's Q balance is smaller than what the action costs.
+/// This is a BALANCE error, not a daily quota — there is no daily quota.
+class InsufficientQCoinsException extends AppException {
+  final String featureName;
+  final num cost;
+  final num balance;
+
+  const InsufficientQCoinsException({
+    required this.featureName,
+    required this.cost,
+    required this.balance,
+    super.message = 'Insufficient Q balance',
+    super.code = 'INSUFFICIENT_QOR_COINS',
+  });
+}
+
 /// Usage limit exceeded errors - Section 12.2
 class UsageLimitException extends AppException {
   final String featureName;

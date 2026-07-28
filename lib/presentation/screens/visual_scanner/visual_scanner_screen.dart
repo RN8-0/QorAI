@@ -135,9 +135,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     if (_camCtrl == null || _isScanning) return;
 
     final sub = ref.read(subscriptionServiceProvider);
-    final quota = sub.recordProductScan();
+    final quota = await sub.recordProductScan();
+    if (!mounted) return;
     if (quota.isFailure) {
-      showLimitReachedDialog(context, featureName: 'product-scan');
+      showQSpendFailure(context, ref, feature: 'product_scan', result: quota);
       return;
     }
 
@@ -247,9 +248,10 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     }
 
     final sub = ref.read(subscriptionServiceProvider);
-    final quota = sub.recordAIQuestion();
+    final quota = await sub.recordAIQuestion();
+    if (!mounted) return;
     if (quota.isFailure) {
-      showLimitReachedDialog(context, featureName: 'ai-chat');
+      showQSpendFailure(context, ref, feature: 'ai_chat', result: quota);
       return;
     }
 

@@ -142,7 +142,6 @@ class SubscriptionService extends ChangeNotifier {
   late UsageCounter _usage;
   bool _initialized = false;
   String _usageNamespace = 'guest_device';
-  double _syncedDailyCreditsUsed = 0;
   double _bonusQCoins = 0;
   bool _hasSyncedCredits = false;
 
@@ -771,17 +770,26 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   void _resetSyncedCreditsCache() {
-    _syncedDailyCreditsUsed = 0;
     _bonusQCoins = 0;
     _hasSyncedCredits = false;
   }
 
-  bool get _usesSyncedCredits =>
-      !isPremium && pb.authStore.isValid && _hasSyncedCredits;
+  /// Live Q balance (`bonusQCoins` on the user record — the SAME field the
+  /// website spends from, so app and web are always the same number).
+  /// Premium → -1 meaning "unlimited".
+  double get qBalance => isPremium ? -1 : _bonusQCoins;
 
-  // Lifetime credit model: free users only get a one-time signup bonus.
-  // No daily refresh. `bonusQCoins` is the only spendable balance.
-  double get _baseDailyCreditLimit => 0;
+  /// Whether the balance was ever read from the server. When false the balance
+  /// is simply UNKNOWN — it must never be treated as zero (that is what used to
+  /// lock users out of every AI feature).
+  bool get hasQBalance => _hasSyncedCredits;
+
+  /// Re-reads the balance from PocketBase. Call after login, on app resume and
+  /// whenever a screen wants a guaranteed-fresh number.
+  Future<void> refreshQBalance() async {
+    await _refreshSyncedDailyCredits();
+    notifyListeners();
+  }
 
   Future<void> _refreshSyncedDailyCredits({
     bool persistNormalized = true,
@@ -800,44 +808,104 @@ class SubscriptionService extends ChangeNotifier {
       }
 
       final record = await pb.collection(AppConstants.usersCollection).getOne(uid);
-      // Lifetime model: `dailyAiCreditsUsed` is no longer used as a daily
-      // counter. It is preserved on the record only for back-compat; we treat
-      // the live balance purely as `bonusQCoins`. No daily reset happens.
-      final bonus = _asDouble(record.data[_bonusQCoinsField]);
-
-      _syncedDailyCreditsUsed = 0;
-      _bonusQCoins = bonus;
+      // Lifetime model: `dailyAiCreditsUsed` is dead weight kept only for
+      // back-compat with older clients. `bonusQCoins` IS the balance and it
+      // never resets — the user spends it until it runs out.
+      _bonusQCoins = _asDouble(record.data[_bonusQCoinsField]);
       _hasSyncedCredits = true;
     } catch (_) {
-      _resetSyncedCreditsCache();
+      // Keep the last known balance if we already had one: a network blip must
+      // not look like "you are out of Q".
+      if (!_hasSyncedCredits) _resetSyncedCreditsCache();
     }
   }
 
-  Future<void> _persistSyncedDailyCredits() async {
-    if (!_usesSyncedCredits) return;
-
+  Future<void> _persistQBalance(double balance) async {
     final uid = pb.authStore.record?.id;
     if (uid == null || uid.isEmpty) return;
 
-    try {
-      // Lifetime credit model: persist the live `bonusQCoins` balance.
-      // Daily counter fields are kept zeroed for back-compat with older clients.
-      await pb.collection(AppConstants.usersCollection).update(
-        uid,
-        body: {
-          _bonusQCoinsField: _bonusQCoins,
-          _dailyCreditsUsedField: 0,
-        },
-      );
-    } catch (_) {}
+    await pb.collection(AppConstants.usersCollection).update(
+      uid,
+      body: {
+        _bonusQCoinsField: balance,
+        _dailyCreditsUsedField: 0,
+      },
+    );
   }
 
-  void _reserveSyncedCredits(String featureName) {
-    if (!_usesSyncedCredits) return;
+  /// Authoritative spend — mirrors `spendQorCoins()` on the website:
+  /// read the live record, compare against the cost, debit, log the ledger.
+  /// Reading the server on every spend is what keeps app and web in sync.
+  Future<Result<void>> spendQCoins(String featureName) async {
+    if (isPremium) return const Success(null);
+
     final cost = AppConstants.creditCostForFeature(featureName).toDouble();
-    _bonusQCoins = max(0.0, _bonusQCoins - cost);
-    unawaited(_persistSyncedDailyCredits());
-    unawaited(_logQCoinSpend(featureName, cost, _bonusQCoins));
+    if (cost <= 0) return const Success(null);
+
+    final uid = pb.authStore.isValid ? pb.authStore.record?.id : null;
+    if (uid == null || uid.isEmpty) {
+      return Failure(
+        const AuthException(message: 'Sign in to use AI features'),
+      );
+    }
+
+    double? balance;
+    try {
+      final record =
+          await pb.collection(AppConstants.usersCollection).getOne(uid);
+      if (record.data['isPremium'] == true) {
+        _hasSyncedCredits = true;
+        _bonusQCoins = _asDouble(record.data[_bonusQCoinsField]);
+        notifyListeners();
+        return const Success(null);
+      }
+      balance = _asDouble(record.data[_bonusQCoinsField]);
+      _bonusQCoins = balance;
+      _hasSyncedCredits = true;
+    } catch (e) {
+      // Server unreachable — fall back to the last known balance rather than
+      // blocking a user who actually has Q.
+      if (_hasSyncedCredits) {
+        balance = _bonusQCoins;
+      } else {
+        debugPrint('⚠️ Q balance read failed: $e');
+        return Failure(
+          const NetworkException(
+            message: 'Q balance unavailable',
+            code: 'QOR_BALANCE_UNAVAILABLE',
+          ),
+        );
+      }
+    }
+
+    if (balance + 1e-9 < cost) {
+      notifyListeners();
+      return Failure(
+        InsufficientQCoinsException(
+          featureName: featureName,
+          cost: cost,
+          balance: balance,
+        ),
+      );
+    }
+
+    final next = max(0.0, ((balance - cost) * 10).round() / 10);
+    _bonusQCoins = next;
+    _hasSyncedCredits = true;
+    notifyListeners();
+
+    // The debit is persisted best-effort: a write failure must never block a
+    // user who has already been charged locally. The next refresh re-reads the
+    // server value, so the balance self-heals either way.
+    unawaited(() async {
+      try {
+        await _persistQBalance(next);
+      } catch (e) {
+        debugPrint('⚠️ Q balance persist failed: $e');
+      }
+    }());
+    unawaited(_logQCoinSpend(featureName, cost, next));
+    return const Success(null);
   }
 
   // Append a spend row to the `qcoin_transactions` ledger so the admin panel
@@ -926,240 +994,84 @@ class SubscriptionService extends ChangeNotifier {
     return true;
   }
 
-  double _usedCreditsFor(UsageCounter usage) {
-    return usage.aiQuestions * AppConstants.aiChatCreditCost +
-        usage.compareAi * AppConstants.compareAiCreditCost +
-        usage.detailAi * AppConstants.detailAiCreditCost +
-        usage.detailMatchAi * AppConstants.detailMatchAiCreditCost +
-        usage.linkPastes * AppConstants.linkAnalysisCreditCost +
-        usage.linkCompare * AppConstants.linkCompareCreditCost +
-        usage.subscriptionAnalyses *
-            AppConstants.subscriptionAnalysisCreditCost +
-        usage.productScan * AppConstants.productScanCreditCost;
-  }
-
-  bool _canSpendCredits(String featureName) {
-    if (isPremium) return true;
-    return remainingDailyCredits >= AppConstants.creditCostForFeature(featureName);
-  }
-
-  Failure<void> _creditLimitFailure(String featureName, UsageCounter usage) {
-    return Failure(
-      UsageLimitException(
-        featureName: featureName,
-        currentUsage: _usedCreditsFor(usage),
-        limit: totalDailyCredits,
-        message: 'Insufficient daily credits',
-      ),
-    );
-  }
-
-    double get usedDailyCredits => isPremium
-      ? 0
-      : (_usesSyncedCredits
-            ? _syncedDailyCreditsUsed
-            : _usedCreditsFor(_normalizedUsage()));
-
-    double get totalDailyCredits => isPremium
-      ? -1
-      : (_usesSyncedCredits
-            ? max(0.0, _baseDailyCreditLimit + _bonusQCoins)
-            : _baseDailyCreditLimit);
-
-    double get remainingDailyCredits => isPremium
-      ? -1
-      : max(0.0, totalDailyCredits - usedDailyCredits);
-
-    num creditCostForFeature(String featureName) =>
+  num creditCostForFeature(String featureName) =>
       AppConstants.creditCostForFeature(featureName);
 
-  /// Can an AI question be asked?
-  bool get canAskAI {
-    return _canSpendCredits('ai_chat');
+  /// Optimistic, synchronous UI hint. It answers "should I grey this out?",
+  /// never "may this run?" — `spendQCoins()` is the only authority.
+  /// When the balance has not been read yet we answer TRUE: an unknown balance
+  /// is not an empty balance.
+  bool canAfford(String featureName) {
+    if (isPremium) return true;
+    if (!_hasSyncedCredits) return true;
+    return _bonusQCoins + 1e-9 >= AppConstants.creditCostForFeature(featureName);
   }
 
-  /// Can a premium AI feature be used? (compare screen)
-  bool get canUseCompareAi {
-    return _canSpendCredits('compare_ai');
-  }
+  bool get canAskAI => canAfford('ai_chat');
+  bool get canUseCompareAi => canAfford('compare_ai');
+  bool get canUseDetailAi => canAfford('detail_ai');
+  bool get canPasteLink => canAfford('link_analysis');
+  bool get canUseLinkCompare => canAfford('link_compare');
+  bool get canAnalyzeSubscription => canAfford('subscription_analysis');
+  bool get canScanProduct => canAfford('product_scan');
+  bool get canUseDetailMatchAi => canAfford('detail_match');
 
-  /// Can a premium AI feature be used? (product detail screen)
-  bool get canUseDetailAi {
-    return _canSpendCredits('detail_ai');
-  }
-
-  /// Can a link be pasted? (single analysis)
-  bool get canPasteLink {
-    return _canSpendCredits('link_analysis');
-  }
-
-  /// Can link compare tab be used?
-  bool get canUseLinkCompare {
-    return _canSpendCredits('link_compare');
-  }
-
-  /// Can a subscription analysis be performed?
-  bool get canAnalyzeSubscription {
-    return _canSpendCredits('subscription_analysis');
-  }
-
-  /// Can a product scan be performed?
-  bool get canScanProduct {
-    return _canSpendCredits('product_scan');
-  }
-
-  /// Can AI-generated match score + short summary be used on product detail?
-  bool get canUseDetailMatchAi {
-    return _canSpendCredits('detail_match');
-  }
-
-  /// Record comparison usage
+  /// Record comparison usage (free — comparisons cost no Q)
   Result<void> recordComparison() {
     return const Success(null);
   }
 
-  /// Record AI question usage
-  Result<void> recordAIQuestion() {
-    final currentUsage = _normalizedUsage();
-    if (!canAskAI) {
-      return _creditLimitFailure('ai_question', currentUsage);
-    }
-    _usage = currentUsage.copyWith(aiQuestions: currentUsage.aiQuestions + 1);
-    _reserveSyncedCredits('ai_chat');
+  Future<Result<void>> _spend(String featureName, UsageCounter Function(UsageCounter) bump) async {
+    final result = await spendQCoins(featureName);
+    if (result.isFailure) return result;
+    _usage = bump(_normalizedUsage());
     unawaited(_saveUsageToLocal());
     notifyListeners();
     return const Success(null);
   }
 
-  /// Record compare AI feature usage
-  Result<void> recordCompareAi() {
-    final currentUsage = _normalizedUsage();
-    if (!canUseCompareAi) {
-      return _creditLimitFailure('compare_ai', currentUsage);
-    }
-    _usage = currentUsage.copyWith(compareAi: currentUsage.compareAi + 1);
-    _reserveSyncedCredits('compare_ai');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordAIQuestion() =>
+      _spend('ai_chat', (u) => u.copyWith(aiQuestions: u.aiQuestions + 1));
 
-  /// Record detail AI feature usage
-  Result<void> recordDetailAi() {
-    final currentUsage = _normalizedUsage();
-    if (!canUseDetailAi) {
-      return _creditLimitFailure('detail_ai', currentUsage);
-    }
-    _usage = currentUsage.copyWith(detailAi: currentUsage.detailAi + 1);
-    _reserveSyncedCredits('detail_ai');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordCompareAi() =>
+      _spend('compare_ai', (u) => u.copyWith(compareAi: u.compareAi + 1));
 
-  /// Record AI match score + summary usage (product detail)
-  Result<void> recordDetailMatchAi() {
-    final currentUsage = _normalizedUsage();
-    if (!canUseDetailMatchAi) {
-      return _creditLimitFailure('detail_match_ai', currentUsage);
-    }
-    _usage = currentUsage.copyWith(
-      detailMatchAi: currentUsage.detailMatchAi + 1,
-    );
-    _reserveSyncedCredits('detail_match');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordDetailAi() =>
+      _spend('detail_ai', (u) => u.copyWith(detailAi: u.detailAi + 1));
 
+  Future<Result<void>> recordDetailMatchAi() => _spend(
+    'detail_match',
+    (u) => u.copyWith(detailMatchAi: u.detailMatchAi + 1),
+  );
 
-  /// Record link paste usage
-  Result<void> recordLinkPaste() {
-    final currentUsage = _normalizedUsage();
-    if (!canPasteLink) {
-      return _creditLimitFailure('link_paste', currentUsage);
-    }
-    _usage = currentUsage.copyWith(linkPastes: currentUsage.linkPastes + 1);
-    _reserveSyncedCredits('link_analysis');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordLinkPaste() =>
+      _spend('link_analysis', (u) => u.copyWith(linkPastes: u.linkPastes + 1));
 
-  /// Record subscription analysis usage
-  Result<void> recordSubscriptionAnalysis() {
-    final currentUsage = _normalizedUsage();
-    if (!canAnalyzeSubscription) {
-      return _creditLimitFailure('subscription_analysis', currentUsage);
-    }
-    _usage = currentUsage.copyWith(
-      subscriptionAnalyses: currentUsage.subscriptionAnalyses + 1,
-    );
-    _reserveSyncedCredits('subscription_analysis');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordSubscriptionAnalysis() => _spend(
+    'subscription_analysis',
+    (u) => u.copyWith(subscriptionAnalyses: u.subscriptionAnalyses + 1),
+  );
 
-  /// Record link compare tab usage
-  Result<void> recordLinkCompare() {
-    final currentUsage = _normalizedUsage();
-    if (!canUseLinkCompare) {
-      return _creditLimitFailure('link_compare', currentUsage);
-    }
-    _usage = currentUsage.copyWith(linkCompare: currentUsage.linkCompare + 1);
-    _reserveSyncedCredits('link_compare');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordLinkCompare() =>
+      _spend('link_compare', (u) => u.copyWith(linkCompare: u.linkCompare + 1));
 
-  /// Record product scan usage
-  Result<void> recordProductScan() {
-    final currentUsage = _normalizedUsage();
-    if (!canScanProduct) {
-      return _creditLimitFailure('product_scan', currentUsage);
-    }
-    _usage = currentUsage.copyWith(productScan: currentUsage.productScan + 1);
-    _reserveSyncedCredits('product_scan');
-    unawaited(_saveUsageToLocal());
-    notifyListeners();
-    return const Success(null);
-  }
+  Future<Result<void>> recordProductScan() =>
+      _spend('product_scan', (u) => u.copyWith(productScan: u.productScan + 1));
 
-  /// Remaining usage allowances
+  /// Remaining usage allowances — how many runs the CURRENT balance buys.
   int get remainingComparisons => -1;
 
-  int get remainingAIQuestions => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.aiChatCreditCost).floor();
+  int _runsFor(num cost) =>
+      isPremium ? -1 : (_bonusQCoins / cost).floor();
 
-  int get remainingCompareAi => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.compareAiCreditCost).floor();
-
-  int get remainingDetailAi => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.detailAiCreditCost).floor();
-
-  int get remainingLinkPastes => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.linkAnalysisCreditCost).floor();
-
-  int get remainingLinkCompare => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.linkCompareCreditCost).floor();
-
-  int get remainingSubscriptionAnalyses => isPremium
-      ? -1
-      : (remainingDailyCredits /
-          AppConstants.subscriptionAnalysisCreditCost)
-        .floor();
-
-  int get remainingProductScan => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.productScanCreditCost).floor();
-  int get detailMatchAiRemaining => isPremium
-      ? -1
-      : (remainingDailyCredits / AppConstants.detailMatchAiCreditCost).floor();
+  int get remainingAIQuestions => _runsFor(AppConstants.aiChatCreditCost);
+  int get remainingCompareAi => _runsFor(AppConstants.compareAiCreditCost);
+  int get remainingDetailAi => _runsFor(AppConstants.detailAiCreditCost);
+  int get remainingLinkPastes => _runsFor(AppConstants.linkAnalysisCreditCost);
+  int get remainingLinkCompare => _runsFor(AppConstants.linkCompareCreditCost);
+  int get remainingSubscriptionAnalyses =>
+      _runsFor(AppConstants.subscriptionAnalysisCreditCost);
+  int get remainingProductScan => _runsFor(AppConstants.productScanCreditCost);
+  int get detailMatchAiRemaining =>
+      _runsFor(AppConstants.detailMatchAiCreditCost);
 }

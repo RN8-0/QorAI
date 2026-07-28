@@ -1,21 +1,34 @@
-/// Qor AI — Limit Reached Dialog
-/// Shown when a free user does not have enough daily credits for a feature.
-/// Offers "Go Premium" and "Continue Free" options, fully localized.
+/// Qor AI — Insufficient Q Balance Dialog
+/// Shown when the signed-in user's Q balance cannot cover an AI action.
+/// There is NO daily quota in this app: the balance is granted at signup and
+/// spent until it runs out, so this dialog only ever talks about the balance.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/qor_limit_messages.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 
-/// Shows the limit-reached centered dialog.
-/// [featureName] is for analytics/display (optional).
-void showLimitReachedDialog(BuildContext context, {String? featureName}) {
+/// Shows the "not enough Q" centered dialog.
+/// [feature] is the credit-cost key (e.g. `detail_ai`) so the exact price of
+/// the blocked action can be shown.
+void showInsufficientQDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required String feature,
+}) {
   final langCode = normalizeQorLanguageCode(
     Localizations.localeOf(context).languageCode,
   );
   final l10n = qorLocalizationsForCode(langCode);
+  final sub = ref.read(subscriptionServiceProvider);
+  final cost = AppConstants.creditCostForFeature(feature);
+  final balance = sub.qBalance < 0 ? 0.0 : sub.qBalance;
 
   showDialog<void>(
     context: context,
@@ -72,7 +85,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
               ),
               const SizedBox(height: 18),
               Text(
-                dailyQLimitTitle(langCode),
+                insufficientQTitle(langCode),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -83,22 +96,15 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
               ),
               const SizedBox(height: 10),
               Text(
-                buildDailyQLimitMessage(langCode),
+                buildInsufficientQMessage(
+                  langCode,
+                  cost: cost,
+                  balance: balance,
+                ),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   color: ctx.textSecondary,
                   height: 1.55,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                buildDailyQResetMessage(langCode),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: ctx.textTertiaryColor,
-                  height: 1.5,
-                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -118,7 +124,7 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
                           foregroundColor: ctx.textSecondary,
                         ),
                         child: Text(
-                          l10n.free,
+                          qorCloseLabel(langCode),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -177,4 +183,39 @@ void showLimitReachedDialog(BuildContext context, {String? featureName}) {
       ),
     ),
   );
+}
+
+/// Non-paywall failure (balance could not be read / not signed in). Shows a
+/// retry hint instead of pushing Premium — the user is not out of Q, we just
+/// could not check.
+void showQBalanceUnavailableSnack(BuildContext context, {Object? error}) {
+  final langCode = normalizeQorLanguageCode(
+    Localizations.localeOf(context).languageCode,
+  );
+  final text = error is AuthException
+      ? buildSignInRequiredMessage(langCode)
+      : buildQBalanceUnavailableMessage(langCode);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(text),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppTheme.error,
+    ),
+  );
+}
+
+/// Routes a failed `spendQCoins()` result to the right UI: the paywall dialog
+/// for a real "out of Q", a retry snackbar for anything else (offline, auth).
+void showQSpendFailure(
+  BuildContext context,
+  WidgetRef ref, {
+  required String feature,
+  required Result<void> result,
+}) {
+  final error = result is Failure<void> ? result.error : null;
+  if (error is InsufficientQCoinsException || error == null) {
+    showInsufficientQDialog(context, ref, feature: feature);
+    return;
+  }
+  showQBalanceUnavailableSnack(context, error: error);
 }

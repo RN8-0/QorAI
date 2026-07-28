@@ -1486,11 +1486,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     final sub = ref.watch(subscriptionServiceProvider);
     if (sub.isPremium) return const SizedBox.shrink();
 
-    final remaining = sub.remainingDailyCredits;
-    final total = sub.totalDailyCredits;
-    final progress = total == 0
-        ? 0.0
-        : (sub.usedDailyCredits / total).clamp(0.0, 1.0);
+    final remaining = sub.qBalance < 0 ? 0.0 : sub.qBalance;
+    final progress = remaining > 0 ? 1.0 : 0.0;
     final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
     final isLow = remaining <= 2;
     final barColor = isLow ? AppTheme.error : AppTheme.brandBlue;
@@ -1501,8 +1498,8 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     );
     final periodLabel = _linkText(
       context,
-      tr: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
-      en: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)}/${AppConstants.formatQorAmount(total, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
+      tr: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
+      en: '${AppConstants.formatQorAmount(remaining, languageCode: langCode)} ${AppConstants.qorCurrencyName}',
     );
     final ctaLabel = _linkText(context, tr: 'Premium', en: 'Premium');
 

@@ -1851,12 +1851,12 @@ class _FreemiumUsageCard extends ConsumerWidget {
 
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
     final langCode = Localizations.localeOf(context).languageCode.toLowerCase();
-    final totalCredits = FreemiumLimits.dailyCredits;
-    final usedCredits = sub.usedDailyCredits;
-    final remainingCredits = sub.remainingDailyCredits;
+    // Lifetime balance: there is no daily pool to divide by. The bar simply
+    // reflects "has balance / empty".
+    final remainingCredits = sub.qBalance < 0 ? 0.0 : sub.qBalance;
     final creditProgress = sub.isPremium
         ? 1.0
-        : (usedCredits / totalCredits).clamp(0.0, 1.0);
+        : (remainingCredits > 0 ? 1.0 : 0.0);
 
     if (sub.isPremium) {
       return GestureDetector(
@@ -1951,7 +1951,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
               Icon(Icons.bolt_rounded, size: 18, color: AppTheme.premiumBase),
               const SizedBox(width: 8),
               Text(
-                isTr ? 'Günlük AI Q' : 'Daily AI Q',
+                isTr ? 'Qor AI Bakiyesi' : 'Qor AI Balance',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -2000,8 +2000,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         isTr
-                            ? '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)}/${AppConstants.formatQorAmount(totalCredits, languageCode: langCode)} Qor kaldı'
-                            : '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)}/${AppConstants.formatQorAmount(totalCredits, languageCode: langCode)} Qor left',
+                            ? '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)} Qor kaldı'
+                            : '${AppConstants.formatQorAmount(remainingCredits, languageCode: langCode)} Qor left',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -2011,7 +2011,7 @@ class _FreemiumUsageCard extends ConsumerWidget {
                     ),
                     QorBalanceBadge(
                       remaining: remainingCredits,
-                      total: totalCredits,
+                      total: remainingCredits,
                       unlimited: false,
                       color: AppTheme.premiumBase,
                     ),
@@ -2020,8 +2020,8 @@ class _FreemiumUsageCard extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   isTr
-                      ? 'Q bakiyesi günlük yenilenir. Ağır işlemler daha fazla Q tüketir.'
-                      : 'Q balance refreshes daily. Heavier actions consume more Q.',
+                      ? 'Bakiyeniz bitene kadar tüm AI özelliklerini kullanabilirsiniz. Ağır işlemler daha fazla Q tüketir.'
+                      : 'Use every AI feature until your balance runs out. Heavier actions consume more Q.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: context.textSecondary,

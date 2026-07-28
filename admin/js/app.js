@@ -4440,7 +4440,6 @@ function openUserDetail(uid){
   const premiumInfo=premiumDetails(u);
   const currentQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.remaining);
   const totalQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.total);
-  const usedQLabel=u.isPremium?'0':formatQCoinAmount(qSnapshot.used);
   const extraQLabel=u.isPremium?'∞':formatQCoinAmount(qSnapshot.extra);
 
   // Activity status
@@ -4506,13 +4505,12 @@ function openUserDetail(uid){
       <div class="card" style="margin:0 0 16px;padding:14px">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:10px">🪙 Q Coin Management</div>
         <div class="metric-grid-compact" style="margin-bottom:12px">
-          <div class="metric-tile"><div class="metric-tile-value">${currentQLabel}</div><div class="metric-tile-label">Current Q</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${totalQLabel}</div><div class="metric-tile-label">Daily Total</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${usedQLabel}</div><div class="metric-tile-label">Used Today</div></div>
-          <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Extra Q</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${currentQLabel}</div><div class="metric-tile-label">Q Balance</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${totalQLabel}</div><div class="metric-tile-label">Spendable</div></div>
+          <div class="metric-tile"><div class="metric-tile-value">${extraQLabel}</div><div class="metric-tile-label">Granted Q</div></div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-          <div style="font-size:12px;color:var(--text2)">Global daily pool: <b>${formatQCoinAmount(_freeDailyAiCreditLimit)} Q</b>${u.isPremium?' · <span style="color:#f59e0b">Premium (unlimited)</span>':''}</div>
+          <div style="font-size:12px;color:var(--text2)">Lifetime balance — no daily quota, no daily reset${u.isPremium?' · <span style="color:#f59e0b">Premium (unlimited)</span>':''}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" onclick="showAddQCoinModal('${safeUid}')">Add Extra Q</button><button class="btn btn-ghost btn-sm" onclick="showResetQCoinModal('${safeUid}')">Reset Q Coin</button></div>
         </div>
       </div>

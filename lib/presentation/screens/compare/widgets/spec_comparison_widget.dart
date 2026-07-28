@@ -732,8 +732,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
-  void _showLimitExhaustedDialog(BuildContext context, {String? featureName}) {
-    showLimitReachedDialog(context, featureName: featureName);
+  void _showQSpendFailure(
+    BuildContext context, {
+    required String feature,
+    required Result<void> result,
+  }) {
+    showQSpendFailure(context, ref, feature: feature, result: result);
   }
 
   /// Splits [rawValue] on its natural separators BEFORE translation
@@ -903,11 +907,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (!await ensureEmailVerified(context, ref)) return;
       if (!mounted) return;
       final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.canUseCompareAi) {
-        _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+      final spend = await sub.recordCompareAi();
+      if (!mounted) return;
+      if (spend.isFailure) {
+        _showQSpendFailure(context, feature: 'compare_ai', result: spend);
         return;
       }
-      sub.recordCompareAi();
     }
 
     setState(() {
@@ -974,11 +979,12 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
       if (!await ensureEmailVerified(context, ref)) return;
       if (!mounted) return;
       final sub = ref.read(subscriptionServiceProvider);
-      if (!sub.isPremium || !sub.canUseCompareAi) {
-        _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+      final spend = await sub.recordCompareAi();
+      if (!mounted) return;
+      if (spend.isFailure) {
+        _showQSpendFailure(context, feature: 'compare_ai', result: spend);
         return;
       }
-      sub.recordCompareAi();
     }
 
     setState(() {
@@ -7340,11 +7346,13 @@ Rules:
     if (!await ensureEmailVerified(context, ref)) return;
     if (!mounted) return;
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.isPremium || !sub.canUseCompareAi) {
-      _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+    final spend = await sub.recordCompareAi();
+    if (!mounted) return;
+    if (spend.isFailure) {
+      // ignore: use_build_context_synchronously
+      _showQSpendFailure(context, feature: 'compare_ai', result: spend);
       return;
     }
-    sub.recordCompareAi();
     // Web paritesi: önce karşılaştırmaya özel quiz üret + göster (link/abonelik
     // analizindeki AYNI quiz UI'ı), sonra cevaplarla raporu çalıştır.
     setState(() {
@@ -7892,11 +7900,17 @@ Rules:
                 if (!await ensureEmailVerified(context, ref)) return;
                 if (!mounted) return;
                 final sub = ref.read(subscriptionServiceProvider);
-                if (!sub.canUseCompareAi) {
-                  _showLimitExhaustedDialog(context, featureName: 'Compare AI');
+                final spend = await sub.recordCompareAi();
+                if (!mounted) return;
+                if (spend.isFailure) {
+                  // ignore: use_build_context_synchronously
+                  _showQSpendFailure(
+                    context,
+                    feature: 'compare_ai',
+                    result: spend,
+                  );
                   return;
                 }
-                sub.recordCompareAi();
               }
               setState(() => _matchScoreExpanded = !_matchScoreExpanded);
             },

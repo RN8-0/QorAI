@@ -145,6 +145,17 @@ class AuthRepository {
           double.tryParse(record.data['bonusQCoins']?.toString() ?? '') ??
           0;
       if (current > 0) return;
+      // ONLY a brand-new record may be topped up here (server-side
+      // onRecordAfterCreateSuccess is the real source of the signup bonus; this
+      // is just a fallback for flows where that hook didn't fire). Without the
+      // age check every sign-in of a user who SPENT their balance down to 0
+      // would silently re-grant it — the balance is meant to run out.
+      final created = DateTime.tryParse(record.get<String>('created'))?.toUtc();
+      if (created == null ||
+          DateTime.now().toUtc().difference(created) >
+              const Duration(minutes: 10)) {
+        return;
+      }
       await _pb.collection('users').update(
         uid,
         body: {

@@ -205,13 +205,13 @@ class LinkAnalysisNotifier extends StateNotifier<LinkAnalysisState> {
 
   /// Analyze link - Section 9.1
   Future<void> analyzeLink(String url, UserEntity user) async {
-    // Free tier limit check
-    final limitResult = _ref
+    // Q balance check + debit (server-authoritative, same as the website).
+    final limitResult = await _ref
         .read(subscriptionServiceProvider)
         .recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
-        error: buildDailyQLimitMessage(_appLang),
+        error: qSpendErrorMessage(limitResult, _appLang),
         isLoading: false,
       );
       return;
@@ -321,14 +321,14 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
       _ref.read(chatSessionProvider.notifier).notifyAnalysisBusy();
       return;
     }
-    // Rate limit
-    final limitResult = _ref
+    // Q balance check + debit (server-authoritative, same as the website).
+    final limitResult = await _ref
         .read(subscriptionServiceProvider)
         .recordLinkPaste();
     if (limitResult.isFailure) {
       state = state.copyWith(
         phase: LinkFlowPhase.idle,
-        error: buildDailyQLimitMessage(_appLang),
+        error: qSpendErrorMessage(limitResult, _appLang),
       );
       return;
     }
@@ -1529,10 +1529,16 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
     }
     final pendingNames = validation.normalizedNames;
 
-    if (!_subService.canAnalyzeSubscription) {
+    // Optimistic pre-check only (false ONLY when the synced balance is known to
+    // be short). The debit itself happens once the analysis actually starts.
+    if (!_subService.canAfford('subscription_analysis')) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: buildDailyQLimitMessage(_appLang),
+        error: buildInsufficientQMessage(
+          _appLang,
+          cost: AppConstants.creditCostForFeature('subscription_analysis'),
+          balance: _subService.qBalance < 0 ? 0 : _subService.qBalance,
+        ),
       );
       return;
     }
@@ -1637,11 +1643,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       );
     } catch (_) {
       // Fallback: quiz unavailable → go straight to analysis with validated names
-      final subQuota = _subService.recordSubscriptionAnalysis();
+      final subQuota = await _subService.recordSubscriptionAnalysis();
       if (subQuota.isFailure) {
         state = state.copyWith(
           phase: SubFlowPhase.idle,
-          error: buildDailyQLimitMessage(_appLang),
+          error: qSpendErrorMessage(subQuota, _appLang),
         );
         return;
       }
@@ -1663,11 +1669,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Step 3: Submit quiz + run enhanced grounded analysis.
   Future<void> submitQuiz() async {
-    final subQuota = _subService.recordSubscriptionAnalysis();
+    final subQuota = await _subService.recordSubscriptionAnalysis();
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: buildDailyQLimitMessage(_appLang),
+        error: qSpendErrorMessage(subQuota, _appLang),
       );
       return;
     }
@@ -1697,11 +1703,11 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
 
   /// Skip quiz → analyze with no quiz context.
   Future<void> skipQuiz() async {
-    final subQuota = _subService.recordSubscriptionAnalysis();
+    final subQuota = await _subService.recordSubscriptionAnalysis();
     if (subQuota.isFailure) {
       state = state.copyWith(
         phase: SubFlowPhase.idle,
-        error: buildDailyQLimitMessage(_appLang),
+        error: qSpendErrorMessage(subQuota, _appLang),
       );
       return;
     }

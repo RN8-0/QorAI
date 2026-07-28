@@ -233,14 +233,21 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     }
 
     final sub = _ref.read(subscriptionServiceProvider);
-    final quota = sub.recordAIQuestion();
+    final quota = await sub.recordAIQuestion();
     if (quota.isFailure) {
       final locale = _ref.read(localeProvider);
+      final error = quota is Failure<void> ? quota.error : null;
       _addMsg(
         PersistedChatMsg(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: PersistedMsgRole.system,
-          text: buildDailyQLimitMessage(locale?.languageCode),
+          text: error is InsufficientQCoinsException
+              ? buildInsufficientQMessage(
+                  locale?.languageCode,
+                  cost: error.cost,
+                  balance: error.balance,
+                )
+              : buildQBalanceUnavailableMessage(locale?.languageCode),
           status: PersistedMsgStatus.error,
         ),
       );

@@ -323,12 +323,10 @@ class _FloatingAiAssistantOverlayState
     final context = <String, dynamic>{
       'contextRoute': 'subscriptions',
       'activeScreen': 'subscription analysis screen',
-      'freeDailyQ':
-          '${AppConstants.freeDailyAiCreditLimit} ${AppConstants.qorCurrencyName}/day',
+      'qModel':
+          'Lifetime ${AppConstants.qorCurrencyName} balance granted at signup — no daily quota, no daily reset.',
       if (!subscription.isPremium)
-        'remainingDailyQ': subscription.remainingDailyCredits.toStringAsFixed(
-          1,
-        ),
+        'remainingQBalance': subscription.qBalance.toStringAsFixed(1),
     };
 
     if (state.phase != SubFlowPhase.idle ||
@@ -361,14 +359,10 @@ class _FloatingAiAssistantOverlayState
       'contextRoute': 'premium',
       'activeScreen': 'premium subscription page',
       'premiumStatus': subscription.isPremium ? 'premium' : 'free',
-      'freeTierDailyQ':
-          '${AppConstants.freeDailyAiCreditLimit} ${AppConstants.qorCurrencyName}/day',
       'freeTierLimits':
-          'Free AI actions use a shared limited daily Q pool. Premium unlocks unlimited Q.',
+          'Free users spend the Q balance granted at signup — every AI action costs Q and there is NO daily limit and NO daily refresh. Premium unlocks unlimited Q.',
       if (!subscription.isPremium)
-        'remainingDailyQ': subscription.remainingDailyCredits.toStringAsFixed(
-          1,
-        ),
+        'remainingQBalance': subscription.qBalance.toStringAsFixed(1),
     };
   }
 

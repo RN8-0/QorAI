@@ -255,13 +255,14 @@ class _AIReviewAnalysisCardState extends ConsumerState<_AIReviewAnalysisCard> {
     }
     if (!await ensureEmailVerified(context, ref)) return;
     if (!mounted) return;
-    // Check detail AI limit before fetching
+    // Spend the Q coins this analysis costs (Premium = free/unlimited).
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.canUseDetailAi) {
-      showLimitReachedDialog(context, featureName: 'detail-ai');
+    final spend = await sub.recordDetailAi();
+    if (!mounted) return;
+    if (spend.isFailure) {
+      showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
       return;
     }
-    sub.recordDetailAi();
     setState(() => _expanded = true);
     ref
         .read(aiReviewCacheProvider(reviewKey).notifier)

@@ -568,6 +568,17 @@ class _MainShellState extends ConsumerState<MainShell>
     } catch (_) {}
   }
 
+  // Q bakiyesi app ve web'de AYNI kayıttan (users.bonusQCoins) harcanır.
+  // Kullanıcı siteden harcamış olabilir → uygulama öne gelince bakiyeyi
+  // sunucudan tazele ki ekrandaki rakam her iki tarafta da aynı olsun.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state != AppLifecycleState.resumed) return;
+    if (!pb.authStore.isValid) return;
+    unawaited(ref.read(subscriptionServiceProvider).refreshQBalance());
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);

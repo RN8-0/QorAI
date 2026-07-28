@@ -2099,8 +2099,13 @@ class _GeminiMatchScoreNotifier
     final user = userAsync.valueOrNull;
     if (user == null || !user.quizCompleted) return;
     final sub = _ref.read(subscriptionServiceProvider);
-    if (!sub.isPremium) {
-      if (!forCompareBatch && !sub.canUseDetailMatchAi) {
+    // Q is spent UP FRONT (authoritative server read + debit). Compare-screen
+    // batches are already covered by `recordCompareAi`, and Premium is free.
+    if (!sub.isPremium && !forCompareBatch) {
+      final spend = await sub.recordDetailMatchAi();
+      if (!mounted) return;
+      if (spend.isFailure) {
+        // Not enough Q (or balance unreadable) → local, non-AI match score.
         // Yield to the event loop before running background compute so the
         // call is safe from a widget life-cycle context and input events
         // can be processed before the isolate result arrives.
@@ -2230,6 +2235,9 @@ class _GeminiMatchScoreNotifier
   Future<void> _doFetchMatchScore({
     required ProductEntity product,
     required dynamic user,
+    // Kept for call-site symmetry; the Q debit now happens in fetchMatchScore
+    // BEFORE the analysis runs, so nothing is charged here.
+    // ignore: avoid_unused_constructor_parameters
     bool forCompareBatch = false,
   }) async {
     final profileLangCode = (user.language as String).trim().toLowerCase();
@@ -2489,11 +2497,7 @@ class _GeminiMatchScoreNotifier
     }
     state = AsyncValue.data(matchResult);
 
-    final subForQuota = _ref.read(subscriptionServiceProvider);
-    if (!subForQuota.isPremium && !forCompareBatch) {
-      subForQuota.recordDetailMatchAi();
-    }
-
+    // (Q was already debited before the analysis started.)
     unawaited(
       Future<void>(() async {
         try {

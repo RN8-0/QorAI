@@ -7,6 +7,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:qor_ai/core/quiz_gate.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_start_card.dart';
 import 'package:qor_ai/core/email_verification_gate.dart';
+import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/utils.dart';
@@ -2693,17 +2694,20 @@ class SharedPremiumFeaturesSectionState
         );
   }
 
-  /// Check detail AI feature limit — returns true if allowed
+  /// Spend the Q coins this AI action costs — returns true if allowed.
+  /// Free users run AI as long as their Q balance covers it; Premium is
+  /// unlimited. There is no daily quota.
   Future<bool> _checkAiFeatureLimit() async {
     if (!requireAuth(context)) return false;
     if (!await ensureEmailVerified(context, ref)) return false;
     if (!mounted) return false;
     final sub = ref.read(subscriptionServiceProvider);
-    if (!sub.isPremium || !sub.canUseDetailAi) {
-      showLimitReachedDialog(context, featureName: 'detail-ai');
+    final spend = await sub.recordDetailAi();
+    if (!mounted) return false;
+    if (spend.isFailure) {
+      showQSpendFailure(context, ref, feature: 'detail_ai', result: spend);
       return false;
     }
-    sub.recordDetailAi();
     return true;
   }
 }
