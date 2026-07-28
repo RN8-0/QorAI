@@ -11,7 +11,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart' show pb, kPbBaseUrl;
 import 'package:qor_ai/data/datasources/hive_ds.dart';
@@ -133,39 +132,22 @@ class AuthRepository {
     }
   }
 
+  /// Signup bonusu SUNUCUDA veriliyor (`pb_hooks/auth_google.pb.js` →
+  /// `onRecordAfterCreateSuccess`), tek kaynak orası: ledger satırını ve
+  /// hoş geldin bildirimini de o yazıyor. İstemci burada sadece kaydı tazeler.
+  ///
+  /// Eskiden buradan `bonusQCoins` yazılıyordu; bunun için `users.updateRule`'a
+  /// "bakiye 0 ise 20 yazılabilir" kaçağı açılmıştı ve o kaçak, bakiyesi biten
+  /// HERKESİN kendine sınırsız Q basmasına izin veriyordu. Kural sıkılaştırıldı
+  /// (artık yalnız azaltma serbest), bu yüzden istemci yazımı hem gereksiz hem
+  /// de imkânsız. Canlı denetim: hook devreye girdikten sonraki 29 kaydın
+  /// 29'unda grant satırı var (%100).
   Future<void> _ensureSignupBonusForCurrentUser() async {
     try {
       if (!_pb.authStore.isValid) return;
-      final uid = _pb.authStore.record?.id;
-      if (uid == null || uid.isEmpty) return;
-      final record = await _pb.collection('users').getOne(uid);
-      final email = (record.getStringValue('email')).toLowerCase();
-      if (email.endsWith('@qorai.local')) return;
-      final current = (record.data['bonusQCoins'] as num?)?.toDouble() ??
-          double.tryParse(record.data['bonusQCoins']?.toString() ?? '') ??
-          0;
-      if (current > 0) return;
-      // ONLY a brand-new record may be topped up here (server-side
-      // onRecordAfterCreateSuccess is the real source of the signup bonus; this
-      // is just a fallback for flows where that hook didn't fire). Without the
-      // age check every sign-in of a user who SPENT their balance down to 0
-      // would silently re-grant it — the balance is meant to run out.
-      final created = DateTime.tryParse(record.get<String>('created'))?.toUtc();
-      if (created == null ||
-          DateTime.now().toUtc().difference(created) >
-              const Duration(minutes: 10)) {
-        return;
-      }
-      await _pb.collection('users').update(
-        uid,
-        body: {
-          'bonusQCoins': AppConstants.signupBonusQCoins,
-          'dailyAiCreditsUsed': 0,
-        },
-      );
       await _pb.collection('users').authRefresh();
     } catch (e) {
-      debugPrint('[auth] signup bonus ensure failed: $e');
+      debugPrint('[auth] post-signup refresh failed: $e');
     }
   }
 

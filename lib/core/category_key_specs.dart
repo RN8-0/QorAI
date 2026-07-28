@@ -583,16 +583,54 @@ const categoryAliases = <String, String>{
   'vr_headsets': 'consoles',
 };
 
+String _categoryLoose(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9çğıöşü]+'), ' ')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
+
+/// `needle` [haystack] içinde TAM KELİME olarak geçiyor mu?
+/// ("laptop" ⊂ "gaming laptop" ✓ ; "top" ⊄ "laptop" ✗)
+bool _containsAsWords(String haystack, String needle) {
+  if (needle.isEmpty || needle.length > haystack.length) return false;
+  final index = haystack.indexOf(needle);
+  if (index < 0) return false;
+  final beforeOk = index == 0 || haystack[index - 1] == ' ';
+  final endIndex = index + needle.length;
+  final afterOk = endIndex == haystack.length || haystack[endIndex] == ' ';
+  return beforeOk && afterOk;
+}
+
 /// Resolve any category string to a canonical key in [categoryKeySpecAliases].
 String resolveCategory(String raw) {
   final cat = raw.toLowerCase().trim();
+  if (cat.isEmpty) return '';
   if (categoryKeySpecAliases.containsKey(cat)) return cat;
   final alias = categoryAliases[cat];
   if (alias != null) return alias;
+
+  // Serbest metin ("Gaming Laptops", "Dizüstü Bilgisayar") → İÇİNDEKİ en uzun
+  // alias'ı TAM KELİME olarak ara. En uzun eşleşme kazanır; böylece sonuç
+  // Map'in yazılış sırasına bağlı kalmaz.
+  //
+  // ÖNCEDEN ters yön de vardı (`entry.key.contains(cat)`) ve bu, jenerik bir
+  // girdiyi rastgele bir alias'ın İÇİNE düşürüyordu: "gaming" → 'gaming_consoles'
+  // anahtarına takılıp **'consoles'** dönüyordu. Kategori kilidi (compare havuzu,
+  // filtreler, key-spec seçimi) bu değere bakıyor → oyuncu dizüstü ile konsol
+  // aynı kovaya düşebiliyordu. Ters yön mantıken de yanlış: bir kelimenin bir
+  // kategori adının PARÇASI olması, o kategori olduğu anlamına gelmez.
+  final loose = _categoryLoose(cat);
+  var best = '';
+  var bestLen = 0;
   for (final entry in categoryAliases.entries) {
-    if (cat.contains(entry.key) || entry.key.contains(cat)) return entry.value;
+    final key = _categoryLoose(entry.key);
+    if (key.length <= bestLen) continue;
+    if (_containsAsWords(loose, key)) {
+      best = entry.value;
+      bestLen = key.length;
+    }
   }
-  return '';
+  return best;
 }
 
 /// Icon for a spec key label.

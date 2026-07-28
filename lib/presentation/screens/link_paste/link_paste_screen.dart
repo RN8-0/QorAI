@@ -16,6 +16,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/quiz_gate.dart';
+import 'package:qor_ai/core/user_profile_resolver.dart';
+import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -484,8 +486,15 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     }
 
     ref.read(linkQuizProvider.notifier).reset();
-    final user = ref.read(userProfileProvider).valueOrNull;
-    if (user == null) return;
+    // ÖNCEDEN: `valueOrNull` null ise SESSİZCE return — profil stream'i auth
+    // yüklenirken null yayınladığı için giriş yapmış kullanıcıda bile link
+    // analizi hiç başlamıyordu (buton ölü, uyarı yok).
+    final user = await resolveUserProfile(ref);
+    if (!mounted) return;
+    if (user == null) {
+      showQBalanceUnavailableSnack(context, error: const AuthException(message: 'auth'));
+      return;
+    }
 
     final nextUrl = _multiLinkUrls[_currentMultiLinkIndex];
     ref.read(behaviorTrackingProvider).trackLinkPaste(nextUrl, null);

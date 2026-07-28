@@ -115,6 +115,21 @@ const Map<String, String> _signInRequiredMessages = {
   'tr': 'AI özelliklerini kullanmak için giriş yapın.',
 };
 
+const Map<String, String> _analysisFailedMessages = {
+  'ar': 'تعذر إكمال التحليل. حاول مرة أخرى.',
+  'de': 'Die Analyse konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
+  'en': 'The analysis could not be completed. Please try again.',
+  'es': 'No se pudo completar el analisis. Intentalo de nuevo.',
+  'fr': 'L analyse n a pas pu etre terminee. Veuillez reessayer.',
+  'it': 'Non e stato possibile completare l analisi. Riprova.',
+  'ja': '分析を完了できませんでした。もう一度お試しください。',
+  'nl': 'De analyse kon niet worden voltooid. Probeer het opnieuw.',
+  'pl': 'Nie udalo sie ukonczyc analizy. Sprobuj ponownie.',
+  'pt': 'Nao foi possivel concluir a analise. Tente novamente.',
+  'sv': 'Analysen kunde inte slutforas. Forsok igen.',
+  'tr': 'Analiz tamamlanamadı. Lütfen tekrar deneyin.',
+};
+
 const Map<String, String> _closeLabels = {
   'ar': 'إغلاق',
   'de': 'Schliessen',
@@ -168,6 +183,13 @@ String buildInsufficientQMessage(
 String buildQBalanceUnavailableMessage(String? languageCode) {
   final lang = normalizeQorLanguageCode(languageCode);
   return _balanceUnavailableMessages[lang] ?? _balanceUnavailableMessages['en']!;
+}
+
+/// Beklenmeyen bir istisna analizi yarıda kestiğinde gösterilir. Akış bunu
+/// yazarken fazı da `idle`'a çeker — yoksa "analiz sürüyor" kilidi donar.
+String buildAnalysisFailedMessage(String? languageCode) {
+  final lang = normalizeQorLanguageCode(languageCode);
+  return _analysisFailedMessages[lang] ?? _analysisFailedMessages['en']!;
 }
 
 String buildSignInRequiredMessage(String? languageCode) {

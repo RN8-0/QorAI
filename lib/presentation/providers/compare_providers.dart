@@ -335,7 +335,22 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
 
     // Clear ALL previous state before starting fresh analysis
     state = const LinkQuizState(phase: LinkFlowPhase.analyzing);
+    // KRİTİK: `analyzing` fazı hub'da "analiz sürüyor" kilidini açar ve o kilit
+    // yalnızca faz değişince kalkar. Buradan aşağıda BEKLENMEYEN bir istisna
+    // çıkarsa faz `analyzing`de donar → kullanıcı bir daha HİÇBİR analiz
+    // başlatamaz. Bu yüzden gövde komple sarmalanıyor.
+    try {
+      await _runLinkAnalysisFlow(url, user);
+    } catch (e, st) {
+      debugPrint('[LinkQuiz] beklenmeyen hata: $e\n$st');
+      state = state.copyWith(
+        phase: LinkFlowPhase.idle,
+        error: buildAnalysisFailedMessage(_appLang),
+      );
+    }
+  }
 
+  Future<void> _runLinkAnalysisFlow(String url, UserEntity user) async {
     // Analyze link
     final localizedUser = user.copyWith(language: _appLang);
     debugPrint('[LinkQuiz] Starting link analysis for: $url');
@@ -1547,7 +1562,24 @@ class SubQuizNotifier extends StateNotifier<SubQuizState> {
       phase: SubFlowPhase.quizLoading,
       subscriptionNames: pendingNames,
     );
+    // KRİTİK: `quizLoading` hub'daki "analiz sürüyor" kilidini açar; kilit
+    // yalnızca faz değişince kalkar. Beklenmeyen bir istisna fazı burada
+    // dondurursa kullanıcı bir daha HİÇBİR analiz başlatamaz.
+    try {
+      await _runSubscriptionQuizFlow(pendingNames, skipResolution);
+    } catch (e, st) {
+      debugPrint('[SubQuiz] beklenmeyen hata: $e\n$st');
+      state = state.copyWith(
+        phase: SubFlowPhase.idle,
+        error: buildAnalysisFailedMessage(_appLang),
+      );
+    }
+  }
 
+  Future<void> _runSubscriptionQuizFlow(
+    List<String> pendingNames,
+    bool skipResolution,
+  ) async {
     // ── Phase A: AI validation (separate try block — errors must NOT fall through)
     List<String> normalizedNames;
     if (skipResolution) {

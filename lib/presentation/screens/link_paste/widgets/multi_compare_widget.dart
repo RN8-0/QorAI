@@ -85,7 +85,10 @@ class _MultiCompareSheetState extends ConsumerState<_MultiCompareSheet> {
       });
     }
 
-    final user = ref.read(userProfileProvider).valueOrNull;
+    // `valueOrNull` tek başına yetmez: profil stream'i auth yüklenirken null
+    // yayınlıyor → giriş yapmış kullanıcıya "önce giriş yap" deniyordu.
+    final user = await resolveUserProfile(ref);
+    if (!mounted) return;
     if (user == null) {
       if (mounted) {
         setState(() {
