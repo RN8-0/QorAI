@@ -269,10 +269,13 @@ class SubscriptionService extends ChangeNotifier {
       await _loadProducts();
       await _restoreFromLocal();
 
-      // Silently restore any active Play Store subscriptions.
-      // This handles the case where the user deleted their account and re-logged in —
-      // the Play Store subscription is still active even though the PB record is new.
+      // Aktif Play aboneliklerini SESSİZCE geri yükle. Bu, aynı hesabın yeni
+      // cihaza/kuruluma geçmesini karşılar. Sahiplik kapısı (`_verifyAndDeliver`
+      // → `_canClaimPremiumForCurrentUser`) sayesinde BAŞKA bir hesabın
+      // aboneliği buradan premium'a dönüşemez: `_ownershipClaimAllowed` false
+      // olduğu için sahipsiz/yabancı abonelik sessizce yok sayılır.
       try {
+        _ownershipClaimAllowed = false;
         await _iap.restorePurchases();
       } catch (_) {}
 
@@ -358,8 +361,73 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
+  /// Premium'un SAHİBİ olan uygulama hesabı (PocketBase user id).
+  ///
+  /// NEDEN VAR: Play aboneliği CİHAZIN Google hesabına bağlıdır, uygulama
+  /// hesabına değil. `restorePurchases()` cihazdaki aboneliği her oturumda geri
+  /// getiriyor ve eskiden bu, o an giriş yapmış OLAN HERKESE premium veriyordu:
+  /// A hesabı yıllık abone → çıkış → B hesabı giriş → B de "Yıllık abonesiniz"
+  /// oluyordu (canlı kayıtlarda iki hesapta aynı satın alma tarihi görüldü).
+  static const String _premiumOwnerUidKey = 'premium_owner_uid';
+
+  String? get _currentUid =>
+      pb.authStore.isValid ? pb.authStore.record?.id : null;
+
+  /// Kullanıcının BİLEREK başlattığı akış mı (satın alma / "Satın alımları geri
+  /// yükle")? Yalnızca o zaman sahiplik geçerli hesaba devredilir. Otomatik
+  /// restore sahip DEĞİŞTİREMEZ.
+  bool _ownershipClaimAllowed = false;
+
+  Future<String?> _readPremiumOwnerUid() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_premiumOwnerUidKey);
+    return (value == null || value.isEmpty) ? null : value;
+  }
+
+  /// Bu oturum bu aboneliği kullanabilir mi?
+  /// - Sahip yoksa: yalnız kullanıcı bilerek talep ettiyse sahiplenir.
+  /// - Sahip varsa: yalnız sahibi kullanabilir.
+  Future<bool> _canClaimPremiumForCurrentUser() async {
+    final uid = _currentUid;
+    if (uid == null || uid.isEmpty) return false;
+    final owner = await _readPremiumOwnerUid();
+    if (owner == null) {
+      // Sahipsiz abonelik: yalnızca gerçek satın alma / manuel geri yükleme
+      // sahiplenebilir. Otomatik restore sessizce premium DAĞITMAZ.
+      if (!_ownershipClaimAllowed) return false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_premiumOwnerUidKey, uid);
+      return true;
+    }
+    if (owner == uid) return true;
+    // Abonelik BAŞKA bir hesaba ait. Kullanıcı "geri yükle" diyerek bilerek
+    // devralmak isterse sahiplik değişir; aksi halde premium verilmez.
+    if (_ownershipClaimAllowed) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_premiumOwnerUidKey, uid);
+      return true;
+    }
+    debugPrint(
+      '⚠️ Play aboneliği başka hesaba ait (owner=$owner, current=$uid) — premium verilmedi',
+    );
+    return false;
+  }
+
   /// Verify and deliver purchase
   Future<void> _verifyAndDeliver(PurchaseDetails purchase) async {
+    // SAHİPLİK KAPISI: cihazdaki abonelik, o an giriş yapmış her hesaba
+    // premium vermemeli.
+    if (!await _canClaimPremiumForCurrentUser()) {
+      if (purchase.pendingCompletePurchase) {
+        try {
+          await _iap.completePurchase(purchase);
+        } catch (_) {}
+      }
+      _purchaseCompleter?.complete(const Success(false));
+      _purchaseCompleter = null;
+      return;
+    }
+
     final purchaseDate = _parsePurchaseDate(purchase.transactionDate);
     final expirationDate = _estimateExpirationDate(
       purchase.productID,
@@ -403,6 +471,12 @@ class SubscriptionService extends ChangeNotifier {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_premium', true);
+    // Premium'u KİMİN kullandığını da yaz: aynı cihazda başka bir hesap giriş
+    // yaptığında yerel bayrak ona premium vermemeli.
+    final uid = _currentUid;
+    if (uid != null && uid.isNotEmpty) {
+      await prefs.setString(_premiumOwnerUidKey, uid);
+    }
     if (productId != null && productId.isNotEmpty) {
       await prefs.setString('active_product_id', productId);
     } else {
@@ -475,6 +549,11 @@ class SubscriptionService extends ChangeNotifier {
     await prefs.remove('active_product_id');
     await prefs.remove('premium_purchase_date');
     await prefs.remove('premium_expiration_date');
+    await prefs.remove('premium_purchase_token');
+    // Sahiplik kaydı da gider: bir sonraki hesap, aboneliği ancak "Satın
+    // alımları geri yükle" ile BİLEREK devralabilir.
+    await prefs.remove(_premiumOwnerUidKey);
+    _ownershipClaimAllowed = false;
     _status = SubscriptionStatus.free;
     _profileStatus = SubscriptionStatus.free;
     _usageNamespace = 'guest_device';
@@ -491,6 +570,17 @@ class SubscriptionService extends ChangeNotifier {
   Future<void> _restoreFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final premium = prefs.getBool('is_premium') ?? false;
+    // Yerel premium bayrağı CİHAZ geneli. Sahibi başka bir hesapsa uygulama:
+    // aksi halde aynı telefonda hesap değiştiren herkes premium görünüyordu.
+    final owner = prefs.getString(_premiumOwnerUidKey);
+    final uid = _currentUid;
+    if (premium && owner != null && owner.isNotEmpty && owner != uid) {
+      debugPrint(
+        '⚠️ Yerel premium başka hesaba ait (owner=$owner, current=$uid) — yok sayıldı',
+      );
+      _status = SubscriptionStatus.free;
+      return;
+    }
     final productId = prefs.getString('active_product_id');
     final purchaseDate = _parseStoredDate(
       prefs.getString('premium_purchase_date'),
@@ -635,6 +725,8 @@ class SubscriptionService extends ChangeNotifier {
   Future<Result<bool>> purchaseProduct(ProductDetails product) async {
     try {
       _purchaseCompleter = Completer<Result<bool>>();
+      // Kullanıcı BİLEREK satın alıyor → abonelik bu hesaba bağlanır.
+      _ownershipClaimAllowed = true;
 
       final purchaseParam = PurchaseParam(productDetails: product);
       final started = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
@@ -656,6 +748,8 @@ class SubscriptionService extends ChangeNotifier {
     } catch (e) {
       _purchaseCompleter = null;
       return Failure(ServerException(message: 'Purchase error: $e'));
+    } finally {
+      _ownershipClaimAllowed = false;
     }
   }
 
@@ -692,8 +786,13 @@ class SubscriptionService extends ChangeNotifier {
     });
 
     try {
+      // Kullanıcı "Satın alımları geri yükle" dedi → BİLEREK talep ediyor,
+      // aboneliğin sahipliği bu hesaba geçebilir. (Otomatik restore'da bu
+      // bayrak false; oradan başka hesabın aboneliği premium'a dönüşemez.)
+      _ownershipClaimAllowed = true;
       await _iap.restorePurchases();
     } catch (e) {
+      _ownershipClaimAllowed = false;
       restoreListener.cancel();
       return Failure(ServerException(message: 'Restore error: $e'));
     }
@@ -709,6 +808,7 @@ class SubscriptionService extends ChangeNotifier {
 
     // Give the _verifyAndDeliver async path a moment to finish writing state.
     await Future.delayed(const Duration(milliseconds: 300));
+    _ownershipClaimAllowed = false;
     return Success(isPremium);
   }
 
