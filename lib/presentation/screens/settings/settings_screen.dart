@@ -15,6 +15,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:qor_ai/core/user_scope_reset.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/core/theme.dart';
@@ -1154,6 +1155,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               await ref.read(subscriptionServiceProvider).clearLocalPremium();
               ref.read(selectedCountryProvider.notifier).resetToAutoDetect();
               await ref.read(authRepositoryProvider).signOut();
+              // Bellekteki kullanıcıya özel önbellekler (eşleşme puanı, AI
+              // raporları, sohbet, analiz akışları) da düşsün — hiçbiri
+              // autoDispose değil, yoksa bir sonraki hesapta görünürler.
+              resetUserScopedState(ref);
               if (!mounted) return;
               navigator.go(AppRoutes.login);
             },
@@ -1178,6 +1183,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // the next account. Play Store will re-deliver via restorePurchases.
           ref.read(subscriptionServiceProvider).clearLocalPremium();
           ref.read(selectedCountryProvider.notifier).resetToAutoDetect();
+          resetUserScopedState(ref);
           navigator.go(AppRoutes.login);
         },
         onError: (msg) => _showInfoSnackbar(msg),

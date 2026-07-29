@@ -646,6 +646,9 @@ class AuthRepository {
       await _cache.clearUserData();
       await _hive?.clearUserData();
       await _hive?.clearViewedProducts();
+      // Arama geçmişi de KULLANICIYA ÖZELDİR: temizlenmediğinde bir sonraki
+      // hesap, önceki hesabın aradığı ürünleri arama kutusunda görüyordu.
+      await _hive?.clearRecentSearches();
     } catch (_) {}
   }
 

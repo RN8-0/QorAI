@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:qor_ai/core/user_scope_reset.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
@@ -281,6 +282,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Önceki hesabın "quiz atlandı" bayrağı yeni hesaba SIZMASIN → aksi
         // halde router redirect quiz'i atlar ("kayıttan sonra quiz gelmedi").
         ref.read(cacheServiceProvider).setQuizSkipped(false);
+        // Önceki oturumdan kalan AI önbellekleri (eşleşme puanı, raporlar,
+        // sohbet) yeni hesaba taşınmasın.
+        resetUserScopedState(ref);
         if (mounted) {
           // Doğrulama maili gönderildi bildirimi
           ScaffoldMessenger.of(context).showSnackBar(

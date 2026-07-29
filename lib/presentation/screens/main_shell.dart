@@ -13,6 +13,7 @@ import "package:google_fonts/google_fonts.dart";
 import "package:qor_ai/core/app_keys.dart";
 import "package:qor_ai/core/constants.dart";
 import "package:qor_ai/core/pb_client.dart";
+import "package:qor_ai/core/user_scope_reset.dart";
 import "package:qor_ai/presentation/providers/providers.dart";
 import "package:qor_ai/services/connectivity_service.dart";
 import "package:qor_ai/services/notification_service.dart";
@@ -710,6 +711,27 @@ class _MainShellState extends ConsumerState<MainShell>
     // Kullanıcı bu işlemleri artık YALNIZ Qor AI chat'ten kontrol eder.
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
     final hub = ref.read(analysisHubProvider.notifier);
+
+    // ── HESAP DEĞİŞİMİ GÜVENLİK AĞI ────────────────────────────────────────
+    // Kullanıcıya özel provider'ların hiçbiri autoDispose DEĞİL. Çıkış/giriş
+    // ekranlarında tek tek temizlemeye güvenmek yetmez (Google ile doğrudan
+    // başka hesaba geçiş gibi yollar var): uid'nin değiştiğini burada, tek
+    // merkezden yakalayıp önbellekleri düşürüyoruz. Aksi halde A hesabının
+    // eşleşme puanı / AI raporu / sohbeti B hesabında görünür.
+    ref.listen<AsyncValue<String?>>(authStateProvider, (prev, next) {
+      final prevUid = prev?.valueOrNull;
+      final nextUid = next.valueOrNull;
+      if (prevUid == nextUid) return;
+      // SADECE gerçek hesap değişiminde sıfırla:
+      //   • A → B (farklı hesap)
+      //   • A → null (çıkış)
+      // `null → A` KASITLI olarak dışarıda: authStateChanges token yenileme /
+      // yeniden bağlanma sırasında da loading→data geçişi yayınlayabiliyor ve
+      // orada sıfırlamak KOŞAN BİR ANALİZİ silerdi. Girişteki temizliği zaten
+      // login ekranı ve çıkış akışı yapıyor.
+      if (prevUid == null) return;
+      resetUserScopedState(ref);
+    });
 
     ref.listen<SubQuizState>(subQuizProvider, (prev, next) {
       if (!mounted) return;
