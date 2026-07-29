@@ -27,6 +27,13 @@
   <link rel="apple-touch-icon" href="/assets/favicon.png?v=20260605a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Ürün görselleri Epey'in CORP başlığı yüzünden ZORUNLU olarak wsrv.nl
+       proxy'sinden geçiyor. Preconnect olmadan ilk görselde DNS + TLS el
+       sıkışması bekleniyordu; ölçümde wsrv.nl istekleri 1.5-1.9 s sürüyordu.
+       Bağlantıyı peşin kurmak ilk görselin görünme süresini doğrudan düşürür. -->
+  <link rel="preconnect" href="https://wsrv.nl" crossorigin />
+  <link rel="dns-prefetch" href="https://wsrv.nl" />
+  <link rel="dns-prefetch" href="https://resim.epey.com" />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />

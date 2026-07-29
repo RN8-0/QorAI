@@ -55,9 +55,24 @@ function main() {
   assert(/Sitemap:\s*https:\/\/qorai\.net\/sitemap\.xml/.test(robots), 'robots.txt must reference sitemap.xml');
   assert(/Disallow:\s*\/go\b/.test(robots), 'robots.txt should block affiliate redirect crawling');
 
-  const productShell = read('product/index.html');
-  assert(!/<meta name="robots" content="noindex/i.test(productShell), 'product shell must be indexable');
-  assert(/max-image-preview:large/.test(productShell), 'product shell must allow large image previews');
+  // `product/index.html` id'siz `/product` yolunun BOŞ kabuğudur — hiçbir
+  // içerik render etmez, sitemap'te de yoktur. Bu yüzden noindex OLMALI; aksi
+  // halde Google onu bulup boş sayfa indeksliyordu. Indekslenebilirlik kontrolü
+  // GERÇEK ürün sayfalarında yapılır (product/<slug>-<id>/index.html).
+  const productPlaceholder = read('product/index.html');
+  assert(
+    /<meta name="robots" content="noindex/i.test(productPlaceholder),
+    'empty /product placeholder must be noindex',
+  );
+
+  const realProductDirs = sampleDirs('product', 3);
+  assert(realProductDirs.length > 0, 'no prerendered product pages found');
+  for (const dir of realProductDirs) {
+    const shell = read(`${dir}/index.html`);
+    assert(!/<meta name="robots" content="noindex/i.test(shell), `${dir} must be indexable`);
+    assert(/max-image-preview:large/.test(shell), `${dir} must allow large image previews`);
+    assert(rootBody(shell).length > 200, `${dir} prerender body is missing or too small`);
+  }
 
   // ── uniqueness guard ──────────────────────────────────────────────────────
   // The nightly cron runs seo.mjs without a vite build; a template-sanitisation

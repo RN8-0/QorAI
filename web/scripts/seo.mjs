@@ -1046,10 +1046,15 @@ const STATIC_ROUTES = [
     },
   },
   {
-    dir: 'product', path: '/product', sitemap: false,
+    // `/product` (id'siz) yalnızca derin-link geri dönüşü için duran BOŞ bir
+    // kabuktur — hiçbir içerik render etmez. sitemap'te değildi ama noindex de
+    // almıyordu; Google dış bir linkle bulursa BOŞ sayfa indeksliyordu
+    // (AdSense "düşük değerli içerik" sinyali). Artık noindex.
+    dir: 'product', path: '/product', sitemap: false, noindex: true,
     seo: {
       title: 'Ürün özellikleri ve karşılaştırma — Qor AI',
       description: 'Qor AI ürün detay sayfası. Ürün özelliklerini, teknik skoru, görselleri ve karşılaştırma seçeneklerini incele.',
+      noindex: true,
     },
   },
   {
