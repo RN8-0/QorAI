@@ -33,7 +33,20 @@ export function useCompare() {
   const [ids, setIds] = useState(read);
 
   useEffect(() => {
-    const sync = () => setIds(read());
+    const sync = () => setIds((prev) => {
+      const next = read();
+      // Aynı içerikte yeni dizi referansı döndürmek gereksiz rerender +
+      // `[ids.join(',')]` bağımlı effect'lerin tekrar koşmasına yol açar.
+      if (prev.length === next.length && prev.every((v, i) => v === next[i])) return prev;
+      return next;
+    });
+    // KRİTİK: mount'ta BİR KEZ senkronize ol. `write()` içindeki
+    // dispatchEvent SENKRON çalışıyor; bir bileşen kendi effect'inde
+    // setCompareList() çağırdığında bu event, aşağıdaki listener HENÜZ
+    // kurulmadığı için KAYBOLUYORDU. Somut sonuç: /compare/<a>-vs-<b> derin
+    // linkine gelen ilk ziyaretçide (localStorage boş) `ids` boş kalıyor ve
+    // sitemap'teki karşılaştırma sayfaları BOŞ görünüyordu.
+    sync();
     window.addEventListener(EVT, sync);
     window.addEventListener('storage', sync);
     return () => {

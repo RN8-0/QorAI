@@ -4,22 +4,51 @@
     {
       "name": "web-dev",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "cwd": "web",
       "port": 5173
     },
     {
       "name": "web-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
       "cwd": "web",
       "port": 4173
     },
     {
       "name": "admin-static",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4180", "--directory", "admin"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4180",
+        "--directory",
+        "admin"
+      ],
       "port": 4180
+    },
+    {
+      "name": "website-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4190",
+        "--directory",
+        "website"
+      ],
+      "port": 4190
     }
   ]
 }

@@ -270,6 +270,14 @@ export default function BlogPost() {
   // replace: geri tusu kirilmasin. Onizlemede (previewId) dokunulmaz.
   useEffect(() => {
     if (!post || previewId) return;
+    // KRİTİK: `post` HENÜZ adresteki makale olmayabilir. Kullanıcı "Benzer
+    // rehberler"den başka bir yazıya tıkladığında `slug` anında değişir ama
+    // yeni kayıt gelene kadar `post` ÖNCEKİ yazıdır. O anda burada
+    // navigate(eski slug) çalışıyordu → adres eski yazıya geri dönüyor, sayfa
+    // değişmiyor ve sadece en başa kayıyordu (bildirilen hata).
+    // Bu yüzden dil eşitlemesi YALNIZCA post gerçekten bu adrese aitse yapılır.
+    const ownSlugs = [post.slug, post.slug_tr, post.slug_en, post.slug_de].filter(Boolean);
+    if (!ownSlugs.includes(slug)) return;
     const want = articleSlug(post, lang);
     if (want && want !== slug) navigate(`/blog/${want}`, { replace: true });
   }, [post, lang, slug, previewId, navigate]);

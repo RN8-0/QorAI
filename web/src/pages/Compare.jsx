@@ -229,7 +229,15 @@ export default function Compare() {
     description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.'),
     path: routeParams.pair ? `/compare/${routeParams.pair}` : '/compare',
   });
-  const { ids, remove, clear, add } = useCompare();
+  const { ids: poolIds, remove, clear, add } = useCompare();
+  // Derin linkte URL TEK DOĞRULUK KAYNAĞIDIR. Havuz (localStorage) seeding
+  // effect'iyle dolar ama o effect bir tick sonra etki eder; ilk render'da
+  // URL'deki çifti doğrudan kullanmak, sayfanın localStorage'a hiç bağlı
+  // olmadan ilk karede doğru ürünleri çekmesini garantiler.
+  const ids = useMemo(
+    () => (urlPairIds.length === 2 && poolIds.length === 0 ? urlPairIds : poolIds),
+    [urlPairIds.join(','), poolIds.join(',')], // eslint-disable-line
+  );
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [term, setTerm] = useState('');

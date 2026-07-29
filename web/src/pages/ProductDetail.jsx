@@ -693,12 +693,17 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (!p?.id) return;
+    // `p` HENÜZ adresteki ürün olmayabilir: "Benzer ürünler"den başka bir ürüne
+    // tıklandığında adres anında değişir ama yeni kayıt gelene kadar `p` önceki
+    // üründür. O anda kanonik adresi yazmak, adres çubuğunu ESKİ ürüne geri
+    // çeviriyordu (yenileme/geri tuşu yanlış ürüne gidiyordu).
+    if (p.id !== id) return;
     const canonicalPath = productPath(p);
     const currentPath = `${loc.pathname}${loc.search}`;
     if (canonicalPath !== currentPath && loc.pathname.startsWith('/product')) {
       window.history.replaceState(window.history.state, '', canonicalPath);
     }
-  }, [loc.pathname, loc.search, p]);
+  }, [loc.pathname, loc.search, p, id]);
 
   useEffect(() => {
     let live = true;
