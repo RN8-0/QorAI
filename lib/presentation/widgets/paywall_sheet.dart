@@ -16,6 +16,7 @@ import 'package:qor_ai/core/pb_client.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/services/subscription_service.dart';
+import 'package:qor_ai/services/analytics_service.dart';
 
 const _kPremiumBase = AppTheme.premiumGold;
 const _kPremiumLight = AppTheme.premiumChampagne;
@@ -239,7 +240,11 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
   },
 };
 
-void showPaywallSheet(BuildContext context) {
+/// [source] paywall'ın HANGİ ekrandan açıldığını taşır. Premium dönüşümünün
+/// nerede doğduğunu bilmeden fiyat/limit ayarı yapmak körlemedir — route
+/// observer sadece "premium ekranı görüldü" der, sebebini söylemez.
+void showPaywallSheet(BuildContext context, {String source = 'unknown'}) {
+  AnalyticsService.instance.logPaywallView(source);
   context.push(AppRoutes.premium);
 }
 

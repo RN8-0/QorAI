@@ -116,6 +116,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   Future<void> startComparison(UserEntity user) async {
     if (state.selectedProductIds.length < 2) return;
 
+    AnalyticsService.instance.logComparisonStart(state.selectedProductIds);
+
     state = state.copyWith(
       isLoading: true,
       error: null,
@@ -138,6 +140,14 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
           loadingMessage: null,
         );
         _ref.invalidate(userComparisonsProvider);
+        AnalyticsService.instance.logComparisonComplete(
+          state.selectedProductIds,
+          hasWinner: data.winnerId != null,
+        );
+        // Kullanıcı tam da değeri gördüğü anda: puanlama isteği. Servis kendi
+        // koşullarını (3. eylem, 2 gün, sürüm başına tek kez) içeride kontrol
+        // eder — buradan koşulsuz çağrılır.
+        ReviewPromptService.instance.registerValuableAction();
       },
       failure: (error) {
         state = state.copyWith(
@@ -361,9 +371,16 @@ class LinkQuizNotifier extends StateNotifier<LinkQuizState> {
         debugPrint(
           '[LinkQuiz] Analysis succeeded: score=${data.aiScore}, category=${data.category}',
         );
+        // Hangi mağazaların linki yapıştırılıyor? Affiliate önceliğini bu
+        // veri belirlemeli — tahmin değil. (Servis yalnızca host'u gönderir.)
+        AnalyticsService.instance.logLinkAnalysis(url);
+        ReviewPromptService.instance.registerValuableAction();
         baseResult = data;
       case Failure<LinkAnalysisResult>(error: final error):
         debugPrint('[LinkQuiz] Analysis failed: ${error.message}');
+        // Başarısız analizler kritik: kullanıcı Q harcadı, sonuç alamadı.
+        // Hangi host'ta kırıldığını bilmeden çözülemez.
+        AnalyticsService.instance.logLinkAnalysisFailed(url, error.message);
         state = state.copyWith(phase: LinkFlowPhase.idle, error: error.message);
         baseResult = null;
     }

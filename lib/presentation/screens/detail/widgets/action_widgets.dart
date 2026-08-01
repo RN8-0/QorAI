@@ -504,7 +504,7 @@ class _FavoriteButtonState extends ConsumerState<_FavoriteButton> with SingleTic
                       ),
                       action: SnackBarAction(
                         label: 'Premium',
-                        onPressed: () => showPaywallSheet(context),
+                        onPressed: () => showPaywallSheet(context, source: 'product_detail'),
                       ),
                     ),
                   );

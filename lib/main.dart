@@ -14,6 +14,7 @@ import 'package:qor_ai/services/cache_service.dart';
 import 'package:qor_ai/services/remote_config_service.dart';
 import 'package:qor_ai/services/spec_translation_service.dart';
 import 'package:qor_ai/services/notification_service.dart';
+import 'package:qor_ai/services/analytics_service.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:qor_ai/core/pb_client.dart' as pb_client;
 import 'package:qor_ai/data/datasources/hive_ds.dart';
@@ -93,12 +94,16 @@ void _preloadGoogleFonts() {
 ///
 /// Sıralama:
 ///   t=6s  -> Notifications init
+///   t=6s  -> Analytics init (Firebase notification init'te zaten ayakta)
 ///   t=17s -> Spec translations dictionary
 ///   t=18s -> ATT request (iOS only)
 Future<void> _scheduleDeferredStartupTasks(CacheService cacheService) async {
   await Future<void>.delayed(_kStartupInitialIdle);
   if (!kIsWeb) {
     await _initializeNotifications();
+    // Notifications Firebase'i ayağa kaldırdı; analytics aynı app instance'ını
+    // kullanır. Buraya kadar tamponlanmış event'ler bu çağrıda boşalır.
+    await _initializeAnalytics();
   }
 
   await Future<void>.delayed(_kSpecDictionaryIdle);
@@ -119,6 +124,14 @@ Future<void> _initializeSpecTranslations() async {
     debugPrint('=== QOR AI: Spec translations initialized ===');
   } catch (e) {
     debugPrint('=== QOR AI: Spec translations failed: $e ===');
+  }
+}
+
+Future<void> _initializeAnalytics() async {
+  try {
+    await AnalyticsService.instance.init();
+  } catch (e) {
+    debugPrint('=== QOR AI: Analytics init failed: $e ===');
   }
 }
 

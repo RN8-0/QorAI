@@ -37,6 +37,7 @@ import 'package:qor_ai/presentation/screens/settings/email_verify_screen.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/core/pb_client.dart';
+import 'package:qor_ai/services/analytics_service.dart';
 
 // Route names
 class AppRoutes {
@@ -99,7 +100,7 @@ class _AuthStoreNotifier extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = _AuthStoreNotifier();
   ref.onDispose(authNotifier.dispose);
-  return GoRouter(
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.login,
     debugLogDiagnostics: false,
@@ -486,6 +487,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
   );
+
+  // Ekran görüntülemeleri tek noktadan ölçülür — her ekrana ayrı log çağrısı
+  // serpiştirmek yerine router'ın konfigürasyonunu dinliyoruz.
+  //
+  // `fullPath` ham adres değil, ROTA KALIBI döner (`/product/:id`), yani
+  // 106k ürün GA4'te 106k ayrı ekran adına dönüşmez. Kalıp alınamazsa
+  // sessizce atlarız; analytics hiçbir zaman navigasyonu etkilememeli.
+  String? lastLoggedPath;
+  void logCurrentRoute() {
+    final path = router.routerDelegate.currentConfiguration.fullPath;
+    if (path.isEmpty || path == lastLoggedPath) return;
+    lastLoggedPath = path;
+    AnalyticsService.instance.logScreenView(path);
+  }
+
+  router.routerDelegate.addListener(logCurrentRoute);
+  ref.onDispose(() => router.routerDelegate.removeListener(logCurrentRoute));
+
+  return router;
 });
 
 // ─── Page Transition Animations (iOS-style) ─── Section 14.4

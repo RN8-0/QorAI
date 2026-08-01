@@ -1322,7 +1322,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
           ),
           const SizedBox(height: 8),
           GestureDetector(
-            onTap: () => showPaywallSheet(context),
+            onTap: () => showPaywallSheet(context, source: 'subscriptions'),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

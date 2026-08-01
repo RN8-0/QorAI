@@ -47,6 +47,7 @@ import 'package:qor_ai/services/youtube_service.dart';
 import 'package:qor_ai/services/behavior_tracking_service.dart';
 import 'package:qor_ai/services/ip_location_service.dart';
 import 'package:qor_ai/services/analytics_service.dart';
+import 'package:qor_ai/services/review_prompt_service.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/product_filter.dart';
 import 'package:qor_ai/core/search_ranking.dart'

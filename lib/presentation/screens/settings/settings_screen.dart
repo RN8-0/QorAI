@@ -257,7 +257,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         iconBg: const Color(0xFFEAB308),
                         title: context.l10n?.subscription ?? 'Subscription',
                         trailing: _buildPlanBadge(isPremium),
-                        onTap: () => showPaywallSheet(context),
+                        onTap: () => showPaywallSheet(context, source: 'settings'),
                       ),
                       _iosDivider(),
                       _iosRow(

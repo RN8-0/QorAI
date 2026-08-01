@@ -441,7 +441,7 @@ class _ProfileBody extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: GestureDetector(
-                onTap: () => showPaywallSheet(context),
+                onTap: () => showPaywallSheet(context, source: 'profile'),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

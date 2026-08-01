@@ -1515,7 +1515,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () => showPaywallSheet(context),
+        onTap: () => showPaywallSheet(context, source: 'link_paste'),
         borderRadius: BorderRadius.circular(16),
         child: Container(
           constraints: const BoxConstraints(minWidth: 108, maxWidth: 132),

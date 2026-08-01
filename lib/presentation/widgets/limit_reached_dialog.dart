@@ -154,7 +154,7 @@ void showInsufficientQDialog(
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.pop(ctx);
-                            showPaywallSheet(context);
+                            showPaywallSheet(context, source: 'limit_reached');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
