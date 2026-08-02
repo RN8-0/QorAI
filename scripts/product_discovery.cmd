@@ -31,9 +31,12 @@ echo ----- discovery exit=%DISCOVERY_EXIT% ----- >> "%LOG%"
 
 rem 2) Yeni urunlere fiyat. price_refresh.cmd'nin pass2b'si ile ayni filtre
 rem    ama daha buyuk kota: kesif gecesi yuzlerce urun gelebiliyor ve 800'luk
-rem    gece kotasi hepsini almiyordu. En yeni kayit once.
+rem    gece kotasi hepsini almiyordu. En son cekilen once.
+rem    NOT: --sort=-created PB'de 400 doner (olculdu 2026-08-03) — sistem alani
+rem    uzerinde siralama bu kurulumda kabul edilmiyor. scrapedAt calisiyor ve
+rem    zaten "en yeni cekilen" demek.
 set NO_REINDEX=1
-node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-created --limit=2000 --concurrency=2 >> "%LOG%" 2>&1
+node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=pricedOfferCount<1 && bestOfferCheckedAt=''" --sort=-scrapedAt --limit=2000 --concurrency=2 >> "%LOG%" 2>&1
 set NO_REINDEX=
 
 rem 3) Fiyatlar PB'de birikip siteye yansimadan kalmasin
