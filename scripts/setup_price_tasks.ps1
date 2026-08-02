@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$tasks = @('QorAI-PriceRefresh', 'QorAI-PriceDirect')
+$tasks = @('QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery')
 if ($IncludeFcm -or $Uninstall) { $tasks += 'QorAI-FCM-TokenRefresh' }
 
 if ($Uninstall) {
@@ -43,6 +43,9 @@ if ($Uninstall) {
 $RepoPath = (Resolve-Path $RepoPath).Path
 if (-not (Test-Path (Join-Path $RepoPath 'scripts\price_refresh.cmd'))) {
   throw "scripts\price_refresh.cmd bulunamadi — RepoPath yanlis: $RepoPath"
+}
+if (-not (Test-Path (Join-Path $RepoPath 'scripts\product_discovery.cmd'))) {
+  throw "scripts\product_discovery.cmd bulunamadi — RepoPath yanlis: $RepoPath"
 }
 if (-not (Test-Path (Join-Path $RepoPath 'migration\.env'))) {
   throw "migration\.env YOK. Eski PC'den kopyala (gizli anahtarlar git'te tutulmuyor)."
@@ -76,6 +79,15 @@ Install-QorTask -Name 'QorAI-PriceDirect' `
   -Trigger (New-ScheduledTaskTrigger -Daily -At '03:12') `
   -TaskSettings $settings
 
+# 23:20 — YENİ ÜRÜN KEŞFİ: Epey'e eklenen ürünler katalog + çeviri + puan
+# + fiyat olarak siteye kendiliğinden girer (scripts\product_discovery.cmd).
+# Saat neden 23:20? Koşu --max-hours=3 ile sınırlı; 03:10'daki fiyat göreviyle
+# aynı anda epey.com'a yüklenirse Epey oturumu yanıyor.
+Install-QorTask -Name 'QorAI-ProductDiscovery' `
+  -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\product_discovery.cmd`"") `
+  -Trigger (New-ScheduledTaskTrigger -Daily -At '23:20') `
+  -TaskSettings $settings
+
 if ($IncludeFcm) {
   # 50 dk'da bir FCM access token yenileme. Hetzner cron'u (*/50) bunu zaten
   # yapıyor — bu görev yalnız yedeklilik içindir, çift koşması zararsızdır
@@ -91,3 +103,4 @@ Write-Host ''
 Write-Host 'Tamam. Dogrulama:'
 Write-Host '  Get-ScheduledTask QorAI-* | Get-ScheduledTaskInfo'
 Write-Host "  Ilk kosudan sonra log: $env:USERPROFILE\qorai-price.log ve qorai-price-direct.log"
+Write-Host "  Yeni urun kesfi logu : $env:USERPROFILE\qorai-discovery.log"

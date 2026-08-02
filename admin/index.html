@@ -1238,7 +1238,10 @@
         'js/notifications.js',
         'js/support.js',
         'js/blog.js',
-        'js/app.js'
+        'js/app.js',
+        // Başsız gece koşusu (scripts/auto_discover.js bunu çağırır) — en sonda
+        // olmalı: app.js'teki showView/startCategoryTranslation'a bağımlı.
+        'js/auto_run.js'
       ];
       var head = document.head;
       scripts.forEach(function(src) {

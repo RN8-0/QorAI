@@ -8871,6 +8871,21 @@ async function startBulkScrape() {
         scraperAbort ? 'warn' : 'success'
       );
       if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
+      // Headless runner (scripts/auto_discover.js) reads the run totals from
+      // here — the counters are otherwise local to this function and the log
+      // text is not machine-readable.
+      if (typeof window !== 'undefined') {
+        window.qoraiLastScrapeTotals = {
+          added: totals.added || 0,
+          updated: totals.updated || 0,
+          skipped: totals.skipped || 0,
+          errors: totals.errors || 0,
+          categories: [...scoreCats],
+          missingCats: totals.missingCats || [],
+          stopped: !!scraperAbort,
+          finishedAt: new Date().toISOString(),
+        };
+      }
       scoreCats.forEach(cat => _queuePostScrapeScore(cat));
       finishScraping();
       return;
@@ -8886,6 +8901,18 @@ async function startBulkScrape() {
       return;
     }
     const results = await sequentialScrape(urlItems.slice(0, singleLimit), singleCat?.id || categoryId, delay, concurrency);
+    if (typeof window !== 'undefined') {
+      window.qoraiLastScrapeTotals = {
+        added: results.added || 0,
+        updated: results.updated || 0,
+        skipped: results.skipped || 0,
+        errors: results.errors || 0,
+        categories: ((results.added || 0) + (results.updated || 0) > 0) ? [singleCat?.id || categoryId] : [],
+        missingCats: [],
+        stopped: !!scraperAbort,
+        finishedAt: new Date().toISOString(),
+      };
+    }
     if ((results.added || 0) + (results.updated || 0) > 0) {
       _queuePostScrapeScore(singleCat?.id || categoryId);
     }
