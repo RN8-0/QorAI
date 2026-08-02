@@ -326,6 +326,14 @@
   function stripLeadingNumber(s) {
     return String(s || '').replace(/^\s*\d+\s*[.)\-–—:]\s*/, '').trim();
   }
+  // Öğe başlığındaki "| En İyi: …" / "| Best for: …" kuyruğunu at. Yazar bunu
+  // bölüm başlığı olarak yazıyor; öğe adı olarak basıldığında yazının içinde
+  // üç satırlık dev başlıklar oluşuyordu ("ChatGPT Plus (GPT Image 2) — Aylık
+  // $20 | En İyi: Genel Kullanım, Metin, Düzenleme"). Fiyat eki KORUNUR —
+  // katalog dışı öğelerde tek fiyat bilgisi odur.
+  function stripHeadingTail(s) {
+    return String(s || '').split('|')[0].replace(/[\s—–-]+$/, '').trim();
+  }
   // Öğe blokları DÜZ METİNDİR (site markdown-benzeri kurallarla render eder).
   // AI bazen içine ham HTML sıkıştırıyor — özellikle kaynak atıflarını
   // <a href="#">Ad</a> olarak (gerçek URL'i de kaybederek). Bunlar sayfada
@@ -393,8 +401,8 @@
     });
     _products.forEach((p, i) => {
       if ((p.kind || 'product') === 'custom') {
-        LANGS.forEach(([c]) => { if (p['name_' + c]) p['name_' + c] = stripLeadingNumber(p['name_' + c]); });
-        if (p.name) p.name = stripLeadingNumber(p.name);
+        LANGS.forEach(([c]) => { if (p['name_' + c]) p['name_' + c] = stripHeadingTail(stripLeadingNumber(p['name_' + c])); });
+        if (p.name) p.name = stripHeadingTail(stripLeadingNumber(p.name));
       }
       ensureBlocks(p);
       // Metin bloklarındaki ham HTML'i düz metne indir.
@@ -702,6 +710,9 @@
     alt: '<p>Referans ürünü ve neden alternatif arandığını anlat (fiyat, stok, ihtiyaç farkı).</p><h2>Neye göre alternatif seçtik?</h2><p>…</p>',
     news: '<h2>Ne oldu?</h2><p>Haberin özü — 2-3 cümle, abartısız.</p><h2>Neden önemli?</h2><p>Kullanıcı için pratik anlamı: fiyat mı düşer, beklemek mi mantıklı…</p><h2>Ne beklenmeli?</h2><p>Tarihler, tahminler (tahminleri tahmin olarak işaretle).</p>',
   };
+  // Şablon kimliği → okunur ad. AI şablonu içeriğe bakarak seçtiğinde
+  // (bkz. blogAiQa) raporda hangi tür olduğunu göstermek için.
+  const TPL_LABEL = Object.fromEntries(TPL.map((t) => [t.id, t.name]));
   function renderTplGallery() {
     const el = root(); if (!el) return;
     const bak = loadBackup('new');
@@ -722,7 +733,7 @@
       </div>`;
   }
   function blogTplPick(id) {
-    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: toDtLocal(new Date()) };
+    _editing = { id: '', slug: '', status: 'draft', category: '', cover: '', publishedAt: toDtLocal(new Date()), template: TPL_BODIES[id] ? id : '' };
     _products = []; _lang = 'tr'; _srcMode = { body: false, concl: false }; _importReport = null;
     if (TPL_BODIES[id]) _editing.body_tr = TPL_BODIES[id];
     renderEditor();
@@ -1480,32 +1491,216 @@ KURALLAR:
     catch (_) { document.execCommand('copy'); toast('Prompt kopyalandı', 's'); }
   }
 
-  // katalog eşleştirme: TS araması + gevşek token kontrolü
+  // ── KATALOG EŞLEŞTİRME ────────────────────────────────────────
+  // ESKİ KURAL TEK YÖNLÜYDÜ: sorgu token'larının %50'si aday adda geçerse
+  // KABUL. ÖLÇÜLDÜ (2026-08-02, "AI görsel oluşturma abonelikleri" yazısı):
+  //   "Google AI Pro Nano Banana 2" → "Google Pixel Buds Pro 2 … Kulaklık"  (0.50 → kabul)
+  //   "Leonardo AI"                 → "MSI Stealth A16 AI+ … Laptop"        (0.50 → kabul)
+  // Yani katalogda HİÇ OLMAYAN hizmetler rastgele ürünlere bağlanıyor, yazının
+  // içine alakasız ürün kartı/iç link giriyordu. Kök neden: (a) eşleşme tek
+  // yönlü ölçülüyordu — aday adın kendisi sorguyu hiç karşılamak zorunda
+  // değildi, (b) "ai/pro/2" gibi jenerik token'lar eşleşme sayılıyordu.
+  //
+  // YENİ KURAL — iki kapı, ikisi de geçilmeli:
+  //   1) MARKA token'ı (ilk anlamlı kelime) adayda geçmeli.
+  //   2) AYIRT EDİCİ token'ların HEPSİ adayda bulunmalı. Eksik kalan tek bir
+  //      kelimeye ancak RAKAMSIZ ise göz yumulur — model numarası eksikse
+  //      (17 vs 15, M5 vs M4, S25 vs S24) eşleşme KESİNLİKLE reddedilir.
+  // F1 artık kabul kapısı DEĞİL, yalnız adaylar arasında sıralama ölçütü:
+  // katalog adları uzun ("Apple iPad Pro 11\" (M5) Wi-Fi Tablet (12 GB / 256 GB)")
+  // ve F1 eşiği bunları haksız yere eliyordu (ölçüldü: f1=0.53).
   function tokensOf(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9ğüşöçı ]+/gi, ' ').split(/\s+/).filter(Boolean); }
+  // Ayırt edici olmayan kelimeler: her üründe/hizmette geçebilir, tek başına
+  // eşleşme kanıtı sayılamaz. NOT: pro/ultra/max/plus BİLEREK listede DEĞİL —
+  // onlar gerçek varyant ayırt edicileridir (S24 vs S24 Ultra).
+  const MATCH_STOPWORDS = new Set([
+    'ai', 'the', 'and', 'with', 've', 'ile', 'için', 'yeni', 'new', 'best', 'en', 'iyi',
+    'edition', 'series', 'seri', 'model', 'tam', 'kablosuz', 'wireless', 'adet', 'gb', 'tb',
+    // Bağlantı/depolama ekleri: ürünü değil varyantı anlatır, katalog adında
+    // her zaman yazmaz ("Galaxy S25 FE 5G" ↔ "Galaxy S25 FE (SM-S731B)").
+    '5g', '4g', 'lte', 'wifi', 'wi', 'fi', 'cellular', 'esim',
+  ]);
+  const _uniq = (arr) => [...new Set(arr)];
+  const _hasDigit = (t) => /\d/.test(t);
+  function matchScore(query, candidateName) {
+    const qt = _uniq(tokensOf(query));
+    const nt = _uniq(tokensOf(candidateName));
+    if (!qt.length || !nt.length) return { f1: 0, sigOk: false, brandOk: false, missing: qt, ok: false };
+    const nSet = new Set(nt);
+    const inter = qt.filter((t) => nSet.has(t)).length;
+    const qCov = inter / qt.length;
+    const nCov = inter / nt.length;
+    const f1 = (qCov + nCov) ? (2 * qCov * nCov) / (qCov + nCov) : 0;
+    const sig = qt.filter((t) => !MATCH_STOPWORDS.has(t) && t.length > 1);
+    const missing = sig.filter((t) => !nSet.has(t));
+    const sigOk = sig.length > 0 && missing.length === 0;
+    const brand = sig[0] || '';
+    const brandOk = brand ? nSet.has(brand) : false;
+    // Tek eksik kelimeye tolerans: rakamsız olmalı (model numarası kaçamaz) ve
+    // geri kalan örtüşme makul olmalı.
+    const nearOk = sig.length > 2 && missing.length === 1 && !_hasDigit(missing[0]) && f1 >= 0.5;
+    return { f1, sigOk, brandOk, missing, ok: brandOk && (sigOk || nearOk) };
+  }
   async function resolveCatalogItem(q) {
     try {
       const r = await window.TsClient.search(q, { perPage: 5 });
       const hits = (r.hits || []).map((h) => h.document);
       if (!hits.length) return null;
-      const qt = tokensOf(q);
-      let best = null; let bestScore = 0;
+      let best = null; let bestF1 = -1;
       for (const d of hits) {
-        const name = `${d.brand || ''} ${d.name || ''}`;
-        const nt = new Set(tokensOf(name));
-        const overlap = qt.filter((t) => nt.has(t)).length;
-        const score = qt.length ? overlap / qt.length : 0;
-        if (score > bestScore) { bestScore = score; best = d; }
+        const m = matchScore(q, `${d.brand || ''} ${d.name || ''}`);
+        if (!m.ok) continue;
+        if (m.f1 > bestF1) { bestF1 = m.f1; best = d; }
       }
-      if (best && (bestScore >= 0.5 || qt.length <= 1)) {
-        return { id: best.id, slug: best.slug || slugify(best.name), name: best.name, brand: best.brand || '', techScore: best.techScore || 0, imageUrl: best.imageUrl || '' };
-      }
-      return null;
+      if (!best) return null;
+      return { id: best.id, slug: best.slug || slugify(best.name), name: best.name, brand: best.brand || '', techScore: best.techScore || 0, imageUrl: best.imageUrl || '' };
     } catch (_) { return null; }
   }
+  // ── GÖRSEL ÇÖZÜMLEME (marka logosu / ürün görseli) ────────────
+  // Katalog dışı öğelerde (Midjourney, ChatGPT Plus, Adobe Firefly…) hiçbir
+  // görsel yoktu: yazı tamamen görselsiz yayına gidiyordu. AI'ın "görsel yok"
+  // diye NOT DÜŞMESİ yetmiyor — düzeltmesi gerekiyor.
+  //
+  // Yaklaşım: Gemini görseli ÜRETMEZ/İNDİRMEZ (yapamaz, hâlüsinasyon riski);
+  // her öğe için markanın RESMÎ ALAN ADINI söyler. Adaylar oradan türetilir ve
+  // her aday GERÇEKTEN YÜKLENEREK doğrulanır (naturalWidth ölçülür) — yani
+  // uydurma bir URL sessizce yazıya giremez.
+  const IMG_MIN_PX = 40;
+  function probeImage(url, timeoutMs = 9000) {
+    return new Promise((resolve) => {
+      const u = String(url || '').trim();
+      if (!u) { resolve(null); return; }
+      const img = new Image();
+      let done = false;
+      const finish = (v) => { if (done) return; done = true; clearTimeout(timer); img.onload = null; img.onerror = null; resolve(v); };
+      const timer = setTimeout(() => finish(null), timeoutMs);
+      img.onload = () => finish((img.naturalWidth || 0) >= IMG_MIN_PX ? { url: u, w: img.naturalWidth, h: img.naturalHeight } : null);
+      img.onerror = () => finish(null);
+      img.referrerPolicy = 'no-referrer';
+      img.src = u;
+    });
+  }
+  function domainOf(value) {
+    const d = String(value || '').trim().toLowerCase()
+      .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '');
+    return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? d : '';
+  }
+  // Sıra ÖNEMLİ: markanın kendi sitesinden gelen ikon en doğrusu (ve marka
+  // kullanımı açısından en güvenlisi). Google'ın s2 servisi sitenin kendi
+  // ikonunu 256px'e kadar verir; olmazsa DuckDuckGo, olmazsa ham /favicon.ico.
+  function logoCandidates(domain) {
+    const d = domainOf(domain);
+    if (!d) return [];
+    return [
+      `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=256`,
+      `https://icons.duckduckgo.com/ip3/${d}.ico`,
+      `https://${d}/favicon.ico`,
+    ];
+  }
+  function pbImgProxy(url) {
+    return (getPb().baseUrl || '').replace(/\/$/, '') + '/api/img?url=' + encodeURIComponent(url);
+  }
+  // Adayları sırayla dene; ilk YÜKLENEN kazanır. Doğrudan yüklenmeyen ama
+  // sunucu proxy'sinden gelen (hotlink korumalı) adresler de kabul edilir —
+  // site zaten aynı proxy'ye düşüyor (BlogPost.jsx imageOnError).
+  async function firstLoadableImage(candidates) {
+    for (const c of candidates) {
+      if (!c) continue;
+      const direct = await probeImage(c);
+      if (direct) return direct.url;
+      const viaProxy = await probeImage(pbImgProxy(c), 12000);
+      if (viaProxy) return c;
+    }
+    return '';
+  }
+  const ITEM_IMAGE_PROMPT = `Aşağıda bir teknoloji blog yazısındaki öğelerin adları var. Her öğe için MARKANIN/HİZMETİN RESMÎ WEB SİTESİNİN ALAN ADINI ver.
+
+SADECE şu JSON: {"items":[{"i":<verilen indeks>,"brand":"<marka/hizmet adı, sade>","site":"<alan adı, örn: midjourney.com — http/www/yol YOK>","kind":"product|subscription|service"}]}
+
+KURALLAR:
+- Alan adından EMİN DEĞİLSEN "site" alanını BOŞ bırak. Uydurma.
+- "site" markanın ANA alan adı olsun (ürün sayfası değil): "openai.com", "adobe.com", "leonardo.ai".
+- "kind": fiziksel cihaz → product; aylık/yıllık ücretli üyelik → subscription; onun dışındaki yazılım/hizmet → service.
+
+ÖĞELER:
+`;
+  async function askItemBrandMeta(entries) {
+    if (!entries.length) return new Map();
+    try {
+      const out = await callGeminiJson(
+        ITEM_IMAGE_PROMPT + JSON.stringify(entries.map((e) => ({ i: e.i, name: e.name }))),
+        3000
+      );
+      const map = new Map();
+      for (const row of (Array.isArray(out.items) ? out.items : [])) {
+        const i = Number(row && row.i);
+        if (!Number.isFinite(i)) continue;
+        map.set(i, { brand: String(row.brand || '').trim(), site: domainOf(row.site), kind: String(row.kind || '').trim() });
+      }
+      return map;
+    } catch (_) { return new Map(); }
+  }
+  function itemImageUrl(p) {
+    return String((p && (p.image || p.imageUrl || p.logo)) || '').trim();
+  }
+  function itemHasImage(p) {
+    if (itemImageUrl(p)) return true;
+    return Array.isArray(p && p.blocks) && p.blocks.some((b) => b.t === 'image' && b.url);
+  }
+  // Görseli olmayan HER öğeye görsel bul. Katalog/abonelik görselleri zaten
+  // import sırasında geliyor; burada kalan marka/hizmet öğeleri çözülür.
+  async function resolveItemImages(onStatus) {
+    const say = (s) => { if (typeof onStatus === 'function') onStatus(s); };
+    const pending = [];
+    _products.forEach((p, i) => { if (!itemHasImage(p)) pending.push({ i, p, name: String(p['name_' + _lang] || p.name || p.name_tr || '').trim() }); });
+    if (!pending.length) return { filled: 0, pending: 0 };
+
+    say(`${pending.length} öğe için görsel aranıyor…`);
+    // Öğenin kendi alanında zaten alan adı varsa (JSON içe aktarma link'i)
+    // Gemini'ye sormaya gerek yok.
+    const needMeta = pending.filter((e) => !domainOf(e.p.site || e.p.link));
+    const meta = await askItemBrandMeta(needMeta.map((e) => ({ i: e.i, name: e.name })));
+
+    let filled = 0;
+    // 3'lü paralel: her aday gerçekten yükleniyor, seri gitmek uzun sürüyor.
+    const queue = [...pending];
+    const worker = async () => {
+      for (;;) {
+        const entry = queue.shift();
+        if (!entry) return;
+        const m = meta.get(entry.i) || {};
+        const site = domainOf(entry.p.site || entry.p.link) || m.site || '';
+        if (m.brand && !entry.p.brand) entry.p.brand = m.brand;
+        if (site) entry.p.site = site;
+        const url = await firstLoadableImage(logoCandidates(site));
+        if (url) {
+          entry.p.image = url;
+          entry.p.imageSource = 'brand-logo';
+          filled++;
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    say(filled ? `${filled}/${pending.length} öğeye görsel bulundu.` : 'Uygun görsel bulunamadı.');
+    return { filled, pending: pending.length };
+  }
+  // Kapak görseli: ÜRÜN fotoğrafı logolara tercih edilir (kapakta logo zayıf
+  // durur). Hiç ürün yoksa ilk bulunan görsel kullanılır.
+  function autoPickCover() {
+    if (effectiveCover()) return '';
+    const byKind = (k) => _products.filter((p) => (p.kind || 'product') === k).map(itemImageUrl).find(Boolean);
+    const pick = byKind('product') || byKind('subscription') || _products.map(itemImageUrl).find(Boolean) || '';
+    if (pick) _editing.cover = pick;
+    return pick;
+  }
+
   async function importItems(items, replace) {
     if (replace) _products = [];
     const report = [];
     for (const it of items) {
+      // "service" (Midjourney, Firefly gibi katalog dışı yazılım/hizmet) katalog
+      // aramasına HİÇ girmez — eskiden her öğe "product" sayıldığı için bunlar
+      // rastgele cihazlara bağlanıyordu.
       const kind = it.kind || 'product';
       // Katalog/abonelik araması fiyat ekinden arındırılmış adla yapılır
       // ("NordVPN — 12,99 $/ay" → "NordVPN"); eşleşme bulunursa görünen ad
@@ -1533,12 +1728,25 @@ KURALLAR:
           continue;
         }
       }
-      // bulunamadı → özel öğe. Yazarın yazdığı ad korunur (fiyat/etiket eki
-      // dahil — VPN gibi katalog dışı öğelerde tek fiyat bilgisi odur) ama
-      // baştaki sıra numarası atılır: site numarayı kendi basar.
+      // bulunamadı (ya da zaten katalog dışı bir hizmet) → özel öğe. Yazarın
+      // yazdığı ad korunur (fiyat/etiket eki dahil — VPN gibi katalog dışı
+      // öğelerde tek fiyat bilgisi odur) ama baştaki sıra numarası atılır:
+      // site numarayı kendi basar.
       const nm = stripLeadingNumber(String(it.name || q || 'Öğe'));
-      _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm, name_de: it.name_de || nm, link: it.link || '', image: it.image || '', imageUrl: '', blocks: it.blocks });
-      report.push({ q: nm, ok: false, label: `${nm} — katalogda bulunamadı, özel öğe olarak eklendi` });
+      _products.push({
+        kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm, name_de: it.name_de || nm,
+        link: it.link || '', image: it.image || '', imageUrl: '',
+        // Görsel çözümleyici (resolveItemImages) önce bunlara bakar; AI zaten
+        // resmî alan adını verdiyse ikinci bir Gemini çağrısı yapılmaz.
+        brand: it.brand || '', site: domainOf(it.site) || '',
+        blocks: it.blocks,
+      });
+      // Hizmet/abonelik öğesinde "katalogda bulunamadı" bir HATA DEĞİL — beklenen
+      // durum. Rapor dilini buna göre ayır, yoksa her yazıda sahte uyarı çıkıyor.
+      report.push(kind === 'product'
+        ? { q: nm, ok: false, label: `${nm} — katalogda bulunamadı, özel öğe olarak eklendi` }
+        : { q: nm, ok: true, label: `${nm} → katalog dışı ${kind === 'subscription' ? 'abonelik' : 'hizmet'} (özel öğe)` });
     }
     _importReport = report;
   }
@@ -1568,17 +1776,30 @@ GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli J
 ŞEMA:
 {
   "category": "<varsa uygun kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
+  "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
   "langs": {
     "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
     "en": { ... }, "de": { ... }
   },
   "items": [
-    { "kind": "product", "search": "<sade model adı: marka + model, FİYAT/ek İÇERMEZ>", "name": "<yazarın yazdığı görünen başlık, aynen>",
+    { "kind": "product|subscription|service",
+      "search": "<YALNIZ kind=product için: sade model adı: marka + model, FİYAT/ek İÇERMEZ. Diğerlerinde boş>",
+      "name": "<yazarın yazdığı görünen başlık, aynen>",
+      "brand": "<marka/hizmet adı, sade: Midjourney, OpenAI, Adobe>",
+      "site": "<markanın RESMÎ alan adı: midjourney.com — emin değilsen BOŞ>",
       "blocks": [ { "type": "text", "style": "paragraph", "tr": "", "en": "", "de": "" } ] }
   ]
 }
 
 KURALLAR — ÇOK ÖNEMLİ:
+0. "kind" ALANI KRİTİK — yanlışı yazının içine alakasız ürün kartı sokar:
+   - "product": mağazadan satın alınan FİZİKSEL cihaz (telefon, laptop, kulaklık, TV…). Sadece bunlar katalogda aranır.
+   - "subscription": aylık/yıllık ücretli üyelik (ChatGPT Plus, Netflix, NordVPN, Spotify, Google AI Pro).
+   - "service": ücretli üyeliğe indirgenemeyen yazılım/araç/platform (Midjourney, Adobe Firefly, Leonardo AI, Figma).
+   Bir yazılım/hizmet ASLA "product" olamaz. Emin değilsen "service" yaz — katalogda aranmaz, uydurma eşleşme olmaz.
+0b. "template": yazının türünü içeriğe bakarak SEN belirle. "En iyi N …" listesi → topn · tek ürün incelemesi → review ·
+   "A vs B" → vs · satın alma rehberi → guide · adım adım anlatım → howto · soru-cevap → faq · indirim/fırsat → deals ·
+   "X alternatifleri" → alt · duyuru/haber → news.
 1. HİÇBİR CÜMLEYİ ATLAMA, ÖZETLEME, KISALTMA. Metnin tamamı çıktıda yer almalı. Bu bir çeviri/biçimlendirme işidir, yeniden yazma değil.
 2. Ham metinde KAÇ DİL varsa o kadarını doldur. Olmayan dili boş obje bırak ({}). Kendin ÇEVİRİ YAPMA.
 3. Numaralı ürün/hizmet bölümleri ("1. Apple iPad Pro (M5) — ...", "## 2. NordVPN" gibi) items dizisine gider; o bölümün TÜM metni (paragraflar, Artıları/Eksileri listeleri, "Kime Uygun?" kısmı) o öğenin blocks[0] metnine girer.
@@ -1642,12 +1863,16 @@ HAM METİN:
       if (concl && (replace || !_editing['conclusion_' + c])) _editing['conclusion_' + c] = clean(/<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl));
     }
     if (data.category && (replace || !_editing.category)) _editing.category = data.category;
+    // Şablonu AI seçer (içeriğe bakarak) — düzen/görsel ritmi buna göre kurulur.
+    _editing.template = TPL_BODIES[String(data.template || '').trim()] ? String(data.template).trim() : (_editing.template || '');
     const items = Array.isArray(data.items) ? data.items : [];
     if (items.length) {
       const norm = items.map((it) => ({
         kind: it.kind || 'product',
         search: it.search || it.name || '',
         name: it.name || it.search || '',
+        brand: it.brand || '',
+        site: it.site || '',
         link: it.link || '',
         blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
           if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '', cap_de: b.cap_de || '' };
@@ -1661,10 +1886,19 @@ HAM METİN:
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
-    toast(`İçe aktarıldı — ${filled.map((c) => c.toUpperCase()).join('/')} · ${items.length} öğe. Düzen kuruluyor…`, 's');
-    // İçe aktarmanın DEVAMI: yapay zekâ düzeni kurar + kaliteyi denetler.
+    toast(`İçe aktarıldı — ${filled.map((c) => c.toUpperCase()).join('/')} · ${items.length} öğe. Görseller aranıyor…`, 's');
+    // İçe aktarmanın DEVAMI: (1) görseli olmayan öğelere görsel bul,
+    // (2) yapay zekâ düzeni kurar + kaliteyi denetler.
     // Kullanıcı ayrıca butondan istediği zaman tekrar çalıştırabilir.
-    if (items.length) await blogAiQa(true);
+    if (items.length) {
+      try {
+        await resolveItemImages((s) => toast(s, 'i'));
+        sanitizeImported(); // bulunan görseller blok olarak yerleşsin
+        autoPickCover();
+        renderEditor();
+      } catch (e) { toast('Görsel araması başarısız: ' + e.message, 'w'); }
+      await blogAiQa(true);
+    }
   }
 
   async function blogImportRunMd() {
@@ -1731,6 +1965,8 @@ HAM METİN:
         search: it.search || it.name || '',
         name: it.name || it.search || '',
         name_tr: it.name_tr, name_en: it.name_en, name_de: it.name_de,
+        brand: it.brand || '',
+        site: it.site || '',
         link: it.link || '',
         image: it.image || '',
         blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
@@ -1744,6 +1980,14 @@ HAM METİN:
     _srcMode = { body: false, concl: false };
     renderEditor();
     blogMarkDirty();
+    if (items.length) {
+      try {
+        await resolveItemImages((s) => toast(s, 'i'));
+        sanitizeImported();
+        autoPickCover();
+        renderEditor();
+      } catch (_) { /* görselsiz devam */ }
+    }
     toast('JSON içe aktarma tamam — 3 dili sekmelerden kontrol et', 's');
   }
 
@@ -1809,7 +2053,13 @@ HAM METİN:
         const hasText = blocks.some((b) => b.t === 'text' && (b[c] || '').trim());
         if (!hasText) add('warn', `"${nm}" öğesinin ${langName[c]} metni boş.`);
       }
-      if ((p.kind || 'product') === 'custom') add('info', `"${nm}" katalogda eşleşmedi (özel öğe) — ürün sayfasına iç link vermiyor.`);
+      // "Katalogda eşleşmedi" notu YALNIZ gerçekten ürün olması beklenen öğeler
+      // için anlamlı. Midjourney/Adobe Firefly gibi hizmetler katalogda ZATEN
+      // yok; her yazıda bunları uyarı gibi listelemek gerçek sorunları gömüyordu.
+      // Markası/sitesi çözülmüş öğe = bilinçli katalog dışı öğe.
+      if ((p.kind || 'product') === 'custom' && !p.site && !p.brand) {
+        add('info', `"${nm}" katalogda eşleşmedi (özel öğe) — ürün sayfasına iç link vermiyor.`);
+      }
     });
 
     // 4) Uzunluk ve tarih
@@ -1862,6 +2112,7 @@ HAM METİN:
     const plain = (h) => stripHtml(h).replace(/\s+/g, ' ').trim();
     return {
       lang: c,
+      template: _editing.template || '',
       title: _editing['title_' + c] || '',
       lead: _editing['lead_' + c] || '',
       bodyExcerpt: plain(_editing['body_' + c]).slice(0, 1200),
@@ -1913,26 +2164,50 @@ ${JSON.stringify(cands)}`;
     }
     const btn = document.getElementById('be_qa_btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ İnceleniyor…'; }
+
+    // ÖNCE EKSİK GÖRSELLERİ TAMAMLA. Eskiden AI yalnızca "şu öğede görsel yok"
+    // diye NOT DÜŞÜYORDU ve kullanıcı hepsini elle arıyordu; artık düzeltme de
+    // burada yapılıyor (bkz. resolveItemImages).
+    let imagesFilled = 0;
+    let coverPicked = '';
+    try {
+      if (btn) btn.textContent = '⏳ Görseller aranıyor…';
+      const res = await resolveItemImages();
+      imagesFilled = res.filled || 0;
+      if (imagesFilled) sanitizeImported();
+      coverPicked = autoPickCover();
+      if (btn) btn.textContent = '⏳ İnceleniyor…';
+    } catch (_) { /* görsel bulunamazsa denetim yine çalışsın */ }
+
     const outline = articleOutline();
     const prompt = `Sen bir yayın editörü ve sayfa tasarımcısısın. Aşağıda bir blog makalesinin yapısı JSON olarak veriliyor (dil: ${outline.lang}).
 
-GÖREVİN İKİ PARÇA:
+GÖREVİN ÜÇ PARÇA:
 
-A) GÖRSEL YERLEŞİMİ: Her öğe için görselin nereye ve ne büyüklükte konacağına METNİN UZUNLUĞUNA ve ritmine bakarak karar ver.
+A) ŞABLON: Makalenin TÜRÜNÜ içeriğe bakarak belirle — "template" alanına yaz:
+   topn (en iyi N listesi) | review (tek ürün incelemesi) | vs (karşılaştırma) | guide (satın alma rehberi) |
+   howto (adım adım) | faq (soru-cevap) | deals (fırsat) | alt (alternatifler) | news (haber/duyuru).
+   Verilen "template" değeri içerikle uyuşmuyorsa DÜZELT.
+
+B) GÖRSEL YERLEŞİMİ: Her öğe için görselin nereye ve ne büyüklükte konacağına METNİN UZUNLUĞUNA, ritmine ve ŞABLONA bakarak karar ver.
    - "pos": "left" | "right" | "center" | "full"
    - "size": "s" | "m" | "l" | "xl"
    - Kurallar: Kısa metinde (<400 karakter) yana sarma kötü durur → "center" veya "full" tercih et. Uzun metinde (>600 karakter) yana sarma iyidir → "left"/"right". ARDIŞIK öğelerde aynı tarafı tekrarlama, sağ-sol dönüşümlü bir ritim kur. Listenin ilk öğesi öne çıksın (daha büyük). Öğe metni çok kısaysa görseli küçült.
+   - ŞABLONA GÖRE: topn'de sıralı ritim (ilk öğe büyük); vs'de iki taraf SİMETRİK (aynı size, biri left biri right); review'da tek öğe "full"/"center"; guide/faq'ta görseller küçük kalsın, metin öne çıksın.
+   - Öğe "custom/service" ise görseli genelde bir LOGO'dur: logolar büyük basılmaz → "s" veya "m", tercihen "left"/"right".
 
-B) KALİTE DENETİMİ: Yayın öncesi gerçek sorunları bul. Uydurma sorun YAZMA; sorun yoksa boş dizi dön. Her sorun: {"level":"error"|"warn"|"info","text":"<tek cümle, Türkçe, ne yapılacağını söyle>"}
-   Bakılacaklar: giriş yazısı var mı ve konuyu kuruyor mu; öğe metinleri arasında ciddi uzunluk dengesizliği; anlam bütünlüğü (giriş listede vaat edileni tutuyor mu, sonuç öğelerle çelişiyor mu); başıboş kalmış kaynak adı/atıf artığı satırlar; tekrar eden kalıp cümleler; sonuç yazısı eksik mi; kapak görseli yok mu; başlık ile içerik uyumsuzluğu.
+C) KALİTE DENETİMİ: Yayın öncesi gerçek sorunları bul. Uydurma sorun YAZMA; sorun yoksa boş dizi dön. Her sorun: {"level":"error"|"warn"|"info","text":"<tek cümle, Türkçe, ne yapılacağını söyle>"}
+   Bakılacaklar: giriş yazısı var mı ve konuyu kuruyor mu; öğe metinleri arasında ciddi uzunluk dengesizliği; anlam bütünlüğü (giriş listede vaat edileni tutuyor mu, sonuç öğelerle çelişiyor mu); başıboş kalmış kaynak adı/atıf artığı satırlar; tekrar eden kalıp cümleler; sonuç yazısı eksik mi; başlık ile içerik uyumsuzluğu; bir öğe yazının KONUSUYLA ALAKASIZ mı (yanlış eşleşmiş ürün).
+   Görsel/kapak eksikliğini YAZMA — onu kod zaten otomatik tamamlıyor, iki kez raporlanıyor.
 
 SADECE şu JSON'u döndür:
-{"layout":[{"i":<öğe indeksi>,"pos":"...","size":"...","why":"<çok kısa gerekçe>"}],"issues":[{"level":"...","text":"..."}],"verdict":"<tek cümle genel değerlendirme>"}
+{"template":"...","layout":[{"i":<öğe indeksi>,"pos":"...","size":"...","why":"<çok kısa gerekçe>"}],"issues":[{"level":"...","text":"..."}],"verdict":"<tek cümle genel değerlendirme>"}
 
 MAKALE YAPISI:
 ${JSON.stringify(outline)}`;
     try {
       const out = await callGeminiJson(prompt, 8000);
+      if (out.template && TPL_BODIES[String(out.template).trim()]) _editing.template = String(out.template).trim();
       // Yerleşimi uygula (yalnız görsel blokları; metne DOKUNMA)
       let applied = 0;
       for (const L of (out.layout || [])) {
@@ -1981,16 +2256,25 @@ ${JSON.stringify(outline)}`;
       // Yapısal denetim (kesin) ÖNCE, AI'ın yargı notları sonra.
       const structural = articleHealth(_editing, _products);
       const aiNotes = Array.isArray(out.issues) ? out.issues : [];
-      _qaReport = { issues: [...structural, ...aiNotes], structuralCount: structural.length, verdict: out.verdict || '', applied, removed, junk };
-      renderProducts();
+      _qaReport = {
+        issues: [...structural, ...aiNotes], structuralCount: structural.length,
+        verdict: out.verdict || '', applied, removed, junk,
+        imagesFilled, coverPicked, template: _editing.template || '',
+      };
+      renderEditor();
       renderQaReport();
       blogMarkDirty();
       const errs = _qaReport.issues.filter((x) => x.level === 'error').length;
-      toast(`Düzen kuruldu (${applied} görsel)${removed ? ` · ${removed} kaynak artığı silindi` : ''} · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
+      toast(`Düzen kuruldu (${applied} görsel)${imagesFilled ? ` · ${imagesFilled} görsel bulundu` : ''}${removed ? ` · ${removed} kaynak artığı silindi` : ''} · ${_qaReport.issues.length} not${errs ? `, ${errs} kritik` : ''}`, errs ? 'w' : 's');
     } catch (e) {
       // AI erişilemese bile YAPISAL denetim çalışır — sorunlar gizli kalmaz.
       const structural = articleHealth(_editing, _products);
-      _qaReport = { issues: structural, structuralCount: structural.length, verdict: 'Yapay zekâya ulaşılamadı; yapısal denetim yine de yapıldı.', applied: 0, removed: 0, junk: [] };
+      _qaReport = {
+        issues: structural, structuralCount: structural.length,
+        verdict: 'Yapay zekâya ulaşılamadı; yapısal denetim yine de yapıldı.',
+        applied: 0, removed: 0, junk: [], imagesFilled, coverPicked, template: _editing.template || '',
+      };
+      if (imagesFilled || coverPicked) renderEditor();
       renderQaReport();
       toast('AI kontrolü başarısız (' + e.message + ') — yapısal denetim yapıldı: ' + structural.length + ' not', 'w');
     } finally {
@@ -2009,7 +2293,7 @@ ${JSON.stringify(outline)}`;
         <button class="ba-mini" onclick="blogQaClose()">✕</button>
       </div>
       ${_qaReport.verdict ? `<div style="margin-bottom:6px;opacity:.9">${esc(_qaReport.verdict)}</div>` : ''}
-      <div style="opacity:.75;font-size:12px;margin-bottom:6px">${_qaReport.applied} görselin yeri ve boyutu metne göre ayarlandı.${_qaReport.removed ? ` <span style="color:#4ade80">${_qaReport.removed} başıboş kaynak satırı silindi${(_qaReport.junk || []).length ? ` (${esc((_qaReport.junk || []).slice(0, 6).join(', '))})` : ''}.</span>` : ''}</div>
+      <div style="opacity:.75;font-size:12px;margin-bottom:6px">${_qaReport.template ? `Şablon: <b>${esc(TPL_LABEL[_qaReport.template] || _qaReport.template)}</b> · ` : ''}${_qaReport.applied} görselin yeri ve boyutu metne göre ayarlandı.${_qaReport.imagesFilled ? ` <span style="color:#4ade80">${_qaReport.imagesFilled} eksik görsel bulunup eklendi.</span>` : ''}${_qaReport.coverPicked ? ' <span style="color:#4ade80">Kapak görseli otomatik seçildi.</span>' : ''}${_qaReport.removed ? ` <span style="color:#4ade80">${_qaReport.removed} başıboş kaynak satırı silindi${(_qaReport.junk || []).length ? ` (${esc((_qaReport.junk || []).slice(0, 6).join(', '))})` : ''}.</span>` : ''}</div>
       ${_qaReport.issues.length
         ? _qaReport.issues.map((x) => `<div style="color:${col[x.level] || '#cbd5e1'}">${ic[x.level] || '•'} ${esc(x.text)}</div>`).join('')
         : '<div style="color:#4ade80">✓ Yayına engel bir sorun bulunmadı.</div>'}
@@ -2312,4 +2596,13 @@ ${JSON.stringify(payload)}`;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
   window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
   window.blogAiQa = blogAiQa; window.blogQaClose = blogQaClose; window.blogAuditAll = blogAuditAll;
+  // Teşhis kancası: katalog eşleştirme ve görsel çözümleme, yazıya alakasız
+  // ürün sokan / yazıyı görselsiz bırakan hataların ta kendisiydi. Konsoldan
+  // tek tek denenebilsin diye dışarı veriliyor (UI'da kullanılmaz).
+  //   await blogDebug.resolveCatalogItem('Leonardo AI')   → null olmalı
+  //   await blogDebug.bestLogo('midjourney.com')          → yüklenen logo URL'i
+  window.blogDebug = {
+    matchScore, resolveCatalogItem, domainOf, logoCandidates, probeImage,
+    bestLogo: (domain) => firstLoadableImage(logoCandidates(domain)),
+  };
 })();
