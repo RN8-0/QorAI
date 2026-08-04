@@ -1,6 +1,6 @@
 # Qor AI — Fiyat + Katalog Otomasyonu Runbook
 
-_Son güncelleme: 2026-08-03_
+_Son güncelleme: 2026-08-05_
 
 ## Mimari: ne nerede çalışıyor?
 
@@ -12,7 +12,8 @@ _Son güncelleme: 2026-08-03_
 | `QorAI-PriceRefresh` | **Bu PC** (Task Scheduler) | 03:10 | **Epey** → Amazon.com.tr + TR mağaza fiyatları (`epey_amazon`). Epey datacenter IP'lerini 403'ler → yalnız ev IP'sinden çalışır |
 | `QorAI-PriceDirect` | **Bu PC** (Task Scheduler) | 03:12 | Amazon DE/GB/US ekstra kapasite (Hetzner ile paralel; US duvarı ev IP'sinde daha yumuşak) |
 | `QorAI-FCM-TokenRefresh` | **Bu PC** (Task Scheduler) | 50 dk'da bir | Hetzner'daki cron'un YEDEĞİ — kaldırılsa da bir şey bozulmaz |
-| `QorAI-ProductDiscovery` | **Bu PC** (Task Scheduler) | 23:20 | **Epey'deki YENİ ürünleri** katalog + çeviri + teknik puan + fiyat olarak siteye alır (aşağıdaki bölüm) |
+| `QorAI-EpeyWatch` | **Bu PC** (Task Scheduler) | 15 dk'da bir | **Epey nabzı** — ana sayfadaki "Son Eklenen Ürünler"i TEK istekle okur; yeni ürün varsa ANINDA çeker. Tarama yok (aşağıdaki bölüm) |
+| `QorAI-ProductDiscovery` | **Bu PC** (Task Scheduler) | 23:20 | Nabzın **emniyet ağı**: kategori bazlı en-yeni listesinden kaçanları toplar (aşağıdaki bölüm) |
 
 **Tek gerçek kaynak Hetzner'dır.** PC'nin katkısı: (1) Epey tabanlı TR mağaza
 fiyatları — en ucuz 3 mağaza satırı + Amazon.com.tr affiliate linki, (2) gündüz
@@ -80,7 +81,9 @@ elle açıp `Start Scraping` → `Translate` → `Score Engine` düğmelerine s�
 basmak gerekiyordu. Fiyatlar otomatik güncelleniyordu ama **yeni ürünler elle**
 ekleniyordu.
 
-**Çözüm:** `QorAI-ProductDiscovery` görevi her gece 23:20'de
+**İKİ KATMAN.** Asıl yakalama **nabız** katmanındadır (en alttaki bölüm); bu gece koşusu onun EMNİYET AĞIdır.
+
+**Gece koşusu:** `QorAI-ProductDiscovery` her gece 23:20de
 `scripts\product_discovery.cmd` zincirini koşar:
 
 1. `node scripts\auto_discover.js` — admin panelini **başsız Chrome'da açar** ve
@@ -123,4 +126,51 @@ yanar.
 node scripts\auto_discover.js --categories=smart_rings --limit=40 --no-collect-all
 node scripts\auto_discover.js --headful          # tarayıcıyı göster
 node scripts\auto_discover.js --no-translate --no-score
+```
+
+## Epey nabzı — anlık yakalama (2026-08-05 eklendi)
+
+**Sorun:** ürünün siteye girmesi ertesi geceyi bekliyordu; bir dönem de gece
+koşusu TÜM katalogu tarıyordu (47 kategori × marka marka → saatler, sıfır ürün).
+
+**Kaynak bize zaten söylüyor:** Epey ana sayfasında kategori **bağımsız** bir
+"Son Eklenen Ürünler" bloğu var — siteye en son eklenen ~15 ürün, hangi
+kategoriden olursa olsun. Kategori de URL yolunda (`/laptop/…`, `/televizyon/…`).
+Yani liste taramaya gerek yok.
+
+`QorAI-EpeyWatch` (15 dk'da bir) → `scripts\epey_watch.cmd` → `epey_watch.js`:
+
+1. **Tek** HTTPS isteği (~116 KB, ~1,4 sn). Node'un TLS parmak izi Epey'de 403
+   alıyor → `curl` ile (`connectors/epey_amazon.js` aynı sebeple curl kullanıyor).
+2. Bizim kategorilerimizde olmayan adresleri ele (`epeyPath` listesi
+   `admin/js/categories.js`'ten okunur — kopyası tutulmaz).
+3. Kalanları PocketBase'e sor. Hepsi katalogdaysa **çık** — tarayıcı açılmaz.
+4. Yalnız bilinmeyenler için `auto_discover --urls=…` uyandır.
+
+`--urls` modu (`qoraiAutoRun({urls})` → `runScrapeUrls`): kategori
+`findCategoryByEpeyUrl` ile URL yolundan çözülür, kategoriye göre gruplanıp
+çekilir; **çeviri ve puan yalnız dokunulan kategoriler için** koşar.
+
+**Ölçülen davranış:**
+
+| durum | süre | yük |
+|---|---|---|
+| yeni ürün yok | ~1,4 sn | 1 istek, tarayıcı açılmaz |
+| aday var ama katalogda | ~18 sn | tarayıcı açılır, kayıt yok |
+| gerçek yeni ürün | ~1 dk | çekilir + çevrilir + puanlanır + Typesense |
+
+**Bilinmesi gerekenler:**
+- Nabız modunda `populateScraperCategories()` atlanır → açılış 4,7 dk → 6 sn.
+- Yeni ürün girmediyse çeviri/puan adımlarına HİÇ girilmez; yoksa boş kategori
+  listesi `__all_epey__`e düşüp 106k ürünü 429 sayfada tarıyordu.
+- **Üstel geri çekilme:** varyant sayfaları (`…-vp-1`, `…-vp-2`) mevcut kayda
+  BİRLEŞTİRİLDİĞİ için kendi slug'ıyla PB'ye girmez ve her turda "yeni" görünür.
+  Her başarısız denemede bekleme ikiye katlanır (12 saat → en fazla 30 gün).
+  Durum dosyası: `%USERPROFILE%\.qorai-epey-watch.json`
+- Log: `%USERPROFILE%\qorai-epey-watch.log` (5 MB'ı aşınca `.1` olarak döner)
+
+**Elle:**
+```
+node scripts\epey_watch.js --dry-run    # yalnız raporla, çekme
+node scripts\epey_watch.js              # bak, gerekirse çek
 ```
