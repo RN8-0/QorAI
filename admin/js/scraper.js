@@ -5138,6 +5138,14 @@ window.QorAiBulkTranslate = {
   sanitizeEnglishTranslationMap: (map) => _sanitizeEnglishTranslationMap(map),
   sanitizeEnglishText: (text, sourceText) => _sanitizeEnglishSpecText(text, sourceText),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
+  // İngilizce yükte kalan Türkçe atomlar. Çeviri sağlayıcısı kapalıyken
+  // (GPU worker down + DeepSeek bakiyesi bitik) çeviri sessizce sözlüğe
+  // düşüyor ve eşleşmeyen atomlar TÜRKÇE kalıyor; multiLangSpecs.en dolu
+  // olduğu için de bir daha asla yeniden çevrilmiyordu. Bu yüzden "çevrilmiş
+  // mi" ölçütü artık boşluk değil, KALINTI (bkz. app.js _needsTranslation).
+  englishResidues: (payload) => {
+    try { return _englishPayloadResidues(payload) || []; } catch (_) { return []; }
+  },
   assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
   // Persist the dictionary cache to PocketBase.
   //   saveDict()              → throttled/debounced (mark dirty, coalesce to
@@ -7043,7 +7051,17 @@ function normalizeEpeyImageUrl(url) {
   // (m_/s_/t_/c_/k_…). The app + website still derive smaller tiers on demand
   // and fall back to m_ if the master 404s, but the canonical stored URL is now
   // max quality — fixing the "blurry image" reports. URLs are the baseline.
-  return _epeyOriginalUrl(u);
+  //
+  // AMA `z_` BİR BOYUT KATMANI DEĞİL, AYRI FORMAT DOSYASIDIR. Aynı fotoğrafın
+  // master'ı .png iken z_ varyantı .jpg olabiliyor; ön eki soyunca uzantı
+  // yanlış kalıyor ve adres 404 veriyor. ÖLÇÜLDÜ (2026-08-05):
+  //   z_huawei-nova-y74-1.jpg → 200   ·  huawei-nova-y74-1.jpg → 404
+  //   m_huawei-nova-y74-1.png → 200   ·  huawei-nova-y74-1.png → 200
+  // Kart ve ürün sayfasındaki KIRIK İLK GÖRSELİN sebebi buydu (og:image z_
+  // veriyor ve ilk sıraya o yerleşiyor). Çözüm: z_ adreslerini OLDUĞU GİBİ
+  // sakla; aynı fotoğrafın m_/s_ varyantı da bulunursa extractImages zaten
+  // master'ı tercih eder (bkz. _EPEY_TIER_RANK).
+  return _epeyImageTier(u) === 'z' ? u : _epeyOriginalUrl(u);
 }
 
 // Strip the size-tier prefix from an Epey CDN filename so the URL points at the
@@ -7147,7 +7165,9 @@ function extractTechScore(doc) {
 // s/t/c/k=thumbnails. We keep the MEDIUM tier — sharp enough for the product
 // gallery, small enough to not bloat PocketBase storage — and fall back to the
 // next-best tier only when m_ is missing.
-const _EPEY_TIER_RANK = { m: 0, b: 1, l: 2, o: 3, z: 4, t: 5, c: 6, s: 7, k: 8 };
+// '' (ön eksiz master) en iyisidir; 'z' EN SONA yakın çünkü ayrı bir format
+// dosyası (bkz. normalizeEpeyImageUrl) — master varken asla tercih edilmemeli.
+const _EPEY_TIER_RANK = { '': -1, m: 0, b: 1, l: 2, o: 3, t: 5, c: 6, s: 7, k: 8, z: 20 };
 function _epeyImageKey(u) {
   // Strip the size-tier prefix + extension so every tier of one photo collapses
   // to a single identity (…/934802/m_huawei-…-18.png → …/934802/huawei-…-18).
@@ -7155,9 +7175,11 @@ function _epeyImageKey(u) {
     .replace(/\/[a-z]_([^/]+)$/i, '/$1')
     .replace(/\.(jpe?g|png|webp|avif)$/i, '');
 }
+// '' = ön eki yok, adres ZATEN master. Eskiden ön eksiz adresler de 'z'
+// dönüyordu; 'z' ile "master" ayırt edilemediği için sıralama anlamsızdı.
 function _epeyImageTier(u) {
   const m = String(u).match(/\/([a-z])_[^/]+\.(?:jpe?g|png|webp|avif)$/i);
-  return m ? m[1].toLowerCase() : 'z';
+  return m ? m[1].toLowerCase() : '';
 }
 function _epeyImageFolder(u) {
   return (String(u || '').match(/resim\.epey\.com\/(\d+)\//i) || [])[1] || '';

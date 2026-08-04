@@ -263,10 +263,13 @@
       log(`build ${AUTO_RUN_BUILD} · otomatik keşif koşusu başlıyor`);
       await ensureSession();
       if (typeof showView === 'function') showView('scraper');
+      // Yalnız-çeviri modu: scrape hiç yapılmaz. Çeviri sağlayıcısı kapalıyken
+      // yarım çevrilmiş ürünleri (Türkçe kalıntı) yeniden çevirmek için.
+      const xlateOnly = String(opts.translateOnly || '').split(',').map((s) => s.trim()).filter(Boolean);
       // Nabız modu (epey_watch.js'ten gelen adresler): kategori checklist'i
       // gerekmez, kategori URL yolundan çözülür.
-      const urlMode = Array.isArray(opts.urls) && opts.urls.length > 0;
-      if (!urlMode) {
+      const urlMode = !xlateOnly.length && Array.isArray(opts.urls) && opts.urls.length > 0;
+      if (!urlMode && !xlateOnly.length) {
         // Checklist yalnız kategori seçimli koşuda gerekiyor. Nabız modunda
         // kategori URL yolundan (statik QorAiCategories listesi) çözüldüğü için
         // 47 kategorinin PB sayaçlarını beklemenin anlamı yok.
@@ -274,7 +277,9 @@
         await waitFor('kategori listesi', () => document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').length > 0, 120000);
       }
 
-      result.scrape = urlMode ? await runScrapeUrls(opts.urls, opts) : await runScrape(opts);
+      result.scrape = xlateOnly.length
+        ? { added: 0, updated: 0, skipped: 0, errors: 0, categories: xlateOnly }
+        : (urlMode ? await runScrapeUrls(opts.urls, opts) : await runScrape(opts));
 
       const touched = (result.scrape && result.scrape.categories) || [];
       // Nabız modunda HİÇ yeni ürün girmediyse çeviri/puan adımlarına girme.
@@ -285,9 +290,9 @@
         log('yeni ürün girmedi — çeviri ve puanlama atlandı');
       } else {
         if (opts.translate !== false) {
-          // Nabız modunda yalnız dokunulan kategoriler; gece koşusunda tüm Epey
-          // (arada elle eklenmiş/yarım kalmış ürünleri de toparlasın diye).
-          try { await runTranslate(urlMode ? touched : null); result.translated = true; }
+          // Nabız/yalnız-çeviri modunda dokunulan kategoriler; gece koşusunda
+          // tüm Epey (yarım kalmış ürünleri de toparlasın diye).
+          try { await runTranslate((urlMode || xlateOnly.length) ? touched : null); result.translated = true; }
           catch (e) { log(`çeviri adımı atlandı: ${e.message}`, 'warn'); }
         }
         if (opts.score !== false) {

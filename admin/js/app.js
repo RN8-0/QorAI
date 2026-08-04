@@ -2429,15 +2429,29 @@ async function _fetchDictionaryProducts(categoryId){
   // Only NEW / untranslated products are eligible — products whose
   // multiLangSpecs are already filled for every target language are skipped
   // entirely, so re-running Translate never re-touches old products.
+  // Kalıntı taraması ürünü YENİDEN çevrilecekler listesine sokar. Kapatmak
+  // gerekirse konsoldan: window.qoraiXlateRetryResidue = false
+  const _XLATE_RETRY_RESIDUE = window.qoraiXlateRetryResidue !== false;
   const xlateTargets = (window.QorAiBulkTranslate?.targetLangs?.() || ['en'])
     .filter((l) => l && l !== 'tr');
   let alreadyTranslated = 0;
+  // "Çevrilmiş mi" ölçütü ESKİDEN yalnız multiLangSpecs.<lang> boş mu diye
+  // bakıyordu. Çeviri sağlayıcısı kapalıyken (GPU worker kapalı + DeepSeek
+  // bakiyesi bitik) çeviri sessizce sözlüğe düşüyor, sözlükte olmayan atomlar
+  // TÜRKÇE kalıyor ve harita "dolu" göründüğü için ürün bir daha ASLA
+  // çevrilmiyordu. Sonuç: sitede "Azami Baskı Resolution", "Charging Süresi"
+  // gibi yarım çeviriler (ölçüldü 2026-08-05: son 12 üründe 12'sinde kalıntı).
+  // Artık kalıntı varsa ürün yeniden çevrilecekler listesine girer.
   const _needsTranslation = (p) => {
     const ml = p?.multiLangSpecs && typeof p.multiLangSpecs === 'object' ? p.multiLangSpecs : {};
-    return xlateTargets.some((lang) => {
+    const missing = xlateTargets.some((lang) => {
       const m = ml[lang];
       return !m || typeof m !== 'object' || Object.keys(m).length === 0;
     });
+    if (missing) return true;
+    if (!_XLATE_RETRY_RESIDUE) return false;
+    try { return (window.QorAiBulkTranslate?.englishResidues?.(p) || []).length > 0; }
+    catch (_) { return false; }
   };
 
   let lastLog = Date.now();

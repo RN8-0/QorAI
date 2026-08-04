@@ -64,6 +64,8 @@ const OPTS = {
   // --urls=a,b,c → HİÇ tarama yapma, yalnız bu adresleri çek (nabız izleyicisi
   // epey_watch.js buradan besler). Kategori URL yolundan çözülür.
   urls: String(argVal('urls', '')).split(',').map(s => s.trim()).filter(Boolean),
+  // --translate-only=cat1,cat2 → scrape YOK, yalnız o kategorileri yeniden çevir
+  translateOnly: argVal('translate-only', ''),
 };
 const HEADFUL = hasFlag('headful');
 // Emniyet freni: koşu bu süreyi aşarsa tarayıcı kapatılır ve görev biter,
@@ -174,6 +176,49 @@ async function ensureProxy() {
   }
   log(`proxy hazır (${health.engine}${health.browserConnected ? ' · chrome bağlı' : ''})`);
   return true;
+}
+
+// ─── 1b) yerel çeviri worker'ı (GPU) ───────────────────────────────
+// KÖK NEDEN (2026-08-05): worker kapalıyken ve DeepSeek bakiyesi bitikken
+// çeviri SESSİZCE sözlüğe düşüyor; sözlükte olmayan atomlar TÜRKÇE kalıyor ve
+// multiLangSpecs.en "dolu" göründüğü için ürün bir daha asla çevrilmiyordu.
+// Sitede "Azami Baskı Resolution", "Charging Süresi" gibi yarım çeviriler
+// bu yüzden oluştu. Artık koşu worker'ı kendisi ayağa kaldırıyor.
+const XLATE_PORT = 8797;
+let xlateProc = null;
+async function xlateAlive() {
+  try {
+    const r = await request('GET', `http://127.0.0.1:${XLATE_PORT}/health`, null, {}, 4000);
+    return r.status === 200;
+  } catch (_) { return false; }
+}
+async function ensureTranslateWorker() {
+  if (await xlateAlive()) { log('çeviri worker zaten çalışıyor (8797)'); return false; }
+  const py = path.join(rootDir, 'scripts', 'translate-venv', 'Scripts', 'python.exe');
+  const script = path.join(rootDir, 'scripts', 'nllb-translate-worker.py');
+  if (!fs.existsSync(py) || !fs.existsSync(script)) {
+    log('UYARI: çeviri worker kurulu değil — çeviri yalnız mevcut sözlükle yapılacak');
+    return false;
+  }
+  log('çeviri worker kapalı — başlatılıyor (GPU)…');
+  const logFile = path.join(process.env.USERPROFILE || process.env.HOME || rootDir, 'qorai-translate-worker.log');
+  const out = fs.openSync(logFile, 'a');
+  xlateProc = spawn(py, [script], { cwd: rootDir, stdio: ['ignore', out, out], windowsHide: true });
+  const deadline = Date.now() + 180000;
+  while (Date.now() < deadline) {
+    await sleep(3000);
+    if (await xlateAlive()) { log('çeviri worker hazır'); return true; }
+  }
+  log(`UYARI: çeviri worker 180 sn'de açılmadı — ${logFile}`);
+  return false;
+}
+function stopTranslateWorker() {
+  if (!xlateProc || xlateProc.killed) return;
+  if (process.platform === 'win32') {
+    try { execFile('taskkill', ['/pid', String(xlateProc.pid), '/T', '/F'], () => {}); } catch (_) { /* yok say */ }
+  } else {
+    try { xlateProc.kill('SIGTERM'); } catch (_) { /* yok say */ }
+  }
 }
 
 function stopProxy() {
@@ -333,10 +378,12 @@ async function runInBrowser(pbUrl, auth) {
   let result = null;
   let auth = null;
   let spawnedProxy = false;
+  let spawnedXlate = false;
   try {
     auth = await pbSuperuserAuth(pbUrl);
     log('PocketBase superuser oturumu alındı');
     spawnedProxy = await ensureProxy();
+    if (OPTS.translate) spawnedXlate = await ensureTranslateWorker();
     result = await runInBrowser(pbUrl, auth);
     if (!result.ok) exitCode = 1;
   } catch (e) {
@@ -344,7 +391,8 @@ async function runInBrowser(pbUrl, auth) {
     result = { ok: false, error: e.message };
     exitCode = 1;
   } finally {
-    if (spawnedProxy) { log('başlattığımız proxy kapatılıyor'); stopProxy(); }
+    if (spawnedProxy) { log("başlattığımız proxy kapatılıyor"); stopProxy(); }
+    if (spawnedXlate) { log("başlattığımız çeviri worker kapatılıyor"); stopTranslateWorker(); }
   }
 
   const durationSec = Math.round((Date.now() - startedAt) / 1000);
