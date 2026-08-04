@@ -18,10 +18,15 @@
  * Fiyatlar bu zincirde DEĞİL: 03:10'daki QorAI-PriceRefresh görevi yeni
  * ürünleri kendi keşif pass'inde toplar (scripts/price_refresh.cmd).
  *
+ * NOKTA ATIŞI (varsayılan): her kategorinin Epey'deki eklenme-tarihi sıralı
+ * listesinden yalnız YENİ ürünler alınır; bir sayfada hiç yeni yoksa o kategori
+ * bırakılır (sonrası zaten daha eski). Yeni ürünü olmayan kategori 1 istek eder.
+ *
  * Kullanım:
  *   node scripts/auto_discover.js                     # tüm Epey kategorileri
  *   node scripts/auto_discover.js --categories=smartphones,laptops
- *   node scripts/auto_discover.js --limit=200         # kategori başına 200 URL
+ *   node scripts/auto_discover.js --newest-pages=15   # birikmiş kategoriler için derine in
+ *   node scripts/auto_discover.js --full-catalog      # TAM katalog taraması (saatler sürer)
  *   node scripts/auto_discover.js --no-translate --no-score
  *   node scripts/auto_discover.js --headful           # tarayıcıyı göster (hata ayıklama)
  */
@@ -52,7 +57,7 @@ const OPTS = {
   // VARSAYILAN: nokta atışı (her kategorinin en-yeni listesinden yalnız yeni
   // ürünler). --full-catalog yalnız sıfırdan kurulum/onarım için.
   newestOnly: !hasFlag('full-catalog'),
-  newestPages: parseInt(argVal('newest-pages', '3'), 10) || 3,
+  newestPages: parseInt(argVal('newest-pages', '8'), 10) || 8,
   collectAll: hasFlag('full-catalog'),
   translate: !hasFlag('no-translate'),
   score: !hasFlag('no-score'),

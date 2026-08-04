@@ -8729,7 +8729,10 @@ async function _loadExistingSourceUrls(categoryId) {
 // ═══════════════════════════════════════════════════════════════
 const EPEY_SORT_NEWEST = 'TjtfczoxMDoidGFyaWg6REVTQyI7=';
 const EPEY_NEWEST_PAGE_SIZE = 40;
-const EPEY_NEWEST_MAX_PAGES_DEFAULT = 3;
+// 8 sayfa ÜST SINIRDIR, maliyet değil: bir sayfada hiç yeni ürün çıkmazsa
+// döngü orada biter. Yeni ürünü olmayan kategori yine 1 istek eder; yalnız
+// birikmiş kategoriler derine iner (ölçüldü: kulaklıkta 3 sayfa = 84 aday).
+const EPEY_NEWEST_MAX_PAGES_DEFAULT = 8;
 
 function epeyNewestUrl(epeyPath, page = 1) {
   const base = `${EPEY_BASE}/${String(epeyPath || '').replace(/^\/|\/$/g, '')}/e/${EPEY_SORT_NEWEST}/`;

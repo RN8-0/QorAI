@@ -187,7 +187,7 @@
       delay: 0,
       concurrency: 24,
       newestOnly: true,   // gece koşusunun varsayılanı: yalnız yeni ürünler
-      newestPages: 3,
+      newestPages: 8,
       collectAll: false,  // tam katalog taraması yalnız açıkça istenirse
       translate: true,
       score: true,
