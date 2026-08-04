@@ -141,19 +141,74 @@
     return totals;
   }
 
+  // ── 1b) HEDEFLİ ÇEKME (nabız izleyicisinden gelen URL'ler) ──────
+  // Hiç TARAMA yok: epey_watch.js ana sayfadan yeni ürün adreslerini bulur ve
+  // buraya verir. Kategoriyi URL yolundan çözüp (findCategoryByEpeyUrl) doğrudan
+  // çekeriz. Kategori eşleşmiyorsa ürün BİZE AİT DEĞİLDİR (Epey'de bizde
+  // olmayan onlarca kategori var: daire-testere, tilki-kuyrugu…) — atlanır.
+  async function runScrapeUrls(urls, opts) {
+    if (typeof sequentialScrape !== 'function') throw new Error('scraper modülü yüklenmedi');
+    if (typeof checkProxy === 'function' && !(await checkProxy())) {
+      throw new Error('yerel scraper proxy yanıt vermiyor (localhost:3456)');
+    }
+    setInput('scrapeConcurrency', opts.concurrency);
+    const byCat = new Map();
+    const unknown = [];
+    for (const raw of urls) {
+      const url = typeof normalizeEpeyProductUrl === 'function' ? normalizeEpeyProductUrl(raw) : String(raw || '').trim();
+      if (!url) continue;
+      const cat = typeof findCategoryByEpeyUrl === 'function' ? findCategoryByEpeyUrl(url) : null;
+      if (!cat || !cat.id || cat.scrapeDisabled) { unknown.push(url); continue; }
+      if (!byCat.has(cat.id)) byCat.set(cat.id, []);
+      byCat.get(cat.id).push({ url, techScore: null, categoryId: cat.id });
+    }
+    if (unknown.length) log(`${unknown.length} adres bizde olmayan kategoride — atlandı`, 'warn');
+    if (!byCat.size) {
+      log('hedeflenecek ürün kalmadı');
+      return { added: 0, updated: 0, skipped: 0, errors: 0, categories: [] };
+    }
+
+    const totals = { added: 0, updated: 0, skipped: 0, errors: 0 };
+    const scoreCats = new Set();
+    global.qoraiScrapeActive = true;
+    global.qoraiAutoScoreSuppressed = true;
+    try {
+      for (const [catId, items] of byCat) {
+        log(`hedefli çekme · ${catId}: ${items.length} ürün`);
+        const res = await sequentialScrape(items, catId, opts.delay, opts.concurrency, { skipPreload: true });
+        totals.added += res.added || 0;
+        totals.updated += res.updated || 0;
+        totals.skipped += res.skipped || 0;
+        totals.errors += res.errors || 0;
+        if ((res.added || 0) + (res.updated || 0) > 0) scoreCats.add(catId);
+      }
+    } finally {
+      global.qoraiScrapeActive = false;
+    }
+    log(`hedefli çekme bitti — ${totals.added} eklendi · ${totals.skipped} zaten vardı · ${totals.errors} hata`,
+      totals.errors ? 'warn' : 'success');
+    return { ...totals, categories: [...scoreCats] };
+  }
+
   // ── 2) ÇEVİRİ (TR → EN/DE) ──────────────────────────────────────
   // Bulk scrape ürünleri HAM (Türkçe) kaydeder; çeviri ayrı adımdır ve
   // zaten çevrilmiş ürünlere DOKUNMAZ (bkz. _fetchDictionaryProducts →
   // _needsTranslation). Yani her gece yalnız yeni gelenler çevrilir.
-  async function runTranslate() {
+  // `categories` verilirse YALNIZ onlar çevrilir. Nabız modunda bu şart:
+  // `__all_epey__` çevrilecek ürünü bulmak için 106k ürünü 429 sayfada tarıyor
+  // (~4 dk) — 5 yeni ürün için her 15 dakikada bir bunu yapmak anlamsız.
+  async function runTranslate(categories) {
     if (typeof startCategoryTranslation !== 'function') throw new Error('çeviri modülü yüklenmedi');
-    if (!setInput('dictXlateCategory', '__all_epey__')) throw new Error('çeviri kategori seçicisi bulunamadı');
-    log('çeviri başlıyor (tüm Epey · yalnız çevrilmemişler)');
-    await startCategoryTranslation();
-    await waitFor('çeviri bitişi', () => {
-      const stop = document.getElementById('btnDictXlateStop');
-      return !stop || stop.style.display === 'none';
-    }, 30000, 500).catch(() => { /* düğme yoksa dert etme */ });
+    const targets = Array.isArray(categories) && categories.length ? categories : ['__all_epey__'];
+    for (const cat of targets) {
+      if (!setInput('dictXlateCategory', cat)) throw new Error('çeviri kategori seçicisi bulunamadı');
+      log(`çeviri: ${cat === '__all_epey__' ? 'tüm Epey' : cat} (yalnız çevrilmemişler)`);
+      await startCategoryTranslation();
+      await waitFor('çeviri bitişi', () => {
+        const stop = document.getElementById('btnDictXlateStop');
+        return !stop || stop.style.display === 'none';
+      }, 30000, 500).catch(() => { /* düğme yoksa dert etme */ });
+    }
     log('çeviri adımı tamam', 'success');
   }
 
@@ -208,18 +263,37 @@
       log(`build ${AUTO_RUN_BUILD} · otomatik keşif koşusu başlıyor`);
       await ensureSession();
       if (typeof showView === 'function') showView('scraper');
-      if (typeof populateScraperCategories === 'function') await populateScraperCategories().catch(() => {});
-      await waitFor('kategori listesi', () => document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').length > 0, 120000);
-
-      result.scrape = await runScrape(opts);
-
-      if (opts.translate !== false) {
-        try { await runTranslate(); result.translated = true; }
-        catch (e) { log(`çeviri adımı atlandı: ${e.message}`, 'warn'); }
+      // Nabız modu (epey_watch.js'ten gelen adresler): kategori checklist'i
+      // gerekmez, kategori URL yolundan çözülür.
+      const urlMode = Array.isArray(opts.urls) && opts.urls.length > 0;
+      if (!urlMode) {
+        // Checklist yalnız kategori seçimli koşuda gerekiyor. Nabız modunda
+        // kategori URL yolundan (statik QorAiCategories listesi) çözüldüğü için
+        // 47 kategorinin PB sayaçlarını beklemenin anlamı yok.
+        if (typeof populateScraperCategories === 'function') await populateScraperCategories().catch(() => {});
+        await waitFor('kategori listesi', () => document.querySelectorAll('#scrapeCategoryChecklist input[type="checkbox"]').length > 0, 120000);
       }
-      if (opts.score !== false) {
-        try { result.scoredCategories = await runScore(result.scrape.categories); }
-        catch (e) { log(`puanlama adımı atlandı: ${e.message}`, 'warn'); }
+
+      result.scrape = urlMode ? await runScrapeUrls(opts.urls, opts) : await runScrape(opts);
+
+      const touched = (result.scrape && result.scrape.categories) || [];
+      // Nabız modunda HİÇ yeni ürün girmediyse çeviri/puan adımlarına girme.
+      // (Aksi hâlde boş kategori listesi `__all_epey__`e düşüp 106k ürünü 429
+      // sayfada tarıyordu — 15 dakikada bir tekrarlanacak bir iş değil.)
+      const nothingNew = urlMode && touched.length === 0;
+      if (nothingNew) {
+        log('yeni ürün girmedi — çeviri ve puanlama atlandı');
+      } else {
+        if (opts.translate !== false) {
+          // Nabız modunda yalnız dokunulan kategoriler; gece koşusunda tüm Epey
+          // (arada elle eklenmiş/yarım kalmış ürünleri de toparlasın diye).
+          try { await runTranslate(urlMode ? touched : null); result.translated = true; }
+          catch (e) { log(`çeviri adımı atlandı: ${e.message}`, 'warn'); }
+        }
+        if (opts.score !== false) {
+          try { result.scoredCategories = await runScore(touched); }
+          catch (e) { log(`puanlama adımı atlandı: ${e.message}`, 'warn'); }
+        }
       }
       result.ok = true;
     } catch (e) {

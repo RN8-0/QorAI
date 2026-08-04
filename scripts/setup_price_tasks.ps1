@@ -28,7 +28,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$tasks = @('QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery')
+$tasks = @('QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch')
 if ($IncludeFcm -or $Uninstall) { $tasks += 'QorAI-FCM-TokenRefresh' }
 
 if ($Uninstall) {
@@ -86,6 +86,16 @@ Install-QorTask -Name 'QorAI-PriceDirect' `
 Install-QorTask -Name 'QorAI-ProductDiscovery' `
   -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\product_discovery.cmd`"") `
   -Trigger (New-ScheduledTaskTrigger -Daily -At '23:20') `
+  -TaskSettings $settings
+
+# 15 dk'da bir — EPEY NABZI. Epey ana sayfasındaki kategori bağımsız
+# "Son Eklenen Ürünler" bloğunu TEK istekle okur (~1 sn). Katalogda olmayan
+# ürün yoksa hiçbir şey başlatmaz; varsa yalnız o adresleri çeker.
+# TARAMA YAPMAZ — gece 23:20'deki ProductDiscovery emniyet ağıdır.
+$watchTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 15)
+Install-QorTask -Name 'QorAI-EpeyWatch' `
+  -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\epey_watch.cmd`"") `
+  -Trigger $watchTrigger `
   -TaskSettings $settings
 
 if ($IncludeFcm) {

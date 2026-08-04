@@ -61,6 +61,9 @@ const OPTS = {
   collectAll: hasFlag('full-catalog'),
   translate: !hasFlag('no-translate'),
   score: !hasFlag('no-score'),
+  // --urls=a,b,c → HİÇ tarama yapma, yalnız bu adresleri çek (nabız izleyicisi
+  // epey_watch.js buradan besler). Kategori URL yolundan çözülür.
+  urls: String(argVal('urls', '')).split(',').map(s => s.trim()).filter(Boolean),
 };
 const HEADFUL = hasFlag('headful');
 // Emniyet freni: koşu bu süreyi aşarsa tarayıcı kapatılır ve görev biter,
@@ -317,7 +320,9 @@ async function runInBrowser(pbUrl, auth) {
 (async () => {
   const startedAt = Date.now();
   log('═══ Qor AI — otomatik yeni ürün keşfi başlıyor ═══');
-  log(`ayarlar: kategoriler=${OPTS.categories} · paralel=${OPTS.concurrency} · ` +
+  log(OPTS.urls.length
+    ? `ayarlar: HEDEFLİ ÇEKME · ${OPTS.urls.length} adres · çeviri=${OPTS.translate} · puan=${OPTS.score}`
+    : `ayarlar: kategoriler=${OPTS.categories} · paralel=${OPTS.concurrency} · ` +
       `${OPTS.newestOnly ? `NOKTA ATIŞI (${OPTS.newestPages} sayfa/kategori)` : 'TAM KATALOG'} · ` +
       `çeviri=${OPTS.translate} · puan=${OPTS.score}`);
 
