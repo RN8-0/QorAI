@@ -543,13 +543,23 @@
               <div class="form-field" style="grid-column:span 2">
                 <label>Seçili Kategoriler</label>
                 <label class="check-label scrape-limit-check">
-                  <input type="checkbox" id="scrapeAllSelectedProducts">
-                  İşaretlenen kategorilerde ne varsa çek
+                  <input type="checkbox" id="scrapeNewestOnly" checked>
+                  ⚡ Sadece YENİ ürünler (nokta atışı — önerilen)
                 </label>
+                <label class="check-label scrape-limit-check">
+                  <input type="checkbox" id="scrapeAllSelectedProducts">
+                  İşaretlenen kategorilerde ne varsa çek (TAM katalog — saatler sürer)
+                </label>
+              </div>
+              <div class="form-field">
+                <label>En-yeni sayfa sayısı</label>
+                <input class="input" type="number" id="scrapeNewestPages" value="3" min="1" max="20">
               </div>
             </div>
             <p class="text-muted" id="scrapeModeHint" style="margin-top:-2px;margin-bottom:10px;font-size:12px">
-              Seçenek kapalıysa ürün limiti her seçili kategoriye ayrı uygulanır. Seçenek açıksa işaretlenen kategorilerde ne varsa çekilir.
+              <b>Nokta atışı</b> (varsayılan): her kategorinin Epey'deki <i>eklenme tarihine göre sıralı</i> listesinden yalnız yeni ürünler alınır;
+              bir sayfada hiç yeni yoksa o kategori bırakılır (sonrası zaten daha eski). Kategori başına tipik maliyet 1 istek.
+              <b>TAM katalog</b> ise marka marka her şeyi tarar — yalnız sıfırdan kurulum/onarım için, saatler sürer.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
               <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>

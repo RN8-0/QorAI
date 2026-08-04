@@ -5938,7 +5938,7 @@ async function _saveProductWithRetry(clean, label = '', options = {}) {
 // bulk scrape can skip it. This makes resume "free": even after a PC restart
 // the next run skips everything already saved and continues with new URLs.
 
-async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrencyArg = 0) {
+async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrencyArg = 0, options = {}) {
   const results = { added: 0, skipped: 0, errors: 0, updated: 0, retryLater: [] };
   const isBrandSearch = !String(categoryId || '').trim();
   let errorStreak = 0;
@@ -5964,8 +5964,20 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // PRE-PASS: drop URLs that are already in the database.
   // This is the durable "resume" — survives full PC shutdown because the
   // truth lives in PB, not localStorage.
-  slog(`Preloading existing products for category "${categoryId}"...`, 'info');
-  const { urls: existingUrls, slugs: existingSlugs, byVariantGroup: existingByVG, complete: preloadComplete } = await _loadExistingSourceUrls(categoryId);
+  // NOKTA ATIŞI modunda önyükleme ATLANIR: aday URL'ler zaten PB'ye tek tek
+  // sorulup "yeni" olduğu doğrulanmış oluyor (collectNewestProductUrls →
+  // _knownProductKeys). 8 ürün için 10 bin satırlık kategori önyüklemesi 47
+  // kategoride tüm katalogu PB'den çekmek demekti. Güvenlik kaybı yok:
+  // preloadComplete=false → find-or-create yolu, ayrıca aşağıdaki verify
+  // pass'i küçük batch'lerle bir kez daha kontrol ediyor.
+  let existingUrls; let existingSlugs; let existingByVG; let preloadComplete;
+  if (options.skipPreload) {
+    slog('⚡ Nokta atışı: kategori önyüklemesi atlandı (adaylar zaten PB\'de doğrulandı).', 'info');
+    existingUrls = new Set(); existingSlugs = new Set(); existingByVG = new Map(); preloadComplete = false;
+  } else {
+    slog(`Preloading existing products for category "${categoryId}"...`, 'info');
+    ({ urls: existingUrls, slugs: existingSlugs, byVariantGroup: existingByVG, complete: preloadComplete } = await _loadExistingSourceUrls(categoryId));
+  }
   // When the preload paged through everything, every enqueued product is
   // genuinely new → use the create-only fast path (no per-save find). Otherwise
   // keep the safe find-or-create path so a partial preload never duplicates.
@@ -6017,7 +6029,11 @@ async function sequentialScrape(urlItems, categoryId, delayMs = 2000, concurrenc
   // limits even when each predicate is repeated three ways per row.
   if (freshItems.length > 0 && freshItems.length <= 1000) {
     try {
-      const VERIFY_BATCH = 25;
+      // 25'ti: her satır ÜÇ yüklemle tekrarlandığı için filtre ~5 KB oluyordu
+      // ve PB 400 dönüyordu — yani bu "ikinci şans" geçişi pratikte HİÇ
+      // çalışmıyor, her batch "verify batch failed" ile düşüyordu (ölçüldü
+      // 2026-08-04). 12 ürün ≈ 1.5 KB, ölçülen güvenli aralıkta.
+      const VERIFY_BATCH = 12;
       let verifiedExtraSkips = 0;
       let verifyFailStreak = 0;
       let healedCategory = 0;
@@ -8694,6 +8710,135 @@ async function _loadExistingSourceUrls(categoryId) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  NOKTA ATIŞI — YALNIZ YENİ ÜRÜNLER
+//
+//  Eski yol her kategorinin TÜM kataloğunu topluyordu: marka marka
+//  sayfalama (kulaklıkta 540 marka / 9985 ürün), 47 kategori için saatler.
+//  ÖLÇÜLDÜ (2026-08-04): gece koşusu sabaha kadar URL topladı ve TEK ürün
+//  bile çekemedi — çünkü çekme aşaması ancak TÜM kategoriler toplandıktan
+//  sonra başlıyor.
+//
+//  Epey listeleri URL ile sıralanabiliyor:
+//     /<kategori>/e/<token>/<sayfa>/     token = base64('N;_s:10:"tarih:DESC";')
+//  yani "eklenme tarihi, yeniden eskiye", sayfa başına 40 ürün, düz HTTPS
+//  isteğiyle (Cloudflare tarayıcısı gerekmiyor). Yeni ürün TANIM GEREĞİ en
+//  başta olduğu için: sayfa sayfa in, her sayfayı PB'ye sor, bir sayfada HİÇ
+//  yeni yoksa DUR — sonrası zaten daha eski. Kategori başına tipik maliyet
+//  1 istek.
+// ═══════════════════════════════════════════════════════════════
+const EPEY_SORT_NEWEST = 'TjtfczoxMDoidGFyaWg6REVTQyI7=';
+const EPEY_NEWEST_PAGE_SIZE = 40;
+const EPEY_NEWEST_MAX_PAGES_DEFAULT = 3;
+
+function epeyNewestUrl(epeyPath, page = 1) {
+  const base = `${EPEY_BASE}/${String(epeyPath || '').replace(/^\/|\/$/g, '')}/e/${EPEY_SORT_NEWEST}/`;
+  return page > 1 ? `${base}${page}/` : base;
+}
+
+// Verilen URL'lerden PocketBase'de ZATEN olanların anahtarlarını döndürür.
+// sourceUrl + slug + slug→id üçlüsüne bakar (sequentialScrape'in verify
+// pass'iyle aynı mantık): kayıtlar zaman içinde farklı anahtarla yazılmış olabiliyor.
+async function _knownProductKeys(items) {
+  const known = new Set();
+  // 12 ürün × 3 yüklem ≈ 1.5 KB filtre. PB bu kurulumda ~4 KB'ı aşan filtreyi
+  // 400'lüyor (ölçüldü 2026-08-04: 25 ürün × 3 yüklem = 5 KB → 400).
+  const BATCH = 12;
+  const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  for (let i = 0; i < items.length; i += BATCH) {
+    const slice = items.slice(i, i + BATCH);
+    const or = [];
+    for (const it of slice) {
+      const slug = slugFromUrl(it.url) || '';
+      const idLike = slug ? generateProductId(slug) : '';
+      const norm = normalizeEpeyProductUrl(it.url) || '';
+      if (slug) or.push(`slug="${esc(slug)}"`);
+      if (idLike && idLike !== slug) or.push(`slug="${esc(idLike)}"`);
+      if (norm) or.push(`sourceUrl="${esc(norm)}"`);
+    }
+    if (!or.length) continue;
+    try {
+      const found = await _pbGetAllPaged('products', {
+        filter: or.join(' || '), sort: 'id', fields: 'id,slug,sourceUrl',
+      }, 100, 30000);
+      for (const d of found) {
+        const data = typeof d.data === 'function' ? d.data() : (d.data || d);
+        const slug = String(data?.slug || '').trim();
+        if (slug) known.add(slug);
+        const k = normalizeScrapeUrlKey(data?.sourceUrl || '');
+        if (k) known.add(k);
+      }
+    } catch (e) {
+      // Sorgu patlarsa "bilinmiyor" say: ürün yine çekilir, sequentialScrape
+      // kendi eleme geçişinde tekrar bakar. Sessiz atlama YAPMA.
+      slog(`  (yeni-ürün kontrolü hatası, bu batch bilinmiyor sayıldı: ${e.message})`, 'warn');
+    }
+  }
+  return known;
+}
+
+async function collectNewestProductUrls(categoryId, opts = {}) {
+  const maxPages = Math.max(1, parseInt(opts.maxPages, 10) || EPEY_NEWEST_MAX_PAGES_DEFAULT);
+  const catDef = typeof QorAiCategories !== 'undefined'
+    ? (QorAiCategories.getById?.(categoryId) || QorAiCategories.getAll?.().find(c => c.id === categoryId))
+    : null;
+  const epeyPath = catDef?.epeyPath ? String(catDef.epeyPath).replace(/^\/|\/$/g, '') : '';
+  if (!epeyPath) {
+    slog(`  ⚠️ "${categoryId}" için Epey yolu tanımlı değil — atlandı.`, 'warn');
+    return [];
+  }
+
+  const fresh = [];
+  const seen = new Set();
+  for (let page = 1; page <= maxPages && !scraperAbort; page++) {
+    const pageUrl = epeyNewestUrl(epeyPath, page);
+    let data = null;
+    try {
+      const res = await fetch(
+        `${PROXY_URL}/category-links?url=${encodeURIComponent(pageUrl)}&max=${EPEY_NEWEST_PAGE_SIZE * 3}&light=1`,
+        { signal: AbortSignal.timeout(90000) }
+      );
+      data = res.ok ? await res.json() : null;
+    } catch (e) {
+      slog(`  ⚠️ ${categoryId} en-yeni s.${page} alınamadı: ${e.message}`, 'warn');
+      break;
+    }
+    const rawLinks = Array.isArray(data?.items)
+      ? data.items.map(x => (typeof x === 'string' ? x : x?.url))
+      : (Array.isArray(data?.links) ? data.links : []);
+    const items = [];
+    for (const raw of rawLinks) {
+      const full = normalizeEpeyProductUrl(raw);
+      if (!full || seen.has(full)) continue;
+      // Sıralı liste kendi kategorisinin ürünlerini basar; sayfadaki
+      // "benzer/çok satan" kutuları başka kategoriye sızabiliyor.
+      if (!full.includes(`/${epeyPath}/`)) continue;
+      seen.add(full);
+      items.push({ url: full, techScore: null });
+    }
+    if (!items.length) {
+      slog(`  · ${categoryId} en-yeni s.${page}: ürün yok, durdum.`, 'info');
+      break;
+    }
+    const known = await _knownProductKeys(items);
+    const pageFresh = items.filter((it) => {
+      const slug = slugFromUrl(it.url) || '';
+      const idLike = slug ? generateProductId(slug) : '';
+      const key = normalizeScrapeUrlKey(it.url);
+      return !(known.has(slug) || (idLike && known.has(idLike)) || (key && known.has(key)));
+    });
+    fresh.push(...pageFresh);
+    slog(
+      `  ✓ ${categoryId} en-yeni s.${page}: ${items.length} ürün · ${pageFresh.length} YENİ`,
+      pageFresh.length ? 'success' : 'info'
+    );
+    // Liste en yeniden eskiye sıralı: bir sayfa tamamen bilinen ürünlerden
+    // oluşuyorsa sonraki sayfalar KESİNLİKLE daha eski → dur.
+    if (!pageFresh.length) break;
+  }
+  return fresh;
+}
+
 function getAllEpeyScrapeCategories() {
   const all = (typeof QorAiCategories !== 'undefined' && QorAiCategories.getAll)
     ? QorAiCategories.getAll()
@@ -8738,6 +8883,10 @@ async function startBulkScrape() {
   const { productLimit, collectAllSelected } = getScrapeLimitSettings();
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 300;
   const concurrency = getEpeyDetailConcurrency();
+  // "Sadece yeni ürünler": kategorinin TÜM kataloğunu taramak yerine Epey'in
+  // eklenme-tarihi sıralı listesinden nokta atışı (bkz. collectNewestProductUrls).
+  const newestOnly = document.getElementById('scrapeNewestOnly')?.checked === true;
+  const newestMaxPages = Math.max(1, readScrapeInt('scrapeNewestPages', EPEY_NEWEST_MAX_PAGES_DEFAULT));
 
   scraperRunning = true; scraperAbort = false;
   if (typeof window !== 'undefined') window.qoraiScrapeActive = true;
@@ -8763,6 +8912,62 @@ async function startBulkScrape() {
   );
 
   try {
+    // ── NOKTA ATIŞI MODU ──────────────────────────────────────────
+    // Kategori kategori: en-yeni listesinden YENİ olanları bul ve HEMEN çek.
+    // İki fazlı (önce hepsini topla, sonra çek) akış burada BİLEREK yok:
+    // 47 kategorinin tamamı toplanana kadar tek ürün bile kaydedilmiyordu.
+    if (newestOnly) {
+      const cats = catsForRun;
+      if (!cats.length) {
+        slog('Epey kategorisi bulunamadı.', 'error');
+        finishScraping();
+        return;
+      }
+      const totals = { added: 0, updated: 0, skipped: 0, errors: 0, queued: 0, missingCats: [] };
+      const scoreCats = new Set();
+      slog(`⚡ NOKTA ATIŞI: ${cats.length} kategoride yalnız YENİ ürünler (en-yeni listesi, en fazla ${newestMaxPages} sayfa/kategori)`, 'info');
+      let totalNew = 0;
+      for (let ci = 0; ci < cats.length && !scraperAbort; ci++) {
+        const cat = cats[ci];
+        slog(`\n[${ci + 1}/${cats.length}] ${cat.name || cat.id}`, 'info');
+        let items = [];
+        try {
+          items = await collectNewestProductUrls(cat.id, { maxPages: newestMaxPages });
+        } catch (e) {
+          slog(`  ❌ ${cat.id}: ${e.message}`, 'error');
+          totals.errors++;
+          totals.missingCats.push(cat.id);
+          continue;
+        }
+        if (!items.length) { slog(`  → ${cat.id}: yeni ürün yok`, 'info'); continue; }
+        totalNew += items.length;
+        slog(`  → ${cat.id}: ${items.length} yeni ürün çekiliyor…`, 'success');
+        const categoryItems = items.map(item => (item.categoryId ? item : { ...item, categoryId: cat.id }));
+        const res = await sequentialScrape(categoryItems, cat.id, delay, concurrency, { skipPreload: true });
+        totals.added += res.added || 0;
+        totals.updated += res.updated || 0;
+        totals.skipped += res.skipped || 0;
+        totals.errors += res.errors || 0;
+        if ((res.added || 0) + (res.updated || 0) > 0) scoreCats.add(cat.id);
+        slog(`  ✔ ${cat.id}: ${res.added} eklendi · ${res.updated} güncellendi · ${res.errors} hata`, 'success');
+      }
+      slog(
+        `\n═══ Nokta atışı bitti: ${totalNew} aday · ${totals.added} eklendi · ${totals.updated} güncellendi · ${totals.errors} hata${scraperAbort ? ' | DURDURULDU' : ''} ═══`,
+        totals.errors ? 'warn' : 'success'
+      );
+      if (typeof window !== 'undefined') {
+        window.qoraiLastScrapeTotals = {
+          added: totals.added, updated: totals.updated, skipped: totals.skipped, errors: totals.errors,
+          categories: [...scoreCats], missingCats: totals.missingCats,
+          stopped: !!scraperAbort, finishedAt: new Date().toISOString(),
+        };
+      }
+      if ((totals.added > 0 || totals.updated > 0) && typeof loadProducts === 'function') await loadProducts();
+      scoreCats.forEach(cat => _queuePostScrapeScore(cat));
+      finishScraping();
+      return;
+    }
+
     if (catsForRun.length !== 1 || isAllCategories) {
       const cats = catsForRun;
       if (!cats.length) {

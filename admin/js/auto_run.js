@@ -116,12 +116,17 @@
     setInput('scrapeMaxProducts', opts.limit);
     setInput('scrapeDelay', opts.delay);
     setInput('scrapeConcurrency', opts.concurrency);
-    setCheckbox('scrapeAllSelectedProducts', opts.collectAll !== false);
+    // Gece koşusu NOKTA ATIŞI yapar: her kategorinin en-yeni listesinden yalnız
+    // yeni ürünler. Tam katalog taraması (collectAll) yalnız elle istenirse.
+    setCheckbox('scrapeNewestOnly', opts.newestOnly !== false);
+    setInput('scrapeNewestPages', opts.newestPages);
+    setCheckbox('scrapeAllSelectedProducts', opts.newestOnly === false && opts.collectAll === true);
 
     const picked = selectCategories(opts.categories);
     if (!picked.selected.length) throw new Error('Epey scrape için uygun kategori bulunamadı');
     if (picked.skipped.length) log(`Epey yolu tanımlı olmayan kategoriler atlandı: ${picked.skipped.join(', ')}`, 'warn');
-    log(`${picked.selected.length} kategori seçildi · limit ${opts.limit} · paralel ${opts.concurrency} · ${opts.collectAll !== false ? 'kategoride ne varsa' : 'limitli'}`);
+    log(`${picked.selected.length} kategori · paralel ${opts.concurrency} · ` +
+      (opts.newestOnly !== false ? `NOKTA ATIŞI (en fazla ${opts.newestPages} sayfa/kategori)` : 'TAM KATALOG'));
 
     global.qoraiLastScrapeTotals = null;
     await startBulkScrape();
@@ -181,7 +186,9 @@
       limit: 100000,
       delay: 0,
       concurrency: 24,
-      collectAll: true,
+      newestOnly: true,   // gece koşusunun varsayılanı: yalnız yeni ürünler
+      newestPages: 3,
+      collectAll: false,  // tam katalog taraması yalnız açıkça istenirse
       translate: true,
       score: true,
     }, userOpts || {});

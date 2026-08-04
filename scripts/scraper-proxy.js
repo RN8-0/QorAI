@@ -405,8 +405,14 @@ async function getBrowser() {
   if (!chromePath) throw new Error('Chrome or Edge was not found. Please install Chrome or Edge.');
   fs.mkdirSync(CHROME_PROFILE_DIR, { recursive: true });
 
+  // Chrome BAŞSIZ OLAMAZ: Cloudflare Turnstile gerçek bir pencere istiyor.
+  // Ama kullanıcının ekranına çıkmasına da gerek yok — gece/gündüz koşularında
+  // saatlerce önde duruyordu. Ekran dışına konumlandırıyoruz (OFFSCREEN=0 ile
+  // kapatılabilir, hata ayıklarken pencereyi görmek gerekiyor).
+  const offscreen = process.env.SCRAPER_OFFSCREEN !== '0';
   const launchArgs = [
     '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage',
+    ...(offscreen ? ['--window-position=-2400,-2400'] : []),
     '--window-size=1366,768','--disable-blink-features=AutomationControlled',
     '--disable-infobars','--disable-notifications','--lang=de-DE,de',
     '--ignore-gpu-blocklist','--enable-gpu-rasterization',

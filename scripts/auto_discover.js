@@ -49,7 +49,11 @@ const OPTS = {
   limit: parseInt(argVal('limit', '100000'), 10) || 100000,
   delay: parseInt(argVal('delay', '0'), 10) || 0,
   concurrency: parseInt(argVal('concurrency', '24'), 10) || 24,
-  collectAll: !hasFlag('no-collect-all'),
+  // VARSAYILAN: nokta atışı (her kategorinin en-yeni listesinden yalnız yeni
+  // ürünler). --full-catalog yalnız sıfırdan kurulum/onarım için.
+  newestOnly: !hasFlag('full-catalog'),
+  newestPages: parseInt(argVal('newest-pages', '3'), 10) || 3,
+  collectAll: hasFlag('full-catalog'),
   translate: !hasFlag('no-translate'),
   score: !hasFlag('no-score'),
 };
@@ -308,8 +312,9 @@ async function runInBrowser(pbUrl, auth) {
 (async () => {
   const startedAt = Date.now();
   log('═══ Qor AI — otomatik yeni ürün keşfi başlıyor ═══');
-  log(`ayarlar: kategoriler=${OPTS.categories} · limit=${OPTS.limit} · paralel=${OPTS.concurrency} · ` +
-      `${OPTS.collectAll ? 'kategoride ne varsa' : 'limitli'} · çeviri=${OPTS.translate} · puan=${OPTS.score}`);
+  log(`ayarlar: kategoriler=${OPTS.categories} · paralel=${OPTS.concurrency} · ` +
+      `${OPTS.newestOnly ? `NOKTA ATIŞI (${OPTS.newestPages} sayfa/kategori)` : 'TAM KATALOG'} · ` +
+      `çeviri=${OPTS.translate} · puan=${OPTS.score}`);
 
   const pbUrl = adminPanelPbUrl();
   if (!pbUrl) { log('HATA: PocketBase adresi bulunamadı (migration\\.env)'); process.exit(2); }
