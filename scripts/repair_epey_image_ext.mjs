@@ -40,6 +40,7 @@ const env = Object.fromEntries(
 );
 const PB = String(env.POCKETBASE_URL || '').replace(/\/$/, '');
 
+const FIXED_IDS_FILE = path.join(process.env.USERPROFILE || process.env.HOME || rootDir, 'qorai-image-repair-ids.txt');
 const log = (m) => console.log(`[${new Date().toISOString().replace('T', ' ').slice(0, 19)}] ${m}`);
 
 async function pbFetch(pathname, opts = {}) {
@@ -144,6 +145,10 @@ async function repairOne(p) {
           body: JSON.stringify({ images: res.images, imageUrl: res.imageUrl }),
         });
         if (up.status !== 200) { failed++; log(`    ! PB yazma ${up.status}`); }
+        // Onarılan id'leri sakla: PB'ye yazmak yetmiyor, site Typesense'ten
+        // okuyor ve typesense_sync hook'u kırık. Bitince:
+        //   TS_FAST_IDS=$(cat ...) node scripts/ts_fast_upsert_products.js
+        else { try { fs.appendFileSync(FIXED_IDS_FILE, p.id + '\n'); } catch { /* önemsiz */ } }
       }
     };
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
