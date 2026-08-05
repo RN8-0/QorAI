@@ -1616,10 +1616,10 @@ async function main() {
       if (!a.slug) continue;
       const cover = articleCoverUrl(a) || DEFAULT_IMG;
       const slugs = { tr: a.slug_tr || a.slug, en: a.slug_en || a.slug, de: a.slug_de || a.slug };
-      // hreflang map (+ x-default → TR) so a TR/EN/DE searcher lands on the
+      // hreflang map (+ x-default → VARSAYILAN dil, artık EN) so a TR/EN/DE searcher lands on the
       // matching-language URL and Google treats them as one translated article.
       const alternates = BLOG_LANGS.map((l) => ({ hreflang: l, href: `${SITE}/blog/${slugs[l]}` }));
-      alternates.push({ hreflang: 'x-default', href: `${SITE}/blog/${slugs.tr}` });
+      alternates.push({ hreflang: 'x-default', href: `${SITE}/blog/${slugs[SEO_DEFAULT_LOCALE] || slugs.tr}` });
       const written = new Set();
       for (const lang of BLOG_LANGS) {
         const s = slugs[lang];
