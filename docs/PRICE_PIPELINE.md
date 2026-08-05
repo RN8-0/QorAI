@@ -174,3 +174,39 @@ Yani liste taramaya gerek yok.
 node scripts\epey_watch.js --dry-run    # yalnız raporla, çekme
 node scripts\epey_watch.js              # bak, gerekirse çek
 ```
+
+## Başka bir PC'ye taşıma / yedek makine (2026-08-05)
+
+**Neden mesele:** Epey datacenter IP'lerini 403'lüyor; ürün keşfi ve TR mağaza
+fiyatları **ev IP'sinden** koşmak zorunda. Bu yüzden otomasyon tek bir PC'ye
+bağlı. O PC bozulur/değişirse keşif + TR fiyatları durur (Amazon TR/DE/GB/US
+Hetzner'dan devam eder, site fiyatsız kalmaz).
+
+**Yeni PC'yi devreye almak — tek komut:**
+```
+git clone <repo> C:\...\Compair-master
+copy  migration\.env          <-- ESKİ PC'DEN, elle. Gizli anahtarlar git'te YOK.
+powershell -ExecutionPolicy Bypass -File scripts\setup_qorai_pc.ps1
+```
+Script sırayla: node/curl/Chrome kontrolü → `migration\.env` içindeki 5 zorunlu
+anahtarın varlığı → `npm install` → **PocketBase'e gerçek bağlantı denemesi** →
+çeviri worker'ı kurulu mu (yoksa `npm run translate:setup` der) → dört görevi
+kurar (nabız 15 dk, keşif 23:20, TR fiyat 03:10, DE/GB/US 03:12) ve durumu
+yazdırır.
+
+> **İKİ MAKİNE AYNI ANDA KOŞMASIN.** Eski PC hâlâ açıksa orada
+> `scripts\setup_qorai_pc.ps1 -Uninstall` çalıştır. Aksi hâlde iki makine
+> aynı anda Epey'e yüklenir ve oturum yanar.
+
+**Elle taşınan tek şey `migration\.env`.** Eski PC öldüyse: PocketBase admin
+şifresi ve Typesense anahtarı Coolify ortam değişkenlerinde durur, oradan
+yeniden üretilir.
+
+**Notlar:**
+- Chrome/Edge şart: `scraper-proxy` Cloudflare için GERÇEK tarayıcı kullanır
+  (başsız olamaz). Pencere ekran dışına alınır (`SCRAPER_OFFSCREEN=0` ile geri açılır).
+- Çeviri worker'ı (`scripts\nllb-ct2`, ~2.5 GB) kurulu değilse çeviri yalnız
+  mevcut sözlükle yapılır ve sözlükte olmayan atomlar Türkçe kalır. Kurulum:
+  `npm run translate:setup`. Koşu worker'ı kendisi başlatır.
+- Admin paneli (Coolify'da) HER PC'den açılır; otomasyonun bu PC'de kurulu
+  olup olmadığını Scraper sekmesindeki proxy durumundan görürsün.
