@@ -86,7 +86,7 @@ function main() {
   assert(homeRoot.length > 500, 'homepage #root prerender body is missing or too small');
   assert(homeH1, 'homepage prerender must carry an <h1>');
 
-  const staticPages = ['about', 'privacy', 'terms', 'refund', 'cookies', 'contact', 'faq', 'premium', 'subscriptions', 'link-analysis', 'quiz', 'ai-chat', 'en', 'de'];
+  const staticPages = ['about', 'privacy', 'terms', 'refund', 'cookies', 'contact', 'faq', 'premium', 'subscriptions', 'link-analysis', 'quiz', 'ai-chat', 'tr', 'de'];
   const samples = [
     ...staticPages,
     ...sampleDirs('product', 25),

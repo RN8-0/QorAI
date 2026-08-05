@@ -277,7 +277,7 @@ function keySpecRows(keySpecs, limit = 16) {
 // pre-JS snapshot get real, unique text + internal links (category + siblings).
 // Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
 // path and content must exist in the raw HTML, not only after the SPA renders.
-function productBody(d, label, categoryUrl, related = [], keySpecs = null) {
+function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
   const name = esc(d.name);
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
@@ -302,17 +302,47 @@ function productBody(d, label, categoryUrl, related = [], keySpecs = null) {
     .slice(0, 8)
     .map((r) => `<li><a href="${esc(r.path)}" style="color:#2563eb">${esc(r.name)}</a></li>`)
     .join('');
+  const tx = PROD_BODY_TEXT[lang] || PROD_BODY_TEXT[SEO_DEFAULT_LOCALE];
+  const pfx = localePrefix(lang);
   return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
-    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
+    + `<nav style="font-size:13px;color:#64748b"><a href="${pfx || '/'}">Qor AI</a> › <a href="${pfx}/category">${tx.cats}</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
     + `<h1 style="font-size:26px;margin:12px 0 4px">${name}</h1>`
-    + `<p style="color:#475569;margin:0 0 12px">${brand ? `${brand} · ` : ''}${lbl}${score ? ` · Qor AI teknik skoru ${score}/100` : ''}</p>`
+    + `<p style="color:#475569;margin:0 0 12px">${brand ? `${brand} · ` : ''}${lbl}${score ? ` · ${tx.score(score)}` : ''}</p>`
     + (img ? `<img src="${img}" alt="${name}" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />` : '')
-    + `<p style="line-height:1.7;color:#334155">${name}${highlights ? ` öne çıkan özellikleri: ${highlights}.` : ` — ${lbl}.`} ${name}${specs ? ` ${specs} teknik özelliğini` : ' özelliklerini'}, Qor AI teknik skorunu ve benzer ${lbl.toLowerCase()} modelleriyle karşılaştırmasını aşağıda incele.</p>`
-    + (items ? `<h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0">${items}</ul>` : '')
-    + (relLinks ? `<h2 style="font-size:18px;margin:22px 0 8px">Benzer ${lbl} modelleri</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
-    + `<p style="margin-top:16px"><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
+    + `<p style="line-height:1.7;color:#334155">${tx.intro(name, highlights, lbl, specs)}</p>`
+    + (items ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.specsH}</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0">${items}</ul>` : '')
+    + (relLinks ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.relH(lbl)}</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
+    + `<p style="margin-top:16px"><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${tx.cta(lbl)} →</a></p>`
     + `</main>`;
 }
+
+// Ürün gövdesi metinleri (kök adres İngilizce olduğu için varsayılan 'en').
+const PROD_BODY_TEXT = {
+  en: {
+    cats: 'Categories',
+    score: (s) => `Qor AI tech score ${s}/100`,
+    specsH: 'Key Specifications',
+    relH: (l) => `Similar models in ${l}`,
+    cta: (l) => `Compare all ${l}`,
+    intro: (n, hi, l, sp) => `${n}${hi ? ` key features: ${hi}.` : ` — ${l}.`} Review ${n}'s ${sp ? `${sp} technical specs` : 'specifications'}, its Qor AI tech score and how it compares with similar models in ${l.toLowerCase()} below.`,
+  },
+  tr: {
+    cats: 'Kategoriler',
+    score: (s) => `Qor AI teknik skoru ${s}/100`,
+    specsH: 'Öne Çıkan Teknik Özellikler',
+    relH: (l) => `Benzer ${l} modelleri`,
+    cta: (l) => `Tüm ${l} modellerini karşılaştır`,
+    intro: (n, hi, l, sp) => `${n}${hi ? ` öne çıkan özellikleri: ${hi}.` : ` — ${l}.`} ${n}${sp ? ` ${sp} teknik özelliğini` : ' özelliklerini'}, Qor AI teknik skorunu ve benzer ${l.toLowerCase()} modelleriyle karşılaştırmasını aşağıda incele.`,
+  },
+  de: {
+    cats: 'Kategorien',
+    score: (s) => `Qor AI Techscore ${s}/100`,
+    specsH: 'Wichtige technische Daten',
+    relH: (l) => `Ähnliche ${l}-Modelle`,
+    cta: (l) => `Alle ${l}-Modelle vergleichen`,
+    intro: (n, hi, l, sp) => `${n}${hi ? ` Highlights: ${hi}.` : ` — ${l}.`} Sieh dir unten ${sp ? `${sp} technische Merkmale` : 'die Merkmale'} von ${n}, den Qor AI Techscore und den Vergleich mit ähnlichen ${l}-Modellen an.`,
+  },
+};
 
 // Crawlable body for a category landing page: H1 + intro + a real <a> grid to
 // every curated product in the category. This is the spine of internal linking
@@ -444,42 +474,72 @@ function compareSpecRows(ksA, ksB) {
   return out.join('');
 }
 
-function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null) {
+// Karşılaştırma sayfası metinleri (kök adres İngilizce → varsayılan 'en').
+const CMP_TEXT = {
+  en: {
+    cats: 'Categories', score: 'Qor AI tech score', brand: 'Brand',
+    screen: 'Screen', batt: 'Battery', weight: 'Weight', inch: 'in',
+    title: (a, b) => `${a} vs ${b} — Comparison | Qor AI`,
+    desc: (a, b, l) => `${a} vs ${b} comparison — ${l}. Qor AI tech score and specs side by side; which one fits you better?`,
+    intro: (a, b) => `${a} vs ${b} comparison: Qor AI tech score and specifications side by side. See which one suits you better in the table below.`,
+    cta: (l) => `Compare all ${l}`,
+  },
+  tr: {
+    cats: 'Kategoriler', score: 'Qor AI teknik skoru', brand: 'Marka',
+    screen: 'Ekran', batt: 'Batarya', weight: 'Ağırlık', inch: 'inç',
+    title: (a, b) => `${a} vs ${b} — Karşılaştırma | Qor AI`,
+    desc: (a, b, l) => `${a} ile ${b} karşılaştırması — ${l}. Qor AI teknik skoru ve teknik özellikleri yan yana; hangisi sana daha uygun?`,
+    intro: (a, b) => `${a} ile ${b} karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.`,
+    cta: (l) => `Tüm ${l} modellerini karşılaştır`,
+  },
+  de: {
+    cats: 'Kategorien', score: 'Qor AI Techscore', brand: 'Marke',
+    screen: 'Display', batt: 'Akku', weight: 'Gewicht', inch: 'Zoll',
+    title: (a, b) => `${a} vs ${b} — Vergleich | Qor AI`,
+    desc: (a, b, l) => `${a} vs ${b} Vergleich — ${l}. Qor AI Techscore und technische Daten nebeneinander; welches passt besser zu dir?`,
+    intro: (a, b) => `${a} vs ${b} Vergleich: Qor AI Techscore und technische Daten nebeneinander. Sieh in der Tabelle unten, welches besser zu dir passt.`,
+    cta: (l) => `Alle ${l}-Modelle vergleichen`,
+  },
+};
+
+function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SEO_DEFAULT_LOCALE) {
+  const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
+  const pfx = localePrefix(lang);
   const na = esc(a.name); const nb = esc(b.name); const lbl = esc(label);
   const pa = esc(productPath(a)); const pb = esc(productPath(b));
   const sa = Number(a.techScore) || 0; const sb = Number(b.techScore) || 0;
   const base = [
-    cmpRow('Qor AI teknik skoru', sa ? `${sa}/100` : '', sb ? `${sb}/100` : ''),
-    cmpRow('Marka', a.brand, b.brand),
+    cmpRow(tx.score, sa ? `${sa}/100` : '', sb ? `${sb}/100` : ''),
+    cmpRow(tx.brand, a.brand, b.brand),
   ].filter(Boolean).join('');
   const specRows = compareSpecRows(ksA, ksB);
   const fallback = [
-    cmpRow('Ekran', a.screenSizeValue, b.screenSizeValue, 'inç'),
-    cmpRow('Batarya', a.batteryCapacityValue, b.batteryCapacityValue, 'mAh'),
-    cmpRow('Ağırlık', a.weightValueKg, b.weightValueKg, 'kg'),
+    cmpRow(tx.screen, a.screenSizeValue, b.screenSizeValue, tx.inch),
+    cmpRow(tx.batt, a.batteryCapacityValue, b.batteryCapacityValue, 'mAh'),
+    cmpRow(tx.weight, a.weightValueKg, b.weightValueKg, 'kg'),
   ].filter(Boolean).join('');
   const rows = base + (specRows || fallback);
   return `<main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
-    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Kategoriler</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
+    + `<nav style="font-size:13px;color:#64748b"><a href="${pfx || '/'}">Qor AI</a> › <a href="${pfx}/category">${tx.cats}</a> › <a href="${categoryUrl}">${lbl}</a></nav>`
     + `<h1 style="font-size:26px;margin:12px 0 6px">${na} <span style="color:#94a3b8">vs</span> ${nb}</h1>`
-    + `<p style="line-height:1.7;color:#334155">${na} ile ${nb} karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.</p>`
+    + `<p style="line-height:1.7;color:#334155">${tx.intro(na, nb)}</p>`
     + `<table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px">`
     + `<thead><tr><th></th>`
     + `<th style="padding:8px 12px;text-align:left"><a href="${pa}" style="color:#2563eb">${na}</a></th>`
     + `<th style="padding:8px 12px;text-align:left"><a href="${pb}" style="color:#2563eb">${nb}</a></th></tr></thead>`
     + `<tbody>${rows}</tbody></table>`
-    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">Tüm ${lbl} modellerini karşılaştır →</a></p>`
+    + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${tx.cta(lbl)} →</a></p>`
     + `</main>`;
 }
 
-function compareSeo(a, b, label) {
+function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
+  const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
   const url = `${SITE}${comparePath(a, b)}`;
   const categoryUrl = `${SITE}${categoryPath(a.category)}`;
   const imgA = /^https?:\/\//i.test(a.imageUrl || '') ? a.imageUrl : DEFAULT_IMG;
-  const title = truncate(`${a.name} vs ${b.name} — Karşılaştırma | Qor AI`, 70);
+  const title = truncate(tx.title(a.name, b.name), 70);
   const description = truncate(
-    `${a.name} ile ${b.name} karşılaştırması — ${label}. `
-    + 'Qor AI teknik skoru ve teknik özellikleri yan yana; hangisi sana daha uygun?',
+    tx.desc(a.name, b.name, label),
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -501,7 +561,7 @@ function compareSeo(a, b, label) {
     ],
   };
   return {
-    title, description, url, image: imgA, imageAlt: `${a.name} vs ${b.name}`, type: 'website',
+    title, description, url, lang, image: imgA, imageAlt: `${a.name} vs ${b.name}`, type: 'website',
     jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, itemList, breadcrumb] },
   };
 }
@@ -514,13 +574,36 @@ function compareSeo(a, b, label) {
 // Product snippet" errors in Search Console for zero gain. The runtime
 // useSeo() hook DOES add a valid Product+offers once the live price loads (and
 // only then), so products that actually have a price still get the rich result.
-function productSeo(d, label, keySpecs = null) {
-  const url = `${SITE}${productPath(d)}`;
-  const categoryUrl = `${SITE}${categoryPath(d.category)}`;
+// Ürün sayfası SEO metinleri. Kök adres İngilizce olduğu için varsayılan 'en'.
+const PROD_SEO_TEXT = {
+  en: {
+    title: (n) => `${n} — Specs & Comparison | Qor AI`,
+    score: (s) => `Qor AI tech score ${s}/100. `,
+    specs: (n) => `${n} technical specs. `,
+    tail: 'Qor AI analysis and comparison with similar models.',
+  },
+  tr: {
+    title: (n) => `${n} — Özellikler & Karşılaştırma | Qor AI`,
+    score: (s) => `Qor AI teknik skoru ${s}/100. `,
+    specs: (n) => `${n} teknik özellik. `,
+    tail: 'Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
+  },
+  de: {
+    title: (n) => `${n} — Specs & Vergleich | Qor AI`,
+    score: (s) => `Qor AI Techscore ${s}/100. `,
+    specs: (n) => `${n} technische Merkmale. `,
+    tail: 'Qor AI Analyse und Vergleich mit ähnlichen Modellen.',
+  },
+};
+
+function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
+  const tx = PROD_SEO_TEXT[lang] || PROD_SEO_TEXT[SEO_DEFAULT_LOCALE];
+  const url = `${SITE}${localePrefix(lang)}${productPath(d)}`;
+  const categoryUrl = `${SITE}${localePrefix(lang)}${categoryPath(d.category)}`;
   const score = Number(d.techScore) || 0;
   const specs = Number(d.specsCount) || 0;
   const img = /^https?:\/\//i.test(d.imageUrl || '') ? d.imageUrl : DEFAULT_IMG;
-  const title = truncate(`${d.name} — Özellikler & Karşılaştırma | Qor AI`, 68);
+  const title = truncate(tx.title(d.name), 68);
   // Lead the description with a few REAL spec values so it is unique per product
   // and long enough (Bing flagged descriptions as too short + too templated).
   const rows = keySpecRows(keySpecs, 4);
@@ -528,9 +611,9 @@ function productSeo(d, label, keySpecs = null) {
   const description = truncate(
     `${d.name}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
     + `${specHi ? `${specHi}. ` : ''}`
-    + `${score ? `Qor AI teknik skoru ${score}/100. ` : ''}`
-    + `${specs ? `${specs} teknik özellik. ` : ''}`
-    + 'Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
+    + `${score ? tx.score(score) : ''}`
+    + `${specs ? tx.specs(specs) : ''}`
+    + tx.tail,
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -539,13 +622,13 @@ function productSeo(d, label, keySpecs = null) {
   const breadcrumb = {
     '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${localePrefix(lang)}/` },
       { '@type': 'ListItem', position: 2, name: label, item: categoryUrl },
       { '@type': 'ListItem', position: 3, name: d.name, item: url },
     ],
   };
   return {
-    title, description, url, image: img, imageAlt: d.name, type: 'product',
+    title, description, url, lang, image: img, imageAlt: d.name, type: 'product',
     jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, breadcrumb] },
   };
 }
@@ -880,7 +963,7 @@ function renderPage(template, seo, bodyHtml) {
   let out = template.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/, () => block);
   // Match the <html lang> attribute to the page language so a crawler that never
   // runs JS doesn't see e.g. German content under lang="tr". tr is a no-op.
-  const lang = seo.lang || 'tr';
+  const lang = seo.lang || SEO_DEFAULT_LOCALE;
   if (lang !== 'tr') out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
   if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
   return out;
@@ -1156,8 +1239,15 @@ const STATIC_ROUTES = [
 ];
 
 // ── Multilingual SEO (tr=root, en=/en, de=/de) ──────────────────────────────
-const SEO_LOCALES = ['tr', 'en', 'de'];
-const localePrefix = (lang) => (lang === 'tr' ? '' : `/${lang}`);
+// KÖK ADRESİN DİLİ = İNGİLİZCE (2026-08-05). Eskiden kök Türkçeydi: Google'da
+// "qorai iphone specs" arayan bir İngiliz/Alman kullanıcıya Türkçe başlık ve
+// açıklama çıkıyordu. Site dili GERÇEK ziyaretçi için hâlâ tarayıcıdan
+// belirleniyor (bkz. web/src/main.jsx) — burada değişen yalnız arama
+// motorlarının indekslediği ÖN-RENDER HTML'in dili.
+// Adresler: /...  = en · /tr/... = tr · /de/... = de · x-default → kök (en)
+const SEO_DEFAULT_LOCALE = 'en';
+const SEO_LOCALES = ['en', 'tr', 'de'];
+const localePrefix = (lang) => (lang === SEO_DEFAULT_LOCALE ? '' : `/${lang}`);
 
 // A static route gets en/de variants only when it is indexable AND has real,
 // translatable content: the homepage, the legal pages (legalBody is lang-aware)
@@ -1260,7 +1350,11 @@ async function main() {
   //    the empty <div id="root"></div> that the AdSense reviewer kept rejecting.
   for (const r of STATIC_ROUTES) {
     const multilang = isMultilangRoute(r);
-    const locales = multilang ? SEO_LOCALES : ['tr'];
+    // Tek dilli rotalar VARSAYILAN dile yazılır (kök adres). Burada 'tr'
+    // sabitken varsayılan İngilizceye çevrilince /product yer tutucusu
+    // /tr/product'a kaymış ve kökteki eski (indexlenebilir) kopya kalmıştı —
+    // seo-audit bunu yakaladı.
+    const locales = multilang ? SEO_LOCALES : [SEO_DEFAULT_LOCALE];
     for (const lang of locales) {
       let body = '';
       if (r.dir === '') body = homeBody(guides, lang);
@@ -1429,7 +1523,7 @@ async function main() {
   }
   const prerendered = [];
   for (const [cat, picked] of curatedByCat) {
-    const label = categoryLabel(cat, 'tr');
+    const label = categoryLabel(cat, SEO_DEFAULT_LOCALE);
     const categoryUrl = `${SITE}${categoryPath(cat)}`;
     picked.forEach((d, i) => {
       const related = [];
@@ -1464,7 +1558,7 @@ async function main() {
   const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
   const compares = [];
   for (const [cat, picked] of curatedByCat) {
-    const label = categoryLabel(cat, 'tr');
+    const label = categoryLabel(cat, SEO_DEFAULT_LOCALE);
     const categoryUrl = `${SITE}${categoryPath(cat)}`;
     // Distinct MODELS only for pairing — never "Watch Ultra 3 vs Watch Ultra 3
     // Milano Loop". modelKey collapses cosmetic colour/strap/storage variants.
@@ -1570,7 +1664,7 @@ async function main() {
     // Mirror the en/de variants we actually prerendered (isMultilangRoute) so the
     // language pages get crawled, not just discovered via hreflang.
     if (isMultilangRoute(r)) {
-      for (const l of ['en', 'de']) {
+      for (const l of SEO_LOCALES.filter((x) => x !== SEO_DEFAULT_LOCALE)) {
         routeUrls.push({ loc: `${SITE}/${l}${r.path}`, changefreq: r.changefreq, priority: r.priority });
       }
     }
@@ -1585,7 +1679,7 @@ async function main() {
     if (!p) continue;
     const lastmod = lastmodFromTs(Math.max(0, ...picked.map(prodTs)));
     categoryUrls.push({ loc: `${SITE}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
-    for (const l of ['en', 'de']) categoryUrls.push({ loc: `${SITE}/${l}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
+    for (const l of SEO_LOCALES.filter((x) => x !== SEO_DEFAULT_LOCALE)) categoryUrls.push({ loc: `${SITE}/${l}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
   }
   // Only the curated, prerendered products go in the sitemap. Listing all 106k
   // (which serve the generic SPA shell with no per-product HTML) is exactly what

@@ -17,14 +17,17 @@ if (typeof window !== 'undefined') window.__qorBuild = '20260706-a';
 
 // Language URL-prefix for SEO: tr is the canonical root (no prefix); en/de live
 // under /en and /de so each language has a distinct, hreflang-linked URL Google
-// can index. This ONLY activates when the path starts with /en or /de — the root
-// (tr) experience is completely unchanged, so existing users see no difference.
+// can index. This ONLY activates when the path starts with /en, /de or /tr.
+// KÖK (öneksiz) ADRES ARTIK İNGİLİZCE ön-render edilir (2026-08-05): Google'da
+// aratan bir İngiliz/Alman kullanıcıya Türkçe sayfa çıkıyordu. Öneksiz adreste
+// GERÇEK ziyaretçinin dili yine TARAYICIDAN belirlenir — bu kural değişmedi;
+// önek yalnız o sayfa yüklemesi için dili sabitler (arama motorları içindir).
 // `basename` keeps the SPA's internal links inside the language; `initialLang`
 // sets the UI language for that page load WITHOUT clobbering the user's saved
 // Settings preference.
 const PATH_LANG = (() => {
   try {
-    const m = window.location.pathname.match(/^\/(en|de)(?:\/|$)/);
+    const m = window.location.pathname.match(/^\/(en|de|tr)(?:\/|$)/);
     return m ? m[1] : null;
   } catch { return null; }
 })();

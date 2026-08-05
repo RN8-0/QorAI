@@ -307,7 +307,7 @@ function webResearchPrompt(q, lang, country, currency, wantsSub) {
 // greets the visitor with what they're actually looking at and what to ask.
 function pageGreeting(lang, pathname, meta, defaultGreeting) {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
-  const bare = String(pathname || '').replace(/^\/(en|de)(?=\/|$)/, '') || '/';
+  const bare = String(pathname || '').replace(/^\/(en|de|tr)(?=\/|$)/, '') || '/';
   const kind = meta?.kind || (
     bare.startsWith('/product/') ? 'product'
       : bare.startsWith('/compare') ? 'compare'
