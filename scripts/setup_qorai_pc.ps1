@@ -81,13 +81,28 @@ else {
 }
 
 # ── 3. PocketBase erisimi ─────────────────────────────────────────
+# UYARIDIR, HATA DEGIL: PB gecici olarak 502 donebiliyor (Coolify redeploy
+# sirasinda konteyner yeniden basliyor). Bu yuzden kurulumu iptal etmek YANLIS
+# olur — gorevlerin kurulmasi PB'nin O ANDA ayakta olmasina bagli degil.
+# (Yasandi 2026-08-05: PB redeploy sirasinda script adim 3'te durdu ve
+# gorevleri hic kurmadi.) Uc kez denenir, yine olmazsa uyarip devam edilir.
 Step '3/5 PocketBase erisimi'
+$pbOk = $false
 Push-Location (Join-Path $RepoPath 'migration')
 try {
-  $probe = node -e "const pb=require('./pb.js');pb.req('GET','/api/collections/products/records?perPage=1&fields=id').then(r=>{console.log(r.status===200?'OK':'HTTP '+r.status);process.exit(r.status===200?0:1)}).catch(e=>{console.log('HATA '+e.message);process.exit(1)})" 2>&1
-  if ($LASTEXITCODE -ne 0) { throw "PocketBase'e baglanilamadi: $probe" }
-  Ok "PocketBase erisimi calisiyor ($probe)"
+  foreach ($try in 1..3) {
+    $probe = node -e "const pb=require('./pb.js');pb.req('GET','/api/collections/products/records?perPage=1&fields=id').then(r=>{console.log(r.status===200?'OK':'HTTP '+r.status);process.exit(r.status===200?0:1)}).catch(e=>{console.log('HATA '+e.message);process.exit(1)})" 2>&1
+    if ($LASTEXITCODE -eq 0) { $pbOk = $true; break }
+    Warn "deneme $try/3 basarisiz: $probe"
+    if ($try -lt 3) { Start-Sleep -Seconds 10 }
+  }
 } finally { Pop-Location }
+if ($pbOk) { Ok 'PocketBase erisimi calisiyor' }
+else {
+  Warn 'PocketBase su an erisilemiyor (gecici olabilir: Coolify deploy / ag).'
+  Warn 'Gorevler yine de kuruluyor. Sonra dogrula:'
+  Warn '   cd migration; node -e "require(''./pb.js'').req(''GET'',''/api/collections/products/records?perPage=1'').then(r=>console.log(r.status))"'
+}
 
 # ── 4. Ceviri worker'i (opsiyonel ama onerilir) ───────────────────
 Step '4/5 Ceviri worker (GPU)'
@@ -113,6 +128,13 @@ $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoi
 
 function Install-QorTask {
   param([string]$Name, $Action, $Trigger)
+  # KOSAN gorevi yeniden kaydetme: Unregister onu ANINDA oldurur ve yarim
+  # kalan bir scrape/fiyat kosusu urunleri puansiz/cevrilmemis birakir.
+  $existing = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
+  if ($existing -and $existing.State -eq 'Running') {
+    Warn "$Name SU AN KOSUYOR — dokunulmadi. Kosu bitince tekrar calistir."
+    return
+  }
   try { Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction Stop } catch {}
   Register-ScheduledTask -TaskName $Name -Action $Action -Trigger $Trigger -Settings $settings | Out-Null
   Ok "kuruldu: $Name"
