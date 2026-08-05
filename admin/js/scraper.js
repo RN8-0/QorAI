@@ -5138,13 +5138,30 @@ window.QorAiBulkTranslate = {
   sanitizeEnglishTranslationMap: (map) => _sanitizeEnglishTranslationMap(map),
   sanitizeEnglishText: (text, sourceText) => _sanitizeEnglishSpecText(text, sourceText),
   sanitizeEnglishPayload: (payload) => _sanitizeEnglishPayload(payload),
-  // İngilizce yükte kalan Türkçe atomlar. Çeviri sağlayıcısı kapalıyken
-  // (GPU worker down + DeepSeek bakiyesi bitik) çeviri sessizce sözlüğe
-  // düşüyor ve eşleşmeyen atomlar TÜRKÇE kalıyor; multiLangSpecs.en dolu
-  // olduğu için de bir daha asla yeniden çevrilmiyordu. Bu yüzden "çevrilmiş
-  // mi" ölçütü artık boşluk değil, KALINTI (bkz. app.js _needsTranslation).
+  // Kaydedilmiş bir ürünün İngilizce haritası GERÇEKTEN bozuk mu?
+  //
+  // multiLangSpecs.en bir TERİM SÖZLÜĞÜDÜR: <Türkçe atom> : <İngilizce karşılık>.
+  // ANAHTARLARIN Türkçe olması NORMALDİR (kaynak atom). Bozukluğun tek kesin
+  // işareti KARŞILIĞIN (değerin) Türkçeye özgü karakter taşımasıdır.
+  //
+  // DİKKAT — burada `_englishPayloadResidues` KULLANILMAZ: o fonksiyon scrape
+  // sırasında taze yükü doğrulamak için BİLEREK agresiftir (anahtarlara da
+  // bakar, "Bellek/Boyut/Sayisi" gibi ortak kelimeleri yakalar). Onu bu
+  // ölçüte bağlayınca `ram` kategorisinin 4816 ürününün TAMAMI "çevrilmemiş"
+  // sayıldı ve 15 dakikalık nabız her turda hepsini yeniden çeviriyordu
+  // (ölçüldü 2026-08-05). Dar ölçüt aynı örneklemde 200'de 5 diyor.
   englishResidues: (payload) => {
-    try { return _englishPayloadResidues(payload) || []; } catch (_) { return []; }
+    try {
+      const en = payload && payload.multiLangSpecs && payload.multiLangSpecs.en;
+      if (!en || typeof en !== 'object') return [];
+      const out = [];
+      for (const [k, v] of Object.entries(en)) {
+        if (typeof v !== 'string' || !v) continue;
+        if (/[çğıİöşüÇĞŞÜÖ]/.test(v)) out.push({ path: `multiLangSpecs.en.${k}`, value: v });
+        if (out.length >= 5) break; // varlık yeter, tamamını saymaya gerek yok
+      }
+      return out;
+    } catch (_) { return []; }
   },
   assertCleanEnglishPayload: (payload, label) => _assertCleanEnglishPayload(payload, label),
   // Persist the dictionary cache to PocketBase.
