@@ -5,6 +5,7 @@
 //  advisor and price prediction. Shared by the product detail + compare pages.
 // ─────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
+import { IconX } from './GlyphIcons.jsx';
 import { createPortal } from 'react-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
@@ -1171,7 +1172,7 @@ function CompareProductModal({ column, onClose, L }) {
               <b>{column.name}</b>
             </div>
           </div>
-          <button type="button" className="ai-cmp-modal-close" onClick={onClose} aria-label={L('Close', 'Kapat', 'Schließen')}>✕</button>
+          <button type="button" className="ai-cmp-modal-close" onClick={onClose} aria-label={L('Close', 'Kapat', 'Schließen')}><IconX size={14} width={2.4} /></button>
         </header>
         <div className="ai-cmp-modal-body">
           <CompareProductDetail data={column.ai} L={L} />

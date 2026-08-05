@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { IconX } from '../components/GlyphIcons.jsx';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
@@ -724,7 +725,7 @@ export default function Compare() {
                   const name = displayProductName(p, lang);
                   return (
                     <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
-                      <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕">✕</button>
+                      <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕"><IconX size={14} width={2.4} /></button>
                       {isBest && products.length > 1 && (
                         <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
                       )}

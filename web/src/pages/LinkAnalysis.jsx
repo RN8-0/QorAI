@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { IconX } from '../components/GlyphIcons.jsx';
 import { trackEvent } from '../lib/analytics';
 import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
@@ -738,7 +739,7 @@ export default function LinkAnalysis() {
                     <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
                       placeholder={t('la.placeholder')} />
                     {urls.length > 1 && url.trim() && (
-                      <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove">×</button>
+                      <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove"><IconX size={13} width={2.6} /></button>
                     )}
                   </div>
                 ))}

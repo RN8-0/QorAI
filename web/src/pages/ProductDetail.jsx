@@ -18,6 +18,7 @@ import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath 
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
+import { IconX, IconChevronLeft, IconChevronRight } from '../components/GlyphIcons.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import AiAnalysisView, {
   buildFullPrompt,
@@ -1050,7 +1051,9 @@ export default function ProductDetail() {
         <nav className="pd-crumbs">
           <div className="pd-crumbs-path">
             <button className="pd-crumb-back" aria-label="back"
-              onClick={() => (window.history.length > 1 ? window.history.back() : null)}>‹</button>
+              onClick={() => (window.history.length > 1 ? window.history.back() : null)}>
+              <IconChevronLeft size={16} />
+            </button>
             <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
             <span aria-hidden="true">›</span>
             <Link to={categoryPath(p.category)}>{categoryLabel(p.category, lang)}</Link>
@@ -1434,7 +1437,7 @@ export default function ProductDetail() {
               <button className="pd-lightbox-close" type="button"
                 aria-label={L('Close image', 'Görseli kapat', 'Bild schließen')}
                 onClick={() => setLightbox(false)}>
-                ×
+                <IconX size={16} width={2.4} />
               </button>
             </header>
             <div className="pd-lightbox-body">
@@ -1442,7 +1445,7 @@ export default function ProductDetail() {
                 <button className="pd-lightbox-nav pd-lightbox-prev" type="button"
                   aria-label={L('Previous image', 'Önceki görsel', 'Vorheriges Bild')}
                   onClick={() => stepImage(-1)}>
-                  ‹
+                  <IconChevronLeft size={22} width={2.4} />
                 </button>
               )}
               <div className="pd-lightbox-img">
@@ -1452,7 +1455,7 @@ export default function ProductDetail() {
                 <button className="pd-lightbox-nav pd-lightbox-next" type="button"
                   aria-label={L('Next image', 'Sonraki görsel', 'Nächstes Bild')}
                   onClick={() => stepImage(1)}>
-                  ›
+                  <IconChevronRight size={22} width={2.4} />
                 </button>
               )}
               {images.length > 1 && (

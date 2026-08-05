@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { IconX } from './GlyphIcons.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { askQorAi, askQorAiGrounded } from '../lib/ai';
 import { trackEvent } from '../lib/analytics';
@@ -637,7 +638,7 @@ export default function AiBubble() {
                   </svg>
                 </button>
               )}
-              <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="✕">✕</button>
+              <button className="aib-head-x" onClick={() => setOpen(false)} aria-label="✕"><IconX size={14} width={2.4} /></button>
             </div>
           </div>
 

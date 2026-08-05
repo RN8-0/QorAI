@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IconX } from './GlyphIcons.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompare } from '../lib/compare';
 import { useI18n } from '../i18n/index.jsx';
@@ -46,7 +47,7 @@ export default function CompareBar() {
             {items.map((p) => (
               <div className="cmpbar-thumb" key={p.id} title={p.name}>
                 <ProductImg src={p.imageUrl || (p.images && p.images[0])} alt={p.name} size="card" />
-                <button className="cmpbar-x" onClick={() => remove(p.id)} aria-label={L('Remove', 'Kaldır', 'Entfernen')}>×</button>
+                <button className="cmpbar-x" onClick={() => remove(p.id)} aria-label={L('Remove', 'Kaldır', 'Entfernen')}><IconX size={13} width={2.6} /></button>
               </div>
             ))}
             {items.length < ids.length && <div className="cmpbar-thumb cmpbar-thumb-load"><span className="skel" /></div>}

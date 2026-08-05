@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { IconX } from '../components/GlyphIcons.jsx';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
@@ -352,7 +353,7 @@ export default function Category() {
         {hasFilters && (
           <button className="cat-side-clear" onClick={clearFilters}>{t('catalog.clearFilters')}</button>
         )}
-        <button className="cat-side-x" onClick={() => setDrawer(false)} aria-label="✕">✕</button>
+        <button className="cat-side-x" onClick={() => setDrawer(false)} aria-label="✕"><IconX size={14} width={2.4} /></button>
       </div>
 
       <div className="cat-fgroup">

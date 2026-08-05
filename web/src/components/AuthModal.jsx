@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { IconX } from './GlyphIcons.jsx';
 import { useAuth } from '../lib/auth';
 import {
   signIn, register, signInWithGoogle, requestPasswordReset, authErrorKey,
@@ -181,7 +182,7 @@ export default function AuthModal() {
   return (
     <div className="auth-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeAuth()}>
       <div className="auth-modal fade-up" role="dialog" aria-modal="true">
-        <button className="auth-close" onClick={closeAuth} aria-label="✕">✕</button>
+        <button className="auth-close" onClick={closeAuth} aria-label="✕"><IconX size={14} width={2.4} /></button>
         <div className="auth-head">
           <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" />
           <h2>{headTitle}</h2>
