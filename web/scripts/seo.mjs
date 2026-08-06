@@ -1402,8 +1402,10 @@ async function main() {
   writeTextFile(
     join(site, '404.html'),
     renderPage(template, {
-      title: 'Sayfa bulunamadı — Qor AI', description: 'Aradığın sayfa taşınmış olabilir.',
-      url: `${SITE}/404`, noindex: true,
+      // Kök adresin dili İngilizce; 404 kabuğu da öyle olmalı (metin SABİT
+      // TÜRKÇEYDİ, üstelik `<html lang="en">` ile birlikte servis ediliyordu).
+      title: 'Page not found — Qor AI', description: 'The page you are looking for may have moved.',
+      url: `${SITE}/404`, lang: SEO_DEFAULT_LOCALE, noindex: true,
     }),
   );
 
@@ -1667,15 +1669,34 @@ async function main() {
       if (entry.isDirectory()) { try { rmSync(join(blogRoot, entry.name), { recursive: true, force: true }); } catch (_) {} }
     }
   }
+  // BLOG LİSTESİ ÜÇ DİLDE (2026-08-06). Öncesinde yalnız `/blog` vardı ve metni
+  // SABİT TÜRKÇEYDİ — üstelik kök adres İngilizceye döndüğü için sayfa
+  // `<html lang="en">` deyip Türkçe başlık basıyordu. Daha kötüsü, `/tr/` veya
+  // `/de/` önekindeki bir ziyaretçi menüden Blog'a tıkladığında SPA `/tr/blog`
+  // adresine gidiyor ve orada ön-render bulunmadığı için 404 kabuğu (noindex,
+  // canonical → /404) servis ediliyordu.
+  const BLOG_LIST_TEXT = {
+    en: { title: 'Buying Guides & Blog — Qor AI', desc: '2026 buying guides for phones, laptops, headphones, TVs and more — scored and compared by Qor AI.' },
+    tr: { title: 'Alım Rehberleri & Blog — Qor AI', desc: 'Telefon, laptop, kulaklık, TV ve daha fazlası için 2026 alım rehberleri — Qor AI ile puanlandı ve karşılaştırıldı.' },
+    de: { title: 'Kaufberatung & Blog — Qor AI', desc: 'Kaufratgeber 2026 für Smartphones, Laptops, Kopfhörer, Fernseher und mehr — von Qor AI bewertet und verglichen.' },
+  };
   const blogUrls = [];
   if (articles.length) {
-    writeHtml('blog', renderPage(template, {
-      title: 'Alım Rehberleri & Blog — Qor AI',
-      description: 'Telefon, laptop, kulaklık, TV ve daha fazlası için 2026 alım rehberleri — Qor AI ile puanlandı ve karşılaştırıldı.',
-      url: `${SITE}/blog`, type: 'website',
-      jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE}/blog#blog`, name: 'Qor AI Blog', url: `${SITE}/blog` },
-    }, blogListBody(articles)));
-    blogUrls.push({ loc: `${SITE}/blog`, lastmod: lastmodAtLeastVersion(articles[0]?.updated), changefreq: 'daily', priority: '0.7' });
+    const blogListLastmod = lastmodAtLeastVersion(articles[0]?.updated);
+    for (const lang of SEO_LOCALES) {
+      const prefix = localePrefix(lang);
+      const tx = BLOG_LIST_TEXT[lang] || BLOG_LIST_TEXT[SEO_DEFAULT_LOCALE];
+      const url = `${SITE}${prefix}/blog`;
+      writeHtml(`${prefix}/blog`.replace(/^\//, ''), renderPage(template, {
+        title: tx.title, description: tx.desc, url, lang, type: 'website',
+        alternates: hreflangAlts('/blog'),
+        jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${url}#blog`, name: 'Qor AI Blog', url },
+      }, localizeBodyLinks(blogListBody(articles), lang)));
+      blogUrls.push({
+        loc: url, lastmod: blogListLastmod, changefreq: 'daily',
+        priority: lang === SEO_DEFAULT_LOCALE ? '0.7' : '0.6',
+      });
+    }
     const BLOG_LANGS = ['tr', 'en', 'de'];
     for (const a of articles) {
       if (!a.slug) continue;

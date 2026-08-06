@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { pb, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
-import { useSeo, SITE_URL } from '../lib/seo';
+import { useSeo, SITE_URL, hreflangAlternates } from '../lib/seo';
 import { articlePath } from '../lib/routes';
 import './Blog.css';
 
@@ -38,6 +38,8 @@ export default function Blog() {
       'Ausführliche Kaufratgeber für Handys, Laptops, Kopfhörer, TVs und mehr — die besten Modelle 2026, von Qor AI bewertet und verglichen.',
     ),
     path: '/blog',
+    htmlLang: lang,
+    alternates: hreflangAlternates('/blog'),
     jsonLd: {
       '@context': 'https://schema.org',
       '@type': 'Blog',
