@@ -141,8 +141,29 @@ function main() {
   assert(category >= 10, `sitemap has too few category URLs (${category})`);
   assert(badAmp === 0, 'sitemap contains unescaped ampersands');
   // lastmod must reflect real content changes. If most of the sitemap is stamped
-  // "today", the build is churning dates again and teaching crawlers to ignore it.
-  assert(todayStamps < total * 0.5, `sitemap stamps today's date on ${todayStamps}/${total} URLs — lastmod churn regression`);
+  // with the BUILD DATE, the build is churning dates again and teaching crawlers
+  // to ignore it (bu daha önce yaşandı).
+  //
+  // İSTİSNA — SEO_CONTENT_VERSION: ön-render çıktısı toplu değiştiğinde
+  // (ör. 2026-08-05'te kök adresin dili TR→EN) her sayfa GERÇEKTEN o gün
+  // değişmiştir ve lastmod bunu söylemelidir. O tarih seo.mjs'te SABİT bir
+  // değerdir; ertesi gün build alınsa bile İLERLEMEZ, dolayısıyla churn
+  // oluşturmaz. Churn = tarih her build'de bugüne kayar; taban = sabit kalır.
+  // Bu yüzden yalnız "sabit taban BUGÜNE eşitse" muafiyet tanınıyor.
+  let contentVersion = '';
+  try {
+    const seoSrc = readFileSync(join(here, 'seo.mjs'), 'utf8');
+    contentVersion = (seoSrc.match(/SEO_CONTENT_VERSION\s*=\s*'(\d{4}-\d{2}-\d{2})'/) || [])[1] || '';
+  } catch { /* seo.mjs okunamazsa muafiyet yok */ }
+  const versionIsToday = contentVersion && contentVersion === today;
+  assert(
+    versionIsToday || todayStamps < total * 0.5,
+    `sitemap stamps today's date on ${todayStamps}/${total} URLs — lastmod churn regression`
+    + ` (SEO_CONTENT_VERSION=${contentVersion || 'yok'})`,
+  );
+  if (versionIsToday) {
+    console.log(`[seo-audit] not: SEO_CONTENT_VERSION=${contentVersion} bugüne eşit — toplu lastmod bilinçli (churn değil)`);
+  }
 
   console.log(`[seo-audit] ok: ${files.length} sitemap file(s), ${total} urls, ${product} products, ${category} categories, ${checked} unique-body samples`);
 }

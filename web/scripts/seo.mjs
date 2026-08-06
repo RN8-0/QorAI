@@ -641,12 +641,34 @@ function categoryPath(category) {
 // Real modification date or NOTHING. Defaulting to "today" stamped every URL
 // with a fresh lastmod on every nightly run, which teaches Google/Bing that the
 // site's lastmod is meaningless noise — they then ignore it and crawl stale.
+// ÖN-RENDER İÇERİK SÜRÜMÜ — sitemap `lastmod`'unun tabanı.
+//
+// NEDEN VAR: `lastmod` şimdiye kadar YALNIZ ürün verisinin zaman damgasından
+// üretiliyordu. Ama sayfanın gördüğü metin ürün verisi değişmeden de
+// değişebiliyor: şablon, kopya, ya da 2026-08-05'teki gibi SAYFANIN DİLİ.
+// O gün 7867 adresin tamamı Türkçeden İngilizceye döndü, buna rağmen
+// sitemap'te yalnız 1582'sinde güncel tarih vardı; kalan ~6200 sayfa Google'a
+// "temmuzdan beri değişmedim" diyordu ve yeniden taranmıyordu.
+//
+// Bu tarih, ön-render ÇIKTISI anlamlı biçimde değiştiğinde ELLE yükseltilir.
+// Uydurma tazelik değildir: sayfa gerçekten o gün değişmiştir.
+const SEO_CONTENT_VERSION = '2026-08-05'; // kök adres dili TR → EN
+
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
-  if (!n) return '';
+  if (!n) return SEO_CONTENT_VERSION;
   const ms = n > 1e12 ? n : n * 1000;
   const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+  if (Number.isNaN(d.getTime())) return SEO_CONTENT_VERSION;
+  const iso = d.toISOString().slice(0, 10);
+  // Veri tarihi ile içerik sürümünden HANGİSİ YENİYSE o.
+  return iso > SEO_CONTENT_VERSION ? iso : SEO_CONTENT_VERSION;
+}
+
+// Ham tarih string'leri (blog `updated` gibi) için aynı taban.
+function lastmodAtLeastVersion(value) {
+  const iso = String(value || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) && iso > SEO_CONTENT_VERSION ? iso : SEO_CONTENT_VERSION;
 }
 
 // Renders the <head> SEO block injected between the seo markers.
@@ -1610,7 +1632,7 @@ async function main() {
       url: `${SITE}/blog`, type: 'website',
       jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE}/blog#blog`, name: 'Qor AI Blog', url: `${SITE}/blog` },
     }, blogListBody(articles)));
-    blogUrls.push({ loc: `${SITE}/blog`, lastmod: String(articles[0]?.updated || '').slice(0, 10), changefreq: 'daily', priority: '0.7' });
+    blogUrls.push({ loc: `${SITE}/blog`, lastmod: lastmodAtLeastVersion(articles[0]?.updated), changefreq: 'daily', priority: '0.7' });
     const BLOG_LANGS = ['tr', 'en', 'de'];
     for (const a of articles) {
       if (!a.slug) continue;
@@ -1649,7 +1671,7 @@ async function main() {
           lang,
           jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
         }, blogArticleBody(a, lang, blogPriceMap)));
-        blogUrls.push({ loc: url, lastmod: String(a.updated || a.publishedAt || '').slice(0, 10), changefreq: 'weekly', priority: '0.7' });
+        blogUrls.push({ loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt), changefreq: 'weekly', priority: '0.7' });
       }
     }
   }
@@ -1660,12 +1682,12 @@ async function main() {
   const CHUNK = 45000;
   const routeUrls = [];
   for (const r of STATIC_ROUTES.filter((x) => x.sitemap !== false && !x.noindex && !x.seo?.noindex)) {
-    routeUrls.push({ loc: `${SITE}${r.path}`, changefreq: r.changefreq, priority: r.priority });
+    routeUrls.push({ loc: `${SITE}${r.path}`, lastmod: SEO_CONTENT_VERSION, changefreq: r.changefreq, priority: r.priority });
     // Mirror the en/de variants we actually prerendered (isMultilangRoute) so the
     // language pages get crawled, not just discovered via hreflang.
     if (isMultilangRoute(r)) {
       for (const l of SEO_LOCALES.filter((x) => x !== SEO_DEFAULT_LOCALE)) {
-        routeUrls.push({ loc: `${SITE}/${l}${r.path}`, changefreq: r.changefreq, priority: r.priority });
+        routeUrls.push({ loc: `${SITE}/${l}${r.path}`, lastmod: SEO_CONTENT_VERSION, changefreq: r.changefreq, priority: r.priority });
       }
     }
   }
