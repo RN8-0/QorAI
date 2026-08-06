@@ -40,8 +40,14 @@ export default function App() {
   const { user } = useAuth();
 
   // Scroll to top + report page view on every route change.
+  // `behavior: 'instant'` ŞART: iki argümanlı `scrollTo(0, 0)` biçimi CSS'teki
+  // `scroll-behavior`'a UYAR. Genel `html { scroll-behavior: smooth }` kuralı
+  // dururken uzun bir listeden bir sayfaya geçmek, başa dönüşü saniyeler süren
+  // bir animasyona çeviriyor ve o sırada kullanıcının kaydırması yutuluyordu.
+  // Kural kaldırıldı; burada da davranışı açıkça sabitliyoruz ki ileride biri
+  // global smooth'u geri koyduğunda sayfa geçişi yeniden bozulmasın.
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     trackPageView(`${loc.pathname}${loc.search}`);
   }, [loc.pathname, loc.search]);
 

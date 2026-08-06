@@ -131,7 +131,15 @@
 
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+/* GENEL `scroll-behavior: smooth` KALDIRILDI (2026-08-06).
+   Bu kural yalnız çapa linklerini değil, HER programatik kaydırmayı yumuşatıyordu
+   — en önemlisi App.jsx'in rota değişiminde çağırdığı `window.scrollTo(0, 0)`
+   çağrısını. Sayfa 14.000 px uzunken başa dönüş saniyeler süren bir animasyona
+   dönüşüyor ve o animasyon devam ederken kullanıcının kaydırması yutuluyordu:
+   "bir sayfa açılınca scroll ilk birkaç saniye algılamıyor" şikayeti buydu.
+   Mobilde ayrıca parmakla kaydırmanın momentumuyla çakışıyor.
+   Yumuşak kaydırma gereken yerler (çapa linkleri, quiz adımları, yorum çapası)
+   bunu ZATEN `behavior: 'smooth'` ile açıkça istiyor — onlar etkilenmez. */
 body {
   font-family: var(--font);
   background: var(--bg-grad);
