@@ -131,7 +131,14 @@ async function multiSearch(searches) {
 // math in categoryBalancedProducts so the multi_search path returns the same
 // docs. Reduction (dedupe + slice) happens in reduceBalanced.
 function balancedSearchParams(category, perCategory, sortBy, minScore = 0) {
-  const fetchN = Math.min(Math.max(perCategory * 10, 40), 120);
+  // AŞIRI ÇEKME ÖLÇÜLDÜ (2026-08-06): çarpan 10 idi, yani 6 kart için 60 doküman.
+  // Ana sayfa ~20 ray × 40-60 doküman = 1000-1500 doc indiriyordu ve Typesense
+  // çağrısı 1111 ms sürüyordu — ürün kartlarını bekleten tek darboğaz buydu.
+  // Gerçek ihtiyaç ölçüldü (techScore:desc sırasında 6 FARKLI model için gereken
+  // ilk N): smartphones 16, laptops 11, monitors 6. Yani 10 kat fazlasıyla
+  // gereksiz. 4 kat + taban 30 en kötü durumu (16) neredeyse iki kat marjla
+  // karşılıyor; ray içeriği değişmez, yalnız indirilen ham doküman azalır.
+  const fetchN = Math.min(Math.max(perCategory * 4, 30), 60);
   const parts = [`category:=${lit(category)}`];
   if (minScore > 0) parts.push(`techScore:>=${minScore}`);
   return {
@@ -223,9 +230,11 @@ function dedupeVariants(products) {
 
 async function categoryBalancedProducts(categories, perCategory, sortBy, limit, opts = {}) {
   const minScore = Number(opts.minScore) || 0;
-  // Over-fetch hard: model de-dup collapses whole product families, so pull a lot
-  // per category to still fill the rail with DISTINCT models.
-  const fetchN = Math.min(Math.max(perCategory * 10, 40), 120);
+  // Over-fetch: model de-dup collapses whole product families, so pull more than
+  // the rail shows. Carpan balancedSearchParams ile AYNI tutulur (olculdu
+  // 2026-08-06: 6 farkli model icin gereken ilk N en kotu 16) — ikisi ayrisirsa
+  // ayni ray iki yoldan farkli urun doldurur.
+  const fetchN = Math.min(Math.max(perCategory * 4, 30), 60);
   const perCat = await Promise.all(categories.map((category) => {
     const parts = [`category:=${lit(category)}`];
     if (minScore > 0) parts.push(`techScore:>=${minScore}`);
@@ -528,7 +537,7 @@ export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
         q: '*', query_by: 'name',
         sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
         filter_by: `techScore:>=${HOME_MIN_SCORE}`,
-        per_page: 80, include_fields: LIST_FIELDS_LEAN,
+        per_page: 40, include_fields: LIST_FIELDS_LEAN, // 80'di: yeni gelenler rayi ~12 kart gosteriyor, 40 dedupe icin fazlasiyla yeter
       },
       { // spotlight — top-trending smartphone
         q: '*', query_by: 'name', sort_by: 'trendScore:desc,techScore:desc',
