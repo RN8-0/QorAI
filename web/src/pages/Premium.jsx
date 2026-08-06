@@ -115,6 +115,19 @@ export default function Premium() {
               {plan.featured && <span className="premium-badge">{L('Most popular', 'En popüler', 'Am beliebtesten')}</span>}
               <h2>{plan.name}</h2>
               <div className="premium-price"><b>{plan.price}</b><span>{plan.cadence}</span></div>
+              {/* Buradaki rakam ABD fiyatı; Play Store her ülke için ayrı fiyat
+                  tutuyor (ör. aylık GBP 4,99 / EUR 7,49 / AED 24,99) ve vergi
+                  ülkeye göre ekleniyor. Not olmadan sayfa, çoğu ülkede yanlış
+                  bir fiyat vaat etmiş oluyordu. */}
+              {plan.price !== '$0' && (
+                <p className="premium-price-note">
+                  {L(
+                    'Price in USD. The amount you pay is set by Google Play for your country and may include tax.',
+                    'Fiyat ABD doları üzerindendir. Ödeyeceğin tutar ülkene göre Google Play tarafından belirlenir ve vergi içerebilir.',
+                    'Preis in USD. Der tatsächliche Betrag wird von Google Play für dein Land festgelegt und kann Steuern enthalten.',
+                  )}
+                </p>
+              )}
               <ul>
                 {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
               </ul>

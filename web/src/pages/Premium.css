@@ -124,7 +124,16 @@
   display: flex;
   align-items: baseline;
   gap: 9px;
-  margin: 16px 0 18px;
+  margin: 16px 0 8px;
+}
+
+/* Fiyatın ülkeye göre değiştiğini söyleyen küçük not — rakamın hemen altında,
+   kart düzenini bozmadan (liste zaten flex:1 ile esniyor). */
+.premium-price-note {
+  margin: 0 0 14px;
+  color: var(--text2);
+  font-size: 11.5px;
+  line-height: 1.45;
 }
 
 .premium-price b {
