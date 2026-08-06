@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getHomeFeedCached, searchProducts, enrichThinCards } from '../lib/typesense';
+import { getHomeFeedCached, peekHomeFeed, homeFeedSignature, searchProducts, enrichThinCards } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { saveSearchHistory, readSearchHistory } from '../lib/pbHistory';
@@ -11,7 +11,7 @@ import ProductImg from '../components/ProductImg.jsx';
 import { techColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
-import { useSeo, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
+import { useSeo, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
 import { getRecentProducts, getRecentCategories } from '../lib/recentViewed';
 import { aiUserProfile } from '../lib/qorCoins';
 import { productPath } from '../lib/routes';
@@ -31,29 +31,14 @@ import './Home.css';
 
 // ── Home feed instant-paint cache ───────────────────────────────────────────
 // Stale-while-revalidate: a refresh or return visit paints the last feed snapshot
-// immediately (from localStorage) instead of blocking on a fresh Typesense round-
-// trip, so cards appear on the first frame on every device. We ALWAYS refetch in
-// the background, so the cache only affects perceived speed, never correctness.
-// Keyed by the personalization string so an account/interest change never shows
-// the wrong feed.
+// immediately instead of blocking on a fresh Typesense round-trip, so cards appear
+// on the first frame on every device. We ALWAYS refetch in the background, so the
+// cache only affects perceived speed, never correctness.
+//
+// Önbelleğin SAHİBİ artık lib/typesense.js (peekHomeFeed + getHomeFeedCached).
+// Burada ikinci bir localStorage kopyası tutuluyordu: aynı akış iki ayrı yere,
+// her yüklemede birkaç kez serileştiriliyordu ve anlık görüntü 733 KB'a çıkmıştı.
 const EMPTY_FEED = { categorySections: [], forYou: [], trending: [], newArrivals: [], spotlight: null, heroPicks: [], categories: [], total: 0 };
-const HOME_FEED_CACHE_KEY = 'qor.homeFeed.v1';
-const HOME_FEED_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h; revalidated on every load
-function readHomeFeedCache(feedKey) {
-  try {
-    const raw = localStorage.getItem(HOME_FEED_CACHE_KEY);
-    if (!raw) return null;
-    const snap = JSON.parse(raw);
-    if (!snap || snap.key !== feedKey || !snap.feed) return null;
-    if (Date.now() - (snap.ts || 0) > HOME_FEED_CACHE_TTL) return null;
-    return snap.feed;
-  } catch { return null; }
-}
-function writeHomeFeedCache(feedKey, feed) {
-  try {
-    localStorage.setItem(HOME_FEED_CACHE_KEY, JSON.stringify({ key: feedKey, feed, ts: Date.now() }));
-  } catch { /* quota / private mode — ignore */ }
-}
 
 function StatItem({ n, l }) {
   return (
@@ -227,8 +212,12 @@ export default function Home() {
   // Instant paint on refresh / return visit: seed feed + loading from the last
   // cached snapshot for this key so cards render on the FIRST frame instead of
   // after a Typesense round-trip. The effect below revalidates in the background.
-  const [feed, setFeed] = useState(() => readHomeFeedCache(feedKey) || EMPTY_FEED);
-  const [loading, setLoading] = useState(() => !readHomeFeedCache(feedKey));
+  // TEK okuma: eskiden aynı anlık görüntü mount başına üç kez (iki useState
+  // başlatıcısı + effect) ayrıştırılıyordu.
+  const prefCats = useMemo(() => (feedKey ? feedKey.split('|') : []), [feedKey]);
+  const seeded = useMemo(() => peekHomeFeed(prefCats, lang), [feedKey, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [feed, setFeed] = useState(() => seeded || EMPTY_FEED);
+  const [loading, setLoading] = useState(() => !seeded);
   const [recent, setRecent] = useState(() => getRecentProducts());
   // Recently-viewed snapshots are LEAN (no `_raw`), so thin-token categories
   // (headphones, GPUs, SSDs…) can't reach four key specs from localStorage
@@ -267,6 +256,8 @@ export default function Home() {
     title: `Qor AI — ${t('home.heroTitle')}`,
     description: t('seo.home'),
     path: '/',
+    htmlLang: lang,
+    alternates: hreflangAlternates('/'),
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [
@@ -289,30 +280,44 @@ export default function Home() {
   // cards and refresh silently; only show skeletons when there's nothing cached.
   useEffect(() => {
     let live = true;
-    const prefCats = feedKey ? feedKey.split('|') : [];
-    const cached = readHomeFeedCache(feedKey);
-    if (cached) { setFeed(cached); setLoading(false); } else { setLoading(true); }
+    // Mount tohumu zaten ekranda; bir daha setFeed ETME (aynı içerikle yapılan
+    // her setState 66 kartlık tam bir yeniden render demekti).
+    if (!seeded) setLoading(true);
+    // Görünenle birebir aynı akışı yeniden basmayı engelle: ucuz id+fiyat imzası
+    // eşleşiyorsa React'a hiç dokunmuyoruz.
+    let shownSig = homeFeedSignature(seeded);
+    const applyFeed = (f) => {
+      if (!live || !f) return;
+      const sig = homeFeedSignature(f);
+      if (sig && sig === shownSig) return;
+      shownSig = sig;
+      setFeed(f);
+    };
     getHomeFeedCached(prefCats, {
+      lang,
+      // Arka planda gelen TAZE akış: ekrandakiyle aynıysa hiç dokunma.
+      onFresh: applyFeed,
       // Thin cards (monitors/TVs/GPUs/headphones…) upgrade to their full four key
       // specs a beat after first paint via background enrichment — with no layout
-      // shift (the specs grid always reserves two rows). Apply AND re-cache the
-      // upgraded feed so return visits get the four-spec cards instantly.
+      // shift (the specs grid always reserves two rows). The cache layer stores the
+      // upgraded feed itself, so return visits get the four-spec cards instantly.
       onEnriched: (enriched) => {
         if (!live) return;
         // Apply the upgraded feed when the main thread is idle so its re-render
         // never competes with an in-progress scroll (the timeout caps the wait so
         // it still lands promptly). memo(ProductCard) keeps this to the few cards
-        // that actually changed.
-        const apply = () => { if (live) { setFeed(enriched); writeHomeFeedCache(feedKey, enriched); } };
+        // that actually changed. Enrichment DAİMA yeni etiket getirir, o yüzden
+        // imza kapısını atlar.
+        const apply = () => { if (live) { shownSig = homeFeedSignature(enriched); setFeed(enriched); } };
         if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(apply, { timeout: 800 });
         else setTimeout(apply, 0);
       },
     })
-      .then((f) => { if (live) { setFeed(f); writeHomeFeedCache(feedKey, f); } })
+      .then(applyFeed)
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
-  }, [feedKey]);
+  }, [feedKey, lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let live = true;

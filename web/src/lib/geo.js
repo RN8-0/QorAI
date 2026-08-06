@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 // Visitor country detection. qorai.net is behind Cloudflare, so /cdn-cgi/trace
 // returns `loc=XX` for free with no third-party call. Falls back to ipwho.is,
@@ -28,8 +28,15 @@ function writeCache(cc) {
 // (VPN-aware) for free with no third-party call; ipwho.is is the fallback. When
 // the fresh value differs from what we last served, broadcast qor-geo-change so
 // every mounted useGeoCountry() (and the ship-to selector) updates immediately.
+// Sayfa yüklemesi başına TEK doğrulama. `inflight` yalnız EŞZAMANLI çağrıları
+// birleştiriyordu: probe bitince null'a döndüğü için sonraki her çağrı YENİ bir
+// istek açıyordu ve useGeoCountry() her ürün kartında çağrıldığından ölçümde tek
+// bir ana sayfa yüklemesi 8 kez /cdn-cgi/trace istiyordu (2026-08-06).
+let revalidated = false;
+
 function probeCountry() {
   if (inflight) return inflight;
+  revalidated = true;
   inflight = (async () => {
     let cc = '';
     try {
@@ -64,10 +71,10 @@ export async function detectCountry() {
   const cached = readCache();
   if (cached) {
     memo = cached;
-    probeCountry(); // serve instantly, but revalidate in the background
+    if (!revalidated) probeCountry(); // serve instantly, revalidate ONCE per load
     return cached;
   }
-  if (memo) { probeCountry(); return memo; }
+  if (memo) { if (!revalidated) probeCountry(); return memo; }
   return probeCountry();
 }
 
@@ -83,14 +90,40 @@ export function setGeoCountry(cc) {
   return code;
 }
 
+// ── Paylaşılan abonelik ────────────────────────────────────────────────────
+// useGeoCountry() ürün kartı BAŞINA çağrılıyor (ana sayfada ~66 kez). Eskiden her
+// örnek kendi useState'ini, kendi effect'ini, kendi detectCountry() promise'ını ve
+// kendi window listener'ını kuruyordu. Artık tek bir modül deposu var: tespit bir
+// kez koşar, snapshot kararlı bir string olduğu için değişmeyen ülke yeniden
+// render tetiklemez.
+let current = null;
+const listeners = new Set();
+let started = false;
+
+function emit(cc) {
+  const v = String(cc || '');
+  if (v === current) return;
+  current = v;
+  listeners.forEach((f) => { try { f(); } catch { /* ignore */ } });
+}
+
+function getSnapshot() {
+  if (current === null) current = readCache() || memo || '';
+  return current;
+}
+
+function subscribe(cb) {
+  listeners.add(cb);
+  if (!started) {
+    started = true;
+    try {
+      window.addEventListener('qor-geo-change', (e) => emit((e && e.detail) || readCache() || ''));
+    } catch { /* ignore */ }
+    detectCountry().then(emit).catch(() => {});
+  }
+  return () => { listeners.delete(cb); };
+}
+
 export function useGeoCountry() {
-  const [country, setCountry] = useState(() => readCache() || memo || '');
-  useEffect(() => {
-    let live = true;
-    detectCountry().then((cc) => { if (live) setCountry(cc); });
-    const onChange = (e) => { if (live) setCountry((e && e.detail) || readCache() || ''); };
-    window.addEventListener('qor-geo-change', onChange);
-    return () => { live = false; window.removeEventListener('qor-geo-change', onChange); };
-  }, []);
-  return country;
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

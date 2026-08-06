@@ -448,7 +448,9 @@ function checkLabel(lang) {
 // `_raw` specs (category/search/detail surfaces), fills any empty slots from
 // those so EVERY category reaches its fixed key specs. Each chip is
 // { label, value }, already localized to `lang`.
-export function cardKeySpecs(product, lang = 'en', max = 4) {
+//
+// Wrapped by the memo below — call cardKeySpecs(), never this directly.
+function computeCardKeySpecs(product, lang = 'en', max = 4) {
   const category = catKey(product?.category);
   const tokens = Array.isArray(product?.filterTokens) ? product.filterTokens : [];
   const screen = Number(product?.screenSizeValue) || 0;
@@ -540,6 +542,47 @@ export function cardKeySpecs(product, lang = 'en', max = 4) {
       if (tokens.includes(f.token)) push(checkLabel(lang), lbl(f.label, lang), f.token);
     }
   }
+  return out;
+}
+
+// ── Kart etiketi önbelleği ─────────────────────────────────────────────────
+// ÖLÇÜLDÜ (2026-08-06, canlı üretim derlemesi): bu hesap her render'da baştan
+// koşuyordu ve `_raw` spec'i olan bir kartta ~80 ms sürüyor (canonicalizeSpecMaps
+// + görüntülenebilirlik süzgeci + kategori takma-ad taraması). Ana sayfa akışı
+// önbellekten zengin spec'li kartlarla dönünce ilk boyama tek başına 1795 ms ana
+// thread'i kilitliyordu; aynı akış yalın kartlarla 173 ms sürüyor. Yani "site geç
+// açılıyor / kaydırırken donuyor" şikayetinin kaynağı buydu.
+//
+// Sonuç YALNIZCA ürün nesnesine + dile bağlı, ürün nesneleri de değişmez
+// (enrichment değişen karta YENİ referans verir), bu yüzden WeakMap ile
+// nesne kimliğinden önbelleğe alınabilir; kart yeniden render olduğunda hesap
+// tekrar etmez, nesne çöpe gidince kayıt da gider.
+const chipMemo = new WeakMap();
+
+// enrichThinCards() kartları YERİNDE zenginleştiriyor (nesne kimliği değişmiyor),
+// dolayısıyla zenginleşmeden önce hesaplanmış etiketler bayat kalırdı. Mutasyonu
+// yapan taraf bunu çağırıp kaydı düşürür.
+export function invalidateCardChips(product) {
+  if (product && typeof product === 'object') {
+    chipMemo.delete(product);
+    if (product.__chips) delete product.__chips;
+  }
+}
+
+export function cardKeySpecs(product, lang = 'en', max = 4) {
+  if (!product || typeof product !== 'object') return computeCardKeySpecs(product, lang, max);
+  // Önceden hesaplanmış etiketler (akış önbelleği bunları saklar; bkz.
+  // web/src/lib/typesense.js → freezeCardChips) — zengin spec taşımaya gerek
+  // kalmadan kart dört etiketiyle ANINDA basılır.
+  const pre = product.__chips;
+  if (pre && pre.lang === lang && pre.max === max && Array.isArray(pre.chips)) return pre.chips;
+  let byLang = chipMemo.get(product);
+  if (!byLang) { byLang = new Map(); chipMemo.set(product, byLang); }
+  const key = `${lang}|${max}`;
+  const hit = byLang.get(key);
+  if (hit) return hit;
+  const out = computeCardKeySpecs(product, lang, max);
+  byLang.set(key, out);
   return out;
 }
 

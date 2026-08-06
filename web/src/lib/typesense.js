@@ -5,7 +5,7 @@
 // but catalog listing/search/detail no longer depends on PB hooks being live.
 
 import { productImageList } from './imageUrl';
-import { cardKeySpecs } from './categoryFilters';
+import { cardKeySpecs, invalidateCardChips } from './categoryFilters';
 
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 // Search-only scoped key (actions: documents:search,get on `products` only).
@@ -448,8 +448,15 @@ export async function enrichThinCards(products) {
   const list = (products || []).filter((p) => p && p.id);
   const byId = new Map();
   for (const p of list) byId.set(p.id, p);
+  // Önbellekten gelen kart etiketlerini HAZIR taşır (`__chips`); dört etiketi
+  // zaten varsa onu yeniden zenginleştirmek boşuna ağ + boşuna zengin-spec
+  // hesabıdır. Bu kapı olmadan tekrar ziyaretlerde 1620 ms'lik bir ana thread
+  // bloğu ölçüldü (2026-08-06) — kartlar zaten dört etiketle ekrandayken.
+  const chipCount = (p) => (
+    p.__chips && Array.isArray(p.__chips.chips) ? p.__chips.chips.length : cardKeySpecs(p, 'en').length
+  );
   const thin = [...byId.values()].filter(
-    (p) => !p.keySpecs && !p.specs && !p.specSections && cardKeySpecs(p, 'en').length < 4,
+    (p) => !p.keySpecs && !p.specs && !p.specSections && chipCount(p) < 4,
   );
   if (!thin.length) return products;
   const ids = thin.map((p) => p.id).slice(0, 150);
@@ -475,6 +482,9 @@ export async function enrichThinCards(products) {
       if (r.specsEn) p.specsEn = r.specsEn;
       if (r.specSections) p.specSections = r.specSections;
       if (r.multiLangSpecs) p.multiLangSpecs = r.multiLangSpecs;
+      // Etiketler nesne kimliğinden önbelleğe alınıyor; yerinde zenginleştirme
+      // kimliği değiştirmediği için eski (yalın) etiketler yapışıp kalırdı.
+      invalidateCardChips(p);
     }
   } catch { /* best-effort: lean chips still render */ }
   return products;
@@ -519,52 +529,131 @@ async function enrichHomeCardsWithRichSpecs(feed) {
 // kendi barındırdığımız Typesense'in taban gecikmesi ve ~29 alt-sorgu onun
 // üstüne biniyor. Yani "ürünler geç geliyor" ağ/sunucu kaynaklı, kod değil.
 //
-// Kullanıcı için ölçülebilir tek kazanç: AYNI akışı tekrar beklememek. Akış
-// anonim ziyaretçi için aynı olduğundan sessionStorage'a yazılır; sonraki
-// ziyaret ve GERİ gezinme kartları ANINDA boyar, taze veri arkada gelir.
-// TTL kısa (5 dk) — yeni ürün nabzı 15 dakikada bir çalıştığı için bayat
-// kalma penceresi zaten dar.
-const HOME_CACHE_KEY = 'qor.homeFeed.v1';
-const HOME_CACHE_TTL_MS = 5 * 60 * 1000;
+// Kullanıcı için ölçülebilir tek kazanç: AYNI akışı tekrar beklememek.
+//
+// TEK ÖNBELLEK. Eskiden İKİ tane vardı — burada sessionStorage, Home.jsx'te
+// localStorage — ikisi de aynı anahtar adını kullanıyordu ve aynı akışı iki kez
+// serileştiriyordu. Sahibi artık yalnız bu modül; Home.jsx senkron tohumu
+// peekHomeFeed() ile alır.
+//
+// KRİTİK (2026-08-06 ölçümü): önbelleğe ZENGİN spec'li kartlar yazılıyordu
+// (enrichment `keySpecs`/`specs`/`multiLangSpecs` ekliyor) → kayıt 733 KB'a
+// çıkmıştı ve daha kötüsü, önbellekten dönen her kart cardKeySpecs'in PAHALI
+// zengin-spec yolunu tetikliyordu: tekrar ziyarette ilk boyama 1795 ms ana
+// thread kilidi (aynı akış yalın kartlarla 173 ms). Bu yüzden önbelleğe artık
+// spec haritaları değil, HESAPLANMIŞ ETİKETLER (`__chips`) yazılıyor — kart
+// ekranda birebir aynı görünür, kayıt ~89 KB'a düşer, açılış hesabı sıfırlanır.
+const HOME_CACHE_KEY = 'qor.homeFeed.v2';
+const HOME_CACHE_TTL_MS = 30 * 60 * 1000;
+const CARD_RICH_FIELDS = ['keySpecs', 'specs', 'specsEn', 'specSections', 'multiLangSpecs', '_raw'];
+
+// Aynı sayfa yüklemesinde önbelleği bir kereden fazla ayrıştırma (mount tohumu +
+// revalidate etkisi arka arkaya okuyor).
+let homeCacheMemo = null;
+
+// v1 anahtarı (zengin spec'li, ölçümde 733 KB) hâlâ ziyaretçilerin tarayıcısında
+// duruyor ve bir daha okunmayacak — yer kaplamasın diye ilk yüklemede düşürülür.
+try {
+  localStorage.removeItem('qor.homeFeed.v1');
+  sessionStorage.removeItem('qor.homeFeed.v1');
+} catch (_) { /* gizli mod */ }
+
+function slimCardForCache(p, lang) {
+  if (!p || typeof p !== 'object') return p;
+  const chips = cardKeySpecs(p, lang);
+  const out = { ...p, __chips: { lang, max: 4, chips } };
+  for (const f of CARD_RICH_FIELDS) delete out[f];
+  return out;
+}
+
+// Saf: ekrandaki akışa DOKUNMAZ, yalnız diske yazılacak hafif bir kopya üretir.
+function slimFeedForCache(feed, lang) {
+  const m = (p) => slimCardForCache(p, lang);
+  return {
+    ...feed,
+    categorySections: (feed.categorySections || []).map((s) => ({ ...s, products: (s.products || []).map(m) })),
+    forYou: (feed.forYou || []).map(m),
+    trending: (feed.trending || []).map(m),
+    newArrivals: (feed.newArrivals || []).map(m),
+    heroPicks: (feed.heroPicks || []).map(m),
+    spotlight: feed.spotlight ? m(feed.spotlight) : null,
+  };
+}
+
+// Ucuz kimlik: kart id'leri + fiyatları. Taze akış görünenle aynıysa çağıran
+// taraf setState'i atlayıp 66 kartlık tam yeniden render'dan kurtulur.
+export function homeFeedSignature(feed) {
+  if (!feed) return '';
+  const ids = [];
+  const push = (p) => { if (p && p.id) ids.push(`${p.id}:${p.lowestPriceUSD || ''}`); };
+  (feed.categorySections || []).forEach((s) => (s.products || []).forEach(push));
+  ['forYou', 'trending', 'newArrivals', 'heroPicks'].forEach((k) => (feed[k] || []).forEach(push));
+  push(feed.spotlight);
+  return ids.join(',');
+}
 
 function readHomeCache(sig) {
+  if (homeCacheMemo && homeCacheMemo.sig === sig) return homeCacheMemo.feed;
   try {
-    const raw = sessionStorage.getItem(HOME_CACHE_KEY);
+    const raw = localStorage.getItem(HOME_CACHE_KEY);
     if (!raw) return null;
     const box = JSON.parse(raw);
     if (!box || box.sig !== sig || !box.feed) return null;
     if (Date.now() - Number(box.at || 0) > HOME_CACHE_TTL_MS) return null;
+    homeCacheMemo = { sig, feed: box.feed };
     return box.feed;
   } catch (_) { return null; }
 }
-function writeHomeCache(sig, feed) {
+function writeHomeCache(sig, feed, lang) {
+  // BOŞ akışı ASLA yazma: getHomeFeed hata durumunda boş bir akış döner (Typesense
+  // anlık erişilemezse), onu önbelleğe almak ana sayfayı TTL boyunca boş bırakırdı.
+  if (!feed || !homeFeedSignature(feed)) return;
   try {
-    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ sig, at: Date.now(), feed }));
+    const slim = slimFeedForCache(feed, lang);
+    homeCacheMemo = { sig, feed: slim };
+    localStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ sig, at: Date.now(), feed: slim }));
   } catch (_) { /* kota dolu / gizli mod — önbellek opsiyoneldir */ }
+}
+
+const homeSig = (prefCats, lang) => `${lang}|${(prefCats || []).join(',')}`;
+
+// Senkron tohum: Home.jsx mount'ta bunu useState başlatıcısında kullanır, böylece
+// kartlar İLK FRAME'de basılır. Aynı imza için tekrar çağrı bedavadır (memo).
+export function peekHomeFeed(prefCats = [], lang = 'en') {
+  return readHomeCache(homeSig(prefCats, lang));
 }
 
 // Önbellek varsa ONU DÖNER ve tazelemeyi arka planda yapar; yoksa normal akış.
 // `onEnriched` zaten "sonradan gelen daha iyi veri" kanalı olduğu için taze
 // akış da oradan teslim edilir — çağıran tarafta yeni bir sözleşme gerekmez.
-export async function getHomeFeedCached(prefCats = [], { onEnriched } = {}) {
-  const sig = (prefCats || []).join(',');
+export async function getHomeFeedCached(prefCats = [], { onEnriched, onFresh, lang = 'en' } = {}) {
+  const sig = homeSig(prefCats, lang);
   const cached = readHomeCache(sig);
   if (cached) {
-    getHomeFeed(prefCats, { onEnriched })
+    // İKİ AYRI KANAL. Taze akış (`onFresh`) çağıran tarafta ucuz bir imza
+    // kapısından geçer — içerik ekrandakiyle aynıysa hiç render edilmez.
+    // Zenginleştirme (`onEnriched`) etiketleri değiştirir ama id/fiyat imzasını
+    // değiştirmez, o yüzden kapısız uygulanmalıdır.
+    getHomeFeed(prefCats, {
+      onEnriched: (enriched) => {
+        writeHomeCache(sig, enriched, lang);
+        if (typeof onEnriched === 'function') onEnriched(enriched);
+      },
+    })
       .then((fresh) => {
-        writeHomeCache(sig, fresh);
-        if (typeof onEnriched === 'function') onEnriched(fresh);
+        writeHomeCache(sig, fresh, lang);
+        if (typeof onFresh === 'function') onFresh(fresh);
       })
       .catch(() => {});
     return cached;
   }
   const feed = await getHomeFeed(prefCats, {
     onEnriched: (enriched) => {
-      writeHomeCache(sig, enriched);
+      writeHomeCache(sig, enriched, lang);
       if (typeof onEnriched === 'function') onEnriched(enriched);
     },
   });
-  writeHomeCache(sig, feed);
+  writeHomeCache(sig, feed, lang);
   return feed;
 }
 
