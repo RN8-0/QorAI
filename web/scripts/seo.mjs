@@ -652,7 +652,7 @@ function categoryPath(category) {
 //
 // Bu tarih, ön-render ÇIKTISI anlamlı biçimde değiştiğinde ELLE yükseltilir.
 // Uydurma tazelik değildir: sayfa gerçekten o gün değişmiştir.
-const SEO_CONTENT_VERSION = '2026-08-05'; // kök adres dili TR → EN
+const SEO_CONTENT_VERSION = '2026-08-06'; // ürün + karşılaştırma sayfaları üç dile açıldı (hreflang)
 
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
@@ -1287,13 +1287,18 @@ function hreflangAlts(basePath) {
   return alts;
 }
 
-// Prefix a prerendered body's in-site links so a crawler/visitor on /en stays in
-// /en (tr body returned unchanged). ONLY links whose root actually has en/de
-// prerenders are prefixed — products (tr-only), blog (slug-based i18n), /ai-chat,
-// /go and /compare are left alone so we never point at a page that doesn't exist.
-const MULTILANG_LINK_RE = /href="(\/(?:category|link-analysis|subscriptions|premium|quiz|terms|privacy|refund|cookies|contact|about|faq)(?:[/?#][^"]*)?|\/)"/g;
+// Prefix a prerendered body's in-site links so a crawler/visitor on /tr stays in
+// /tr (the default-locale body is returned unchanged). ONLY links whose root
+// actually has per-language prerenders are prefixed — blog (slug-based i18n),
+// /ai-chat and /go are left alone so we never point at a page that doesn't exist.
+//
+// DÜZELTİLDİ (2026-08-06): kapı `lang === 'tr'` idi — kök adres Türkçeyken doğru
+// olan bu kontrol, kök İngilizceye döndükten sonra TERSİNE dönmüştü: Türkçe
+// sayfaların İÇ LİNKLERİ öneksiz (yani İngilizce) sayfalara gidiyordu, üstelik
+// Almanca sayfalar prefixlenirken. Kapı artık VARSAYILAN dile bakıyor.
+const MULTILANG_LINK_RE = /href="(\/(?:category|product|compare|link-analysis|subscriptions|premium|quiz|terms|privacy|refund|cookies|contact|about|faq)(?:[/?#][^"]*)?|\/)"/g;
 function localizeBodyLinks(html, lang) {
-  if (lang === 'tr' || !html) return html;
+  if (lang === SEO_DEFAULT_LOCALE || !html) return html;
   return html.replace(MULTILANG_LINK_RE, (_m, p) => `href="/${lang}${p}"`);
 }
 
@@ -1522,8 +1527,9 @@ async function main() {
   //     (title/description/canonical + Product/Breadcrumb JSON-LD) + a content
   //     body with sibling-product links. Wipe stale product subdirs first so
   //     website/product/ never accumulates orphans. Keep product/index.html.
-  const productRoot = join(site, 'product');
-  if (existsSync(productRoot)) {
+  for (const lang of SEO_LOCALES) {
+    const productRoot = join(site, ...(localePrefix(lang) ? [lang] : []), 'product');
+    if (!existsSync(productRoot)) continue;
     for (const entry of readdirSync(productRoot, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         try { rmSync(join(productRoot, entry.name), { recursive: true, force: true }); } catch (_) {}
@@ -1543,24 +1549,44 @@ async function main() {
   } catch (err) {
     console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
   }
+  // ÜRÜN SAYFALARI ARTIK ÜÇ DİLDE (2026-08-06). Öncesinde yalnız kök adreste
+  // (varsayılan dil) üretiliyor ve HİÇ hreflang taşımıyorlardı: sitede üç dil
+  // desteklenmesine rağmen Google'da bir ürünü hangi dilde ararsa arasın herkes
+  // TEK dildeki başlığı görüyordu (önce Türkçe, 08-05'ten sonra İngilizce).
+  // Adresler değişmedi — `/product/<slug>` hâlâ İngilizce; yanına `/tr/product/…`
+  // ve `/de/product/…` eklendi ve üçü hreflang ile birbirine bağlandı, böylece
+  // arama motoru ziyaretçinin diline uygun olanı gösterir. Ziyaretçinin gerçek
+  // dili HÂLÂ tarayıcıdan belirlenir; önek yalnız ön-render HTML'in dilini sabitler.
   const prerendered = [];
   for (const [cat, picked] of curatedByCat) {
-    const label = categoryLabel(cat, SEO_DEFAULT_LOCALE);
-    const categoryUrl = `${SITE}${categoryPath(cat)}`;
+    const categoryPathStr = categoryPath(cat);
     picked.forEach((d, i) => {
-      const related = [];
-      for (let k = 1; k <= 8 && k < picked.length; k += 1) {
-        const r = picked[(i + k) % picked.length];
-        related.push({ name: r.name, path: productPath(r) });
-      }
       const path = productPath(d);
       if (!path) return;
       const ks = keySpecsById.get(d.id) || null;
-      writeHtml(path.replace(/^\//, ''), renderPage(template, productSeo(d, label, ks), productBody(d, label, categoryUrl, related, ks)));
+      const alternates = hreflangAlts(path);
+      for (const lang of SEO_LOCALES) {
+        const prefix = localePrefix(lang);
+        const label = categoryLabel(cat, lang);
+        const categoryUrl = `${SITE}${prefix}${categoryPathStr}`;
+        const related = [];
+        for (let k = 1; k <= 8 && k < picked.length; k += 1) {
+          const r = picked[(i + k) % picked.length];
+          related.push({ name: r.name, path: productPath(r) });
+        }
+        writeHtml(
+          `${prefix}${path}`.replace(/^\//, ''),
+          renderPage(
+            template,
+            { ...productSeo(d, label, ks, lang), alternates },
+            localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang), lang),
+          ),
+        );
+      }
       prerendered.push({ d, path });
     });
   }
-  console.log(`[seo] wrote ${prerendered.length} curated product shells (<=${PER_CAT}/category, deduped, image-gated)`);
+  console.log(`[seo] wrote ${prerendered.length} curated products × ${SEO_LOCALES.length} languages = ${prerendered.length * SEO_LOCALES.length} product shells (<=${PER_CAT}/category, deduped, image-gated, hreflang-linked)`);
 
   // 2e) comparison ("X vs Y") pages — the highest-intent queries for a compare
   //     site. For each category we pair the top-K blended products (flagships +
@@ -1569,8 +1595,9 @@ async function main() {
   //     pool from the URL so the same page also renders live.
   //     We wipe website/compare here (not only in prebuild) so this step is
   //     self-sufficient when the scheduled CI job runs seo.mjs on its own.
-  const compareRoot = join(site, 'compare');
-  if (existsSync(compareRoot)) {
+  for (const lang of SEO_LOCALES) {
+    const compareRoot = join(site, ...(localePrefix(lang) ? [lang] : []), 'compare');
+    if (!existsSync(compareRoot)) continue;
     for (const entry of readdirSync(compareRoot, { withFileTypes: true })) {
       if (entry.isDirectory()) {
         try { rmSync(join(compareRoot, entry.name), { recursive: true, force: true }); } catch (_) {}
@@ -1580,8 +1607,7 @@ async function main() {
   const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
   const compares = [];
   for (const [cat, picked] of curatedByCat) {
-    const label = categoryLabel(cat, SEO_DEFAULT_LOCALE);
-    const categoryUrl = `${SITE}${categoryPath(cat)}`;
+    const categoryPathStr = categoryPath(cat);
     // Distinct MODELS only for pairing — never "Watch Ultra 3 vs Watch Ultra 3
     // Milano Loop". modelKey collapses cosmetic colour/strap/storage variants.
     const topK = [];
@@ -1597,12 +1623,29 @@ async function main() {
       for (let j = i + 1; j < topK.length; j += 1) {
         const a = topK[i]; const b = topK[j];
         const path = comparePath(a, b);
-        writeHtml(path.replace(/^\//, ''), renderPage(template, compareSeo(a, b, label), compareBody(a, b, label, categoryUrl, keySpecsById.get(a.id) || null, keySpecsById.get(b.id) || null)));
+        const alternates = hreflangAlts(path);
+        const ksA = keySpecsById.get(a.id) || null;
+        const ksB = keySpecsById.get(b.id) || null;
+        // "X vs Y" en yüksek niyetli sorgu; ürün sayfalarıyla aynı gerekçeyle
+        // üç dilde üretilir ve hreflang ile bağlanır.
+        for (const lang of SEO_LOCALES) {
+          const prefix = localePrefix(lang);
+          const label = categoryLabel(cat, lang);
+          const categoryUrl = `${SITE}${prefix}${categoryPathStr}`;
+          writeHtml(
+            `${prefix}${path}`.replace(/^\//, ''),
+            renderPage(
+              template,
+              { ...compareSeo(a, b, label, lang), alternates },
+              localizeBodyLinks(compareBody(a, b, label, categoryUrl, ksA, ksB, lang), lang),
+            ),
+          );
+        }
         compares.push({ a, b, path });
       }
     }
   }
-  console.log(`[seo] wrote ${compares.length} comparison pages (top-${COMPARE_TOP}/category, distinct models)`);
+  console.log(`[seo] wrote ${compares.length} comparisons × ${SEO_LOCALES.length} languages = ${compares.length * SEO_LOCALES.length} pages (top-${COMPARE_TOP}/category, distinct models, hreflang-linked)`);
 
   // 2f) blog — prerender /blog listing + /blog/<slug> articles from PB so they're
   //     crawlable HTML (the SPA also renders them live from PB). Wipe stale dirs.
@@ -1706,13 +1749,22 @@ async function main() {
   // Only the curated, prerendered products go in the sitemap. Listing all 106k
   // (which serve the generic SPA shell with no per-product HTML) is exactly what
   // wasted crawl budget and produced the duplicate signal that blocked indexing.
-  const productUrls = prerendered.map(({ d, path }) => ({
-    loc: `${SITE}${path}`, lastmod: lastmodFromTs(d.updatedAtTs || d.scrapedAtTs), changefreq: 'weekly', priority: '0.6',
-  }));
-  const compareUrls = compares.map(({ a, b, path }) => ({
-    loc: `${SITE}${path}`, lastmod: lastmodFromTs(Math.max(prodTs(a), prodTs(b))),
-    changefreq: 'monthly', priority: '0.5',
-  }));
+  // Üç dilin de ön-render'ı üretildiği için üçü de sitemap'e girer — aksi halde
+  // dil varyantları yalnız hreflang üzerinden keşfedilir ve taranmaları gecikir.
+  const productUrls = prerendered.flatMap(({ d, path }) => {
+    const lastmod = lastmodFromTs(d.updatedAtTs || d.scrapedAtTs);
+    return SEO_LOCALES.map((l) => ({
+      loc: `${SITE}${localePrefix(l)}${path}`, lastmod, changefreq: 'weekly',
+      priority: l === SEO_DEFAULT_LOCALE ? '0.6' : '0.5',
+    }));
+  });
+  const compareUrls = compares.flatMap(({ a, b, path }) => {
+    const lastmod = lastmodFromTs(Math.max(prodTs(a), prodTs(b)));
+    return SEO_LOCALES.map((l) => ({
+      loc: `${SITE}${localePrefix(l)}${path}`, lastmod, changefreq: 'monthly',
+      priority: l === SEO_DEFAULT_LOCALE ? '0.5' : '0.4',
+    }));
+  });
   const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls];
 
   const renderUrlset = (items) =>

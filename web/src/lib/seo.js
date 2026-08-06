@@ -15,6 +15,32 @@ export function truncate(text, max = 158) {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s;
 }
 
+// ── Dil adresleri (scripts/seo.mjs ile AYNI şema) ──────────────────────────
+// Kök adres = İngilizce · /tr/… = Türkçe · /de/… = Almanca · x-default → kök.
+// Ziyaretçinin gördüğü dil HÂLÂ tarayıcıdan gelir; önek yalnız arama motorunun
+// indekslediği sürümü sabitler.
+export const SEO_LOCALES = ['en', 'tr', 'de'];
+export const SEO_DEFAULT_LOCALE = 'en';
+
+// Adresteki dil öneki ('' = kök = varsayılan dil).
+export function pathLocale() {
+  try {
+    const m = window.location.pathname.match(/^\/(tr|de|en)(?:\/|$)/);
+    return m ? m[1] : '';
+  } catch { return ''; }
+}
+
+// Önek TAŞIMAYAN bir yol için üç dilin hreflang kümesi.
+export function hreflangAlternates(path) {
+  const p = path === '/' ? '' : String(path || '');
+  const alts = SEO_LOCALES.map((l) => ({
+    hreflang: l,
+    href: `${SITE_URL}${l === SEO_DEFAULT_LOCALE ? '' : `/${l}`}${p || '/'}`,
+  }));
+  alts.push({ hreflang: 'x-default', href: `${SITE_URL}${p || '/'}` });
+  return alts;
+}
+
 function upsertMeta(attr, key, value) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`);
   if (value == null || value === '') { if (el) el.remove(); return; }
@@ -52,7 +78,14 @@ export function useSeo(seo = {}) {
   const altKey = alternates ? JSON.stringify(alternates) : '';
 
   useEffect(() => {
-    const url = SITE_URL + (path || window.location.pathname);
+    // CANONICAL DİL ÖNEKİNİ KORUMALI. Sayfalar `path`'i önek olmadan verir
+    // (`/product/…`), bu yüzden /tr/product/… adresinde canonical öneksiz —
+    // yani İNGİLİZCE — sürümü gösteriyordu. Kendi kendini başka bir dile
+    // canonical eden sayfayı Google indekslemez: üretilen tr/de ön-render'ları
+    // görünmez kılan buydu (2026-08-06).
+    const loc = pathLocale();
+    const rawPath = path || String(window.location.pathname || '/').replace(/^\/(tr|de|en)(?=\/|$)/, '') || '/';
+    const url = SITE_URL + (loc ? `/${loc}` : '') + rawPath;
     const img = image || DEFAULT_OG_IMAGE;
 
     if (title) document.title = title;

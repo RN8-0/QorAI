@@ -11,7 +11,7 @@ import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
-import { SITE_URL, useSeo } from '../lib/seo';
+import { SITE_URL, useSeo, hreflangAlternates } from '../lib/seo';
 import {
   compareTokenValues,
   featureFiltersForCategory,
@@ -81,6 +81,8 @@ export default function Category() {
       : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
     description: categoryDescription,
     path: catPath,
+    htmlLang: lang,
+    alternates: hreflangAlternates(catPath),
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [

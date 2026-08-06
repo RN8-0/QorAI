@@ -9,7 +9,7 @@ import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlFo
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
-import { useSeo } from '../lib/seo';
+import { useSeo, hreflangAlternates } from '../lib/seo';
 import { canonicalSpecKey } from '../lib/specCanonical';
 import { rowWinners } from '../lib/specDirection';
 import { productPath, parseComparePair } from '../lib/routes';
@@ -225,10 +225,13 @@ export default function Compare() {
   useEffect(() => {
     if (urlPairIds.length === 2) setCompareList(urlPairIds);
   }, [urlPairIds.join(',')]); // eslint-disable-line
+  const comparePathname = routeParams.pair ? `/compare/${routeParams.pair}` : '/compare';
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
     description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.'),
-    path: routeParams.pair ? `/compare/${routeParams.pair}` : '/compare',
+    path: comparePathname,
+    htmlLang: lang,
+    alternates: hreflangAlternates(comparePathname),
   });
   const { ids: poolIds, remove, clear, add } = useCompare();
   // Derin linkte URL TEK DOĞRULUK KAYNAĞIDIR. Havuz (localStorage) seeding

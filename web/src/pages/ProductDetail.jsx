@@ -31,7 +31,7 @@ import AiWorkboard from '../components/AiWorkboard.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import { isHiddenSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
-import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE } from '../lib/seo';
+import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
 import { categoryPath, extractProductId, productPath } from '../lib/routes';
@@ -634,6 +634,11 @@ function buildProductSeo(p, t, lang) {
   };
   return {
     title, description, image, imageAlt: name, path, type: 'product',
+    // Ürün sayfası üç dilde ön-render ediliyor (kök=en, /tr/…, /de/…). Bu küme
+    // olmadan useSeo, ön-render'ın bastığı hreflang etiketlerini render sırasında
+    // SİLİYORDU — Googlebot JS'i çalıştırdığında dil varyantları yok oluyordu.
+    htmlLang: lang,
+    alternates: hreflangAlternates(path),
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': hasOffer ? [webPage, product, breadcrumb] : [webPage, breadcrumb],
