@@ -512,6 +512,62 @@ async function enrichHomeCardsWithRichSpecs(feed) {
   };
 }
 
+// ── ANA SAYFA AKIŞI ÖNBELLEĞİ (bayat-göster, arkada-yenile) ──────────────
+// ÖLÇÜLDÜ (2026-08-06): ana sayfanın tek darboğazı Typesense multi_search'ü —
+// ilk ölçümde 1111 ms, aşırı çekme düşürüldükten sonra 932 ms. Daha aşağı
+// inmiyor çünkü TEK doküman isteyen minimal sorgu bile 280 ms sürüyor: bu,
+// kendi barındırdığımız Typesense'in taban gecikmesi ve ~29 alt-sorgu onun
+// üstüne biniyor. Yani "ürünler geç geliyor" ağ/sunucu kaynaklı, kod değil.
+//
+// Kullanıcı için ölçülebilir tek kazanç: AYNI akışı tekrar beklememek. Akış
+// anonim ziyaretçi için aynı olduğundan sessionStorage'a yazılır; sonraki
+// ziyaret ve GERİ gezinme kartları ANINDA boyar, taze veri arkada gelir.
+// TTL kısa (5 dk) — yeni ürün nabzı 15 dakikada bir çalıştığı için bayat
+// kalma penceresi zaten dar.
+const HOME_CACHE_KEY = 'qor.homeFeed.v1';
+const HOME_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function readHomeCache(sig) {
+  try {
+    const raw = sessionStorage.getItem(HOME_CACHE_KEY);
+    if (!raw) return null;
+    const box = JSON.parse(raw);
+    if (!box || box.sig !== sig || !box.feed) return null;
+    if (Date.now() - Number(box.at || 0) > HOME_CACHE_TTL_MS) return null;
+    return box.feed;
+  } catch (_) { return null; }
+}
+function writeHomeCache(sig, feed) {
+  try {
+    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify({ sig, at: Date.now(), feed }));
+  } catch (_) { /* kota dolu / gizli mod — önbellek opsiyoneldir */ }
+}
+
+// Önbellek varsa ONU DÖNER ve tazelemeyi arka planda yapar; yoksa normal akış.
+// `onEnriched` zaten "sonradan gelen daha iyi veri" kanalı olduğu için taze
+// akış da oradan teslim edilir — çağıran tarafta yeni bir sözleşme gerekmez.
+export async function getHomeFeedCached(prefCats = [], { onEnriched } = {}) {
+  const sig = (prefCats || []).join(',');
+  const cached = readHomeCache(sig);
+  if (cached) {
+    getHomeFeed(prefCats, { onEnriched })
+      .then((fresh) => {
+        writeHomeCache(sig, fresh);
+        if (typeof onEnriched === 'function') onEnriched(fresh);
+      })
+      .catch(() => {});
+    return cached;
+  }
+  const feed = await getHomeFeed(prefCats, {
+    onEnriched: (enriched) => {
+      writeHomeCache(sig, enriched);
+      if (typeof onEnriched === 'function') onEnriched(enriched);
+    },
+  });
+  writeHomeCache(sig, feed);
+  return feed;
+}
+
 export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
   const preferred = (prefCats || [])
     .map((cat) => String(cat || '').toLowerCase())

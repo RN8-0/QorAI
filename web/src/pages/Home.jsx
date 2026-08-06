@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getHomeFeed, searchProducts, enrichThinCards } from '../lib/typesense';
+import { getHomeFeedCached, searchProducts, enrichThinCards } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { saveSearchHistory, readSearchHistory } from '../lib/pbHistory';
@@ -292,7 +292,7 @@ export default function Home() {
     const prefCats = feedKey ? feedKey.split('|') : [];
     const cached = readHomeFeedCache(feedKey);
     if (cached) { setFeed(cached); setLoading(false); } else { setLoading(true); }
-    getHomeFeed(prefCats, {
+    getHomeFeedCached(prefCats, {
       // Thin cards (monitors/TVs/GPUs/headphones…) upgrade to their full four key
       // specs a beat after first paint via background enrichment — with no layout
       // shift (the specs grid always reserves two rows). Apply AND re-cache the
