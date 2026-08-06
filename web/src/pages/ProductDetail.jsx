@@ -552,13 +552,36 @@ function buildProductSeo(p, t, lang) {
   const category = categoryLabel(p.category, lang);
   const keySpecs = seoSpecEntries(p).slice(0, 3).map(([k, v]) => `${k}: ${v}`).join(' · ');
   const score = Number(p.techScore) || 0;
-  const title = truncate(`${name} özellikleri ve karşılaştırma — Qor AI`, 68);
+  // BAŞLIK/AÇIKLAMA DİLE GÖRE. Bunlar SABİT TÜRKÇEYDİ ve ön-render'ı EZİYORDU:
+  // seo.mjs ürün sayfasını İngilizce üretse bile Googlebot JS'i çalıştırınca
+  // useSeo bu Türkçe metni basıyor ve indekse o giriyordu. Google'da İngilizce
+  // arayan kullanıcıya "… özellikleri ve karşılaştırma" çıkmasının sebebi buydu
+  // (ölçüldü 2026-08-06).
+  const SEO_TX = {
+    en: {
+      title: (n) => `${n} — Specs & Comparison | Qor AI`,
+      score: (s) => `Qor AI tech score ${s}/100. `,
+      tail: 'Check the specs, compare and decide.',
+    },
+    tr: {
+      title: (n) => `${n} özellikleri ve karşılaştırma — Qor AI`,
+      score: (s) => `Qor AI teknik skoru ${s}/100. `,
+      tail: 'Özellikleri incele, karşılaştır ve karar ver.',
+    },
+    de: {
+      title: (n) => `${n} — Specs & Vergleich | Qor AI`,
+      score: (s) => `Qor AI Techscore ${s}/100. `,
+      tail: 'Specs ansehen, vergleichen und entscheiden.',
+    },
+  };
+  const tx = SEO_TX[lang] || SEO_TX.en;
+  const title = truncate(tx.title(name), 68);
   const description = truncate(
     p.description
     || `${name}: ${p.brand ? `${p.brand}, ` : ''}${category}. `
-       + `${score > 0 ? `Qor AI teknik skoru ${score}/100. ` : ''}`
+       + `${score > 0 ? tx.score(score) : ''}`
        + `${keySpecs ? `${keySpecs}. ` : ''}`
-       + 'Özellikleri incele, karşılaştır ve karar ver.',
+       + tx.tail,
   );
   const images = seoImageUrls(p);
   const image = images[0] || DEFAULT_OG_IMAGE;
