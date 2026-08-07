@@ -6,6 +6,7 @@ import { trackEvent } from '../lib/analytics';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import { useAnalysisAlerts, markAnalysisSeen } from '../lib/analysisHub';
 import { productPath } from '../lib/routes';
 import { searchProducts, getProduct } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
@@ -597,16 +598,48 @@ export default function AiBubble() {
   }
   sendRef.current = send;
 
+  // ARKA PLANDAKİ ANALİZLER — Qor balonu bunların tek göstergesi.
+  // Meşgulken halka döner ("çalışıyor"), hazır olduğunda kırmızı ünlem çıkar.
+  // Ünleme tıklamak balonu AÇMAZ, doğrudan sonucun olduğu sayfaya götürür.
+  const alerts = useAnalysisAlerts();
+  const alertReady = alerts.ready[0] || null;
+  const alertBusy = alerts.busy[0] || null;
+  const alertLabel = (a) => (a ? (chatLang === 'tr' ? a.labels[1] : chatLang === 'de' ? a.labels[2] : a.labels[0]) : '');
+
+  function goToAnalysis(a) {
+    if (!a) return;
+    markAnalysisSeen(a.kind);
+    navigate(a.path);
+  }
+
   return (
     <>
       <button
-        className={'aib-fab' + (open ? ' open' : '')}
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Qor AI"
+        className={'aib-fab' + (open ? ' open' : '') + (alertReady ? ' has-alert' : '') + (alertBusy ? ' is-busy' : '')}
+        onClick={() => { if (alertReady) goToAnalysis(alertReady); else setOpen((o) => !o); }}
+        aria-label={alertReady
+          ? `${alertLabel(alertReady)} — ${chatLang === 'tr' ? 'hazır' : chatLang === 'de' ? 'bereit' : 'ready'}`
+          : 'Qor AI'}
+        title={alertReady
+          ? `${alertLabel(alertReady)} ${chatLang === 'tr' ? 'hazır — görmek için tıkla' : chatLang === 'de' ? 'bereit — zum Ansehen klicken' : 'ready — click to view'}`
+          : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : chatLang === 'de' ? 'läuft im Hintergrund…' : 'running in the background…'}` : 'Qor AI')}
       >
         {open ? '✕' : <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />}
-        {!open && <span className="aib-fab-pulse" />}
+        {!open && !alertBusy && !alertReady && <span className="aib-fab-pulse" />}
+        {alertBusy && !alertReady && <span className="aib-fab-ring" aria-hidden="true" />}
+        {alertReady && <span className="aib-fab-badge" aria-hidden="true">!</span>}
       </button>
+
+      {/* Hazır bildirimi — balon kapalıyken de görünen küçük şerit. Kullanıcı
+          hangi analizin bittiğini okumadan tıklamak zorunda kalmasın. */}
+      {alertReady && !open && (
+        <button type="button" className="aib-alert-toast" onClick={() => goToAnalysis(alertReady)}>
+          <b>{alertLabel(alertReady)}</b>
+          <span>{alertReady.phase === 'quiz'
+            ? (chatLang === 'tr' ? 'sorular hazır — cevapla' : chatLang === 'de' ? 'Fragen bereit — beantworten' : 'questions ready — answer them')
+            : (chatLang === 'tr' ? 'analiz hazır — görüntüle' : chatLang === 'de' ? 'Analyse bereit — ansehen' : 'analysis ready — view')}</span>
+        </button>
+      )}
 
       {open && (
         <div className="aib-panel fade-up">

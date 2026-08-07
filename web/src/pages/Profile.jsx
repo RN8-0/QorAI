@@ -302,8 +302,17 @@ function SubscriptionSetting({ user }) {
 
   if (!isPremium) return null;
 
-  const showWeb = source !== 'play';
-  const showPlay = source !== 'polar';
+  // HANGİ BUTON GÖSTERİLİR — 2026-08-07 düzeltmesi.
+  // Kontrol `source !== 'play'` idi, ama uygulamanın PB'ye yazdığı gerçek değer
+  // `google_play` (ölçüldü). Yani Play'den abone olan kullanıcıya "Web
+  // aboneliğini iptal et" butonu gösteriliyordu; tıklayınca Polar'da müşteri
+  // olmadığı için "web aboneliği bulunamadı" alıyordu — buton bozuk görünüyordu.
+  // Artık mağaza kaynakları kalıp olarak eşleşiyor.
+  const isStore = /play|google|apple|app_?store/.test(source || '');
+  const isWeb = source === 'polar';
+  // Kaynak bilinmiyorsa iki yolu da göster (yanlış yönlendirmektense seçtir).
+  const showWeb = isWeb || (!isWeb && !isStore);
+  const showPlay = isStore || (!isWeb && !isStore);
 
   async function openPortal() {
     setState('loading'); setErr('');
@@ -340,15 +349,17 @@ function SubscriptionSetting({ user }) {
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        {/* İptal YIKICI bir işlem — nötr buton yerine kırmızı (pf-danger-btn),
+            hesap silme bölümüyle aynı görsel dil. */}
         {showWeb && (
-          <button className="btn" disabled={state === 'loading'} onClick={openPortal}>
+          <button className="btn pf-danger-btn" disabled={state === 'loading'} onClick={openPortal}>
             {state === 'loading'
-              ? '…'
+              ? L('Opening…', 'Açılıyor…', 'Wird geöffnet…')
               : L('Cancel website subscription', 'Web aboneliğini iptal et', 'Web-Abo kündigen')}
           </button>
         )}
         {showPlay && (
-          <a className="btn btn-ghost" href={PLAY_SUBS_URL} target="_blank" rel="noopener noreferrer">
+          <a className="btn pf-danger-btn" href={PLAY_SUBS_URL} target="_blank" rel="noopener noreferrer">
             {L('Cancel in Google Play', 'Google Play’den iptal et', 'In Google Play kündigen')}
           </a>
         )}

@@ -1105,7 +1105,17 @@ function ComparisonOverview({ cmp = {}, L }) {
         <div className="ai-cmp-winner">
           <span>★</span>
           <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cleanProductName(cmp.winner)}</b></div>
-          {toInt(cmp.winnerScore) > 0 && <strong>{toInt(cmp.winnerScore)}</strong>}
+          {/* Sayı ETİKETSİZ duruyordu: kullanıcı ürün adının yanındaki "90"ın
+              ne olduğunu anlamıyordu ("ne alaka?"). Bu, sayfadaki "Qor AI
+              Skoru" (teknik puan) ile de karışıyordu — bunlar FARKLI şeyler:
+              teknik puan üründen gelir, bu ise quiz cevaplarına göre hesaplanan
+              SANA UYGUNLUK puanıdır. Artık adı yazıyor. */}
+          {toInt(cmp.winnerScore) > 0 && (
+            <div className="ai-cmp-winner-score">
+              <strong>{toInt(cmp.winnerScore)}</strong>
+              <small>{L('fit for you', 'sana uygunluk', 'Passung')}</small>
+            </div>
+          )}
         </div>
       )}
       <CompareScoreChartFull chart={cmp.chart} L={L} />
@@ -1213,7 +1223,18 @@ function CompareFullReport({ data, L, lang, products = [] }) {
       const sat = toInt(community.satisfaction);
       const bd = community.sentimentBreakdown || community.sentiment_breakdown;
       if (!sat && !bd) return null;
-      return { name: c.name, key: c.key, sentiment: normalizeSentiment(bd, sat || toInt(c.ai?.matchScore)) };
+      // TUTARLILIK: donut ORTASINDA gösterilen sayı, ürün modalindeki
+      // "İnternet memnuniyet oranı" ile AYNI alan olmalı (`satisfaction`).
+      // Önceden ortaya `sentiment.positive` yazılıyordu — yani AI bir
+      // sentimentBreakdown döndürdüğünde kullanıcı aynı ürün için burada %65,
+      // modalde %82 görüyordu. Halka SEGMENTLERİ yine olumlu/nötr/olumsuz
+      // dağılımını gösterir; merkez ise tek ve tanımlı sayıdır.
+      return {
+        name: c.name,
+        key: c.key,
+        satisfaction: sat,
+        sentiment: normalizeSentiment(bd, sat || toInt(c.ai?.matchScore)),
+      };
     })
     .filter(Boolean);
 
@@ -1223,7 +1244,9 @@ function CompareFullReport({ data, L, lang, products = [] }) {
 
       {miniDonuts.length > 0 && (
         <section className="ai-report-section">
-          <div className="ai-report-eyebrow">💬 {L('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}</div>
+          {/* Etiket de modaldekiyle AYNI olmalı — aynı sayının iki farklı adı
+              olması kullanıcıda "tutarsız analiz" izlenimi yaratıyordu. */}
+          <div className="ai-report-eyebrow">💬 {L('Internet satisfaction', 'İnternet memnuniyet oranı', 'Internet-Zufriedenheit')}</div>
           <div className="aic-mini-donuts">
             {miniDonuts.map((m) => (
               <div className="aic-mini-donut" key={m.key}>
@@ -1233,7 +1256,7 @@ function CompareFullReport({ data, L, lang, products = [] }) {
                     { label: L('Neutral', 'Nötr', 'Neutral'), value: m.sentiment.neutral, color: '#f59e0b' },
                     { label: L('Negative', 'Olumsuz', 'Negativ'), value: m.sentiment.negative, color: '#f43f5e' },
                   ]}
-                  centerValue={`${Math.round(m.sentiment.positive)}%`}
+                  centerValue={`${m.satisfaction || Math.round(m.sentiment.positive)}%`}
                   size={84}
                   thickness={10}
                 />

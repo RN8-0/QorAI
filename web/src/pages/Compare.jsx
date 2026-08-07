@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconX } from '../components/GlyphIcons.jsx';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
@@ -464,19 +464,71 @@ export default function Compare() {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  const specRows = useMemo(() => {
+  // Karşılaştırma tablosu artık ÜRÜN SAYFASINDAKİ GİBİ BÖLÜMLÜ.
+  //
+  // Eskiden ~60 satır düz bir liste hâlinde alt alta geliyordu ve aradığın
+  // özelliği bulmak zordu (kullanıcı: "hepsi boşluk olmadan alt alta gelince
+  // specs bulmak zor oluyor"). Ürünün kendi `specSections` yapısı zaten
+  // "EKRAN / TASARIM / KAMERA / TEMEL BİLGİLER" gibi bölümler taşıyor —
+  // ürün sayfası onu kullanıyordu, karşılaştırma kullanmıyordu. Artık aynı
+  // yapıyı burada da kuruyoruz. Aynı kategorideki ürünlerin bölüm başlıkları
+  // zaten aynıdır, bu yüzden ilk eşleşen ürünün bölümü satırı sahiplenir.
+  const specGroups = useMemo(() => {
     if (products.length < 1) return [];
     const flats = products.map((p) => flatSpecs(p, lang));
+
+    // canonical key -> bölüm adı (ürünlerin KENDİ specSections yapısından)
+    const sectionByKey = new Map();
+    const sectionOrder = [];
+    for (const p of products) {
+      const srcTr = String(p?.sourceLang || '').toLowerCase() === 'tr'
+        && String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+      const sections = (srcTr && p?.sourceSpecSections && typeof p.sourceSpecSections === 'object'
+        && Object.keys(p.sourceSpecSections).length)
+        ? p.sourceSpecSections
+        : (p?.specSections && typeof p.specSections === 'object' ? p.specSections : null);
+      if (!sections) continue;
+      for (const [section, specs] of Object.entries(sections)) {
+        if (!specs || typeof specs !== 'object' || Array.isArray(specs)) continue;
+        if (!sectionOrder.includes(section)) sectionOrder.push(section);
+        for (const [k, v] of Object.entries(specs)) {
+          const ck = canonicalSpecKey(k, v);
+          if (ck && !sectionByKey.has(ck)) sectionByKey.set(ck, section);
+        }
+      }
+    }
+
     const keys = [];
     const seen = new Set();
     flats.forEach((f) => Object.keys(f).forEach((k) => {
       if (!seen.has(k)) { seen.add(k); keys.push(k); }
     }));
-    return keys.map((k) => {
+
+    const OTHER = '__other__';
+    const buckets = new Map();
+    for (const k of keys) {
       const values = flats.map((f) => f[k] || '—');
-      return { key: k, values, win: rowWinners(k, values) };
-    });
+      const row = { key: k, values, win: rowWinners(k, values) };
+      const sec = sectionByKey.get(k) || OTHER;
+      if (!buckets.has(sec)) buckets.set(sec, []);
+      buckets.get(sec).push(row);
+    }
+
+    const ordered = [];
+    for (const sec of sectionOrder) {
+      const rows = buckets.get(sec);
+      if (rows && rows.length) ordered.push({ section: sec, rows });
+    }
+    const rest = buckets.get(OTHER);
+    if (rest && rest.length) ordered.push({ section: OTHER, rows: rest });
+    return ordered;
   }, [products, lang]);
+
+  // Boş tablo kontrolü için düz satır sayısı.
+  const specRowCount = useMemo(
+    () => specGroups.reduce((n, g) => n + g.rows.length, 0),
+    [specGroups],
+  );
 
   const matchScores = useMemo(() => {
     if (!showMatchScore) return {};
@@ -843,25 +895,36 @@ export default function Compare() {
                           );
                         })}
                       </tr>
-                      {specRows.map((row) => (
-                        <tr key={row.key}>
-                          <td className="cmp-td-spec">{localizedSpecLabel(row.key, lang)}</td>
-                          {row.values.map((v, i) => (
-                            <td key={i}
-                              className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
-                              {v === '—' ? (
-                                <span className="cmp-na" title={L('No data', 'Veri yok', 'Keine Daten')}>?</span>
-                              ) : (
-                                <>
-                                  {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
-                                  <SpecValue value={v} lang={lang} />
-                                </>
-                              )}
-                            </td>
+                      {specGroups.map((group) => (
+                        <Fragment key={group.section}>
+                          <tr className="cmp-section-row">
+                            <th className="cmp-section-head" colSpan={1 + slots.length} scope="colgroup">
+                              {group.section === '__other__'
+                                ? L('Other', 'Diğer', 'Sonstiges')
+                                : localizedSpecLabel(group.section, lang)}
+                            </th>
+                          </tr>
+                          {group.rows.map((row) => (
+                            <tr key={row.key}>
+                              <td className="cmp-td-spec">{localizedSpecLabel(row.key, lang)}</td>
+                              {row.values.map((v, i) => (
+                                <td key={i}
+                                  className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
+                                  {v === '—' ? (
+                                    <span className="cmp-na" title={L('No data', 'Veri yok', 'Keine Daten')}>?</span>
+                                  ) : (
+                                    <>
+                                      {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
+                                      <SpecValue value={v} lang={lang} />
+                                    </>
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
                           ))}
-                        </tr>
+                        </Fragment>
                       ))}
-                      {specRows.length === 0 && (
+                      {specRowCount === 0 && (
                         <tr>
                           <td className="cmp-td-spec">—</td>
                           {slots.map((p) => (

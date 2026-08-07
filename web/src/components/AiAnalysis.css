@@ -76,6 +76,13 @@
 .ai-cmp-winner span { font-size: 26px; }
 .ai-cmp-winner small { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--text3); }
 .ai-cmp-winner b { font-size: 16px; font-weight: 850; color: var(--text); }
+/* Puan + adı: sayı tek başına duruken "ne alaka?" sorusunu doğuruyordu. */
+.ai-cmp-winner-score { margin-left: auto; text-align: right; line-height: 1.1; }
+.ai-cmp-winner-score strong { font-size: 22px; font-weight: 900; color: #16a34a; }
+.ai-cmp-winner-score small {
+  display: block; font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text3); margin-top: 2px;
+}
 .ai-cmp-verdict { font-size: 13px; color: var(--text2); line-height: 1.55; margin: 0 0 14px; }
 .ai-cmp-products { display: flex; flex-direction: column; gap: 14px; }
 .ai-cmp-prod { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
@@ -739,6 +746,13 @@
   flex-shrink: 0;
   width: 38px;
   height: 38px;
+  /* İkon SATIR TABANINA oturduğu için görsel olarak sola-yukarı kaçıyordu.
+     Buton bir ikon kutusu: flex ortalama + padding sıfırlama şart. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);

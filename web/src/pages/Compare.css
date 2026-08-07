@@ -548,3 +548,20 @@ button.cmp-more {
   .cmp-table th, .cmp-table td { padding: 10px; }
   .cmp-picks .card-grid { grid-template-columns: 1fr; }
 }
+
+/* Karşılaştırma tablosu bölüm başlıkları — ürün sayfasındaki gruplamanın aynısı.
+   Düz 60 satırlık listede aranan özelliği bulmak zordu. */
+.cmp-section-row th.cmp-section-head {
+  text-align: left;
+  padding: 14px 14px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  position: sticky;
+  left: 0;
+}
+.cmp-section-row:first-child th.cmp-section-head { border-top: 0; }
