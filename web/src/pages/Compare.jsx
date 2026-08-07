@@ -399,6 +399,18 @@ export default function Compare() {
   // the width (wide cards, no big empty gap); as more are added they shrink to a
   // readable minimum and then scroll horizontally. One source of truth (CSS vars)
   // keeps the header cards, price cards and spec table all the same width.
+  // Sütun genişliği kabın GERÇEK genişliğinden hesaplanır. Bu ölçüm TEK SEFERLİK
+  // yapılamaz:
+  //   • `useLayoutEffect` SPA içi gezinmede (karşılaştırmaya ikinci kez girmek,
+  //     geçmişten açmak) düzen daha oturmadan koşuyordu; o anki `clientWidth`
+  //     nihai değerden GENİŞ ölçülüyor, `--cmp-col` fazla büyük çıkıyor ve
+  //     kartlar ekranı taşırıyordu (soldaki kart kesik, sağda boşluk).
+  //   • Bağımlılık yalnız `products.length` idi; aynı sayıda ürünle tekrar
+  //     girildiğinde effect HİÇ yeniden koşmuyor, bozuk değer kalıyordu.
+  //   • Analiz bölümü sonradan yüklenince sayfa uzuyor, dikey kaydırma çubuğu
+  //     çıkıyor ve kullanılabilir genişlik ~15px daralıyor — eski ölçüm bayat.
+  // ResizeObserver kabın kutusu her değiştiğinde yeniden hesaplar; zamanlama
+  // varsayımı kalmaz.
   useLayoutEffect(() => {
     const root = cmpRef.current;
     if (!root || products.length < 1) return undefined;
@@ -414,9 +426,23 @@ export default function Compare() {
       root.style.setProperty('--cmp-col', `${col}px`);
     };
     apply();
+
+    let ro = null;
+    const scroller = root.querySelector('.cmp-product-scroll');
+    if (typeof ResizeObserver !== 'undefined' && scroller) {
+      ro = new ResizeObserver(() => apply());
+      ro.observe(scroller);
+    }
+    // İlk boyanmadan sonra bir kez daha: ResizeObserver yoksa (eski tarayıcı)
+    // ve düzen effect'ten sonra oturuyorsa yakalar.
+    const raf = requestAnimationFrame(apply);
     window.addEventListener('resize', apply);
-    return () => window.removeEventListener('resize', apply);
-  }, [products.length]);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', apply);
+    };
+  }, [products.length, lang]);
 
   useEffect(() => {
     setAiBusy(false);
