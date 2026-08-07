@@ -299,13 +299,62 @@ routerAdd('POST', '/api/polar/checkout', (e) => {
     const productId = plan === 'yearly' ? YEARLY : MONTHLY;
     if (!productId) return e.json(500, { error: 'product_not_configured', plan: plan });
 
-    const payload = {
+    // PARA BİRİMİ: Polar checkout'u yalnız `products` verilince VARSAYILAN
+    // (USD) fiyatla açıyor — müşteri ekranda para birimi seçemiyor. Ziyaretçinin
+    // ülkesine uyan `product_price_id` ile açarsak checkout o para biriminde
+    // gelir (doğrulandı: TRY fiyat id'siyle 14999 TRY). Fiyat kimlikleri panelde
+    // değişebileceği için sabitlemiyoruz; ürünü çekip para biriminden buluyoruz.
+    const cc = String((body && body.country) || '').toUpperCase();
+    const EURO = ['DE', 'AT', 'BE', 'NL', 'FR', 'IT', 'ES', 'PT', 'IE', 'FI', 'GR',
+      'SK', 'SI', 'EE', 'LV', 'LT', 'LU', 'MT', 'CY', 'HR'];
+    let want = 'usd';
+    if (cc === 'TR') want = 'try';
+    else if (cc === 'GB') want = 'gbp';
+    else if (EURO.indexOf(cc) >= 0) want = 'eur';
+
+    // Fiyat kimliği DAİMA çözülür (yalnız yabancı para birimi için değil):
+    // ürünün birden fazla fiyatı olduğunda sadece `products` göndermek Polar'da
+    // 422 veriyor — hangi fiyatın kastedildiği belirsiz kalıyor. İstenen para
+    // birimi yoksa USD'ye düşülür.
+    let priceId = '';
+    try {
+      const pr = $http.send({
+        url: 'https://api.polar.sh/v1/products/' + productId,
+        method: 'GET',
+        headers: { 'Authorization': 'Bearer ' + token },
+        timeout: 15,
+      });
+      if (pr.statusCode === 200 && pr.json && pr.json.prices) {
+        const list = pr.json.prices;
+        let usdId = '';
+        for (let i = 0; i < list.length; i++) {
+          if (list[i].is_archived) continue;
+          const cur = String(list[i].price_currency || '').toLowerCase();
+          if (cur === want && !priceId) priceId = String(list[i].id);
+          if (cur === 'usd' && !usdId) usdId = String(list[i].id);
+        }
+        if (!priceId) priceId = usdId;
+      }
+    } catch (perr) {
+      console.log('[polar] fiyat listesi alınamadı: ' + String(perr));
+    }
+
+    const payload = priceId ? {
+      product_price_id: priceId,
+      external_customer_id: user.id,
+    } : {
       products: [productId],
       external_customer_id: user.id,
       customer_email: String(user.get('email') || ''),
       success_url: 'https://qorai.net/premium?polar=success',
       metadata: { plan: plan, pbUserId: user.id, source: 'web' },
     };
+    payload.customer_email = String(user.get('email') || '');
+    payload.success_url = 'https://qorai.net/premium?polar=success';
+    // Polar metadata değerleri BOŞ OLAMAZ (422 "String should have at least 1
+    // character"). Ülke tespit edilemediğinde alanı hiç göndermiyoruz.
+    payload.metadata = { plan: plan, pbUserId: user.id, source: 'web' };
+    if (cc) payload.metadata.country = cc;
 
     const res = $http.send({
       url: 'https://api.polar.sh/v1/checkouts/',

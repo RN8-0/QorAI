@@ -1,20 +1,39 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { useGeoCountry } from '../lib/geo';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
-import PlayBadge from '../components/PlayBadge.jsx';
 import Reveal from '../components/Reveal.jsx';
 import './Premium.css';
 
-const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.compair.app';
+// Polar'daki GERÇEK fiyatlar (panelde ne varsa burada o yazmalı). Ziyaretçinin
+// ülkesine uyan para birimi gösterilir ve checkout da AYNI para biriminde açılır.
+const PRICES = {
+  usd: { sym: '$', monthly: '7.99', yearly: '49.99' },
+  eur: { sym: '€', monthly: '6.99', yearly: '49.99' },
+  gbp: { sym: '£', monthly: '7.99', yearly: '44.99' },
+  try: { sym: '₺', monthly: '149,99', yearly: '1799,99' },
+};
+const EURO_CC = ['DE', 'AT', 'BE', 'NL', 'FR', 'IT', 'ES', 'PT', 'IE', 'FI', 'GR',
+  'SK', 'SI', 'EE', 'LV', 'LT', 'LU', 'MT', 'CY', 'HR'];
 
-function plans(L) {
+function currencyForCountry(cc) {
+  const c = String(cc || '').toUpperCase();
+  if (c === 'TR') return 'try';
+  if (c === 'GB') return 'gbp';
+  if (EURO_CC.indexOf(c) >= 0) return 'eur';
+  return 'usd';
+}
+
+function plans(L, cur) {
+  const p = PRICES[cur] || PRICES.usd;
+  const money = (v) => (cur === 'try' ? `${v} ${p.sym}` : `${p.sym}${v}`);
   return [
     {
       name: 'Free',
       key: 'free',
-      price: '$0',
+      price: money('0'),
       cadence: L('forever', 'sürekli', 'dauerhaft'),
       cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
       features: [
@@ -28,7 +47,7 @@ function plans(L) {
     {
       name: 'Pro',
       key: 'monthly',
-      price: '$6.99',
+      price: money(p.monthly),
       cadence: L('monthly', 'aylık', 'monatlich'),
       cta: L('Get Pro', 'Pro’ya geç', 'Pro aktivieren'),
       featured: true,
@@ -44,7 +63,7 @@ function plans(L) {
     {
       name: 'Pro Yearly',
       key: 'yearly',
-      price: '$69.99',
+      price: money(p.yearly),
       cadence: L('yearly', 'yıllık', 'jährlich'),
       cta: L('Save yearly', 'Yıllık al', 'Jährlich sparen'),
       badge: L('Best value', 'En avantajlı', 'Bester Wert'),
@@ -61,6 +80,8 @@ function plans(L) {
 export default function Premium() {
   const { lang } = useI18n();
   const { user, openAuth } = useAuth();
+  const geoCountry = useGeoCountry();
+  const cur = currencyForCountry(geoCountry);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({
     title: `${L('Premium', 'Premium', 'Premium')} — Qor AI`,
@@ -75,8 +96,9 @@ export default function Premium() {
   // Web ödemesi Polar.sh üzerinden (Merchant of Record). Ödeme oturumunu
   // SUNUCU açıyor: `external_customer_id` alanına PocketBase kullanıcı id'si
   // yazılıyor, böylece kullanıcı ödemede farklı bir e-posta kullansa bile
-  // premium DOĞRU hesaba işleniyor. Fiyat USD; Stripe altyapısı müşteriden
-  // kendi para biriminde tahsil ediyor.
+  // premium DOĞRU hesaba işleniyor. Ülke kodunu da gönderiyoruz: checkout
+  // sayfasında para birimi SEÇİLEMEDİĞİ için sunucu, ziyaretçinin para
+  // birimindeki fiyatla oturumu açar (ekranda yazan tutarla birebir aynı).
   const [busyPlan, setBusyPlan] = useState('');
   const [payErr, setPayErr] = useState('');
 
@@ -89,7 +111,7 @@ export default function Premium() {
     setPayErr('');
     setBusyPlan(plan);
     try {
-      const res = await pb.send('/api/polar/checkout', { method: 'POST', body: { plan } });
+      const res = await pb.send('/api/polar/checkout', { method: 'POST', body: { plan, country: geoCountry || '' } });
       if (res && res.url) { window.location.href = res.url; return; }
       throw new Error('no_url');
     } catch (err) {
@@ -125,13 +147,11 @@ export default function Premium() {
             maxWidth: '520px',
           }}>
             {L(
-              'Subscribe here by card, or get it in the app through Google Play. Same Premium either way.',
-              'Buradan kartla abone olabilir ya da uygulamadan Google Play üzerinden alabilirsin. Premium her iki yolda da aynı.',
-              'Hier per Karte abonnieren oder in der App über Google Play kaufen. Premium ist in beiden Fällen identisch.',
+              'Start with a 3-day free trial. Cancel any time before it ends and you are not charged.',
+              '3 gün ücretsiz denemeyle başla. Deneme bitmeden iptal edersen ücret alınmaz.',
+              'Starte mit 3 Tagen kostenlos. Kündige vor Ablauf und es wird nichts berechnet.',
             )}
           </p>
-          <PlayBadge className="premium-play" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')}
-            label={L('Google Play', "Google Play'den indir", 'Google Play')} />
         </div>
       </section>
 
@@ -143,7 +163,7 @@ export default function Premium() {
       )}
 
       <section className="container premium-grid" aria-label="Premium plans">
-        {plans(L).map((plan, i) => (
+        {plans(L, cur).map((plan, i) => (
           <Reveal key={plan.name} delay={i * 90}>
             <article className={'premium-card lift' + (plan.featured ? ' featured grad-ring' : '')}>
               {plan.badge && <span className="premium-badge">{plan.badge}</span>}
@@ -154,12 +174,12 @@ export default function Premium() {
                   tutuyor (ör. aylık GBP 4,99 / EUR 7,49 / AED 24,99) ve vergi
                   ülkeye göre ekleniyor. Not olmadan sayfa, çoğu ülkede yanlış
                   bir fiyat vaat etmiş oluyordu. */}
-              {plan.price !== '$0' && (
+              {plan.key !== 'free' && (
                 <p className="premium-price-note">
                   {L(
-                    'Price in USD. You are charged in your own currency at the current rate; local tax may be added at checkout.',
-                    'Fiyat ABD doları üzerindendir. Ödeme kendi para biriminde güncel kurdan alınır; ülkene göre vergi eklenebilir.',
-                    'Preis in USD. Die Abbuchung erfolgt in deiner Währung zum aktuellen Kurs; lokale Steuern können hinzukommen.',
+                    'Billed in this currency. Local tax may be added at checkout. Renews automatically; cancel any time.',
+                    'Ödeme bu para biriminde alınır. Ülkene göre vergi eklenebilir. Otomatik yenilenir, istediğin an iptal edebilirsin.',
+                    'Abrechnung in dieser Währung. Lokale Steuern können hinzukommen. Verlängert sich automatisch, jederzeit kündbar.',
                   )}
                 </p>
               )}
