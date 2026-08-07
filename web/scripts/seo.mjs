@@ -1201,7 +1201,7 @@ const STATIC_ROUTES = [
     dir: 'refund', path: '/refund', changefreq: 'monthly', priority: '0.5',
     seo: {
       title: 'İade Politikası — Qor AI',
-      description: 'Qor AI iade politikası: Paddle web satın almaları, yenilemeler, mobil uygulama mağazası satın almaları ve iade talep süreci.',
+      description: 'Qor AI iade politikası: Polar web ödemeleri, 3 günlük ücretsiz deneme, aboneliği iptal etme, yenilemeler, mobil uygulama mağazası satın almaları ve iade talep süreci.',
     },
   },
   {
