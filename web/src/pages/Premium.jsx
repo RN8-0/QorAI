@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
 import PlayBadge from '../components/PlayBadge.jsx';
@@ -11,6 +13,7 @@ function plans(L) {
   return [
     {
       name: 'Free',
+      key: 'free',
       price: '$0',
       cadence: L('forever', 'sürekli', 'dauerhaft'),
       cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
@@ -24,6 +27,7 @@ function plans(L) {
     },
     {
       name: 'Pro',
+      key: 'monthly',
       price: '$6.99',
       cadence: L('monthly', 'aylık', 'monatlich'),
       cta: L('Get Pro', 'Pro’ya geç', 'Pro aktivieren'),
@@ -39,7 +43,8 @@ function plans(L) {
     },
     {
       name: 'Pro Yearly',
-      price: '$39.99',
+      key: 'yearly',
+      price: '$69.99',
       cadence: L('yearly', 'yıllık', 'jährlich'),
       cta: L('Save yearly', 'Yıllık al', 'Jährlich sparen'),
       badge: L('Best value', 'En avantajlı', 'Bester Wert'),
@@ -67,12 +72,35 @@ export default function Premium() {
     path: '/premium',
   });
 
-  function choose() {
-    if (!user) {
-      openAuth();
-      return;
+  // Web ödemesi Polar.sh üzerinden (Merchant of Record). Ödeme oturumunu
+  // SUNUCU açıyor: `external_customer_id` alanına PocketBase kullanıcı id'si
+  // yazılıyor, böylece kullanıcı ödemede farklı bir e-posta kullansa bile
+  // premium DOĞRU hesaba işleniyor. Fiyat USD; Stripe altyapısı müşteriden
+  // kendi para biriminde tahsil ediyor.
+  const [busyPlan, setBusyPlan] = useState('');
+  const [payErr, setPayErr] = useState('');
+
+  async function choose(plan) {
+    if (!user) { openAuth(); return; }
+    // Ücretsiz plan bir satın alma değil: giriş yapmış kullanıcıyı katalogla
+    // baş başa bırakıyoruz, ödeme oturumu açmıyoruz.
+    if (plan === 'free') { window.location.href = '/'; return; }
+    if (busyPlan) return;
+    setPayErr('');
+    setBusyPlan(plan);
+    try {
+      const res = await pb.send('/api/polar/checkout', { method: 'POST', body: { plan } });
+      if (res && res.url) { window.location.href = res.url; return; }
+      throw new Error('no_url');
+    } catch (err) {
+      setBusyPlan('');
+      setPayErr(L(
+        'Could not start checkout. Please try again in a moment.',
+        'Ödeme başlatılamadı. Lütfen biraz sonra tekrar dene.',
+        'Zahlung konnte nicht gestartet werden. Bitte versuche es gleich erneut.',
+      ));
+      console.warn('[polar] checkout failed', err);
     }
-    window.location.href = PLAY_URL;
   }
 
   return (
@@ -97,15 +125,22 @@ export default function Premium() {
             maxWidth: '520px',
           }}>
             {L(
-              'Subscriptions are currently available through Google Play. Web checkout is coming soon.',
-              'Abonelikler şu anda geçici olarak Google Play üzerinden alınmaktadır. Web ödemesi yakında.',
-              'Abonnements sind derzeit über Google Play verfügbar. Web-Bezahlung folgt in Kürze.',
+              'Subscribe here by card, or get it in the app through Google Play. Same Premium either way.',
+              'Buradan kartla abone olabilir ya da uygulamadan Google Play üzerinden alabilirsin. Premium her iki yolda da aynı.',
+              'Hier per Karte abonnieren oder in der App über Google Play kaufen. Premium ist in beiden Fällen identisch.',
             )}
           </p>
           <PlayBadge className="premium-play" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')}
             label={L('Google Play', "Google Play'den indir", 'Google Play')} />
         </div>
       </section>
+
+      {payErr && (
+        <div className="container" role="alert" style={{
+          margin: '0 auto 12px', maxWidth: 560, textAlign: 'center',
+          color: '#b91c1c', fontWeight: 700, fontSize: 13.5,
+        }}>{payErr}</div>
+      )}
 
       <section className="container premium-grid" aria-label="Premium plans">
         {plans(L).map((plan, i) => (
@@ -122,9 +157,9 @@ export default function Premium() {
               {plan.price !== '$0' && (
                 <p className="premium-price-note">
                   {L(
-                    'Price in USD. The amount you pay is set by Google Play for your country and may include tax.',
-                    'Fiyat ABD doları üzerindendir. Ödeyeceğin tutar ülkene göre Google Play tarafından belirlenir ve vergi içerebilir.',
-                    'Preis in USD. Der tatsächliche Betrag wird von Google Play für dein Land festgelegt und kann Steuern enthalten.',
+                    'Price in USD. You are charged in your own currency at the current rate; local tax may be added at checkout.',
+                    'Fiyat ABD doları üzerindendir. Ödeme kendi para biriminde güncel kurdan alınır; ülkene göre vergi eklenebilir.',
+                    'Preis in USD. Die Abbuchung erfolgt in deiner Währung zum aktuellen Kurs; lokale Steuern können hinzukommen.',
                   )}
                 </p>
               )}
@@ -132,8 +167,11 @@ export default function Premium() {
                 {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
               </ul>
               <button className={'btn btn-block btn-shine ' + (plan.featured ? 'btn-grad' : 'btn-ghost')}
-                onClick={choose}>
-                {plan.cta}
+                onClick={() => choose(plan.key)}
+                disabled={busyPlan === plan.key}>
+                {busyPlan === plan.key
+                  ? L('Redirecting…', 'Yönlendiriliyor…', 'Weiterleitung…')
+                  : plan.cta}
               </button>
             </article>
           </Reveal>

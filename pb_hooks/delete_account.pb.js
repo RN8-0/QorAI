@@ -255,3 +255,230 @@ routerAdd('GET', '/api/users/confirm-delete', (e) => {
     </body></html>`);
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+//  POLAR.SH ÖDEME ENTEGRASYONU
+// ══════════════════════════════════════════════════════════════════════════
+// NEDEN BU DOSYADA? PocketBase container'ında pb_hooks dosyaları TEK TEK
+// bind-mount edilmiş; yeni bir dosya eklemek Coolify depolama ayarı gerektiriyor
+// ve o panel API'si daha önce bozulup paneli kapatmıştı. Bu yüzden Polar uçları
+// zaten mount'lu olan bu dosyaya eklendi (burası ayrıca HMAC kullanan tek dosya).
+//
+// AKIŞ
+//   1. Site → POST /api/polar/checkout (oturum açık kullanıcı)
+//      → Polar'da checkout session açar, `external_customer_id` = PocketBase
+//        kullanıcı id'si. Eşleştirme e-postaya DEĞİL bu id'ye dayanır, yani
+//        kullanıcı ödemede farklı e-posta yazsa bile doğru hesap premium olur.
+//   2. Polar → POST /api/polar/webhook
+//      → Standard Webhooks imzası doğrulanır, ardından premium yazılır/düşürülür.
+//
+// PREMIUM ALANLARI uygulamayla AYNI (lib/data/models/user_model.dart +
+// web/src/lib/premium.js): `isPremium` (bool) ve
+// `userSubscriptionDetails.premium = { productId, expiresAt }`.
+// Bu yüzden Polar aboneliği, Play aboneliğiyle birebir aynı yoldan tanınır —
+// mobil uygulamada TEK SATIR değişiklik gerekmez.
+//
+// JSVM İZOLASYONU: her callback KENDİ runtime'ında koşar; dosya seviyesindeki
+// yardımcılar callback içinde GÖRÜNMEZ. Bu yüzden her şey callback İÇİNDE.
+
+// POST /api/polar/checkout — oturum açık kullanıcı için ödeme oturumu açar
+routerAdd('POST', '/api/polar/checkout', (e) => {
+  try {
+    const user = e.auth;
+    if (!user) return e.json(401, { error: 'auth_required' });
+
+    const token = $os.getenv('POLAR_ACCESS_TOKEN');
+    if (!token) return e.json(500, { error: 'not_configured' });
+
+    const MONTHLY = $os.getenv('POLAR_PRODUCT_MONTHLY');
+    const YEARLY = $os.getenv('POLAR_PRODUCT_YEARLY');
+
+    let body = {};
+    try { body = e.requestInfo().body || {}; } catch (_) { body = {}; }
+    const plan = String(body.plan || 'monthly').toLowerCase();
+    const productId = plan === 'yearly' ? YEARLY : MONTHLY;
+    if (!productId) return e.json(500, { error: 'product_not_configured', plan: plan });
+
+    const payload = {
+      products: [productId],
+      external_customer_id: user.id,
+      customer_email: String(user.get('email') || ''),
+      success_url: 'https://qorai.net/premium?polar=success',
+      metadata: { plan: plan, pbUserId: user.id, source: 'web' },
+    };
+
+    const res = $http.send({
+      url: 'https://api.polar.sh/v1/checkouts/',
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      timeout: 20,
+    });
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      console.log('[polar] checkout failed ' + res.statusCode + ' ' + String(res.raw).slice(0, 300));
+      return e.json(502, { error: 'checkout_failed', status: res.statusCode });
+    }
+    const data = res.json;
+    return e.json(200, { url: data.url, id: data.id, amount: data.amount, currency: data.currency });
+  } catch (err) {
+    console.log('[polar] checkout error: ' + String(err));
+    return e.json(500, { error: 'server_error', message: String(err) });
+  }
+});
+
+// POST /api/polar/webhook — Polar olay bildirimi (Standard Webhooks imzalı)
+routerAdd('POST', '/api/polar/webhook', (e) => {
+  try {
+    const secret = $os.getenv('POLAR_WEBHOOK_SECRET') || '';
+
+    // Ham gövde imza için ŞART (yeniden serileştirme imzayı bozar).
+    let raw = '';
+    try { raw = String(readerToString(e.request.body)); } catch (_) { raw = ''; }
+
+    const hdrId = e.request.header.get('webhook-id') || '';
+    const hdrTs = e.request.header.get('webhook-timestamp') || '';
+    const hdrSig = e.request.header.get('webhook-signature') || '';
+
+    const b64ToStr = (s) => {
+      const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      const clean = String(s).replace(/[^A-Za-z0-9+/]/g, '');
+      let out = '';
+      for (let i = 0; i < clean.length; i += 4) {
+        const n = (A.indexOf(clean[i]) << 18) | (A.indexOf(clean[i + 1]) << 12)
+          | ((A.indexOf(clean[i + 2]) & 63) << 6) | (A.indexOf(clean[i + 3]) & 63);
+        out += String.fromCharCode((n >> 16) & 255);
+        if (clean[i + 2] !== undefined) out += String.fromCharCode((n >> 8) & 255);
+        if (clean[i + 3] !== undefined) out += String.fromCharCode(n & 255);
+      }
+      return out;
+    };
+    const hexToB64 = (hex) => {
+      const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      const bytes = [];
+      for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substr(i, 2), 16));
+      let out = '';
+      for (let i = 0; i < bytes.length; i += 3) {
+        const b0 = bytes[i]; const b1 = bytes[i + 1]; const b2 = bytes[i + 2];
+        out += A[b0 >> 2];
+        out += A[((b0 & 3) << 4) | ((b1 === undefined ? 0 : b1) >> 4)];
+        out += b1 === undefined ? '=' : A[((b1 & 15) << 2) | ((b2 === undefined ? 0 : b2) >> 6)];
+        out += b2 === undefined ? '=' : A[b2 & 63];
+      }
+      return out;
+    };
+
+    // ── Standard Webhooks imza doğrulaması ────────────────────────────────
+    // İmzalanan metin: "{webhook-id}.{webhook-timestamp}.{gövde}"
+    // Beklenen: base64(HMAC_SHA256(sır, metin)). Sır `whsec_` öneki taşıyorsa
+    // önek atılır ve kalan base64 ÇÖZÜLEREK anahtar olur (spec böyle diyor).
+    if (secret) {
+      if (!hdrId || !hdrTs || !hdrSig || !raw) {
+        console.log('[polar] webhook imza başlıkları/gövde eksik — reddedildi');
+        return e.json(401, { error: 'missing_signature' });
+      }
+      const keyRaw = secret.indexOf('whsec_') === 0 ? secret.slice(6) : secret;
+      let key = keyRaw;
+      try { const dec = b64ToStr(keyRaw); if (dec) key = dec; } catch (_) { key = keyRaw; }
+      const expected = hexToB64($security.hs256(hdrId + '.' + hdrTs + '.' + raw, key));
+      let ok = false;
+      const parts = String(hdrSig).split(' ');
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i].indexOf(',') >= 0 ? parts[i].split(',')[1] : parts[i];
+        if (p === expected) { ok = true; break; }
+      }
+      if (!ok) {
+        console.log('[polar] webhook imzası UYUŞMADI — reddedildi');
+        return e.json(401, { error: 'bad_signature' });
+      }
+    }
+
+    let evt = {};
+    try { evt = JSON.parse(raw); } catch (_) { evt = {}; }
+    const type = String(evt.type || '');
+    const d = evt.data || {};
+
+    // Kullanıcıyı bul: önce external_customer_id (checkout'ta biz yazdık),
+    // sonra metadata.pbUserId, en son e-posta.
+    let extId = '';
+    if (d.customer && d.customer.external_id) extId = String(d.customer.external_id);
+    else if (d.external_customer_id) extId = String(d.external_customer_id);
+    else if (d.metadata && d.metadata.pbUserId) extId = String(d.metadata.pbUserId);
+
+    let rec = null;
+    if (extId) { try { rec = $app.findRecordById('users', extId); } catch (_) { rec = null; } }
+    if (!rec) {
+      let email = '';
+      if (d.customer && d.customer.email) email = String(d.customer.email);
+      else if (d.customer_email) email = String(d.customer_email);
+      email = email.trim();
+      if (email) { try { rec = $app.findFirstRecordByData('users', 'email', email); } catch (_) { rec = null; } }
+    }
+    if (!rec) {
+      // Kullanıcı bulunamasa da 200 dönüyoruz: aksi halde Polar 9 kez tekrar
+      // dener ve kuyruğu boşuna doldurur. Olay loglanır, elle incelenir.
+      console.log('[polar] webhook ' + type + ' — eşleşen kullanıcı yok (ext=' + extId + ')');
+      return e.json(200, { ok: true, matched: false });
+    }
+
+    const GRANT = ['subscription.active', 'subscription.created', 'subscription.updated', 'order.paid'];
+    const REVOKE = ['subscription.canceled', 'subscription.revoked'];
+
+    if (GRANT.indexOf(type) >= 0) {
+      const status = String(d.status || '');
+      if (status && status !== 'active' && status !== 'trialing') {
+        console.log('[polar] ' + type + ' status=' + status + ' — premium yazılmadı');
+        return e.json(200, { ok: true, skipped: status });
+      }
+      const interval = String(d.recurring_interval || (d.product && d.product.recurring_interval) || '');
+      let expiresAt = String(d.current_period_end || d.ends_at || '');
+      if (!expiresAt) {
+        const days = interval === 'year' ? 366 : 31;
+        expiresAt = new Date(Date.now() + days * 86400000).toISOString();
+      }
+      const prod = String(d.product_id || (d.product && d.product.id) || '');
+      const details = rec.get('userSubscriptionDetails');
+      const next = (details && typeof details === 'object') ? details : {};
+      next.premium = {
+        productId: prod || (interval === 'year' ? 'polar_yearly' : 'polar_monthly'),
+        expiresAt: expiresAt,
+        source: 'polar',
+        subscriptionId: String(d.id || ''),
+        updatedAt: new Date().toISOString(),
+      };
+      rec.set('isPremium', true);
+      rec.set('userSubscriptionDetails', next);
+      $app.save(rec);
+      console.log('[polar] premium VERİLDİ user=' + rec.id + ' type=' + type + ' bitis=' + expiresAt);
+      return e.json(200, { ok: true, granted: true });
+    }
+
+    if (REVOKE.indexOf(type) >= 0) {
+      const details = rec.get('userSubscriptionDetails');
+      const next = (details && typeof details === 'object') ? details : {};
+      // Polar iptalde dönem sonuna kadar erişimi sürdürür; bitiş ileri tarihliyse
+      // premium HEMEN düşürülmez, yalnız bitiş tarihi işaretlenir.
+      const endsAt = String(d.ends_at || d.current_period_end || '');
+      const stillValid = endsAt && (new Date(endsAt).getTime() > Date.now());
+      if (stillValid) {
+        if (next.premium) { next.premium.expiresAt = endsAt; next.premium.canceled = true; }
+        rec.set('userSubscriptionDetails', next);
+        $app.save(rec);
+        console.log('[polar] iptal — ' + endsAt + ' tarihine kadar geçerli user=' + rec.id);
+        return e.json(200, { ok: true, endsAt: endsAt });
+      }
+      next.premium = null;
+      rec.set('isPremium', false);
+      rec.set('userSubscriptionDetails', next);
+      $app.save(rec);
+      console.log('[polar] premium DÜŞÜRÜLDÜ user=' + rec.id + ' type=' + type);
+      return e.json(200, { ok: true, revoked: true });
+    }
+
+    return e.json(200, { ok: true, ignored: type });
+  } catch (err) {
+    console.log('[polar] webhook error: ' + String(err));
+    // 200 dönmezsek Polar 9 kez tekrar dener; hatayı loglayıp kabul ediyoruz.
+    return e.json(200, { ok: false, error: String(err) });
+  }
+});
