@@ -55,9 +55,9 @@ const ENV = { ...loadEnv(), ...process.env };
 
 const MARKETS = String(ENV.AMAZON_DIRECT_MARKETS || 'DE,GB')
   .split(',').map(s => s.trim().toUpperCase()).filter(cc => MARKETPLACES[cc]);
-// 6 gün — epey_amazon ile aynı gerekçe: TTL, havuzun tur süresinden UZUN olmalı,
-// yoksa ürün sırası gelmeden bayatlar ve kartta fiyat kaybolur (bkz epey_amazon).
-const EXPIRES_MS = 144 * 60 * 60 * 1000;
+// 14 gün — epey_amazon ile aynı gerekçe ve aynı hesap: koşu haftalık, TTL
+// 7 gün + kaçan bir hafta payı. Bkz scripts/connectors/epey_amazon.js.
+const EXPIRES_MS = 14 * 24 * 60 * 60 * 1000;
 // Skip a product whose amazon_direct offers on ALL target markets were checked
 // within this window. This is the load governor: a home IP can only fetch so
 // many Amazon pages a day before the bot wall trips, so once a product is

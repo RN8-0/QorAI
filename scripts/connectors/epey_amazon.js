@@ -59,13 +59,14 @@ const STORE_ROWS = Math.max(0, Math.min(6, Number(ENV.EPEY_STORE_ROWS ?? 3)));
 // bir kuyruk birikiyor ve o ürünler kartlarda fiyatsız görünüyordu. 72 saat,
 // tur süresinin üstünde kalarak boşluğu kapatır; Epey fiyatları bu ölçekte
 // gün içinde nadiren değişir, ürün sayfası zaten canlı teklifleri gösterir.
-// 2026-08-07 — TTL, ROTASYON SÜRESİNDEN UZUN OLMAK ZORUNDA.
-// Fiyatlı havuz 29.880 ürün, gecelik pass1 kotası 9.000 → havuz ~3,3 gecede bir
-// tur atıyor. TTL 72 s (3 gün) bu turdan KISA olduğu için ürünler sıraları
-// gelmeden bayatlıyor ve `rollupPriceIsFresh` kapısı kartta fiyatı gizliyordu.
-// 6 gün = 3,3 günlük tur + kaçan bir gece payı. Fiyatın TİPİK yaşı yine ~1-3
-// gün; 6 gün yalnız üst sınır.
-const EXPIRES_MS = 144 * 60 * 60 * 1000;
+// TTL, TAZELEME ARALIĞINDAN UZUN OLMAK ZORUNDA.
+// Kural: TTL > (iki koşu arası) + (kaçan bir koşu payı). Aksi halde ürün sırası
+// gelmeden bayatlar ve `rollupPriceIsFresh` kapısı kartta fiyatı gizler —
+// 2026-08-07'de tam bu olmuştu (107.378 üründen 141'i taze).
+// Koşu artık HAFTALIK (QorAI-Weekly, Pazar 02:00) → 7 gün + 7 gün kaçan hafta
+// payı = 14 gün. Fiyatın TİPİK yaşı 0-7 gün; 14 gün yalnızca üst sınırdır ve
+// bir hafta atlanırsa sitenin tamamen fiyatsız kalmasını engeller.
+const EXPIRES_MS = 14 * 24 * 60 * 60 * 1000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Epey'in listelediği mağazaların görünen adları. Listede olmayan bir domain
@@ -289,8 +290,18 @@ module.exports = {
     }
 
     // 2 — mağaza vitrini: mağaza başına en ucuz satır, sonra en ucuz N mağaza.
-    // url YAZILMAZ (affiliate yok → tıklanabilir olmamalı); merchantProductId
-    // mağaza domainini taşır (dedupe anahtarı + sitede favicon kaynağı).
+    //
+    // 2026-08-07 — url ARTIK YAZILIYOR. Eskiden boş bırakılıyordu ("affiliate
+    // yok → tıklanabilir olmasın") ama MOBİL UYGULAMA linksiz teklifleri
+    // tamamen eliyor (`ProductOfferModel.isLive`: url boşsa false). Sonuç:
+    // Epey'den çekilen en ucuz 3 mağaza fiyatı sitede görünüyor, uygulamada
+    // HİÇ görünmüyordu — ve bunu düzeltmek uygulama güncellemesi gerektiriyor
+    // sanılıyordu. Gerekmiyor: gerçek mağaza adresi zaten `data-link`
+    // içinden çözülüp `r.decoded`'da duruyor, sadece kaydedilmiyordu.
+    // Affiliate geliri korunuyor: kart fiyatı ve satın alma linki hâlâ
+    // yalnızca AFFILIATE AĞLARINDAN seçiliyor (bkz scripts/lib/offers.js —
+    // ayrım artık "linki var mı" değil, "affiliate ağı mı").
+    // merchantProductId mağaza domainini taşır (dedupe anahtarı + favicon).
     if (STORE_ROWS > 0) {
       const cheapestByStore = new Map();
       for (const r of rows) {
@@ -309,7 +320,9 @@ module.exports = {
           shipping: Math.max(0, Math.round((r.totalPrice - r.price) * 100) / 100),
           totalPrice: r.totalPrice,
           priceText: formatTl(r.price),
-          url: '',
+          // Gerçek mağaza adresi (Epey'in data-link'inden çözülmüş). affiliateUrl
+          // BOŞ kalır — komisyon yok, ve rollup affiliate ağlarına bakıyor.
+          url: r.decoded || '',
           affiliateUrl: '',
           merchantProductId: r.host,
           matchConfidence: 1,

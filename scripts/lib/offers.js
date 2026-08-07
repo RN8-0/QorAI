@@ -37,6 +37,12 @@ const FEED_NETWORKS = new Set([
 ]);
 const FEED_TTL_MINUTES = 48 * 60;
 
+// VİTRİN AĞLARI — fiyatı gösterilir ama kart fiyatını/satın alma linkini
+// BELİRLEMEZ ve fiyat geçmişine yazılmaz. Bu ayrım eskiden "url'si var mı"
+// testiyle yapılıyordu; vitrin satırlarına gerçek mağaza adresi eklenince
+// (mobil uygulama linksiz teklifleri eliyordu) o test anlamını kaybetti.
+const SHOWCASE_NETWORKS = new Set(['epey_store']);
+
 function ttlMinutesFor(offer) {
   if (FEED_NETWORKS.has(String(offer && offer.network || '').toLowerCase())) return FEED_TTL_MINUTES;
   return ttlMinutesForCountry(offer && offer.country);
@@ -108,7 +114,10 @@ async function refreshProductRollup(productId, categoryHint = null) {
     } catch (_) { /* kategori alınamazsa taban kontrolü sessizce atlanır */ }
   }
   const r = await req('GET',
-    `/api/collections/offers/records?perPage=200&fields=id,price,totalPrice,shipping,currency,inStock,availability,condition,priceUnknown,affiliateUrl,url,store,country,lastCheckedAt,priceUpdatedAt,expiresAt,scrapedAt,updated` +
+    // `network` ŞART: rollup'ta affiliate teklifini vitrin satırından ayıran
+    // alan bu. Listede olmazsa `o.network` undefined gelir, her teklif
+    // "affiliate" sayılır ve vitrin satırı kart fiyatını ele geçirir.
+    `/api/collections/offers/records?perPage=200&fields=id,network,price,totalPrice,shipping,currency,inStock,availability,condition,priceUnknown,affiliateUrl,url,store,country,lastCheckedAt,priceUpdatedAt,expiresAt,scrapedAt,updated` +
     `&filter=${encodeURIComponent(`productId="${esc(productId)}"`)}`);
   const offers = (r.status === 200 && r.body.items) ? r.body.items : [];
   const live = offers.filter(o => {
@@ -151,7 +160,14 @@ async function refreshProductRollup(productId, categoryHint = null) {
   // tıklanınca gidilen fiyatla TUTAR. Amazon hiç yoksa fiyatı gizlemek yerine
   // en ucuz mağaza fiyatını gösteririz (fiyatsız kart en kötü seçenek) — o
   // durumda lowestOfferUrl BOŞ kalır, yani yanlış bir linke yönlendirme olmaz.
-  const isLinked = (o) => Boolean(o.affiliateUrl || o.url);
+  // AYRIM ARTIK "LİNKİ VAR MI" DEĞİL, "AFFILIATE AĞI MI" (2026-08-07).
+  // Vitrin satırları (epey_store) artık gerçek mağaza adresini taşıyor — mobil
+  // uygulama linksiz teklifleri tamamen eliyordu ve fiyatlar orada hiç
+  // görünmüyordu. Ama kart fiyatı ile satın alma linkinin AYNI yeri göstermesi
+  // ve affiliate gelirinin korunması kuralı DEĞİŞMEDİ: rollup hâlâ yalnız
+  // affiliate ağlarından fiyat/link seçer, vitrin yalnız boş ülkeleri doldurur.
+  const isLinked = (o) => !SHOWCASE_NETWORKS.has(String(o.network || '').toLowerCase())
+    && Boolean(o.affiliateUrl || o.url);
   const pricesLinkless = {};
   let bestLinkless = null, bestLinklessUsd = Infinity;
   for (const o of pricedLive) {
@@ -215,8 +231,11 @@ async function refreshProductRollup(productId, categoryHint = null) {
 async function writePriceSnapshot(offerId, rec) {
   const price = effectivePrice(rec);
   if (!offerId || price <= 0 || rec.priceUnknown) return;
-  // Linksiz vitrin satırları (epey_store) tarih grafiğine yazılmaz — gecede
-  // ürün başına 3 ekstra snapshot, koleksiyonu yılda milyonlarca satır büyütür.
+  // Vitrin satırları (epey_store) tarih grafiğine yazılmaz — gecede ürün başına
+  // 3 ekstra snapshot, koleksiyonu yılda milyonlarca satır büyütür.
+  // KAPI AĞ BAZLI: vitrin satırları artık gerçek mağaza adresini taşıdığı için
+  // eski "url yoksa atla" kontrolü sessizce devre dışı kalmış olurdu.
+  if (SHOWCASE_NETWORKS.has(String(rec.network || '').toLowerCase())) return;
   if (!(rec.affiliateUrl || rec.url)) return;
   const payload = {
     offerId,

@@ -126,3 +126,83 @@
     });
   };
 })();
+
+/* ─── Otomatik İşler (haftalık bakım) — canlı durum + geçmiş ────────────
+ * Kaynak: public_config/job_runs — scripts/job_status.js yazar, .cmd zinciri
+ * her adımda çağırır. Amaç: kullanıcının terminal penceresine bakmak zorunda
+ * kalmaması ("admin panele girişte terminalden yapılan işlemler gözükecek ve
+ * geçmiş kayıtları olacak scraper sekmesinde").                              */
+function jobRunsFmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function jobRunsFmtDuration(fromIso, toIso) {
+  const a = Date.parse(fromIso || '');
+  const b = Date.parse(toIso || '') || Date.now();
+  if (!Number.isFinite(a)) return '';
+  const sec = Math.max(0, Math.round((b - a) / 1000));
+  if (sec < 60) return `${sec} sn`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} dk`;
+  return `${Math.floor(min / 60)} sa ${min % 60} dk`;
+}
+
+const JOB_RUN_BADGE = {
+  running:     { text: 'çalışıyor', color: '#2563eb' },
+  ok:          { text: 'tamamlandı', color: '#16a34a' },
+  error:       { text: 'hata', color: '#dc2626' },
+  interrupted: { text: 'kesildi (PC kapandı)', color: '#d97706' },
+};
+
+async function jobRunsRefresh() {
+  const box = document.getElementById('jobRunsList');
+  if (!box) return;
+  box.innerHTML = '<div class="text-muted">Yükleniyor…</div>';
+  let value = null;
+  try {
+    const res = await getPb().collection('public_config').getList(1, 1, {
+      filter: 'key="job_runs"', $autoCancel: false,
+    });
+    const item = res.items[0];
+    value = item ? item.value : null;
+    if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = null; } }
+  } catch (e) {
+    box.innerHTML = `<div class="text-muted">Kayıtlar okunamadı: ${String(e.message || e)}</div>`;
+    return;
+  }
+
+  const runs = (value && Array.isArray(value.runs)) ? value.runs : [];
+  const upd = document.getElementById('jobRunsUpdated');
+  if (upd) upd.textContent = value && value.updatedAt ? `son kayıt: ${jobRunsFmtDate(value.updatedAt)}` : '';
+
+  if (!runs.length) {
+    box.innerHTML = '<div class="text-muted">Henüz koşu kaydı yok. İlk haftalık koşudan sonra burada görünecek.</div>';
+    return;
+  }
+
+  box.innerHTML = runs.map((r) => {
+    const badge = JOB_RUN_BADGE[r.status] || { text: r.status || '?', color: '#64748b' };
+    const steps = Array.isArray(r.steps) ? r.steps : [];
+    const stepRows = steps.map((s) => {
+      const done = Boolean(s.finishedAt);
+      return `<tr>
+        <td style="padding:4px 10px 4px 0;white-space:nowrap">${done ? '✓' : '⏳'}</td>
+        <td style="padding:4px 14px 4px 0">${(s.name || '').replace(/[<>&]/g, '')}</td>
+        <td style="padding:4px 0;white-space:nowrap;color:#64748b">${jobRunsFmtDuration(s.startedAt, s.finishedAt)}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b>${(r.job || 'iş').replace(/[<>&]/g, '')}</b>
+        <span style="background:${badge.color};color:#fff;border-radius:999px;padding:1px 9px;font-size:11px">${badge.text}</span>
+        <span style="color:#64748b;font-size:12px">${jobRunsFmtDate(r.startedAt)}</span>
+        <span style="color:#64748b;font-size:12px">· süre ${jobRunsFmtDuration(r.startedAt, r.finishedAt)}</span>
+      </div>
+      ${r.error ? `<div style="color:#dc2626;font-size:12px;margin-top:6px">${String(r.error).replace(/[<>&]/g, '')}</div>` : ''}
+      ${stepRows ? `<table style="margin-top:8px;font-size:12px;border-collapse:collapse">${stepRows}</table>` : ''}
+    </div>`;
+  }).join('');
+}

@@ -504,6 +504,27 @@
           <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="priceLab" onclick="switchScraperTab(this); priceLabInit()">💵 Price</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
+          <button class="scraper-tab" data-tab="jobRuns" onclick="switchScraperTab(this); jobRunsRefresh()">🗓️ Otomatik İşler</button>
+        </div>
+
+        <!-- Otomatik isler: haftalik bakim zincirinin canli durumu + gecmisi.
+             Terminal penceresine bakmadan "ne zaman kostu, hangi adimda, ne kadar
+             surdu" gorunur. Veri kaynagi: public_config/job_runs (scripts/job_status.js). -->
+        <div class="scraper-panel" id="jobRunsPanel">
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;gap:12px">
+              <span>Otomatik İşler — Haftalık Bakım</span>
+              <button class="btn btn-sm" onclick="jobRunsRefresh()">↻ Yenile</button>
+              <span id="jobRunsUpdated" class="text-muted" style="font-size:11px"></span>
+            </div>
+            <p class="text-muted" style="font-size:12px;margin:0 0 14px">
+              Yeni ürün keşfi, çeviri, teknik puan ve fiyat güncellemesi <b>haftada bir</b>
+              tek zincirde koşar (Windows görevi <code>QorAI-Weekly</code>). Aşağıda son
+              koşular ve her adımın süresi var. PC kapanırsa koşu “kesildi” görünür ve
+              ertesi hafta kaldığı yerden devam eder.
+            </p>
+            <div id="jobRunsList"><div class="text-muted">Yükleniyor…</div></div>
+          </div>
         </div>
 
         <!-- Bulk Scrape -->
