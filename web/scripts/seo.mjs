@@ -1191,6 +1191,23 @@ const STATIC_ROUTES = [
     },
   },
   {
+    // `/compare` KABUĞU ŞART — yoksa sayfa 403 veriyordu.
+    // website/compare/ dizini 1288 ön-render karşılaştırma sayfası tutuyor ama
+    // dizinin KENDİ index.html'i yoktu. nginx bu durumda `/compare` isteğini
+    // `/compare/`ye 301'liyor, orada da dizin listeleme kapalı olduğu için
+    // 403 Forbidden dönüyordu. Yani karşılaştırma ekranında SAYFA YENİLEMEK
+    // ya da adresi doğrudan açmak her seferinde 403'tü; SPA içi gezinmede
+    // sorun görünmediği için gözden kaçmıştı. Diğer tüm rotaların (category,
+    // product, blog…) kabuğu vardı, yalnız compare atlanmıştı.
+    // Ürünsüz `/compare` boş bir seçim ekranıdır → noindex, sitemap dışı.
+    dir: 'compare', path: '/compare', sitemap: false, noindex: true,
+    seo: {
+      title: 'Ürün Karşılaştır — Qor AI',
+      description: 'Ürünleri yan yana karşılaştır: teknik skor, özellikler ve güncel fiyatlar tek ekranda.',
+      noindex: true,
+    },
+  },
+  {
     // `/product` (id'siz) yalnızca derin-link geri dönüşü için duran BOŞ bir
     // kabuktur — hiçbir içerik render etmez. sitemap'te değildi ama noindex de
     // almıyordu; Google dış bir linkle bulursa BOŞ sayfa indeksliyordu
@@ -1911,6 +1928,40 @@ async function main() {
   // 6) IndexNow key file (served at https://qorai.net/<key>.txt) — proves
   //    ownership so the scheduled refresh can push changed URLs to IndexNow.
   writeTextFile(join(site, `${INDEXNOW_KEY}.txt`), `${INDEXNOW_KEY}\n`);
+
+  // 7) 403 SÜPÜRMESİ — kendi index.html'i olmayan HER ara dizine kabuk yaz.
+  //
+  // nginx bir dizin isteğini `/dir/`ye 301'ler; dizinde index.html yoksa
+  // (dizin listeleme kapalı) **403 Forbidden** döner. `website/compare/`
+  // 1288 ön-render sayfa tutuyordu ama kendi index.html'i yoktu → karşılaştırma
+  // ekranında SAYFA YENİLEMEK her seferinde 403 veriyordu. Aynı durum
+  // `/tr/product/`, `/de/product/`, `/tr/compare/`, `/de/compare/` için de
+  // geçerliydi: tek dilli rota kabukları yalnız varsayılan dile yazılıyor ama
+  // ürün/karşılaştırma sayfaları her dile yazılıyor.
+  //
+  // Tek tek rota eklemek yerine çıktı ağacını tarayıp eksik olanı dolduruyoruz;
+  // ileride yeni bir ön-render kökü eklenirse kendiliğinden kapsanır.
+  {
+    let patched = 0;
+    const skip = new Set(['spa', 'assets']);
+    const sweep = (dir) => {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      const subdirs = entries.filter((e) => e.isDirectory() && !skip.has(e.name));
+      const hasIndex = entries.some((e) => e.isFile() && e.name === 'index.html');
+      if (subdirs.length && !hasIndex) {
+        const rel = dir.slice(site.length).replace(/\\/g, '/').replace(/^\//, '');
+        const lang = SEO_LOCALES.find((l) => rel === l || rel.startsWith(`${l}/`)) || SEO_DEFAULT_LOCALE;
+        writeHtml(rel, renderPage(template, {
+          title: 'Qor AI', description: 'Qor AI', noindex: true,
+          url: `${SITE}/${rel}`, lang,
+        }, ''));
+        patched += 1;
+      }
+      for (const s of subdirs) sweep(join(dir, s.name));
+    };
+    sweep(site);
+    if (patched) console.log(`[seo] 403-süpürmesi: ${patched} dizine eksik index.html yazıldı`);
+  }
 
   console.log(`[seo] wrote ${STATIC_ROUTES.length} route shells, ${prerendered.length} product shells, ${sitemapFiles} sitemap file(s) for ${allUrls.length} urls, robots.txt, indexnow key`);
 }
