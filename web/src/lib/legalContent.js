@@ -6,7 +6,12 @@
 //     not an empty SPA shell).
 // Trilingual: COPY.en / COPY.tr / COPY.de, each section is [heading, [paras]].
 
-export const CONTACT_EMAIL = 'contact@arain.digital';
+// Kullanıcıya GÖRÜNEN tek resmi iletişim adresi (2026-08-07'de qorai.net'e
+// taşındı). NOT: e-postaların GÖNDERİCİ adresi ayrı bir konudur ve
+// pb_hooks/delete_account.pb.js içinde PocketBase SMTP ayarından gelir —
+// oradaki kutu arain.digital'de olduğu için gönderici adresi değiştirilmedi
+// (qorai.net'ten göndermeye çalışmak Hostinger tarafından reddedilmişti).
+export const CONTACT_EMAIL = 'contact@qorai.net';
 export const UPDATED = 'August 7, 2026';
 
 export const META = {
