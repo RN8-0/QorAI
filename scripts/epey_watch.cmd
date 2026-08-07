@@ -20,5 +20,14 @@ set LOG=%USERPROFILE%\qorai-epey-watch.log
 rem Log dondurme: 5 MB ustu ise .1 olarak sakla
 for %%F in ("%LOG%") do if %%~zF GTR 5242880 move /Y "%LOG%" "%LOG%.1" >nul 2>&1
 
+rem ORTAK KILIT - bkz scripts\qorai_lock.cmd. Nabiz genelde 1,4 sn surer ama
+rem GERCEKTEN yeni urun bulursa Puppeteer'la kaziyicilari baslatir; gece
+rem kesfi/fiyat kosusu devam ederken bu ust uste binerse Epey oturumu yanar.
+rem Bekleme YOK (1 deneme): kilit mesgulse atla, 15 dk sonra zaten tekrar gelir.
+call "%~dp0qorai_lock.cmd" acquire epey_watch 1
+set LOCKRC=%ERRORLEVEL%
+if not "%LOCKRC%"=="0" echo ===== %date% %time% epey_watch ATLANDI - kilit mesgul ===== >> "%LOG%"
+if not "%LOCKRC%"=="0" exit /b 0
 echo ===== %date% %time% epey watch ===== >> "%LOG%"
 node scripts\epey_watch.js >> "%LOG%" 2>&1
+call "%~dp0qorai_lock.cmd" release

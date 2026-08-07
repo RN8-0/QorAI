@@ -19,6 +19,13 @@ rem DE/GB/US (amazon_direct) BU ZINCIRDE DEGIL — ayri gorevde paralel kosar:
 rem QorAI-PriceDirect -> scripts\price_refresh_direct.cmd (epey.com ile host
 rem cakismasi yok).
 cd /d C:\Users\RN8\Desktop\Compair-master
+rem ORTAK KILIT - bkz scripts\qorai_lock.cmd. Kesif/dogrudan-fiyat isleriyle
+rem AYNI ANDA kosarsak hem Epey oturumu yanar hem PB agir sorgulari zaman
+rem asimina dusup 400 doner (2026-08-07: o gece hic fiyat cekilemedi).
+call "%~dp0qorai_lock.cmd" acquire price_refresh 300
+set LOCKRC=%ERRORLEVEL%
+if not "%LOCKRC%"=="0" echo ===== %date% %time% price_refresh ATLANDI - kilit mesgul ===== >> "%USERPROFILE%\qorai-price.log"
+if not "%LOCKRC%"=="0" exit /b 0
 echo ===== %date% %time% price refresh start ===== >> "%USERPROFILE%\qorai-price.log"
 set NO_REINDEX=1
 rem pass1 — refresh: fiyat gosteren urunler. SIRALAMA bestOfferExpiresAt (artan)
@@ -44,3 +51,4 @@ rem TS backfill: fiyatlar PB'de birikip siteye yansimadan kalmasin (2026-07-04
 rem regresyonu). Direct gorev de kendi sonunda bir tane kosar — idempotent.
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price.log" 2>&1
 echo ===== %date% %time% price refresh done ===== >> "%USERPROFILE%\qorai-price.log"
+call "%~dp0qorai_lock.cmd" release

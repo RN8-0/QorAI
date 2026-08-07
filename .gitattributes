@@ -1,0 +1,11 @@
+# Windows toplu-is dosyalari CRLF OLMAK ZORUNDA.
+#
+# cmd.exe bir .cmd dosyasini calistirirken satirlari BYTE OFSETIYLE okur ve
+# CRLF bekler. Dosya LF'e cevrilirse ayristirici kayar: yorum satirlari komut
+# olarak calisir ve akis dosyanin baska bir yerine atlar.
+# OLCULDU 2026-08-07: bir duzenleme price_refresh.cmd'yi LF'e cevirdi; betik
+# kilidi aldiktan 30 ms sonra en alttaki `release` satirina atladi, cmd.exe
+# cikti ve gecelik zincirin geri kalan pass'leri (kesif, backfill) hic kosmadi.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf

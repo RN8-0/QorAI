@@ -22,6 +22,14 @@ rem  yuklenmemek icin boyle: iki kosu cakisirsa Epey oturumu yanar.
 rem ═══════════════════════════════════════════════════════════════════
 cd /d "%~dp0.."
 set LOG=%USERPROFILE%\qorai-discovery.log
+rem ORTAK KILIT - bkz scripts\qorai_lock.cmd. 2026-08-06 kosusu 23:20'de basladi
+rem ve 10:11'e kadar surdu (10 sa 51 dk); 10:17'de fiyat gorevleri ustune bindi.
+rem Bu gorev fiyat gorevlerinden ONCE basladigi icin kilidi genelde o alir; ust
+rem uste binerse fiyat gorevleri bekler, tersi olursa bu bekler.
+call "%~dp0qorai_lock.cmd" acquire product_discovery 300
+set LOCKRC=%ERRORLEVEL%
+if not "%LOCKRC%"=="0" echo ===== %date% %time% product_discovery ATLANDI - kilit mesgul ===== >> "%LOG%"
+if not "%LOCKRC%"=="0" exit /b 0
 echo ===== %date% %time% product discovery start ===== >> "%LOG%"
 
 rem 1) Kesif + ceviri + puan (bassiz admin paneli)
@@ -43,3 +51,4 @@ rem 3) Fiyatlar PB'de birikip siteye yansimadan kalmasin
 node scripts\ts_backfill_lowest_price.js --confirm >> "%LOG%" 2>&1
 
 echo ===== %date% %time% product discovery done ===== >> "%LOG%"
+call "%~dp0qorai_lock.cmd" release

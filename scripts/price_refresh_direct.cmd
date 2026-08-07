@@ -20,6 +20,13 @@ rem geceyi zaten cikarir. Kesif erken kosuyor ki ana zincirin pass2b'si
 rem (generic tarama, ~4-5 saat sonra baslar) ayni taranmamis havuzun tepesini
 rem bestOfferCheckedAt ile damgalamadan once amiral gemilerini biz alalim.
 cd /d C:\Users\RN8\Desktop\Compair-master
+rem ORTAK KILIT - bkz scripts\qorai_lock.cmd. Bu gorev ile QorAI-PriceRefresh
+rem takvimde 2 dakika arayla duruyor ve PC uykudan kalkinca IKISI DE ayni
+rem saniyede baslıyordu (2026-08-07 olcumu: her ikisi de 10:17:32).
+call "%~dp0qorai_lock.cmd" acquire price_direct 300
+set LOCKRC=%ERRORLEVEL%
+if not "%LOCKRC%"=="0" echo ===== %date% %time% price_direct ATLANDI - kilit mesgul ===== >> "%USERPROFILE%\qorai-price-direct.log"
+if not "%LOCKRC%"=="0" exit /b 0
 echo ===== %date% %time% direct refresh start ===== >> "%USERPROFILE%\qorai-price-direct.log"
 set NO_REINDEX=1
 set AMAZON_DIRECT_MARKETS=DE,GB,US
@@ -46,3 +53,4 @@ node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-e
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price-direct.log" 2>&1
 echo ===== %date% %time% direct refresh done ===== >> "%USERPROFILE%\qorai-price-direct.log"
+call "%~dp0qorai_lock.cmd" release
