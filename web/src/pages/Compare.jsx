@@ -19,6 +19,10 @@ import { getRecentProducts } from '../lib/recentViewed';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import {
+  compareJobKey, runCompareAnalysisJob, startCompareAnalysisJob,
+  subscribeCompareAnalysisJob,
+} from '../lib/compareAnalysisJobs';
 import { useGeoCountry } from '../lib/geo';
 import AiAnalysisView, {
   buildCompareProductPrompt,
@@ -444,7 +448,27 @@ export default function Compare() {
     };
   }, [products.length, lang]);
 
-  useEffect(() => {
+  // ARKA PLANDA KOSAN IS -> BILESEN STATE'I (2026-08-08).
+  // Eskiden burada her sey KOSULSUZ sifirlaniyordu; kullanici analiz koserken
+  // baska sayfaya gecip dondugunde ilerleme tamamen kayboluyordu. Artik analiz
+  // modul seviyesinde kosuyor (lib/compareAnalysisJobs) ve bilesen yalnizca
+  // onun anlik goruntusunu ciziyor. Sifirlama SADECE karsilastirilan urun
+  // kumesi degistiginde ve o kumeye ait koşan bir is YOKKEN yapilir.
+  const myJobKey = compareJobKey(ids);
+  useEffect(() => subscribeCompareAnalysisJob((job) => {
+    if (job && job.key === myJobKey) {
+      setAiPhase(job.phase === 'analyzing' || job.phase === 'quizLoading' ? job.phase : job.phase);
+      setAiBusy(job.phase === 'quizLoading' || job.phase === 'analyzing');
+      setAiStage(job.stage || null);
+      setAiQuestions(job.questions || []);
+      setAiAnswers(job.answers || []);
+      if (job.text) setAiText(job.text);
+      if (job.phase === 'error') {
+        setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
+      }
+      return;
+    }
+    // Bu karsilastirmaya ait bir is yok: temiz baslangic.
     setAiBusy(false);
     setAiText('');
     setAiNotice('');
@@ -452,7 +476,7 @@ export default function Compare() {
     setAiQuestions([]);
     setAiAnswers([]);
     setAiSavedAt('');
-  }, [ids.join(',')]); // eslint-disable-line
+  }), [myJobKey]); // eslint-disable-line
 
   // Revisiting the same comparison shows the previously saved analysis from the
   // user's PB account — no re-run, no second charge. A "re-analyze" button still
@@ -598,33 +622,11 @@ export default function Compare() {
     // Fresh run: drop the cached saved report so the quiz/workboard renders.
     setAiText('');
     setAiSavedAt('');
-    setAiPhase('quizLoading');
-    try {
-      let questions = await generateCompareQuiz({
-        products: products.map((p) => ({
-          title: displayProductName(p, lang),
-          url: productPath(p),
-          category: p.category,
-          score: p.techScore,
-          analysis: p.description || '',
-        })),
-        language: lang,
-        userProfile: {
-          ...aiUserProfile(user),
-          recentlyViewed: getRecentProducts().slice(0, 8)
-            .map((rp) => ({ name: rp.name, category: rp.category, brand: rp.brand }))
-            .filter((x) => x.name),
-        },
-      });
-      if (!questions.length) questions = fallbackCompareQuiz(lang);
-      setAiQuestions(questions);
-      setAiPhase('quiz');
-    } catch {
-      setAiQuestions(fallbackCompareQuiz(lang));
-      setAiPhase('quiz');
-    } finally {
-      setAiBusy(false);
-    }
+    // Is artik MODUL SEVIYESINDE kosuyor: bilesen soksek bile devam eder,
+    // durumu abonelik uzerinden geri gelir (bkz lib/compareAnalysisJobs).
+    startCompareAnalysisJob({
+      products, lang, user, fallbackQuiz: fallbackCompareQuiz(lang),
+    });
   }
 
   // Already paid for at startAiCompareQuiz — no second charge here.
@@ -634,75 +636,14 @@ export default function Compare() {
   // shape. A single combined call truncated at the provider's ~8k output cap and
   // failed for 3+ products; per-product calls each finish comfortably and run in
   // parallel, so this is both more reliable AND faster than the old one big call.
-  async function runAiCompare(answers = []) {
+  function runAiCompare(answers = []) {
     setAiNotice('');
-    setAiAnswers(Array.isArray(answers) ? answers : []);
     if (products.length < 2) {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
       return;
     }
-    setAiBusy(true);
-    setAiPhase('analyzing');
-    setAiStage('prep');
-    try {
-      let research = '';
-      try {
-        setAiStage('research');
-        research = await askQorAiGrounded(buildCompareResearchPrompt(products, lang, { quizAnswers: answers }), {
-          language: lang,
-          maxOutputTokens: 2048,
-        });
-      } catch {
-        research = '';
-      }
-      setAiStage('report');
-      const profile = aiUserProfile(user);
-      const peerNames = products.map((p) => displayProductName(p, lang));
-      const askJson = (userPrompt, maxTokens, temperature = 0.42) => askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
-        user: userPrompt,
-        maxOutputTokens: maxTokens,
-        temperature,
-        jsonMode: true,
-      });
-
-      const reports = await mapWithConcurrency(products, 5, async (p) => {
-        const prompt = buildCompareProductPrompt(p, lang, profile, { quizAnswers: answers, research, peerNames });
-        let parsed = null;
-        try { parsed = parseAiJson(await askJson(prompt, 8192)); } catch { parsed = null; }
-        if (!parsed || typeof parsed !== 'object') return null;
-        return {
-          ...parsed,
-          name: parsed.name || displayProductName(p, lang),
-          imageUrl: p.imageUrl || parsed.imageUrl || '',
-          url: productPath(p),
-        };
-      });
-      const okReports = reports.filter(Boolean);
-      // Need at least two products to call it a comparison; bail to the retry UI
-      // if the provider failed on too many of them.
-      if (okReports.length < 2) throw new Error('reports-failed');
-
-      let verdict = {};
-      try {
-        const vText = await askJson(
-          buildCompareVerdictPrompt(products, okReports, lang, profile, { quizAnswers: answers, research }),
-          6144,
-          0.4,
-        );
-        verdict = parseAiJson(vText) || {};
-      } catch { verdict = {}; }
-
-      const text = JSON.stringify({ type: 'compare_full_report', products: okReports, comparison: verdict });
-      setAiText(text);
-      setAiPhase('result');
-      await saveComparisonAnalysisHistory({ products, analysis: text });
-    } catch (e) {
-      setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
-      setAiPhase('error');
-    } finally {
-      setAiBusy(false);
-    }
+    // Ucret quiz adiminda alindi — burada TEKRAR ALINMAZ.
+    runCompareAnalysisJob({ products, lang, user, answers });
   }
 
   const slots = [...products];

@@ -9,6 +9,9 @@ import { useFavorites } from '../lib/favorites';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import {
+  runProductAnalysisJob, startProductAnalysisJob, subscribeProductAnalysisJob,
+} from '../lib/productAnalysisJobs';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
@@ -795,92 +798,47 @@ export default function ProductDetail() {
       return;
     }
     // Fresh run: drop the cached saved report so the quiz/workboard renders.
+    // Is artik MODUL SEVIYESINDE kosuyor (lib/productAnalysisJobs): kullanici
+    // baska sayfaya gecerse bilesen sokulur ama analiz devam eder, donunce
+    // durumu abonelikten geri gelir.
     setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, checking: false, notice: '', noticeCode: '', questions: [], data: null, savedAt: '' }));
-    try {
-      let questions = await generateQuiz({
-        category: p.category,
-        productTitle: localizedProductName(p, lang),
-        url: productPath(p),
-        language: lang,
-        userProfile: {
-          ...aiUserProfile(user),
-          recentlyViewed: getRecentProducts().slice(0, 8)
-            .map((rp) => ({ name: rp.name, category: rp.category, brand: rp.brand }))
-            .filter((x) => x.name),
-        },
-      });
-      if (!questions.length) questions = fallbackProductQuiz(lang, localizedProductName(p, lang));
-      setAiFull((s) => ({ ...s, phase: 'quiz', busy: false, questions }));
-    } catch {
-      setAiFull((s) => ({
-        ...s,
-        phase: 'quiz',
-        busy: false,
-        questions: fallbackProductQuiz(lang, localizedProductName(p, lang)),
-      }));
-    }
-  }, [p, lang, user, aiFull.busy, aiFull.data, requireAiAccess]);
+    startProductAnalysisJob({
+      product: p,
+      lang,
+      user,
+      productTitle: localizedProductName(p, lang),
+      productUrl: productPath(p),
+      fallbackQuiz: fallbackProductQuiz(lang, localizedProductName(p, lang)),
+    });
+  }, [p, lang, user, aiFull.busy, aiFull.checking, aiFull.data, requireAiAccess]);
 
   // Quiz answers → one researched, consolidated report. Already paid for at
   // startFullAnalysisQuiz, so no second charge here (this is why answering the
   // quiz then continuing no longer bounces back to the quiz).
-  const runFullAnalysis = useCallback(async (answers = []) => {
+  const runFullAnalysis = useCallback((answers = []) => {
     if (!p || aiFull.data) return;
-    setAiFull((s) => ({ ...s, phase: 'analyzing', busy: true, notice: '', stage: 'prep', answers }));
-    const startedAt = Date.now();
-    try {
-      let research = '';
-      try {
-        setAiFull((s) => ({ ...s, stage: 'research' }));
-        research = await askQorAiGrounded(buildProductResearchPrompt(p, lang, { quizAnswers: answers }), {
-          language: lang,
-          maxOutputTokens: 2048,
-        });
-      } catch {
-        research = '';
-      }
-      setAiFull((s) => ({ ...s, stage: 'report' }));
-      const prompt = buildFullPrompt(p, lang, aiUserProfile(user), {
-        quizAnswers: answers,
-        research,
-        similarProducts: similar,
-        offers,
-      });
-      let txt = await askQorAiRaw({
-        system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
-        user: prompt,
-        maxOutputTokens: 8192,
-        temperature: 0.45,
-        jsonMode: true,
-      });
-      let data = parseAiJson(txt);
-      // Freshness/repair retry only while time remains; a parseable (even if
-      // slightly stale) report beats erroring out, so we keep the first usable
-      // result and only hard-fail when nothing parseable came back.
-      if ((!data || typeof data !== 'object' || hasStaleAvailabilityClaims(txt)) && Date.now() - startedAt < 95000) {
-        const retry = await askQorAiRaw({
-          system: `You are Qor AI. Return only valid JSON in language code ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions. Every user-facing text field must be in the requested language.`,
-          user: withFreshnessRetryInstruction(prompt, [localizedProductName(p, lang)]),
-          maxOutputTokens: 8192,
-          temperature: 0.25,
-          jsonMode: true,
-        });
-        const retryData = parseAiJson(retry);
-        if (retryData && typeof retryData === 'object' && !hasStaleAvailabilityClaims(retry)) {
-          txt = retry;
-          data = retryData;
-        }
-      }
-      if (!data || typeof data !== 'object') throw new Error('parse');
-      setAiFull({ phase: 'result', busy: false, notice: '', data, questions: [] });
-      saveProductAnalysisHistory({ product: p, analysis: txt });
-    } catch {
-      // Failure must NOT bounce back to the quiz (the "answered the quiz, hit
-      // analyze, quiz comes again" bug). Show an error + retry that re-runs with
-      // the same answers — no re-quiz, no second charge.
-      setAiFull((s) => ({ ...s, phase: 'error', busy: false, notice: t('pd.aiError') }));
-    }
-  }, [p, lang, t, user, aiFull.data, similar, offers]);
+    // Ucret quiz adiminda alindi — burada TEKRAR ALINMAZ.
+    runProductAnalysisJob({
+      product: p, lang, user, answers, similar, offers,
+      productTitle: localizedProductName(p, lang),
+    });
+  }, [p, lang, user, aiFull.data, similar, offers]);
+
+  // ARKA PLANDAKI ISIN ANLIK GORUNTUSU -> bilesen state'i.
+  useEffect(() => subscribeProductAnalysisJob((job) => {
+    if (!p || !job || job.key !== p.id) return;
+    setAiFull((s) => ({
+      ...s,
+      phase: job.phase === 'error' ? 'error' : job.phase,
+      busy: job.phase === 'quizLoading' || job.phase === 'analyzing',
+      checking: false,
+      stage: job.stage || null,
+      questions: job.questions || [],
+      answers: job.answers || [],
+      data: job.data || s.data,
+      notice: job.phase === 'error' ? t('pd.aiError') : s.notice,
+    }));
+  }), [p?.id, t]); // eslint-disable-line
 
   // Deep link from the blog "AI ile analiz et" buttons: /product/...?ai=1 opens
   // the AI tab and kicks off the full analysis as soon as the product loads.

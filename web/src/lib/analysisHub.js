@@ -14,6 +14,8 @@
 import { useSyncExternalStore } from 'react';
 import { subscribeLinkAnalysisJob } from './linkAnalysisJobs';
 import { subscribeSubscriptionAnalysisJob } from './subscriptionAnalysisJobs';
+import { subscribeCompareAnalysisJob } from './compareAnalysisJobs';
+import { subscribeProductAnalysisJob } from './productAnalysisJobs';
 
 // Hazır sayılan aşamalar: kullanıcının DÖNÜP BAKMASI gereken durumlar.
 // `quiz` de dahil — quiz hazır demek "senden cevap bekleniyor" demektir ve
@@ -26,7 +28,7 @@ const SEEN_KEY = 'qor.analysisHub.seen';
 let state = { busy: [], ready: [] };
 let snapshot = state;
 const listeners = new Set();
-const jobs = { link: null, subscription: null };
+const jobs = { link: null, subscription: null, compare: null, product: null };
 
 function loadSeen() {
   try {
@@ -43,7 +45,18 @@ function saveSeen(set) {
 const META = {
   link: { path: '/link-analysis', labels: ['Link analysis', 'Link analizi', 'Link-Analyse'] },
   subscription: { path: '/subscriptions', labels: ['Subscription analysis', 'Abonelik analizi', 'Abo-Analyse'] },
+  // Bu ikisinin adresi işe göre değişir (hangi ürün / hangi karşılaştırma),
+  // bu yüzden yol iş kaydından okunur; META yalnızca etiketi ve yedek yolu verir.
+  compare: { path: '/compare', labels: ['Comparison analysis', 'Karşılaştırma analizi', 'Vergleichsanalyse'] },
+  product: { path: '/product', labels: ['Product analysis', 'Ürün analizi', 'Produktanalyse'] },
 };
+
+// İşin kullanıcıyı götüreceği adres. Ürün analizi kendi ürün sayfasına,
+// karşılaştırma /compare'e döner (liste zaten localStorage'da duruyor).
+function pathFor(kind, job) {
+  if (kind === 'product' && job.productPath) return `${job.productPath}?tab=ai`;
+  return META[kind].path;
+}
 
 function rebuild() {
   const seen = loadSeen();
@@ -52,7 +65,7 @@ function rebuild() {
   for (const [kind, job] of Object.entries(jobs)) {
     if (!job || !job.id) continue;
     const phase = String(job.phase || '');
-    const entry = { kind, id: job.id, phase, path: META[kind].path, labels: META[kind].labels };
+    const entry = { kind, id: job.id, phase, path: pathFor(kind, job), labels: META[kind].labels };
     if (BUSY_PHASES.has(phase)) busy.push(entry);
     // Aynı iş için ünlem BİR KEZ: kullanıcı sonuca gittiyse bir daha yanmasın.
     else if (READY_PHASES.has(phase) && !seen.has(`${job.id}:${phase}`)) ready.push(entry);
@@ -74,6 +87,8 @@ function ensureStarted() {
   started = true;
   subscribeLinkAnalysisJob((job) => { jobs.link = job; rebuild(); });
   subscribeSubscriptionAnalysisJob((job) => { jobs.subscription = job; rebuild(); });
+  subscribeCompareAnalysisJob((job) => { jobs.compare = job; rebuild(); });
+  subscribeProductAnalysisJob((job) => { jobs.product = job; rebuild(); });
 }
 
 /** Kullanıcı sonuca baktı → o iş için ünlemi söndür. */
