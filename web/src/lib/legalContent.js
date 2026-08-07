@@ -7,7 +7,7 @@
 // Trilingual: COPY.en / COPY.tr / COPY.de, each section is [heading, [paras]].
 
 export const CONTACT_EMAIL = 'contact@arain.digital';
-export const UPDATED = 'June 14, 2026';
+export const UPDATED = 'August 7, 2026';
 
 export const META = {
   terms: {
@@ -97,12 +97,15 @@ export const COPY = {
       ]],
       ['Premium, Trials and Billing', [
         'Qor AI Premium unlocks broader AI usage across Qor AI Chat, visual scanner, product analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history. The current public pricing page is available at /premium.',
-        'Web checkout may be processed by Paddle acting as merchant of record. Mobile purchases may be processed through Google Play or Apple App Store where available. The final price, taxes, currency, renewal date and payment method are shown at checkout before you confirm payment.',
-        'Free trials, if offered, convert to a paid subscription at the end of the trial unless canceled before the trial ends. Subscriptions renew automatically until canceled. You can manage web subscriptions through the billing portal provided after purchase, and app-store subscriptions through the relevant app-store account settings.',
+        'Web checkout is processed by Polar Software, Inc. (polar.sh) acting as merchant of record, which means Polar is the seller of record for web purchases and handles payment, tax and invoicing. Mobile purchases are processed through Google Play. The final price, currency, tax, trial end date, renewal date and payment method are shown at checkout before you confirm payment.',
+        'Qor AI Premium currently includes a 3-day free trial. The trial starts the moment the subscription is created and runs for 3 calendar days. If you cancel before the trial ends you are not charged. If you do not cancel, the first payment is taken automatically at the end of the third day and the subscription then renews each period until canceled.',
+        'Subscriptions renew automatically until canceled. Cancelling stops the next renewal — you keep Premium until the end of the period you already paid for.',
       ]],
       ['Refunds and Cancellations', [
         'Cancellation stops future renewal; it does not automatically refund charges that already happened. Refund eligibility is explained in our Refund Policy.',
-        'For Paddle web purchases, refund requests should be sent to Qor AI support so we can review the transaction and, where approved, issue the refund through Paddle. For Google Play or Apple App Store purchases, refunds may need to be requested through the relevant store because the store controls the payment flow.',
+        'WHERE YOU CANCEL DEPENDS ON WHERE YOU SUBSCRIBED. If you subscribed on the website, cancel from the Polar customer portal at https://polar.sh/qorai/portal (sign in with the email you used at checkout). If you subscribed inside the mobile app, cancel in Google Play: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
+        'These are two separate subscriptions in two separate systems. Cancelling the web subscription does NOT cancel a Google Play subscription, and cancelling in Google Play does NOT cancel a web subscription. If you ever subscribed in both places, cancel in both places.',
+        'For Polar web purchases, refund requests should be sent to Qor AI support so we can review the transaction and, where approved, issue the refund through Polar. For Google Play purchases, refunds may need to be requested through the store because the store controls the payment flow.',
       ]],
       ['AI Outputs and Product Advice', [
         'Qor AI uses AI models to summarize product information, interpret specifications, generate recommendations, ask follow-up questions and provide product-related explanations. AI output can be incomplete, outdated, biased or incorrect.',
@@ -138,8 +141,8 @@ export const COPY = {
         'We collect usage data needed to operate the service: searches, product views, compare lists, link analysis requests, AI chat prompts, product scan events, subscription analysis inputs, Qor Coin usage, Premium status and support interactions.',
       ]],
       ['Payment and Subscription Data', [
-        'When web payments are processed by Paddle, Paddle acts as merchant of record and handles card details, tax calculation, invoices, receipts, fraud checks and payment compliance. Qor AI does not store full card numbers or CVV codes.',
-        'We may receive limited subscription data from Paddle or app stores, such as product ID, plan type, customer ID, transaction ID, renewal status, cancellation status, country, currency, purchase date and entitlement state so we can unlock Premium.',
+        'Web payments are processed by Polar, which acts as merchant of record and handles card details, tax calculation, invoices, receipts, fraud checks and payment compliance. Qor AI never sees or stores full card numbers or CVV codes.',
+        'We may receive limited subscription data from Polar or app stores, such as product ID, plan type, customer ID, subscription ID, renewal status, cancellation status, country, currency, purchase date and entitlement state so we can unlock Premium.',
       ]],
       ['AI Inputs and Product Links', [
         'When you ask Qor AI a question, paste a product link, request product analysis or compare subscriptions, the relevant text, URL, product context and profile signals may be sent to AI providers to generate a response.',
@@ -151,7 +154,7 @@ export const COPY = {
       ]],
       ['Service Providers', [
         'Qor AI may use trusted providers for hosting, authentication, database storage, AI inference, analytics, email, payment processing, affiliate attribution and error monitoring. These providers process data only as needed to provide their services.',
-        'Examples may include PocketBase-powered backend infrastructure, AI model providers, analytics tools, Paddle for web billing, app stores for mobile billing and affiliate or retailer networks after you click outbound store links.',
+        'Examples may include PocketBase-powered backend infrastructure, AI model providers, analytics tools, Polar for web billing, app stores for mobile billing and affiliate or retailer networks after you click outbound store links.',
       ]],
       ['Cookies, Local Storage and Analytics', [
         'The website uses essential local storage and cookies for sign-in sessions, theme preference, security and service operation. The site language follows your browser language and does not require a manual language selector.',
@@ -184,13 +187,19 @@ export const COPY = {
       ['Summary', [
         'This Refund Policy explains when Qor AI Premium purchases may be refunded, how to request a refund and which payment provider controls the refund flow. It applies to Qor AI web purchases and explains how mobile app-store purchases are handled.',
       ]],
-      ['Web Purchases Through Paddle', [
-        'For new Qor AI Premium purchases made through Paddle checkout on the web, you may request a refund within 30 days of the initial purchase if the service does not meet your expectations or if you purchased by mistake.',
-        'Approved refunds are issued through Paddle to the original payment method where possible. Card refunds typically take several business days to appear depending on your bank or card issuer.',
+      ['Web Purchases Through Polar', [
+        'Qor AI Premium starts with a 3-day free trial. If you cancel before the trial ends, no payment is taken and there is nothing to refund. For new Qor AI Premium purchases made through Polar checkout on the web, you may request a refund within 30 days of the initial charge if the service does not meet your expectations or if you were charged by mistake.',
+        'Approved refunds are issued through Polar to the original payment method where possible. Card refunds typically take several business days to appear depending on your bank or card issuer.',
+      ]],
+      ['How to Cancel Your Subscription', [
+        'You cancel where you subscribed. Website subscription: open the Polar customer portal at https://polar.sh/qorai/portal and sign in with the email address you used at checkout, then cancel there. Mobile app subscription: open Play Store → tap your profile → Payments & subscriptions → Subscriptions → Qor AI → Cancel subscription.',
+        'The web subscription and the Google Play subscription are two separate subscriptions in two separate billing systems. Cancelling one does NOT cancel the other. If you subscribed in both places, you must cancel in both places, otherwise you will keep being charged by the one you did not cancel.',
+        'Cancelling during the 3-day free trial means you are never charged. Cancelling after the trial stops the next renewal; you keep Premium until the end of the period you already paid for, and it is not refunded automatically.',
+        'Deleting your Qor AI account does not cancel an active subscription. Cancel the subscription first, then delete the account if you want.',
       ]],
       ['Renewals and Subscription Changes', [
         'Subscription renewals are generally refundable if you contact us within 14 days of the renewal and there has not been heavy usage after the renewal. We review renewal requests fairly, especially if you forgot to cancel or were charged unexpectedly.',
-        'Partial refunds may be used where appropriate. Subscription upgrades, downgrades and prorated credits may be handled by Paddle according to the billing state of the subscription.',
+        'Partial refunds may be used where appropriate. Subscription upgrades, downgrades and prorated credits may be handled by Polar according to the billing state of the subscription.',
       ]],
       ['Mobile App Purchases', [
         'Purchases made through Google Play or Apple App Store are controlled by the relevant app store. If the store requires the customer to request the refund directly, we may not be able to issue it from our side.',
@@ -226,7 +235,7 @@ export const COPY = {
         'When you click outbound store or retailer links, affiliate partners or retailers may set cookies to attribute purchases. This does not change product scores or the price you pay.',
       ]],
       ['Checkout and Payment Providers', [
-        'If you start a web checkout, Paddle may use cookies or similar technologies to operate checkout, calculate tax, prevent fraud, remember checkout state and issue receipts. Qor AI does not control Paddle checkout cookies, but we only use Paddle for payment and subscription processing.',
+        'If you start a web checkout, Polar may use cookies or similar technologies to operate checkout, calculate tax, prevent fraud, remember checkout state and issue receipts. Qor AI does not control Polar checkout cookies, and we use Polar only for payment and subscription processing.',
         'If you buy through Google Play or Apple App Store, those stores may use their own account, security and billing cookies according to their own policies.',
       ]],
       ['Managing Cookies', [
@@ -297,10 +306,11 @@ export const COPY = {
         'The pricing page is /premium. It lists current public prices, trial information and the main Premium features.',
       ]],
       ['Can I get a refund?', [
-        'For web purchases through Paddle, new Premium purchases may be refundable within 30 days. Renewal and app-store rules are explained in the Refund Policy.',
+        'Premium starts with a 3-day free trial, so cancelling before it ends means no charge at all. For web purchases through Polar, new Premium charges may be refundable within 30 days. Renewal and app-store rules are explained in the Refund Policy.',
       ]],
       ['How do I cancel Premium?', [
-        'Web subscriptions can be canceled through the billing portal provided after purchase or by contacting support. App-store subscriptions must usually be managed inside Google Play or Apple App Store account settings.',
+        'Cancel where you subscribed. Website: open https://polar.sh/qorai/portal and sign in with your checkout email. Mobile app: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
+        'These are two separate subscriptions — cancelling the web one does NOT cancel a Google Play one, and vice versa. Cancel inside the 3-day trial and you are never charged.',
       ]],
       ['How do I delete my account?', [
         'Open Profile in the Qor AI app or website and use Delete my account. The deletion flow may send a confirmation link to your account email before the account is permanently removed.',
@@ -311,10 +321,10 @@ export const COPY = {
         'Include your account email, product link, transaction reference or a short issue description where relevant. Do not send passwords or card details.',
       ]],
       ['Does Qor AI store my card details?', [
-        'No. Web card details are handled by Paddle, and app-store payments are handled by the relevant store. Qor AI stores only limited subscription status data needed to unlock Premium.',
+        'No. Web card details are handled by Polar, and app-store payments are handled by the relevant store. Qor AI stores only limited subscription status data needed to unlock Premium.',
       ]],
       ['Why can web and mobile billing differ?', [
-        'Web purchases may be handled by Paddle, while mobile purchases may be handled by Google Play or Apple App Store. Taxes, receipts, refund steps and subscription management can differ because each provider controls its own checkout flow.',
+        'Web purchases are handled by Polar, while mobile purchases are handled by Google Play. Taxes, receipts, refund steps and subscription management differ because each provider controls its own checkout flow — including where you cancel.',
       ]],
       ['Is AI output always correct?', [
         'No. AI output can be wrong or outdated. Qor AI is a research assistant, not a guarantee. Always verify important specifications, prices and compatibility with official retailer or manufacturer sources.',
@@ -331,7 +341,7 @@ export const COPY = {
 
 COPY.tr = {
   common: {
-    updated: `Son güncelleme: 14 Haziran 2026`,
+    updated: `Son güncelleme: 7 Ağustos 2026`,
     onThisPage: 'Bu sayfada',
     quickLinks: 'İlgili politikalar',
     contact: 'İletişim',
@@ -364,12 +374,12 @@ COPY.tr = {
     ]],
     ['Premium, Denemeler ve Ödeme', [
       'Qor AI Premium; Qor AI Chat, görsel tarayıcı, ürün analizi, link analizi, link karşılaştırma, abonelik analizi, premium öneriler ve genişletilmiş fiyat geçmişi dahil daha kapsamlı AI kullanımını açar. Güncel herkese açık fiyatlandırma sayfası /premium adresindedir.',
-      'Web checkout, merchant of record olarak Paddle tarafından işlenebilir. Mobil satın almalar uygun olduğunda Google Play veya Apple App Store üzerinden işlenebilir. Nihai fiyat, vergiler, para birimi, yenileme tarihi ve ödeme yöntemi ödeme onayından önce checkout ekranında gösterilir.',
+      'Web ödemesi, merchant of record (kayıtlı satıcı) olarak Polar Software, Inc. (polar.sh) tarafından işlenir; yani web satın almalarında satıcı Polar’dır ve ödemeyi, vergiyi, faturayı Polar yönetir. Mobil satın almalar Google Play üzerinden işlenir. Nihai fiyat, para birimi, vergi, deneme bitiş tarihi, yenileme tarihi ve ödeme yöntemi, ödemeyi onaylamadan önce checkout ekranında gösterilir.',
       'Sunuluyorsa ücretsiz denemeler, deneme bitmeden iptal edilmezse deneme sonunda ücretli aboneliğe dönüşür. Abonelikler iptal edilene kadar otomatik yenilenir. Web aboneliklerini satın alma sonrası sağlanan fatura portalından, uygulama mağazası aboneliklerini ilgili mağaza hesabı ayarlarından yönetebilirsiniz.',
     ]],
     ['İadeler ve İptaller', [
       'İptal gelecekteki yenilemeyi durdurur; gerçekleşmiş ödemeleri otomatik olarak iade etmez. İade uygunluğu İade Politikamızda açıklanır.',
-      'Paddle web satın almaları için iade talepleri Qor AI desteğine gönderilmelidir; işlemi inceleyip uygun olduğunda iadeyi Paddle üzerinden başlatırız. Google Play veya Apple App Store satın almalarında iade, ödeme akışını mağaza kontrol ettiği için ilgili mağazadan talep edilmelidir.',
+      'Polar web satın almaları için iade talepleri Qor AI desteğine gönderilmelidir; işlemi inceleyip uygun olduğunda iadeyi Polar üzerinden başlatırız. Google Play satın almalarında iade, ödeme akışını mağaza kontrol ettiği için mağazadan talep edilmelidir.',
     ]],
     ['AI Çıktıları ve Ürün Tavsiyesi', [
       'Qor AI; ürün bilgilerini özetlemek, teknik özellikleri yorumlamak, öneriler üretmek, takip soruları sormak ve ürün odaklı açıklamalar sunmak için AI modelleri kullanır. AI çıktıları eksik, eski, taraflı veya hatalı olabilir.',
@@ -405,8 +415,8 @@ COPY.tr = {
       'Hizmeti işletmek için gerekli kullanım verilerini toplarız: aramalar, ürün görüntülemeleri, karşılaştırma listeleri, link analizi talepleri, AI chat promptları, ürün tarama olayları, abonelik analizi girdileri, Qor Coin kullanımı, Premium durumu ve destek etkileşimleri.',
     ]],
     ['Ödeme ve Abonelik Verileri', [
-      'Web ödemeleri Paddle tarafından işlendiğinde Paddle merchant of record olarak kart bilgilerini, vergi hesaplamasını, faturaları, makbuzları, dolandırıcılık kontrollerini ve ödeme uyumluluğunu yönetir. Qor AI tam kart numarası veya CVV saklamaz.',
-      'Premium erişimi açmak için Paddle veya uygulama mağazalarından ürün kimliği, plan türü, müşteri ID’si, işlem ID’si, yenileme durumu, iptal durumu, ülke, para birimi, satın alma tarihi ve hak sahipliği durumu gibi sınırlı abonelik verileri alabiliriz.',
+      'Web ödemeleri Polar tarafından işlenir; Polar merchant of record olarak kart bilgilerini, vergi hesaplamasını, faturaları, makbuzları, dolandırıcılık kontrollerini ve ödeme uyumluluğunu yönetir. Qor AI tam kart numarasını veya CVV’yi hiçbir zaman görmez ve saklamaz.',
+      'Premium erişimi açmak için Polar veya uygulama mağazalarından ürün kimliği, plan türü, müşteri ID’si, abonelik ID’si, yenileme durumu, iptal durumu, ülke, para birimi, satın alma tarihi ve hak sahipliği durumu gibi sınırlı abonelik verileri alabiliriz.',
     ]],
     ['AI Girdileri ve Ürün Linkleri', [
       'Qor AI’a soru sorduğunuzda, ürün linki yapıştırdığınızda, ürün analizi istediğinizde veya abonelikleri karşılaştırdığınızda ilgili metin, URL, ürün bağlamı ve profil sinyalleri yanıt üretmek için AI sağlayıcılarına gönderilebilir.',
@@ -418,7 +428,7 @@ COPY.tr = {
     ]],
     ['Hizmet Sağlayıcılar', [
       'Qor AI barındırma, kimlik doğrulama, veri tabanı, AI çıkarımı, analiz, e-posta, ödeme işleme, affiliate atıf ve hata izleme için güvenilir sağlayıcılar kullanabilir. Bu sağlayıcılar verileri yalnızca hizmetlerini sunmak için gerekli olduğu ölçüde işler.',
-      'Örnekler PocketBase tabanlı backend altyapısı, AI model sağlayıcıları, analiz araçları, web ödemeleri için Paddle, mobil ödemeler için uygulama mağazaları ve dış mağaza linklerine tıkladıktan sonra affiliate veya perakendeci ağları olabilir.',
+      'Örnekler PocketBase tabanlı backend altyapısı, AI model sağlayıcıları, analiz araçları, web ödemeleri için Polar, mobil ödemeler için uygulama mağazaları ve dış mağaza linklerine tıkladıktan sonra affiliate veya perakendeci ağları olabilir.',
     ]],
     ['Çerezler, Yerel Depolama ve Analiz', [
       'Web sitesi giriş oturumları, tema tercihi, güvenlik ve hizmet işletimi için zorunlu yerel depolama ve çerezler kullanır. Site dili tarayıcı dilinizi takip eder ve manuel dil seçici gerektirmez.',
@@ -451,13 +461,19 @@ COPY.tr = {
     ['Özet', [
       'Bu İade Politikası, Qor AI Premium satın almalarının ne zaman iade edilebileceğini, iade talebinin nasıl yapılacağını ve iade akışını hangi ödeme sağlayıcısının kontrol ettiğini açıklar. Qor AI web satın almaları için geçerlidir ve mobil uygulama mağazası satın almalarının nasıl ele alındığını açıklar.',
     ]],
-    ['Paddle Üzerinden Web Satın Almaları', [
-      'Web’de Paddle checkout üzerinden yapılan yeni Qor AI Premium satın almaları için, hizmet beklentinizi karşılamazsa veya yanlışlıkla satın aldıysanız ilk satın alma tarihinden itibaren 30 gün içinde iade talep edebilirsiniz.',
-      'Onaylanan iadeler mümkün olduğunda Paddle üzerinden orijinal ödeme yöntemine yapılır. Kart iadelerinin bankanıza veya kart sağlayıcınıza bağlı olarak görünmesi birkaç iş günü sürebilir.',
+    ['Polar Üzerinden Web Satın Almaları', [
+      'Qor AI Premium 3 günlük ücretsiz denemeyle başlar. Deneme bitmeden iptal ederseniz hiç ödeme alınmaz ve iade edilecek bir tutar oluşmaz. Web’de Polar checkout üzerinden yapılan yeni Qor AI Premium ödemeleri için, hizmet beklentinizi karşılamazsa veya yanlışlıkla ödeme alındıysa ilk ödemeden itibaren 30 gün içinde iade talep edebilirsiniz.',
+      'Onaylanan iadeler mümkün olduğunda Polar üzerinden orijinal ödeme yöntemine yapılır. Kart iadelerinin bankanıza veya kart sağlayıcınıza bağlı olarak görünmesi birkaç iş günü sürebilir.',
+    ]],
+    ['Aboneliği Nasıl İptal Edersiniz', [
+      'Nereden abone olduysanız oradan iptal edersiniz. Web aboneliği: https://polar.sh/qorai/portal adresindeki Polar müşteri portalını açın, ödeme sırasında kullandığınız e-posta ile giriş yapın ve aboneliği iptal edin. Mobil uygulama aboneliği: Play Store → profil simgesi → Ödemeler ve abonelikler → Abonelikler → Qor AI → Aboneliği iptal et.',
+      'Web aboneliği ile Google Play aboneliği İKİ AYRI sistemde İKİ AYRI aboneliktir. Birini iptal etmek diğerini iptal ETMEZ. İki yerden de abone olduysanız iki yerden de iptal etmeniz gerekir; aksi halde iptal etmediğiniz taraf sizden ücret almaya devam eder.',
+      '3 günlük ücretsiz deneme içinde iptal ederseniz hiç ücret alınmaz. Deneme bittikten sonra iptal, bir sonraki yenilemeyi durdurur; ödemesini yaptığınız dönemin sonuna kadar Premium sizde kalır ve bu tutar otomatik iade edilmez.',
+      'Qor AI hesabınızı silmek aktif aboneliği iptal etmez. Önce aboneliği iptal edin, sonra isterseniz hesabı silin.',
     ]],
     ['Yenilemeler ve Abonelik Değişiklikleri', [
       'Abonelik yenilemeleri, yenilemeden sonra yoğun kullanım yoksa ve yenilemeden itibaren 14 gün içinde bize ulaşırsanız genellikle iade için değerlendirilebilir. İptali unuttuysanız veya beklenmedik şekilde ücretlendirildiyseniz talepleri adil şekilde inceleriz.',
-      'Uygun durumlarda kısmi iade kullanılabilir. Abonelik yükseltmeleri, düşürmeleri ve oransal krediler aboneliğin fatura durumuna göre Paddle tarafından yönetilebilir.',
+      'Uygun durumlarda kısmi iade kullanılabilir. Abonelik yükseltmeleri, düşürmeleri ve oransal krediler aboneliğin fatura durumuna göre Polar tarafından yönetilebilir.',
     ]],
     ['Mobil Uygulama Satın Almaları', [
       'Google Play veya Apple App Store üzerinden yapılan satın almalar ilgili uygulama mağazası tarafından kontrol edilir. Mağaza müşterinin iadeyi doğrudan talep etmesini gerektiriyorsa bizim taraftan iade yapamayabiliriz.',
@@ -493,7 +509,7 @@ COPY.tr = {
       'Dış mağaza veya perakendeci linklerine tıkladığınızda affiliate partnerleri veya perakendeciler satın alımları ilişkilendirmek için çerez kullanabilir. Bu ürün skorlarını veya ödediğiniz fiyatı değiştirmez.',
     ]],
     ['Checkout ve Ödeme Sağlayıcıları', [
-      'Web checkout başlatırsanız Paddle checkout’u çalıştırmak, vergi hesaplamak, dolandırıcılığı önlemek, checkout durumunu hatırlamak ve makbuz oluşturmak için çerez veya benzer teknolojiler kullanabilir. Qor AI Paddle checkout çerezlerini kontrol etmez; Paddle’ı yalnızca ödeme ve abonelik işleme için kullanırız.',
+      'Web checkout başlatırsanız Polar; checkout’u çalıştırmak, vergi hesaplamak, dolandırıcılığı önlemek, checkout durumunu hatırlamak ve makbuz oluşturmak için çerez veya benzer teknolojiler kullanabilir. Qor AI, Polar checkout çerezlerini kontrol etmez; Polar’ı yalnızca ödeme ve abonelik işleme için kullanırız.',
       'Google Play veya Apple App Store üzerinden satın alırsanız bu mağazalar kendi hesap, güvenlik ve faturalama çerezlerini kendi politikalarına göre kullanabilir.',
     ]],
     ['Çerezleri Yönetme', [
@@ -513,7 +529,7 @@ COPY.tr = {
       `Profilim bölümüne erişemiyorsanız aynı talebi ${CONTACT_EMAIL} adresine e-posta ile gönderebilirsiniz. E-postanın konu kısmına "Hesap silme talebi" yazın; mesajda Qor AI hesabınızda kullandığınız e-posta adresini belirtin. Talep hesap sahibine ait görünmüyorsa veya doğrulama tamamlanamazsa güvenliğiniz için işlem gecikebilir.`,
     ]],
     ['Ödeme, Premium ve İade Yardımı', [
-      'Premium erişimi görünmüyorsa, aboneliğiniz yanlış hesapta açıldıysa, ödeme başarılı olduğu halde özellikler aktif değilse veya iade talebiniz varsa ödeme sağlayıcısını, satın alma tarihini, plan adını, işlem ID’sini veya mağaza sipariş numarasını ekleyin. Web ödemelerinde Paddle, mobil satın almalarda Google Play veya Apple App Store süreçleri farklı çalışabilir.',
+      'Premium erişimi görünmüyorsa, aboneliğiniz yanlış hesapta açıldıysa, ödeme başarılı olduğu halde özellikler aktif değilse veya iade talebiniz varsa ödeme sağlayıcısını, satın alma tarihini, plan adını, abonelik ID’sini veya mağaza sipariş numarasını ekleyin. Web ödemelerinde Polar, mobil satın almalarda Google Play süreçleri farklı çalışır.',
       'İptal işlemi gelecekteki yenilemeyi durdurur; iade talebi ayrıca değerlendirilir. İade ve abonelik yönetimiyle ilgili ayrıntılar İade Politikası ve Kullanım Koşulları sayfalarında açıklanır.',
     ]],
     ['Ürün Verisi, Link Analizi ve AI Sonuçları', [
@@ -536,7 +552,7 @@ COPY.tr = {
     ]],
     ['Qor AI Ne Satar', [
       'Qor AI fiziksel ürün satıcısı değildir; katalogda görünen telefon, laptop, kulaklık, PC parçası veya başka ürünlerin satışı ilgili mağaza, pazar yeri veya perakendeci tarafından yapılır. Qor AI, ürün kararını kolaylaştıran yazılım özellikleri ve Premium erişim sunar.',
-      'Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açabilir. Web ödemeleri Paddle, mobil satın almalar ise platforma göre Google Play veya Apple App Store üzerinden yönetilebilir.',
+      'Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açar. Web ödemeleri Polar, mobil satın almalar Google Play üzerinden yönetilir.',
     ]],
     ['Kimler İçin Tasarlandı', [
       'Qor AI; "bu ürün alınır mı", "bu laptop bütçeme uygun mu", "bu telefon diğer modele göre mantıklı mı", "hangi abonelik bana daha çok değer sağlar" gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.',
@@ -566,10 +582,11 @@ COPY.tr = {
       'Fiyatlandırma sayfası /premium adresindedir. Güncel herkese açık fiyatları, deneme bilgisini ve ana Premium özellikleri listeler.',
     ]],
     ['İade alabilir miyim?', [
-      'Paddle üzerinden web satın almalarında yeni Premium satın almaları 30 gün içinde iade için uygun olabilir. Yenileme ve uygulama mağazası kuralları İade Politikasında açıklanır.',
+      'Premium 3 günlük ücretsiz denemeyle başlar; deneme bitmeden iptal ederseniz hiç ücret alınmaz. Polar üzerinden web ödemelerinde yeni Premium ödemeleri 30 gün içinde iade için uygun olabilir. Yenileme ve uygulama mağazası kuralları İade Politikasında açıklanır.',
     ]],
     ['Premium’u nasıl iptal ederim?', [
-      'Web abonelikleri satın alma sonrası sağlanan fatura portalından veya destekle iletişime geçilerek iptal edilebilir. Uygulama mağazası abonelikleri genellikle Google Play veya Apple App Store hesap ayarlarından yönetilmelidir.',
+      'Nereden abone olduysanız oradan iptal edin. Web: https://polar.sh/qorai/portal adresini açıp ödemede kullandığınız e-posta ile giriş yapın. Mobil uygulama: Play Store → profil → Ödemeler ve abonelikler → Abonelikler → Qor AI.',
+      'Bunlar iki ayrı aboneliktir — web aboneliğini iptal etmek Google Play aboneliğini iptal ETMEZ, tersi de geçerlidir. 3 günlük deneme içinde iptal ederseniz hiç ücret alınmaz.',
     ]],
     ['Hesabımı nasıl silerim?', [
       `Hesabınızı uygulama veya web tarafındaki Profilim bölümünden Hesabımı sil seçeneğini kullanarak silebilirsiniz. Bu işlem hesabınıza bağlı e-posta adresine onay bağlantısı gönderebilir; güvenlik için onay tamamlanmadan hesap kalıcı olarak silinmeyebilir.`,
@@ -580,10 +597,10 @@ COPY.tr = {
       'Daha hızlı destek için hesap e-postanızı, ilgili ürün linkini, ödeme işlem numarasını veya yaşadığınız sorunun kısa açıklamasını ekleyin; parola ya da kart bilgisi göndermeyin.',
     ]],
     ['Qor AI kart bilgilerimi saklar mı?', [
-      'Hayır. Web kart bilgileri Paddle tarafından, uygulama mağazası ödemeleri ilgili mağaza tarafından yönetilir. Qor AI yalnızca Premium’u açmak için gereken sınırlı abonelik durumu verisini saklar.',
+      'Hayır. Web kart bilgileri Polar tarafından, uygulama mağazası ödemeleri ilgili mağaza tarafından yönetilir. Qor AI yalnızca Premium’u açmak için gereken sınırlı abonelik durumu verisini saklar.',
     ]],
     ['Web ve mobil ödeme neden farklı olabilir?', [
-      'Web satın almaları Paddle tarafından, mobil satın almalar Google Play veya Apple App Store tarafından yönetilebilir. Vergiler, makbuzlar, iade adımları ve abonelik yönetimi farklı olabilir çünkü her sağlayıcı kendi checkout akışını kontrol eder.',
+      'Web satın almaları Polar, mobil satın almalar Google Play tarafından yönetilir. Vergiler, makbuzlar, iade adımları ve aboneliğin NEREDEN iptal edileceği farklıdır çünkü her sağlayıcı kendi checkout akışını kontrol eder.',
     ]],
     ['AI çıktıları her zaman doğru mu?', [
       'Hayır. AI çıktıları hatalı veya eski olabilir. Qor AI bir araştırma asistanıdır, garanti değildir. Önemli teknik özellikleri, fiyatları ve uyumluluğu resmi satıcı veya üretici kaynaklarından doğrulayın.',
@@ -599,7 +616,7 @@ COPY.tr = {
 
 COPY.de = {
   common: {
-    updated: `Zuletzt aktualisiert: 14. Juni 2026`,
+    updated: `Zuletzt aktualisiert: 7. August 2026`,
     onThisPage: 'Auf dieser Seite',
     quickLinks: 'Verwandte Richtlinien',
     contact: 'Kontakt',
@@ -632,12 +649,12 @@ COPY.de = {
     ]],
     ['Premium, Testphasen und Abrechnung', [
       'Qor AI Premium schaltet umfangreichere KI-Nutzung für Chat, visuellen Scanner, Produktanalyse, Linkanalyse, Linkvergleich, Abo-Analyse, Premium-Empfehlungen und erweiterten Preisverlauf frei. Die öffentliche Preisseite ist /premium.',
-      'Web-Checkout kann von Paddle als Merchant of Record verarbeitet werden. Mobile Käufe können über Google Play oder Apple App Store laufen. Endpreis, Steuern, Währung, Verlängerungsdatum und Zahlungsmethode werden vor der Bestätigung angezeigt.',
+      'Der Web-Checkout wird von Polar Software, Inc. (polar.sh) als Merchant of Record verarbeitet; Polar ist damit der Verkäufer für Webkäufe und übernimmt Zahlung, Steuern und Rechnungen. Mobile Käufe laufen über Google Play. Endpreis, Währung, Steuern, Testende, Verlängerungsdatum und Zahlungsmethode werden vor der Bestätigung angezeigt.',
       'Kostenlose Testphasen werden nach Ablauf kostenpflichtig, sofern sie nicht rechtzeitig gekündigt werden. Abonnements verlängern sich automatisch bis zur Kündigung.',
     ]],
     ['Erstattungen und Kündigung', [
       'Kündigung stoppt zukünftige Verlängerungen, erstattet aber nicht automatisch bereits erfolgte Zahlungen. Die Erstattungsfähigkeit steht in unserer Rückerstattungsrichtlinie.',
-      'Für Paddle-Webkäufe senden Sie Erstattungsanfragen an Qor AI Support. Für Google Play oder Apple App Store Käufe kann eine Anfrage direkt beim jeweiligen Store erforderlich sein.',
+      'Für Polar-Webkäufe senden Sie Erstattungsanfragen an Qor AI Support. Für Google Play Käufe kann eine Anfrage direkt beim Store erforderlich sein.',
     ]],
     ['KI-Ausgaben und Produktberatung', [
       'Qor AI nutzt KI-Modelle, um Produktinformationen zusammenzufassen, Spezifikationen zu interpretieren und Empfehlungen zu erzeugen. KI-Ausgaben können unvollständig, veraltet oder falsch sein.',
@@ -670,8 +687,8 @@ COPY.de = {
       'Zur Bereitstellung erfassen wir Suchanfragen, Produktaufrufe, Vergleichslisten, Linkanalysen, KI-Chat-Prompts, Produktscans, Abo-Analyse-Eingaben, Qor-Coin-Nutzung, Premium-Status und Supportinteraktionen.',
     ]],
     ['Zahlungs- und Abodaten', [
-      'Wenn Webzahlungen von Paddle verarbeitet werden, handelt Paddle als Merchant of Record und verarbeitet Kartendaten, Steuern, Rechnungen, Belege, Betrugsprüfungen und Zahlungs-Compliance. Qor AI speichert keine vollständigen Kartennummern oder CVV.',
-      'Wir können begrenzte Abodaten von Paddle oder App-Stores erhalten, etwa Produkt-ID, Plan, Kunden-ID, Transaktion, Verlängerungsstatus, Kündigungsstatus, Land, Währung, Kaufdatum und Berechtigungsstatus.',
+      'Webzahlungen werden von Polar verarbeitet; Polar handelt als Merchant of Record und verarbeitet Kartendaten, Steuern, Rechnungen, Belege, Betrugsprüfungen und Zahlungs-Compliance. Qor AI sieht und speichert keine vollständigen Kartennummern oder CVV.',
+      'Wir können begrenzte Abodaten von Polar oder App-Stores erhalten, etwa Produkt-ID, Plan, Kunden-ID, Abo-ID, Verlängerungsstatus, Kündigungsstatus, Land, Währung, Kaufdatum und Berechtigungsstatus.',
     ]],
     ['KI-Eingaben und Produktlinks', [
       'Bei Fragen, Produktlinks, Produktanalysen oder Abo-Vergleichen können relevante Texte, URLs, Produktkontext und Profilsignale an KI-Anbieter gesendet werden, um eine Antwort zu erzeugen.',
@@ -683,7 +700,7 @@ COPY.de = {
     ]],
     ['Dienstleister', [
       'Qor AI kann vertrauenswürdige Anbieter für Hosting, Authentifizierung, Datenbank, KI, Analytik, E-Mail, Zahlungen, Affiliate-Zuordnung und Fehlermonitoring nutzen.',
-      'Beispiele sind PocketBase-Infrastruktur, KI-Modellanbieter, Analytiktools, Paddle für Webabrechnung, App-Stores für mobile Abrechnung und Affiliate- oder Händlernetzwerke nach Klick auf externe Links.',
+      'Beispiele sind PocketBase-Infrastruktur, KI-Modellanbieter, Analytiktools, Polar für Webabrechnung, App-Stores für mobile Abrechnung und Affiliate- oder Händlernetzwerke nach Klick auf externe Links.',
     ]],
     ['Cookies, lokaler Speicher und Analytik', [
       'Die Website nutzt notwendigen lokalen Speicher und Cookies für Sitzungen, Theme, Sicherheit und Betrieb. Die Sprache folgt der Browsersprache; es gibt keinen manuellen Sprachschalter.',
@@ -716,13 +733,19 @@ COPY.de = {
     ['Zusammenfassung', [
       'Diese Richtlinie erklärt, wann Qor AI Premium Käufe erstattet werden können, wie Sie eine Erstattung anfordern und welcher Zahlungsanbieter den Ablauf steuert.',
     ]],
-    ['Webkäufe über Paddle', [
-      'Für neue Qor AI Premium Käufe über Paddle-Webcheckout können Sie innerhalb von 30 Tagen nach Erstkauf eine Erstattung anfordern, wenn der Dienst Ihre Erwartungen nicht erfüllt oder der Kauf versehentlich erfolgte.',
-      'Genehmigte Erstattungen werden nach Möglichkeit über Paddle auf die ursprüngliche Zahlungsmethode ausgeführt.',
+    ['Webkäufe über Polar', [
+      'Qor AI Premium beginnt mit 3 Tagen kostenlos. Wenn Sie vor Ablauf kündigen, wird nichts abgebucht und es gibt nichts zu erstatten. Für neue Qor AI Premium Zahlungen über den Polar-Webcheckout können Sie innerhalb von 30 Tagen nach der ersten Abbuchung eine Erstattung anfordern.',
+      'Genehmigte Erstattungen werden nach Möglichkeit über Polar auf die ursprüngliche Zahlungsmethode ausgeführt.',
+    ]],
+    ['So kündigen Sie Ihr Abo', [
+      'Sie kündigen dort, wo Sie abgeschlossen haben. Web-Abo: Öffnen Sie das Polar-Kundenportal unter https://polar.sh/qorai/portal, melden Sie sich mit der beim Checkout verwendeten E-Mail an und kündigen Sie dort. App-Abo: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI → Abo kündigen.',
+      'Das Web-Abo und das Google-Play-Abo sind ZWEI getrennte Abos in zwei getrennten Abrechnungssystemen. Eine Kündigung storniert NICHT automatisch das andere. Wenn Sie an beiden Stellen abgeschlossen haben, müssen Sie an beiden Stellen kündigen.',
+      'Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts abgebucht. Nach der Testphase stoppt die Kündigung die nächste Verlängerung; Premium bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv und wird nicht automatisch erstattet.',
+      'Das Löschen Ihres Qor AI Kontos kündigt kein aktives Abo. Kündigen Sie zuerst das Abo und löschen Sie danach ggf. das Konto.',
     ]],
     ['Verlängerungen und Änderungen', [
       'Verlängerungen können erstattungsfähig sein, wenn Sie uns innerhalb von 14 Tagen kontaktieren und nach der Verlängerung keine intensive Nutzung stattfand.',
-      'Teilweise Erstattungen, Upgrades, Downgrades und anteilige Credits können je nach Abostatus von Paddle verarbeitet werden.',
+      'Teilweise Erstattungen, Upgrades, Downgrades und anteilige Credits können je nach Abostatus von Polar verarbeitet werden.',
     ]],
     ['Mobile App-Käufe', [
       'Käufe über Google Play oder Apple App Store werden vom jeweiligen Store kontrolliert. In manchen Fällen muss die Erstattung direkt dort beantragt werden.',
@@ -758,7 +781,7 @@ COPY.de = {
       'Nach Klicks auf externe Shop- oder Händlerlinks können Affiliate-Partner oder Händler Cookies zur Kaufzuordnung setzen. Dies ändert weder Scores noch Preis.',
     ]],
     ['Checkout und Zahlungsanbieter', [
-      'Wenn Sie einen Web-Checkout starten, kann Paddle Cookies oder ähnliche Technologien für Checkout-Betrieb, Steuerberechnung, Betrugsprävention, Checkout-Status und Belege nutzen. Qor AI kontrolliert Paddle-Checkout-Cookies nicht, nutzt Paddle aber nur für Zahlungs- und Abonnementverarbeitung.',
+      'Wenn Sie einen Web-Checkout starten, kann Polar Cookies oder ähnliche Technologien für Checkout-Betrieb, Steuerberechnung, Betrugsprävention, Checkout-Status und Belege nutzen. Qor AI kontrolliert Polar-Checkout-Cookies nicht und nutzt Polar ausschließlich für Zahlungs- und Abonnementverarbeitung.',
       'Bei Käufen über Google Play oder Apple App Store können diese Stores eigene Konto-, Sicherheits- und Abrechnungscookies nach ihren eigenen Richtlinien verwenden.',
     ]],
     ['Cookies verwalten', [
@@ -829,10 +852,11 @@ COPY.de = {
       'Die Preisseite ist /premium. Dort stehen aktuelle Preise, Testphase und Hauptfunktionen.',
     ]],
     ['Kann ich eine Erstattung erhalten?', [
-      'Für Webkäufe über Paddle können neue Premium-Käufe innerhalb von 30 Tagen erstattungsfähig sein. Details stehen in der Rückerstattungsrichtlinie.',
+      'Premium beginnt mit 3 Tagen kostenlos — bei Kündigung vor Ablauf entstehen keine Kosten. Für Webkäufe über Polar können neue Premium-Zahlungen innerhalb von 30 Tagen erstattungsfähig sein. Details stehen in der Rückerstattungsrichtlinie.',
     ]],
     ['Wie kündige ich Premium?', [
-      'Web-Abonnements können über das nach dem Kauf bereitgestellte Abrechnungsportal oder über den Support gekündigt werden. App-Store-Abos müssen in der Regel in den Google Play oder Apple App Store Kontoeinstellungen verwaltet werden.',
+      'Kündigen Sie dort, wo Sie abgeschlossen haben. Web: https://polar.sh/qorai/portal öffnen und mit der Checkout-E-Mail anmelden. App: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI.',
+      'Das sind zwei getrennte Abos — die Kündigung des Web-Abos storniert NICHT das Google-Play-Abo und umgekehrt. Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts berechnet.',
     ]],
     ['Wie lösche ich mein Konto?', [
       'Öffnen Sie in der Qor AI App oder Website den Profilbereich und wählen Sie Mein Konto löschen. Der Löschablauf kann einen Bestätigungslink an Ihre Konto-E-Mail senden.',
@@ -843,10 +867,10 @@ COPY.de = {
       'Nennen Sie je nach Thema Konto-E-Mail, Produktlink, Transaktionsreferenz oder kurze Problembeschreibung. Senden Sie keine Passwörter oder Kartendaten.',
     ]],
     ['Speichert Qor AI Kartendaten?', [
-      'Nein. Web-Kartendaten verarbeitet Paddle, App-Store-Zahlungen verarbeitet der jeweilige Store. Qor AI speichert nur begrenzte Statusdaten zur Premium-Freischaltung.',
+      'Nein. Web-Kartendaten verarbeitet Polar, App-Store-Zahlungen verarbeitet der jeweilige Store. Qor AI speichert nur begrenzte Statusdaten zur Premium-Freischaltung.',
     ]],
     ['Warum können Web- und Mobilabrechnung unterschiedlich sein?', [
-      'Webkäufe können über Paddle laufen, mobile Käufe über Google Play oder Apple App Store. Steuern, Belege, Erstattungsschritte und Abonnementverwaltung können abweichen, weil jeder Anbieter seinen Checkout selbst kontrolliert.',
+      'Webkäufe laufen über Polar, mobile Käufe über Google Play. Steuern, Belege, Erstattungsschritte und vor allem der ORT DER KÜNDIGUNG unterscheiden sich, weil jeder Anbieter seinen Checkout selbst kontrolliert.',
     ]],
     ['Sind KI-Ausgaben immer korrekt?', [
       'Nein. KI kann falsch oder veraltet sein. Prüfen Sie wichtige Spezifikationen, Preise und Kompatibilität bei offiziellen Quellen.',
