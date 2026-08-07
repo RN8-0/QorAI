@@ -34,6 +34,21 @@ function writeCache(cc) {
 // bir ana sayfa yüklemesi 8 kez /cdn-cgi/trace istiyordu (2026-08-06).
 let revalidated = false;
 
+// SON ÇARE: hem Cloudflare hem ipwho.is engellendiğinde (reklam engelleyici,
+// bazı VPN eklentileri) ülkeyi tarayıcı yerelinden tahmin ediyoruz. IP kadar
+// doğru değil ama "hiç ülke yok" durumundan iyidir — fiyatın ziyaretçinin
+// para biriminde gösterilmesi buna bağlı.
+function countryFromLocale() {
+  try {
+    const list = navigator.languages || [navigator.language || ''];
+    for (const l of list) {
+      const m = String(l).match(/[-_]([A-Za-z]{2})$/);
+      if (m) return m[1].toUpperCase();
+    }
+  } catch { /* ignore */ }
+  return '';
+}
+
 function probeCountry() {
   if (inflight) return inflight;
   revalidated = true;
@@ -51,6 +66,7 @@ function probeCountry() {
         cc = (j && j.country_code) || '';
       } catch { /* ignore */ }
     }
+    if (!cc) cc = countryFromLocale();
     inflight = null;
     cc = String(cc || '').toUpperCase();
     if (!/^[A-Z]{2}$/.test(cc)) return memo || readCache() || 'US';

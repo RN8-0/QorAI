@@ -442,6 +442,49 @@ routerAdd('POST', '/api/polar/webhook', (e) => {
       }
     }
 
+    // JSVM izolasyonu nedeniyle yardımcı callback İÇİNDE tanımlı.
+    // PocketBase JSON alanları JSVM'e ya Go slice (bayt dizisi) ya da nesne
+    // olarak gelir. Bayt dizisi gelirse UTF-8 çözüp ayrıştırmak GEREKİR: aksi
+    // halde JSON.stringify onu "[123,34,...]" yapar, sonuç dizi çıkar ve
+    // abonelik detayı sessizce SİLİNİR (iptal akışında bu yaşandı).
+    const _asPlainObject = (v) => {
+      if (!v || typeof v !== 'object') return {};
+      let plain = null;
+      // Bayt dizisi mi?
+      let looksBytes = false;
+      try {
+        looksBytes = (typeof v.length === 'number' && v.length > 0);
+        if (looksBytes) {
+          for (let i = 0; i < v.length && i < 16; i++) {
+            const b = v[i];
+            if (typeof b !== 'number' || b < 0 || b > 255 || (b | 0) !== b) { looksBytes = false; break; }
+          }
+        }
+      } catch (_) { looksBytes = false; }
+      if (looksBytes) {
+        let str = '';
+        for (let i = 0; i < v.length; i++) {
+          const c = v[i] & 0xFF;
+          if (c < 0x80) str += String.fromCharCode(c);
+          else if (c >= 0xC0 && c < 0xE0) str += String.fromCharCode(((c & 0x1F) << 6) | (v[++i] & 0x3F));
+          else if (c >= 0xE0 && c < 0xF0) {
+            const b2 = v[++i] & 0x3F; const b3 = v[++i] & 0x3F;
+            str += String.fromCharCode(((c & 0x0F) << 12) | (b2 << 6) | b3);
+          } else if (c >= 0xF0) {
+            const d2 = v[++i] & 0x3F; const d3 = v[++i] & 0x3F; const d4 = v[++i] & 0x3F;
+            const cp = (((c & 0x07) << 18) | (d2 << 12) | (d3 << 6) | d4) - 0x10000;
+            str += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+          }
+        }
+        try { plain = JSON.parse(str); } catch (_) { plain = null; }
+      }
+      if (plain === null) {
+        try { plain = JSON.parse(JSON.stringify(v)); } catch (_) { return {}; }
+      }
+      if (!plain || typeof plain !== 'object' || Array.isArray(plain)) return {};
+      return plain;
+    };
+
     let evt = {};
     try { evt = JSON.parse(raw); } catch (_) { evt = {}; }
     const type = String(evt.type || '');
@@ -486,8 +529,11 @@ routerAdd('POST', '/api/polar/webhook', (e) => {
         expiresAt = new Date(Date.now() + days * 86400000).toISOString();
       }
       const prod = String(d.product_id || (d.product && d.product.id) || '');
-      const details = rec.get('userSubscriptionDetails');
-      const next = (details && typeof details === 'object') ? details : {};
+      // PocketBase'in JSON alani BOŞKEN JSVM'e Go slice (dizi) olarak geliyor ve
+      // üzerine alan yazmak "Can't set property 'premium' on Go slice" hatası
+      // veriyordu — gerçek ödemede premium HİÇ yazılamazdı. Değeri düz bir JS
+      // nesnesine kopyalıyoruz; dizi/boş gelirse sıfırdan nesne kuruyoruz.
+      const next = _asPlainObject(rec.get('userSubscriptionDetails'));
       next.premium = {
         productId: prod || (interval === 'year' ? 'polar_yearly' : 'polar_monthly'),
         expiresAt: expiresAt,
@@ -503,8 +549,7 @@ routerAdd('POST', '/api/polar/webhook', (e) => {
     }
 
     if (REVOKE.indexOf(type) >= 0) {
-      const details = rec.get('userSubscriptionDetails');
-      const next = (details && typeof details === 'object') ? details : {};
+      const next = _asPlainObject(rec.get('userSubscriptionDetails'));
       // Polar iptalde dönem sonuna kadar erişimi sürdürür; bitiş ileri tarihliyse
       // premium HEMEN düşürülmez, yalnız bitiş tarihi işaretlenir.
       const endsAt = String(d.ends_at || d.current_period_end || '');
