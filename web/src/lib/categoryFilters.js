@@ -1,5 +1,5 @@
 import { canonicalizeSpecMaps } from './specCanonical';
-import { localizedSpecLabel, localizedSpecValue, isDisplayableSpec, isHiddenSpec } from './specDisplay';
+import { localizedSpecValue, isDisplayableSpec, isHiddenSpec } from './specDisplay';
 
 const label = (en, tr, de) => [en, tr, de];
 
@@ -261,118 +261,11 @@ export function prettyTokenValue(value, lang) {
 // boolean feature flags (5G, ANC, fast charge…) fill any remaining slots so
 // token-thin categories still read like real spec cards — never the old
 // "Güncel/Kategori" filler.
-const CARD_NATIVE_LABEL = {
-  screen: label('Screen', 'Ekran', 'Bildschirm'),
-  battery: label('Battery', 'Batarya', 'Akku'),
-};
-
 // Concept per card slot — used to dedupe against the rich-spec fallback so a
 // phone never shows "12 GB RAM" (token) and then "RAM: 12 GB" (rich) twice.
-const SLOT_CONCEPT = {
-  screen: 'screen', battery: 'battery', ram: 'ram', storage: 'storage',
-  screen_tech: 'panel', refresh_rate: 'refresh', resolution: 'resolution',
-  os: 'os', gpu_brand: 'gpu', gpu_type: 'gpu', vram: 'gpu', vram_type: 'gpu',
-  processor_brand: 'cpu', socket: 'socket', ram_type: 'ram_type',
-  ram_speed: 'ram_speed', ram_latency: 'ram_latency', storage_type: 'storage_type',
-  connectivity: 'connectivity', connection: 'connectivity', dpi: 'dpi',
-  key_type: 'key_type', headphone_type: 'form', pb_capacity: 'capacity',
-  psu_wattage: 'wattage', psu_efficiency: 'efficiency', psu_modular: 'modular',
-  screen_size: 'screen',
-};
-
 // Concept for a (canonical, English) rich-spec key so we can align it with the
 // token concepts above. Keeps the fallback from re-adding a spec a token chip
 // already covered.
-function conceptForKey(key) {
-  const k = String(key || '').toLowerCase();
-  if (k.includes('screen size') || k.includes('display size') || k.includes('ekran boyut')) return 'screen';
-  if (k === 'ram' || k.includes('memory ram') || k.includes('arbeitsspeicher')) return 'ram';
-  if (k.includes('storage') || k.includes('depolama') || k === 'rom') return 'storage';
-  if (k.includes('battery') || k.includes('pil') || k.includes('akku')) return 'battery';
-  if (k.includes('resolution') || k.includes('cozunur') || k.includes('çözünür')) return 'resolution';
-  if (k.includes('panel')) return 'panel';
-  if (k.includes('refresh') || k.includes('yenileme')) return 'refresh';
-  if (k.includes('operating') || k === 'os' || k.includes('isletim')) return 'os';
-  if (k.includes('gpu') || k.includes('graphics') || k.includes('vram') || k.includes('grafik')) return 'gpu';
-  if (k.includes('processor') || k.includes('cpu') || k.includes('chipset') || k.includes('islemci')) return 'cpu';
-  if (k.includes('camera') || k.includes('kamera')) return 'camera';
-  if (k.includes('weight') || k.includes('agirlik')) return 'weight';
-  return k.replace(/[^a-z0-9]+/g, '_');
-}
-
-// App-parity category → priority spec-key aliases (port of the mobile app's
-// core/category_key_specs.dart). Matched against the product's canonical rich
-// specs to fill card slots for categories whose filterTokens are thin (routers,
-// printers, cameras, coolers…). First alias that hits a pool key wins.
-const CARD_RICH_ALIASES = {
-  smartphones: [['Screen size', 'Display size'], ['RAM'], ['Storage', 'Internal storage'], ['Battery', 'Battery capacity'], ['Main camera', 'Camera'], ['Processor', 'Chipset', 'CPU']],
-  tablets: [['Screen size', 'Display size'], ['RAM'], ['Storage', 'Internal storage'], ['Battery', 'Battery capacity'], ['Processor', 'Chipset'], ['Operating system', 'OS']],
-  laptops: [['Screen size', 'Display size'], ['RAM', 'Internal memory'], ['Storage', 'SSD'], ['Processor', 'CPU'], ['GPU', 'Graphics'], ['Battery']],
-  desktops: [['Processor', 'CPU'], ['RAM'], ['Storage', 'SSD'], ['GPU', 'Graphics'], ['Operating system'], ['Power supply', 'PSU']],
-  cpus: [['CPU cores', 'Cores', 'Core count'], ['Thread count', 'Threads'], ['CPU frequency', 'Base clock', 'Base frequency'], ['Boost clock', 'Turbo'], ['TDP', 'Power'], ['Cache', 'L3 cache']],
-  gpus: [['VRAM', 'Video memory'], ['GPU', 'Architecture', 'GPU chip'], ['TDP', 'Power'], ['Core clock', 'Base clock'], ['Boost clock'], ['Memory bandwidth']],
-  graphics_cards: [['VRAM', 'Video memory'], ['GPU', 'Architecture'], ['TDP', 'Power'], ['Core clock', 'Base clock'], ['Boost clock'], ['Memory bandwidth']],
-  ram: [['Capacity', 'RAM'], ['Type', 'DDR'], ['Speed', 'Clock', 'Memory speed'], ['Latency', 'CAS', 'CL'], ['Voltage'], ['Form factor']],
-  ssd: [['Capacity', 'Storage'], ['Interface', 'Connection'], ['Read speed', 'Sequential read'], ['Write speed', 'Sequential write'], ['Form factor'], ['NAND type', 'Flash type']],
-  ssds: [['Capacity', 'Storage'], ['Interface'], ['Read speed'], ['Write speed'], ['Form factor'], ['NAND type']],
-  motherboards: [['Socket', 'CPU socket'], ['Chipset'], ['Form factor'], ['RAM slots', 'Memory slots', 'DIMM'], ['Max RAM', 'Maximum memory'], ['M.2 slots', 'M.2', 'NVMe']],
-  psu: [['Wattage', 'Power'], ['Efficiency', '80 plus', 'Certification'], ['Modularity', 'Cabling'], ['Fan size', 'Fan'], ['Connectors', 'Cables'], ['Warranty']],
-  cpu_coolers: [['Type', 'Cooling type'], ['Fan size', 'Fan'], ['TDP rating', 'TDP'], ['Noise level', 'dBA'], ['Socket', 'Socket compatibility'], ['RPM', 'Fan speed']],
-  coolers: [['Type', 'Cooling type'], ['Fan size', 'Fan'], ['TDP rating', 'TDP'], ['Noise level'], ['Socket'], ['RPM']],
-  case_fans: [['Fan size', 'Size'], ['RPM', 'Fan speed'], ['Airflow', 'CFM'], ['Noise level', 'dBA'], ['Connector', 'Pin'], ['RGB', 'Lighting']],
-  tvs: [['Screen size', 'Display size'], ['Resolution'], ['Panel type', 'Panel'], ['Refresh rate'], ['HDR'], ['Operating system', 'Smart TV']],
-  monitors: [['Screen size', 'Display size'], ['Resolution'], ['Panel type', 'Panel'], ['Refresh rate'], ['Response time'], ['HDR']],
-  projectors: [['Resolution', 'Native resolution'], ['Brightness', 'Lumen', 'ANSI lumen'], ['Technology', 'DLP', 'LCD'], ['Contrast ratio', 'Contrast'], ['Throw distance'], ['Lamp life']],
-  headphones: [['Type', 'Form'], ['Driver', 'Driver size'], ['Noise cancelling', 'ANC'], ['Battery', 'Battery life'], ['Connectivity', 'Connection'], ['Weight']],
-  earbuds: [['Type', 'Form'], ['Driver'], ['Noise cancelling', 'ANC'], ['Battery', 'Battery life'], ['Connectivity'], ['Water resistance']],
-  speakers: [['Power', 'Wattage', 'RMS'], ['Driver size', 'Driver'], ['Connectivity', 'Bluetooth'], ['Battery', 'Battery life'], ['Water resistance', 'IP rating'], ['Weight']],
-  soundbars: [['Channels', 'Channel'], ['Power', 'Wattage', 'RMS'], ['Subwoofer', 'Bass'], ['Connectivity', 'HDMI'], ['Dolby atmos', 'Atmos'], ['Dimensions']],
-  av_receivers: [['Channels', 'Channel'], ['Power', 'Wattage'], ['HDMI', 'Inputs'], ['Dolby atmos', 'Atmos'], ['Connectivity', 'Bluetooth'], ['Zones']],
-  audio_systems: [['Power', 'Wattage', 'RMS'], ['Channels'], ['Connectivity', 'Bluetooth'], ['Driver'], ['Inputs'], ['Weight']],
-  smartwatches: [['Screen size', 'Display size'], ['Battery', 'Battery life'], ['Operating system', 'OS'], ['Heart rate'], ['GPS'], ['Water resistance']],
-  cameras: [['Sensor size', 'Sensor'], ['Megapixels', 'Resolution'], ['Video resolution', 'Video'], ['ISO'], ['Autofocus', 'AF'], ['Weight']],
-  camera_lenses: [['Focal length'], ['Aperture', 'Max aperture'], ['Mount', 'Lens mount'], ['Stabilization', 'OIS'], ['Filter size'], ['Weight']],
-  action_cameras: [['Video resolution', 'Max video'], ['Stabilization', 'EIS'], ['Waterproof', 'Water resistance'], ['Battery', 'Battery life'], ['Display', 'Screen'], ['Weight']],
-  security_cameras: [['Resolution', 'Video resolution'], ['Night vision', 'IR'], ['Field of view', 'FOV'], ['Connectivity', 'WiFi'], ['Storage', 'SD card'], ['Weatherproof', 'IP rating']],
-  ip_cameras: [['Resolution', 'Video resolution'], ['Night vision', 'IR'], ['Field of view', 'FOV'], ['Connectivity', 'WiFi'], ['Storage', 'SD card'], ['Weatherproof', 'IP rating']],
-  dashcams: [['Resolution', 'Video resolution'], ['Field of view', 'FOV'], ['Night vision'], ['Storage', 'SD card'], ['GPS'], ['Display', 'Screen']],
-  drones: [['Camera', 'Camera resolution'], ['Flight time', 'Battery life'], ['Range', 'Max range'], ['Video resolution', 'Max video'], ['GPS'], ['Weight']],
-  gimbals: [['Payload', 'Max load'], ['Battery', 'Battery life'], ['Axes', 'Axis'], ['Connectivity', 'Bluetooth'], ['Weight'], ['Follow modes']],
-  printers: [['Print technology', 'Type'], ['Max resolution', 'Resolution'], ['Print speed', 'Speed'], ['Connectivity'], ['Color print', 'Color'], ['Duplex']],
-  '3d_printers': [['Build volume', 'Print volume'], ['Technology', 'Type'], ['Layer resolution', 'Resolution'], ['Print speed', 'Speed'], ['Connectivity'], ['Filament', 'Material']],
-  webcams: [['Resolution', 'Video resolution'], ['Frame rate', 'FPS'], ['Autofocus', 'AF'], ['Microphone'], ['Field of view', 'FOV'], ['Connectivity', 'USB']],
-  routers: [['WiFi standard', 'Wi-Fi'], ['Speed', 'Max speed'], ['Frequency', 'Band'], ['Ports', 'LAN ports'], ['Coverage', 'Range'], ['Antennas', 'Antenna']],
-  wifi_routers: [['WiFi standard', 'Wi-Fi'], ['Speed', 'Max speed'], ['Frequency', 'Band'], ['Ports', 'LAN ports'], ['Coverage', 'Range'], ['Antennas']],
-  modem_routers: [['WiFi standard', 'Wi-Fi'], ['Speed', 'Max speed'], ['Modem', 'DSL'], ['Ports', 'LAN ports'], ['Frequency', 'Band'], ['Coverage']],
-  robot_vacuums: [['Suction power', 'Suction', 'Pa'], ['Battery', 'Battery life', 'Runtime'], ['Navigation', 'LiDAR'], ['Dustbin capacity', 'Dustbin'], ['Mopping', 'Mop'], ['Noise level']],
-  powerbanks: [['Capacity', 'mAh'], ['Output power', 'Output'], ['Input power', 'Input'], ['Ports', 'USB'], ['Wireless', 'Wireless charging'], ['Fast charge', 'PD']],
-  chargers: [['Output power', 'Output', 'Wattage'], ['Ports', 'USB'], ['Fast charge', 'PD'], ['Technology', 'GaN'], ['Input'], ['Weight']],
-  e_readers: [['Screen size', 'Display size'], ['Resolution', 'PPI'], ['Storage', 'Internal storage'], ['Battery', 'Battery life'], ['Backlight', 'Front light'], ['Waterproof', 'IPX']],
-  'e-readers': [['Screen size', 'Display size'], ['Resolution', 'PPI'], ['Storage'], ['Battery', 'Battery life'], ['Backlight'], ['Waterproof']],
-  keyboards: [['Switch type', 'Switch'], ['Layout', 'Size'], ['Connectivity', 'Connection'], ['Backlighting', 'RGB'], ['Battery life', 'Battery'], ['Weight']],
-  mice: [['DPI', 'Sensitivity'], ['Connectivity', 'Connection'], ['Sensor'], ['Battery', 'Battery life'], ['Polling rate'], ['Weight']],
-  gamepads: [['Connectivity', 'Connection'], ['Compatibility', 'Platform'], ['Battery', 'Battery life'], ['Vibration', 'Haptic'], ['Buttons'], ['Weight']],
-  gaming_consoles: [['Storage', 'SSD'], ['GPU', 'Graphics', 'TFLOPS'], ['CPU', 'Processor'], ['RAM', 'Memory'], ['Resolution', 'Max resolution'], ['Operating system']],
-  consoles: [['Storage', 'SSD'], ['GPU', 'Graphics'], ['CPU', 'Processor'], ['RAM'], ['Resolution'], ['Disc drive', 'Optical']],
-};
-
-// Category aliases so an off-canon slug still resolves to a rich-alias set.
-const RICH_CAT_ALIAS = {
-  gpus: 'graphics_cards', gpu: 'graphics_cards', cpu: 'cpus', ssds: 'ssd',
-  consoles: 'gaming_consoles', earphones: 'earbuds', 'e-readers': 'e_readers',
-  laptop_coolers: 'cpu_coolers', coolers: 'cpu_coolers',
-};
-
-function resolveRichCategory(category) {
-  const c = catKey(category);
-  if (CARD_RICH_ALIASES[c]) return c;
-  const alias = RICH_CAT_ALIAS[c];
-  return alias && CARD_RICH_ALIASES[alias] ? alias : c;
-}
-
-// Build a flat, canonical, display-ready pool from the product's rich specs
-// (present on category/search/detail payloads that include `_raw`). Same source
-// the compare table renders, so labels/values stay consistent.
 function richSpecPool(product) {
   const { keySpecs, specs } = canonicalizeSpecMaps(product);
   const pool = [];
@@ -391,42 +284,132 @@ function richSpecPool(product) {
   return pool;
 }
 
+// ── Kategori başına SABİT kart etiketleri ──────────────────────────────────
+// Buradaki liste artık bir "öncelik sırası" değil, KATEGORİNİN SABİT SLOTLARI.
+// Eskiden bir slot doldurulamayınca yerini sıradaki spec kapıyordu; sonuç, aynı
+// kategorideki iki kartın FARKLI spec türleri göstermesiydi (birinde ekran
+// boyutu, diğerinde RAM). Artık slotlar sabit: her slot önce yalın veriden,
+// sonra zengin spec'ten doldurulmaya çalışılır, doldurulamazsa YERİNİ KORUR
+// (değeri "—" olur). Böylece bir kategorideki her kart aynı dört speci aynı
+// sırada gösterir.
+//
+// Bazı slotlar yalnız zengin spec'ten gelir (token grubu yoktur) — bunlar
+// SLOT_RICH_ONLY'de tanımlı ve etiketleri SLOT_FALLBACK_LABEL'dan okunur.
 const CARD_SPEC_ORDER = {
   smartphones: ['screen', 'ram', 'storage', 'battery'],
   feature_phones: ['screen', 'ram', 'storage', 'battery'],
   tablets: ['screen', 'ram', 'storage', 'battery'],
-  laptops: ['screen', 'ram', 'storage', 'gpu_brand', 'os', 'resolution'],
-  desktops: ['processor_brand', 'ram', 'storage', 'gpu_brand', 'os'],
+  // Slotlar KATALOG KAPSAMINA göre seçildi (2026-08-06 ölçümü, kategori başına
+  // en yüksek puanlı 100 ürün): `gpu_brand` token'ı laptop/masaüstünde HİÇ
+  // üretilmiyor (laptop'ta `gpu_type` %84, masaüstünde `os` %64) — o slot
+  // seçilince kartların çoğunda boş kalıyordu.
+  laptops: ['screen', 'ram', 'storage', 'gpu_type'],
+  desktops: ['processor_brand', 'ram', 'storage', 'os'],
   monitors: ['screen', 'resolution', 'screen_tech', 'refresh_rate'],
-  tvs: ['screen', 'resolution', 'screen_tech', 'refresh_rate', 'os'],
+  tvs: ['screen', 'resolution', 'screen_tech', 'refresh_rate'],
   projectors: ['resolution', 'screen', 'refresh_rate', 'screen_tech'],
-  graphics_cards: ['vram', 'gpu_brand', 'vram_type'],
-  cpus: ['processor_brand', 'socket'],
-  motherboards: ['socket', 'ram_type'],
+  graphics_cards: ['vram', 'gpu_brand', 'vram_type', 'gpu_clock'],
+  cpus: ['processor_brand', 'socket', 'cpu_cores', 'cpu_clock'],
+  motherboards: ['socket', 'ram_type', 'form_factor', 'chipset'],
   ram: ['ram', 'ram_type', 'ram_speed', 'ram_latency'],
-  ssd: ['storage', 'storage_type'],
-  ssds: ['storage', 'storage_type'],
-  storage: ['storage', 'storage_type'],
-  flash_drives: ['storage'],
-  smartwatches: ['screen', 'os', 'processor_brand', 'connectivity'],
-  gaming_consoles: ['screen', 'ram', 'storage', 'os'],
-  consoles: ['screen', 'ram', 'storage', 'os'],
-  headphones: ['headphone_type', 'connection', 'battery'],
-  earbuds: ['connection', 'battery'],
-  earphones: ['connection', 'battery'],
-  speakers: ['connection', 'battery'],
-  keyboards: ['key_type', 'connection'],
-  mice: ['dpi', 'connection'],
-  powerbanks: ['pb_capacity'],
-  chargers: ['pb_capacity'],
-  psu: ['psu_wattage', 'psu_efficiency', 'psu_modular'],
-  psus: ['psu_wattage', 'psu_efficiency', 'psu_modular'],
-  routers: ['connectivity'],
-  wifi_routers: ['connectivity'],
-  modem_routers: ['connectivity'],
-  e_readers: ['screen', 'storage'],
-  'e-readers': ['screen', 'storage'],
-  vr_headsets: ['screen', 'resolution', 'refresh_rate'],
+  ssd: ['storage', 'storage_type', 'read_speed', 'write_speed'],
+  ssds: ['storage', 'storage_type', 'read_speed', 'write_speed'],
+  storage: ['storage', 'storage_type', 'read_speed', 'write_speed'],
+  flash_drives: ['storage', 'connection', 'read_speed', 'write_speed'],
+  // smartwatches: processor_brand %41, battery %36 — yerine storage %98 / ram %64.
+  smartwatches: ['screen', 'os', 'storage', 'ram'],
+  gaming_consoles: ['storage', 'ram', 'resolution', 'os'],
+  consoles: ['storage', 'ram', 'resolution', 'os'],
+  headphones: ['headphone_type', 'connection', 'battery', 'driver'],
+  earbuds: ['connection', 'battery', 'driver', 'weight'],
+  earphones: ['connection', 'battery', 'driver', 'weight'],
+  speakers: ['connection', 'battery', 'power_output', 'weight'],
+  keyboards: ['key_type', 'connection', 'layout', 'weight'],
+  mice: ['dpi', 'connection', 'buttons', 'weight'],
+  powerbanks: ['pb_capacity', 'power_output', 'connection', 'weight'],
+  chargers: ['pb_capacity', 'power_output', 'connection', 'weight'],
+  psu: ['psu_wattage', 'psu_efficiency', 'psu_modular', 'form_factor'],
+  psus: ['psu_wattage', 'psu_efficiency', 'psu_modular', 'form_factor'],
+  routers: ['connectivity', 'wifi_standard', 'ports', 'speed'],
+  wifi_routers: ['connectivity', 'wifi_standard', 'ports', 'speed'],
+  modem_routers: ['connectivity', 'wifi_standard', 'ports', 'speed'],
+  e_readers: ['screen', 'storage', 'resolution', 'battery'],
+  'e-readers': ['screen', 'storage', 'resolution', 'battery'],
+  vr_headsets: ['screen', 'resolution', 'refresh_rate', 'weight'],
+};
+
+// Token grubu OLMAYAN, yalnız zengin spec'ten doldurulan slotlar. Değer,
+// aşağıdaki takma adlarla eşleşen ilk spec anahtarından alınır.
+const SLOT_RICH_ONLY = {
+  gpu_clock: ['boost clock', 'gpu clock', 'core clock', 'hız aşırtma'],
+  cpu_cores: ['cpu cores', 'core count', 'çekirdek sayısı', 'number of cores'],
+  cpu_clock: ['cpu frequency', 'base clock', 'frequency', 'işlemci hızı'],
+  form_factor: ['form factor', 'form faktör', 'boyut standardı'],
+  chipset: ['chipset', 'yonga seti'],
+  read_speed: ['read speed', 'sequential read', 'okuma hızı'],
+  write_speed: ['write speed', 'sequential write', 'yazma hızı'],
+  driver: ['driver', 'driver size', 'sürücü', 'hoparlör çapı'],
+  power_output: ['power output', 'output power', 'rms', 'çıkış gücü'],
+  layout: ['layout', 'keyboard layout', 'düzen', 'dil'],
+  buttons: ['buttons', 'number of buttons', 'tuş sayısı'],
+  weight: ['weight', 'ağırlık', 'gewicht'],
+  wifi_standard: ['wi-fi standard', 'wifi', 'wireless standard', 'kablosuz standart'],
+  ports: ['ports', 'lan ports', 'port sayısı', 'ethernet'],
+  speed: ['speed', 'max speed', 'hız', 'bandwidth'],
+};
+
+// Token slotlarının zengin-spec karşılıkları: yalın veri (filterTokens) o slotu
+// dolduramadığında `_raw` taşıyan yüzeylerde (kategori/arama/detay) SLOT KENDİ
+// karşılığından dolar — başka bir spec onun yerini KAPMAZ.
+const SLOT_TOKEN_RICH_ALIASES = {
+  screen: ['screen size', 'display size', 'ekran boyut'],
+  ram: ['ram', 'memory size', 'bellek'],
+  storage: ['storage', 'depolama', 'rom', 'capacity'],
+  battery: ['battery capacity', 'battery', 'pil', 'akku'],
+  resolution: ['resolution', 'çözünürlük'],
+  screen_tech: ['panel', 'display type', 'screen technology', 'ekran teknoloji'],
+  refresh_rate: ['refresh rate', 'yenileme hız'],
+  os: ['operating system', 'işletim sistemi'],
+  gpu_brand: ['gpu', 'graphics', 'ekran kartı'],
+  gpu_type: ['graphics', 'gpu', 'ekran kartı'],
+  vram: ['video memory', 'vram', 'ekran kartı bellek'],
+  vram_type: ['memory type', 'bellek tipi'],
+  processor_brand: ['processor', 'chipset', 'cpu', 'işlemci'],
+  socket: ['socket', 'soket'],
+  ram_type: ['memory type', 'bellek tipi'],
+  ram_speed: ['memory speed', 'bellek hız'],
+  ram_latency: ['latency', 'cl', 'gecikme'],
+  storage_type: ['storage type', 'depolama tipi', 'interface'],
+  connectivity: ['connectivity', 'bağlantı', 'wireless'],
+  connection: ['connection', 'bağlantı', 'interface'],
+  headphone_type: ['type', 'form', 'bauform', 'kulaklık tip'],
+  key_type: ['key type', 'switch', 'tuş tip'],
+  dpi: ['dpi', 'sensitivity', 'hassasiyet'],
+  pb_capacity: ['capacity', 'kapasite'],
+  psu_wattage: ['wattage', 'power', 'güç'],
+  psu_efficiency: ['efficiency', 'verimlilik', '80 plus'],
+  psu_modular: ['modular', 'kablo'],
+};
+
+// Yalnız-zengin slotların ve yerine konamayan token slotlarının etiketi.
+const SLOT_FALLBACK_LABEL = {
+  gpu_clock: label('Clock', 'Hız', 'Takt'),
+  cpu_cores: label('Cores', 'Çekirdek', 'Kerne'),
+  cpu_clock: label('Frequency', 'Frekans', 'Frequenz'),
+  form_factor: label('Form factor', 'Form faktör', 'Formfaktor'),
+  chipset: label('Chipset', 'Yonga seti', 'Chipsatz'),
+  read_speed: label('Read', 'Okuma', 'Lesen'),
+  write_speed: label('Write', 'Yazma', 'Schreiben'),
+  driver: label('Driver', 'Sürücü', 'Treiber'),
+  power_output: label('Power', 'Güç', 'Leistung'),
+  layout: label('Layout', 'Düzen', 'Layout'),
+  buttons: label('Buttons', 'Tuş', 'Tasten'),
+  weight: label('Weight', 'Ağırlık', 'Gewicht'),
+  wifi_standard: label('Wi-Fi', 'Wi-Fi', 'WLAN'),
+  ports: label('Ports', 'Port', 'Ports'),
+  speed: label('Speed', 'Hız', 'Tempo'),
+  screen: label('Screen', 'Ekran', 'Bildschirm'),
+  battery: label('Battery', 'Batarya', 'Akku'),
 };
 
 // Categories with no explicit order fall back to their filter groups, with the
@@ -438,10 +421,6 @@ function defaultCardOrder(category) {
   return ['screen', ...prefixes, 'battery'];
 }
 
-function checkLabel(lang) {
-  return lang === 'tr' ? 'Var' : lang === 'de' ? 'Ja' : 'Yes';
-}
-
 // Up to `max` category-correct headline specs for a product card. Draws first
 // from the LEAN payload (structured filterTokens + native screen/battery — the
 // only data home rails have), then, when the card object also carries the rich
@@ -450,98 +429,65 @@ function checkLabel(lang) {
 // { label, value }, already localized to `lang`.
 //
 // Wrapped by the memo below — call cardKeySpecs(), never this directly.
+// Değeri bulunamayan slot için yer tutucu — slot YERİNİ KORUR ki aynı
+// kategorideki kartlar hizalı kalsın.
+const SLOT_EMPTY = '—';
+
 function computeCardKeySpecs(product, lang = 'en', max = 4) {
   const category = catKey(product?.category);
   const tokens = Array.isArray(product?.filterTokens) ? product.filterTokens : [];
   const screen = Number(product?.screenSizeValue) || 0;
   const battery = Number(product?.batteryCapacityValue) || 0;
-  const out = [];
-  const usedConcepts = new Set();
 
-  // dedupeConcept is only for the RICH fallback — token/native slots are the
-  // curated per-category set and must ALL show even when they share a concept
-  // (e.g. GPU: VRAM + brand + memory-type all map to the "gpu" concept). They
-  // still record their concept so the rich fallback won't re-add the same spec.
-  const push = (value, labelText, concept, dedupeConcept = false) => {
-    const v = String(value ?? '').replace(/\s+/g, ' ').trim();
-    const l = String(labelText ?? '').replace(/\s+/g, ' ').trim();
-    if (!v || !l || out.length >= max) return false;
-    if (dedupeConcept && concept && usedConcepts.has(concept)) return false;
-    if (out.some((c) => c.label === l || c.value === v)) return false;
-    out.push({ label: l, value: v });
-    if (concept) usedConcepts.add(concept);
-    return true;
+  const order = (CARD_SPEC_ORDER[category] || defaultCardOrder(category)).slice(0, max);
+
+  // Slot etiketi: token grubu varsa onun etiketi, yoksa yalın/yedek etiket.
+  const slotLabel = (slot) => {
+    const group = TOKEN_GROUPS.find((g) => g.prefix === slot)
+      || (slot === 'screen' ? TOKEN_GROUPS.find((g) => g.prefix === 'screen_size') : null);
+    if (group) return lbl(group.label, lang);
+    if (SLOT_FALLBACK_LABEL[slot]) return lbl(SLOT_FALLBACK_LABEL[slot], lang);
+    return String(slot).replace(/_/g, ' ');
   };
 
-  const addToken = (prefix) => {
-    const group = TOKEN_GROUPS.find((g) => g.prefix === prefix);
-    const tk = tokens.find((t) => t.startsWith(`${prefix}:`));
-    if (!group || !tk) return;
-    const val = prettyTokenValue(tokenValue(tk, prefix), lang);
-    if (val) push(val, lbl(group.label, lang), SLOT_CONCEPT[prefix] || prefix);
-  };
-
-  const addSlot = (slot) => {
+  // 1) Yalın veri (indekslenmiş alanlar + filterTokens).
+  const leanValue = (slot) => {
     if (slot === 'screen') {
-      if (screen > 0 && screen <= 120) {
-        push(`${screen % 1 === 0 ? screen : screen.toFixed(1)}"`, lbl(CARD_NATIVE_LABEL.screen, lang), 'screen');
-      } else {
-        addToken('screen_size');
-      }
-    } else if (slot === 'battery') {
-      if (battery > 0) push(`${Math.round(battery)} mAh`, lbl(CARD_NATIVE_LABEL.battery, lang), 'battery');
-    } else {
-      addToken(slot);
+      if (screen > 0 && screen <= 120) return `${screen % 1 === 0 ? screen : screen.toFixed(1)}"`;
+      slot = 'screen_size';
     }
+    if (slot === 'battery') return battery > 0 ? `${Math.round(battery)} mAh` : '';
+    const tk = tokens.find((t) => t.startsWith(`${slot}:`));
+    if (!tk) return '';
+    return prettyTokenValue(tokenValue(tk, slot), lang) || '';
   };
 
-  const order = CARD_SPEC_ORDER[category] || defaultCardOrder(category);
-  for (const slot of order) {
-    if (out.length >= max) break;
-    addSlot(slot);
-  }
-
-  // Rich-spec fallback (only when the payload carries _raw specs): fill the
-  // remaining slots with the category's priority specs so thin-token categories
-  // (routers, printers, cameras, coolers…) still read as real spec cards.
-  if (out.length < max && (product?.keySpecs || product?.specs || product?.specSections)) {
-    const pool = richSpecPool(product);
-    if (pool.length) {
-      const firstLine = (v) => localizedSpecValue(v, lang).split('\n')[0].trim();
-      const aliases = CARD_RICH_ALIASES[resolveRichCategory(category)] || [];
-      const usedKeys = new Set();
-      const tryKey = (key, value) => {
-        if (usedKeys.has(key)) return;
-        const concept = conceptForKey(key);
-        const val = firstLine(value);
-        if (!val || val.length > 30) return;
-        if (push(val, localizedSpecLabel(key, lang), concept, true)) usedKeys.add(key);
-      };
-      // 1) category priority aliases
-      for (const group of aliases) {
-        if (out.length >= max) break;
-        for (const alias of group) {
-          const a = alias.toLowerCase();
-          const hit = pool.find(([k]) => !usedKeys.has(k) && k.toLowerCase().includes(a));
-          if (hit) { tryKey(hit[0], hit[1]); break; }
-        }
-      }
-      // 2) any remaining displayable specs, concept-deduped
-      for (const [k, v] of pool) {
-        if (out.length >= max) break;
-        tryKey(k, v);
-      }
+  // 2) Zengin spec (yalnız `_raw` taşıyan yüzeylerde). Artık "boşluğu ne
+  //    bulursam onunla doldur" DEĞİL: her slot yalnız KENDİ takma adlarıyla
+  //    eşleşen spec'ten dolar, yoksa boş kalır.
+  const pool = (product?.keySpecs || product?.specs || product?.specSections)
+    ? richSpecPool(product) : [];
+  const richValue = (slot) => {
+    if (!pool.length) return '';
+    const aliases = SLOT_RICH_ONLY[slot] || SLOT_TOKEN_RICH_ALIASES[slot] || [];
+    if (!aliases.length) return '';
+    for (const alias of aliases) {
+      const a = alias.toLowerCase();
+      const hit = pool.find(([k]) => k.toLowerCase().includes(a));
+      if (!hit) continue;
+      const val = localizedSpecValue(hit[1], lang).split('\n')[0].trim();
+      if (val && val.length <= 30) return val;
     }
-  }
+    return '';
+  };
 
-  // Last resort: boolean capability flags (5G, ANC, fast charge…) for categories
-  // that still came up short and have no rich specs on this surface.
-  if (out.length < max) {
-    for (const f of featureFiltersForCategory(category)) {
-      if (out.length >= max) break;
-      if (tokens.includes(f.token)) push(checkLabel(lang), lbl(f.label, lang), f.token);
-    }
-  }
+  const out = order.map((slot) => ({
+    label: String(slotLabel(slot) || slot).replace(/\s+/g, ' ').trim(),
+    value: String(leanValue(slot) || richValue(slot) || SLOT_EMPTY).replace(/\s+/g, ' ').trim(),
+  }));
+  // Hiçbir slotu dolmayan kart (kategorisi tanımsız / verisi yok) için boş dön —
+  // dört tane "—" basmaktansa hiç etiket göstermemek daha temiz.
+  if (out.every((c) => c.value === SLOT_EMPTY)) return [];
   return out;
 }
 

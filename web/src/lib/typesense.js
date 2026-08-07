@@ -452,8 +452,13 @@ export async function enrichThinCards(products) {
   // zaten varsa onu yeniden zenginleştirmek boşuna ağ + boşuna zengin-spec
   // hesabıdır. Bu kapı olmadan tekrar ziyaretlerde 1620 ms'lik bir ana thread
   // bloğu ölçüldü (2026-08-06) — kartlar zaten dört etiketle ekrandayken.
+  // DOLU etiket sayısı. Kart etiketleri artık kategori başına SABİT dört slot
+  // döndürüyor ve doldurulamayan slot "—" olarak yerini koruyor; uzunluğa
+  // bakmak bu yüzden her kartı "dolu" gösterip zenginleştirmeyi tamamen
+  // durdurmuştu. Ölçüt boş olmayan slot sayısı.
+  const filled = (chips) => (chips || []).filter((c) => c && c.value && c.value !== '—').length;
   const chipCount = (p) => (
-    p.__chips && Array.isArray(p.__chips.chips) ? p.__chips.chips.length : cardKeySpecs(p, 'en').length
+    p.__chips && Array.isArray(p.__chips.chips) ? filled(p.__chips.chips) : filled(cardKeySpecs(p, 'en'))
   );
   const thin = [...byId.values()].filter(
     (p) => !p.keySpecs && !p.specs && !p.specSections && chipCount(p) < 4,
@@ -543,7 +548,12 @@ async function enrichHomeCardsWithRichSpecs(feed) {
 // thread kilidi (aynı akış yalın kartlarla 173 ms). Bu yüzden önbelleğe artık
 // spec haritaları değil, HESAPLANMIŞ ETİKETLER (`__chips`) yazılıyor — kart
 // ekranda birebir aynı görünür, kayıt ~89 KB'a düşer, açılış hesabı sıfırlanır.
-const HOME_CACHE_KEY = 'qor.homeFeed.v2';
+// v3 (2026-08-06): typesense_sync hook'u JSON alanlarını bayt dizisi olarak
+// yazıyordu; o dönemde önbelleğe alınan anlık görüntülerde etiketler "123 / 0"
+// gibi DONMUŞ durumda. Kayıt id+fiyat imzasıyla tazelendiği ve etiket değişimi
+// imzayı değiştirmediği için eski snapshot kendiliğinden düzelmezdi — anahtarı
+// yükseltmek bozuk kaydı bir kerede düşürür.
+const HOME_CACHE_KEY = 'qor.homeFeed.v3';
 const HOME_CACHE_TTL_MS = 30 * 60 * 1000;
 const CARD_RICH_FIELDS = ['keySpecs', 'specs', 'specsEn', 'specSections', 'multiLangSpecs', '_raw'];
 
@@ -556,6 +566,7 @@ let homeCacheMemo = null;
 try {
   localStorage.removeItem('qor.homeFeed.v1');
   sessionStorage.removeItem('qor.homeFeed.v1');
+  localStorage.removeItem('qor.homeFeed.v2'); // bozuk etiketli anlık görüntüler
 } catch (_) { /* gizli mod */ }
 
 function slimCardForCache(p, lang) {

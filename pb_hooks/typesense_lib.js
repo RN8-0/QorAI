@@ -85,9 +85,54 @@ function _tsDate(value) {
   return isFinite(t) ? t : 0;
 }
 
+// PocketBase'in JSON alanları Go tarafında `types.JSONRaw` yani `[]byte`.
+// JSVM (Goja) bunu JS'e SAYI DİZİSİ olarak geçirir: {"5G":"Yes"...} metni
+// [123,34,53,71,34,58,...] olur. Eski kod `typeof [] === 'object'` olduğu için
+// bunu "zaten çözülmüş nesne" sanıp bayt dizisini OLDUĞU GİBİ Typesense'e
+// yazıyordu; kartlarda spec yerine "123 / 0", "34 / 1" gibi sayılar çıkmasının
+// sebebi buydu (2026-08-06'da 418 üründe ölçüldü). PocketBase kaydı SAĞLAMDI,
+// bozulma yalnız senkronizasyonda oluyordu.
+//
+// Baytları UTF-8 olarak elle çözüyoruz: JSVM'de TextDecoder yok ve
+// String.fromCharCode çok baytlı karakterleri bozar (Türkçe "ı" = 0xC4 0xB1).
+function _bytesToUtf8(arr) {
+  var s = '';
+  for (var i = 0; i < arr.length; i++) {
+    var c = arr[i] & 0xFF;
+    if (c < 0x80) {
+      s += String.fromCharCode(c);
+    } else if (c >= 0xC0 && c < 0xE0) {
+      s += String.fromCharCode(((c & 0x1F) << 6) | (arr[++i] & 0x3F));
+    } else if (c >= 0xE0 && c < 0xF0) {
+      var b2 = arr[++i] & 0x3F, b3 = arr[++i] & 0x3F;
+      s += String.fromCharCode(((c & 0x0F) << 12) | (b2 << 6) | b3);
+    } else if (c >= 0xF0) {
+      var d2 = arr[++i] & 0x3F, d3 = arr[++i] & 0x3F, d4 = arr[++i] & 0x3F;
+      var cp = (((c & 0x07) << 18) | (d2 << 12) | (d3 << 6) | d4) - 0x10000;
+      s += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+    }
+  }
+  return s;
+}
+
+// Bayt dizisi mi, yoksa gerçek bir JS dizisi mi (ör. `tags`)? Bayt dizisinde
+// her eleman 0-255 arası tam sayıdır; `tags` string taşır.
+function _looksLikeBytes(arr) {
+  if (!arr.length) return false;
+  for (var i = 0; i < arr.length && i < 32; i++) {
+    var v = arr[i];
+    if (typeof v !== 'number' || v < 0 || v > 255 || (v | 0) !== v) return false;
+  }
+  return true;
+}
+
 // Returns null if the field value can't be JSON-parsed — returns raw string.
 function _parseJson(raw) {
   if (raw == null) return null;
+  if (Array.isArray(raw)) {
+    if (!_looksLikeBytes(raw)) return raw; // gerçek dizi (tags gibi) — dokunma
+    try { return JSON.parse(_bytesToUtf8(raw)); } catch (_) { return null; }
+  }
   if (typeof raw === 'object') return raw;
   try { return JSON.parse(raw); } catch (_) { return raw; }
 }
