@@ -254,6 +254,8 @@ export default function Compare() {
   const [aiBusy, setAiBusy] = useState(false);
   const [aiText, setAiText] = useState('');
   const [aiNotice, setAiNotice] = useState('');
+  const [aiNoticeCode, setAiNoticeCode] = useState('');
+  const [aiChecking, setAiChecking] = useState(false);
   const [aiPhase, setAiPhase] = useState('idle');
   const [aiStage, setAiStage] = useState(null);
   const [aiQuestions, setAiQuestions] = useState([]);
@@ -504,11 +506,17 @@ export default function Compare() {
       setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
       return;
     }
-    // Charge + gate UP FRONT (2 Qor Coins; unlimited on Premium). No balance →
-    // Premium redirect; we never even prepare the quiz. Not charged again on run.
-    setAiBusy(true);
-    const access = await guardAiAccess('compare_ai', { onMessage: setAiNotice });
+    // ÖNCE KONTROL, SONRA ANIMASYON (2026-08-07): `setAiBusy(true)` kontrolden
+    // önce çalışınca bakiyesi 0 olan kullanıcı da animasyonu görüp analiz
+    // başladı sanıyordu. `aiChecking` yalnız çift tıklamayı engeller.
+    setAiChecking(true);
+    setAiNotice(''); setAiNoticeCode('');
+    const access = await guardAiAccess('compare_ai', {
+      onMessage: (m, code) => { setAiNotice(m); setAiNoticeCode(code); },
+    });
+    setAiChecking(false);
     if (!access.ok) { setAiBusy(false); setAiPhase('idle'); return; }
+    setAiBusy(true);
     // Fresh run: drop the cached saved report so the quiz/workboard renders.
     setAiText('');
     setAiSavedAt('');
@@ -871,7 +879,7 @@ export default function Compare() {
                 <div className="cmp-ai-layout fade-up">
                   <div className="card pad-lg cmp-ai">
                     {!aiText && aiPhase === 'idle' && (
-                      <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy}>
+                      <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
                         {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
                       </button>
                     )}
@@ -899,14 +907,21 @@ export default function Compare() {
                         {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
                       </button>
                     )}
-                    {aiNotice && <div className="cmp-ai-notice">{aiNotice}</div>}
+                    {aiNotice && (
+                      <div className="cmp-ai-notice">
+                        {aiNotice}
+                        {aiNoticeCode === 'INSUFFICIENT_QOR_COINS' && (
+                          <> <Link to="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</Link></>
+                        )}
+                      </div>
+                    )}
                     {aiText && aiSavedAt && (
                       <div className="cmp-ai-cached">
                         <span>
                           {L('Saved analysis', 'Kayıtlı analiz', 'Gespeicherte Analyse')}
                           {formatSavedAt(aiSavedAt, lang) ? ` · ${formatSavedAt(aiSavedAt, lang)}` : ''}
                         </span>
-                        <button type="button" className="btn btn-ghost" onClick={startAiCompareQuiz} disabled={aiBusy}>
+                        <button type="button" className="btn btn-ghost" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
                           {L('Re-analyze', 'Yeniden analiz et', 'Neu analysieren')}
                         </button>
                       </div>

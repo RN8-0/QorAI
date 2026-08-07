@@ -63,6 +63,15 @@ function raw(method, urlPath, body, extraHeaders, redirectCount = 0, baseUrl = B
         resolve({ status: res.statusCode, body: parsed });
       });
     });
+    // SOKET ZAMAN ASIMI — 2026-08-07 olcumu: PocketBase yeniden baslatildiktan
+    // sonra acilan bir baglanti yanit vermeden asili kaldi; node 9 dakika
+    // boyunca 0,36 sn CPU ile bekledi ve gecelik fiyat zinciri hic ilerlemedi.
+    // Zaman asimi olmadan tek asili soket TUM koseyi susturuyor. Hatayi
+    // firlatiyoruz ki req()'in yeniden deneme dongusu devralsin.
+    const TIMEOUT_MS = parseInt(process.env.PB_REQ_TIMEOUT_MS || '90000', 10);
+    r.setTimeout(TIMEOUT_MS, () => {
+      r.destroy(new Error(`PB istegi ${TIMEOUT_MS} ms icinde yanitlanmadi: ${method} ${u.pathname}`));
+    });
     r.on('error', reject);
     if (data) r.write(data);
     r.end();

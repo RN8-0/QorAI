@@ -17,19 +17,19 @@ function messageFor(code, { feature, cost, balance, lang }) {
       return 'AI özellikleri için önce profil quizini tamamlamalısın. Seni quiz sayfasına yönlendiriyorum.';
     }
     if (code === 'INSUFFICIENT_QOR_COINS') {
-      return `Yetersiz Qor Coin. Bu işlem ${amount} Qor Coin, bakiyen ${bal}. Sınırsız AI için Premium'a geç.`;
+      return `Qor Coin bakiyen yetersiz — analiz başlatılmadı. Bu işlem ${amount} Qor Coin, bakiyen ${bal}. Sınırsız AI için Premium'a geçebilirsin.`;
     }
     return 'AI erişimi hazırlanamadı. Lütfen tekrar dene.';
   }
   if (l === 'de') {
     if (code === 'AUTH_REQUIRED') return `Sign in to use this AI feature. Cost: ${amount} Qor Coin.`;
-    if (code === 'QUIZ_REQUIRED') return 'Complete the profile quiz first. Sending you to the quiz page.';
-    if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}. Go Premium for unlimited AI.`;
-    return 'AI access could not be prepared. Please try again.';
+    if (code === 'QUIZ_REQUIRED') return 'Schließe zuerst das Profil-Quiz ab. Wir bringen dich zur Quiz-Seite.';
+    if (code === 'INSUFFICIENT_QOR_COINS') return `Dein Qor-Coin-Guthaben reicht nicht — die Analyse wurde nicht gestartet. Sie kostet ${amount}, dein Guthaben beträgt ${bal}. Für unbegrenzte KI kannst du auf Premium wechseln.`;
+    return 'KI-Zugriff konnte nicht vorbereitet werden. Bitte erneut versuchen.';
   }
   if (code === 'AUTH_REQUIRED') return `Sign in to use this AI feature. Cost: ${amount} Qor Coin.`;
   if (code === 'QUIZ_REQUIRED') return 'Complete the profile quiz first. Sending you to the quiz page.';
-  if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin. This costs ${amount}, your balance is ${bal}. Go Premium for unlimited AI.`;
+  if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin — the analysis was not started. This costs ${amount} and your balance is ${bal}. You can go Premium for unlimited AI.`;
   return 'AI access could not be prepared. Please try again.';
 }
 
@@ -71,11 +71,13 @@ export function useAiAccess(lang = 'en') {
       const code = e?.code || 'AI_ACCESS_ERROR';
       const message = sendMessage(code, e);
       if (code === 'AUTH_REQUIRED') openAuth();
-      // Out of Qor Coins → send the user to Premium (unlimited AI).
-      if (code === 'INSUFFICIENT_QOR_COINS') {
-        setTimeout(() => navigate('/premium'), 900);
-      }
-      return { ok: false, reason: code, message };
+      // BAKİYE BİTTİĞİNDE ARTIK OTOMATİK YÖNLENDİRME YOK (2026-08-07).
+      // Eskiden 900 ms sonra /premium'a atıyorduk: kullanıcı ekranda beliren
+      // "yetersiz bakiye" yazısını okuyamadan sayfa değişiyordu, dolayısıyla
+      // analizin neden başlamadığını hiç öğrenemiyordu. Artık mesajı yerinde
+      // gösteriyoruz; Premium'a gitmek kullanıcının kendi kararı (çağıran ekran
+      // mesajın yanında bir Premium bağlantısı çiziyor).
+      return { ok: false, reason: code, message, cost: e?.cost, balance: e?.balance };
     }
   }, [lang, location.hash, location.pathname, location.search, navigate, openAuth, user]);
 }

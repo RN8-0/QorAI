@@ -780,17 +780,22 @@ export default function ProductDetail() {
   // send the user to Premium. The analysis run below is NOT charged again.
   const startFullAnalysisQuiz = useCallback(async (force = false) => {
     // `force` re-runs a fresh analysis even when a saved/cached report is shown.
-    if (!p || aiFull.busy || (aiFull.data && !force)) return;
-    setAiFull((s) => ({ ...s, busy: true, notice: '' }));
+    if (!p || aiFull.busy || aiFull.checking || (aiFull.data && !force)) return;
+    // ÖNCE KONTROL, SONRA ANIMASYON (2026-08-07).
+    // Eskiden burada `busy: true` yazılıyordu ve ekran anında "Quiz
+    // hazırlanıyor" animasyonuna geçiyordu — bakiyesi 0 olan kullanıcı da
+    // analiz başlıyor sanıyordu, oysa hiç başlamıyordu. `checking` ayrı bir
+    // bayrak: yalnız çift tıklamayı engeller, animasyonu AÇMAZ.
+    setAiFull((s) => ({ ...s, checking: true, notice: '', noticeCode: '' }));
     const access = await requireAiAccess('detail_ai_full', {
-      onMessage: (message) => setAiFull((s) => ({ ...s, notice: message })),
+      onMessage: (message, code) => setAiFull((s) => ({ ...s, notice: message, noticeCode: code })),
     });
     if (!access.ok) {
-      setAiFull((s) => ({ ...s, phase: 'idle', busy: false }));
+      setAiFull((s) => ({ ...s, phase: 'idle', busy: false, checking: false }));
       return;
     }
     // Fresh run: drop the cached saved report so the quiz/workboard renders.
-    setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, notice: '', questions: [], data: null, savedAt: '' }));
+    setAiFull((s) => ({ ...s, phase: 'quizLoading', busy: true, checking: false, notice: '', noticeCode: '', questions: [], data: null, savedAt: '' }));
     try {
       let questions = await generateQuiz({
         category: p.category,
@@ -1429,11 +1434,26 @@ export default function ProductDetail() {
                           ? <AiWorkboard lang={lang} mode="product" stage={aiFull.stage} />
                           : <AiWorkboard lang={lang} mode="quizProduct" />
                       ) : (
-                        <button type="button" className="btn btn-grad btn-shine pd-ai-run" onClick={startFullAnalysisQuiz}>
-                          {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                        <button type="button" className="btn btn-grad btn-shine pd-ai-run"
+                          onClick={() => startFullAnalysisQuiz()} disabled={aiFull.checking}>
+                          {aiFull.checking
+                            ? L('Checking balance…', 'Bakiye kontrol ediliyor…', 'Guthaben wird geprüft…')
+                            : L('Start analysis', 'Analizi başlat', 'Analyse starten')}
                         </button>
                       )}
-                      {aiFull.notice && <div className="pd-ai-notice">{aiFull.notice}</div>}
+                      {aiFull.notice && (
+                        <div className="pd-ai-notice">
+                          {aiFull.notice}
+                          {aiFull.noticeCode === 'INSUFFICIENT_QOR_COINS' && (
+                            <>
+                              {' '}
+                              <Link to="/premium" className="pd-ai-notice-link">
+                                {L('See Premium', 'Premium’a bak', 'Premium ansehen')}
+                              </Link>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

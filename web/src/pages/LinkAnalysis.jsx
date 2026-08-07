@@ -546,6 +546,9 @@ export default function LinkAnalysis() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
   const requireAiAccess = useAiAccess(lang);
+  // Yetersiz bakiye mesajinin yanina Premium baglantisi cizebilmek icin
+  // hata KODUNU da tutuyoruz (mesajin kendisi zaten aciklamayi tasiyor).
+  const [errCode, setErrCode] = useState('');
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
 
@@ -628,7 +631,9 @@ export default function LinkAnalysis() {
     trackEvent('link_analysis', { count: 1 });
     setStarting(true);
     try {
-      const access = await requireAiAccess('link_analysis', { onMessage: setErr });
+      const access = await requireAiAccess('link_analysis', {
+        onMessage: (m, code) => { setErr(m); setErrCode(code); },
+      });
       if (!access.ok) { setPhase('input'); return; }
       const profile = aiUserProfile(user);
       startSingleLinkAnalysisJob({ url, language: lang, userProfile: profile });
@@ -645,7 +650,9 @@ export default function LinkAnalysis() {
     trackEvent('link_analysis', { count: list.length });
     setStarting(true);
     try {
-      const access = await requireAiAccess('link_compare', { onMessage: setErr });
+      const access = await requireAiAccess('link_compare', {
+        onMessage: (m, code) => { setErr(m); setErrCode(code); },
+      });
       if (!access.ok) { setPhase('input'); return; }
       startCompareLinkAnalysisJob({ urls: list, language: lang, userProfile: aiUserProfile(user) });
     } catch {
@@ -754,7 +761,7 @@ export default function LinkAnalysis() {
           </Reveal>
 
           {/* Warning shows right under the input form, where the user is looking. */}
-          {err && <div className="la-err">{err}</div>}
+          {err && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
 
           <Reveal delay={90}>
             <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
@@ -787,7 +794,7 @@ export default function LinkAnalysis() {
       )}
 
       {/* Fallback for non-input phases (the in-form one above covers input). */}
-      {err && !showForm && <div className="la-err">{err}</div>}
+      {err && !showForm && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
         <AiWorkboard

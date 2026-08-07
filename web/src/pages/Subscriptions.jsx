@@ -285,6 +285,7 @@ export default function Subscriptions() {
   const { user, openAuth } = useAuth();
   const nav = useNavigate();
   const requireAiAccess = useAiAccess(lang);
+  const [errCode, setErrCode] = useState('');
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
 
@@ -419,7 +420,9 @@ export default function Subscriptions() {
       return;
     }
     try {
-      const access = await requireAiAccess('subscription_analysis', { onMessage: setErr });
+      const access = await requireAiAccess('subscription_analysis', {
+        onMessage: (m, code) => { setErr(m); setErrCode(code); },
+      });
       if (!access.ok) { setPhase('select'); return; }
       setPendingItems(items);
       trackEvent('subscription_compare', { count: items.length });
@@ -537,7 +540,7 @@ export default function Subscriptions() {
               </div>
             )}
 
-            {err && <div className="subs-err">{err}</div>}
+            {err && <div className="subs-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
 
             <button className="btn btn-grad btn-lg btn-shine subs-go"
               onClick={() => startAnalysis()} disabled={selected.length < 1 || starting}>
