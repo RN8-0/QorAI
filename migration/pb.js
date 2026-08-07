@@ -76,11 +76,45 @@ async function auth() {
   return token;
 }
 
+// PocketBase, 107k satırlık products üzerinde ağır bir sorgu yükseldiğinde
+// (özellikle totalItems sayımı yapan sayfalamada) SQL'i zaman aşımına düşürür ve
+// gövdesi "Something went wrong while processing your request." olan bir **400**
+// döner. Bu bir sorgu hatası DEĞİL, geçici yük hatasıdır: aynı sorgu saniyeler
+// sonra 200 verir. Retry olmadığı için gecelik fiyat zinciri (sync_offers,
+// ts_backfill) bu 400'ü alır almaz ölüyordu — ölçüm 2026-08-07: 107.378 üründen
+// yalnız 141'inin fiyatı tazeydi, çünkü dört sync_offers pass'i de ilk sayfada
+// düşmüştü. Bu yüzden GEÇİCİ hatalarda üstel geri çekilmeyle yeniden deniyoruz.
+const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+const REQ_RETRIES = parseInt(process.env.PB_REQ_RETRIES || '4', 10);
+
+function isTransient(r) {
+  if (TRANSIENT_STATUSES.has(r.status)) return true;
+  // PB'nin yük altındaki 400'ü: mesaj jenerik ve alan bazlı `data` boş.
+  if (r.status === 400 && r.body && typeof r.body === 'object') {
+    const msg = String(r.body.message || '');
+    const noFieldErrors = !r.body.data || Object.keys(r.body.data).length === 0;
+    if (noFieldErrors && /something went wrong/i.test(msg)) return true;
+  }
+  return false;
+}
+
 async function req(method, urlPath, body) {
   if (!token) await auth();
-  let r = await raw(method, urlPath, body);
-  if (r.status === 401) { token = null; await auth(); r = await raw(method, urlPath, body); }
-  return r;
+  let r;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      r = await raw(method, urlPath, body);
+    } catch (err) {
+      // ECONNRESET/ETIMEDOUT de geçicidir — gece koşusunda tek bir sıfırlanan
+      // bağlantı tüm zinciri düşürüyordu.
+      if (attempt >= REQ_RETRIES) throw err;
+      await new Promise(res => setTimeout(res, 1000 * Math.pow(2, attempt)));
+      continue;
+    }
+    if (r.status === 401 && attempt < REQ_RETRIES) { token = null; await auth(); continue; }
+    if (!isTransient(r) || attempt >= REQ_RETRIES) return r;
+    await new Promise(res => setTimeout(res, 1000 * Math.pow(2, attempt)));
+  }
 }
 
 module.exports = { raw, auth, req, BASE };

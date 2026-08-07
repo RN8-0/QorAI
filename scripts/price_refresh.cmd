@@ -27,7 +27,10 @@ rem kapi bu damgadir (web/src/lib/format.js priceForCountry -> rollupPriceIsFres
 rem damga dolduysa urun "fiyatli" gorunse bile KARTTA FIYAT CIKMAZ. Eski sira
 rem (bestOfferCheckedAt) bu urunleri one almadigi icin katalogda surekli
 rem fiyatsiz gorunen bir kuyruk birikiyordu (2026-07-26 olcum: 812 urun).
-node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=pricedOfferCount>0" --sort=bestOfferExpiresAt --limit=6000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
+rem 2026-08-07: kota 6000 -> 9000. Fiyatli havuz 29.880; 6000/gece = 5 gecelik tur
+rem ve TTL 3 gundu, yani urunler sirasi gelmeden bayatliyordu (olcum: 107.378
+rem urunun yalnizca 141'i tazeydi). 9000/gece = ~3,3 gecelik tur, TTL 6 gun.
+node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=pricedOfferCount>0" --sort=bestOfferExpiresAt --limit=9000 --concurrency=2 >> "%USERPROFILE%\qorai-price.log" 2>&1
 rem pass2 — KESIF (asil kazanc): Epey'de fiyati olan ama sitede fiyatsiz her urun.
 rem En eski taranan once -> havuz her gece basa donmeden sirayla tamamen taranir.
 rem Varyantlar dahil (iPhone 1 TB gibi populer varyant sayfalari).

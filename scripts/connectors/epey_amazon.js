@@ -59,7 +59,13 @@ const STORE_ROWS = Math.max(0, Math.min(6, Number(ENV.EPEY_STORE_ROWS ?? 3)));
 // bir kuyruk birikiyor ve o ürünler kartlarda fiyatsız görünüyordu. 72 saat,
 // tur süresinin üstünde kalarak boşluğu kapatır; Epey fiyatları bu ölçekte
 // gün içinde nadiren değişir, ürün sayfası zaten canlı teklifleri gösterir.
-const EXPIRES_MS = 72 * 60 * 60 * 1000;
+// 2026-08-07 — TTL, ROTASYON SÜRESİNDEN UZUN OLMAK ZORUNDA.
+// Fiyatlı havuz 29.880 ürün, gecelik pass1 kotası 9.000 → havuz ~3,3 gecede bir
+// tur atıyor. TTL 72 s (3 gün) bu turdan KISA olduğu için ürünler sıraları
+// gelmeden bayatlıyor ve `rollupPriceIsFresh` kapısı kartta fiyatı gizliyordu.
+// 6 gün = 3,3 günlük tur + kaçan bir gece payı. Fiyatın TİPİK yaşı yine ~1-3
+// gün; 6 gün yalnız üst sınır.
+const EXPIRES_MS = 144 * 60 * 60 * 1000;
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
 // Epey'in listelediği mağazaların görünen adları. Listede olmayan bir domain

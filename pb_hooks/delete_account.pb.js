@@ -376,6 +376,49 @@ routerAdd('POST', '/api/polar/checkout', (e) => {
   }
 });
 
+// POST /api/polar/portal — oturum açık kullanıcı için Polar müşteri portalı
+//
+// NEDEN SUNUCU UCU: Polar'ın genel portal adresi (polar.sh/qorai/portal)
+// kullanıcıdan e-posta isteyip sihirli link yolluyor. Kullanıcı ödemede farklı
+// bir e-posta girmişse (checkout'ta `external_customer_id`=PB id yazdığımız için
+// bu MÜMKÜN) kendi aboneliğini bulamaz. `customer-sessions` ile PB kullanıcısına
+// bağlı OTURUMLU portal adresi üretiyoruz → profildeki butondan tek tıkla,
+// e-posta sormadan iptal ekranına düşer.
+routerAdd('POST', '/api/polar/portal', (e) => {
+  try {
+    const user = e.auth;
+    if (!user) return e.json(401, { error: 'auth_required' });
+
+    const token = $os.getenv('POLAR_ACCESS_TOKEN');
+    if (!token) return e.json(500, { error: 'not_configured' });
+
+    const res = $http.send({
+      url: 'https://api.polar.sh/v1/customer-sessions/',
+      method: 'POST',
+      body: JSON.stringify({ external_customer_id: user.id }),
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      timeout: 20,
+    });
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      // 404 = bu kullanıcı Polar'da hiç müşteri olmamış (web'den hiç ödeme
+      // yapmamış). Bu bir HATA DEĞİL: muhtemelen Play Store'dan abone.
+      const notFound = res.statusCode === 404 || res.statusCode === 422;
+      console.log('[polar] portal ' + res.statusCode + ' user=' + user.id +
+        ' ' + String(res.raw).slice(0, 200));
+      return e.json(notFound ? 404 : 502, {
+        error: notFound ? 'no_web_subscription' : 'portal_failed',
+        status: res.statusCode,
+      });
+    }
+    const data = res.json || {};
+    return e.json(200, { url: data.customer_portal_url || '' });
+  } catch (err) {
+    console.log('[polar] portal error: ' + String(err));
+    return e.json(500, { error: 'server_error', message: String(err) });
+  }
+});
+
 // POST /api/polar/webhook — Polar olay bildirimi (Standard Webhooks imzalı)
 routerAdd('POST', '/api/polar/webhook', (e) => {
   try {

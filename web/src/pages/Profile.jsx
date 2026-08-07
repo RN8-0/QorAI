@@ -279,7 +279,87 @@ function AccountTab({ user, t }) {
   return (
     <div className="fade-up">
       <RegionSetting user={user} />
+      <SubscriptionSetting user={user} />
       <DangerZone user={user} t={t} />
+    </div>
+  );
+}
+
+/* ─── Abonelik — iptal / yönetim ──────────────────────────────────────
+ * Kullanıcı aboneliğini NEREDEN aldıysa oradan iptal eder; web (Polar) ile
+ * Play Store ayrı faturalama sistemleridir ve biri diğerini iptal ETMEZ.
+ * Web aboneliği için sunucudan oturumlu portal adresi alıyoruz, böylece
+ * kullanıcı e-posta girip sihirli link beklemeden doğrudan iptal ekranına
+ * düşer. Polar'da müşteri kaydı yoksa (404) abonelik Play'dendir.        */
+const PLAY_SUBS_URL = 'https://play.google.com/store/account/subscriptions';
+
+function SubscriptionSetting({ user }) {
+  const { lang } = useI18n();
+  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const { isPremium, source, expiresAt } = premiumStatus(user);
+  const [state, setState] = useState('');
+  const [err, setErr] = useState('');
+
+  if (!isPremium) return null;
+
+  const showWeb = source !== 'play';
+  const showPlay = source !== 'polar';
+
+  async function openPortal() {
+    setState('loading'); setErr('');
+    try {
+      const res = await pb.send('/api/polar/portal', { method: 'POST', body: {} });
+      if (res?.url) { window.open(res.url, '_blank', 'noopener'); setState(''); return; }
+      throw new Error('no_url');
+    } catch (e) {
+      const code = e?.response?.error || e?.data?.error || '';
+      if (code === 'no_web_subscription') {
+        setErr(L(
+          'No website subscription found for this account — it looks like you subscribed in the mobile app. Cancel it in Google Play.',
+          'Bu hesapta web aboneliği bulunamadı — görünüşe göre mobil uygulamadan abone olmuşsunuz. İptali Google Play üzerinden yapın.',
+          'Für dieses Konto wurde kein Web-Abo gefunden — offenbar haben Sie in der App abonniert. Bitte in Google Play kündigen.'));
+      } else {
+        setErr(L('Could not open the billing portal. Please try again.',
+          'Ödeme portalı açılamadı. Lütfen tekrar deneyin.',
+          'Das Zahlungsportal konnte nicht geöffnet werden. Bitte erneut versuchen.'));
+      }
+      setState('');
+    }
+  }
+
+  return (
+    <div className="pf-card">
+      <h3>{L('Subscription', 'Abonelik', 'Abo')}</h3>
+      <p style={{ color: 'var(--text-3)', fontSize: 14, margin: '0 0 12px' }}>
+        {L('Qor AI Premium is active.', 'Qor AI Premium aktif.', 'Qor AI Premium ist aktiv.')}
+        {expiresAt ? ` ${L('Renews', 'Yenilenme', 'Verlängerung')}: ${fmtDate(expiresAt)}.` : ''}
+        {' '}
+        {L('Cancel where you subscribed — cancelling one does not cancel the other.',
+          'Nereden abone olduysanız oradan iptal edin — birini iptal etmek diğerini iptal etmez.',
+          'Kündigen Sie dort, wo Sie abgeschlossen haben — eine Kündigung storniert nicht die andere.')}
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        {showWeb && (
+          <button className="btn" disabled={state === 'loading'} onClick={openPortal}>
+            {state === 'loading'
+              ? '…'
+              : L('Cancel website subscription', 'Web aboneliğini iptal et', 'Web-Abo kündigen')}
+          </button>
+        )}
+        {showPlay && (
+          <a className="btn btn-ghost" href={PLAY_SUBS_URL} target="_blank" rel="noopener noreferrer">
+            {L('Cancel in Google Play', 'Google Play’den iptal et', 'In Google Play kündigen')}
+          </a>
+        )}
+      </div>
+
+      <p style={{ color: 'var(--text-3)', fontSize: 13, margin: '12px 0 0' }}>
+        {L('Cancelling during the 3-day free trial means you are never charged. After the trial, cancelling stops the next renewal and Premium stays active until the end of the period you already paid for.',
+          '3 günlük ücretsiz deneme içinde iptal ederseniz hiç ücret alınmaz. Denemeden sonra iptal, bir sonraki yenilemeyi durdurur; ödemesini yaptığınız dönemin sonuna kadar Premium sizde kalır.',
+          'Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts abgebucht. Danach stoppt die Kündigung die nächste Verlängerung; Premium bleibt bis zum Ende des bezahlten Zeitraums aktiv.')}
+      </p>
+      {err && <p style={{ color: 'var(--danger, #ef4444)', fontSize: 13, marginTop: 10 }}>{err}</p>}
     </div>
   );
 }

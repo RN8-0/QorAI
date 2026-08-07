@@ -144,16 +144,23 @@ async function fetchProducts() {
   if (FILTER_EXTRA) parts.push(`(${FILTER_EXTRA})`);
   const filter = parts.length ? `&filter=${encodeURIComponent(parts.join(' && '))}` : '';
   let page = 1;
+  const PER_PAGE = 500;
   for (;;) {
+    // skipTotal=1 ŞART: PB'nin totalItems sayımı bu filtreler için TAM TARAMA
+    // yapıyor. Ölçüm (2026-08-07): `bestOfferCheckedAt=""` sayımlı 19.467 ms,
+    // sayımsız 536 ms — 36 kat. Sayım yükü PB'yi zaman aşımına düşürüp jenerik
+    // 400 döndürüyordu ve dört pass de ilk sayfada ölüyordu. Sayım gitince
+    // totalPages da gelmez; sayfa sonu artık "kısa sayfa" ile anlaşılır.
     const r = await req('GET',
-      `/api/collections/products/records?perPage=500&page=${page}&sort=${encodeURIComponent(SORT)}` +
+      `/api/collections/products/records?perPage=${PER_PAGE}&page=${page}&skipTotal=1&sort=${encodeURIComponent(SORT)}` +
       `&fields=id,name,brand,gtin,mpn,category,sourceUrl,price_raw${filter}`);
     if (r.status !== 200) throw new Error(`fetch page ${page}: ${r.status}`);
-    for (const item of (r.body.items || [])) {
+    const items = r.body.items || [];
+    for (const item of items) {
       if (isSupportedProductCategory(item.category)) out.push(item);
     }
     if (LIMIT > 0 && out.length >= LIMIT) return out.slice(0, LIMIT);
-    if (page >= (r.body.totalPages || 1)) break;
+    if (items.length < PER_PAGE) break;
     page++;
   }
   return out;

@@ -38,7 +38,11 @@ rem epey'in yalniz-TR baktigi Haziran damgalilari da boylece DE/GB/US sansi alir
 node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey.com' && pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=250 --concurrency=2 >> "%USERPROFILE%\qorai-price-direct.log" 2>&1
 rem pass2 — refresh/expand: TR fiyati bilinen urunler (ASIN hazir, dp-fetch
 rem ucuz). SKIP_FRESH sayesinde 2. geceden itibaren cogunlukla atlanir.
-node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=-techScore --limit=8000 --concurrency=2 >> "%USERPROFILE%\qorai-price-direct.log" 2>&1
+rem 2026-08-07 SIRALAMA DUZELTMESI: sort=-techScore HER GECE AYNI ilk 8000 urunu
+rem getiriyordu — dusuk puanli kuyruga sira HIC gelmiyordu. bestOfferExpiresAt
+rem (artan) = damgasi en once dolan once → havuz dogal olarak tur atar. Ayni
+rem duzeltme epey_amazon pass1'de 2026-07-26'da yapilmisti, burada atlanmis.
+node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-extra=source='epey.com' && pricedOfferCount>0" --sort=bestOfferExpiresAt --limit=8000 --concurrency=2 >> "%USERPROFILE%\qorai-price-direct.log" 2>&1
 set NO_REINDEX=
 node scripts\ts_backfill_lowest_price.js --confirm >> "%USERPROFILE%\qorai-price-direct.log" 2>&1
 echo ===== %date% %time% direct refresh done ===== >> "%USERPROFILE%\qorai-price-direct.log"

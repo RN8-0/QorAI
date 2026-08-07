@@ -108,7 +108,7 @@ export const COPY = {
       ]],
       ['Refunds and Cancellations', [
         'Cancellation stops future renewal; it does not automatically refund charges that already happened. Refund eligibility is explained in our Refund Policy.',
-        'WHERE YOU CANCEL DEPENDS ON WHERE YOU SUBSCRIBED. If you subscribed on the website, cancel from the Polar customer portal at https://polar.sh/qorai/portal (sign in with the email you used at checkout). If you subscribed inside the mobile app, cancel in Google Play: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
+        'WHERE YOU CANCEL DEPENDS ON WHERE YOU SUBSCRIBED. If you subscribed on the website, sign in at qorai.net and go to Profile → Account → Subscription → “Cancel website subscription”. That button opens your own billing portal directly, so you do not have to look up an email or a receipt. If you subscribed inside the mobile app, cancel in Google Play: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
         'These are two separate subscriptions in two separate systems. Cancelling the web subscription does NOT cancel a Google Play subscription, and cancelling in Google Play does NOT cancel a web subscription. If you ever subscribed in both places, cancel in both places.',
         'For Polar web purchases, refund requests should be sent to Qor AI support so we can review the transaction and, where approved, issue the refund through Polar. For Google Play purchases, refunds may need to be requested through the store because the store controls the payment flow.',
       ]],
@@ -197,7 +197,8 @@ export const COPY = {
         'Approved refunds are issued through Polar to the original payment method where possible. Card refunds typically take several business days to appear depending on your bank or card issuer.',
       ]],
       ['How to Cancel Your Subscription', [
-        'You cancel where you subscribed. Website subscription: open the Polar customer portal at https://polar.sh/qorai/portal and sign in with the email address you used at checkout, then cancel there. Mobile app subscription: open Play Store → tap your profile → Payments & subscriptions → Subscriptions → Qor AI → Cancel subscription.',
+        'Website subscription — the fastest way: sign in at qorai.net, open Profile → Account → Subscription and press “Cancel website subscription”. This opens the billing portal already signed in as you, where you cancel in one step. If you cannot sign in, you can also open the Polar customer portal at https://polar.sh/qorai/portal and request a sign-in link with the email address you used at checkout.',
+        'Mobile app subscription: open Play Store → tap your profile → Payments & subscriptions → Subscriptions → Qor AI → Cancel subscription. A subscription bought inside the app can only be cancelled in Google Play — neither we nor the website can cancel it for you.',
         'The web subscription and the Google Play subscription are two separate subscriptions in two separate billing systems. Cancelling one does NOT cancel the other. If you subscribed in both places, you must cancel in both places, otherwise you will keep being charged by the one you did not cancel.',
         'Cancelling during the 3-day free trial means you are never charged. Cancelling after the trial stops the next renewal; you keep Premium until the end of the period you already paid for, and it is not refunded automatically.',
         'Deleting your Qor AI account does not cancel an active subscription. Cancel the subscription first, then delete the account if you want.',
@@ -314,7 +315,7 @@ export const COPY = {
         'Premium starts with a 3-day free trial, so cancelling before it ends means no charge at all. For web purchases through Polar, new Premium charges may be refundable within 30 days. Renewal and app-store rules are explained in the Refund Policy.',
       ]],
       ['How do I cancel Premium?', [
-        'Cancel where you subscribed. Website: open https://polar.sh/qorai/portal and sign in with your checkout email. Mobile app: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
+        'Cancel where you subscribed. Website: sign in at qorai.net → Profile → Account → Subscription → “Cancel website subscription” (or open https://polar.sh/qorai/portal). Mobile app: Play Store → profile → Payments & subscriptions → Subscriptions → Qor AI.',
         'These are two separate subscriptions — cancelling the web one does NOT cancel a Google Play one, and vice versa. Cancel inside the 3-day trial and you are never charged.',
       ]],
       ['How do I delete my account?', [
@@ -471,7 +472,8 @@ COPY.tr = {
       'Onaylanan iadeler mümkün olduğunda Polar üzerinden orijinal ödeme yöntemine yapılır. Kart iadelerinin bankanıza veya kart sağlayıcınıza bağlı olarak görünmesi birkaç iş günü sürebilir.',
     ]],
     ['Aboneliği Nasıl İptal Edersiniz', [
-      'Nereden abone olduysanız oradan iptal edersiniz. Web aboneliği: https://polar.sh/qorai/portal adresindeki Polar müşteri portalını açın, ödeme sırasında kullandığınız e-posta ile giriş yapın ve aboneliği iptal edin. Mobil uygulama aboneliği: Play Store → profil simgesi → Ödemeler ve abonelikler → Abonelikler → Qor AI → Aboneliği iptal et.',
+      'Web aboneliği — en hızlı yol: qorai.net’te giriş yapın, Profilim → Hesap → Abonelik bölümüne gidin ve “Web aboneliğini iptal et” butonuna basın. Bu buton sizi zaten hesabınıza bağlı ödeme portalına götürür; e-posta veya fatura aramaya gerek kalmaz, iptali tek adımda yaparsınız. Giriş yapamıyorsanız https://polar.sh/qorai/portal adresinden ödemede kullandığınız e-posta ile giriş linki de isteyebilirsiniz.',
+      'Mobil uygulama aboneliği: Play Store → profil simgesi → Ödemeler ve abonelikler → Abonelikler → Qor AI → Aboneliği iptal et. Uygulama içinden alınan abonelik YALNIZCA Google Play’den iptal edilebilir — ne biz ne de web sitesi sizin yerinize iptal edebilir.',
       'Web aboneliği ile Google Play aboneliği İKİ AYRI sistemde İKİ AYRI aboneliktir. Birini iptal etmek diğerini iptal ETMEZ. İki yerden de abone olduysanız iki yerden de iptal etmeniz gerekir; aksi halde iptal etmediğiniz taraf sizden ücret almaya devam eder.',
       '3 günlük ücretsiz deneme içinde iptal ederseniz hiç ücret alınmaz. Deneme bittikten sonra iptal, bir sonraki yenilemeyi durdurur; ödemesini yaptığınız dönemin sonuna kadar Premium sizde kalır ve bu tutar otomatik iade edilmez.',
       'Qor AI hesabınızı silmek aktif aboneliği iptal etmez. Önce aboneliği iptal edin, sonra isterseniz hesabı silin.',
@@ -590,7 +592,7 @@ COPY.tr = {
       'Premium 3 günlük ücretsiz denemeyle başlar; deneme bitmeden iptal ederseniz hiç ücret alınmaz. Polar üzerinden web ödemelerinde yeni Premium ödemeleri 30 gün içinde iade için uygun olabilir. Yenileme ve uygulama mağazası kuralları İade Politikasında açıklanır.',
     ]],
     ['Premium’u nasıl iptal ederim?', [
-      'Nereden abone olduysanız oradan iptal edin. Web: https://polar.sh/qorai/portal adresini açıp ödemede kullandığınız e-posta ile giriş yapın. Mobil uygulama: Play Store → profil → Ödemeler ve abonelikler → Abonelikler → Qor AI.',
+      'Nereden abone olduysanız oradan iptal edin. Web: qorai.net’te giriş → Profilim → Hesap → Abonelik → “Web aboneliğini iptal et” (ya da https://polar.sh/qorai/portal). Mobil uygulama: Play Store → profil → Ödemeler ve abonelikler → Abonelikler → Qor AI.',
       'Bunlar iki ayrı aboneliktir — web aboneliğini iptal etmek Google Play aboneliğini iptal ETMEZ, tersi de geçerlidir. 3 günlük deneme içinde iptal ederseniz hiç ücret alınmaz.',
     ]],
     ['Hesabımı nasıl silerim?', [
@@ -743,7 +745,8 @@ COPY.de = {
       'Genehmigte Erstattungen werden nach Möglichkeit über Polar auf die ursprüngliche Zahlungsmethode ausgeführt.',
     ]],
     ['So kündigen Sie Ihr Abo', [
-      'Sie kündigen dort, wo Sie abgeschlossen haben. Web-Abo: Öffnen Sie das Polar-Kundenportal unter https://polar.sh/qorai/portal, melden Sie sich mit der beim Checkout verwendeten E-Mail an und kündigen Sie dort. App-Abo: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI → Abo kündigen.',
+      'Web-Abo — der schnellste Weg: Melden Sie sich auf qorai.net an und öffnen Sie Profil → Konto → Abo → „Web-Abo kündigen“. Diese Schaltfläche öffnet Ihr Abrechnungsportal bereits angemeldet — Sie kündigen in einem Schritt, ohne E-Mail oder Beleg suchen zu müssen. Falls Sie sich nicht anmelden können, öffnen Sie https://polar.sh/qorai/portal und fordern Sie mit Ihrer Checkout-E-Mail einen Anmeldelink an.',
+      'App-Abo: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI → Abo kündigen. Ein in der App gekauftes Abo kann NUR in Google Play gekündigt werden — weder wir noch die Website können das für Sie tun.',
       'Das Web-Abo und das Google-Play-Abo sind ZWEI getrennte Abos in zwei getrennten Abrechnungssystemen. Eine Kündigung storniert NICHT automatisch das andere. Wenn Sie an beiden Stellen abgeschlossen haben, müssen Sie an beiden Stellen kündigen.',
       'Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts abgebucht. Nach der Testphase stoppt die Kündigung die nächste Verlängerung; Premium bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv und wird nicht automatisch erstattet.',
       'Das Löschen Ihres Qor AI Kontos kündigt kein aktives Abo. Kündigen Sie zuerst das Abo und löschen Sie danach ggf. das Konto.',
@@ -860,7 +863,7 @@ COPY.de = {
       'Premium beginnt mit 3 Tagen kostenlos — bei Kündigung vor Ablauf entstehen keine Kosten. Für Webkäufe über Polar können neue Premium-Zahlungen innerhalb von 30 Tagen erstattungsfähig sein. Details stehen in der Rückerstattungsrichtlinie.',
     ]],
     ['Wie kündige ich Premium?', [
-      'Kündigen Sie dort, wo Sie abgeschlossen haben. Web: https://polar.sh/qorai/portal öffnen und mit der Checkout-E-Mail anmelden. App: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI.',
+      'Kündigen Sie dort, wo Sie abgeschlossen haben. Web: auf qorai.net anmelden → Profil → Konto → Abo → „Web-Abo kündigen“ (oder https://polar.sh/qorai/portal). App: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI.',
       'Das sind zwei getrennte Abos — die Kündigung des Web-Abos storniert NICHT das Google-Play-Abo und umgekehrt. Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts berechnet.',
     ]],
     ['Wie lösche ich mein Konto?', [

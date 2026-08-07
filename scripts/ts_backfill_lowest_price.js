@@ -127,10 +127,14 @@ function compactCountryPrices(prices) {
   return Object.keys(out).length ? JSON.stringify(out) : '';
 }
 
-async function pbPage(page) {
+// skipTotal=1: sayım sorgusu 107k satırı tam tarıyor ve PB'yi zaman aşımına
+// düşürüp jenerik 400 döndürüyordu (koşu 82.000/107.363'te ölüyordu). Sayım
+// olmadan totalItems/totalPages gelmez — döngü artık "kısa sayfa" ile biter.
+async function pbPage(page, withTotal = false) {
   const r = await pbReq(
     'GET',
-    `/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=${page}&fields=id,prices,bestOfferExpiresAt`,
+    `/api/collections/products/records?perPage=${PB_PAGE_SIZE}&page=${page}` +
+    `${withTotal ? '' : '&skipTotal=1'}&sort=id&fields=id,prices,bestOfferExpiresAt`,
   );
   if (r.status !== 200) {
     throw new Error(`PB page ${page} failed: ${JSON.stringify(r.body).slice(0, 200)}`);
@@ -170,10 +174,12 @@ async function main() {
   log(`mode=${CONFIRM ? 'APPLY' : 'DRY-RUN'} fxVersion=${FX_VERSION} pbBatch=${PB_PAGE_SIZE} tsBatch=${TS_BATCH_SIZE}`);
   await ensureFields();
 
+  // İlk sayfayı bir kez sayımlı çekiyoruz — yalnız ilerleme çubuğu için.
+  // Sayım başarısız olsa bile koşu devam etmeli.
+  let total = 0;
+  try { total = (await pbPage(1, true)).totalItems || 0; } catch { total = 0; }
   const first = await pbPage(1);
-  const total = first.totalItems;
-  const pages = first.totalPages;
-  log(`PB has ${total} products across ${pages} pages`);
+  log(`PB has ${total || '?'} products (perPage=${PB_PAGE_SIZE})`);
 
   const t0 = Date.now();
   let okTotal = 0, failTotal = 0, processed = 0, withPrice = 0, zeroPrice = 0;
@@ -205,8 +211,10 @@ async function main() {
   };
 
   await handleItems(first.items);
-  for (let p = 2; p <= pages; p++) {
+  let lastLen = (first.items || []).length;
+  for (let p = 2; lastLen >= PB_PAGE_SIZE; p++) {
     const page = await pbPage(p);
+    lastLen = (page.items || []).length;
     await handleItems(page.items);
   }
   await flush();

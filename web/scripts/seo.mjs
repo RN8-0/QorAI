@@ -278,7 +278,7 @@ function keySpecRows(keySpecs, limit = 16) {
 // Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
 // path and content must exist in the raw HTML, not only after the SPA renders.
 function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
-  const name = esc(d.name);
+  const name = esc(localizedName(d, lang));
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
   const specs = Number(d.specsCount) || 0;
@@ -377,16 +377,20 @@ const CAT_BODY_TEXT = {
 function categoryBody(label, categoryUrl, items, guide, lang = 'tr') {
   const tx = CAT_BODY_TEXT[lang] || CAT_BODY_TEXT.tr;
   const lbl = esc(label);
+  // İç linkler AYNI DİL AĞACINDA kalmalı: /de/category sayfası öneksiz
+  // /product/… adreslerine bağlanırsa Googlebot /de/ ve /tr/ ürün sayfalarına
+  // yalnız sitemap'ten ulaşır, iç link yoluyla hiç ulaşamaz.
+  const pfx = localePrefix(lang);
   const links = items
     .filter((d) => d && d.name && d.id)
     .map((d) => {
       const score = Number(d.techScore) || 0;
-      return `<li style="margin:4px 0"><a href="${esc(productPath(d))}" style="color:#0f172a;text-decoration:none">`
-        + `${esc(d.name)}${score ? ` <span style="color:#64748b;font-size:12px">· ${score}/100</span>` : ''}</a></li>`;
+      return `<li style="margin:4px 0"><a href="${esc(pfx + productPath(d))}" style="color:#0f172a;text-decoration:none">`
+        + `${esc(localizedName(d, lang))}${score ? ` <span style="color:#64748b;font-size:12px">· ${score}/100</span>` : ''}</a></li>`;
     })
     .join('');
   return `<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
-    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">${esc(tx.cats)}</a> › ${lbl}</nav>`
+    + `<nav style="font-size:13px;color:#64748b"><a href="${pfx || '/'}">Qor AI</a> › <a href="${pfx}/category">${esc(tx.cats)}</a> › ${lbl}</nav>`
     + `<h1 style="font-size:28px;margin:12px 0 6px">${esc(tx.h1(label))}</h1>`
     + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(tx.intro(label))}</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
@@ -505,8 +509,9 @@ const CMP_TEXT = {
 function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SEO_DEFAULT_LOCALE) {
   const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
   const pfx = localePrefix(lang);
-  const na = esc(a.name); const nb = esc(b.name); const lbl = esc(label);
-  const pa = esc(productPath(a)); const pb = esc(productPath(b));
+  const na = esc(localizedName(a, lang)); const nb = esc(localizedName(b, lang));
+  const lbl = esc(label);
+  const pa = esc(pfx + productPath(a)); const pb = esc(pfx + productPath(b));
   const sa = Number(a.techScore) || 0; const sb = Number(b.techScore) || 0;
   const base = [
     cmpRow(tx.score, sa ? `${sa}/100` : '', sb ? `${sb}/100` : ''),
@@ -534,12 +539,19 @@ function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SE
 
 function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
-  const url = `${SITE}${comparePath(a, b)}`;
-  const categoryUrl = `${SITE}${categoryPath(a.category)}`;
+  // DİL ÖNEKİ ŞART: öneksiz kurulan canonical, /tr/compare/… ve /de/compare/…
+  // sayfalarını İngilizce adrese kanonikleştiriyordu — yani Google'a "bu üç
+  // sayfa aslında tek sayfa, İngilizcesini al" demiş oluyorduk ve Türkçe/Almanca
+  // karşılaştırma sayfaları indexe hiç girmiyordu.
+  const prefix = localePrefix(lang);
+  const url = `${SITE}${prefix}${comparePath(a, b)}`;
+  const categoryUrl = `${SITE}${prefix}${categoryPath(a.category)}`;
   const imgA = /^https?:\/\//i.test(a.imageUrl || '') ? a.imageUrl : DEFAULT_IMG;
-  const title = truncate(tx.title(a.name, b.name), 70);
+  const na = localizedName(a, lang);
+  const nb = localizedName(b, lang);
+  const title = truncate(tx.title(na, nb), 70);
   const description = truncate(
-    tx.desc(a.name, b.name, label),
+    tx.desc(na, nb, label),
   );
   const webPage = {
     '@type': 'WebPage', '@id': `${url}#webpage`, url, name: title,
@@ -548,20 +560,20 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   const itemList = {
     '@type': 'ItemList', '@id': `${url}#itemlist`, numberOfItems: 2,
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: a.name, url: `${SITE}${productPath(a)}` },
-      { '@type': 'ListItem', position: 2, name: b.name, url: `${SITE}${productPath(b)}` },
+      { '@type': 'ListItem', position: 1, name: na, url: `${SITE}${prefix}${productPath(a)}` },
+      { '@type': 'ListItem', position: 2, name: nb, url: `${SITE}${prefix}${productPath(b)}` },
     ],
   };
   const breadcrumb = {
     '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+      { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${prefix}/` },
       { '@type': 'ListItem', position: 2, name: label, item: categoryUrl },
-      { '@type': 'ListItem', position: 3, name: `${a.name} vs ${b.name}`, item: url },
+      { '@type': 'ListItem', position: 3, name: `${na} vs ${nb}`, item: url },
     ],
   };
   return {
-    title, description, url, lang, image: imgA, imageAlt: `${a.name} vs ${b.name}`, type: 'website',
+    title, description, url, lang, image: imgA, imageAlt: `${na} vs ${nb}`, type: 'website',
     jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, itemList, breadcrumb] },
   };
 }
@@ -603,13 +615,17 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
   const score = Number(d.techScore) || 0;
   const specs = Number(d.specsCount) || 0;
   const img = /^https?:\/\//i.test(d.imageUrl || '') ? d.imageUrl : DEFAULT_IMG;
-  const title = truncate(tx.title(d.name), 68);
+  // Ürün adı DİLE GÖRE — kaynak `name` Türkçedir, İngilizce/Almanca sayfada
+  // Türkçe başlık göstermek tam da "İngilizce arıyorum Türkçe çıkıyor"
+  // şikayetinin sebebiydi.
+  const dispName = localizedName(d, lang);
+  const title = truncate(tx.title(dispName), 68);
   // Lead the description with a few REAL spec values so it is unique per product
   // and long enough (Bing flagged descriptions as too short + too templated).
   const rows = keySpecRows(keySpecs, 4);
   const specHi = rows.map(([k, v]) => `${k}: ${v}`).join(', ');
   const description = truncate(
-    `${d.name}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
+    `${dispName}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
     + `${specHi ? `${specHi}. ` : ''}`
     + `${score ? tx.score(score) : ''}`
     + `${specs ? tx.specs(specs) : ''}`
@@ -624,11 +640,11 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${localePrefix(lang)}/` },
       { '@type': 'ListItem', position: 2, name: label, item: categoryUrl },
-      { '@type': 'ListItem', position: 3, name: d.name, item: url },
+      { '@type': 'ListItem', position: 3, name: dispName, item: url },
     ],
   };
   return {
-    title, description, url, lang, image: img, imageAlt: d.name, type: 'product',
+    title, description, url, lang, image: img, imageAlt: dispName, type: 'product',
     jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, breadcrumb] },
   };
 }
@@ -652,7 +668,7 @@ function categoryPath(category) {
 //
 // Bu tarih, ön-render ÇIKTISI anlamlı biçimde değiştiğinde ELLE yükseltilir.
 // Uydurma tazelik değildir: sayfa gerçekten o gün değişmiştir.
-const SEO_CONTENT_VERSION = '2026-08-06'; // ürün + karşılaştırma sayfaları üç dile açıldı (hreflang)
+const SEO_CONTENT_VERSION = '2026-08-07'; // ürün adları artık dile göre (en/de sayfalarda Türkçe ad kalmıyor)
 
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
@@ -1086,10 +1102,34 @@ async function fetchKeySpecsByIds(ids) {
         if (raw && raw.keySpecs && typeof raw.keySpecs === 'object' && Object.keys(raw.keySpecs).length) {
           byId.set(doc.id, raw.keySpecs);
         }
+        // ÜRÜN ADININ ÇEVİRİSİ — 2026-08-07.
+        // `name` alanı Epey'den geldiği için TÜRKÇE ("… Bilgisayar Kasası") ve
+        // ön-render üç dilde de onu basıyordu: İngilizce arayan kullanıcı
+        // Google'da Türkçe başlık görüyordu. Çeviri zaten veride var
+        // (`nameTranslated.en`), ama yalnız `_raw` içinde — Typesense'te üst
+        // seviye alan değil. Zaten burada `_raw` çekiliyor, adı da alıyoruz.
+        // Web istemcisi (lib/productNames.js displayProductName) aynı alanı
+        // kullanıyor; böylece ön-render ile SPA aynı adı gösterir.
+        const nt = raw && raw.nameTranslated;
+        if (nt && typeof nt === 'object') nameById.set(doc.id, nt);
       } catch (_) {}
     }
   }
   return byId;
+}
+
+// Ürünün BİR DİLDEKİ görünen adı. Almanca ad üretilmiyor (specs yalnız TR+EN
+// tutuluyor) → de, en'e düşer; en yoksa kaynak ad (Türkçe) kalır.
+const nameById = new Map();
+function localizedName(d, lang) {
+  const nt = nameById.get(d?.id);
+  const pick = (code) => {
+    const v = nt && nt[code];
+    return v && String(v).trim() ? String(v).trim() : '';
+  };
+  if (lang === 'tr') return pick('tr') || String(d?.name || '');
+  if (lang === 'de') return pick('de') || pick('en') || String(d?.name || '');
+  return pick('en') || String(d?.name || '');
 }
 
 // ── Static routes ───────────────────────────────────────────────
@@ -1468,6 +1508,23 @@ async function main() {
     if (picked.length) curatedByCat.set(cat, picked);
   }
 
+  // Temiz etiketli key-specs'i (ve ürün adının ÇEVİRİLERİNİ) yalnız seçilmiş
+  // küme için `_raw`'dan çekiyoruz. Bu adım kategori sayfalarından ÖNCE olmak
+  // zorunda: `localizedName` sözlüğü burada doluyor ve kategori sayfalarındaki
+  // ürün linkleri de dile göre adlandırılıyor (önce aşağıda, ürün sayfalarından
+  // hemen önce yapılıyordu → kategori sayfaları Türkçe adlarla kalıyordu).
+  const curatedIds = [];
+  for (const picked of curatedByCat.values()) {
+    for (const d of picked) if (d?.id) curatedIds.push(d.id);
+  }
+  let keySpecsById = new Map();
+  try {
+    keySpecsById = await fetchKeySpecsByIds(curatedIds);
+    console.log(`[seo] fetched key-specs for ${keySpecsById.size}/${curatedIds.length} curated products · ${nameById.size} translated names`);
+  } catch (err) {
+    console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
+  }
+
   // 2c) per-category landing shells — content-rich hubs: keyword title +
   //     ItemList JSON-LD + a crawlable <a> grid (categoryBody) to every curated
   //     product, so Google reaches product pages via internal links (home →
@@ -1496,7 +1553,7 @@ async function main() {
       const itemList = {
         '@type': 'ItemList', '@id': `${url}#itemlist`, name: `${label} — Qor AI`,
         numberOfItems: top.length,
-        itemListElement: top.map((d, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}${productPath(d)}`, name: d.name })),
+        itemListElement: top.map((d, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}${prefix}${productPath(d)}`, name: localizedName(d, lang) })),
       };
       const collection = {
         '@type': 'CollectionPage', '@id': `${url}#webpage`, url, name: `${label} — Qor AI`,
@@ -1538,19 +1595,6 @@ async function main() {
       }
     }
   }
-  // Pull clean labeled key-specs (from _raw) for the curated set only, so each
-  // shell can render REAL, unique spec content instead of a thin template.
-  const curatedIds = [];
-  for (const picked of curatedByCat.values()) {
-    for (const d of picked) if (d?.id) curatedIds.push(d.id);
-  }
-  let keySpecsById = new Map();
-  try {
-    keySpecsById = await fetchKeySpecsByIds(curatedIds);
-    console.log(`[seo] fetched key-specs for ${keySpecsById.size}/${curatedIds.length} curated products`);
-  } catch (err) {
-    console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
-  }
   // ÜRÜN SAYFALARI ARTIK ÜÇ DİLDE (2026-08-06). Öncesinde yalnız kök adreste
   // (varsayılan dil) üretiliyor ve HİÇ hreflang taşımıyorlardı: sitede üç dil
   // desteklenmesine rağmen Google'da bir ürünü hangi dilde ararsa arasın herkes
@@ -1574,7 +1618,9 @@ async function main() {
         const related = [];
         for (let k = 1; k <= 8 && k < picked.length; k += 1) {
           const r = picked[(i + k) % picked.length];
-          related.push({ name: r.name, path: productPath(r) });
+          // Benzer ürün linkleri de kendi dil ağacında kalsın (aksi halde
+          // /tr/ ve /de/ ürün sayfaları arası hiç iç link olmuyor).
+          related.push({ name: localizedName(r, lang), path: `${prefix}${productPath(r)}` });
         }
         writeHtml(
           `${prefix}${path}`.replace(/^\//, ''),
