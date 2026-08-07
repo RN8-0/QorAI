@@ -298,10 +298,10 @@ export default function Reviews({ productId, productName, lang, headerSlot = nul
       ) : (
         <>
           <div className="pd-rev-sort">
-            <button className={sortMode === 'new' ? 'on' : ''} onClick={() => setSortMode('new')}>{t('pd.revSortNew') || 'Yeni'}</button>
-            <button className={sortMode === 'top' ? 'on' : ''} onClick={() => setSortMode('top')}>{t('pd.revSortTop') || 'En Beğenilen'}</button>
-            <button className={sortMode === 'high' ? 'on' : ''} onClick={() => setSortMode('high')}>{t('pd.revSortHigh') || 'En Yüksek'}</button>
-            <button className={sortMode === 'low' ? 'on' : ''} onClick={() => setSortMode('low')}>{t('pd.revSortLow') || 'En Düşük'}</button>
+            <button className={sortMode === 'new' ? 'on' : ''} onClick={() => setSortMode('new')}>{t('pd.revSortNew')}</button>
+            <button className={sortMode === 'top' ? 'on' : ''} onClick={() => setSortMode('top')}>{t('pd.revSortTop')}</button>
+            <button className={sortMode === 'high' ? 'on' : ''} onClick={() => setSortMode('high')}>{t('pd.revSortHigh')}</button>
+            <button className={sortMode === 'low' ? 'on' : ''} onClick={() => setSortMode('low')}>{t('pd.revSortLow')}</button>
           </div>
           <div className="pd-rev-list">
           {sortedReviews.map((r) => {

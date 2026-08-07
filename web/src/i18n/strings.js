@@ -184,6 +184,13 @@ const en = {
   'pd.revSignIn': 'Sign in to write a review.',
   'pd.revThanks': 'Thanks — your review has been posted!',
   'pd.revErr': 'Could not submit your review. Please try again.',
+  // Yorum siralama butonlari — bu dort anahtar sozlukte HIC yoktu ve
+  // t() eksik anahtarda anahtarin KENDISINI dondugu icin ekranda
+  // "pd.revSortNew" gibi ham metinler goruntuleniyordu.
+  'pd.revSortNew': 'Newest',
+  'pd.revSortTop': 'Most liked',
+  'pd.revSortHigh': 'Highest rated',
+  'pd.revSortLow': 'Lowest rated',
   'rv.like': 'Like',
   'rv.dislike': 'Dislike',
   'rv.delete': 'Delete',
@@ -521,6 +528,10 @@ const tr = {
   'pd.revSubmit': 'Yorumu Gönder',
   'pd.revSignIn': 'Yorum yazmak için giriş yap.',
   'pd.revThanks': 'Teşekkürler — yorumun yayınlandı!',
+  'pd.revSortNew': 'En yeni',
+  'pd.revSortTop': 'En beğenilen',
+  'pd.revSortHigh': 'En yüksek puan',
+  'pd.revSortLow': 'En düşük puan',
   'pd.revErr': 'Yorumun gönderilemedi. Lütfen tekrar dene.',
   'rv.like': 'Beğen',
   'rv.dislike': 'Beğenme',

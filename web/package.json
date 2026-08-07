@@ -6,7 +6,7 @@
   "description": "Qor AI — React SPA for qorai.net",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/prebuild.mjs",
+    "prebuild": "node scripts/i18n_audit.mjs && node scripts/prebuild.mjs",
     "build": "vite build && node scripts/postbuild.mjs && node scripts/seo.mjs && node scripts/seo-audit.mjs",
     "audit:seo": "node scripts/seo-audit.mjs",
     "preview": "vite preview"

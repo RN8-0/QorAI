@@ -169,6 +169,10 @@ export default {
   'pd.revSubmit': 'Bewertung senden',
   'pd.revSignIn': 'Melde dich an, um eine Bewertung zu schreiben.',
   'pd.revThanks': 'Danke — deine Bewertung wurde veröffentlicht!',
+  'pd.revSortNew': 'Neueste',
+  'pd.revSortTop': 'Beliebteste',
+  'pd.revSortHigh': 'Beste Bewertung',
+  'pd.revSortLow': 'Schlechteste Bewertung',
   'pd.revErr': 'Deine Bewertung konnte nicht gesendet werden. Bitte erneut versuchen.',
   'rv.like': 'Gefällt mir',
   'rv.dislike': 'Gefällt mir nicht',
@@ -318,4 +322,15 @@ export default {
   'nf.desc': 'Die gesuchte Seite wurde möglicherweise verschoben oder existierte nie.',
   'nf.back': 'Zurück zur Startseite',
   'seo.home': 'Entdecke, vergleiche und entscheide mit KI: Technikprodukte und digitale Abos, von Smartphones über Laptops bis GPUs, bewertet und analysiert von Qor AI.',
+  // 2026-08-07 — i18n denetiminin bulduğu eksikler (Almanca ziyaretçi bunları
+  // İngilizce görüyordu).
+  'la.errNotProduct': 'Das sieht nicht nach einem Produktlink aus. Füge einen Link ein, der auf ein einzelnes Produkt in einem Shop zeigt.',
+  'pf.coinPremiumDesc': 'KI-Funktionen (Chat, Analyse, Vergleich) verbrauchen mit Premium nie Qor Coins.',
+  'pf.coinUnlimited': 'Unbegrenzt',
+  'pf.kindComparison': 'Vergleich',
+  'pf.noLiked': 'Noch keine gelikten Artikel.',
+  'pf.tabAccount': 'Konto',
+  'pf.tabLiked': 'Gelikt',
+  'pf.viewArticle': 'Artikel ansehen',
+  'pf.viewComparison': 'Vergleich ansehen',
 };
