@@ -20,6 +20,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
 
+// Web'in ikinci dalga grafikleri (radar, kritik noktalar, quiz etkisi,
+// topluluk temaları, kaynak rozetleri, KPI kutuları) ayrı dosyada ama aynı
+// kapıdan çıkar: bu dosyayı import eden herkes onlara da erişir.
+export 'package:qor_ai/presentation/widgets/shared/ai_charts_ext.dart';
+
 // Exact web palette (AiCharts.jsx CHART_COLORS) so app == site.
 const Color aicStrong = Color(0xFF22C55E); // güçlü / pozitif
 const Color aicBalanced = Color(0xFFF59E0B); // orta / nötr

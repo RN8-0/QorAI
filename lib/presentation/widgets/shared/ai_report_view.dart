@@ -19,6 +19,7 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/product_image_box.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_unified_report.dart';
 import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 
 // Exact web palette so the app report matches the site 1:1.
@@ -89,8 +90,8 @@ class AiReportView extends StatelessWidget {
 
 class _ScoreRing extends StatelessWidget {
   final double value;
-  final String suffix;
-  const _ScoreRing({required this.value, this.suffix = '/ 100'});
+  const _ScoreRing({required this.value});
+  static const String suffix = '/ 100';
 
   @override
   Widget build(BuildContext context) {
@@ -178,66 +179,6 @@ class _RingPainter extends CustomPainter {
       old.progress != progress || old.color != color;
 }
 
-class _AttrBar extends StatelessWidget {
-  final String name;
-  final int score;
-  final String detail;
-  final Color color;
-  const _AttrBar({
-    required this.name,
-    required this.score,
-    this.detail = '',
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final v = score.clamp(0, 100);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  name,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: context.textPrimary,
-                  ),
-                ),
-              ),
-              Text(
-                '$v',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          AnimatedBarFill(pct: v.toDouble(), color: color, gradient: true),
-          if (detail.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(
-              detail,
-              style: GoogleFonts.inter(
-                fontSize: 11.5,
-                height: 1.4,
-                color: context.textSecondary,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
 
 class _ProCon extends StatelessWidget {
   final String icon;
@@ -509,51 +450,6 @@ class _ReportSection extends StatelessWidget {
   }
 }
 
-class _ReportFactors extends StatelessWidget {
-  final dynamic factors;
-  final _L l;
-  const _ReportFactors({required this.factors, required this.l});
-
-  @override
-  Widget build(BuildContext context) {
-    final list = _arr(factors)
-        .map(
-          (f) => (
-            label: _str((f as Map)['label'] ?? f['name']),
-            score: _toInt(f['score']),
-            detail: _str(f['detail']),
-          ),
-        )
-        .where((f) => f.label.isNotEmpty)
-        .toList()
-      ..sort((a, b) => b.score - a.score); // skora göre azalan (web §4A)
-    if (list.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final f in list)
-          _AttrBar(
-            name: f.label,
-            score: f.score,
-            detail: f.detail,
-            color: _scoreColor(f.score),
-          ),
-        Text(
-          l(
-            'Scores combine quiz answers, profile signals and catalog specs.',
-            'Puanlar quiz cevapları, profil sinyalleri ve katalog özellikleriyle hesaplandı.',
-            'Die Werte kombinieren Quizantworten, Profilsignale und Katalogdaten.',
-          ),
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontStyle: FontStyle.italic,
-            color: context.textTertiaryColor,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _FeatureMatches extends StatelessWidget {
   final dynamic items;
@@ -663,107 +559,6 @@ class _FeatureMatches extends StatelessWidget {
   );
 }
 
-class _CommunityBlock extends StatelessWidget {
-  final Map<String, dynamic> data;
-  final _L l;
-  const _CommunityBlock({required this.data, required this.l});
-
-  @override
-  Widget build(BuildContext context) {
-    final sat = _toInt(data['satisfaction']);
-    final sources = _strs(data['sources']);
-    final notes = _strs(data['verificationNotes']);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (sat > 0) _ScoreRing(value: sat.toDouble(), suffix: '%'),
-            if (sat > 0) const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l('Internet satisfaction', 'İnternet memnuniyet oranı',
-                        'Internet-Zufriedenheit'),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    l(
-                      'Reddit, YouTube, retailer reviews and specialist sources are synthesized together.',
-                      'Reddit, YouTube, alışveriş yorumları ve uzman kaynaklar birlikte özetlenir.',
-                      'Reddit, YouTube, Händlerbewertungen und Fachquellen werden zusammengefasst.',
-                    ),
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      height: 1.35,
-                      color: context.textTertiaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        _Paragraphs(_str(data['summary'])),
-        _ProConRow(
-          pros: _strs(data['pros']),
-          cons: _strs(data['cons']),
-          l: l,
-          prosTitle: l('Common positives', 'Öne çıkan artılar', 'Häufige Pluspunkte'),
-          consTitle: l('Common negatives', 'Öne çıkan eksiler', 'Häufige Kritik'),
-        ),
-        if (sources.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                l('Source types', 'Kaynak türleri', 'Quellentypen'),
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.textTertiaryColor,
-                ),
-              ),
-              for (final s in sources) _chip(context, s),
-            ],
-          ),
-        ],
-        if (notes.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          _BulletList(notes),
-        ],
-      ],
-    );
-  }
-
-  Widget _chip(BuildContext context, String text) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-    decoration: BoxDecoration(
-      color: AppTheme.brandBlue.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      text,
-      style: GoogleFonts.inter(
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-        color: AppTheme.brandBlue,
-      ),
-    ),
-  );
-}
 
 class _AlternativeCards extends ConsumerWidget {
   final dynamic alternatives;
@@ -1085,6 +880,347 @@ class _PriceForecastBlock extends StatelessWidget {
 
 // ─── Product full report ─────────────────────────────────────────────────────
 
+/// ORTAK RAPOR GÖVDESİ — web `AiReportView.jsx` ile birebir bölüm sırası.
+///
+/// Ürün raporu ve karşılaştırmadaki her ürünün detayı bunu çizer; böylece
+/// uygulama ile site aynı şablonu, aynı grafikleri kullanır.
+class _UnifiedBody extends StatelessWidget {
+  final _L l;
+  final int score;
+  final String headline;
+  final String decision; // buy | consider | skip
+  final int confidence;
+  final int communityScore;
+  final Map<String, int> sentiment;
+  final dynamic factors;
+  final dynamic criticalPoints;
+  final dynamic quizInsights;
+  final List<String> pros;
+  final List<String> cons;
+  final dynamic featureMatches;
+  final dynamic communityThemes;
+  final dynamic sources;
+  final List<String> praise;
+  final List<String> complaints;
+  final String communityAnalysis;
+  final String analysis;
+  final String personaAnalysis;
+  final String bestFor;
+  final String notFor;
+  final String overallVerdict;
+  final List<({String title, String detail})> verification;
+  final List<({String title, String detail})> reliability;
+  final Widget? alternatives;
+  final Widget? priceBlock;
+
+  const _UnifiedBody({
+    required this.l,
+    required this.score,
+    required this.headline,
+    required this.decision,
+    required this.confidence,
+    required this.communityScore,
+    required this.sentiment,
+    required this.factors,
+    required this.criticalPoints,
+    required this.quizInsights,
+    required this.pros,
+    required this.cons,
+    required this.featureMatches,
+    required this.communityThemes,
+    required this.sources,
+    required this.praise,
+    required this.complaints,
+    required this.communityAnalysis,
+    required this.analysis,
+    required this.personaAnalysis,
+    required this.bestFor,
+    required this.notFor,
+    required this.overallVerdict,
+    required this.verification,
+    required this.reliability,
+    this.alternatives,
+    this.priceBlock,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dist = factorDistribution(factors);
+    final hasFactors = aicFactors(factors).isNotEmpty;
+    final blocks = <Widget>[];
+
+    void add(Widget w) => blocks.add(w);
+
+    // 1 — Hero: skor + karar + tek cümle.
+    add(
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.surfaceVariantColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: context.dividerColor),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (score > 0) ...[
+              _ScoreRing(value: score.toDouble()),
+              const SizedBox(width: 13),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    urBandLabel(score, l),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: _scoreColor(score),
+                    ),
+                  ),
+                  Text(
+                    l(
+                      'Personalized match score',
+                      'Kişiselleştirilmiş uyum skoru',
+                      'Personalisierter Match-Score',
+                    ),
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  if (headline.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    Text(
+                      headline,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 9),
+                  DecisionBadge(
+                    score: decision == 'buy'
+                        ? 80
+                        : decision == 'skip'
+                        ? 30
+                        : decision == 'consider'
+                        ? 60
+                        : score,
+                    l: l,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // 2 — KPI kutuları.
+    add(
+      AicStatTiles(
+        items: [
+          (
+            icon: '🎯',
+            label: l('Match', 'Uyum', 'Match'),
+            value: score > 0 ? '$score' : '',
+            color: _scoreColor(score),
+            hint: urBandLabel(score, l),
+          ),
+          (
+            icon: '🌐',
+            label: l(
+              'Owner satisfaction',
+              'Kullanıcı memnuniyeti',
+              'Zufriedenheit',
+            ),
+            value: communityScore > 0 ? '$communityScore' : '',
+            color: _scoreColor(communityScore),
+            hint: '',
+          ),
+          (
+            icon: '🔬',
+            label: l('Evidence', 'Kanıt gücü', 'Beleglage'),
+            value: confidence > 0 ? '$confidence%' : '',
+            color: null,
+            hint: '',
+          ),
+        ],
+      ),
+    );
+
+    // 3 — Grafikler: radar + sentiment donutu + faktör dengesi.
+    if (hasFactors) add(AicRadarChart(factors: factors, l: l));
+    add(SentimentDonut(breakdown: sentiment, l: l));
+    add(
+      DistributionBar(
+        strong: dist.strong,
+        balanced: dist.balanced,
+        weak: dist.weak,
+        l: l,
+      ),
+    );
+
+    // 4 — Faktör faktör.
+    if (hasFactors) {
+      add(
+        UrSection(
+          icon: '📊',
+          title: l('Factor by factor', 'Faktör faktör', 'Faktor für Faktor'),
+          child: AicFactorList(factors: factors),
+        ),
+      );
+    }
+
+    // 5 — Kritik noktalar.
+    add(AicCriticalPoints(items: criticalPoints, l: l));
+
+    // 6 — Artılar / eksiler.
+    if (pros.isNotEmpty || cons.isNotEmpty) {
+      add(
+        _ProConRow(
+          pros: pros,
+          cons: cons,
+          l: l,
+          prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
+          consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
+        ),
+      );
+    }
+
+    // 7 — Quiz etkisi.
+    add(AicQuizImpact(items: quizInsights, l: l));
+
+    // 8 — Topluluk.
+    add(AicCommunityThemes(themes: communityThemes, l: l));
+    add(AicSourceChips(sources: sources, l: l));
+    if (praise.isNotEmpty || complaints.isNotEmpty) {
+      add(
+        _ProConRow(
+          pros: praise,
+          cons: complaints,
+          l: l,
+          prosTitle: l(
+            'What owners love',
+            'Kullanıcıların sevdiği',
+            'Was Nutzer lieben',
+          ),
+          consTitle: l(
+            'What owners complain about',
+            'Kullanıcıların şikâyeti',
+            'Worüber Nutzer klagen',
+          ),
+        ),
+      );
+    }
+    if (communityAnalysis.isNotEmpty) {
+      add(
+        UrSection(
+          icon: '🌐',
+          title: l('Community reception', 'Topluluk yorumu', 'Community-Echo'),
+          meta: communityScore > 0 ? '$communityScore/100' : '',
+          child: _Paragraphs(communityAnalysis),
+        ),
+      );
+    }
+    if (reliability.isNotEmpty) {
+      add(
+        UrVerify(
+          items: reliability,
+          icon: '🛠',
+          title: l(
+            'Reliability and support',
+            'Güvenilirlik ve destek',
+            'Zuverlässigkeit und Support',
+          ),
+        ),
+      );
+    }
+
+    // 9 — Uzun metinler.
+    if (analysis.isNotEmpty) {
+      add(
+        UrSection(
+          icon: '📋',
+          title: l('The full picture', 'Tam değerlendirme', 'Das ganze Bild'),
+          child: _Paragraphs(analysis),
+        ),
+      );
+    }
+    if (personaAnalysis.isNotEmpty) {
+      add(
+        UrSection(
+          icon: '👤',
+          title: l('How it fits you', 'Sana uyumu', 'Wie es zu dir passt'),
+          meta: score > 0 ? '$score/100' : '',
+          child: _Paragraphs(personaAnalysis),
+        ),
+      );
+    }
+
+    // 10 — Kime uygun / değil.
+    add(UrForWho(bestFor: bestFor, notFor: notFor, l: l));
+
+    // 11 — Özellik-ihtiyaç eşleşmesi (varsayılan kapalı).
+    if (urArr(featureMatches).isNotEmpty) {
+      add(
+        AiCollapsible(
+          label:
+              '🧩 ${l('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi', 'Funktion-Bedarf-Abgleich')}',
+          builder: (context) => _FeatureMatches(items: featureMatches, l: l),
+        ),
+      );
+    }
+
+    // 12 — Alternatifler ve zamanlama (çağıran verirse).
+    if (alternatives != null) add(alternatives!);
+    if (priceBlock != null) add(priceBlock!);
+
+    // 13 — Son karar.
+    if (overallVerdict.isNotEmpty) {
+      add(
+        UrSection(
+          icon: '🏁',
+          title: l('Final verdict', 'Son karar', 'Endgültiges Fazit'),
+          child: _Paragraphs(overallVerdict),
+        ),
+      );
+    }
+
+    // 14 — Neyi doğruladık.
+    if (verification.isNotEmpty) {
+      add(
+        UrVerify(
+          items: verification,
+          title: l(
+            'What is verified, what is not',
+            'Neyi doğruladık, neyi doğrulamadık',
+            'Was belegt ist',
+          ),
+        ),
+      );
+    }
+
+    final visible = blocks.where((w) => w is! SizedBox).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < visible.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
+          visible[i],
+        ],
+      ],
+    );
+  }
+}
+
 class _ProductFullReport extends StatelessWidget {
   final Map<String, dynamic> data;
   final _L l;
@@ -1095,130 +1231,70 @@ class _ProductFullReport extends StatelessWidget {
     final product = (data['product'] is Map)
         ? Map<String, dynamic>.from(data['product'])
         : <String, dynamic>{};
-    final match = _toInt(product['matchScore'] ?? product['overallScore']);
     final community = (data['community'] is Map)
         ? Map<String, dynamic>.from(data['community'])
         : <String, dynamic>{};
     final price = (data['priceForecast'] is Map)
         ? Map<String, dynamic>.from(data['priceForecast'])
         : <String, dynamic>{};
-    // Grafik verileri (web ProductFullReport paritesi): topluluk sentiment
-    // donutu + faktör dengesi dağılımı; hero'da tek cümle özet + karar rozeti.
-    final sentiment = normalizeSentiment(
-      community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
-      _toInt(community['satisfaction']) > 0 ? _toInt(community['satisfaction']) : match,
-    );
-    final dist = factorDistribution(product['factors']);
-    final oneLiner = firstSentencesOf(_str(product['matchComment']));
-    final strengths = _strs(product['strengths']);
-    final weaknesses = _strs(product['weaknesses']);
-    return Column(
-      children: [
-        // Hero — tek bakışta karar: skor + rozet + tek cümle + grafikler.
-        _ReportSection(
-          eyebrow: '★',
-          title: l('At a glance', 'Tek bakışta', 'Auf einen Blick'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (match > 0) ...[
-                    _ScoreRing(value: match.toDouble()),
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (match > 0) DecisionBadge(score: match, l: l),
-                        if (oneLiner.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            oneLiner,
-                            style: GoogleFonts.inter(
-                              fontSize: 13.5,
-                              height: 1.5,
-                              fontWeight: FontWeight.w600,
-                              color: context.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+    final match = _toInt(product['matchScore'] ?? product['overallScore']);
+    final satisfaction = _toInt(community['satisfaction']);
+    return _UnifiedBody(
+      l: l,
+      score: match,
+      headline: _str(product['headline']).isNotEmpty
+          ? _str(product['headline'])
+          : firstSentencesOf(_str(product['matchComment'])),
+      decision: _str(product['decision']),
+      confidence: _toInt(product['confidence']),
+      communityScore: satisfaction,
+      sentiment: normalizeSentiment(
+        community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
+        satisfaction > 0 ? satisfaction : match,
+      ),
+      factors: product['factors'],
+      criticalPoints: product['criticalPoints'],
+      quizInsights: product['quizInsights'],
+      pros: _strs(product['strengths']),
+      cons: _strs(product['weaknesses']),
+      featureMatches: product['featureMatches'],
+      communityThemes: community['themes'],
+      sources: community['sources'],
+      praise: _strs(community['pros']),
+      complaints: _strs(community['cons']),
+      communityAnalysis: _str(community['summary']),
+      analysis: _str(product['analysis']),
+      personaAnalysis: _str(product['matchComment']),
+      bestFor: _str(product['bestFor']),
+      notFor: _str(product['notFor']),
+      overallVerdict: _str(product['overallVerdict']),
+      verification: urBullets(community['verificationNotes']),
+      reliability: urBullets(product['reliabilityNotes']),
+      alternatives: _arr(data['alternatives']).isEmpty
+          ? null
+          : UrSection(
+              icon: '🔀',
+              title: l(
+                'Smart alternatives',
+                'Akıllı alternatifler',
+                'Intelligente Alternativen',
               ),
-              const SizedBox(height: 14),
-              _ReportFactors(factors: product['factors'], l: l),
-              const SizedBox(height: 6),
-              SentimentDonut(breakdown: sentiment, l: l),
-              const SizedBox(height: 10),
-              DistributionBar(
-                strong: dist.strong,
-                balanced: dist.balanced,
-                weak: dist.weak,
+              child: _AlternativeCards(
+                alternatives: data['alternatives'],
                 l: l,
               ),
-              const SizedBox(height: 12),
-              _ProConRow(
-                pros: strengths.take(3).toList(),
-                cons: weaknesses.take(3).toList(),
-                l: l,
-                prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
-                consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
+            ),
+      priceBlock: price.isEmpty
+          ? null
+          : UrSection(
+              icon: '⏱',
+              title: l(
+                'Timing and value',
+                'Zamanlama ve değer',
+                'Timing und Wert',
               ),
-            ],
-          ),
-        ),
-        // Uzun metinler varsayılan kapalı — "tek bakışta anla" için (web §5).
-        AiCollapsible(
-          label: '📖 ${l('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}',
-          builder: (context) => Column(
-            children: [
-              _ReportSection(
-                eyebrow: '01',
-                title: l('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz',
-                    'Match, Beratung und Tiefenanalyse'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Paragraphs(_str(product['matchComment'])),
-                    const SizedBox(height: 4),
-                    _FeatureMatches(items: product['featureMatches'], l: l),
-                    _Paragraphs(_str(product['analysis'])),
-                    if (strengths.length > 3 || weaknesses.length > 3)
-                      _ProConRow(
-                        pros: strengths,
-                        cons: weaknesses,
-                        l: l,
-                        prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
-                        consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
-                      ),
-                  ],
-                ),
-              ),
-              _ReportSection(
-                eyebrow: '02',
-                title: l('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet',
-                    'Internet-Kommentare und Zufriedenheit'),
-                child: _CommunityBlock(data: community, l: l),
-              ),
-              _ReportSection(
-                eyebrow: '03',
-                title: l('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen'),
-                child: _AlternativeCards(alternatives: data['alternatives'], l: l),
-              ),
-              _ReportSection(
-                eyebrow: '04',
-                title: l('Price forecast', 'Fiyat tahmini', 'Preisprognose'),
-                child: _PriceForecastBlock(data: price, l: l),
-              ),
-            ],
-          ),
-        ),
-      ],
+              child: _PriceForecastBlock(data: price, l: l),
+            ),
     );
   }
 }
@@ -1400,83 +1476,49 @@ class _CompareProductDetail extends StatelessWidget {
         ? Map<String, dynamic>.from(data['priceForecast'])
         : <String, dynamic>{};
     final match = _toInt(data['matchScore']);
-    final sentiment = normalizeSentiment(
-      community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
-      _toInt(community['satisfaction']) > 0 ? _toInt(community['satisfaction']) : match,
-    );
-    final dist = factorDistribution(data['factors']);
-    final oneLiner = firstSentencesOf(_str(data['matchComment']));
-    final pros = _strs(data['pros']);
-    final cons = _strs(data['cons']);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (match > 0) ...[
-              _ScoreRing(value: match.toDouble()),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (match > 0) DecisionBadge(score: match, l: l),
-                  if (oneLiner.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      oneLiner,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.5,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ],
-                ],
+    final satisfaction = _toInt(community['satisfaction']);
+    return _UnifiedBody(
+      l: l,
+      score: match,
+      headline: _str(data['headline']).isNotEmpty
+          ? _str(data['headline'])
+          : firstSentencesOf(_str(data['matchComment'])),
+      decision: _str(data['decision']),
+      confidence: _toInt(data['confidence']),
+      communityScore: satisfaction,
+      sentiment: normalizeSentiment(
+        community['sentimentBreakdown'] ?? community['sentiment_breakdown'],
+        satisfaction > 0 ? satisfaction : match,
+      ),
+      factors: data['factors'],
+      criticalPoints: data['criticalPoints'],
+      quizInsights: data['quizInsights'],
+      pros: _strs(data['pros']),
+      cons: _strs(data['cons']),
+      featureMatches: data['featureMatches'],
+      communityThemes: community['themes'],
+      sources: community['sources'],
+      praise: _strs(community['pros']),
+      complaints: _strs(community['cons']),
+      communityAnalysis: _str(community['summary']),
+      analysis: _str(data['analysis']),
+      personaAnalysis: _str(data['matchComment']),
+      bestFor: _str(data['bestFor']),
+      notFor: _str(data['notFor']),
+      overallVerdict: _str(data['overallVerdict']),
+      verification: urBullets(community['verificationNotes']),
+      reliability: urBullets(data['reliabilityNotes']),
+      priceBlock: price.isEmpty
+          ? null
+          : UrSection(
+              icon: '⏱',
+              title: l(
+                'Timing and value',
+                'Zamanlama ve değer',
+                'Timing und Wert',
               ),
+              child: _PriceForecastBlock(data: price, l: l),
             ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _ReportFactors(factors: data['factors'], l: l),
-        const SizedBox(height: 6),
-        SentimentDonut(breakdown: sentiment, l: l),
-        const SizedBox(height: 10),
-        DistributionBar(
-          strong: dist.strong,
-          balanced: dist.balanced,
-          weak: dist.weak,
-          l: l,
-        ),
-        const SizedBox(height: 12),
-        _ProConRow(
-          pros: pros.take(3).toList(),
-          cons: cons.take(3).toList(),
-          l: l,
-        ),
-        const SizedBox(height: 6),
-        AiCollapsible(
-          label: '📖 ${l('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}',
-          builder: (context) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Paragraphs(_str(data['matchComment'])),
-              const SizedBox(height: 4),
-              _FeatureMatches(items: data['featureMatches'], l: l),
-              _Paragraphs(_str(data['analysis'])),
-              if (pros.length > 3 || cons.length > 3)
-                _ProConRow(pros: pros, cons: cons, l: l),
-              const SizedBox(height: 8),
-              _CommunityBlock(data: community, l: l),
-              const SizedBox(height: 8),
-              _PriceForecastBlock(data: price, l: l),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
