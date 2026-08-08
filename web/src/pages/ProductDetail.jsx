@@ -66,6 +66,17 @@ function savedAtLabel(at, lang) {
   catch { return d.toISOString().slice(0, 10); }
 }
 const SPEC_EMOJI = { 'spec.screen': '🖥️', 'spec.ram': '🧠', 'spec.storage': '💾', 'spec.battery': '🔋', 'spec.camera': '📷', 'spec.cpu': '⚙️', 'spec.gpu': '🎮' };
+// SABİT ikon standardı: ikon önce spec'in KAVRAMINDAN (heroSpecConcept) gelir.
+// Eskiden yalnızca HERO_SPEC_PRIORITY'nin ilk eşleşen kuralı kullanılıyordu ve
+// tek kural birden çok speci yakalıyordu (ör. "processor|cpu|gpu|core" kuralı
+// hem işlemciye hem ekran kartına 🧠 veriyordu; "\d+ GB" kuralı hem RAM'e hem
+// depolamaya 💾). Kullanıcı "aynı emoji birkaç özellikte tekrar ediyor" dedi.
+const CONCEPT_ICON = {
+  screen: '🖥️', resolution: '🔳', ram: '🧠', storage: '💾', battery: '🔋',
+  camera: '📷', cpu: '⚙️', gpu: '🎮', os: '🧩', network: '📡', weight: '⚖️',
+};
+// Aynı ikon iki kez düşerse ikinciye buradan sıradaki KULLANILMAMIŞ ikon verilir.
+const SPARE_ICONS = ['🔷', '📐', '🔌', '🧬', '⚡', '⏱️', '🧊', '🛡️', '🎚️', '🔧', '📦'];
 const HERO_SPEC_PRIORITY = [
   { re: /(capacity|kapasite|\b\d+\s*(gb|tb)\b)/i, icon: '💾', rank: 10 },
   { re: /(speed|hız|hizi|mhz|mt\/s|ghz|clock|frekans)/i, icon: '⚡', rank: 20 },
@@ -964,6 +975,8 @@ export default function ProductDetail() {
       return hit ? hit.rank : fallback;
     };
     const iconFor = (label, value, fallback = '•') => {
+      const concept = heroSpecConcept(label, value);
+      if (CONCEPT_ICON[concept]) return CONCEPT_ICON[concept];
       const text = `${label} ${value}`;
       const hit = HERO_SPEC_PRIORITY.find((r) => r.re.test(text));
       return hit?.icon || fallback;
@@ -992,7 +1005,10 @@ export default function ProductDetail() {
       seen.add(sig);
       candidates.push({
         ...s,
-        icon: s.icon && s.icon !== '•' ? s.icon : iconFor(label, value, sectionIcon(label)),
+        // Kavram ikonu HER ZAMAN önce gelir. Katalog satırları `sectionIcon`
+        // ile geliyordu: aynı bölümdeki tüm özellikler aynı ikonu alıyor,
+        // ızgarada üç dört kez aynı emoji görünüyordu.
+        icon: iconFor(label, value, s.icon && s.icon !== '•' ? s.icon : sectionIcon(label)),
         label,
         value,
         concept: baseConcept,
@@ -1023,12 +1039,22 @@ export default function ProductDetail() {
       const i = catOrder.indexOf(concept);
       return i >= 0 ? i : 100;
     };
+    // Son adım: ızgarada AYNI ikon iki kez görünmesin. Kavram ikonu zaten
+    // benzersiz; geriye kalan çakışmalar (jenerik kural ikonları) sırayla
+    // kullanılmamış bir yedek ikona kaydırılır.
+    const usedIcons = new Set();
+    const uniqueIcon = (icon) => {
+      if (icon && icon !== '•' && !usedIcons.has(icon)) { usedIcons.add(icon); return icon; }
+      const spare = SPARE_ICONS.find((s) => !usedIcons.has(s));
+      if (spare) { usedIcons.add(spare); return spare; }
+      return icon || '•';
+    };
     return candidates
       .sort((a, b) => (conceptRank(a.concept) - conceptRank(b.concept))
         || (a.rank - b.rank)
         || (a.order - b.order))
       .slice(0, 10)
-      .map(({ rank, concept, order, ...rest }) => rest);
+      .map(({ rank, concept, order, ...rest }) => ({ ...rest, icon: uniqueIcon(rest.icon) }));
   })();
 
   const tech = Number(p.techScore) || 0;

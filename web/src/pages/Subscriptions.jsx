@@ -241,38 +241,6 @@ function ServiceCard({ s, isWinner, L }) {
   );
 }
 
-// KARŞILAŞTIRMA GÖRÜNÜMÜ: her bölüm bir SATIR, her servis bir SÜTUN.
-// Kartlar bağımsız aktığında "Özellikler ve risk notları" solda başka
-// yükseklikte, sağda başka yükseklikte kalıyordu; artık aynı bölüm her
-// serviste AYNI satırda ve aynı hizada.
-function ServiceComparison({ services, winnerName, L }) {
-  const cols = services.length;
-  const secs = services.map((s) => serviceSections(s, L));
-  return (
-    <div className="subs-cmp" style={{ '--cols': cols }}>
-      <div className="subs-cmp-row subs-cmp-heads">
-        {services.map((s) => (
-          <div className={'subs-cmp-cell subs-svc' + (s.name === winnerName ? ' winner' : '')} key={s.name}>
-            <ServiceHeader s={s} isWinner={s.name === winnerName} L={L} />
-          </div>
-        ))}
-      </div>
-      {SECTION_ORDER.map((key) => {
-        if (secs.every((x) => !x[key])) return null;
-        return (
-          <div className="subs-cmp-row" key={key}>
-            {secs.map((x, i) => (
-              <div className="subs-cmp-cell" key={`${key}-${services[i].name}`}>
-                {x[key] || <div className="subs-cmp-empty">—</div>}
-              </div>
-            ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function Subscriptions() {
   const { t, lang } = useI18n();
   const { user, openAuth } = useAuth();
@@ -731,15 +699,11 @@ export default function Subscriptions() {
 
             <QuizImpact items={insights} L={L} />
 
-            {services.length > 1 ? (
-              <ServiceComparison services={services} winnerName={winnerName} L={L} />
-            ) : (
-              <div className="subs-svc-grid">
-                {services.map((s) => (
-                  <ServiceCard key={s.name} s={s} isWinner L={L} />
-                ))}
-              </div>
-            )}
+            <div className="subs-svc-grid">
+              {services.map((s) => (
+                <ServiceCard key={s.name} s={s} isWinner={services.length === 1 || s.name === winnerName} L={L} />
+              ))}
+            </div>
 
             {result.detailed && (
               <div className="subs-detailed">

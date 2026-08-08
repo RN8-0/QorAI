@@ -23,6 +23,9 @@ import {
   useCountUp,
   usePrefersReducedMotion,
 } from './AiCharts.jsx';
+// Ürün ve karşılaştırma raporları da link/abonelik ile AYNI şablonu kullanır.
+import AiReportView, { Sec } from './AiReportView.jsx';
+import { compareProductToUnified, productReportToUnified } from '../lib/reportAdapters';
 
 const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish', ja: 'Japanese', ar: 'Arabic' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
@@ -343,17 +346,27 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '  "product": {\n' +
     '    "name": "exact product name",\n' +
     '    "matchScore": <0-100>,\n' +
+    '    "decision": "buy|consider|skip",\n' +
+    '    "confidence": <0-100>,\n' +
+    '    "headline": "one decisive sentence a buyer can act on",\n' +
     '    "matchComment": "5-7 detailed sentences explaining quiz/profile fit, trade-offs, and who should care",\n' +
     '    "reviewedInputs": ["<input/source label in requested language>", "<input/source label in requested language>"],\n' +
     '    "factors": [{"label": "Usage fit", "score": <0-100>, "detail": "2 detailed sentences with evidence"}],\n' +
+    '    "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences on why it changes the decision", "severity": "high|mid|low"}],\n' +
+    '    "quizInsights": [{"topic": "what the question was about", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences on how it moved the score"}],\n' +
     '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 detailed sentences with evidence"}],\n' +
     '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n' +
     '    "strengths": ["6 detailed strengths grounded in specs"],\n' +
-    '    "weaknesses": ["5 detailed weaknesses or caveats"]\n' +
+    '    "weaknesses": ["5 detailed weaknesses or caveats"],\n' +
+    '    "reliabilityNotes": [{"title": "durability/support/warranty note", "detail": "1-2 sentences"}],\n' +
+    '    "bestFor": "1-2 sentences describing the buyer this is perfect for",\n' +
+    '    "notFor": "1-2 sentences describing who should skip it",\n' +
+    '    "overallVerdict": "2-3 sentence closing verdict"\n' +
     '  },\n' +
     '  "community": {\n' +
     '    "satisfaction": <0-100>,\n' +
     '    "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},\n' +
+    '    "themes": [{"label": "recurring discussion topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}],\n' +
     '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums, and specialist reviews; include uncertainty where needed",\n' +
     '    "pros": ["6 recurring positive themes"],\n' +
     '    "cons": ["5 recurring negative themes"],\n' +
@@ -367,6 +380,9 @@ export function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '}\n\n' +
     'Rules:\n' +
     '- community.sentimentBreakdown must be integer percentages summing to ~100, realistic (never all-positive) and consistent with community.summary.\n' +
+    '- community.themes must include 5-6 recurring discussion topics with varied sentiment (never all positive).\n' +
+    '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, missing accessories, service coverage) — not restated specs.\n' +
+    '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product. Never invent an answer that was not given.\n' +
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
@@ -422,7 +438,7 @@ export function buildComparePrompt(products, lang, profile = {}, context = {}) {
     '{\n' +
     '  "type": "compare_full_report",\n' +
     '  "products": [\n' +
-    `    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "matchComment": "${v.matchSent} detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "${v.analysisPara} substantial paragraphs, each 45-85 words", "pros": ["${v.prosN} detailed pros"], "cons": ["${v.consN} detailed cons"], "community": {"satisfaction": <0-100>, "summary": "${v.commPara} substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "${v.fcPara} substantial paragraphs"}}\n` +
+    `    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "decision": "buy|consider|skip", "confidence": <0-100>, "headline": "one decisive sentence", "matchComment": "${v.matchSent} detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "criticalPoints": [{"title": "warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}], "quizInsights": [{"topic": "topic", "answer": "user answer", "impact": <-100..100>, "note": "1-2 sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "${v.analysisPara} substantial paragraphs, each 45-85 words", "pros": ["${v.prosN} detailed pros"], "cons": ["${v.consN} detailed cons"], "bestFor": "1-2 sentences", "notFor": "1-2 sentences", "community": {"satisfaction": <0-100>, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "${v.commPara} substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "${v.fcPara} substantial paragraphs"}}\n` +
     '  ],\n' +
     `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
@@ -454,16 +470,24 @@ export function buildCompareProductPrompt(product, lang, profile = {}, context =
     '{\n' +
     '  "name": "exact product name",\n' +
     '  "matchScore": <0-100>,\n' +
+    '  "decision": "buy|consider|skip",\n' +
+    '  "confidence": <0-100>,\n' +
+    '  "headline": "one decisive sentence",\n' +
     '  "matchComment": "5-6 detailed sentences on fit, trade-offs and who should care, relative to the other compared products",\n' +
     '  "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}],\n' +
+    '  "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}],\n' +
+    '  "quizInsights": [{"topic": "topic", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences"}],\n' +
     '  "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 evidence-based sentences"}],\n' +
     '  "analysis": "5-7 substantial paragraphs, each 45-85 words",\n' +
     '  "pros": ["6 detailed pros"],\n' +
     '  "cons": ["5 detailed cons"],\n' +
-    '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
+    '  "bestFor": "1-2 sentences",\n' +
+    '  "notFor": "1-2 sentences",\n' +
+    '  "overallVerdict": "2-3 sentence closing verdict for THIS product",\n' +
+    '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
-    'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
+    'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Include 4-6 criticalPoints, 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product), and 4-6 community.themes with varied sentiment.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(product)}\n\n` +
     `PRODUCT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nFull payload: ${JSON.stringify(cleanProductForPrompt(product, lang))}\n\n` +
     `COMPARED AGAINST: ${peers.join(', ') || '-'}\n\n` +
@@ -980,67 +1004,32 @@ function PriceForecastBlock({ data = {}, L }) {
 // Spec yerleşimi: 1) hero (animasyonlu skor + karar rozeti + tek cümle özet)
 // 2) faktör çubukları 3) donut + dağılım çubuğu yan yana 4) kısa pro/con
 // 5) "Detaylı analiz ▾" (varsayılan kapalı) — tüm uzun metinler orada.
-function ProductFullReport({ data, L }) {
-  const product = data.product || {};
-  const match = toInt(product.matchScore || product.overallScore);
-  const community = data.community || {};
-  const sentiment = normalizeSentiment(
-    community.sentimentBreakdown || community.sentiment_breakdown,
-    toInt(community.satisfaction) || match,
-  );
-  const dist = factorDistribution(product.factors);
-  const oneLiner = firstSentences(product.matchComment, 1);
-  const strengths = arr(product.strengths).map(String);
-  const weaknesses = arr(product.weaknesses).map(String);
+// Ürün raporu artık link/abonelik analiziyle AYNI şablonu render eder.
+// (Eskiden kendi düzeni vardı: kritik noktalar, quiz etkisi, topluluk temaları
+// ve radar grafiği hiç görünmüyordu. Kullanıcı dört akışın da aynı olmasını
+// istedi; şema `lib/reportAdapters.js` ile ortak şekle çevriliyor.)
+function ProductFullReport({ data, L, lang }) {
+  const unified = productReportToUnified(data);
+  const alternatives = arr(data.alternatives);
   return (
-    <div className="ai-report">
-      <section className="ai-report-section">
-        <div className="ai-report-hero">
-          {match > 0 && <ScoreRing value={match} />}
-          <div>
-            <h3>{cleanProductName(product.name || data.name || L('Product report', 'Ürün raporu', 'Produktbericht'))}</h3>
-            {match > 0 && <DecisionBadge score={match} L={L} />}
-            {oneLiner && <p className="aic-hero-line">{oneLiner}</p>}
-          </div>
+    <AiReportView
+      data={unified}
+      L={L}
+      lang={lang}
+      showHead={false}
+      heroExtra={null}
+      altNode={alternatives.length > 0 ? (
+        <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen')}>
+          <AlternativeCards alternatives={alternatives} L={L} />
+        </Sec>
+      ) : null}
+      tailNode={arr(data.product?.reviewedInputs).length > 0 ? (
+        <div className="la-verify">
+          <strong>🧾 {L('Inputs used', 'Kullanılan girdiler', 'Verwendete Eingaben')}</strong>
+          <ul>{localizedAiList(data.product.reviewedInputs, L).map((x, i) => <li key={i}>{x}</li>)}</ul>
         </div>
-        <ReportFactors factors={product.factors} L={L} />
-        <div className="aic-row">
-          <SentimentDonut breakdown={sentiment} L={L} />
-          <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
-        </div>
-        <div className="ai-procon-row">
-          <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={strengths.slice(0, 3)} color="#22c55e" />
-          <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={weaknesses.slice(0, 3)} color="#f43f5e" />
-        </div>
-      </section>
-
-      <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
-        <ReportSection eyebrow="01" title={L('Match, advisor and deep analysis', 'Uyum, danışman ve derin analiz', 'Match, Beratung und Tiefenanalyse')}>
-          <Paragraphs text={product.matchComment} />
-          <FeatureMatches items={product.featureMatches} L={L} />
-          <Paragraphs text={product.analysis} />
-          {(strengths.length > 3 || weaknesses.length > 3) && (
-            <div className="ai-procon-row">
-              <ProCon icon="✓" title={L('Strengths', 'Güçlü yönler', 'Stärken')} items={strengths} color="#22c55e" />
-              <ProCon icon="✕" title={L('Weaknesses', 'Zayıf yönler', 'Schwächen')} items={weaknesses} color="#f43f5e" />
-            </div>
-          )}
-          <BulletList items={localizedAiList(product.reviewedInputs, L)} tone="notes" />
-        </ReportSection>
-
-        <ReportSection eyebrow="02" title={L('Internet comments and satisfaction', 'İnternet yorumları ve memnuniyet', 'Internet-Kommentare und Zufriedenheit')}>
-          <CommunityBlock data={data.community} L={L} />
-        </ReportSection>
-
-        <ReportSection eyebrow="03" title={L('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen')}>
-          <AlternativeCards alternatives={data.alternatives} L={L} />
-        </ReportSection>
-
-        <ReportSection eyebrow="04" title={L('Price forecast', 'Fiyat tahmini', 'Preisprognose')}>
-          <PriceForecastBlock data={data.priceForecast} L={L} />
-        </ReportSection>
-      </Collapsible>
-    </div>
+      ) : null}
+    />
   );
 }
 
@@ -1133,33 +1122,16 @@ function ComparisonOverview({ cmp = {}, L }) {
   );
 }
 
-// One product's complete review — the same blocks the product-detail report
-// uses, rendered inside the compare detail modal.
-function CompareProductDetail({ data = {}, L }) {
-  return (
-    <div className="ai-report">
-      <div className="ai-compare-product-head">
-        {data.imageUrl && <ProductImg src={data.imageUrl} alt={cleanProductName(data.name || '')} size="thumb" />}
-        <div>{toInt(data.matchScore) > 0 && <ScoreRing value={toInt(data.matchScore)} />}</div>
-        <Paragraphs text={data.matchComment} />
-      </div>
-      <ReportFactors factors={data.factors} L={L} />
-      <FeatureMatches items={data.featureMatches} L={L} />
-      <Paragraphs text={data.analysis} />
-      <div className="ai-procon-row">
-        <ProCon icon="✓" title={L('Pros', 'Artılar', 'Pro')} items={arr(data.pros).map(String)} color="#22c55e" />
-        <ProCon icon="✕" title={L('Cons', 'Eksiler', 'Contra')} items={arr(data.cons).map(String)} color="#f43f5e" />
-      </div>
-      <CommunityBlock data={data.community} L={L} />
-      <PriceForecastBlock data={data.priceForecast} L={L} />
-    </div>
-  );
+// One product's complete review — the SAME template the product-detail, link
+// and subscription reports use, rendered inside the compare detail modal.
+function CompareProductDetail({ data = {}, L, lang }) {
+  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false} />;
 }
 
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
 // can't collapse the fixed overlay (a known web-app pitfall). Holds one
 // product's complete review; Esc / backdrop / ✕ all close it.
-function CompareProductModal({ column, onClose, L }) {
+function CompareProductModal({ column, onClose, L, lang }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -1185,7 +1157,7 @@ function CompareProductModal({ column, onClose, L }) {
           <button type="button" className="ai-cmp-modal-close" onClick={onClose} aria-label={L('Close', 'Kapat', 'Schließen')}><IconX size={14} width={2.4} /></button>
         </header>
         <div className="ai-cmp-modal-body">
-          <CompareProductDetail data={column.ai} L={L} />
+          <CompareProductDetail data={column.ai} L={L} lang={lang} />
         </div>
       </div>
     </div>,
@@ -1298,7 +1270,7 @@ function CompareFullReport({ data, L, lang, products = [] }) {
         </section>
       )}
 
-      {active && <CompareProductModal column={active} onClose={() => setOpenIdx(-1)} L={L} />}
+      {active && <CompareProductModal column={active} onClose={() => setOpenIdx(-1)} L={L} lang={lang} />}
     </div>
   );
 }
@@ -1311,7 +1283,7 @@ export default function AiAnalysisView({ kind, raw, data: dataProp, lang, produc
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);
-  if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} />;
+  if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} lang={lang} />;
   if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} />;
   if (kind === 'deep') return <DeepView data={data} L={L} />;
   if (kind === 'alts') return <AltView data={data} L={L} />;

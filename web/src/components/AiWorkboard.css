@@ -153,11 +153,20 @@
   position: relative;
   list-style: none;
   margin: 16px 0 0;
-  padding: 0 0 0 2px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
+/* Simetri notu (3. düzeltme, kesin çözüm):
+   Rakamların çevresinde tekrar tekrar "renk boşluğu" çıkmasının kaynağı
+   noktaya eklenen SÜSLERDİ — birleştirici dikey çizgi (noktanın üstünde /
+   altında koyu mavi bir çubuk bırakıyordu), aktif nokta çevresindeki
+   box-shadow halkası ve scale(1.08) büyütmesi. Satırın iç boşluğu da
+   asimetrikti (solda 4 px, sağda 12 px), bu yüzden aktif satırın vurgusu
+   noktanın soluna dar bir şerit bırakıyordu.
+   Artık: çizgi YOK, halka YOK, büyütme YOK, iç boşluk her iki yanda eşit.
+   Noktanın kenarına değen tek bir renk bile kalmadı. */
 .aiwb-step {
   position: relative;
   display: grid;
@@ -165,38 +174,14 @@
   align-items: center;
   gap: 12px;
   min-height: 44px;
-  padding: 8px 12px 8px 4px;
+  padding: 8px 12px;
   border-radius: 12px;
   color: var(--text3);
   transition: color .2s ease, background .2s ease;
 }
-/* Noktaları birleştiren dikey çizgi. Nokta sütunu 4 px iç boşluktan sonra
-   26 px genişliğinde → merkezi 17 px. Çizgi 14 px'te duruyordu: noktanın
-   altından 3 px'lik bir şerit taşıyor ve "minik renk boşluğu" olarak
-   görünüyordu. 2 px genişlik için sol kenar 16 px = tam merkez. */
-.aiwb-step::before,
-.aiwb-step::after {
-  content: '';
-  position: absolute;
-  left: 16px;
-  width: 2px;
-  background: var(--surface-3);
-}
-/* Üst parça: satır başından noktanın üst kenarına kadar.
-   Alt parça: noktanın alt kenarından satır sonuna kadar.
-   (Tek parça çizip noktayla örtmek, gradyan zeminde soluk bir halka
-   bırakıyordu — kullanıcının gördüğü "rakamın solunda/üstünde renk boşluğu".) */
-.aiwb-step::before { top: 0; height: calc(50% - 15px); }
-.aiwb-step::after { bottom: 0; height: calc(50% - 15px); }
-.aiwb-step:first-child::before { display: none; }
-.aiwb-step:last-child::after { display: none; }
-.aiwb-step.done::before,
-.aiwb-step.done::after,
-.aiwb-step.active::before { background: color-mix(in srgb, var(--brand-blue) 34%, var(--surface-3)); }
 
 .aiwb-dot {
   position: relative;
-  z-index: 1;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -210,7 +195,7 @@
   font-size: 11px;
   font-weight: 900;
   font-style: normal;
-  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
 }
 .aiwb-step-label {
   min-width: 0;
@@ -234,8 +219,6 @@
   background: var(--grad-ai);
   border-color: transparent;
   color: #fff;
-  transform: scale(1.08);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 14%, transparent);
 }
 .aiwb-step.active .aiwb-step-label { font-weight: 850; }
 
