@@ -132,9 +132,11 @@ function ScoreChart({ services, L }) {
   );
 }
 
-function ServiceCard({ s, isWinner, L }) {
+// Bir servisin rapor BÖLÜMLERİ. Tek tek kart olarak da, karşılaştırmada
+// satır satır hizalı ızgara olarak da aynı parçalar kullanılır — böylece iki
+// servis yan yanayken "biri yukarıda biri aşağıda" kalmaz.
+function serviceSections(s, L) {
   const score = Math.round(s.score || 0);
-  // History entries saved by older builds may miss the array fields.
   const factors = list(s.factors);
   const pros = bullets(s.pros);
   const cons = bullets(s.cons);
@@ -143,24 +145,11 @@ function ServiceCard({ s, isWinner, L }) {
   const themes = list(s.communityThemes);
   const cancelReasons = bullets(s.cancelReasons);
   const features = list(s.features);
-  // Topluluk sentiment donutu — s.sentiment yoksa skordan türetilir.
   const sentiment = normalizeSentiment(s.sentiment, score);
-  // Faktör dengesi dağılımı (donut yanına) — faktörlerden türetilir, AI gerekmez.
   const dist = factorDistribution(factors);
-  return (
-    <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
-      {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
-      <div className="subs-svc-top">
-        <SubLogo name={s.name} size={50} radius={14} />
-        <Gauge value={score} size={62} stroke={6} color={scoreColor(score)} fontSize={18} />
-        <div className="subs-svc-id">
-          <strong>{s.name}</strong>
-          {s.category && <span>{s.category}</span>}
-          <div className="la-hero-badge"><DecisionBadge score={score} L={L} /></div>
-        </div>
-      </div>
-      {s.explanation && <p className="subs-svc-exp">{s.explanation}</p>}
-
+  return {
+    explanation: s.explanation ? <p className="subs-svc-exp">{s.explanation}</p> : null,
+    charts: (
       <div className="aic-row">
         {factors.length >= 3 && <RadarChart factors={factors} L={L} size={220} color="var(--brand-blue)" />}
         <div className="aic-col">
@@ -168,9 +157,9 @@ function ServiceCard({ s, isWinner, L }) {
           <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
         </div>
       </div>
-
-      {factors.length > 0 && <FactorList factors={factors} columns={1} />}
-
+    ),
+    factors: factors.length > 0 ? <FactorList factors={factors} columns={1} /> : null,
+    proscons: (pros.length || cons.length) ? (
       <ProConList
         pros={pros} cons={cons} L={L}
         titles={{
@@ -178,49 +167,108 @@ function ServiceCard({ s, isWinner, L }) {
           con: L('Trade-offs', 'Eksiler', 'Nachteile'),
         }}
       />
+    ) : null,
+    critical: critical.length ? <CriticalPoints items={critical} L={L} /> : null,
+    forwho: (s.bestFor || s.notFor) ? (
+      <div className="subs-forwho">
+        {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun', 'Ideal für')}:</b> {s.bestFor}</p>}
+        {s.notFor && <p className="subs-forwho-bad">🚫 <b>{L('Skip if', 'Şu durumda geç', 'Überspringen wenn')}:</b> {s.notFor}</p>}
+      </div>
+    ) : null,
+    themes: themes.length ? (
+      <>
+        <CommunityThemes themes={themes} L={L} />
+        <SourceChips sources={s.sources} L={L} />
+      </>
+    ) : null,
+    community: s.community ? (
+      <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor', 'Was Abonnenten sagen')}>
+        <div className="la-prose"><AiText text={s.community} /></div>
+      </Sec>
+    ) : null,
+    cancel: cancelReasons.length ? (
+      <div className="subs-svc-risks">
+        <h4>🚪 {L('Why people cancel', 'İnsanlar neden iptal ediyor', 'Warum gekündigt wird')}</h4>
+        <ul>{cancelReasons.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
+      </div>
+    ) : null,
+    extras: (features.length || risks.length) ? (
+      <Collapsible label={`📖 ${L('Features and risk notes', 'Özellikler ve risk notları', 'Funktionen und Risiken')}`}>
+        {features.length > 0 && (
+          <div className="subs-svc-features">
+            {features.slice(0, 6).map((x, i) => (<span key={i}><b>{x.label}</b>{x.value}</span>))}
+          </div>
+        )}
+        {risks.length > 0 && (
+          <div className="subs-svc-risks">
+            <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
+            <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
+          </div>
+        )}
+      </Collapsible>
+    ) : null,
+  };
+}
 
-      <CriticalPoints items={critical} L={L} />
+const SECTION_ORDER = [
+  'explanation', 'charts', 'factors', 'proscons', 'critical',
+  'forwho', 'themes', 'community', 'cancel', 'extras',
+];
 
-      {(s.bestFor || s.notFor) && (
-        <div className="subs-forwho">
-          {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun', 'Ideal für')}:</b> {s.bestFor}</p>}
-          {s.notFor && <p className="subs-forwho-bad">🚫 <b>{L('Skip if', 'Şu durumda geç', 'Überspringen wenn')}:</b> {s.notFor}</p>}
-        </div>
-      )}
+function ServiceHeader({ s, isWinner, L }) {
+  const score = Math.round(s.score || 0);
+  return (
+    <div className="subs-svc-top">
+      {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
+      <SubLogo name={s.name} size={50} radius={14} />
+      <Gauge value={score} size={62} stroke={6} color={scoreColor(score)} fontSize={18} />
+      <div className="subs-svc-id">
+        <strong>{s.name}</strong>
+        {s.category && <span>{s.category}</span>}
+        <div className="la-hero-badge"><DecisionBadge score={score} L={L} /></div>
+      </div>
+    </div>
+  );
+}
 
-      <CommunityThemes themes={themes} L={L} />
-      <SourceChips sources={s.sources} L={L} />
+function ServiceCard({ s, isWinner, L }) {
+  const sec = serviceSections(s, L);
+  return (
+    <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
+      <ServiceHeader s={s} isWinner={isWinner} L={L} />
+      {SECTION_ORDER.map((k) => (sec[k] ? <div key={k}>{sec[k]}</div> : null))}
+    </div>
+  );
+}
 
-      {s.community && (
-        <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor', 'Was Abonnenten sagen')}>
-          <div className="la-prose"><AiText text={s.community} /></div>
-        </Sec>
-      )}
-
-      {cancelReasons.length > 0 && (
-        <div className="subs-svc-risks">
-          <h4>🚪 {L('Why people cancel', 'İnsanlar neden iptal ediyor', 'Warum gekündigt wird')}</h4>
-          <ul>{cancelReasons.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
-        </div>
-      )}
-
-      {(features.length > 0 || risks.length > 0) && (
-        <Collapsible label={`📖 ${L('Features and risk notes', 'Özellikler ve risk notları', 'Funktionen und Risiken')}`}>
-          {features.length > 0 && (
-            <div className="subs-svc-features">
-              {features.slice(0, 6).map((x, i) => (
-                <span key={i}><b>{x.label}</b>{x.value}</span>
-              ))}
-            </div>
-          )}
-          {risks.length > 0 && (
-            <div className="subs-svc-risks">
-              <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
-              <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
-            </div>
-          )}
-        </Collapsible>
-      )}
+// KARŞILAŞTIRMA GÖRÜNÜMÜ: her bölüm bir SATIR, her servis bir SÜTUN.
+// Kartlar bağımsız aktığında "Özellikler ve risk notları" solda başka
+// yükseklikte, sağda başka yükseklikte kalıyordu; artık aynı bölüm her
+// serviste AYNI satırda ve aynı hizada.
+function ServiceComparison({ services, winnerName, L }) {
+  const cols = services.length;
+  const secs = services.map((s) => serviceSections(s, L));
+  return (
+    <div className="subs-cmp" style={{ '--cols': cols }}>
+      <div className="subs-cmp-row subs-cmp-heads">
+        {services.map((s) => (
+          <div className={'subs-cmp-cell subs-svc' + (s.name === winnerName ? ' winner' : '')} key={s.name}>
+            <ServiceHeader s={s} isWinner={s.name === winnerName} L={L} />
+          </div>
+        ))}
+      </div>
+      {SECTION_ORDER.map((key) => {
+        if (secs.every((x) => !x[key])) return null;
+        return (
+          <div className="subs-cmp-row" key={key}>
+            {secs.map((x, i) => (
+              <div className="subs-cmp-cell" key={`${key}-${services[i].name}`}>
+                {x[key] || <div className="subs-cmp-empty">—</div>}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -683,11 +731,15 @@ export default function Subscriptions() {
 
             <QuizImpact items={insights} L={L} />
 
-            <div className="subs-svc-grid">
-              {services.map((s) => (
-                <ServiceCard key={s.name} s={s} isWinner={s.name === winnerName || (!result.isCompare && services.length === 1)} L={L} />
-              ))}
-            </div>
+            {services.length > 1 ? (
+              <ServiceComparison services={services} winnerName={winnerName} L={L} />
+            ) : (
+              <div className="subs-svc-grid">
+                {services.map((s) => (
+                  <ServiceCard key={s.name} s={s} isWinner L={L} />
+                ))}
+              </div>
+            )}
 
             {result.detailed && (
               <div className="subs-detailed">

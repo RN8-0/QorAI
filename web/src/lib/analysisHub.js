@@ -53,8 +53,13 @@ const META = {
 
 // İşin kullanıcıyı götüreceği adres. Ürün analizi kendi ürün sayfasına,
 // karşılaştırma /compare'e döner (liste zaten localStorage'da duruyor).
+// Bildirime tiklayinca ANALIZ acilmali — sayfanin varsayilan sekmesi degil.
+// `?tab=ai` hicbir sayfada okunmuyordu: urun sayfasi 'premium' sekmesini,
+// karsilastirma 'ai' sekmesini bekliyor. Kullanici baloncuga basinca urun /
+// karsilastirma sayfasinin ilk sekmesine dusuyordu.
 function pathFor(kind, job) {
-  if (kind === 'product' && job.productPath) return `${job.productPath}?tab=ai`;
+  if (kind === 'product' && job.productPath) return `${job.productPath}?view=analysis`;
+  if (kind === 'compare') return `${META.compare.path}?view=analysis`;
   return META[kind].path;
 }
 

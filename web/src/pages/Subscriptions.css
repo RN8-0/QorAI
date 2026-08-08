@@ -859,3 +859,44 @@
 @media (prefers-reduced-motion: reduce) {
   .subs-diff { animation: none; }
 }
+
+/* ── KARŞILAŞTIRMA: bölüm bölüm HİZALI ızgara ────────────────────────────
+   Kartlar bağımsız aktığında aynı bölüm (ör. "Özellikler ve risk notları")
+   solda başka, sağda başka yükseklikte kalıyordu. Artık her BÖLÜM bir satır,
+   her SERVİS bir sütun: karşılıklı bölümler her zaman aynı hizada. */
+.subs-cmp {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.subs-cmp-row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.subs-cmp-cell {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.subs-cmp-cell > * { min-width: 0; }
+/* Başlık satırı kart görünümünü korur (logo + puan + rozet). */
+.subs-cmp-heads .subs-cmp-cell.subs-svc { padding: 16px; }
+.subs-cmp-empty {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 800;
+}
+/* Dar ekranda sütunlar alt alta düşer — hizalama anlamını yitirdiği için
+   servisler sırayla okunur. */
+@media (max-width: 860px) {
+  .subs-cmp-row { grid-template-columns: 1fr; }
+  .subs-cmp-empty { display: none; }
+}

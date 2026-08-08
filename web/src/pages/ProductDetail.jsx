@@ -863,6 +863,9 @@ export default function ProductDetail() {
   const aiAutoRef = useRef('');
   useEffect(() => {
     if (!p) return;
+    // `?view=analysis`: KOŞAN ya da HAZIR analize götürür — yeni analiz
+    // başlatmaz (Qor balonundaki bildirim bunu kullanır).
+    if (searchParams.get('view') === 'analysis') setTab('premium');
     if (searchParams.get('ai') === '1' && aiAutoRef.current !== p.id) {
       aiAutoRef.current = p.id;
       setTab('premium');

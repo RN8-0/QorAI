@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconX } from '../components/GlyphIcons.jsx';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
 import { getSavedComparisonAnalysis, saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
@@ -226,6 +226,12 @@ export default function Compare() {
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const [tab, setTab] = useState('specs');
+  // Qor balonundaki bildirim `?view=analysis` ile gelir: karşılaştırma sayfası
+  // açılır açılmaz ANALİZ sekmesi seçilir (kullanıcı sekme aramaz).
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('view') === 'analysis') setTab('ai');
+  }, [searchParams]);
   const { user } = useAuth();
   const guardAiAccess = useAiAccess(lang);
   // Deep links / crawlers can land on /compare/<a>-vs-<b>. Recover the two ids
