@@ -14,12 +14,11 @@ function scrollIntoViewBelowNav(el) {
 }
 
 // ── One shared "what Qor AI is doing right now" animation ────────────────────
-// Same look as the link-analysis workboard (spinning orb + lit-up step list),
-// reused for the onboarding-style quiz prep AND the report analysis on the
-// product, compare, link and subscription flows. Steps light up in order and
-// HOLD on the operation that is genuinely running (driven by the real pipeline
-// `stage` when the caller has one) — it never loops back to the start "for
-// decoration", so the label always reflects the actual current step.
+// Steps light up in order and HOLD on the operation that is genuinely running
+// (driven by the real pipeline `stage` when the caller has one) — it never loops
+// back to the start "for decoration", so the label always reflects the actual
+// current step. Every report flow now runs a real grounded internet-review scan,
+// so that step is a REAL one in the list, not filler.
 const SETS = {
   // Quiz preparation
   quizProduct: {
@@ -81,7 +80,7 @@ const SETS = {
   },
   linkQuiz: {
     title: ['Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'],
-    detail: ['Questions are tuned to this product, not a generic profile form.', 'Sorular genel profil formu değil, bu ürüne göre hazırlanıyor.', 'Die Fragen werden auf dieses Produkt zugeschnitten.'],
+    detail: ['Questions are tuned to this product — and the review scan is already running in the background.', 'Sorular bu ürüne göre hazırlanıyor — yorum taraması da arka planda çoktan başladı.', 'Die Fragen werden zugeschnitten — der Bewertungs-Scan läuft schon im Hintergrund.'],
     steps: [
       ['Product context is locked', 'Ürün bağlamı sabitlendi', 'Produktkontext ist fixiert'],
       ['Usage scenarios are mapped', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'],
@@ -91,28 +90,32 @@ const SETS = {
   },
   linkAnalyze: {
     title: ['Building your report', 'Raporun hazırlanıyor', 'Bericht wird erstellt'],
-    detail: ['Qor AI turns your answers into a personal match report.', 'Qor AI cevaplarını kişisel eşleşme raporuna çeviriyor.', 'Qor AI macht aus deinen Antworten einen persönlichen Match-Bericht.'],
+    detail: ['Qor AI reads real owner reviews, then turns your answers into a personal match report.', 'Qor AI gerçek kullanıcı yorumlarını okuyup cevaplarını kişisel eşleşme raporuna çeviriyor.', 'Qor AI liest echte Nutzerbewertungen und macht daraus deinen Match-Bericht.'],
     steps: [
-      ['Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
+      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor', 'Bewertungen und Foren werden gescannt'],
       ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
-      ['Summarizing reviews and risks', 'Yorumlar ve riskler özetleniyor', 'Bewertungen und Risiken werden zusammengefasst'],
-      ['Building the final verdict', 'Son karar hazırlanıyor', 'Endgültiges Fazit wird erstellt'],
+      ['Extracting critical points and risks', 'Kritik noktalar ve riskler çıkarılıyor', 'Kritische Punkte und Risiken werden extrahiert'],
+      ['Composing your personal report', 'Kişisel raporun yazılıyor', 'Dein persönlicher Bericht wird geschrieben'],
     ],
   },
   linkCompare: {
     title: ['Comparing links', 'Linkler karşılaştırılıyor', 'Links werden verglichen'],
-    detail: ['Qor AI is weighing each product side by side.', 'Qor AI her ürünü yan yana tartıyor.', 'Qor AI gewichtet jedes Produkt nebeneinander.'],
+    detail: ['Qor AI weighs each product side by side against real owner feedback.', 'Qor AI her ürünü gerçek kullanıcı geri bildirimiyle yan yana tartıyor.', 'Qor AI gewichtet jedes Produkt anhand echter Rückmeldungen.'],
     steps: [
-      ['Validating product links', 'Ürün linkleri doğrulanıyor', 'Produktlinks werden geprüft'],
-      ['Identifying each exact product', 'Her ürün tek tek tanınıyor', 'Jedes Produkt wird erkannt'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
+      ['Locking each exact product', 'Her ürün tek tek sabitleniyor', 'Jedes Produkt wird fixiert'],
+      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor', 'Bewertungen und Foren werden gescannt'],
       ['Weighing strengths and trade-offs', 'Artılar, eksiler ve farklar tartılıyor', 'Stärken und Kompromisse werden abgewogen'],
+      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor', 'Entscheidende Unterschiede werden gesucht'],
       ['Writing the final recommendation', 'Nihai öneri yazılıyor', 'Empfehlung wird geschrieben'],
     ],
   },
   // Subscription analysis flow
   subQuiz: {
     title: ['Preparing your subscription quiz', 'Abonelik quizin hazırlanıyor', 'Abo-Quiz wird vorbereitet'],
-    detail: ['The questions adapt to the selected service type.', 'Sorular seçilen abonelik türüne göre uyarlanıyor.', 'Die Fragen passen sich dem Diensttyp an.'],
+    detail: ['Questions adapt to the selected service type — the review scan already started.', 'Sorular seçilen abonelik türüne göre uyarlanıyor — yorum taraması çoktan başladı.', 'Die Fragen passen sich dem Diensttyp an — der Bewertungs-Scan läuft bereits.'],
     steps: [
       ['Reading the selected services', 'Seçilen abonelikler okunuyor', 'Ausgewählte Dienste werden gelesen'],
       ['Detecting the service category', 'Servis kategorisi algılanıyor', 'Dienstkategorie wird erkannt'],
@@ -122,21 +125,25 @@ const SETS = {
   },
   subAnalyze: {
     title: ['Analyzing subscription', 'Abonelik analiz ediliyor', 'Abo wird analysiert'],
-    detail: ['Qor AI turns your answers into a detailed match report.', 'Qor AI cevaplarını detaylı eşleşme raporuna çeviriyor.', 'Qor AI macht aus deinen Antworten einen Match-Bericht.'],
+    detail: ['Qor AI reads what real subscribers say, then matches it to your habits.', 'Qor AI gerçek abonelerin ne dediğini okuyup alışkanlıklarınla eşleştiriyor.', 'Qor AI liest echte Abonnentenstimmen und gleicht sie mit deinen Gewohnheiten ab.'],
     steps: [
-      ['Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
+      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor', 'Abonnentenbewertungen werden gescannt'],
       ['Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor', 'Inhalts- und Funktionsfit wird bewertet'],
-      ['Reviewing community signals', 'İnternet yorum sinyalleri değerlendiriliyor', 'Community-Signale werden bewertet'],
-      ['Building the final recommendation', 'Nihai öneri hazırlanıyor', 'Empfehlung wird erstellt'],
+      ['Scoring retention and cancel risk', 'Tutma değeri ve iptal riski puanlanıyor', 'Bindung und Kündigungsrisiko werden bewertet'],
+      ['Building your usage plan', 'Kullanım planın hazırlanıyor', 'Dein Nutzungsplan wird erstellt'],
     ],
   },
   subCompare: {
     title: ['Comparing subscriptions', 'Abonelikler karşılaştırılıyor', 'Abos werden verglichen'],
-    detail: ['Qor AI turns your answers into a detailed match report.', 'Qor AI cevaplarını detaylı eşleşme raporuna çeviriyor.', 'Qor AI macht aus deinen Antworten einen Match-Bericht.'],
+    detail: ['Qor AI reads what real subscribers say about each one, then picks your winner.', 'Qor AI her servis için gerçek abone yorumlarını okuyup sana uygun olanı seçiyor.', 'Qor AI liest echte Abonnentenstimmen und wählt deinen Gewinner.'],
     steps: [
-      ['Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'],
-      ['Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor', 'Inhalts- und Funktionsfit wird bewertet'],
-      ['Reviewing community signals', 'İnternet yorum sinyalleri değerlendiriliyor', 'Community-Signale werden bewertet'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
+      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor', 'Abonnentenbewertungen werden gescannt'],
+      ['Comparing catalogues and features', 'İçerik ve özellikler karşılaştırılıyor', 'Kataloge und Funktionen werden verglichen'],
+      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor', 'Entscheidende Unterschiede werden gesucht'],
       ['Building the final recommendation', 'Nihai öneri hazırlanıyor', 'Empfehlung wird erstellt'],
     ],
   },
@@ -159,6 +166,7 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
   const [active, setActive] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const rootRef = useRef(null);
+  const pct = Math.round(((active + 1) / steps.length) * 100);
 
   // GECEN SURE: analiz 30-90 sn surebiliyor. Sayac olmadan ekran "donmus" gibi
   // duruyordu; sayan bir sayi "calisiyor" sinyalinin en ucuz ve en net hali.
@@ -186,40 +194,92 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
     return () => clearTimeout(id);
   }, [active, ceil]);
 
+  const ringR = 26;
+  const ringC = 2 * Math.PI * ringR;
+
   return (
-    <div className="aiwb fade-up" role="status" aria-live="polite" ref={rootRef}>
-      <div className="aiwb-orb" aria-hidden="true">
-        <span className="aiwb-ring" />
-        <span className="aiwb-core" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-            <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
-          </svg>
-        </span>
-      </div>
-      <div className="aiwb-copy">
-        <strong>{L(set.title)}</strong>
-        <span>{L(set.detail)}</span>
-        <div className="aiwb-meter" role="progressbar"
-          aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={active + 1}>
-          <i style={{ width: `${Math.round(((active + 1) / steps.length) * 100)}%` }} />
-        </div>
-        <div className="aiwb-status">
-          <span>{L(['Step', 'Adım', 'Schritt'])} {active + 1}/{steps.length}</span>
-          <span className="aiwb-elapsed">
-            {elapsed < 60 ? `${elapsed} ${L(['s', 'sn', 's'])}`
-              : `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`}
+    <div className="aiwb" role="status" aria-live="polite" ref={rootRef}>
+      <span className="aiwb-edge" aria-hidden="true" />
+
+      <div className="aiwb-head">
+        <div className="aiwb-orb" aria-hidden="true">
+          <span className="aiwb-sweep" />
+          <span className="aiwb-orb-ring" />
+          <span className="aiwb-core">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+              <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
+            </svg>
           </span>
         </div>
+
+        <div className="aiwb-copy">
+          <span className="aiwb-kicker">
+            <i aria-hidden="true" />
+            {L(['Qor AI is working', 'Qor AI çalışıyor', 'Qor AI arbeitet'])}
+          </span>
+          <strong>{L(set.title)}</strong>
+          <span className="aiwb-detail">{L(set.detail)}</span>
+        </div>
+
+        <div className="aiwb-gauge" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="64" height="64">
+            <circle cx="32" cy="32" r={ringR} className="aiwb-gauge-track" />
+            <circle
+              cx="32" cy="32" r={ringR}
+              className="aiwb-gauge-fill"
+              strokeDasharray={ringC}
+              strokeDashoffset={ringC - (pct / 100) * ringC}
+            />
+          </svg>
+          <b>{pct}%</b>
+        </div>
       </div>
-      <div className="aiwb-steps">
+
+      <div className="aiwb-meter" role="progressbar"
+        aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={active + 1}>
+        <i style={{ width: `${pct}%` }} />
+      </div>
+      <div className="aiwb-status">
+        <span>{L(['Step', 'Adım', 'Schritt'])} {active + 1}/{steps.length}</span>
+        <span className="aiwb-elapsed">
+          {elapsed < 60 ? `${elapsed} ${L(['s', 'sn', 's'])}`
+            : `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`}
+        </span>
+      </div>
+
+      <ol className="aiwb-steps">
         {steps.map((s, i) => (
-          <div key={i} className={'aiwb-step' + (i === active ? ' active' : '') + (i < active ? ' done' : '')}>
-            <i aria-hidden="true">{i < active ? '✓' : i + 1}</i>
-            <span>{L(s)}</span>
-          </div>
+          <li key={i} className={'aiwb-step' + (i === active ? ' active' : '') + (i < active ? ' done' : '')}>
+            <span className="aiwb-dot" aria-hidden="true">
+              {i < active ? (
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : i + 1}
+            </span>
+            <span className="aiwb-step-label">{L(s)}</span>
+            {i === active && <span className="aiwb-live" aria-hidden="true"><i /><i /><i /></span>}
+          </li>
         ))}
+      </ol>
+
+      {/* Ne geldiğinin önizlemesi: boş bir bekleme ekranı yerine raporun
+          iskeleti. "Uzun sürüyor ama bir şey geliyor" hissini veren şey bu. */}
+      <div className="aiwb-skeleton" aria-hidden="true">
+        <div className="aiwb-sk-row">
+          <span className="aiwb-sk-ring" />
+          <div className="aiwb-sk-lines">
+            <span className="aiwb-sk-line w70" />
+            <span className="aiwb-sk-line w45" />
+          </div>
+        </div>
+        <div className="aiwb-sk-bars">
+          <span className="aiwb-sk-bar" style={{ '--w': '82%' }} />
+          <span className="aiwb-sk-bar" style={{ '--w': '64%' }} />
+          <span className="aiwb-sk-bar" style={{ '--w': '73%' }} />
+          <span className="aiwb-sk-bar" style={{ '--w': '48%' }} />
+        </div>
       </div>
+
       <p className="aiwb-note">
         {L([
           'You can keep browsing — this keeps running in the background and Qor AI will ping you when it is ready.',

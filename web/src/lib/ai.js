@@ -341,14 +341,58 @@ function firstBalancedJsonObject(text) {
   return '';
 }
 
+// KESİLMİŞ JSON KURTARMA. Derin analiz raporları büyük: model çıktı sınırına
+// dayandığında JSON yarıda kesiliyor ve TÜM rapor çöpe gidiyordu (kullanıcı
+// "analiz başarısız" görüyor). Burada açık kalan string kapatılır, yarım kalan
+// son alan atılır ve açık parantezler kapatılır — böylece yazılabilmiş
+// bölümler kurtarılır. Eksik alanları çağıran taraf zaten tolere ediyor.
+function repairTruncatedJson(src) {
+  const s = String(src || '');
+  const start = s.indexOf('{');
+  if (start < 0) return '';
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  // En son BÜTÜN değerin bittiği yer + o andaki açık parantezler. Yalnız string
+  // dışındayken güncellenir, yani kesim noktası hiçbir zaman metnin ortasına
+  // düşmez.
+  let cut = -1;
+  let cutStack = null;
+  for (let i = start; i < s.length; i++) {
+    const ch = s[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') {
+      stack.push(ch === '{' ? '}' : ']');
+    } else if (ch === '}' || ch === ']') {
+      stack.pop();
+      cut = i + 1;
+      cutStack = [...stack];
+    } else if (ch === ',') {
+      cut = i; // virgül DAHİL EDİLMEZ → önceki değer son eleman olur
+      cutStack = [...stack];
+    }
+  }
+  if (!stack.length || cut < 0 || !cutStack) return '';
+  let out = s.slice(start, cut).replace(/,\s*$/, '');
+  for (let i = cutStack.length - 1; i >= 0; i--) out += cutStack[i];
+  return out;
+}
+
 // Tolerant JSON extraction — strips ```json fences, repairs common model
 // formatting drift, and pulls the first balanced object out.
 export function parseJsonLoose(text) {
-  let t = cleanupJsonText(text);
+  const t = cleanupJsonText(text);
   try { return JSON.parse(t); } catch { /* fall through */ }
   const balanced = cleanupJsonText(firstBalancedJsonObject(t));
   if (balanced) {
     try { return JSON.parse(balanced); } catch { /* fall through */ }
+  }
+  const repaired = repairTruncatedJson(t);
+  if (repaired) {
+    try { return JSON.parse(cleanupJsonText(repaired)); } catch { /* fall through */ }
   }
   throw new Error('AI JSON parse failed');
 }

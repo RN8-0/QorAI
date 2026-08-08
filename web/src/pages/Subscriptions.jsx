@@ -15,15 +15,25 @@ import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import { historyPayload } from '../lib/historyPayload';
 import AiText from '../components/AiText.jsx';
-import Gauge, { techColor } from '../components/Gauge.jsx';
+import Gauge from '../components/Gauge.jsx';
 import {
   BarFill,
   Collapsible,
+  CommunityThemes,
+  CriticalPoints,
   DecisionBadge,
   DistributionBar,
+  FactorList,
+  HeatMatrix,
+  ProConList,
+  QuizImpact,
+  RadarChart,
   SentimentDonut,
+  SourceChips,
+  StatTiles,
   factorDistribution,
   normalizeSentiment,
+  scoreColor,
 } from '../components/AiCharts.jsx';
 import SubLogo from '../components/SubLogo.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
@@ -71,6 +81,24 @@ function list(v) {
   return Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()) : [];
 }
 
+// Eski kayıtlarda düz string, yeni kayıtlarda {title, detail}.
+function bullets(v) {
+  return (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '' }
+      : { title: String(x?.title || x?.name || ''), detail: String(x?.detail || x?.why || '') }))
+    .filter((x) => x.title || x.detail);
+}
+
+function Sec({ icon, title, meta, children, tone = '' }) {
+  return (
+    <section className={`subs-sec${tone ? ` ${tone}` : ''}`}>
+      <h4>{icon} {title}{meta ? <em> · {meta}</em> : null}</h4>
+      {children}
+    </section>
+  );
+}
+
 // Horizontal bar chart comparing each service's overall compatibility score —
 // the "graph" the app shows above the per-service breakdown.
 function ScoreChart({ services, L }) {
@@ -83,7 +111,7 @@ function ScoreChart({ services, L }) {
       <div className="subs-chart-rows">
         {rows.map((s, i) => {
           const v = Math.round(s.score || 0);
-          const col = techColor(v);
+          const col = scoreColor(v);
           return (
             <div className="subs-chart-row" key={s.name}>
               <span className="subs-chart-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
@@ -100,44 +128,18 @@ function ScoreChart({ services, L }) {
   );
 }
 
-function FactorMatrix({ services, L }) {
-  const labels = [...new Set((services || []).flatMap((s) => list(s.factors).map((f) => f.label)))];
-  if (!labels.length || !services?.length) return null;
-  return (
-    <div className="subs-matrix">
-      <div className="subs-chart-head">🧭 {L('Factor breakdown', 'Faktör kırılımı', 'Faktorvergleich')}</div>
-      {labels.map((label) => (
-        <div className="subs-matrix-row" key={label}>
-          <div className="subs-matrix-label">{label}</div>
-          <div className="subs-matrix-bars">
-            {services.map((s) => {
-              const f = list(s.factors).find((x) => x.label === label);
-              const score = Math.round(f?.score || 0);
-              const color = techColor(score);
-              return (
-                <div className="subs-mini" key={`${s.name}-${label}`}>
-                  <span><SubLogo name={s.name} size={18} radius={5} />{s.name}</span>
-                  <div><BarFill pct={Math.max(4, Math.min(100, score))} color={color} /></div>
-                  <b style={{ color }}>{score}</b>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ServiceCard({ s, isWinner, L }) {
   const score = Math.round(s.score || 0);
   // History entries saved by older builds may miss the array fields.
   const factors = list(s.factors);
-  const pros = list(s.pros);
-  const cons = list(s.cons);
-  const risks = list(s.risks);
+  const pros = bullets(s.pros);
+  const cons = bullets(s.cons);
+  const risks = bullets(s.risks);
+  const critical = list(s.criticalPoints);
+  const themes = list(s.communityThemes);
+  const cancelReasons = bullets(s.cancelReasons);
   const features = list(s.features);
-  // Topluluk sentiment donutu — s.sentiment yoksa skordan türetilir (spec §4B).
+  // Topluluk sentiment donutu — s.sentiment yoksa skordan türetilir.
   const sentiment = normalizeSentiment(s.sentiment, score);
   // Faktör dengesi dağılımı (donut yanına) — faktörlerden türetilir, AI gerekmez.
   const dist = factorDistribution(factors);
@@ -145,8 +147,8 @@ function ServiceCard({ s, isWinner, L }) {
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
       <div className="subs-svc-top">
-        <SubLogo name={s.name} size={46} radius={12} />
-        <Gauge value={score} size={56} stroke={5} color={techColor(score)} fontSize={16} />
+        <SubLogo name={s.name} size={50} radius={14} />
+        <Gauge value={score} size={62} stroke={6} color={scoreColor(score)} fontSize={18} />
         <div className="subs-svc-id">
           <strong>{s.name}</strong>
           {s.category && <span>{s.category}</span>}
@@ -154,40 +156,50 @@ function ServiceCard({ s, isWinner, L }) {
         </div>
       </div>
       {s.explanation && <p className="subs-svc-exp">{s.explanation}</p>}
-      {/* Tek bakış: memnuniyet donutu + faktör dengesi. Detaylar aşağıda gizli. */}
+
       <div className="aic-row">
+        {factors.length >= 3 && <RadarChart factors={factors} L={L} size={220} color="var(--brand-blue)" />}
         <SentimentDonut breakdown={sentiment} L={L} compact />
         <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
       </div>
-      <div className="subs-svc-pc">
-        {pros.length > 0 && (
-          <div className="subs-svc-list subs-svc-pros">
-            <h4>✓ {L('Strengths', 'Güçlü yanlar', 'Stärken')}</h4>
-            <ul>{pros.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
-          </div>
-        )}
-        {cons.length > 0 && (
-          <div className="subs-svc-list subs-svc-cons">
-            <h4>⚠ {L('Trade-offs', 'Eksiler', 'Nachteile')}</h4>
-            <ul>{cons.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
-          </div>
-        )}
-      </div>
-      {s.bestFor && <p className="subs-svc-best">🎯 {s.bestFor}</p>}
-      {/* Faktör çubukları + özellikler + risk + topluluk varsayılan KAPALI — kart tek bakışta kalsın (spec §5). */}
-      {(factors.length > 0 || features.length > 0 || s.community || risks.length > 0) && (
-        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
-          {factors.length > 0 && (
-            <div className="subs-svc-factors">
-              {factors.map((f, i) => (
-                <div className="subs-svc-factor" key={f.label}>
-                  <span>{f.emoji ? `${f.emoji} ` : ''}{f.label.replace(/_/g, ' ')}</span>
-                  <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
-                  <div className="subs-svc-fbar"><BarFill pct={Math.max(4, Math.min(100, f.score))} color={techColor(f.score)} delay={i * 60} /></div>
-                </div>
-              ))}
-            </div>
-          )}
+
+      {factors.length > 0 && <FactorList factors={factors} columns={1} />}
+
+      <ProConList
+        pros={pros} cons={cons} L={L}
+        titles={{
+          pro: L('Strengths', 'Güçlü yanlar', 'Stärken'),
+          con: L('Trade-offs', 'Eksiler', 'Nachteile'),
+        }}
+      />
+
+      <CriticalPoints items={critical} L={L} />
+
+      {(s.bestFor || s.notFor) && (
+        <div className="subs-forwho">
+          {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun', 'Ideal für')}:</b> {s.bestFor}</p>}
+          {s.notFor && <p className="subs-forwho-bad">🚫 <b>{L('Skip if', 'Şu durumda geç', 'Überspringen wenn')}:</b> {s.notFor}</p>}
+        </div>
+      )}
+
+      <CommunityThemes themes={themes} L={L} />
+      <SourceChips sources={s.sources} L={L} />
+
+      {s.community && (
+        <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor', 'Was Abonnenten sagen')}>
+          <div className="la-prose"><AiText text={s.community} /></div>
+        </Sec>
+      )}
+
+      {cancelReasons.length > 0 && (
+        <div className="subs-svc-risks">
+          <h4>🚪 {L('Why people cancel', 'İnsanlar neden iptal ediyor', 'Warum gekündigt wird')}</h4>
+          <ul>{cancelReasons.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
+        </div>
+      )}
+
+      {(features.length > 0 || risks.length > 0) && (
+        <Collapsible label={`📖 ${L('Features and risk notes', 'Özellikler ve risk notları', 'Funktionen und Risiken')}`}>
           {features.length > 0 && (
             <div className="subs-svc-features">
               {features.slice(0, 6).map((x, i) => (
@@ -198,85 +210,11 @@ function ServiceCard({ s, isWinner, L }) {
           {risks.length > 0 && (
             <div className="subs-svc-risks">
               <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
-              <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
+              <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
             </div>
-          )}
-          {s.community && (
-            <section className="subs-svc-section">
-              <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
-              <AiText text={s.community} />
-            </section>
           )}
         </Collapsible>
       )}
-    </div>
-  );
-}
-
-function SubsLoadingWorkboard({ phase, count, L, t }) {
-  const [step, setStep] = useState(0);
-  const copy = (() => {
-    if (phase === 'quizLoading') {
-      return {
-        title: L('Preparing your subscription quiz', 'Abonelik quizin hazırlanıyor', 'Abo-Quiz wird vorbereitet'),
-        detail: L('Qor AI is adapting the questions to the selected service type.',
-          'Qor AI soruları seçilen abonelik türüne göre uyarlıyor.',
-          'Qor AI passt die Fragen an den ausgewählten Diensttyp an.'),
-        steps: [
-          L('Reading selected services', 'Seçilen abonelikler okunuyor', 'Ausgewählte Dienste werden gelesen'),
-          L('Detecting service category', 'Servis kategorisi algılanıyor', 'Dienstkategorie wird erkannt'),
-          L('Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'),
-          L('Writing targeted questions', 'Hedefli sorular yazılıyor', 'Gezielte Fragen werden erstellt'),
-          L('Balancing answer choices', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'),
-        ],
-      };
-    }
-    return {
-      title: count > 1
-        ? L('Comparing subscriptions', 'Abonelikler karşılaştırılıyor', 'Abos werden verglichen')
-        : L('Analyzing subscription', 'Abonelik analiz ediliyor', 'Abo wird analysiert'),
-      detail: L('Qor AI is turning your quiz answers into a detailed match report.',
-        'Qor AI quiz cevaplarını detaylı eşleşme raporuna çeviriyor.',
-        'Qor AI macht aus deinen Antworten einen detaillierten Match-Bericht.'),
-      steps: [
-        L('Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'),
-        L('Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor', 'Inhalts- und Funktionsfit wird bewertet'),
-        L('Reviewing community signals', 'İnternet yorum sinyalleri değerlendiriliyor', 'Community-Signale werden bewertet'),
-        L('Scoring retention and risk factors', 'Tutma değeri ve risk faktörleri puanlanıyor', 'Bindung und Risiken werden bewertet'),
-        L('Building the final recommendation', 'Nihai öneri hazırlanıyor', 'Empfehlung wird erstellt'),
-      ],
-    };
-  })();
-
-  useEffect(() => {
-    setStep(0);
-    const timer = setInterval(() => setStep((n) => (n + 1) % copy.steps.length), 1350);
-    return () => clearInterval(timer);
-  }, [phase, copy.steps.length]);
-
-  return (
-    <div className="subs-loading-board fade-up" role="status" aria-live="polite">
-      <div className="subs-load-orb" aria-hidden="true">
-        <span className="subs-load-ring" />
-        <span className="subs-load-core" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-            <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
-          </svg>
-        </span>
-      </div>
-      <div className="subs-load-copy">
-        <strong>{copy.title || t('subs.loading')}</strong>
-        <span>{copy.detail}</span>
-      </div>
-      <div className="subs-load-steps">
-        {copy.steps.map((label, i) => (
-          <div key={label} className={'subs-load-step' + (i === step ? ' active' : '') + (i < step ? ' done' : '')}>
-            <i aria-hidden="true">{i < step ? '✓' : i + 1}</i>
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -307,6 +245,9 @@ export default function Subscriptions() {
   // (app parity) even for AI-validated services that aren't in the local catalog.
   const [catMap, setCatMap] = useState({});
   const [activeJobId, setActiveJobId] = useState('');
+  // Gerçek boru hattı aşaması (research | report) — tahta hangi işin
+  // GERÇEKTEN koştuğunu göstersin diye.
+  const [stage, setStage] = useState(null);
   const lastSavedAt = useRef('');
 
   function profile() {
@@ -438,6 +379,7 @@ export default function Subscriptions() {
   useEffect(() => subscribeSubscriptionAnalysisJob((job) => {
     if (!job) return;
     setActiveJobId(job.id || '');
+    setStage(job.stage || null);
     setPendingItems(job.services || []);
     if (job.services?.length) setSelected(job.services);
     setQuestions(job.questions || []);
@@ -505,14 +447,30 @@ export default function Subscriptions() {
       {showPicker && (
         <>
           <Reveal as="section" className="subs-picker-panel">
+            <div className="subs-picker-head">
+              <div className="subs-picker-title">
+                <strong>{L('Pick your subscriptions', 'Aboneliklerini seç', 'Wähle deine Abos')}</strong>
+                <span>{selected.length > 1
+                  ? L('Comparison mode — same category only', 'Karşılaştırma modu — yalnız aynı tür', 'Vergleichsmodus — nur gleiche Kategorie')
+                  : L('Add a second one to compare them side by side', 'Yan yana karşılaştırmak için ikinci bir tane ekle', 'Füge ein zweites hinzu, um zu vergleichen')}</span>
+              </div>
+              <span className={'subs-mode-pill' + (selected.length > 1 ? ' compare' : '')}>
+                {selected.length > 1
+                  ? `⚖️ ${L('Compare', 'Karşılaştır', 'Vergleich')} · ${selected.length}`
+                  : `🔎 ${L('Deep analysis', 'Derin analiz', 'Tiefenanalyse')}`}
+              </span>
+            </div>
+
             <div className="subs-grid">
               {TOP20.map((name) => {
                 const on = selected.includes(name);
                 return (
                   <button key={name} type="button" title={name} aria-label={name}
+                    aria-pressed={on}
                     className={'subs-tile' + (on ? ' active' : '')}
                     onClick={() => toggle(name)}>
                     <SubLogo name={name} size={44} radius={12} />
+                    <span className="subs-tile-name">{name}</span>
                     {on && <span className="subs-tile-check pop-in" aria-hidden="true">✓</span>}
                   </button>
                 );
@@ -529,6 +487,7 @@ export default function Subscriptions() {
 
             {selected.length > 0 && (
               <div className="subs-selected">
+                <span className="subs-selected-label">{L('Selected', 'Seçilenler', 'Ausgewählt')} · {selected.length}</span>
                 {selected.map((s) => (
                   <span key={s} className="subs-chip">
                     <SubLogo name={s} size={22} radius={6} />
@@ -545,8 +504,18 @@ export default function Subscriptions() {
 
             <button className="btn btn-grad btn-lg btn-shine subs-go"
               onClick={() => startAnalysis()} disabled={selected.length < 1 || starting}>
-              {selected.length < 1 ? t('subs.goMin') : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
+              {selected.length < 1
+                ? t('subs.goMin')
+                : selected.length > 1
+                  ? `${L('Compare', 'Karşılaştır', 'Vergleichen')} · ${selected.length}`
+                  : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
             </button>
+
+            <ul className="subs-promise">
+              <li>🌐 {L('Real subscriber reviews from Reddit, forums and app stores', 'Reddit, forum ve uygulama mağazalarından gerçek abone yorumları', 'Echte Abonnentenbewertungen aus Reddit, Foren und App-Stores')}</li>
+              <li>🧠 {L('A short quiz makes the verdict personally yours', 'Kısa bir quiz kararı sana özel yapar', 'Ein kurzes Quiz macht das Urteil persönlich')}</li>
+              <li>🚪 {L('Why people cancel, what to watch for, and a usage plan', 'İnsanlar neden iptal ediyor, nelere dikkat etmeli ve kullanım planı', 'Warum gekündigt wird, worauf zu achten ist, plus Nutzungsplan')}</li>
+            </ul>
           </Reveal>
 
           <Reveal delay={90}>
@@ -621,8 +590,8 @@ export default function Subscriptions() {
             <div className="subs-hist-scores">
               {Object.entries(histEntry.scores).map(([name, sc]) => (
                 <div className="subs-svc-factor" key={name}>
-                  <span><SubLogo name={name} size={20} radius={6} /> {name} — <b style={{ color: techColor(Number(sc) || 0) }}>{Math.round(Number(sc) || 0)}</b></span>
-                  <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, Number(sc) || 0))}%`, background: techColor(Number(sc) || 0) }} /></div>
+                  <span><SubLogo name={name} size={20} radius={6} /> {name} — <b style={{ color: scoreColor(Number(sc) || 0) }}>{Math.round(Number(sc) || 0)}</b></span>
+                  <div className="subs-svc-fbar"><i style={{ width: `${Math.max(4, Math.min(100, Number(sc) || 0))}%`, background: scoreColor(Number(sc) || 0) }} /></div>
                 </div>
               ))}
             </div>
@@ -642,90 +611,122 @@ export default function Subscriptions() {
       )}
 
       {phase === 'analyzing' && (
-        <AiWorkboard lang={lang} mode={(pendingItems.length || selected.length) > 1 ? 'subCompare' : 'subAnalyze'} />
+        <AiWorkboard lang={lang} mode={(pendingItems.length || selected.length) > 1 ? 'subCompare' : 'subAnalyze'} stage={stage} />
       )}
 
-      {phase === 'result' && result && (
-        <div className="subs-result fade-up">
-          {(() => {
-            const services = result.services || [];
-            const best = services.find((s) => s.name === winnerName) || [...services].sort((a, b) => b.score - a.score)[0];
-            if (!best) return null;
-            return (
+      {phase === 'result' && result && (() => {
+        const services = result.services || [];
+        const best = services.find((s) => s.name === winnerName) || [...services].sort((a, b) => b.score - a.score)[0];
+        const diffs = bullets(result.decisiveDifferences);
+        const insights = Array.isArray(result.quizInsights) ? result.quizInsights : [];
+        const gap = result?.winner?.scoreGap
+          || (services.length > 1 ? Math.round(Math.max(...services.map((s) => s.score || 0)) - Math.min(...services.map((s) => s.score || 0))) : 0);
+        return (
+          <div className="subs-result fade-up">
+            {result.researched && (
+              <div className="subs-researched">🌐 {L('Subscriber reviews and forums were scanned live', 'Abone yorumları ve forumlar canlı tarandı', 'Abonnentenbewertungen und Foren wurden live gescannt')}</div>
+            )}
+
+            {best && (
               <section className="subs-result-hero">
                 <div className="subs-hero-logo"><SubLogo name={best.name} size={56} radius={14} /></div>
                 <div className="subs-hero-copy">
-                  <span>{L('Best match', 'En iyi eşleşme', 'Beste Wahl')}</span>
+                  <span>{services.length > 1 ? L('Best match', 'En iyi eşleşme', 'Beste Wahl') : L('Your match', 'Senin eşleşmen', 'Dein Match')}</span>
                   <strong>{best.name}</strong>
                   {(result?.winner?.reason || result?.winner?.recommendation || result?.recommendation) && (
                     <div className="subs-hero-text">
                       <AiText text={result.winner?.reason || result.winner?.recommendation || result.recommendation} />
                     </div>
                   )}
+                  {result?.winner?.runnerUpCase && (
+                    <p className="subs-runnerup">🔁 {result.winner.runnerUpCase}</p>
+                  )}
                 </div>
-                <Gauge value={best.score} size={90} stroke={8} color={techColor(best.score)} fontSize={25} />
+                <Gauge value={best.score} size={96} stroke={9} color={scoreColor(best.score)} fontSize={27} />
               </section>
-            );
-          })()}
+            )}
 
-          {(result.services || []).length > 1 && <ScoreChart services={result.services} L={L} />}
-          <FactorMatrix services={result.services || []} L={L} />
+            <StatTiles items={[
+              best ? { icon: '🎯', label: L('Match', 'Uyum', 'Match'), value: Math.round(best.score), color: scoreColor(best.score) } : null,
+              gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı', 'Punktedifferenz'), value: gap } : null,
+              { icon: '📺', label: L('Services', 'Servis', 'Dienste'), value: services.length },
+              result.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(result.confidence)}%` } : null,
+            ].filter(Boolean)} />
 
-          <div className="subs-svc-grid">
-            {(result.services || []).map((s) => (
-              <ServiceCard key={s.name} s={s} isWinner={s.name === winnerName || (!result.isCompare && (result.services || []).length === 1)} L={L} />
-            ))}
-          </div>
+            {services.length > 1 && <ScoreChart services={services} L={L} />}
+            <HeatMatrix products={services} L={L} />
 
-          {result.detailed && (
-            <div className="subs-detailed">
-              {result.detailed.fit && (
-                <section>
-                  <h4>🎯 {L('Overall fit', 'Genel uyum', 'Gesamtpassung')}</h4>
-                  <AiText text={result.detailed.fit} />
-                </section>
-              )}
-              {result.detailed.features && (
-                <section>
-                  <h4>🧩 {L('Features and content', 'Özellikler ve içerik', 'Funktionen und Inhalte')}</h4>
-                  <AiText text={result.detailed.features} />
-                </section>
-              )}
-              {result.detailed.ux && (
-                <section>
-                  <h4>✨ {L('Experience', 'Deneyim', 'Erlebnis')}</h4>
-                  <AiText text={result.detailed.ux} />
-                </section>
-              )}
-              {result.detailed.community && (
-                <section>
-                  <h4>🌐 {L('Community and risk', 'Topluluk ve risk', 'Community und Risiko')}</h4>
-                  <AiText text={result.detailed.community} />
-                </section>
-              )}
-              {result.detailed.plan && (
-                <section>
-                  <h4>🗺 {L('Usage plan', 'Kullanım planı', 'Nutzungsplan')}</h4>
-                  <AiText text={result.detailed.plan} />
-                </section>
-              )}
+            {diffs.length > 0 && (
+              <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar', 'Was wirklich entscheidet')}>
+                <div className="subs-diffs">
+                  {diffs.map((d, i) => (
+                    <div className="subs-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
+                      <strong>{d.title}</strong>
+                      {d.detail && <p>{d.detail}</p>}
+                    </div>
+                  ))}
+                </div>
+              </Sec>
+            )}
+
+            <QuizImpact items={insights} L={L} />
+
+            <div className="subs-svc-grid">
+              {services.map((s) => (
+                <ServiceCard key={s.name} s={s} isWinner={s.name === winnerName || (!result.isCompare && services.length === 1)} L={L} />
+              ))}
             </div>
-          )}
 
-          {result.recommendation && (
-            <div className="subs-reco">
-              <div className="subs-reco-head">✨ {t('subs.resultHead')}</div>
-              <div className="subs-reco-body"><AiText text={result.recommendation} /></div>
+            {result.detailed && (
+              <div className="subs-detailed">
+                {result.detailed.fit && (
+                  <section>
+                    <h4>🎯 {L('Overall fit', 'Genel uyum', 'Gesamtpassung')}</h4>
+                    <AiText text={result.detailed.fit} />
+                  </section>
+                )}
+                {result.detailed.features && (
+                  <section>
+                    <h4>🧩 {L('Features and content', 'Özellikler ve içerik', 'Funktionen und Inhalte')}</h4>
+                    <AiText text={result.detailed.features} />
+                  </section>
+                )}
+                {result.detailed.ux && (
+                  <section>
+                    <h4>✨ {L('Experience', 'Deneyim', 'Erlebnis')}</h4>
+                    <AiText text={result.detailed.ux} />
+                  </section>
+                )}
+                {result.detailed.community && (
+                  <section>
+                    <h4>🌐 {L('Community and risk', 'Topluluk ve risk', 'Community und Risiko')}</h4>
+                    <AiText text={result.detailed.community} />
+                  </section>
+                )}
+                {result.detailed.plan && (
+                  <section className="subs-plan">
+                    <h4>🗺 {L('Your usage plan', 'Kullanım planın', 'Dein Nutzungsplan')}</h4>
+                    <AiText text={result.detailed.plan} />
+                  </section>
+                )}
+              </div>
+            )}
+
+            {result.recommendation && (
+              <div className="subs-reco">
+                <div className="subs-reco-head">{t('subs.resultHead')}</div>
+                <div className="subs-reco-body"><AiText text={result.recommendation} /></div>
+              </div>
+            )}
+
+            <div className="subs-again">
+              <button type="button" className="btn btn-ghost" onClick={resetAnalysis}>
+                {L('New analysis', 'Yeni analiz', 'Neue Analyse')}
+              </button>
             </div>
-          )}
-
-          <div className="subs-again">
-            <button type="button" className="btn btn-ghost" onClick={resetAnalysis}>
-              {L('New analysis', 'Yeni analiz', 'Neue Analyse')}
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
       </div>
     </div>
   );

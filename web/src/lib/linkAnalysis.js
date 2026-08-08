@@ -512,6 +512,221 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
   return questions;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  DERİN ANALİZ KATMANI (2026-08-08)
+//  Link ve abonelik raporları "çok kısa" idi: tek AI çağrısı, sığ şema, hiç
+//  gerçek internet taraması yok. Yeni akış app'in ai_report_service'i gibi:
+//    1) GROUNDED ARAŞTIRMA  → Google Search ile gerçek yorum/şikâyet taraması
+//    2) İKİ PARALEL RAPOR ÇAĞRISI → (A) kişisel karar, (B) topluluk + pazar
+//  Araştırma, kullanıcı QUIZ'İ ÇÖZERKEN arka planda koşar (jobs katmanı onu
+//  erken başlatır), böylece derinlik bedavaya gelir — bekleme süresi artmaz.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Yorum taraması her yerde aynı şeyi istesin diye tek yerde duruyor.
+function communityResearchChecklist(langName) {
+  return `Cover ALL of the following, as compact notes:
+1) IDENTITY: what this exactly is (edition/variant), current market status, and the headline specs or plan details that actually matter.
+2) COMMUNITY SENTIMENT — THE MAIN JOB: scan real user discussion (Reddit threads, YouTube review takeaways and their comment sections, retailer review patterns such as Amazon/Trendyol/Best Buy, specialist review sites, forums, app-store reviews). Extract the RECURRING THEMES, not one-off opinions. For each theme note: the theme, whether it is praise / complaint / mixed, and roughly how dominant it is (e.g. "mentioned in most threads" vs "occasional").
+3) COMPLAINTS IN DETAIL: the most repeated negatives, failures, regrets, after-sales/support problems, and whether they hit everyone or only a specific use case. Never soften them.
+4) WHO LOVES IT vs WHO REGRETS IT: the usage profiles behind each side.
+5) DEAL-BREAKERS: the things a buyer would be angry about not knowing beforehand.
+6) ALTERNATIVES people actually compare it against, and why they switch.
+7) VALUE / TIMING signal: discount cadence, a newer model or plan change on the horizon, or long-term cost drift. No invented exact prices.
+Write in ${langName}. Do NOT invent direct quotes, exact review counts, or exact prices. Where evidence is thin, say plainly that it is thin.`;
+}
+
+// Tek ürün için derin yorum araştırması. Başarısız olursa '' döner — rapor
+// yine yazılır (araştırma bir ZENGİNLEŞTİRME katmanıdır, zorunlu değil).
+export async function researchProductCommunity({ title, category, url, siteName, language }) {
+  const langName = languageName(language);
+  const name = String(title || '').trim();
+  if (!name) return '';
+  try {
+    return await askQorAiGrounded(
+      `Research the product "${name}"${category ? ` (category: ${category})` : ''} for a Qor AI buyer report.\n`
+      + (url ? `Product URL: ${url}\n` : '')
+      + (siteName ? `Store: ${siteName}\n` : '')
+      + `\n${communityResearchChecklist(langName)}`,
+      { language, maxOutputTokens: 3072, timeoutMs: 45000 },
+    );
+  } catch {
+    return '';
+  }
+}
+
+// Karşılaştırma: tek grounded çağrıda TÜM ürünler (ayrı ayrı çağrı kotayı
+// gereksiz yakıyordu ve ürünler arası farkı hiçbir çağrı görmüyordu).
+export async function researchProductsCommunity({ bases = [], language }) {
+  const langName = languageName(language);
+  const rows = bases.filter((b) => b && b.title);
+  if (!rows.length) return '';
+  const list = rows
+    .map((b, i) => `${i + 1}. ${b.title}${b.category ? ` (${b.category})` : ''}${b.siteName ? ` — ${b.siteName}` : ''}`)
+    .join('\n');
+  try {
+    return await askQorAiGrounded(
+      `Research these products for a Qor AI head-to-head comparison report:\n${list}\n\n`
+      + `${communityResearchChecklist(langName)}\n\n`
+      + `8) HEAD-TO-HEAD: after covering each product, state the decisive real-world differences between them and which owner profile ends up happier with which one.`,
+      { language, maxOutputTokens: 4096, timeoutMs: 50000 },
+    );
+  } catch {
+    return '';
+  }
+}
+
+// Abonelikler: içerik/özellik değişimi, zam ve iptal sebepleri gerçek
+// kullanıcı tartışmasından gelir — bu yüzden burada da grounded tarama var.
+export async function researchSubscriptionsCommunity({ names = [], language }) {
+  const langName = languageName(language);
+  const rows = names.filter(Boolean);
+  if (!rows.length) return '';
+  try {
+    return await askQorAiGrounded(
+      `Research these subscription services for a Qor AI subscription report: ${rows.join(', ')}.\n\n`
+      + `${communityResearchChecklist(langName)}\n\n`
+      + `8) SUBSCRIPTION SPECIFICS: recent catalogue/feature/plan changes, ad tiers, sharing and device limits, regional content gaps, app quality and reliability complaints, support quality, and the most common reasons people cancel or come back.`
+      + `\n9) If several services are listed, end with the decisive differences between them for everyday use.`,
+      { language, maxOutputTokens: 4096, timeoutMs: 50000 },
+    );
+  } catch {
+    return '';
+  }
+}
+
+// Araştırma quiz sırasında arka planda koşar; kullanıcı quizi ÇOK hızlı
+// geçerse rapor onu bekler. Grounded arama takılırsa rapor sonsuza kadar
+// beklemesin diye üst sınır koyuyoruz — araştırma zaten opsiyonel katman.
+export function awaitResearch(promise, ms = 75000) {
+  if (!promise) return Promise.resolve('');
+  return Promise.race([
+    Promise.resolve(promise).then((v) => String(v || '')).catch(() => ''),
+    new Promise((resolve) => { setTimeout(() => resolve(''), ms); }),
+  ]);
+}
+
+// ── Şema normalleştiricileri ───────────────────────────────────────────────
+// AI bazen düz string, bazen nesne döndürür; render tarafı tek şekil bekler.
+function bulletList(v, max = 8) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (typeof x === 'string') return { title: x.trim(), detail: '' };
+      if (x && typeof x === 'object') {
+        return {
+          title: String(x.title || x.label || x.point || '').trim(),
+          detail: String(x.detail || x.impact || x.why || x.comment || '').trim(),
+        };
+      }
+      return null;
+    })
+    .filter((x) => x && (x.title || x.detail))
+    .map((x) => (x.title ? x : { title: x.detail, detail: '' }))
+    .slice(0, max);
+}
+
+const SEVERITIES = new Set(['high', 'medium', 'low']);
+function criticalList(v, max = 5) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (typeof x === 'string') return { severity: 'medium', title: x.trim(), detail: '' };
+      if (!x || typeof x !== 'object') return null;
+      const sev = String(x.severity || x.level || 'medium').toLowerCase();
+      return {
+        severity: SEVERITIES.has(sev) ? sev : 'medium',
+        title: String(x.title || x.label || '').trim(),
+        detail: String(x.detail || x.why || x.impact || '').trim(),
+      };
+    })
+    .filter((x) => x && (x.title || x.detail))
+    .slice(0, max);
+}
+
+const SENTIMENTS = new Set(['positive', 'negative', 'mixed']);
+function themeList(v, max = 8) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (!x || typeof x !== 'object') return null;
+      const s = String(x.sentiment || x.tone || 'mixed').toLowerCase();
+      return {
+        label: String(x.label || x.theme || x.title || '').trim(),
+        sentiment: SENTIMENTS.has(s) ? s : 'mixed',
+        strength: Math.max(0, Math.min(100, Math.round(num(x.strength ?? x.share ?? x.weight)))),
+        detail: String(x.detail || x.note || x.summary || '').trim(),
+      };
+    })
+    .filter((x) => x && x.label)
+    .map((x) => (x.strength > 0 ? x : { ...x, strength: 45 }))
+    .slice(0, max);
+}
+
+function insightList(v, max = 7) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (!x || typeof x !== 'object') return null;
+      const impact = Math.max(-100, Math.min(100, Math.round(num(x.impact ?? x.effect ?? x.delta))));
+      return {
+        topic: String(x.topic || x.question || x.about || '').trim(),
+        answer: String(x.answer || x.choice || '').trim(),
+        impact,
+        note: String(x.note || x.detail || x.why || '').trim(),
+      };
+    })
+    .filter((x) => x && (x.answer || x.note))
+    .slice(0, max);
+}
+
+function sourceList(v, max = 10) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (typeof x === 'string') return { name: x.trim(), note: '' };
+      if (x && typeof x === 'object') {
+        return { name: String(x.name || x.source || x.type || '').trim(), note: String(x.note || x.detail || '').trim() };
+      }
+      return null;
+    })
+    .filter((x) => x && x.name)
+    .slice(0, max);
+}
+
+function featureMatchList(v, max = 10) {
+  if (!Array.isArray(v)) return [];
+  return v
+    .map((x) => {
+      if (!x || typeof x !== 'object') return null;
+      return {
+        label: String(x.label || x.feature || '').trim(),
+        productValue: String(x.productValue || x.value || '').trim(),
+        userNeed: String(x.userNeed || x.need || '').trim(),
+        score: Math.max(0, Math.min(100, Math.round(num(x.score)))),
+        comment: String(x.comment || x.detail || '').trim(),
+      };
+    })
+    .filter((x) => x && x.label)
+    .slice(0, max);
+}
+
+const DECISIONS = new Set(['buy', 'consider', 'skip']);
+function decisionOf(v, score) {
+  const d = String(v || '').toLowerCase().trim();
+  if (DECISIONS.has(d)) return d;
+  const s = Number(score) || 0;
+  return s >= 70 ? 'buy' : s >= 50 ? 'consider' : 'skip';
+}
+
+// Araştırma notlarını prompt'a eklerken tek yerden geçir (boşsa "yok" de,
+// böylece model uydurmak yerine belirsizliği yazar).
+function researchBlock(research, langName) {
+  const notes = String(research || '').trim();
+  return notes
+    ? `\n\nLIVE WEB / COMMUNITY RESEARCH NOTES (grounded Google Search, written in ${langName} — treat as the CURRENT truth and build the community sections on it):\n${notes.slice(0, 14000)}`
+    : `\n\nLIVE WEB / COMMUNITY RESEARCH NOTES: none were available. Base the community sections on well-established, widely reported patterns only, and say plainly where the evidence is thin. Do NOT fabricate specific findings.`;
+}
+
 // ── Step 3: enhanced personalized analysis ────────────────────────
 function enhancedAnalysisPrompt(language) {
   const langName = languageName(language);
@@ -525,7 +740,7 @@ function enhancedAnalysisPrompt(language) {
   const featureFit = isTr ? 'Özellik Seti' : isDe ? 'Funktionsumfang' : 'Feature Set';
   const reliabilityRisk = isTr ? 'Güvenilirlik ve Risk' : isDe ? 'Zuverlässigkeit und Risiko' : 'Reliability and Risk';
   const communitySignal = isTr ? 'Topluluk Sinyali' : isDe ? 'Community-Signal' : 'Community Signal';
-  return `You are Qor AI's senior product analyst. Given a product, quiz answers, and user profile, produce a comprehensive, professional, highly detailed personalized match report.
+  return `You are Qor AI's senior product analyst. Given a product, the user's quiz answers, the user profile and live web/community research notes, produce the PERSONAL DECISION half of a comprehensive match report.
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
 
@@ -545,40 +760,77 @@ SCORING RULES:
 - Poor match: 20-45. Average: 46-65. Good: 66-80. Excellent: 81-95.
 - ANTI-INFLATION (critical): do NOT cluster scores near the top. Use the FULL range honestly. Every real product has genuine weak spots — AT LEAST 2 of the factor scores MUST fall below 65, and at least one below 55, unless this is a rare near-flawless fit for THIS user. Reserve 85+ only for true standout strengths, never as a default. If most factors land in 75-95 you are inflating — spread them out and score weak areas honestly. The enhancedScore must reflect this honest spread, not drift upward.
 
+EVIDENCE RULES:
+- The research notes are the CURRENT truth. Ground every concrete claim (weak spots, reliability, real-world behavior) in them where they cover it.
+- Never invent direct quotes, exact review counts or exact live prices. Where evidence is thin, say so in the relevant field instead of guessing.
+
 WRITING QUALITY REQUIREMENTS:
-- Use professional, tech-journalist level language. Be specific, not generic — but SHORT. A human reads this at a glance; every sentence must earn its place.
-- Cite actual specs, community observations, or market context wherever possible.
-- verdict must be EXACTLY 2 short paragraphs, ~90 words total.
-- personaAnalysis must be 2 short paragraphs, ~70 words total, personalized to quiz answers.
-- communityAnalysis must be 2 short paragraphs, ~70 words total; one paragraph MUST plainly state the most-reported complaints and negatives — a positives-only summary is forbidden.
-- prosForUser and consForUser must be concise, specific bullet points.
+- Professional, tech-journalist level language. Specific over generic: cite real characteristics, measured behavior, ownership realities.
+- Every "detail" field must add NEW information — never restate the label or the score in words.
+- verdict = 3 paragraphs (~65 words each): what this product actually is, how it behaves in real use, and the ownership/value picture.
+- personaAnalysis = 3 paragraphs (~55 words each) built strictly on the quiz answers and profile signals — never list the user's attributes back to them.
+- Bullets are one tight sentence in "title" plus one concrete consequence in "detail".
 
 Return valid JSON (all text in ${langName}):
 {
   "enhancedScore": <0-100>,
+  "confidence": <0-100 — how solid the evidence behind this verdict is; low when research was thin>,
+  "decision": "buy | consider | skip",
+  "headline": "ONE punchy sentence in ${langName} that answers 'should I get this?' for THIS user",
   "factors": [
-    {"label": "${usageFit}", "score": <0-100>, "emoji": "🎯"},
-    {"label": "${budgetMatch}", "score": <0-100>, "emoji": "💰"},
-    {"label": "${qualityFit}", "score": <0-100>, "emoji": "⭐"},
-    {"label": "${featureFit}", "score": <0-100>, "emoji": "🧩"},
-    {"label": "${reliabilityRisk}", "score": <0-100>, "emoji": "🛡"},
-    {"label": "${communitySignal}", "score": <0-100>, "emoji": "🌐"},
-    {"label": "${futureProofing}", "score": <0-100>, "emoji": "🚀"},
-    {"label": "${lifestyleMatch}", "score": <0-100>, "emoji": "🏠"}
+    {"label": "${usageFit}", "score": <0-100>, "emoji": "🎯", "detail": "1 evidence-based sentence in ${langName} explaining WHY this score"},
+    {"label": "${budgetMatch}", "score": <0-100>, "emoji": "💰", "detail": "1 sentence"},
+    {"label": "${qualityFit}", "score": <0-100>, "emoji": "⭐", "detail": "1 sentence"},
+    {"label": "${featureFit}", "score": <0-100>, "emoji": "🧩", "detail": "1 sentence"},
+    {"label": "${reliabilityRisk}", "score": <0-100>, "emoji": "🛡", "detail": "1 sentence"},
+    {"label": "${communitySignal}", "score": <0-100>, "emoji": "🌐", "detail": "1 sentence"},
+    {"label": "${futureProofing}", "score": <0-100>, "emoji": "🚀", "detail": "1 sentence"},
+    {"label": "${lifestyleMatch}", "score": <0-100>, "emoji": "🏠", "detail": "1 sentence"}
   ],
-  "verdict": "EXACTLY 2 short paragraphs (~90 words total) in ${langName}: the product story and the value/ownership picture. Be specific with actual product characteristics. NO user attribute lists.",
-  "prosForUser": ["Concise pro 1 citing a specific product trait", "Concise pro 2 with performance context", "Concise pro 3", "Concise pro 4 (3-4 items total)"],
-  "consForUser": ["Concise con 1 with real-world impact", "Concise con 2 with severity context", "Concise con 3 (exactly 3 items)"],
-  "alternatives": ["Full model name of alternative 1", "Full model name of alternative 2", "Full model name of alternative 3"],
+  "verdict": "3 paragraphs in ${langName} as described above. NO user attribute lists.",
+  "prosForUser": [{"title": "short concrete strength", "detail": "1 sentence on what it changes in daily use for THIS user"}, "... 4-5 items total"],
+  "consForUser": [{"title": "short concrete weakness", "detail": "1 sentence on the real-world impact and how often it bites"}, "... 3-4 items total"],
+  "criticalPoints": [{"severity": "high|medium|low", "title": "the thing they would be angry not to know", "detail": "1-2 sentences: what happens, and who it actually affects"}, "... 3-4 items, at least one 'high' if a genuine deal-breaker exists"],
+  "quizInsights": [{"topic": "2-4 word label of what the question probed, in ${langName}", "answer": "the option the user picked, shortened", "impact": <-100..100 — how much this answer pushed the score up or down>, "note": "1 sentence linking that answer to a concrete property of this product"}, "... one per meaningful quiz answer, 4-6 items"],
+  "featureMatches": [{"label": "feature/spec in ${langName}", "productValue": "what this product offers", "userNeed": "what the quiz/profile implies they need", "score": <0-100>, "comment": "1 sentence"}, "... 5-7 items"],
   "personaScore": <0-100>,
-  "personaAnalysis": "2 short paragraphs (~70 words total) in ${langName} — how this product fits the user's lifestyle and needs from quiz answers. Reference specific quiz answers. Be concrete. NEVER list user attributes by name.",
-  "communityScore": <0-100>,
-  "communityAnalysis": "2 short paragraphs (~70 words total) in ${langName} — synthesis of community opinion. One paragraph covers reception/praise; the other MUST plainly state the most common complaints, recurring criticisms and defects users actually report — do not soften or bury them. Reference known sources (Reddit, YouTube, review sites). IGNORE user profile.",
-  "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},
-  "overallVerdict": "1 short paragraph in ${langName} plus ONE final decisive sentence that clearly says buy, consider, or skip (with a concrete alternative if skip). NEVER mention user attributes by name."
+  "personaAnalysis": "3 paragraphs in ${langName} — how this product fits their real life from the quiz answers. Reference the answers concretely. NEVER list user attributes by name.",
+  "bestFor": "1-2 sentences in ${langName} describing the person this is genuinely great for",
+  "notFor": "1-2 sentences in ${langName} describing who should walk away",
+  "overallVerdict": "1 paragraph in ${langName} plus ONE final decisive sentence that clearly says buy, consider, or skip (with a concrete alternative if skip). NEVER mention user attributes by name."
+}`;
 }
 
-sentimentBreakdown = the community sentiment split as integer percentages summing to ~100; keep it realistic (never all-positive) and consistent with communityAnalysis.`;
+// (B) Topluluk + pazar yarısı — GERÇEK internet taramasının döküldüğü yer.
+// Ayrı çağrı olmasının sebebi: tek çağrıda bu derinlik JSON'u kesiliyordu
+// (DeepSeek yedeği 8192 token'da kırpıyor) ve topluluk bölümü hep ilk feda
+// edilen bölüm oluyordu.
+function enhancedCommunityPrompt(language) {
+  const langName = languageName(language);
+  return `You are Qor AI's community-research analyst. You receive a product, the user's quiz answers, and live web/community research notes gathered with Google Search. Produce the COMMUNITY & MARKET half of the report.
+
+LANGUAGE: Write ALL text in ${langName}.
+
+RULES:
+- Build EVERYTHING on the research notes when they cover it; they are the current truth. Where they are thin, say plainly that the evidence is limited — never fabricate findings, quotes, review counts or exact prices.
+- A praise-only summary is FORBIDDEN. Recurring complaints must be stated as plainly as the praise.
+- "themes" are the topics people keep coming back to (battery, noise, sizing, support, ads, price hikes…), NOT one-off opinions. "strength" is roughly how dominant that theme is in the discussion (0-100).
+- Sentiment percentages must be realistic and consistent with the themes: if half the themes are complaints, the split cannot be 90% positive.
+
+Return valid JSON (all text in ${langName}):
+{
+  "communityScore": <0-100 — overall owner satisfaction>,
+  "communityAnalysis": "3 paragraphs in ${langName}: (1) how it is received overall and what earns the praise, (2) the recurring complaints stated plainly with who they hit, (3) what long-term owners say after months of use. IGNORE the user profile here — this is about everyone.",
+  "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},
+  "communityThemes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": <0-100>, "detail": "1 sentence with the concrete substance of that theme"}, "... 5-7 themes, a realistic mix of positive and negative"],
+  "praisePoints": [{"title": "what owners consistently love", "detail": "1 sentence"}, "... 3-4 items"],
+  "complaintPoints": [{"title": "what owners consistently complain about", "detail": "1 sentence including how widespread it is"}, "... 3-4 items"],
+  "reliabilityNotes": ["1 sentence each in ${langName} on durability, failures, warranty/support experience — 2-3 items"],
+  "sources": [{"name": "source or source type (Reddit, YouTube reviews, retailer reviews, specialist sites…)", "note": "what it contributed"}, "... 4-6 items — only source TYPES you actually relied on"],
+  "alternatives": [{"name": "exact competing product name", "why": "1 sentence on who should take this instead"}, "... 3 items"],
+  "priceOutlook": {"trend": "up|down|stable|unknown", "bestTime": "when it is smart to buy, in ${langName}", "note": "1-2 sentences on discount cadence, refresh cycle or long-term cost — no invented exact prices"},
+  "verificationNotes": ["1 sentence each in ${langName}: what is well-evidenced vs what stayed uncertain — 2-3 items"]
+}`;
 }
 
 function num(v) {
@@ -598,47 +850,97 @@ function parseSentimentBreakdown(raw) {
   return { positive, neutral, negative };
 }
 
-export async function enhancedAnalysis({ base, answers, language, userProfile = {} }) {
+export async function enhancedAnalysis({ base, answers, language, userProfile = {}, research = '' }) {
+  const langName = languageName(language);
   const qaPairs = answers
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  const res = await askQorAiJson({
+  const productPayload = {
+    url: base.url,
+    title: base.title,
+    category: base.category,
+    siteName: base.siteName,
+    initialScore: base.score,
+    initialAnalysis: base.analysis,
+  };
+  const userJson = JSON.stringify({ product: productPayload, quizAnswers: qaPairs, userProfile });
+
+  // İki yarı PARALEL koşar: karar yarısı kritik (hata → analiz başarısız),
+  // topluluk yarısı zenginleştirme (hata → rapor yine çıkar, sadece daha sade).
+  const corePromise = (async () => askQorAiJson({
     // Shared admin override key with the app (graceful fallback if unset).
-    system: await adminPrompt('gemini_enhanced_link_analysis_system', enhancedAnalysisPrompt(language)),
-    user: JSON.stringify({
-      product: {
-        url: base.url,
-        title: base.title,
-        category: base.category,
-        initialScore: base.score,
-        initialAnalysis: base.analysis,
-      },
-      quizAnswers: qaPairs,
-      userProfile,
-    }),
+    system: (await adminPrompt('gemini_enhanced_link_analysis_system', enhancedAnalysisPrompt(language)))
+      + researchBlock(research, langName),
+    user: userJson,
     maxOutputTokens: 8192,
-  });
+  }))();
+  const communityPromise = (async () => {
+    try {
+      return await askQorAiJson({
+        system: enhancedCommunityPrompt(language) + researchBlock(research, langName),
+        user: userJson,
+        maxOutputTokens: 8192,
+      });
+    } catch {
+      return {};
+    }
+  })();
+  const [res, com] = await Promise.all([corePromise, communityPromise]);
+
   const factors = (Array.isArray(res.factors) ? res.factors : [])
     .map((f) => ({
       label: String(f.label || f.name || ''),
       score: num(f.score ?? f.value),
       emoji: String(f.emoji || f.icon || '📊'),
+      detail: String(f.detail || f.comment || ''),
     }))
     .filter((f) => f.label);
   const enhancedScore = num(res.enhancedScore ?? res.enhanced_score ?? res.score);
+  const score = enhancedScore > 0 ? enhancedScore : base.score;
+  const alternatives = Array.isArray(com.alternatives) && com.alternatives.length
+    ? com.alternatives
+    : res.alternatives;
+  const priceOutlook = com.priceOutlook && typeof com.priceOutlook === 'object' ? {
+    trend: String(com.priceOutlook.trend || 'unknown').toLowerCase(),
+    bestTime: String(com.priceOutlook.bestTime || ''),
+    note: String(com.priceOutlook.note || ''),
+  } : null;
   return {
     base,
-    enhancedScore: enhancedScore > 0 ? enhancedScore : base.score,
+    enhancedScore: score,
+    confidence: Math.max(0, Math.min(100, Math.round(num(res.confidence)))) || (research ? 78 : 58),
+    decision: decisionOf(res.decision, score),
+    headline: String(res.headline || ''),
     factors,
     verdict: String(res.verdict || res.detailed_verdict || res.analysis || base.analysis || ''),
-    prosForUser: Array.isArray(res.prosForUser || res.pros) ? (res.prosForUser || res.pros).map(String) : [],
-    consForUser: Array.isArray(res.consForUser || res.cons) ? (res.consForUser || res.cons).map(String) : [],
-    alternatives: Array.isArray(res.alternatives) ? res.alternatives.map(String) : [],
+    prosForUser: bulletList(res.prosForUser || res.pros, 6),
+    consForUser: bulletList(res.consForUser || res.cons, 5),
+    criticalPoints: criticalList(res.criticalPoints, 5),
+    quizInsights: insightList(res.quizInsights, 7),
+    featureMatches: featureMatchList(res.featureMatches, 8),
+    alternatives: bulletList(
+      Array.isArray(alternatives)
+        ? alternatives.map((a) => (a && typeof a === 'object' ? { title: a.name || a.title, detail: a.why || a.detail } : a))
+        : [],
+      4,
+    ),
+    bestFor: String(res.bestFor || ''),
+    notFor: String(res.notFor || ''),
     personaScore: num(res.personaScore) || null,
     personaAnalysis: res.personaAnalysis ? String(res.personaAnalysis) : '',
-    communityScore: num(res.communityScore) || null,
-    communityAnalysis: res.communityAnalysis ? String(res.communityAnalysis) : '',
-    sentimentBreakdown: parseSentimentBreakdown(res.sentimentBreakdown || res.sentiment_breakdown),
+    communityScore: num(com.communityScore ?? res.communityScore) || null,
+    communityAnalysis: String(com.communityAnalysis || res.communityAnalysis || ''),
+    sentimentBreakdown: parseSentimentBreakdown(
+      com.sentimentBreakdown || com.sentiment_breakdown || res.sentimentBreakdown || res.sentiment_breakdown,
+    ),
+    communityThemes: themeList(com.communityThemes, 8),
+    praisePoints: bulletList(com.praisePoints, 5),
+    complaintPoints: bulletList(com.complaintPoints, 5),
+    reliabilityNotes: bulletList(com.reliabilityNotes, 4),
+    sources: sourceList(com.sources, 8),
+    verificationNotes: bulletList(com.verificationNotes, 4),
+    priceOutlook,
+    researched: Boolean(String(research || '').trim()),
     overallVerdict: res.overallVerdict ? String(res.overallVerdict) : '',
   };
 }
@@ -650,30 +952,24 @@ function compareAnalysisPrompt(language) {
   const factorSchema = factorLabels
     .map((label, i) => `        {"label": "${label}", "score": 0, "emoji": "${factorEmojis[i] || '📊'}", "detail": "1 sentence"}`)
     .join(',\n');
-  return `You are Qor AI's senior product comparison analyst.
+  return `You are Qor AI's senior product comparison analyst. Produce the PER-PRODUCT half of a head-to-head comparison report.
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
 
-You will receive exact products identified from pasted URLs and the user's comparison quiz answers.
+You will receive exact products identified from pasted URLs, the user's comparison quiz answers, and live web/community research notes.
 
 Rules:
-- Never replace the products with nearby models.
-- Use the exact product titles and URLs given to you.
-- Give a detailed, app-style comparison; do not write a short chat answer.
-- Blend quiz answers into the recommendation.
-- If one product is clearly better for a certain user type, say that directly.
-- Do not invent live prices.
+- Never replace the products with nearby models. Use the exact product titles and URLs given to you.
+- Judge every product AGAINST THE OTHERS, not in isolation: the same trait can be a strength here and a weakness there.
+- Ground concrete claims in the research notes. Never invent quotes, review counts or live prices. Where evidence is thin, say so.
 - NEVER paste raw long URLs in text fields. Use product names and site domains only.
-- Scores must be realistic, varied, and based on THIS user's quiz answers.
+- Scores must be realistic, varied and driven by THIS user's quiz answers. Two products must NEVER get the same score.
+- ANTI-INFLATION: every product has real weak spots — at least 2 factors per product below 65, and reserve 85+ for genuine standouts.
 - Every product must have factor scores for: ${factorLabels.join(', ')}.
+- A praise-only community section is FORBIDDEN — state the recurring complaints plainly.
 
 Return ONLY valid JSON with this exact structure:
 {
-  "winner": {
-    "best": "exact product title",
-    "reason": "2-3 detailed sentences in ${langName}",
-    "scoreGap": 0
-  },
   "products": [
     {
       "name": "exact product title",
@@ -681,53 +977,105 @@ Return ONLY valid JSON with this exact structure:
       "siteName": "domain or store",
       "score": 0,
       "rank": 1,
-      "bestFor": "2 sentences in ${langName}",
-      "summary": "2-3 sentences in ${langName}",
-      "pros": ["3 concise bullets in ${langName}"],
-      "cons": ["3 concise bullets in ${langName}"],
-      "risks": ["2 ownership/community risks in ${langName}"],
+      "bestFor": "2 sentences in ${langName} on the person this one is genuinely for",
+      "summary": "3 sentences in ${langName}: what it is, how it behaves in real use, where it lands versus the others",
+      "pros": [{"title": "short strength", "detail": "1 sentence on what it changes in daily use"}, "... 3-4 items"],
+      "cons": [{"title": "short weakness", "detail": "1 sentence on the real-world impact"}, "... 3 items"],
+      "risks": ["2-3 ownership/community risks in ${langName}, one sentence each"],
+      "criticalPoints": [{"severity": "high|medium|low", "title": "what a buyer must know first", "detail": "1-2 sentences"}, "... 2-3 items"],
       "factors": [
 ${factorSchema}
       ],
       "specHighlights": [
         {"label": "short spec label in ${langName}", "value": "short known/inferred value or uncertainty note"}
       ],
-      "community": "2 short paragraphs in ${langName}"
+      "community": "2 short paragraphs in ${langName}: reception and praise first, then the recurring complaints stated plainly",
+      "communityThemes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": <0-100>, "detail": "1 sentence"}, "... 3-5 themes"],
+      "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}
     }
-  ],
-  "detailed": {
-    "fit": "2 short paragraphs in ${langName} comparing quiz-based fit",
-    "performance": "2 short paragraphs in ${langName} comparing performance/specs",
-    "ownership": "2 short paragraphs in ${langName} comparing durability, support, community risk",
-    "recommendation": "2 short paragraphs in ${langName} with clear final decision and alternatives"
+  ]
+}
+
+Rules for factors: 8 entries per product, each with a "detail" sentence that explains the score with evidence — never a restatement of the label. specHighlights: 4-6 entries.`;
+}
+
+// Karşılaştırmanın ikinci yarısı: kazanan + belirleyici farklar + quiz etkisi.
+// Ayrı çağrı, çünkü ürün kartları + kapsamlı karşılaştırma metni tek JSON'a
+// sığmıyor (DeepSeek yedeği 8192 token'da kesiyordu).
+function compareVerdictPrompt(language, names = []) {
+  const langName = languageName(language);
+  return `You are Qor AI's senior comparison analyst. The per-product sections are already written. Produce ONLY the cross-product VERDICT half of the report.
+
+LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
+
+Rules:
+- "winner.best" MUST be exactly one of: ${names.join(' | ')}.
+- Be decisive. Vague "both are good" answers are forbidden — name the winner and the exact conditions under which the other one wins instead.
+- Ground concrete claims in the live research notes; never invent quotes, review counts or live prices.
+- Tie every recommendation back to the user's quiz answers, without reading their profile back to them.
+
+Return ONLY valid JSON:
+{
+  "winner": {
+    "best": "exact product title",
+    "reason": "3 sentences in ${langName} on why it wins FOR THIS USER",
+    "scoreGap": <integer difference between best and weakest>,
+    "runnerUpCase": "1-2 sentences in ${langName}: when the other product is the smarter buy instead"
   },
-  "recommendation": "2-3 sentence final summary in ${langName}"
+  "confidence": <0-100 — how solid the evidence behind this verdict is>,
+  "decisiveDifferences": [{"title": "the difference in ${langName}", "detail": "1-2 sentences on which product wins it and what it changes in practice"}, "... 4-6 items"],
+  "quizInsights": [{"topic": "2-4 word label of what the question probed", "answer": "the option the user picked, shortened", "impact": <-100..100 — how strongly it pushed the winner ahead (+) or held it back (-)>, "note": "1 sentence tying that answer to a concrete difference between the products"}, "... 4-6 items"],
+  "detailed": {
+    "fit": "2 paragraphs in ${langName} comparing quiz-based fit",
+    "performance": "2 paragraphs in ${langName} comparing performance, specs and real-world behavior",
+    "ownership": "2 paragraphs in ${langName} comparing durability, support, community risk and long-term cost",
+    "community": "2 paragraphs in ${langName} comparing what owners of each actually report — complaints included",
+    "recommendation": "2 paragraphs in ${langName} with the clear final decision and what to do if the winner is unavailable"
+  },
+  "recommendation": "3-4 sentence final summary in ${langName} ending with a plain instruction"
 }`;
 }
 
-export async function compareAnalysis({ bases, answers, language, userProfile = {} }) {
+export async function compareAnalysis({ bases, answers, language, userProfile = {}, research = '' }) {
+  const langName = languageName(language);
   const factorLabels = compareFactorLabels(language);
   const factorEmojis = ['🎯', '⚡', '⭐', '🧩', '🧭', '🛡', '🌐', '🚀'];
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  const res = await askQorAiJson({
-    system: compareAnalysisPrompt(language),
-    user: JSON.stringify({
-      products: (bases || []).map((p, i) => ({
-        index: i + 1,
-        url: p.url,
-        title: p.title,
-        category: p.category,
-        siteName: p.siteName,
-        initialScore: p.score,
-        initialAnalysis: p.analysis,
-      })),
-      quizAnswers: qaPairs,
-      userProfile,
-    }),
-    maxOutputTokens: 12288,
+  const names = (bases || []).map((p) => p.title).filter(Boolean);
+  const userJson = JSON.stringify({
+    products: (bases || []).map((p, i) => ({
+      index: i + 1,
+      url: p.url,
+      title: p.title,
+      category: p.category,
+      siteName: p.siteName,
+      initialScore: p.score,
+      initialAnalysis: p.analysis,
+    })),
+    quizAnswers: qaPairs,
+    userProfile,
   });
+  // Ürün kartları (kritik) + karşılaştırma kararı (zenginleştirme) paralel.
+  const [res, verdictRes] = await Promise.all([
+    askQorAiJson({
+      system: compareAnalysisPrompt(language) + researchBlock(research, langName),
+      user: userJson,
+      maxOutputTokens: 12288,
+    }),
+    (async () => {
+      try {
+        return await askQorAiJson({
+          system: compareVerdictPrompt(language, names) + researchBlock(research, langName),
+          user: userJson,
+          maxOutputTokens: 8192,
+        });
+      } catch {
+        return {};
+      }
+    })(),
+  ]);
   const rawProducts = Array.isArray(res.products) ? res.products : [];
   const sourceProducts = (bases || []).length
     ? (bases || []).map((base, i) => rawProducts.find((p) => p?.url && p.url === base.url) || rawProducts[i] || {})
@@ -760,25 +1108,36 @@ export async function compareAnalysis({ bases, answers, language, userProfile = 
         rank: num(p.rank) || i + 1,
         bestFor: String(p.bestFor || ''),
         summary: String(p.summary || base.analysis || ''),
-        pros: Array.isArray(p.pros) ? p.pros.map(String) : [],
-        cons: Array.isArray(p.cons) ? p.cons.map(String) : [],
-        risks: Array.isArray(p.risks) ? p.risks.map(String) : [],
+        pros: bulletList(p.pros, 5),
+        cons: bulletList(p.cons, 4),
+        risks: bulletList(p.risks, 4),
+        criticalPoints: criticalList(p.criticalPoints, 4),
         factors,
         specHighlights,
         community: String(p.community || ''),
+        communityThemes: themeList(p.communityThemes, 6),
+        sentiment: parseSentimentBreakdown(p.sentimentBreakdown || p.sentiment_breakdown),
       };
     });
   products.sort((a, b) => (a.rank || 99) - (b.rank || 99));
-  const winner = res.winner && typeof res.winner === 'object' ? {
-    best: String(res.winner.best || products[0]?.name || ''),
-    reason: String(res.winner.reason || ''),
-    scoreGap: num(res.winner.scoreGap),
-  } : { best: products[0]?.name || '', reason: '', scoreGap: 0 };
-  const detailed = res.detailed && typeof res.detailed === 'object' ? {
-    fit: String(res.detailed.fit || ''),
-    performance: String(res.detailed.performance || ''),
-    ownership: String(res.detailed.ownership || ''),
-    recommendation: String(res.detailed.recommendation || ''),
+  const rawWinner = (verdictRes.winner && typeof verdictRes.winner === 'object')
+    ? verdictRes.winner
+    : (res.winner && typeof res.winner === 'object' ? res.winner : null);
+  const winner = rawWinner ? {
+    best: String(rawWinner.best || products[0]?.name || ''),
+    reason: String(rawWinner.reason || ''),
+    scoreGap: num(rawWinner.scoreGap),
+    runnerUpCase: String(rawWinner.runnerUpCase || ''),
+  } : { best: products[0]?.name || '', reason: '', scoreGap: 0, runnerUpCase: '' };
+  const rawDetailed = (verdictRes.detailed && typeof verdictRes.detailed === 'object')
+    ? verdictRes.detailed
+    : (res.detailed && typeof res.detailed === 'object' ? res.detailed : null);
+  const detailed = rawDetailed ? {
+    fit: String(rawDetailed.fit || ''),
+    performance: String(rawDetailed.performance || ''),
+    ownership: String(rawDetailed.ownership || ''),
+    community: String(rawDetailed.community || ''),
+    recommendation: String(rawDetailed.recommendation || ''),
   } : null;
   return {
     type: 'compare_structured',
@@ -789,7 +1148,11 @@ export async function compareAnalysis({ bases, answers, language, userProfile = 
     products,
     scores: Object.fromEntries(products.map((p) => [p.name, p.score])),
     detailed,
-    recommendation: String(res.recommendation || detailed?.recommendation || winner.reason || ''),
+    decisiveDifferences: bulletList(verdictRes.decisiveDifferences, 6),
+    quizInsights: insightList(verdictRes.quizInsights, 7),
+    confidence: Math.max(0, Math.min(100, Math.round(num(verdictRes.confidence)))) || (research ? 76 : 56),
+    researched: Boolean(String(research || '').trim()),
+    recommendation: String(verdictRes.recommendation || res.recommendation || detailed?.recommendation || winner.reason || ''),
   };
 }
 
@@ -802,79 +1165,12 @@ function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) 
   const langName = languageName(language);
   const factorDefs = subscriptionFactorDefinitions(language);
   const factorSchema = factorDefs
-    .map((f) => `        "${f.key}": "integer 0-100 - ${f.label}"`)
+    .map((f) => `        "${f.key}": {"score": "integer 0-100", "detail": "1 evidence-based sentence in ${langName} explaining this ${f.label} score"}`)
     .join(',\n');
-  const schema = isCompare
-    ? `{
-  "subscriptions": {
-    "<service_name>": {
-      "category": "string - shared subscription category label",
-      "rank": "integer starting at 1",
-      "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score, personalized to quiz answers",
-      "pros": ["concise string", "concise string", "concise string", "optional 4th concise string"],
-      "cons": ["concise string", "concise string", "concise string"],
-      "risks": ["ownership/churn risk string", "risk string", "optional 3rd risk string"],
-      "notable_features": [
-        {"label": "short feature label", "value": "short feature detail"}
-      ],
-      "community_sentiment": "string - 2 short paragraphs of Reddit/forum/reviewer synthesis; one paragraph MUST plainly state the most common complaints and negatives, never only praise",
-      "sentiment_breakdown": {"positive": "int", "neutral": "int", "negative": "int"},
-      "best_for": "string - 2-3 sentence ideal user type and usage context",
-      "factors": {
-${factorSchema}
-      }
-    }
-  },
-  "winner": {
-    "best_content": "string - service name",
-    "overall": "string - service name",
-    "reason": "string - 2-3 detailed sentences",
-    "score_gap": "integer score gap between strongest and weakest",
-    "recommendation": "string - 2-3 short paragraphs of personalized recommendation explaining WHY, trade-offs and the final decision"
-  },
-  "detailed_comparison": {
-    "service_fit_summary": "string - 2 short paragraphs comparing overall fit",
-    "feature_comparison": "string - 2 short paragraphs about feature differences",
-    "user_experience": "string - 2 short paragraphs about UX differences",
-    "community_and_risk": "string - 2 short paragraphs about review sentiment, churn risk and long-term satisfaction. You MUST clearly state the most common COMPLAINTS and negative points users report (price hikes, missing features, reliability, support, ads) — never a positives-only summary.",
-    "final_plan": "string - 2 short paragraphs explaining how the user should use the winning service or combination"
-  }
-}`
-    : `{
-  "subscriptions": {
-    "${names}": {
-      "category": "string - service category label",
-      "rank": 1,
-      "compatibility_score": "integer 0-100",
-      "compatibility_explanation": "string - 2-3 sentences why this score, personalized to quiz answers",
-      "pros": ["concise string", "concise string", "concise string", "optional 4th concise string"],
-      "cons": ["concise string", "concise string", "concise string"],
-      "risks": ["ownership/churn risk string", "risk string", "optional 3rd risk string"],
-      "notable_features": [
-        {"label": "short feature label", "value": "short feature detail"}
-      ],
-      "community_sentiment": "string - 2 short paragraphs of Reddit/forum/reviewer synthesis; one paragraph MUST plainly state the most common complaints and negatives, never only praise",
-      "sentiment_breakdown": {"positive": "int", "neutral": "int", "negative": "int"},
-      "best_for": "string - 2-3 sentence ideal user type and usage context",
-      "factors": {
-${factorSchema}
-      }
-    }
-  },
-  "detailed_comparison": {
-    "service_fit_summary": "string - 2 short paragraphs about overall fit",
-    "feature_comparison": "string - 2 short paragraphs about features and content/use cases",
-    "user_experience": "string - 2 short paragraphs about UX and everyday usage",
-    "community_and_risk": "string - 2 short paragraphs about review sentiment, churn risk and long-term satisfaction. You MUST clearly state the most common COMPLAINTS and negative points users report (price hikes, missing features, reliability, support, ads) — never a positives-only summary.",
-    "final_plan": "string - 2 short paragraphs explaining how the user should use or evaluate the service"
-  },
-  "recommendation": "string - 2-3 short paragraphs of personalized recommendation explaining fit, trade-offs and the final decision"
-}`;
   const quizText = qaPairs.length
     ? qaPairs.map((q) => `- ${q.question}: ${q.answer}`).join('\n')
     : '- (no quiz answers provided)';
-  return `You are Qor AI's subscription intelligence analyst.
+  return `You are Qor AI's subscription intelligence analyst. Produce the PER-SERVICE half of a subscription report.
 Analyze: ${names}
 
 Quiz Answers:
@@ -884,42 +1180,120 @@ CRITICAL RULES:
 - ALL text values MUST be in ${langName} language
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
-- compatibility_score must be an integer 0-100 based on how well it fits THIS specific user
-- pros must have 3-4 items, cons exactly 3 items, risks 2-3 items — each item one concise sentence
-- notable_features must have 4-6 concise items
-- factors are 0-100 integers and MUST include every factor key shown in the schema
-- ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Differentiate honestly; identical high scores across factors are unrealistic.
-- sentiment_breakdown values are integer percentages summing to ~100; keep them realistic (never all-positive) and consistent with community_sentiment
+- compatibility_score must be an integer 0-100 based on how well it fits THIS specific user${isCompare ? '. Two services must NEVER get the same score.' : ''}
+- factors are 0-100 integers and MUST include every factor key shown in the schema, each with a one-sentence "detail" that explains the score with evidence — never a restatement of the label
+- ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Identical high scores across factors are unrealistic.
+- COMMUNITY WORK IS THE CORE: build the community fields on the live research notes. Recurring complaints (price hikes, ad tiers, catalogue removals, sharing limits, app bugs, support) must be stated as plainly as the praise. A positives-only summary is FORBIDDEN.
+- "themes" are topics people keep returning to, not one-off opinions; "strength" is roughly how dominant that topic is in the discussion.
+- sentiment_breakdown values are integer percentages summing to ~100, realistic and consistent with the themes
+- Never invent quotes, exact review counts or exact prices. Where the research is thin, say so.
 - Be specific and personalized to the quiz answers and the user profile, not generic
-- Blend the user's profile, browsing history and quiz answers when scoring
-- compatibility_explanation: 2-3 sentences. community_sentiment: 2 short paragraphs
-  (complaints stated plainly). best_for: 2 sentences. recommendation: 2-3 short
-  paragraphs. detailed_comparison fields: 2 short paragraphs each. Keep it tight —
-  finishing the full JSON for ALL services matters more than length.
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
 
 Return ONLY valid JSON (no markdown fences, no commentary) matching this exact schema:
-${schema}`;
+{
+  "subscriptions": {
+    "${isCompare ? '<service_name>' : names}": {
+      "category": "string - service category label in ${langName}",
+      "rank": "integer starting at 1",
+      "compatibility_score": "integer 0-100",
+      "compatibility_explanation": "string - 3 sentences on why this score, tied to the quiz answers",
+      "pros": [{"title": "short strength", "detail": "1 sentence on what it changes in everyday use"}, "... 3-4 items"],
+      "cons": [{"title": "short weakness", "detail": "1 sentence on the real-world impact"}, "... 3 items"],
+      "risks": ["2-3 churn/ownership risk sentences in ${langName}"],
+      "critical_points": [{"severity": "high|medium|low", "title": "what they must know before subscribing", "detail": "1-2 sentences"}, "... 2-3 items"],
+      "notable_features": [{"label": "short feature label", "value": "short feature detail"}, "... 4-6 items"],
+      "community_sentiment": "string - 3 short paragraphs of Reddit/forum/reviewer/app-store synthesis: reception, then the recurring complaints plainly, then what long-term subscribers say",
+      "community_themes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": "integer 0-100", "detail": "1 sentence"}, "... 4-6 themes with a realistic positive/negative mix"],
+      "sentiment_breakdown": {"positive": "int", "neutral": "int", "negative": "int"},
+      "sources": [{"name": "source type you relied on", "note": "what it contributed"}, "... 3-5 items"],
+      "cancel_reasons": ["2-3 one-sentence reasons people actually cancel this, in ${langName}"],
+      "best_for": "string - 2 sentences on the ideal subscriber and usage context",
+      "not_for": "string - 1-2 sentences on who should skip it",
+      "factors": {
+${factorSchema}
+      }
+    }
+  }
+}`;
 }
 
-export async function subscriptionAnalysis({ subscriptionNames, answers, language, userProfile = {} }) {
+// Aboneliğin ikinci yarısı: kazanan + kullanım planı + quiz etkisi.
+function subscriptionVerdictPrompt(names, isCompare, language) {
+  const langName = languageName(language);
+  return `You are Qor AI's subscription intelligence analyst. The per-service sections are already written. Produce ONLY the VERDICT half of the report for: ${names}.
+
+LANGUAGE: ALL text values MUST be in ${langName}.
+
+Rules:
+- Be decisive and personal: tie everything to the user's quiz answers without reading their profile back to them.
+- ${isCompare ? `"winner.overall" MUST be exactly one of: ${names}.` : 'There is a single service — judge whether it is worth keeping/subscribing and under what conditions.'}
+- Ground concrete claims in the live research notes. Never invent quotes, exact review counts or prices.
+- NEVER mention price, cost, monthly/yearly fees, discounts or billing.
+
+Return ONLY valid JSON:
+{
+  ${isCompare ? `"winner": {
+    "best_content": "string - service name with the strongest catalogue/feature depth",
+    "overall": "string - the service to actually pick",
+    "reason": "string - 3 sentences on why it wins FOR THIS USER",
+    "score_gap": "integer gap between strongest and weakest",
+    "runner_up_case": "string - 1-2 sentences on when the other one is the smarter pick",
+    "recommendation": "string - 2 short paragraphs with the final decision and trade-offs"
+  },` : ''}
+  "confidence": "integer 0-100 - how solid the evidence behind this verdict is",
+  "decisive_differences": [{"title": "the difference in ${langName}", "detail": "1-2 sentences on who wins it and what it changes in practice"}, "... ${isCompare ? '4-6' : '3-4'} items"],
+  "quiz_insights": [{"topic": "2-4 word label of what the question probed", "answer": "the option the user picked, shortened", "impact": "integer -100..100 - how strongly this answer pushed the verdict", "note": "1 sentence tying the answer to a concrete property of the service"}, "... 4-6 items"],
+  "detailed_comparison": {
+    "service_fit_summary": "string - 2 paragraphs on overall fit",
+    "feature_comparison": "string - 2 paragraphs on features, catalogue and use cases",
+    "user_experience": "string - 2 paragraphs on apps, reliability and everyday usage",
+    "community_and_risk": "string - 2 paragraphs on review sentiment, churn risk and long-term satisfaction. You MUST clearly state the most common COMPLAINTS users report (ad tiers, catalogue removals, sharing limits, reliability, support) — never a positives-only summary.",
+    "final_plan": "string - 2 paragraphs: a concrete usage plan for the coming months, including what to watch for and when to reconsider"
+  },
+  "recommendation": "string - 3-4 sentences of personalized final recommendation ending with a plain instruction"
+}`;
+}
+
+export async function subscriptionAnalysis({ subscriptionNames, answers, language, userProfile = {}, research = '' }) {
   const isCompare = subscriptionNames.length > 1;
   const names = subscriptionNames.join(', ');
+  const langName = languageName(language);
   const factorDefs = subscriptionFactorDefinitions(language);
   const factorByKey = Object.fromEntries(factorDefs.map((f) => [f.key, f]));
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
-  // The AI request helper already backs off and retries on 429/5xx internally.
-  const res = await askQorAiJson({
-    // Shared admin override key with the app (graceful fallback if unset).
-    system: await adminPrompt(
-      'gemini_subscription_analysis',
-      subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
-    ),
-    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
-    maxOutputTokens: 12288,
+  const userJson = JSON.stringify({
+    subscriptions: subscriptionNames,
+    mode: isCompare ? 'compare' : 'single',
+    quizAnswers: qaPairs,
+    userProfile,
   });
+  // The AI request helper already backs off and retries on 429/5xx internally.
+  // Servis kartları (kritik) + karar/plan (zenginleştirme) paralel koşar.
+  const [res, verdictRes] = await Promise.all([
+    (async () => askQorAiJson({
+      // Shared admin override key with the app (graceful fallback if unset).
+      system: (await adminPrompt(
+        'gemini_subscription_analysis',
+        subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
+      )) + researchBlock(research, langName),
+      user: userJson,
+      maxOutputTokens: 12288,
+    }))(),
+    (async () => {
+      try {
+        return await askQorAiJson({
+          system: subscriptionVerdictPrompt(names, isCompare, language) + researchBlock(research, langName),
+          user: userJson,
+          maxOutputTokens: 8192,
+        });
+      } catch {
+        return {};
+      }
+    })(),
+  ]);
   const subsRaw = res.subscriptions && typeof res.subscriptions === 'object' ? res.subscriptions : {};
   const lookup = new Map(Object.entries(subsRaw).map(([name, d]) => [String(name).toLowerCase(), { name, d }]));
   const services = (subscriptionNames || []).map((inputName, i) => {
@@ -931,11 +1305,15 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
     const rawFactors = d?.factors && typeof d.factors === 'object'
       ? Object.entries(d.factors).map(([key, v]) => {
         const def = factorByKey[key] || {};
+        // Şema artık {score, detail} nesnesi istiyor; eski düz sayı formatı da
+        // (ve admin panelinden gelen eski prompt override'ı da) çalışmaya devam eder.
+        const obj = v && typeof v === 'object' ? v : null;
         return {
           key,
           label: def.label || String(key).replace(/_/g, ' '),
           emoji: def.emoji || '📊',
-          score: num(v) || score,
+          score: num(obj ? (obj.score ?? obj.value) : v) || score,
+          detail: obj ? String(obj.detail || obj.comment || '') : '',
         };
       })
       : [];
@@ -944,6 +1322,7 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
       label: f.label,
       emoji: f.emoji,
       score,
+      detail: '',
     }));
     const features = Array.isArray(d?.notable_features) ? d.notable_features.map((x) => ({
       label: String(x?.label || ''),
@@ -955,38 +1334,54 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
       score,
       rank: num(d?.rank) || i + 1,
       explanation: String(d?.compatibility_explanation || ''),
-      pros: Array.isArray(d?.pros) ? d.pros.map(String) : [],
-      cons: Array.isArray(d?.cons) ? d.cons.map(String) : [],
-      risks: Array.isArray(d?.risks) ? d.risks.map(String) : [],
+      pros: bulletList(d?.pros, 5),
+      cons: bulletList(d?.cons, 4),
+      risks: bulletList(d?.risks, 4),
+      criticalPoints: criticalList(d?.critical_points || d?.criticalPoints, 4),
       features,
       community: String(d?.community_sentiment || ''),
+      communityThemes: themeList(d?.community_themes || d?.communityThemes, 6),
+      sources: sourceList(d?.sources, 6),
+      cancelReasons: bulletList(d?.cancel_reasons || d?.cancelReasons, 4),
       sentiment: parseSentimentBreakdown(d?.sentiment_breakdown || d?.sentimentBreakdown),
       bestFor: String(d?.best_for || ''),
+      notFor: String(d?.not_for || d?.notFor || ''),
       factors,
     };
   }).sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.score - a.score);
   const scores = {};
   services.forEach((s) => { scores[s.name] = s.score; });
   const bestByScore = [...services].sort((a, b) => b.score - a.score)[0]?.name || '';
+  const rawWinner = (verdictRes.winner && typeof verdictRes.winner === 'object')
+    ? verdictRes.winner
+    : (res.winner && typeof res.winner === 'object' ? res.winner : null);
+  const rawDetailed = (verdictRes.detailed_comparison && typeof verdictRes.detailed_comparison === 'object')
+    ? verdictRes.detailed_comparison
+    : (res.detailed_comparison && typeof res.detailed_comparison === 'object' ? res.detailed_comparison : null);
   return {
     isCompare,
     services,
     scores,
-    winner: res.winner && typeof res.winner === 'object' ? {
-      best: String(res.winner.best_content || res.winner.overall || bestByScore || ''),
-      overall: String(res.winner.overall || ''),
-      reason: String(res.winner.reason || ''),
-      scoreGap: num(res.winner.score_gap ?? res.winner.scoreGap),
-      recommendation: String(res.winner.recommendation || ''),
-    } : { best: bestByScore, overall: bestByScore, reason: '', scoreGap: 0, recommendation: '' },
-    detailed: res.detailed_comparison && typeof res.detailed_comparison === 'object' ? {
-      fit: String(res.detailed_comparison.service_fit_summary || ''),
-      features: String(res.detailed_comparison.feature_comparison || ''),
-      ux: String(res.detailed_comparison.user_experience || ''),
-      community: String(res.detailed_comparison.community_and_risk || ''),
-      plan: String(res.detailed_comparison.final_plan || ''),
+    winner: rawWinner ? {
+      best: String(rawWinner.best_content || rawWinner.overall || bestByScore || ''),
+      overall: String(rawWinner.overall || ''),
+      reason: String(rawWinner.reason || ''),
+      scoreGap: num(rawWinner.score_gap ?? rawWinner.scoreGap),
+      runnerUpCase: String(rawWinner.runner_up_case || rawWinner.runnerUpCase || ''),
+      recommendation: String(rawWinner.recommendation || ''),
+    } : { best: bestByScore, overall: bestByScore, reason: '', scoreGap: 0, runnerUpCase: '', recommendation: '' },
+    detailed: rawDetailed ? {
+      fit: String(rawDetailed.service_fit_summary || ''),
+      features: String(rawDetailed.feature_comparison || ''),
+      ux: String(rawDetailed.user_experience || ''),
+      community: String(rawDetailed.community_and_risk || ''),
+      plan: String(rawDetailed.final_plan || ''),
     } : null,
-    recommendation: String(res.recommendation || res?.winner?.recommendation || ''),
+    decisiveDifferences: bulletList(verdictRes.decisive_differences || verdictRes.decisiveDifferences, 6),
+    quizInsights: insightList(verdictRes.quiz_insights || verdictRes.quizInsights, 7),
+    confidence: Math.max(0, Math.min(100, Math.round(num(verdictRes.confidence)))) || (research ? 76 : 56),
+    researched: Boolean(String(research || '').trim()),
+    recommendation: String(verdictRes.recommendation || res.recommendation || rawWinner?.recommendation || ''),
   };
 }
 

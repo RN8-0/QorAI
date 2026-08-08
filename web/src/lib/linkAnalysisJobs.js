@@ -1,9 +1,12 @@
 import {
   analyzeLink,
+  awaitResearch,
   compareAnalysis,
   enhancedAnalysis,
   generateCompareQuiz,
   generateQuiz,
+  researchProductCommunity,
+  researchProductsCommunity,
 } from './linkAnalysis';
 import { saveLinkAnalysisHistory } from './pbHistory';
 
@@ -11,6 +14,20 @@ const STORAGE_KEY = 'qor.linkAnalysis.activeJob';
 const listeners = new Set();
 let activeJob = null;
 const RESTORABLE_PHASES = new Set(['quiz', 'result']);
+
+// GROUNDED YORUM ARAŞTIRMASI, kullanıcı quizi çözerken arka planda koşar —
+// böylece rapor çok daha derin olur ama BEKLEME SÜRESİ ARTMAZ. Promise'i
+// job nesnesinde tutamayız (job localStorage'a serileştiriliyor), o yüzden
+// id → promise haritası.
+const researchByJob = new Map();
+function startResearch(id, promise) {
+  researchByJob.set(id, promise);
+}
+function takeResearch(id) {
+  const p = researchByJob.get(id);
+  researchByJob.delete(id);
+  return p;
+}
 
 function cloneJob(job = activeJob) {
   if (!job) return null;
@@ -67,6 +84,8 @@ function newJob({ type, urls, language, userProfile }) {
     language,
     userProfile,
     phase: 'identifying',
+    stage: null,
+    researched: false,
     bases: [],
     base: null,
     questions: [],
@@ -101,8 +120,13 @@ function fallbackEnhancedResult(base) {
 
 async function completeSingle(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
-  setJob({ phase: 'analyzing', error: '' });
+  setJob({ phase: 'analyzing', stage: 'research', error: '' });
   const base = activeJob.base;
+  // Quiz sırasında başlatılan tarama genelde çoktan bitmiştir; bitmediyse
+  // burada (üst sınırla) beklenir ve tahta "yorumlar taranıyor"da durur.
+  const research = await awaitResearch(takeResearch(job.id));
+  if (!activeJob || activeJob.id !== job.id) return;
+  setJob({ stage: 'report', researched: Boolean(research) });
   let data;
   try {
     data = await enhancedAnalysis({
@@ -110,6 +134,7 @@ async function completeSingle(job, answers = []) {
       answers,
       language: job.language,
       userProfile: job.userProfile,
+      research,
     });
   } catch {
     data = fallbackEnhancedResult(base);
@@ -131,14 +156,18 @@ async function completeSingle(job, answers = []) {
 
 async function completeCompare(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
-  setJob({ phase: 'analyzing', error: '' });
+  setJob({ phase: 'analyzing', stage: 'research', error: '' });
   const bases = activeJob.bases || [];
+  const research = await awaitResearch(takeResearch(job.id));
+  if (!activeJob || activeJob.id !== job.id) return;
+  setJob({ stage: 'report', researched: Boolean(research) });
   try {
     const text = await compareAnalysis({
       bases,
       answers,
       language: job.language,
       userProfile: job.userProfile,
+      research,
     });
     const comparisonSummary = text.recommendation
       || text?.winner?.reason
@@ -178,6 +207,7 @@ export function getActiveLinkAnalysisJob() {
 export function clearLinkAnalysisJob(id) {
   if (!activeJob) return;
   if (id && activeJob.id !== id) return;
+  takeResearch(activeJob.id); // askıdaki taramanın referansını bırak
   activeJob = null;
   emit();
 }
@@ -192,6 +222,14 @@ export function startSingleLinkAnalysisJob({ url, language, userProfile }) {
         setJob({ phase: 'input', error: 'NOT_PRODUCT' });
         return;
       }
+      // Ürün belli oldu → yorum taraması ŞİMDİ başlar ve quiz boyunca koşar.
+      startResearch(job.id, researchProductCommunity({
+        title: result.title,
+        category: result.category,
+        url: result.url,
+        siteName: result.siteName,
+        language,
+      }));
       setJob({ phase: 'quizLoading', base: result, bases: [result] });
       let questions = [];
       try {
@@ -235,6 +273,8 @@ export function startCompareLinkAnalysisJob({ urls, language, userProfile }) {
         setJob({ bases: [...bases] });
       }
       if (!activeJob || activeJob.id !== job.id) return;
+      // Tüm ürünler tanındı → karşılaştırmalı yorum taraması quizle paralel.
+      startResearch(job.id, researchProductsCommunity({ bases, language }));
       setJob({ phase: 'quizLoading', bases });
       let questions = [];
       try {

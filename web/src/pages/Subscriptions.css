@@ -665,3 +665,173 @@
   .subs-mini-stats { justify-content: flex-start; }
   .subs-picker-panel { padding: 14px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DERİN ABONELİK RAPORU + SEÇİCİ CİLASI (2026-08-08)
+   Rapor artık gerçek yorum taramasına dayanıyor: kritik noktalar, topluluk
+   temaları, iptal sebepleri, quiz etkisi ve kullanım planı görünür
+   bölümlerde yaşıyor. Seçici tarafında da mod göstergesi + isimli kutular.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes subsRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* Seçici başlığı */
+.subs-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.subs-picker-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.subs-picker-title strong { font-size: 15px; font-weight: 900; color: var(--text); }
+.subs-picker-title span { font-size: 12.5px; color: var(--text3); font-weight: 650; }
+.subs-mode-pill {
+  flex: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand-blue) 30%, var(--border));
+  background: color-mix(in srgb, var(--brand-blue) 10%, transparent);
+  color: var(--brand-blue);
+  font-size: 11.5px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.subs-mode-pill.compare {
+  border-color: color-mix(in srgb, var(--brand-cyan) 40%, var(--border));
+  background: color-mix(in srgb, var(--brand-cyan) 12%, transparent);
+  color: var(--brand-deep);
+}
+[data-theme='dark'] .subs-mode-pill.compare { color: var(--brand-cyan); }
+
+/* Kutular: logo + isim (eskiden yalnız logo vardı; tanımayan kullanıcı
+   ne seçtiğini göremiyordu). */
+.subs-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.subs-tile {
+  aspect-ratio: auto;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 8px 11px;
+}
+.subs-tile-name {
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--text2);
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.subs-tile.active .subs-tile-name { color: var(--text); }
+
+.subs-selected { align-items: center; }
+.subs-selected-label {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-right: 2px;
+}
+
+.subs-promise {
+  list-style: none;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 7px;
+}
+.subs-promise li { font-size: 12.5px; line-height: 1.5; color: var(--text2); font-weight: 650; }
+
+/* Rapor */
+.subs-researched {
+  align-self: flex-start;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #22c55e 32%, transparent);
+  background: color-mix(in srgb, #22c55e 10%, transparent);
+  color: #16a34a;
+  font-size: 12px;
+  font-weight: 850;
+}
+.subs-runnerup {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text2);
+  font-weight: 650;
+}
+
+.subs-sec {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.subs-sec h4 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--text);
+}
+.subs-sec h4 em { font-style: normal; font-size: 12px; font-weight: 800; color: var(--text3); }
+
+.subs-diffs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+.subs-diff {
+  padding: 13px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  animation: subsRise .45s cubic-bezier(.22, 1, .36, 1) both;
+}
+.subs-diff strong { display: block; font-size: 13.5px; font-weight: 850; color: var(--text); }
+.subs-diff p { margin-top: 5px; font-size: 12.5px; line-height: 1.55; color: var(--text2); }
+
+.subs-forwho { display: flex; flex-direction: column; gap: 7px; }
+.subs-forwho p { font-size: 12.5px; line-height: 1.55; color: var(--text2); }
+.subs-forwho b { font-weight: 850; }
+.subs-forwho-good b { color: #16a34a; }
+.subs-forwho-bad b { color: #e11d48; }
+
+/* Servis kartları artık tam rapor taşıyor — daha geniş ve daha havadar. */
+.subs-svc-grid > .subs-svc { flex: 1 1 420px; max-width: 620px; }
+.subs-svc { gap: 14px; }
+.subs-svc .aic-row { margin: 4px 0; }
+.subs-svc .aic-card { min-width: 0; }
+.subs-svc-id .aic-badge { margin-top: 6px; }
+
+.subs-plan {
+  border-color: color-mix(in srgb, var(--brand-cyan) 32%, var(--border)) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--brand-cyan) 8%, transparent), transparent 55%),
+    var(--bg2) !important;
+}
+
+[data-theme='dark'] .subs-mode-pill { color: var(--brand-sky); }
+[data-theme='dark'] .subs-researched { color: #4ade80; }
+[data-theme='dark'] .subs-forwho-good b { color: #4ade80; }
+[data-theme='dark'] .subs-forwho-bad b { color: #fb7185; }
+
+@media (max-width: 620px) {
+  .subs-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+  .subs-tile { padding: 12px 6px 9px; }
+  .subs-tile-name { font-size: 10px; }
+  .subs-sec { padding: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subs-diff { animation: none; }
+}

@@ -43,7 +43,15 @@ function useDrawn() {
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => setDrawn(true));
     });
-    return () => { cancelAnimationFrame(raf1); if (raf2) cancelAnimationFrame(raf2); };
+    // GÜVENLİK AĞI: sekme arka plandayken tarayıcı requestAnimationFrame'i
+    // askıya alır — o durumda çubuklar SONSUZA KADAR %0'da kalırdı. Zamanlayıcı
+    // arka planda da işlediği için grafik her hâlükârda doğru değere oturur.
+    const fallback = setTimeout(() => setDrawn(true), 220);
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+      clearTimeout(fallback);
+    };
   }, [reduced]);
   return { drawn, reduced };
 }
@@ -274,4 +282,388 @@ export function firstSentencesOf(text, n = 1) {
   if (!raw) return '';
   const parts = raw.split(/(?<=[.!?])\s+/).filter(Boolean);
   return parts.length ? parts.slice(0, n).join(' ') : raw;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DERİN ANALİZ GRAFİKLERİ (2026-08-08)
+   Link + abonelik analizleri "çok kısa" idi: tek gauge, tek donut, iki liste.
+   Aşağıdaki atomlar raporun YENİ alanlarını (faktör detayları, kritik
+   noktalar, quiz etkisi, topluluk temaları, kaynaklar, karşılaştırma ısı
+   matrisi) görselleştirir. Hepsi tek renk dilinde: ≥70 güçlü / ≥50 dengeli /
+   altı zayıf — DecisionBadge ve DistributionBar ile AYNI eşikler.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// Analiz skorunun anlamsal rengi (marka "tech score" halkasından farklı:
+// burada yeşil/amber/kırmızı okunabilirliği kararı anlatır).
+export function scoreColor(s) {
+  const v = Number(s) || 0;
+  return v >= 70 ? CHART_COLORS.strong : v >= 50 ? CHART_COLORS.balanced : CHART_COLORS.weak;
+}
+
+// 0→1 ilerleme (rAF). SVG polygon "points" CSS ile geçiş yapamadığı için
+// radar/alan grafikleri bunu kullanır.
+export function useDrawProgress({ duration = 900 } = {}) {
+  const reduced = usePrefersReducedMotion();
+  const [p, setP] = useState(reduced ? 1 : 0);
+  useEffect(() => {
+    if (reduced) { setP(1); return undefined; }
+    let raf = 0;
+    const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / duration);
+      setP(1 - Math.pow(1 - k, 3));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    // Arka plandaki sekmede rAF askıya alınır ve radar merkeze çökük kalırdı;
+    // zamanlayıcı grafiği her koşulda tam değerine oturtur.
+    const fallback = setTimeout(() => setP(1), duration + 400);
+    return () => { cancelAnimationFrame(raf); clearTimeout(fallback); };
+  }, [reduced, duration]);
+  return p;
+}
+
+// ── (D) Radar — faktör profilinin tek bakışta şekli ────────────────────────
+// Çubuklar "hangi faktör kaç puan" der; radar "bu ürün NE tipte" der (dengeli
+// mi, tek yönlü mü). İkisi aynı veriyi FARKLI soruya cevap verecek şekilde
+// gösterdiği için birlikte duruyorlar.
+export function RadarChart({ factors = [], size = 260, color = CHART_COLORS.brand, L = (en) => en }) {
+  const p = useDrawProgress({ duration: 950 });
+  const rows = (Array.isArray(factors) ? factors : [])
+    .filter((f) => f && f.label)
+    .slice(0, 8);
+  if (rows.length < 3) return null;
+  const cx = size / 2;
+  const cy = size / 2;
+  const R = size * 0.335;
+  const angle = (i) => (Math.PI * 2 * i) / rows.length - Math.PI / 2;
+  const point = (i, v) => {
+    const r = R * Math.max(0.04, Math.min(1, (Number(v) || 0) / 100)) * p;
+    return [cx + Math.cos(angle(i)) * r, cy + Math.sin(angle(i)) * r];
+  };
+  const poly = rows.map((f, i) => point(i, f.score).map((n) => n.toFixed(1)).join(',')).join(' ');
+  const rings = [25, 50, 75, 100];
+  return (
+    <div className="aic-card aic-radar-card">
+      <div className="aic-card-title">🕸 {L('Factor profile', 'Faktör profili', 'Faktorprofil')}</div>
+      <div className="aic-radar-wrap">
+        <svg viewBox={`0 0 ${size} ${size}`} className="aic-radar" role="img"
+          aria-label={L('Factor profile', 'Faktör profili', 'Faktorprofil')}>
+          {rings.map((r) => (
+            <polygon key={r} className="aic-radar-ring"
+              points={rows.map((_, i) => {
+                const rr = R * (r / 100);
+                return `${(cx + Math.cos(angle(i)) * rr).toFixed(1)},${(cy + Math.sin(angle(i)) * rr).toFixed(1)}`;
+              }).join(' ')} />
+          ))}
+          {rows.map((f, i) => (
+            <line key={f.label} className="aic-radar-axis"
+              x1={cx} y1={cy}
+              x2={cx + Math.cos(angle(i)) * R} y2={cy + Math.sin(angle(i)) * R} />
+          ))}
+          <polygon className="aic-radar-area" points={poly} fill={color} stroke={color} />
+          {rows.map((f, i) => {
+            const [x, y] = point(i, f.score);
+            return <circle key={f.label} cx={x} cy={y} r="3.4" fill={color} className="aic-radar-dot" />;
+          })}
+          {rows.map((f, i) => {
+            const lr = R + 20;
+            const x = cx + Math.cos(angle(i)) * lr;
+            const y = cy + Math.sin(angle(i)) * lr;
+            return (
+              <text key={`t-${f.label}`} x={x} y={y} className="aic-radar-tick"
+                textAnchor="middle" dominantBaseline="middle">
+                {f.emoji || '•'}
+                <tspan className="aic-radar-tickv" dx="4">{Math.round(f.score || 0)}</tspan>
+              </text>
+            );
+          })}
+        </svg>
+        <ul className="aic-radar-key">
+          {rows.map((f) => (
+            <li key={f.label}>
+              <i style={{ background: scoreColor(f.score) }} />
+              <span>{f.emoji} {f.label}</span>
+              <b style={{ color: scoreColor(f.score) }}>{Math.round(f.score || 0)}</b>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ── (E) Faktör çubukları + AI'ın tek cümlelik gerekçesi ────────────────────
+// Eski çubuklarda yalnız sayı vardı; "neden 62?" sorusunun cevabı yoktu.
+export function FactorList({ factors = [], columns = 2 }) {
+  const rows = [...(Array.isArray(factors) ? factors : [])]
+    .filter((f) => f && f.label)
+    .sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+  if (!rows.length) return null;
+  return (
+    <div className={`aic-factors${columns === 1 ? ' one' : ''}`}>
+      {rows.map((f, i) => (
+        <div className="aic-factor" key={`${f.label}-${i}`}>
+          <div className="aic-factor-top">
+            <span>{f.emoji || '📊'} {String(f.label).replace(/_/g, ' ')}</span>
+            <b style={{ color: scoreColor(f.score) }}>{Math.round(Number(f.score) || 0)}</b>
+          </div>
+          <div className="aic-factor-track">
+            <BarFill pct={Math.max(3, Math.min(100, Number(f.score) || 0))} color={scoreColor(f.score)} delay={i * 55} />
+          </div>
+          {f.detail && <small>{f.detail}</small>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── (F) Kritik noktalar — "almadan önce bunu bil" ─────────────────────────
+export function CriticalPoints({ items = [], L = (en) => en }) {
+  const rows = (Array.isArray(items) ? items : []).filter((x) => x && (x.title || x.detail));
+  if (!rows.length) return null;
+  const tone = (s) => (s === 'high' ? 'high' : s === 'low' ? 'low' : 'mid');
+  const label = (s) => (s === 'high'
+    ? L('Critical', 'Kritik', 'Kritisch')
+    : s === 'low' ? L('Note', 'Not', 'Hinweis') : L('Important', 'Önemli', 'Wichtig'));
+  return (
+    <section className="aic-crit">
+      <div className="aic-card-title">🚨 {L('Critical points before you decide', 'Karar öncesi kritik noktalar', 'Kritische Punkte vor der Entscheidung')}</div>
+      <div className="aic-crit-grid">
+        {rows.map((x, i) => (
+          <article className={`aic-crit-item ${tone(x.severity)}`} key={i} style={{ animationDelay: `${i * 70}ms` }}>
+            <span className="aic-crit-tag">{label(x.severity)}</span>
+            {x.title && <strong>{x.title}</strong>}
+            {x.detail && <p>{x.detail}</p>}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── (G) Quiz etkisi — verdiğin cevap skoru NASIL değiştirdi ───────────────
+// "Kişisel analiz" iddiasının kanıtı: her satır bir cevabı ve o cevabın bu
+// ürün/servis için artı mı eksi mi olduğunu gösterir.
+export function QuizImpact({ items = [], L = (en) => en }) {
+  const rows = (Array.isArray(items) ? items : []).filter((x) => x && (x.answer || x.note));
+  const { drawn, reduced } = useDrawn();
+  if (!rows.length) return null;
+  return (
+    <section className="aic-qi">
+      <div className="aic-card-title">🧠 {L('How your answers shaped this', 'Cevapların sonucu nasıl değiştirdi', 'Wie deine Antworten gewirkt haben')}</div>
+      <div className="aic-qi-rows">
+        {rows.map((x, i) => {
+          const v = Math.max(-100, Math.min(100, Number(x.impact) || 0));
+          const w = drawn ? Math.min(50, Math.abs(v) / 2) : 0;
+          const col = v >= 8 ? CHART_COLORS.strong : v <= -8 ? CHART_COLORS.weak : CHART_COLORS.balanced;
+          return (
+            <div className="aic-qi-row" key={i}>
+              <div className="aic-qi-copy">
+                <span className="aic-qi-topic">{x.topic || x.question || ''}</span>
+                {x.answer && <b className="aic-qi-answer">“{x.answer}”</b>}
+                {x.note && <small>{x.note}</small>}
+              </div>
+              <div className="aic-qi-meter" aria-hidden="true">
+                <span className="aic-qi-zero" />
+                <i
+                  className={v < 0 ? 'neg' : 'pos'}
+                  style={{
+                    width: `${w}%`,
+                    background: col,
+                    transition: reduced ? 'none' : `width .7s cubic-bezier(.22,.61,.36,1) ${i * 70}ms`,
+                  }}
+                />
+              </div>
+              <b className="aic-qi-val" style={{ color: col }}>{v > 0 ? `+${Math.round(v)}` : Math.round(v)}</b>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── (H) Topluluk temaları — internet yorumlarının kırılımı ────────────────
+// "İnternet yorumları tarandı" cümlesinin görsel karşılığı: hangi konu ne
+// sıklıkta ve hangi yönde konuşuluyor.
+export function CommunityThemes({ themes = [], L = (en) => en }) {
+  const rows = (Array.isArray(themes) ? themes : []).filter((x) => x && x.label).slice(0, 8);
+  if (!rows.length) return null;
+  const col = (s) => (s === 'positive' ? CHART_COLORS.strong : s === 'negative' ? CHART_COLORS.weak : CHART_COLORS.balanced);
+  const face = (s) => (s === 'positive' ? '👍' : s === 'negative' ? '👎' : '🤔');
+  return (
+    <section className="aic-themes">
+      <div className="aic-card-title">🗣 {L('What people keep talking about', 'İnsanlar en çok neyi konuşuyor', 'Worüber am meisten gesprochen wird')}</div>
+      <div className="aic-theme-rows">
+        {rows.map((x, i) => (
+          <div className="aic-theme" key={`${x.label}-${i}`}>
+            <div className="aic-theme-top">
+              <span>{face(x.sentiment)} {x.label}</span>
+              <b style={{ color: col(x.sentiment) }}>{Math.round(Number(x.strength) || 0)}%</b>
+            </div>
+            <div className="aic-theme-track">
+              <BarFill pct={Math.max(4, Math.min(100, Number(x.strength) || 0))} color={col(x.sentiment)} delay={i * 60} />
+            </div>
+            {x.detail && <small>{x.detail}</small>}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Taranan kaynak tipleri — rozet şeridi.
+export function SourceChips({ sources = [], L = (en) => en }) {
+  const rows = (Array.isArray(sources) ? sources : [])
+    .map((s) => (typeof s === 'string' ? { name: s } : s))
+    .filter((s) => s && s.name)
+    .slice(0, 10);
+  if (!rows.length) return null;
+  return (
+    <div className="aic-sources">
+      <span className="aic-sources-label">🔎 {L('Scanned sources', 'Taranan kaynaklar', 'Gescannte Quellen')}</span>
+      {rows.map((s, i) => (
+        <span className="aic-source" key={`${s.name}-${i}`} title={s.note || ''}>{s.name}</span>
+      ))}
+    </div>
+  );
+}
+
+// ── (I) KPI kutucukları — skor/karar/güven tek satırda ────────────────────
+export function StatTiles({ items = [] }) {
+  const rows = (Array.isArray(items) ? items : []).filter((x) => x && x.value != null && x.value !== '');
+  if (!rows.length) return null;
+  return (
+    <div className="aic-tiles">
+      {rows.map((x, i) => (
+        <div className="aic-tile" key={`${x.label}-${i}`} style={{ animationDelay: `${i * 60}ms` }}>
+          <span className="aic-tile-label">{x.icon ? `${x.icon} ` : ''}{x.label}</span>
+          <b style={x.color ? { color: x.color } : undefined}>{x.value}</b>
+          {x.hint && <small>{x.hint}</small>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── (J) Karşılaştırma ısı matrisi — hangi ürün hangi faktörde önde ────────
+export function HeatMatrix({ products = [], L = (en) => en, labelOf = (p) => p.name }) {
+  const rows = Array.isArray(products) ? products.filter((p) => p && p.name) : [];
+  const labels = [...new Set(rows.flatMap((p) => (Array.isArray(p.factors) ? p.factors : []).map((f) => f?.label).filter(Boolean)))];
+  if (!labels.length || rows.length < 2) return null;
+  return (
+    <section className="aic-heat">
+      <div className="aic-card-title">🧭 {L('Factor heat map', 'Faktör ısı haritası', 'Faktor-Heatmap')}</div>
+      <div className="aic-heat-scroll">
+        <table className="aic-heat-table">
+          <thead>
+            <tr>
+              <th />
+              {rows.map((p) => <th key={p.name}>{labelOf(p)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {labels.map((label, li) => {
+              const vals = rows.map((p) => Number((p.factors || []).find((f) => f?.label === label)?.score) || 0);
+              const best = Math.max(...vals);
+              return (
+                <tr key={label}>
+                  <th scope="row">{label}</th>
+                  {vals.map((v, i) => (
+                    <td key={`${label}-${i}`}>
+                      {/* Renk BURADA veridir (ne kadar koyu = o kadar yüksek),
+                          o yüzden dolgu asla animasyona bağlı değil: yalnız
+                          hücrenin belirişi kademelendirilir. */}
+                      <span
+                        className={'aic-heat-cell' + (v === best && best > 0 ? ' best' : '')}
+                        style={{
+                          background: `color-mix(in srgb, ${scoreColor(v)} ${Math.max(10, Math.min(72, v * 0.72))}%, transparent)`,
+                          animationDelay: `${(li * rows.length + i) * 22}ms`,
+                        }}
+                      >{Math.round(v)}</span>
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ── (K) Karar afişi — büyük, tek bakışta okunan sonuç ─────────────────────
+export function VerdictBanner({ score, decision, headline, confidence, L = (en) => en }) {
+  const kind = decision === 'buy' || decision === 'consider' || decision === 'skip'
+    ? decision
+    : decisionFromScore(score);
+  const title = kind === 'buy'
+    ? L('Worth buying for you', 'Sana göre almaya değer', 'Für dich kaufenswert')
+    : kind === 'consider'
+      ? L('Think it over', 'İki kere düşün', 'Gut überlegen')
+      : L('Better to skip', 'Geçmen daha iyi', 'Besser überspringen');
+  const val = useCountUp(Number(score) || 0, { duration: 900 });
+  return (
+    <div className={`aic-verdict ${kind}`}>
+      <div className="aic-verdict-score">
+        <b>{Math.round(val)}</b>
+        <small>/100</small>
+      </div>
+      <div className="aic-verdict-copy">
+        <strong>{title}</strong>
+        {headline && <p>{headline}</p>}
+      </div>
+      {Number(confidence) > 0 && (
+        <div className="aic-verdict-conf" title={L('Analysis confidence', 'Analiz güveni', 'Analysevertrauen')}>
+          <span>{L('Confidence', 'Güven', 'Vertrauen')}</span>
+          <div className="aic-conf-track"><BarFill pct={Math.max(6, Math.min(100, Number(confidence)))} color="currentColor" /></div>
+          <b>{Math.round(Number(confidence))}%</b>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── (L) Zengin artı/eksi listesi — başlık + etki cümlesi ──────────────────
+export function ProConList({ pros = [], cons = [], L = (en) => en, titles = null }) {
+  const norm = (v) => (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string' ? { title: x, detail: '' } : { title: x?.title || x?.label || '', detail: x?.detail || '' }))
+    .filter((x) => x.title || x.detail);
+  const p = norm(pros);
+  const c = norm(cons);
+  if (!p.length && !c.length) return null;
+  const proTitle = titles?.pro || L('Good for you', 'Senin için iyi', 'Gut für dich');
+  const conTitle = titles?.con || L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile');
+  return (
+    <div className="aic-pc-grid">
+      {p.length > 0 && (
+        <div className="aic-pc pro">
+          <h4>✓ {proTitle}</h4>
+          <ul>
+            {p.map((x, i) => (
+              <li key={i} style={{ animationDelay: `${i * 55}ms` }}>
+                <b>{x.title}</b>
+                {x.detail && <span>{x.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {c.length > 0 && (
+        <div className="aic-pc con">
+          <h4>⚠ {conTitle}</h4>
+          <ul>
+            {c.map((x, i) => (
+              <li key={i} style={{ animationDelay: `${i * 55}ms` }}>
+                <b>{x.title}</b>
+                {x.detail && <span>{x.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -18,16 +18,26 @@ import AmazonLogo from '../components/AmazonLogo.jsx';
 import {
   BarFill,
   Collapsible,
+  CommunityThemes,
+  CriticalPoints,
   DecisionBadge,
   DistributionBar,
+  FactorList,
+  HeatMatrix,
+  ProConList,
+  QuizImpact,
+  RadarChart,
   SentimentDonut,
+  SourceChips,
+  StatTiles,
   factorDistribution,
   firstSentencesOf,
   normalizeSentiment,
+  scoreColor,
 } from '../components/AiCharts.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
-import Gauge, { techColor } from '../components/Gauge.jsx';
+import Gauge from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
@@ -91,113 +101,43 @@ function bandLabel(s, L) {
         : L('Weak match', 'Zayıf uyum', 'Schwach');
 }
 
-function FactorBars({ factors = [] }) {
-  if (!factors.length) return null;
-  // Skora göre azalan sıralı, 0→değer animasyonlu çubuklar (spec §4A).
-  const rows = [...factors].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+// Eski kayıtlarda düz string, yeni kayıtlarda {title, detail} — tek şekle indir.
+function bullets(v) {
+  return (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '' }
+      : { title: String(x?.title || x?.name || ''), detail: String(x?.detail || x?.why || '') }))
+    .filter((x) => x.title || x.detail);
+}
+
+// Rapor bölümü başlığı — görünür, numaralı, taranabilir.
+function Sec({ icon, title, meta, children, tone = '' }) {
   return (
-    <div className="la-factors">
-      {rows.map((f, i) => (
-        <div className="la-factor" key={f.label}>
-          <div className="la-factor-top">
-            <span>{f.emoji} {f.label}</span>
-            <b style={{ color: techColor(f.score) }}>{Math.round(f.score)}</b>
-          </div>
-          <div className="la-factor-bar"><BarFill pct={Math.max(4, Math.min(100, f.score))} color={techColor(f.score)} delay={i * 60} /></div>
-        </div>
-      ))}
-    </div>
+    <section className={`la-sec${tone ? ` ${tone}` : ''}`}>
+      <h4>{icon} {title}{meta ? <em> · {meta}</em> : null}</h4>
+      {children}
+    </section>
   );
 }
 
-function LoadingWorkboard({ phase, isCompare, L, t }) {
-  const [step, setStep] = useState(0);
-  const copy = (() => {
-    if (isCompare && phase === 'analyzing') {
-      return {
-        title: L('Comparing links', 'Linkler karşılaştırılıyor', 'Links werden verglichen'),
-        detail: L('Qor AI is weighing each product side by side.',
-          'Qor AI her ürünü yan yana tartıyor.',
-          'Qor AI gewichtet jedes Produkt nebeneinander.'),
-        steps: [
-          L('Validating product links', 'Ürün linkleri doğrulanıyor', 'Produktlinks werden geprüft'),
-          L('Identifying each exact product', 'Her ürün tek tek tanınıyor', 'Jedes Produkt wird erkannt'),
-          L('Weighing strengths and trade-offs', 'Artılar, eksiler ve farklar tartılıyor', 'Stärken und Kompromisse werden abgewogen'),
-          L('Writing the final recommendation', 'Nihai öneri yazılıyor', 'Empfehlung wird geschrieben'),
-        ],
-      };
-    }
-    if (phase === 'identifying') {
-      return {
-        title: L('Identifying the product', 'Ürün tanımlanıyor', 'Produkt wird erkannt'),
-        detail: L('Qor AI reads the URL, store signal, and product slug first.',
-          'Qor AI önce URL, mağaza ve ürün adı sinyallerini okuyor.',
-          'Qor AI liest zuerst URL, Shop-Signal und Produktslug.'),
-        steps: [
-          L('Checking the link format', 'Bağlantı formatı kontrol ediliyor', 'Linkformat wird geprüft'),
-          L('Reading store and product signals', 'Mağaza ve ürün sinyalleri okunuyor', 'Shop- und Produktsignale werden gelesen'),
-          L('Detecting the category', 'Kategori algılanıyor', 'Kategorie wird erkannt'),
-          L('Preparing the base analysis', 'Baz analiz hazırlanıyor', 'Basisanalyse wird vorbereitet'),
-        ],
-      };
-    }
-    if (phase === 'quizLoading') {
-      return {
-        title: L('Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'),
-        detail: L('Questions are tuned to this product, not a generic profile form.',
-          'Sorular genel profil formu değil, bu ürüne göre hazırlanıyor.',
-          'Die Fragen werden auf dieses Produkt zugeschnitten.'),
-        steps: [
-          L('Product context is locked', 'Ürün bağlamı sabitlendi', 'Produktkontext ist fixiert'),
-          L('Usage scenarios are mapped', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'),
-          L('Category-specific questions are written', 'Kategoriye özel sorular yazılıyor', 'Kategoriespezifische Fragen werden erstellt'),
-          L('Answer choices are balanced', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'),
-        ],
-      };
-    }
-    return {
-      title: t('la.loading'),
-      detail: L('Qor AI turns your answers into a personal match report.',
-        'Qor AI cevaplarını kişisel eşleşme raporuna çeviriyor.',
-        'Qor AI macht aus deinen Antworten einen persönlichen Match-Bericht.'),
-      steps: [
-        L('Reading quiz answers', 'Quiz cevapları okunuyor', 'Quizantworten werden gelesen'),
-        L('Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'),
-        L('Summarizing reviews and risks', 'Yorumlar ve riskler özetleniyor', 'Bewertungen und Risiken werden zusammengefasst'),
-        L('Building the final verdict', 'Son karar hazırlanıyor', 'Endgültiges Fazit wird erstellt'),
-      ],
-    };
-  })();
-
-  useEffect(() => {
-    setStep(0);
-    const timer = setInterval(() => setStep((n) => (n + 1) % copy.steps.length), 1350);
-    return () => clearInterval(timer);
-  }, [phase, isCompare, copy.steps.length]);
-
+function FeatureMatchTable({ rows = [], L }) {
+  if (!rows.length) return null;
   return (
-    <div className="la-loading fade-up" role="status" aria-live="polite">
-      <div className="la-load-orb" aria-hidden="true">
-        <span className="la-load-ring" />
-        <span className="la-load-core" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-            <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
-          </svg>
-        </span>
-      </div>
-      <div className="la-load-copy">
-        <strong>{copy.title}</strong>
-        <span>{copy.detail}</span>
-      </div>
-      <div className="la-load-steps">
-        {copy.steps.map((label, i) => (
-          <div key={label} className={'la-load-step' + (i === step ? ' active' : '') + (i < step ? ' done' : '')}>
-            <i aria-hidden="true">{i < step ? '✓' : i + 1}</i>
-            <span>{label}</span>
+    <div className="la-fm">
+      {rows.map((f, i) => (
+        <div className="la-fm-row" key={`${f.label}-${i}`}>
+          <div className="la-fm-head">
+            <strong>{f.label}</strong>
+            <b style={{ color: scoreColor(f.score) }}>{Math.round(f.score || 0)}</b>
           </div>
-        ))}
-      </div>
+          <div className="la-fm-track"><BarFill pct={Math.max(4, Math.min(100, f.score || 0))} color={scoreColor(f.score)} delay={i * 50} /></div>
+          <div className="la-fm-cols">
+            {f.productValue && <span><i>{L('Product', 'Üründe', 'Produkt')}</i>{f.productValue}</span>}
+            {f.userNeed && <span><i>{L('You need', 'Senin ihtiyacın', 'Dein Bedarf')}</i>{f.userNeed}</span>}
+          </div>
+          {f.comment && <small>{f.comment}</small>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -206,125 +146,180 @@ function EnhancedResult({ data, L, lang }) {
   const score = Math.round(data.enhancedScore || 0);
   // History entries saved by older builds may miss the array fields — guard so
   // opening them never crashes the page.
-  const pros = Array.isArray(data.prosForUser) ? data.prosForUser : [];
-  const cons = Array.isArray(data.consForUser) ? data.consForUser : [];
-  const alts = Array.isArray(data.alternatives) ? data.alternatives : [];
+  const pros = bullets(data.prosForUser);
+  const cons = bullets(data.consForUser);
+  const alts = bullets(data.alternatives);
   const factors = Array.isArray(data.factors) ? data.factors : [];
+  const critical = Array.isArray(data.criticalPoints) ? data.criticalPoints : [];
+  const insights = Array.isArray(data.quizInsights) ? data.quizInsights : [];
+  const themes = Array.isArray(data.communityThemes) ? data.communityThemes : [];
+  const praise = bullets(data.praisePoints);
+  const complaints = bullets(data.complaintPoints);
+  const reliability = bullets(data.reliabilityNotes);
+  const verification = bullets(data.verificationNotes);
+  const features = Array.isArray(data.featureMatches) ? data.featureMatches : [];
   const base = data.base || {};
-  // Grafikler (spec §4, web+app senkron): topluluk sentiment donutu +
-  // faktör dengesi dağılımı. sentimentBreakdown yoksa communityScore/score'dan
-  // türetilir; dağılım faktör skorlarından hesaplanır (AI gerekmez).
+  // Grafikler: topluluk sentiment donutu + faktör dengesi + radar profili.
+  // sentimentBreakdown yoksa communityScore/score'dan türetilir.
   const sentiment = normalizeSentiment(
     data.sentimentBreakdown,
     Math.round(data.communityScore || score),
   );
   const dist = factorDistribution(factors);
-  // Hero tek cümle: nihai karardan (yoksa değerlendirmeden) ilk cümle.
-  const oneLiner = firstSentencesOf(data.overallVerdict || data.verdict, 1);
-  const hasDetail = data.verdict || data.personaAnalysis || data.communityAnalysis
-    || data.overallVerdict || alts.length > 0 || pros.length > 3 || cons.length > 3;
+  const headline = data.headline || firstSentencesOf(data.overallVerdict || data.verdict, 1);
+  const trendLabel = {
+    up: L('Rising', 'Yükselişte', 'Steigend'),
+    down: L('Falling', 'Düşüşte', 'Fallend'),
+    stable: L('Stable', 'Sabit', 'Stabil'),
+  };
   return (
     <div className="la-result fade-up">
       <div className="la-result-head">
         <span>{L('Qor AI Analysis', 'Qor AI Analizi', 'Qor AI Analyse')}</span>
         <span className="la-result-title">{base.title}</span>
+        {data.researched && (
+          <span className="la-researched" title={L('Live web + community research was used', 'Canlı web + topluluk araştırması kullanıldı', 'Live-Web- und Community-Recherche verwendet')}>
+            🌐 {L('Reviews scanned', 'Yorumlar tarandı', 'Bewertungen gescannt')}
+          </span>
+        )}
       </div>
       <div className="la-result-body">
-        <div className="la-score-row">
-          <Gauge value={score} size={92} stroke={8} color={techColor(score)} fontSize={26} />
-          <div>
-            <div className="la-score-band" style={{ color: techColor(score) }}>{bandLabel(score, L)}</div>
+        {/* ── Hero: skor + karar + tek cümle ── */}
+        <section className={`la-hero-card ${data.decision || ''}`}>
+          <Gauge value={score} size={104} stroke={9} color={scoreColor(score)} fontSize={30} />
+          <div className="la-hero-main">
+            <div className="la-hero-band" style={{ color: scoreColor(score) }}>{bandLabel(score, L)}</div>
             <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
-            {base.siteName && <div className="la-score-site">{base.siteName}</div>}
-            <div className="la-hero-badge"><DecisionBadge score={score} L={L} /></div>
+            {headline && <p className="la-hero-line">{headline}</p>}
+            <div className="la-hero-badges">
+              <DecisionBadge score={data.decision === 'buy' ? 80 : data.decision === 'skip' ? 30 : data.decision === 'consider' ? 60 : score} L={L} />
+              {base.siteName && <span className="la-hero-site">{base.siteName}</span>}
+            </div>
           </div>
           <StoreCta url={base.url || data.url} lang={lang} L={L} />
-        </div>
+        </section>
 
-        {oneLiner && <p className="aic-hero-line">{oneLiner}</p>}
+        <StatTiles items={[
+          { icon: '🎯', label: L('Match', 'Uyum', 'Match'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
+          data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum', 'Lebensfit'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
+          data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti', 'Zufriedenheit'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
+          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı', 'web-recherchiert') : L('model knowledge', 'model bilgisi', 'Modellwissen') } : null,
+        ].filter(Boolean)} />
 
-        {/* Radar kaldırıldı — çubuklarla aynı veriyi tekrar ediyordu; tek net görünüm (spec). */}
-        {factors.length > 0 && (
-          <div className="la-factor-bars-full"><FactorBars factors={factors} /></div>
-        )}
-
+        {/* ── Grafikler ── */}
         <div className="aic-row">
+          {factors.length >= 3 && <RadarChart factors={factors} L={L} color="var(--brand-blue)" />}
           <SentimentDonut breakdown={sentiment} L={L} />
           <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
         </div>
 
-        {(pros.length > 0 || cons.length > 0) && (
-          <div className="la-poncons">
-            {pros.length > 0 && (
-              <div className="la-pc la-pc-pro">
-                <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
-                <ul>{pros.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
+        {factors.length > 0 && (
+          <Sec icon="📊" title={L('Factor by factor', 'Faktör faktör', 'Faktor für Faktor')}>
+            <FactorList factors={factors} />
+          </Sec>
+        )}
+
+        <CriticalPoints items={critical} L={L} />
+
+        <ProConList pros={pros} cons={cons} L={L} />
+
+        <QuizImpact items={insights} L={L} />
+
+        {(themes.length > 0 || data.communityAnalysis) && (
+          <div className="la-community">
+            <CommunityThemes themes={themes} L={L} />
+            <SourceChips sources={data.sources} L={L} />
+            {(praise.length > 0 || complaints.length > 0) && (
+              <ProConList
+                pros={praise} cons={complaints} L={L}
+                titles={{
+                  pro: L('What owners love', 'Kullanıcıların sevdiği', 'Was Nutzer lieben'),
+                  con: L('What owners complain about', 'Kullanıcıların şikâyeti', 'Worüber Nutzer klagen'),
+                }}
+              />
+            )}
+            {data.communityAnalysis && (
+              <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu', 'Community-Echo')}
+                meta={data.communityScore ? `${Math.round(data.communityScore)}/100` : ''}>
+                <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
+              </Sec>
+            )}
+            {reliability.length > 0 && (
+              <Sec icon="🛠" title={L('Reliability and support', 'Güvenilirlik ve destek', 'Zuverlässigkeit und Support')}>
+                <ul className="la-notes">{reliability.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
+              </Sec>
+            )}
+          </div>
+        )}
+
+        {data.verdict && (
+          <Sec icon="📋" title={L('The full picture', 'Tam değerlendirme', 'Das ganze Bild')}>
+            <div className="la-prose"><AiText text={data.verdict} /></div>
+          </Sec>
+        )}
+
+        {data.personaAnalysis && (
+          <Sec icon="👤" title={L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}
+            meta={data.personaScore ? `${Math.round(data.personaScore)}/100` : ''}>
+            <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
+          </Sec>
+        )}
+
+        {(data.bestFor || data.notFor) && (
+          <div className="la-forwho">
+            {data.bestFor && (
+              <div className="la-forwho-card good">
+                <h5>👍 {L('Perfect for', 'Tam uygun', 'Perfekt für')}</h5>
+                <p>{data.bestFor}</p>
               </div>
             )}
-            {cons.length > 0 && (
-              <div className="la-pc la-pc-con">
-                <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
-                <ul>{cons.slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
+            {data.notFor && (
+              <div className="la-forwho-card bad">
+                <h5>👎 {L('Not for', 'Uygun değil', 'Nicht für')}</h5>
+                <p>{data.notFor}</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Uzun metinler varsayılan kapalı — "tek bakışta anla" için (spec §5). */}
-        {hasDetail && (
-          <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
-            {data.verdict && (
-              <section className="la-sec">
-                <h4>📋 {L('Verdict', 'Değerlendirme', 'Fazit')}</h4>
-                <div className="la-prose"><AiText text={data.verdict} /></div>
-              </section>
-            )}
-
-            {(pros.length > 3 || cons.length > 3) && (
-              <div className="la-poncons">
-                {pros.length > 3 && (
-                  <div className="la-pc la-pc-pro">
-                    <h4>✓ {L('Good for you', 'Senin için iyi', 'Gut für dich')}</h4>
-                    <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                  </div>
-                )}
-                {cons.length > 3 && (
-                  <div className="la-pc la-pc-con">
-                    <h4>⚠ {L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile')}</h4>
-                    <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {alts.length > 0 && (
-              <section className="la-sec">
-                <h4>🔀 {L('Alternatives', 'Alternatifler', 'Alternativen')}</h4>
-                <div className="la-alts">{alts.map((a, i) => <span className="la-alt" key={i}>{a}</span>)}</div>
-              </section>
-            )}
-
-            {data.personaAnalysis && (
-              <section className="la-sec">
-                <h4>👤 {L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}{data.personaScore ? ` · ${Math.round(data.personaScore)}` : ''}</h4>
-                <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
-              </section>
-            )}
-
-            {data.communityAnalysis && (
-              <section className="la-sec">
-                <h4>🌐 {L('Community reception', 'Topluluk yorumu', 'Community-Echo')}{data.communityScore ? ` · ${Math.round(data.communityScore)}` : ''}</h4>
-                <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
-              </section>
-            )}
-
-            {data.overallVerdict && (
-              <section className="la-sec la-sec-final">
-                <h4>🏁 {L('Final verdict', 'Son karar', 'Endgültiges Fazit')}</h4>
-                <div className="la-prose"><AiText text={data.overallVerdict} /></div>
-              </section>
-            )}
+        {features.length > 0 && (
+          <Collapsible label={`🧩 ${L('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi', 'Funktion-Bedarf-Abgleich')}`}>
+            <FeatureMatchTable rows={features} L={L} />
           </Collapsible>
+        )}
+
+        {alts.length > 0 && (
+          <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler', 'Alternativen')}>
+            <div className="la-alt-grid">
+              {alts.map((a, i) => (
+                <div className="la-alt-card" key={i}>
+                  <strong>{a.title}</strong>
+                  {a.detail && <span>{a.detail}</span>}
+                </div>
+              ))}
+            </div>
+          </Sec>
+        )}
+
+        {data.priceOutlook && (data.priceOutlook.note || data.priceOutlook.bestTime) && (
+          <Sec icon="⏱" title={L('Timing and value', 'Zamanlama ve değer', 'Timing und Wert')}
+            meta={trendLabel[data.priceOutlook.trend] || ''}>
+            {data.priceOutlook.bestTime && <p className="la-timing">🗓 {data.priceOutlook.bestTime}</p>}
+            {data.priceOutlook.note && <div className="la-prose"><AiText text={data.priceOutlook.note} /></div>}
+          </Sec>
+        )}
+
+        {data.overallVerdict && (
+          <Sec icon="🏁" title={L('Final verdict', 'Son karar', 'Endgültiges Fazit')} tone="la-sec-final">
+            <div className="la-prose"><AiText text={data.overallVerdict} /></div>
+          </Sec>
+        )}
+
+        {verification.length > 0 && (
+          <div className="la-verify">
+            <strong>🔍 {L('What is verified, what is not', 'Neyi doğruladık, neyi doğrulamadık', 'Was belegt ist')}</strong>
+            <ul>{verification.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
+          </div>
         )}
       </div>
     </div>
@@ -344,7 +339,7 @@ function CompareScoreChart({ products = [], L }) {
       <div className="la-cmp-chart-rows">
         {products.map((p, i) => {
           const score = Math.round(p.score || 0);
-          const color = techColor(score);
+          const color = scoreColor(score);
           return (
             <div className="la-cmp-chart-row" key={`${p.name}-${i}`}>
               <span className="la-cmp-rank">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
@@ -361,70 +356,39 @@ function CompareScoreChart({ products = [], L }) {
   );
 }
 
-function CompareFactorMatrix({ products = [], L }) {
-  const labels = [...new Set(products.flatMap((p) => list(p.factors).map((f) => f.label)))];
-  if (!labels.length || !products.length) return null;
-  return (
-    <section className="la-cmp-matrix">
-      <div className="la-cmp-section-title">🧭 {L('Factor breakdown', 'Faktör kırılımı', 'Faktorvergleich')}</div>
-      {labels.map((label) => (
-        <div className="la-cmp-matrix-row" key={label}>
-          <div className="la-cmp-matrix-label">{label}</div>
-          <div className="la-cmp-matrix-bars">
-            {products.map((p) => {
-              const f = list(p.factors).find((x) => x.label === label);
-              const score = Math.round(f?.score || 0);
-              const color = techColor(score);
-              return (
-                <div className="la-cmp-mini" key={`${p.name}-${label}`}>
-                  <span>{p.name}</span>
-                  <div><BarFill pct={Math.max(4, score)} color={color} /></div>
-                  <b style={{ color }}>{score}</b>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </section>
-  );
-}
-
 function CompareProductCard({ product, isWinner, L, lang }) {
   const score = Math.round(product.score || 0);
-  const pros = list(product.pros);
-  const cons = list(product.cons);
-  const risks = list(product.risks);
+  const pros = bullets(product.pros);
+  const cons = bullets(product.cons);
+  const risks = bullets(product.risks);
+  const critical = list(product.criticalPoints);
   const factors = list(product.factors);
   const specs = list(product.specHighlights);
+  const themes = list(product.communityThemes);
+  const sentiment = normalizeSentiment(product.sentiment, score);
   return (
     <article className={'la-cmp-card' + (isWinner ? ' winner' : '')}>
       {isWinner && <span className="la-cmp-win-pill">★ {L('Best fit', 'En iyi eşleşme', 'Beste Wahl')}</span>}
       <div className="la-cmp-card-top">
-        <Gauge value={score} size={66} stroke={6} color={techColor(score)} fontSize={18} />
+        <Gauge value={score} size={72} stroke={7} color={scoreColor(score)} fontSize={21} />
         <div className="la-cmp-card-id">
           <strong>{product.name}</strong>
           <span>{product.siteName || L('Product link', 'Ürün linki', 'Produktlink')}</span>
+          <DecisionBadge score={score} L={L} />
         </div>
       </div>
       <StoreCta url={product.url || product.link} lang={lang} L={L} compact />
       {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun', 'Ideal für')}:</b> {product.bestFor}</p>}
       {product.summary && <div className="la-prose la-cmp-summary"><AiText text={product.summary} /></div>}
 
-      {factors.length > 0 && (
-        <div className="la-cmp-factors">
-          {factors.map((f) => (
-            <div className="la-cmp-factor" key={f.label}>
-              <div className="la-cmp-factor-top">
-                <span>{f.emoji} {f.label}</span>
-                <b style={{ color: techColor(f.score) }}>{Math.round(f.score || 0)}</b>
-              </div>
-              <div className="la-factor-bar"><BarFill pct={Math.max(4, Math.min(100, f.score || 0))} color={techColor(f.score)} /></div>
-              {f.detail && <small>{f.detail}</small>}
-            </div>
-          ))}
+      {factors.length >= 3 && (
+        <div className="aic-row la-cmp-charts">
+          <RadarChart factors={factors} L={L} size={220} color="var(--brand-blue)" />
+          <SentimentDonut breakdown={sentiment} L={L} compact />
         </div>
       )}
+
+      {factors.length > 0 && <FactorList factors={factors} columns={1} />}
 
       {specs.length > 0 && (
         <div className="la-cmp-specs">
@@ -434,35 +398,29 @@ function CompareProductCard({ product, isWinner, L, lang }) {
         </div>
       )}
 
-      {(pros.length > 0 || cons.length > 0) && (
-        <div className="la-poncons">
-          {pros.length > 0 && (
-            <div className="la-pc la-pc-pro">
-              <h4>✓ {L('Strengths', 'Güçlü yanlar', 'Stärken')}</h4>
-              <ul>{pros.map((x, i) => <li key={i}>{x}</li>)}</ul>
-            </div>
-          )}
-          {cons.length > 0 && (
-            <div className="la-pc la-pc-con">
-              <h4>⚠ {L('Trade-offs', 'Eksiler', 'Nachteile')}</h4>
-              <ul>{cons.map((x, i) => <li key={i}>{x}</li>)}</ul>
-            </div>
-          )}
-        </div>
-      )}
+      <ProConList
+        pros={pros} cons={cons} L={L}
+        titles={{
+          pro: L('Strengths', 'Güçlü yanlar', 'Stärken'),
+          con: L('Trade-offs', 'Eksiler', 'Nachteile'),
+        }}
+      />
+
+      <CriticalPoints items={critical} L={L} />
 
       {risks.length > 0 && (
         <div className="la-cmp-risks">
           <h4>🛠 {L('Ownership risks', 'Sahiplik riskleri', 'Besitzrisiken')}</h4>
-          <ul>{risks.map((x, i) => <li key={i}>{x}</li>)}</ul>
+          <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
         </div>
       )}
 
+      <CommunityThemes themes={themes} L={L} />
+
       {product.community && (
-        <section className="la-sec">
-          <h4>🌐 {L('Community signal', 'Topluluk sinyali', 'Community-Signal')}</h4>
+        <Sec icon="🌐" title={L('Community signal', 'Topluluk sinyali', 'Community-Signal')}>
           <div className="la-prose"><AiText text={product.community} /></div>
-        </section>
+        </Sec>
       )}
     </article>
   );
@@ -477,11 +435,16 @@ function CompareResult({ data, L, lang }) {
   const best = products.find((p) => p.name === winnerName) || products[0];
   const gap = data?.winner?.scoreGap || (products.length > 1 ? Math.round((products[0].score || 0) - (products[products.length - 1].score || 0)) : 0);
   const detailed = data?.detailed || {};
+  const diffs = bullets(data?.decisiveDifferences);
+  const insights = Array.isArray(data?.quizInsights) ? data.quizInsights : [];
   return (
     <div className="la-result la-cmp-result fade-up">
       <div className="la-result-head">
         <span>{L('Qor AI Comparison', 'Qor AI Karşılaştırması', 'Qor AI Vergleich')}</span>
         <span className="la-result-title">{products.map((p) => p.name).join(' vs ')}</span>
+        {data.researched && (
+          <span className="la-researched">🌐 {L('Reviews scanned', 'Yorumlar tarandı', 'Bewertungen gescannt')}</span>
+        )}
       </div>
       <div className="la-result-body">
         <section className="la-cmp-hero">
@@ -492,51 +455,66 @@ function CompareResult({ data, L, lang }) {
             {(data?.winner?.reason || data?.recommendation) && (
               <div className="la-prose"><AiText text={data.winner?.reason || data.recommendation} /></div>
             )}
+            {data?.winner?.runnerUpCase && (
+              <p className="la-cmp-runnerup">🔁 {data.winner.runnerUpCase}</p>
+            )}
           </div>
-          <Gauge value={best.score} size={92} stroke={8} color={techColor(best.score)} fontSize={26} />
+          <Gauge value={best.score} size={100} stroke={9} color={scoreColor(best.score)} fontSize={29} />
         </section>
 
+        <StatTiles items={[
+          { icon: '🏆', label: L('Winner score', 'Kazanan puanı', 'Siegerwert'), value: Math.round(best.score), color: scoreColor(best.score) },
+          gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı', 'Punktedifferenz'), value: gap } : null,
+          { icon: '🔗', label: L('Products', 'Ürün', 'Produkte'), value: products.length },
+          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(data.confidence)}%` } : null,
+        ].filter(Boolean)} />
+
         <CompareScoreChart products={products} L={L} />
-        <CompareFactorMatrix products={products} L={L} />
+        <HeatMatrix products={products} L={L} />
+
+        {diffs.length > 0 && (
+          <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar', 'Was wirklich entscheidet')}>
+            <div className="la-diffs">
+              {diffs.map((d, i) => (
+                <div className="la-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
+                  <strong>{d.title}</strong>
+                  {d.detail && <p>{d.detail}</p>}
+                </div>
+              ))}
+            </div>
+          </Sec>
+        )}
+
+        <QuizImpact items={insights} L={L} />
 
         <div className="la-cmp-grid">
           {products.map((p) => <CompareProductCard key={p.name} product={p} isWinner={p.name === best.name} L={L} lang={lang} />)}
         </div>
 
-        {gap > 0 && (
-          <div className="la-cmp-gap">
-            {L('Score difference between best and weakest match', 'En iyi ve en zayıf eşleşme arasındaki puan farkı', 'Punktedifferenz zwischen bester und schwächster Wahl')}: <b>{gap}</b>
-          </div>
+        {detailed.fit && (
+          <Sec icon="🎯" title={L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}>
+            <div className="la-prose"><AiText text={detailed.fit} /></div>
+          </Sec>
         )}
-
-        {(detailed.fit || detailed.performance || detailed.ownership
-          || detailed.recommendation || data?.recommendation) && (
-          <Collapsible label={`📖 ${L('Detailed comparison', 'Detaylı karşılaştırma', 'Detaillierter Vergleich')}`}>
-            {detailed.fit && (
-              <section className="la-sec">
-                <h4>🎯 {L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}</h4>
-                <div className="la-prose"><AiText text={detailed.fit} /></div>
-              </section>
-            )}
-            {detailed.performance && (
-              <section className="la-sec">
-                <h4>⚡ {L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}</h4>
-                <div className="la-prose"><AiText text={detailed.performance} /></div>
-              </section>
-            )}
-            {detailed.ownership && (
-              <section className="la-sec">
-                <h4>🛡 {L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}</h4>
-                <div className="la-prose"><AiText text={detailed.ownership} /></div>
-              </section>
-            )}
-            {(detailed.recommendation || data?.recommendation) && (
-              <section className="la-sec la-sec-final">
-                <h4>🏁 {L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')}</h4>
-                <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
-              </section>
-            )}
-          </Collapsible>
+        {detailed.performance && (
+          <Sec icon="⚡" title={L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}>
+            <div className="la-prose"><AiText text={detailed.performance} /></div>
+          </Sec>
+        )}
+        {detailed.ownership && (
+          <Sec icon="🛡" title={L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}>
+            <div className="la-prose"><AiText text={detailed.ownership} /></div>
+          </Sec>
+        )}
+        {detailed.community && (
+          <Sec icon="🌐" title={L('What owners of each report', 'Kullanıcılar ne diyor', 'Was Besitzer berichten')}>
+            <div className="la-prose"><AiText text={detailed.community} /></div>
+          </Sec>
+        )}
+        {(detailed.recommendation || data?.recommendation) && (
+          <Sec icon="🏁" title={L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')} tone="la-sec-final">
+            <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
+          </Sec>
         )}
       </div>
     </div>
@@ -569,12 +547,16 @@ export default function LinkAnalysis() {
   const [err, setErr] = useState('');
   const [activeJobId, setActiveJobId] = useState('');
   const [activeJobType, setActiveJobType] = useState('');
+  // Gerçek boru hattı aşaması (research | report) — yükleniyor tahtası hangi
+  // işin GERÇEKTEN koştuğunu göstersin diye.
+  const [stage, setStage] = useState(null);
   const seenSavedJobRef = useRef('');
 
   useEffect(() => subscribeLinkAnalysisJob((job) => {
     if (!job) return;
     setActiveJobId(job.id || '');
     setActiveJobType(job.type || '');
+    setStage(job.stage || null);
     if (Array.isArray(job.urls) && job.urls.length) {
       setUrls(job.urls.length < MAX_LINKS ? [...job.urls, ''] : job.urls.slice(0, MAX_LINKS));
     }
@@ -615,6 +597,14 @@ export default function LinkAnalysis() {
       const next = u.filter((_, idx) => idx !== i);
       return next.length ? next : [''];
     });
+  }
+  // Mobilde/masaüstünde "kopyaladım ama yapıştıramıyorum" sürtünmesini kaldırır.
+  // İzin verilmezse sessizce hiçbir şey yapmaz — kullanıcı elle yapıştırır.
+  async function pasteInto(i) {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text.trim()) setUrl(i, text.trim());
+    } catch { /* clipboard permission denied — manual paste still works */ }
   }
 
   function resetFlow() {
@@ -735,10 +725,17 @@ export default function LinkAnalysis() {
           <Reveal className="la-stage">
             <form className="la-form" onSubmit={analyze}>
               <div className="la-form-head">
-                <strong>{L('Paste product links', 'Ürün linklerini yapıştır', 'Produktlinks einfügen')}</strong>
-                <span>{filled > 1
-                  ? L('Comparison mode — analyzing side by side', 'Karşılaştırma modu — yan yana analiz', 'Vergleichsmodus — Seite an Seite')
-                  : L('Add a second link to compare', 'Karşılaştırmak için ikinci link ekle', 'Zweiten Link zum Vergleichen hinzufügen')}</span>
+                <div className="la-form-title">
+                  <strong>{L('Paste product links', 'Ürün linklerini yapıştır', 'Produktlinks einfügen')}</strong>
+                  <span>{filled > 1
+                    ? L('Comparison mode — analyzing side by side', 'Karşılaştırma modu — yan yana analiz', 'Vergleichsmodus — Seite an Seite')
+                    : L('Add a second link to compare', 'Karşılaştırmak için ikinci link ekle', 'Zweiten Link zum Vergleichen hinzufügen')}</span>
+                </div>
+                <span className={'la-mode-pill' + (filled > 1 ? ' compare' : '')}>
+                  {filled > 1
+                    ? `⚖️ ${L('Compare', 'Karşılaştır', 'Vergleich')} · ${filled}`
+                    : `🔎 ${L('Deep analysis', 'Derin analiz', 'Tiefenanalyse')}`}
+                </span>
               </div>
               <div className="la-rows">
                 {urls.map((url, i) => (
@@ -746,6 +743,15 @@ export default function LinkAnalysis() {
                     <span className="la-row-no">{i + 1}</span>
                     <input type="url" value={url} onChange={(e) => setUrl(i, e.target.value)}
                       placeholder={t('la.placeholder')} />
+                    {!url.trim() && (
+                      <button type="button" className="la-row-paste" onClick={() => pasteInto(i)}
+                        aria-label={L('Paste', 'Yapıştır', 'Einfügen')} title={L('Paste from clipboard', 'Panodan yapıştır', 'Aus Zwischenablage einfügen')}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <rect x="8" y="2" width="8" height="4" rx="1" />
+                          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        </svg>
+                      </button>
+                    )}
                     {urls.length > 1 && url.trim() && (
                       <button type="button" className="la-row-x" onClick={() => removeUrl(i)} aria-label="Remove"><IconX size={13} width={2.6} /></button>
                     )}
@@ -758,6 +764,13 @@ export default function LinkAnalysis() {
                   {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
                 </button>
               </div>
+
+              {/* Ne yapılacağının sözü — analizin gerçekten NE içerdiği. */}
+              <ul className="la-promise">
+                <li>🌐 {L('Real reviews from Reddit, YouTube, forums and stores', 'Reddit, YouTube, forum ve mağazalardan gerçek yorumlar', 'Echte Bewertungen aus Reddit, YouTube, Foren und Shops')}</li>
+                <li>🧠 {L('A short quiz makes the score personally yours', 'Kısa bir quiz skoru sana özel yapar', 'Ein kurzes Quiz macht den Score persönlich')}</li>
+                <li>🚨 {L('Critical points, risks and honest trade-offs', 'Kritik noktalar, riskler ve dürüst eksiler', 'Kritische Punkte, Risiken und ehrliche Nachteile')}</li>
+              </ul>
             </form>
           </Reveal>
 
@@ -811,6 +824,7 @@ export default function LinkAnalysis() {
           mode={phase === 'identifying' ? 'linkIdentify'
             : phase === 'quizLoading' ? 'linkQuiz'
               : filled > 1 ? 'linkCompare' : 'linkAnalyze'}
+          stage={phase === 'analyzing' ? stage : null}
         />
       )}
 
