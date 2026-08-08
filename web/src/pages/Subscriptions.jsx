@@ -66,13 +66,16 @@ const PRESET_GROUPS = [
   { id: 'gaming', items: ['Xbox Game Pass', 'PlayStation Plus', 'Nintendo Switch Online', 'GeForce Now', 'EA Play', 'Ubisoft+', 'Apple Arcade'] },
 ];
 const PRESETS = [...new Set(PRESET_GROUPS.flatMap((g) => g.items))];
-// Only the 20 most popular show as square logo tiles; anything else is added via
-// the "Type a subscription" box.
-const TOP20 = [
+// Sık kullanılanlar kare logo kutusu olarak gösterilir; listede olmayan her şey
+// "Abonelik adı yaz ve ekle" kutusundan eklenir.
+// Sayı 32'ye tamamlandı (2026-08-08): 27 kutu son satırda 3 tane bırakıp
+// asimetrik duruyordu; 32, masaüstündeki 8'li ızgarada tam 4 satır yapar.
+const TOP_SERVICES = [
   'Netflix', 'Disney+', 'Amazon Prime', 'Apple TV+', 'HBO Max', 'YouTube Premium',
   'BluTV', 'Exxen', 'Crunchyroll', 'Spotify', 'Apple Music', 'YouTube Music',
-  'Tidal', 'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced', 'Perplexity', 'Midjourney',
-  'Xbox Game Pass', 'PlayStation Plus', 'Microsoft 365', 'Google One', 'iCloud+',
+  'Tidal', 'Amazon Music', 'Deezer', 'ChatGPT Plus', 'Claude Pro', 'Gemini Advanced',
+  'Perplexity', 'Midjourney', 'Xbox Game Pass', 'PlayStation Plus', 'GeForce Now',
+  'Nintendo Switch Online', 'Microsoft 365', 'Google One', 'iCloud+', 'Dropbox',
   'Adobe Creative Cloud', 'Notion', 'Canva', 'Hostinger',
 ];
 const PENDING_SUBS_KEY = 'qor.pendingSubscriptionAnalysis';
@@ -435,13 +438,8 @@ export default function Subscriptions() {
 
   return (
     <div className="subs-page">
-      <PageHero
-        title={t('subs.title')}
-        subtitle={t('subs.subtitle')}
-        icon={(
-          <img className="subs-hero-logo-img" src="/assets/qor_logo_512.png?v=20260605a" alt="" />
-        )}
-      />
+      {/* İkon KALDIRILDI (2026-08-08) — bkz. LinkAnalysis: tek odak başlık. */}
+      <PageHero animated title={t('subs.title')} subtitle={t('subs.subtitle')} />
 
       <div className="container subs-body">
       {showPicker && (
@@ -462,7 +460,7 @@ export default function Subscriptions() {
             </div>
 
             <div className="subs-grid">
-              {TOP20.map((name) => {
+              {TOP_SERVICES.map((name) => {
                 const on = selected.includes(name);
                 return (
                   <button key={name} type="button" title={name} aria-label={name}

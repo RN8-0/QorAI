@@ -53,6 +53,31 @@
   letter-spacing: -0.6px;
   line-height: 1.05;
 }
+
+/* İkonsuz hero: başlık tek odak, o yüzden hareketli gradyanı O taşıyor.
+   Renkler açık zeminde okunacak kadar KOYU seçildi (marka cyan'ı beyaz
+   üzerinde okunmuyor); koyu temada parlak varyanta geçilir. */
+.page-hero h1.page-hero-anim {
+  background: linear-gradient(90deg,
+    var(--brand-deep), var(--brand-blue), var(--violet), var(--brand-deep));
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  padding-bottom: 2px; /* iniş çıkışlı harfler kırpılmasın */
+}
+[data-theme='dark'] .page-hero h1.page-hero-anim {
+  background: linear-gradient(90deg,
+    var(--brand-sky), var(--brand-cyan), #a78bfa, var(--brand-sky));
+  background-size: 280% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-hero h1.page-hero-anim { animation: heroTitleShift 9s linear infinite; }
+}
+@keyframes heroTitleShift { to { background-position: 280% 0; } }
 .page-hero p {
   max-width: 560px;
   color: var(--text-2);

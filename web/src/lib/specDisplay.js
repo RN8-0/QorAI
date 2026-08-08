@@ -675,3 +675,70 @@ export function isDisplayableSpec(label, value) {
   if (key === 'time' && /^\d+\s*(sn|sec|second|seconds)$/i.test(String(value ?? '').trim())) return false;
   return true;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KAYNAK DİLİNDEKİ BOZULMAMIŞ SPEC HARİTALARI (2026-08-08)
+
+   HATA: Türkçe dil seçiliyken ürün özelliklerinde bazı kelimeler İngilizce
+   çıkıyordu ("Ekran Resolution", "Düşük Blue Işık", "Uyku Modunda Charging
+   desteği", değer olarak "Yes"/"Gray"). Kök neden VERİ DEĞİL, ALAN SEÇİMİ:
+     · `specSections` / `keySpecs` / `specs` alanları YARIM makine çevirisi
+       taşıyor ("Ekran Çözünürlüğü" → "Display Resolution").
+     · Bozulmamış Türkçe `multiLangSections.tr` / `multiLangSpecs.tr`
+       içinde duruyor (admin panelinin okuduğu yer de burası — o yüzden
+       panelde doğru, sitede yanlış görünüyordu).
+     · Sayfalar bozulmamış kaynağa `product.sourceLang === 'tr'` kapısıyla
+       geçiyordu; ama Typesense dokümanında `sourceLang` alanı HİÇ YOK →
+       kapı hiç açılmadı ve kirli alan render edildi.
+
+   Kural tek yerde: kaynak dili `sourceLang` yoksa kaynaktan (epey → tr)
+   çıkarılır, bozulmamış haritalar öncelik sırasıyla aranır ve ŞEKİL
+   doğrulanır (bölüm ağacının değerleri nesne, düz listenin metin olmalı —
+   çünkü `multiLang*.en` bir terim SÖZLÜĞÜdür, spec haritası değil).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+export function sourceLangOf(product) {
+  const explicit = String(product?.sourceLang || '').slice(0, 2).toLowerCase();
+  if (explicit) return explicit;
+  return /epey/i.test(String(product?.source || '')) ? 'tr' : '';
+}
+
+function filledObj(v) {
+  return v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length ? v : null;
+}
+function nestedObj(v) {
+  const o = filledObj(v);
+  if (!o) return null;
+  return Object.values(o).some((x) => x && typeof x === 'object' && !Array.isArray(x)) ? o : null;
+}
+function flatObj(v) {
+  const o = filledObj(v);
+  if (!o) return null;
+  return Object.values(o).some((x) => typeof x === 'string' && x.trim()) ? o : null;
+}
+
+const HIGHLIGHT_TITLES = new Set(['öne çıkanlar', 'one cikanlar', 'highlights', 'key specs']);
+export function isHighlightsTitle(title) {
+  return HIGHLIGHT_TITLES.has(String(title || '').trim().toLowerCase());
+}
+function highlightsOf(sections) {
+  if (!sections) return null;
+  for (const [title, rows] of Object.entries(sections)) {
+    if (isHighlightsTitle(title)) return flatObj(rows);
+  }
+  return null;
+}
+
+// Görüntüleme dili ürünün kazındığı dille aynıysa bozulmamış haritaları döner;
+// değilse null (çağıran taraf her zamanki çeviri yoluna devam eder).
+export function sourceSpecMaps(product, lang) {
+  const srcLang = sourceLangOf(product);
+  const view = String(lang || 'en').slice(0, 2).toLowerCase();
+  if (!srcLang || view !== srcLang) return null;
+  const sections = nestedObj(product?.sourceSpecSections)
+    || nestedObj(product?.multiLangSections?.[srcLang]);
+  const flat = flatObj(product?.sourceSpecs) || flatObj(product?.multiLangSpecs?.[srcLang]);
+  const keySpecs = flatObj(product?.sourceKeySpecs) || highlightsOf(sections);
+  if (!sections && !flat && !keySpecs) return null;
+  return { srcLang, keySpecs, sections, flat };
+}

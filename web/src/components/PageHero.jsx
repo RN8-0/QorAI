@@ -4,13 +4,15 @@ import './PageHero.css';
 // Subscriptions, …). Gives every page a clear, modern header with real
 // breathing room under the sticky app bar and a consistent visual hierarchy:
 // floating gradient icon → big title → subtitle.
-export default function PageHero({ icon, title, subtitle, kicker, accent }) {
+// `animated`: ikonsuz sayfalarda (link analizi, abonelikler) başlığın KENDİSİ
+// hareketli gradyan olur — ekranın üstünde tek bir odak kalsın diye.
+export default function PageHero({ icon, title, subtitle, kicker, accent, animated = false }) {
   return (
     <section className="page-hero aurora">
       <div className="container page-hero-inner fade-up">
         {kicker && <span className="page-hero-kicker">{kicker}</span>}
         {icon && <div className="page-hero-icon" aria-hidden="true">{icon}</div>}
-        <h1>{accent
+        <h1 className={animated ? 'page-hero-anim' : undefined}>{accent
           ? <>{title} <span className="grad-anim">{accent}</span></>
           : title}</h1>
         {subtitle && <p>{subtitle}</p>}

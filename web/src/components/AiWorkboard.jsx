@@ -201,18 +201,10 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
     <div className="aiwb" role="status" aria-live="polite" ref={rootRef}>
       <span className="aiwb-edge" aria-hidden="true" />
 
+      {/* Dönen kıvılcım küresi KALDIRILDI (2026-08-08): süs olmaktan öte bilgi
+          taşımıyordu ve ekranın en dikkat çeken öğesi oydu. İlerlemeyi anlatan
+          şeyler kaldı: yüzde halkası, çubuk, zaman çizelgesi, canlı adım. */}
       <div className="aiwb-head">
-        <div className="aiwb-orb" aria-hidden="true">
-          <span className="aiwb-sweep" />
-          <span className="aiwb-orb-ring" />
-          <span className="aiwb-core">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
-              <path d="M18.5 14.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8.8-1.7z" />
-            </svg>
-          </span>
-        </div>
-
         <div className="aiwb-copy">
           <span className="aiwb-kicker">
             <i aria-hidden="true" />

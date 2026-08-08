@@ -33,7 +33,10 @@ import AiAnalysisView, {
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
-import { isHiddenSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import {
+  isHiddenSpec, isHighlightsTitle, localizedSpecLabel, localizedSpecValue,
+  sourceLangOf, sourceSpecMaps,
+} from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
@@ -341,8 +344,7 @@ function buildSpecTranslator(product, lang) {
   // kapasitesi" → "3988 mAh", so the row shows "3988 mAh | 3988 mAh") and
   // section titles render "[object Object]". A same-language view needs no
   // per-product lookup at all — the content already is that language.
-  const srcLang = String(product?.sourceLang || '').toLowerCase()
-    || (/epey/i.test(String(product?.source || '')) ? 'tr' : '');
+  const srcLang = sourceLangOf(product);
   const skipLookup = code === srcLang;
   if (!skipLookup) {
     // Half-translated atoms from old MT runs ("Ekran Boyutu (İnç)" →
@@ -416,23 +418,32 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   // they landed in got overwritten by other content. Per-row trSpec()
   // translation already handles localisation; the canonical step was just
   // throwing data away.
-  const srcLang = String(product?.sourceLang || '').toLowerCase();
+  // ── KAYNAK DİLİ (2026-08-08 düzeltmesi) ────────────────────────────────
+  // Kayıtlarda `sourceLang` alanı YOK (Typesense dokümanında hiç yazılmıyor),
+  // o yüzden bu kapı Epey ürünlerinde HİÇ açılmıyordu ve Türkçe ziyaretçiye
+  // `specSections` gösteriliyordu — oysa o alan yarım makine çevirisiyle
+  // KİRLİ: "Ekran Çözünürlüğü" → "Display Resolution", "Var" → "Yes".
+  // Ekranda "Ekran Resolution", "Düşük Blue Işık", "Uyku Modunda Charging
+  // desteği" bundan çıkıyordu. buildSpecTranslator zaten epey→tr varsayımını
+  // yapıyordu; burada yapılmıyordu. Aynı kural artık iki yerde de geçerli.
   // Same-language source wins: a Turkish visitor on an Epey (TR) product gets
   // the AUTHENTIC source specs — no translation round-trip, zero leak risk.
   // (Specs render only in Turkish or English; Geizhals/German source removed.)
-  const useSource = srcLang === 'tr' && String(specLang).toLowerCase().startsWith('tr');
-  const keySpecs = useSource && product?.sourceKeySpecs && typeof product.sourceKeySpecs === 'object' && Object.keys(product.sourceKeySpecs).length
-    ? product.sourceKeySpecs
-    : product?.keySpecs;
+  const src = sourceSpecMaps(product, specLang);
+  const sourceSections = src?.sections || null;
+  const sourceFlat = src?.flat || null;
+
+  const keySpecs = src?.keySpecs || product?.keySpecs;
   if (keySpecs && typeof keySpecs === 'object' && Object.keys(keySpecs).length > 0) {
     addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
   }
 
-  const sections = useSource && product?.sourceSpecSections && typeof product.sourceSpecSections === 'object' && Object.keys(product.sourceSpecSections).length
-    ? product.sourceSpecSections
-    : (product?.specSections && typeof product.specSections === 'object' ? product.specSections : null);
+  const sections = sourceSections
+    || (product?.specSections && typeof product.specSections === 'object' ? product.specSections : null);
   if (sections) {
     for (const [section, specs] of Object.entries(sections)) {
+      // "Öne Çıkanlar" zaten yıldızlı blokta basıldı; başlığı tekrar etme.
+      if (sourceSections && isHighlightsTitle(section)) continue;
       if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
         addRows(tr(section), sectionIcon(section), Object.entries(specs));
       }
@@ -440,9 +451,8 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
   }
 
   // Catch-all: any flat spec that didn't make it into a section above.
-  const flat = useSource && product?.sourceSpecs && typeof product.sourceSpecs === 'object' && Object.keys(product.sourceSpecs).length
-    ? product.sourceSpecs
-    : (product?.specs && typeof product.specs === 'object' ? product.specs : null);
+  const flat = sourceFlat
+    || (product?.specs && typeof product.specs === 'object' ? product.specs : null);
   if (flat) {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),

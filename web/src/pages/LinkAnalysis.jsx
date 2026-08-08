@@ -711,13 +711,9 @@ export default function LinkAnalysis() {
 
   return (
     <div className="la-page">
-      <PageHero
-        title={t('la.title')}
-        subtitle={t('la.subtitle')}
-        icon={(
-          <img className="la-hero-logo" src="/assets/qor_logo_512.png?v=20260605a" alt="" />
-        )}
-      />
+      {/* İkon KALDIRILDI (2026-08-08): logo zaten navbar'da duruyordu, hero'da
+          ikinci kez tekrar edip dikkati bölüyordu. Tek odak: hareketli başlık. */}
+      <PageHero animated title={t('la.title')} subtitle={t('la.subtitle')} />
 
       <div className="container la-body">
       {showForm && (

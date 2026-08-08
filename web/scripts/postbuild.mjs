@@ -52,6 +52,12 @@ const SUBSCRIPTION_LOGOS = [
   'midjourney.png',
   'game_pass.png',
   'ps_plus.svg',
+  // 2026-08-08: abonelik seçicisine eklenen 5 yeni varsayılan servis
+  'amazon_music.png',
+  'deezer.svg',
+  'geforce_now.svg',
+  'switch_online.png',
+  'dropbox.svg',
   'microsoft_365.png',
   'google_one.png',
   'icloud.svg',

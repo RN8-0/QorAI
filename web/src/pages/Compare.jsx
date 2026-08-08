@@ -34,7 +34,9 @@ import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
-import { isDisplayableSpec, isHiddenSpec, localizedSpecLabel, localizedSpecValue } from '../lib/specDisplay';
+import {
+  isDisplayableSpec, isHiddenSpec, localizedSpecLabel, localizedSpecValue, sourceSpecMaps,
+} from '../lib/specDisplay';
 import { displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
 import CompareReviews from '../components/CompareReviews.jsx';
@@ -60,11 +62,15 @@ function pickSpecMaps(p, lang) {
   const has = (o) => o && typeof o === 'object' && Object.keys(o).length > 0;
   const empty = {};
   if (specLang === 'tr') {
-    const trSrc = String(p?.sourceLang || '').toLowerCase() === 'tr';
+    // 2026-08-08: burada da kapı `p.sourceLang === 'tr'` idi ve Typesense
+    // dokümanında o alan HİÇ olmadığı için hiç açılmıyordu → Türkçe görünüm
+    // yarım çevrilmiş `specSections`'ı basıyordu ("Ekran Resolution").
+    // Kaynak dili çıkarımı + bozulmamış harita seçimi artık ortak yerde.
+    const src = sourceSpecMaps(p, specLang);
     return {
-      keySpecs: trSrc && has(p.sourceKeySpecs) ? p.sourceKeySpecs : (p.keySpecs || empty),
-      sections: trSrc && has(p.sourceSpecSections) ? p.sourceSpecSections : (p.specSections || empty),
-      flat: trSrc && has(p.sourceSpecs) ? p.sourceSpecs : (p.specs || empty),
+      keySpecs: src?.keySpecs || p.keySpecs || empty,
+      sections: src?.sections || p.specSections || empty,
+      flat: src?.flat || p.specs || empty,
     };
   }
   // English (and German, which reads specs in English): iterate the ready-made
@@ -531,12 +537,10 @@ export default function Compare() {
     const sectionByKey = new Map();
     const sectionOrder = [];
     for (const p of products) {
-      const srcTr = String(p?.sourceLang || '').toLowerCase() === 'tr'
-        && String(lang || '').slice(0, 2).toLowerCase() === 'tr';
-      const sections = (srcTr && p?.sourceSpecSections && typeof p.sourceSpecSections === 'object'
-        && Object.keys(p.sourceSpecSections).length)
-        ? p.sourceSpecSections
-        : (p?.specSections && typeof p.specSections === 'object' ? p.specSections : null);
+      // Bölüm başlıkları da bozulmamış kaynaktan gelmeli (aynı `sourceLang`
+      // kapısı burada da hiç açılmıyordu → "General BİLGİLER" gibi başlıklar).
+      const sections = sourceSpecMaps(p, lang)?.sections
+        || (p?.specSections && typeof p.specSections === 'object' ? p.specSections : null);
       if (!sections) continue;
       for (const [section, specs] of Object.entries(sections)) {
         if (!specs || typeof specs !== 'object' || Array.isArray(specs)) continue;

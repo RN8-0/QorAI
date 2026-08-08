@@ -718,6 +718,25 @@ function decisionOf(v, score) {
   return s >= 70 ? 'buy' : s >= 50 ? 'consider' : 'skip';
 }
 
+// HİTAP BİRLİĞİ. Arayüzün tamamı "sen" diyor ("cevapların", "sana uyumu"),
+// ama rapor metinleri "siz" ile geliyordu ("alışkanlıklarınızla", "abone
+// olun") — aynı ekranda iki ayrı ses. Tek kural, tüm rapor promptlarında.
+function addressRule(language) {
+  const lang = String(language || 'en').slice(0, 2).toLowerCase();
+  if (lang === 'tr') {
+    return 'ADDRESS FORM — HARD RULE: address the reader informally in Turkish, in the "sen" form ("senin için", "alışkanlıklarına göre", "bunu al", "geç"). NEVER use the formal "siz" forms (no "-ınız/-iniz" possessives, no "olun/edersiniz/olmalısınız"). The whole interface speaks in "sen"; the report must match it.';
+  }
+  if (lang === 'de') {
+    return 'ADDRESS FORM — HARD RULE: address the reader informally in German ("du/dein"), never the formal "Sie/Ihr".';
+  }
+  return 'ADDRESS FORM — HARD RULE: address the reader directly as "you"; never write "the user" or "the buyer" when you mean the reader.';
+}
+
+// Quiz etkisi puanlarının gerçekçi dağılması için ortak kural. İlk sürümde
+// model her cevaba +90/+95 veriyordu; hepsi güçlü pozitif olunca bölüm hiçbir
+// şey anlatmıyor.
+const IMPACT_RULE = 'IMPACT VALUES: use the full range honestly. A typical answer nudges the verdict (|impact| 10-45); only an answer that genuinely decides the outcome earns |impact| above 70. Any answer that works AGAINST this choice MUST get a NEGATIVE impact, and a realistic quiz almost always has at least one. A list where every answer is a strong positive is not credible and is forbidden.';
+
 // Araştırma notlarını prompt'a eklerken tek yerden geçir (boşsa "yok" de,
 // böylece model uydurmak yerine belirsizliği yazar).
 function researchBlock(research, langName) {
@@ -743,6 +762,7 @@ function enhancedAnalysisPrompt(language) {
   return `You are Qor AI's senior product analyst. Given a product, the user's quiz answers, the user profile and live web/community research notes, produce the PERSONAL DECISION half of a comprehensive match report.
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
+${addressRule(language)}
 
 CRITICAL — CATEGORY-AWARE ANALYSIS:
 - The product can be ANY category: tech, books, clothing, home, sports, beauty, etc.
@@ -763,6 +783,8 @@ SCORING RULES:
 EVIDENCE RULES:
 - The research notes are the CURRENT truth. Ground every concrete claim (weak spots, reliability, real-world behavior) in them where they cover it.
 - Never invent direct quotes, exact review counts or exact live prices. Where evidence is thin, say so in the relevant field instead of guessing.
+
+${IMPACT_RULE}
 
 WRITING QUALITY REQUIREMENTS:
 - Professional, tech-journalist level language. Specific over generic: cite real characteristics, measured behavior, ownership realities.
@@ -810,6 +832,7 @@ function enhancedCommunityPrompt(language) {
   return `You are Qor AI's community-research analyst. You receive a product, the user's quiz answers, and live web/community research notes gathered with Google Search. Produce the COMMUNITY & MARKET half of the report.
 
 LANGUAGE: Write ALL text in ${langName}.
+${addressRule(language)}
 
 RULES:
 - Build EVERYTHING on the research notes when they cover it; they are the current truth. Where they are thin, say plainly that the evidence is limited — never fabricate findings, quotes, review counts or exact prices.
@@ -955,6 +978,7 @@ function compareAnalysisPrompt(language) {
   return `You are Qor AI's senior product comparison analyst. Produce the PER-PRODUCT half of a head-to-head comparison report.
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
+${addressRule(language)}
 
 You will receive exact products identified from pasted URLs, the user's comparison quiz answers, and live web/community research notes.
 
@@ -1007,9 +1031,11 @@ function compareVerdictPrompt(language, names = []) {
   return `You are Qor AI's senior comparison analyst. The per-product sections are already written. Produce ONLY the cross-product VERDICT half of the report.
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
+${addressRule(language)}
 
 Rules:
 - "winner.best" MUST be exactly one of: ${names.join(' | ')}.
+- ${IMPACT_RULE}
 - Be decisive. Vague "both are good" answers are forbidden — name the winner and the exact conditions under which the other one wins instead.
 - Ground concrete claims in the live research notes; never invent quotes, review counts or live prices.
 - Tie every recommendation back to the user's quiz answers, without reading their profile back to them.
@@ -1178,6 +1204,7 @@ ${quizText}
 
 CRITICAL RULES:
 - ALL text values MUST be in ${langName} language
+- ${addressRule(language)}
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user${isCompare ? '. Two services must NEVER get the same score.' : ''}
@@ -1224,8 +1251,10 @@ function subscriptionVerdictPrompt(names, isCompare, language) {
   return `You are Qor AI's subscription intelligence analyst. The per-service sections are already written. Produce ONLY the VERDICT half of the report for: ${names}.
 
 LANGUAGE: ALL text values MUST be in ${langName}.
+${addressRule(language)}
 
 Rules:
+- ${IMPACT_RULE}
 - Be decisive and personal: tie everything to the user's quiz answers without reading their profile back to them.
 - ${isCompare ? `"winner.overall" MUST be exactly one of: ${names}.` : 'There is a single service — judge whether it is worth keeping/subscribing and under what conditions.'}
 - Ground concrete claims in the live research notes. Never invent quotes, exact review counts or prices.

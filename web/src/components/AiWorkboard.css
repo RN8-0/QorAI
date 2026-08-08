@@ -42,56 +42,12 @@
   100% { background-position: 145% 0; }
 }
 
-/* ── Başlık satırı ─────────────────────────────────────────────────────── */
+/* ── Başlık satırı (ikonsuz) ───────────────────────────────────────────── */
 .aiwb-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-}
-
-.aiwb-orb {
-  position: relative;
-  width: 66px;
-  height: 66px;
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-/* Radar süpürmesi: conic gradient DÖNER (transform → compose katmanı). */
-.aiwb-sweep {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg,
-    color-mix(in srgb, var(--brand-cyan) 34%, transparent) 0deg,
-    transparent 90deg,
-    transparent 360deg);
-  animation: aiwbSpin 2.6s linear infinite;
-}
-.aiwb-orb-ring {
-  position: absolute;
-  inset: 5px;
-  border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--brand-cyan) 26%, transparent);
-}
-.aiwb-orb-ring::after {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--brand-blue) 22%, transparent);
-}
-.aiwb-core {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 13px;
-  display: grid;
-  place-items: center;
-  background: var(--grad-ai);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-blue) 32%, transparent);
-  animation: aiwbCore 2.2s ease-in-out infinite;
 }
 
 .aiwb-copy {
@@ -327,7 +283,6 @@
 }
 
 @keyframes aiwbSpin { to { transform: rotate(360deg); } }
-@keyframes aiwbCore { 0%, 100% { transform: scale(1); } 50% { transform: scale(.88); } }
 @keyframes aiwbBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 @keyframes aiwbBounce { 0%, 100% { transform: translateY(0); opacity: .45; } 50% { transform: translateY(-4px); opacity: 1; } }
 @keyframes aiwbShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
@@ -339,9 +294,9 @@
 
 @media (max-width: 620px) {
   .aiwb { padding: 18px 16px; border-radius: 20px; }
-  .aiwb-head { grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
-  .aiwb-gauge { grid-column: 1 / -1; justify-self: start; width: 56px; height: 56px; }
-  .aiwb-gauge svg { width: 56px; height: 56px; }
+  .aiwb-head { gap: 12px; }
+  .aiwb-gauge { width: 54px; height: 54px; }
+  .aiwb-gauge svg { width: 54px; height: 54px; }
   .aiwb-copy strong { font-size: 16px; }
   .aiwb-detail { font-size: 12.5px; }
   .aiwb-step-label { font-size: 12.5px; }
@@ -350,8 +305,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .aiwb-edge,
-  .aiwb-sweep,
-  .aiwb-core,
   .aiwb-kicker i,
   .aiwb-live i,
   .aiwb-sk-ring,

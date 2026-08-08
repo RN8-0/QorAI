@@ -155,6 +155,16 @@ const LOCAL_LOGOS = {
   'xbox': 'game_pass.png',
   'playstation plus': 'ps_plus.svg',
   'playstation': 'ps_plus.svg',
+  // Yeni varsayılan kutular (2026-08-08) — hepsinin YEREL logosu var, uzak
+  // CDN'e düşmesinler (Amazon Music aksi hâlde jenerik Amazon logosu oluyordu).
+  'amazon music': 'amazon_music.png',
+  'amazon music unlimited': 'amazon_music.png',
+  'deezer': 'deezer.svg',
+  'geforce now': 'geforce_now.svg',
+  'nvidia geforce now': 'geforce_now.svg',
+  'nintendo switch online': 'switch_online.png',
+  'nintendo online': 'switch_online.png',
+  'dropbox': 'dropbox.svg',
   'microsoft 365': 'microsoft_365.png',
   'google one': 'google_one.png',
   'icloud+': 'icloud.svg',

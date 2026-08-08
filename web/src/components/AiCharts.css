@@ -7,6 +7,7 @@
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
+  justify-content: center; /* eksik son satır ORTALANIR (simetri kuralı) */
   align-items: stretch;
   margin: 14px 0;
 }
@@ -14,6 +15,7 @@
 .aic-card {
   flex: 1 1 240px;
   min-width: 220px;
+  max-width: 520px; /* tek kalan grafik tüm satırı yalayıp geçmesin */
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -304,13 +306,20 @@
   color: var(--text3);
 }
 
-/* Kritik noktalar */
+/* ── SİMETRİ KURALI (2026-08-08) ──────────────────────────────────────────
+   `grid-template-columns: repeat(auto-fit, …)` eksik son satırı SOLA
+   yaslıyordu: 4 kartlık bir bölüm "3 üstte + 1 solda" duruyor ve ekran
+   dengesiz görünüyordu. Flex + justify-content:center ile artan kartlar
+   ORTALANIR; `max-width` de tek kalan kartın absürt genişlemesini önler,
+   yani leftover kartlar diğerleriyle AYNI genişlikte ve ortada durur. */
 .aic-crit { margin: 4px 0; }
 .aic-crit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
 }
+.aic-crit-grid > .aic-crit-item { flex: 1 1 238px; max-width: 430px; }
 .aic-crit-item {
   position: relative;
   padding: 13px 14px 13px 16px;
@@ -387,10 +396,12 @@
 /* Topluluk temaları */
 .aic-themes { margin: 4px 0; }
 .aic-theme-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 13px 22px;
 }
+.aic-theme-rows > .aic-theme { flex: 1 1 250px; max-width: 440px; }
 .aic-theme-top {
   display: flex;
   align-items: baseline;
@@ -427,10 +438,12 @@
 
 /* KPI kutucukları */
 .aic-tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
 }
+.aic-tiles > .aic-tile { flex: 1 1 150px; max-width: 300px; }
 .aic-tile {
   padding: 12px 14px;
   border-radius: 14px;
@@ -502,10 +515,12 @@
 
 /* Zengin artı / eksi */
 .aic-pc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
 }
+.aic-pc-grid > .aic-pc { flex: 1 1 268px; max-width: 560px; }
 .aic-pc {
   padding: 15px 16px;
   border-radius: 16px;
@@ -553,6 +568,10 @@
 
 @media (max-width: 620px) {
   .aic-factors { grid-template-columns: 1fr; }
+  /* 150 px taban dar ekranda tek sütuna düşüyordu; 130 ile 2'li ızgara
+     kuruluyor (4 KPI = 2+2, yani yine simetrik). */
+  .aic-tiles > .aic-tile { flex-basis: 130px; }
+  .aic-tile b { font-size: 17px; }
   .aic-qi-row { grid-template-columns: minmax(0, 1fr) 44px; grid-template-areas: 'copy val' 'meter meter'; }
   .aic-qi-copy { grid-area: copy; }
   .aic-qi-val { grid-area: val; }
