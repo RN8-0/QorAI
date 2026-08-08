@@ -28,7 +28,12 @@ class _PricesTabContent extends ConsumerWidget {
       offersAsync.valueOrNull ?? const <ProductOfferModel>[],
       selected,
     );
-    final bestOffer = countryOffers.isEmpty ? null : countryOffers.first;
+    // MAĞAZA BAŞINA EN İYİ TEKLİF. Eskiden yalnızca `countryOffers.first`
+    // gösteriliyordu: scraper yeni mağaza fiyatları eklese bile uygulamada
+    // sadece Amazon görünüyordu ("yeni fiyat eklenince uygulamada çıkmıyor").
+    // Web ile parite: Amazon'un ALTINDA diğer mağazalar logo + fiyatla listelenir.
+    final storeOffers = _bestPerStore(countryOffers);
+    final bestOffer = storeOffers.isEmpty ? null : storeOffers.first;
     final isLoadingOffers = offersAsync is AsyncLoading;
 
     return CustomScrollView(
@@ -46,7 +51,7 @@ class _PricesTabContent extends ConsumerWidget {
                   _OfferLinksCard(
                     product: product,
                     country: country,
-                    offers: [bestOffer],
+                    offers: storeOffers,
                   ),
                   const SizedBox(height: 16),
                 ] else if (isLoadingOffers) ...[
@@ -96,6 +101,21 @@ class _PricesTabContent extends ConsumerWidget {
       return a.displayStore.compareTo(b.displayStore);
     });
     return live;
+  }
+
+  /// Mağaza başına TEK (en iyi) teklif — aynı mağaza tekrar listelenmez ama
+  /// FARKLI mağazalar da kaybolmaz. Sıra `_sortOffersForCountry` sırasını korur
+  /// (taze + gerçek fiyatlı önce, sonra en ucuz), yani ilk sıra en iyi tekliftir.
+  static List<ProductOfferModel> _bestPerStore(List<ProductOfferModel> sorted) {
+    final seen = <String>{};
+    final out = <ProductOfferModel>[];
+    for (final offer in sorted) {
+      final key = offer.displayStore.trim().toLowerCase();
+      if (key.isEmpty || !seen.add(key)) continue;
+      out.add(offer);
+      if (out.length >= 6) break;
+    }
+    return out;
   }
 }
 
@@ -155,13 +175,16 @@ class _OfferLinkRow extends ConsumerWidget {
               : (Localizations.localeOf(context).languageCode == 'tr'
                     ? 'Fiyati gor'
                     : 'Check price'));
+    // Epey mağaza teklifleri LİNKSİZ gelir (vitrin fiyatı). Böyle satırlar
+    // tıklanabilir görünmemeli: fiyat referansı olarak durur.
+    final hasLink = offer.url.trim().isNotEmpty;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () async {
+          onTap: !hasLink ? null : () async {
             // Amazon offers are re-tagged at click time for the storefront
             // they already point at (stored tags can be stale/wrong-program;
             // see amazon_link.dart) — non-Amazon URLs pass through untouched.

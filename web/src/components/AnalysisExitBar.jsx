@@ -26,7 +26,7 @@ export default function AnalysisExitBar({
       {busy ? (
         <span className="axbar-busy">
           <i aria-hidden="true" />
-          {hint || L(['running in background', 'arka planda sürüyor', 'läuft im Hintergrund'])}
+          {hint || L(['Running in the background', 'Arka planda sürüyor', 'Läuft im Hintergrund'])}
         </span>
       ) : null}
     </div>

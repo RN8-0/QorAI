@@ -878,6 +878,13 @@ function featureMatchList(v, max = 10) {
     .slice(0, max);
 }
 
+// En yüksek ile en düşük puan arasındaki gerçek fark.
+function computeScoreGap(scores) {
+  const nums = (Array.isArray(scores) ? scores : []).map((x) => Number(x) || 0).filter((x) => x > 0);
+  if (nums.length < 2) return 0;
+  return Math.round(Math.max(...nums) - Math.min(...nums));
+}
+
 const DECISIONS = new Set(['buy', 'consider', 'skip']);
 function decisionOf(v, score) {
   const d = String(v || '').toLowerCase().trim();
@@ -1005,6 +1012,8 @@ ${addressRule(language)}
 RULES:
 - Build EVERYTHING on the research notes when they cover it; they are the current truth. Where they are thin, say plainly that the evidence is limited — never fabricate findings, quotes, review counts or exact prices.
 - A praise-only summary is FORBIDDEN. Recurring complaints must be stated as plainly as the praise.
+- ABSENCE OF EVIDENCE IS NOT A STRENGTH: "no complaints found" or "limited information" must never be presented as a positive theme or used to raise a score — say the evidence is thin and lower the confidence instead.
+- FACTS ONLY FROM RESEARCH: availability, versions and plan details must come from the research notes; if they are not covered, omit them rather than recalling them from memory.
 - "themes" are the topics people keep coming back to (battery, noise, sizing, support, ads, price hikes…), NOT one-off opinions. "strength" is roughly how dominant that theme is in the discussion (0-100).
 - Sentiment percentages must be realistic and consistent with the themes: if half the themes are complaints, the split cannot be 90% positive.
 
@@ -1320,7 +1329,7 @@ export async function compareAnalysis({ bases, answers, language, userProfile = 
   const winner = rawWinner ? {
     best: String(rawWinner.best || products[0]?.name || ''),
     reason: String(rawWinner.reason || ''),
-    scoreGap: num(rawWinner.scoreGap),
+    scoreGap: computeScoreGap(products.map((x) => x.score)),
     runnerUpCase: String(rawWinner.runnerUpCase || ''),
   } : { best: products[0]?.name || '', reason: '', scoreGap: 0, runnerUpCase: '' };
   const rawDetailed = (verdictRes.detailed && typeof verdictRes.detailed === 'object')
@@ -1378,6 +1387,13 @@ CRITICAL RULES:
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user${isCompare ? '. Two services must NEVER get the same score.' : ''}
 - factors are 0-100 integers and MUST include every factor key shown in the schema, each with a one-sentence "detail" that explains the score with evidence — never a restatement of the label
 - ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Identical high scores across factors are unrealistic.
+
+VENDOR NEUTRALITY — HARD RULE (this analysis runs on a model that may BE one of the compared services, or be made by the company that owns one):
+- Your own identity, your maker, and how familiar a service feels to you must have ZERO effect on the scores. Judge every service against the same evidence bar.
+- ABSENCE OF EVIDENCE IS NOT A STRENGTH. "No complaints found", "limited community information" or "no known issues" must NEVER raise a score, appear as a positive theme, or justify a high risk/community score. When the research is thin for a service, say the evidence is thin, LOWER the confidence, and score that factor in the middle band — never at the top.
+- Every service must get at least two genuinely weak factors stated as plainly as the leader's. A profile where one service is best on EVERY factor is a red flag: re-check it and correct the inflation.
+- FACTS ONLY FROM RESEARCH: regional availability, plan names, model names/versions and pricing tiers change constantly. State them ONLY if the research notes cover them. If they do not, omit the claim entirely — never fill it from memory.
+
 - COMMUNITY WORK IS THE CORE: build the community fields on the live research notes. Recurring complaints (price hikes, ad tiers, catalogue removals, sharing limits, app bugs, support) must be stated as plainly as the praise. A positives-only summary is FORBIDDEN.
 - "themes" are topics people keep returning to, not one-off opinions; "strength" is roughly how dominant that topic is in the discussion.
 - sentiment_breakdown values are integer percentages summing to ~100, realistic and consistent with the themes
@@ -1420,6 +1436,13 @@ function subscriptionVerdictPrompt(names, isCompare, language) {
 
 LANGUAGE: ALL text values MUST be in ${langName}.
 ${addressRule(language)}
+
+
+VENDOR NEUTRALITY — HARD RULE (this analysis runs on a model that may BE one of the compared services, or be made by the company that owns one):
+- Your own identity, your maker, and how familiar a service feels to you must have ZERO effect on the scores. Judge every service against the same evidence bar.
+- ABSENCE OF EVIDENCE IS NOT A STRENGTH. "No complaints found", "limited community information" or "no known issues" must NEVER raise a score, appear as a positive theme, or justify a high risk/community score. When the research is thin for a service, say the evidence is thin, LOWER the confidence, and score that factor in the middle band — never at the top.
+- Every service must get at least two genuinely weak factors stated as plainly as the leader's. A profile where one service is best on EVERY factor is a red flag: re-check it and correct the inflation.
+- FACTS ONLY FROM RESEARCH: regional availability, plan names, model names/versions and pricing tiers change constantly. State them ONLY if the research notes cover them. If they do not, omit the claim entirely — never fill it from memory.
 
 Rules:
 - ${IMPACT_RULE}
@@ -1563,7 +1586,9 @@ export async function subscriptionAnalysis({ subscriptionNames, answers, languag
       best: String(rawWinner.best_content || rawWinner.overall || bestByScore || ''),
       overall: String(rawWinner.overall || ''),
       reason: String(rawWinner.reason || ''),
-      scoreGap: num(rawWinner.score_gap ?? rawWinner.scoreGap),
+      // Fark AI'dan DEĞİL veriden gelir: model "score_gap" alanına en düşük
+      // puanı yazıp 92/80/70/60 için "70" döndürebiliyordu.
+      scoreGap: computeScoreGap(services.map((x) => x.score)),
       runnerUpCase: String(rawWinner.runner_up_case || rawWinner.runnerUpCase || ''),
       recommendation: String(rawWinner.recommendation || ''),
     } : { best: bestByScore, overall: bestByScore, reason: '', scoreGap: 0, runnerUpCase: '', recommendation: '' },

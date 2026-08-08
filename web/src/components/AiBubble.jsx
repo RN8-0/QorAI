@@ -633,7 +633,7 @@ export default function AiBubble() {
           : 'Qor AI'}
         title={alertReady
           ? `${alertLabel(alertReady)} ${chatLang === 'tr' ? 'hazır — görmek için tıkla' : chatLang === 'de' ? 'bereit — zum Ansehen klicken' : 'ready — click to view'}`
-          : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : chatLang === 'de' ? 'läuft im Hintergrund…' : 'running in the background…'}` : 'Qor AI')}
+          : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : chatLang === 'de' ? 'läuft im Hintergrund…' : 'is running in the background…'}` : 'Qor AI')}
       >
         {open ? '✕' : <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />}
         {!open && !alertBusy && !alertReady && <span className="aib-fab-pulse" />}
@@ -647,8 +647,8 @@ export default function AiBubble() {
         <button type="button" className="aib-alert-toast" onClick={() => goToAnalysis(alertReady)}>
           <b>{alertLabel(alertReady)}</b>
           <span>{alertReady.phase === 'quiz'
-            ? (chatLang === 'tr' ? 'sorular hazır — cevapla' : chatLang === 'de' ? 'Fragen bereit — beantworten' : 'questions ready — answer them')
-            : (chatLang === 'tr' ? 'analiz hazır — görüntüle' : chatLang === 'de' ? 'Analyse bereit — ansehen' : 'analysis ready — view')}</span>
+            ? (chatLang === 'tr' ? 'Sorular hazır — cevapla' : chatLang === 'de' ? 'Fragen bereit — beantworten' : 'Questions ready — answer them')
+            : (chatLang === 'tr' ? 'Analiz hazır — görüntüle' : chatLang === 'de' ? 'Analyse bereit — ansehen' : 'Analysis ready — view')}</span>
         </button>
       )}
 

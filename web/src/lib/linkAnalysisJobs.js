@@ -135,21 +135,16 @@ function catalogCard(p) {
   };
 }
 
-function fallbackEnhancedResult(base) {
-  return {
-    base,
-    enhancedScore: Number(base?.score) || 60,
-    factors: [],
-    verdict: String(base?.analysis || ''),
-    prosForUser: [],
-    consForUser: [],
-    alternatives: [],
-    personaScore: null,
-    personaAnalysis: '',
-    communityScore: null,
-    communityAnalysis: '',
-    overallVerdict: '',
-  };
+// Rapor gercekten uretildi mi? Bos bir kabuk (skor + tek paragraf, faktor yok,
+// arti/eksi yok) SONUC DEGILDIR. Eskiden AI cagrisi basarisiz olunca kullaniciya
+// bu kabuk "analiz" diye gosteriliyordu: 60 puan, tek cumle, hicbir grafik yok.
+// Artik bos kabuk hata sayilir ve kullanici TEKRAR DENE ekrani gorur.
+function isUsableReport(data) {
+  if (!data || typeof data !== 'object') return false;
+  const arr = (v) => (Array.isArray(v) ? v.length : 0);
+  const signals = arr(data.factors) + arr(data.prosForUser) + arr(data.consForUser)
+    + arr(data.criticalPoints) + arr(data.quizInsights) + arr(data.communityThemes);
+  return signals >= 3;
 }
 
 async function completeSingle(job, answers = []) {
@@ -162,7 +157,7 @@ async function completeSingle(job, answers = []) {
   const research = await awaitResearch(takeResearch(job.id));
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'report', researched: Boolean(research) });
-  let data;
+  let data = null;
   try {
     data = await enhancedAnalysis({
       base,
@@ -172,7 +167,13 @@ async function completeSingle(job, answers = []) {
       research,
     });
   } catch {
-    data = fallbackEnhancedResult(base);
+    data = null;
+  }
+  if (!activeJob || activeJob.id !== job.id) return;
+  if (!isUsableReport(data)) {
+    // Cevaplar korunur ki "Tekrar dene" ayni quizle yeniden kossun.
+    setJob({ phase: 'error', stage: null, answers, error: 'ANALYSIS_FAILED' });
+    return;
   }
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'saving' });
@@ -207,6 +208,7 @@ async function completeCompare(job, answers = []) {
       userProfile: job.userProfile,
       research,
     });
+    if (!Array.isArray(text?.products) || text.products.length < 2) throw new Error('empty compare');
     const comparisonSummary = text.recommendation
       || text?.winner?.reason
       || text?.products?.map((p) => p.name).filter(Boolean).join(' vs ')
@@ -226,8 +228,18 @@ async function completeCompare(job, answers = []) {
       savedId: saved?.id || '',
     });
   } catch (e) {
-    setJob({ phase: 'input', error: 'COMPARE_FAILED' });
+    if (!activeJob || activeJob.id !== job.id) return;
+    setJob({ phase: 'error', stage: null, answers, error: 'COMPARE_FAILED' });
   }
+}
+
+/** "Tekrar dene": ayni cevaplarla raporu yeniden uret (yeni ucret ALINMAZ). */
+export async function retryLinkAnalysisJob() {
+  if (!activeJob) return;
+  const job = activeJob;
+  const answers = Array.isArray(job.answers) ? job.answers : [];
+  if (job.type === 'compare') await completeCompare(job, answers);
+  else await completeSingle(job, answers);
 }
 
 export function subscribeLinkAnalysisJob(cb) {

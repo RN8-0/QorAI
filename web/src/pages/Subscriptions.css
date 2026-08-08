@@ -837,6 +837,13 @@
 .subs-svc-exp { max-width: 900px; }
 .subs-sec > .la-prose { margin: 0 auto; }
 
+/* SubLogo logo bulamadığında kelime-işareti (servis adının kendisi) çiziyor;
+   yanındaki metinle birlikte ad İKİ KEZ görünüyordu. Grafik satırında ve
+   ısı haritasında yalnız METİN kalsın diye kelime-işareti gizlenir —
+   harf rozeti (tek harf) kalır, o tekrar değildir. */
+.subs-chart-label .sub-logo-wordmark,
+.subs-mini span .sub-logo-wordmark { display: none; }
+
 [data-theme='dark'] .subs-mode-pill { color: var(--brand-sky); }
 [data-theme='dark'] .subs-researched { color: #4ade80; }
 [data-theme='dark'] .subs-forwho-good b { color: #4ade80; }

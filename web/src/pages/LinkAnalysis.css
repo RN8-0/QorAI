@@ -1103,3 +1103,96 @@
 @media (prefers-reduced-motion: reduce) {
   .la-diff { animation: none; }
 }
+
+/* ── Karşılaştırma başlığı: numaralı, kırpılmış ürün satırları ───────────
+   Eskiden tüm adlar "X vs Y vs Z" diye tek satıra dizilip birbirine
+   giriyordu (4 ilanla okunamaz bir blok oluyordu). */
+.la-result-head-cmp { flex-wrap: wrap; align-items: flex-start; }
+.la-cmp-names {
+  flex-basis: 100%;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px 16px;
+}
+.la-cmp-names li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.la-cmp-no {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-3);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 900;
+}
+.la-cmp-names a,
+.la-cmp-names li > span[title] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-weight: 800;
+  text-decoration: none;
+}
+.la-cmp-names a:hover { color: var(--accent); text-decoration: underline; }
+.la-cmp-names em {
+  flex: none;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+}
+
+/* Kazananın adı = ürünün linki */
+.la-cmp-winner-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.la-cmp-winner-link svg { flex: none; color: var(--text3); }
+.la-cmp-winner-link:hover strong { color: var(--accent); }
+.la-cmp-winner-link:hover svg { color: var(--accent); }
+
+/* Rapor üretilemedi ekranı */
+.la-failed {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 26px 22px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, #f59e0b 32%, var(--border));
+  background: color-mix(in srgb, #f59e0b 7%, var(--surface-2));
+  text-align: center;
+}
+.la-failed-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #f59e0b 20%, transparent);
+  color: #d97706;
+  font-size: 20px;
+  font-weight: 900;
+}
+.la-failed strong { display: block; font-size: 17px; font-weight: 900; color: var(--text); }
+.la-failed p { margin-top: 8px; font-size: 13.5px; line-height: 1.6; color: var(--text2); }
+.la-failed-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+[data-theme='dark'] .la-failed-icon { color: #fbbf24; }

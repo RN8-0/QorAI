@@ -8,6 +8,7 @@ import { useAiAccess } from '../lib/useAiAccess';
 import { historyPayload } from '../lib/historyPayload';
 import {
   clearLinkAnalysisJob,
+  retryLinkAnalysisJob,
   startCompareLinkAnalysisJob,
   startSingleLinkAnalysisJob,
   submitLinkAnalysisJobAnswers,
@@ -487,19 +488,37 @@ function CompareResult({ data, L, lang }) {
   const insights = Array.isArray(data?.quizInsights) ? data.quizInsights : [];
   return (
     <div className="la-result la-cmp-result fade-up">
-      <div className="la-result-head">
+      <div className="la-result-head la-result-head-cmp">
         <span>{L('Qor AI Comparison', 'Qor AI Karşılaştırması', 'Qor AI Vergleich')}</span>
-        <span className="la-result-title">{products.map((p) => p.name).join(' vs ')}</span>
         {data.researched && (
           <span className="la-researched">🌐 {L('Reviews scanned', 'Yorumlar tarandı', 'Bewertungen gescannt')}</span>
         )}
+        {/* Ürün adları TEK SATIRDA birbirine giriyordu; artık numaralı,
+            kırpılmış ve tıklanabilir satırlar. */}
+        <ol className="la-cmp-names">
+          {products.map((p, i) => (
+            <li key={`${p.name}-${i}`}>
+              <span className="la-cmp-no">{i + 1}</span>
+              {safeExternalUrl(p.url) ? (
+                <a href={safeExternalUrl(p.url)} target="_blank" rel="noopener" title={p.name}>{p.name}</a>
+              ) : <span title={p.name}>{p.name}</span>}
+              {p.siteName && <em>{p.siteName}</em>}
+            </li>
+          ))}
+        </ol>
       </div>
       <div className="la-result-body">
         <section className="la-cmp-hero">
           <div className="la-cmp-trophy">🏆</div>
           <div className="la-cmp-hero-copy">
             <span>{L('Best match', 'En iyi eşleşme', 'Beste Wahl')}</span>
-            <strong>{best.name}</strong>
+            {/* Kazananın adı ürünün kendi linkine gider. */}
+            {safeExternalUrl(best.url) ? (
+              <a className="la-cmp-winner-link" href={safeExternalUrl(best.url)} target="_blank" rel="noopener">
+                <strong>{best.name}</strong>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" /></svg>
+              </a>
+            ) : <strong>{best.name}</strong>}
             {(data?.winner?.reason || data?.recommendation) && (
               <div className="la-prose"><AiText text={data.winner?.reason || data.recommendation} /></div>
             )}
@@ -870,9 +889,14 @@ export default function LinkAnalysis() {
           lang={lang}
           onExit={resetFlow}
           busy={phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing'}
-          context={base?.title
-            || compareBases.map((p) => p.title).filter(Boolean).join(' vs ')
-            || urls.filter(Boolean).join(', ')}
+          context={(() => {
+            if (base?.title) return base.title;
+            const names = compareBases.map((p) => p.title).filter(Boolean);
+            if (names.length > 1) {
+              return `${names.length} ${L('products', 'ürün', 'Produkte')} · ${names[0]}${names.length > 1 ? ` +${names.length - 1}` : ''}`;
+            }
+            return names[0] || urls.filter(Boolean).join(', ');
+          })()}
         />
       )}
 
@@ -888,6 +912,29 @@ export default function LinkAnalysis() {
           stage={phase === 'analyzing' ? stage : null}
           startedAt={phaseStartedAt}
         />
+      )}
+
+      {/* HATA EKRANI: rapor uretilemedigunde kullaniciya BOS bir "analiz"
+          gosterilmez (eskiden 60 puanlik, faktorsuz bir kabuk basiliyordu).
+          Ayni cevaplarla tekrar denenir — yeni ucret alinmaz. */}
+      {phase === 'error' && (
+        <div className="la-failed fade-up">
+          <span className="la-failed-icon" aria-hidden="true">!</span>
+          <strong>{L('The report could not be generated',
+            'Rapor oluşturulamadı',
+            'Der Bericht konnte nicht erstellt werden')}</strong>
+          <p>{L('Qor AI could not reach a complete result this time. Your answers are saved — try again without paying twice.',
+            'Qor AI bu sefer eksiksiz bir sonuca ulaşamadı. Cevapların duruyor; ikinci kez ücret ödemeden tekrar deneyebilirsin.',
+            'Qor AI konnte diesmal kein vollständiges Ergebnis erzielen. Deine Antworten sind gespeichert — versuche es erneut.')}</p>
+          <div className="la-failed-actions">
+            <button type="button" className="btn btn-grad btn-shine" onClick={() => retryLinkAnalysisJob()}>
+              {L('Try again', 'Tekrar dene', 'Erneut versuchen')}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={resetFlow}>
+              {L('New analysis', 'Yeni analiz', 'Neue Analyse')}
+            </button>
+          </div>
+        </div>
       )}
 
       {phase === 'quiz' && base && questions.length > 0 && (

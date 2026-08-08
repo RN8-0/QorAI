@@ -170,11 +170,14 @@
   color: var(--text3);
   transition: color .2s ease, background .2s ease;
 }
-/* Noktaları birleştiren dikey çizgi */
+/* Noktaları birleştiren dikey çizgi. Nokta sütunu 4 px iç boşluktan sonra
+   26 px genişliğinde → merkezi 17 px. Çizgi 14 px'te duruyordu: noktanın
+   altından 3 px'lik bir şerit taşıyor ve "minik renk boşluğu" olarak
+   görünüyordu. 2 px genişlik için sol kenar 16 px = tam merkez. */
 .aiwb-step::before {
   content: '';
   position: absolute;
-  left: 14px;
+  left: 16px;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -196,10 +199,14 @@
   justify-content: center;
   background: var(--surface-3);
   border: 1.5px solid var(--border);
+  box-sizing: border-box;
   color: var(--text3);
   font-size: 11px;
   font-weight: 900;
   font-style: normal;
+  /* Nokta ARKASINDAKİ çizgiyi tamamen kapatmalı; yarı saydam bir zemin
+     çizgiyi sızdırıp halka gibi bir iz bırakıyordu. */
+  box-shadow: 0 0 0 3px var(--surface-2);
   transition: background .2s ease, color .2s ease, border-color .2s ease, transform .2s ease;
 }
 .aiwb-step-label {
@@ -225,7 +232,7 @@
   border-color: transparent;
   color: #fff;
   transform: scale(1.08);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 14%, transparent);
+  box-shadow: 0 0 0 3px var(--surface-2), 0 0 0 7px color-mix(in srgb, var(--brand-cyan) 14%, transparent);
 }
 .aiwb-step.active .aiwb-step-label { font-weight: 850; }
 
