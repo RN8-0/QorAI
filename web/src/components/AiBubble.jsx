@@ -612,6 +612,17 @@ export default function AiBubble() {
     navigate(a.path);
   }
 
+  // Ünlem YALNIZCA balona tıklayınca sönüyordu: kullanıcı zaten o sayfadaysa
+  // ve sonucu ekranda görüyorsa bile "analiz hazır — görüntüle" şeridi kalıcı
+  // olarak duruyordu (link analizi sayfasında duran abonelik uyarısı gibi).
+  // O sayfadaysan görmüş sayılırsın.
+  useEffect(() => {
+    if (!alertReady) return;
+    const here = String(location.pathname || '');
+    const target = String(alertReady.path || '').split('?')[0];
+    if (target && here.startsWith(target)) markAnalysisSeen(alertReady.kind);
+  }, [alertReady, location.pathname]);
+
   return (
     <>
       <button

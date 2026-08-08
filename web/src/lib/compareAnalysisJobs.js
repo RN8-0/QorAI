@@ -60,7 +60,13 @@ function emit() {
 
 function setJob(patch) {
   if (!activeJob) return;
-  activeJob = { ...activeJob, ...patch, updatedAt: new Date().toISOString() };
+  const phaseChanged = patch.phase && patch.phase !== activeJob.phase;
+  activeJob = {
+    ...activeJob,
+    ...patch,
+    ...(phaseChanged ? { phaseStartedAt: new Date().toISOString() } : {}),
+    updatedAt: new Date().toISOString(),
+  };
   emit();
 }
 
@@ -116,6 +122,7 @@ export function startCompareAnalysisJob({ products, lang, user, fallbackQuiz }) 
     key,
     lang,
     phase: 'quizLoading',
+    phaseStartedAt: new Date().toISOString(),
     stage: null,
     questions: [],
     answers: [],
@@ -210,6 +217,7 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
 
       const text = JSON.stringify({ type: 'compare_full_report', products: okReports, comparison: verdict });
       if (!activeJob || activeJob.id !== job.id) return;
+      setJob({ stage: 'composing' });
       setJob({ text, phase: 'result', stage: null });
       try { await saveComparisonAnalysisHistory({ products, analysis: text }); } catch { /* geçmiş yazımı analizi bozmasın */ }
     } catch {

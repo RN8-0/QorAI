@@ -37,13 +37,20 @@ import {
 } from '../components/AiCharts.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
+import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
 import Gauge from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
-import { amazonStorefrontsForLang, localizeAmazonUrl, safeExternalUrl } from '../lib/format';
+import {
+  amazonStorefrontsForLang, formatPrice, formatPriceAmount, localizeAmazonUrl, priceForCountry,
+  safeExternalUrl,
+} from '../lib/format';
+import { productPath } from '../lib/routes';
+import { Link } from 'react-router-dom';
+import ProductImg from '../components/ProductImg.jsx';
 import { useGeoCountry } from '../lib/geo';
 import './LinkAnalysis.css';
 
@@ -117,6 +124,43 @@ function Sec({ icon, title, meta, children, tone = '' }) {
       <h4>{icon} {title}{meta ? <em> · {meta}</em> : null}</h4>
       {children}
     </section>
+  );
+}
+
+// Yapıştırılan ürün BİZDE de varsa: kendi sayfamıza bağlanan, fiyatı ve tech
+// score'u gösteren kart. Kullanıcı kendi kataloğumuzdaki ürünü dışarıda
+// aramak zorunda kalmasın.
+function CatalogMatchCard({ match, L, lang }) {
+  const geoCountry = useGeoCountry();
+  if (!match?.id) return null;
+  const priced = priceForCountry(match, geoCountry);
+  const to = productPath({ id: match.id, slug: match.slug, name: match.name });
+  return (
+    <Link className="la-catalog" to={to}>
+      <span className="la-catalog-tag">✅ {L('This product is in the Qor catalog', 'Bu ürün Qor kataloğunda var', 'Dieses Produkt ist im Qor-Katalog')}</span>
+      <div className="la-catalog-body">
+        <ProductImg product={match} size="thumb" className="la-catalog-img" alt="" />
+        <div className="la-catalog-copy">
+          <strong>{match.name}</strong>
+          <div className="la-catalog-meta">
+            {match.techScore > 0 && (
+              <span className="la-catalog-score" style={{ color: scoreColor(match.techScore) }}>
+                {Math.round(match.techScore)}<i>/100</i>
+              </span>
+            )}
+            {priced?.price > 0 ? (
+              <span className="la-catalog-price">{formatPriceAmount(priced.price, priced.currency, lang)}</span>
+            ) : match.lowestPriceUSD > 0 ? (
+              <span className="la-catalog-price">{formatPrice(match.lowestPriceUSD)}</span>
+            ) : null}
+          </div>
+        </div>
+        <span className="la-catalog-cta">
+          {L('Open product page', 'Ürün sayfasını aç', 'Produktseite öffnen')}
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -199,6 +243,8 @@ function EnhancedResult({ data, L, lang }) {
           <StoreCta url={base.url || data.url} lang={lang} L={L} />
         </section>
 
+        <CatalogMatchCard match={data.catalogMatch} L={L} lang={lang} />
+
         <StatTiles items={[
           { icon: '🎯', label: L('Match', 'Uyum', 'Match'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
           data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum', 'Lebensfit'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
@@ -209,8 +255,10 @@ function EnhancedResult({ data, L, lang }) {
         {/* ── Grafikler ── */}
         <div className="aic-row">
           {factors.length >= 3 && <RadarChart factors={factors} L={L} color="var(--brand-blue)" />}
-          <SentimentDonut breakdown={sentiment} L={L} />
-          <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
+          <div className="aic-col">
+            <SentimentDonut breakdown={sentiment} L={L} />
+            <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
+          </div>
         </div>
 
         {factors.length > 0 && (
@@ -550,6 +598,9 @@ export default function LinkAnalysis() {
   // Gerçek boru hattı aşaması (research | report) — yükleniyor tahtası hangi
   // işin GERÇEKTEN koştuğunu göstersin diye.
   const [stage, setStage] = useState(null);
+  // İşin İÇİNDE BULUNDUĞU FAZIN gerçek başlangıcı — yükleme tahtası geçen
+  // süreyi buradan sayar, sayfa değiştirip dönünce sıfırlanmaz.
+  const [phaseStartedAt, setPhaseStartedAt] = useState(null);
   const seenSavedJobRef = useRef('');
 
   useEffect(() => subscribeLinkAnalysisJob((job) => {
@@ -557,6 +608,7 @@ export default function LinkAnalysis() {
     setActiveJobId(job.id || '');
     setActiveJobType(job.type || '');
     setStage(job.stage || null);
+    setPhaseStartedAt(job.phaseStartedAt || job.startedAt || null);
     if (Array.isArray(job.urls) && job.urls.length) {
       setUrls(job.urls.length < MAX_LINKS ? [...job.urls, ''] : job.urls.slice(0, MAX_LINKS));
     }
@@ -811,6 +863,19 @@ export default function LinkAnalysis() {
         </>
       )}
 
+      {/* ÜST ÇIKIŞ ÇUBUĞU: quiz / yükleme / sonuç ekranlarında akıştan
+          çıkmak için sayfanın en altına inmek gerekiyordu. */}
+      {!showForm && (
+        <AnalysisExitBar
+          lang={lang}
+          onExit={resetFlow}
+          busy={phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing'}
+          context={base?.title
+            || compareBases.map((p) => p.title).filter(Boolean).join(' vs ')
+            || urls.filter(Boolean).join(', ')}
+        />
+      )}
+
       {/* Fallback for non-input phases (the in-form one above covers input). */}
       {err && !showForm && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
 
@@ -821,6 +886,7 @@ export default function LinkAnalysis() {
             : phase === 'quizLoading' ? 'linkQuiz'
               : filled > 1 ? 'linkCompare' : 'linkAnalyze'}
           stage={phase === 'analyzing' ? stage : null}
+          startedAt={phaseStartedAt}
         />
       )}
 

@@ -20,7 +20,7 @@ import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import {
-  compareJobKey, runCompareAnalysisJob, startCompareAnalysisJob,
+  clearCompareAnalysisJob, compareJobKey, runCompareAnalysisJob, startCompareAnalysisJob,
   subscribeCompareAnalysisJob,
 } from '../lib/compareAnalysisJobs';
 import { useGeoCountry } from '../lib/geo';
@@ -32,6 +32,7 @@ import AiAnalysisView, {
 } from '../components/AiAnalysis.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
+import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import {
@@ -268,6 +269,7 @@ export default function Compare() {
   const [aiChecking, setAiChecking] = useState(false);
   const [aiPhase, setAiPhase] = useState('idle');
   const [aiStage, setAiStage] = useState(null);
+  const [aiPhaseStartedAt, setAiPhaseStartedAt] = useState(null);
   const [aiQuestions, setAiQuestions] = useState([]);
   const [aiAnswers, setAiAnswers] = useState([]);
   const [aiSavedAt, setAiSavedAt] = useState('');
@@ -461,11 +463,23 @@ export default function Compare() {
   // onun anlik goruntusunu ciziyor. Sifirlama SADECE karsilastirilan urun
   // kumesi degistiginde ve o kumeye ait koşan bir is YOKKEN yapilir.
   const myJobKey = compareJobKey(ids);
+  // Akıştan çıkış: koşan işi bırak, panel baştaki "analizi başlat" hâline dönsün.
+  function exitCompareAnalysis() {
+    clearCompareAnalysisJob();
+    setAiBusy(false);
+    setAiText('');
+    setAiNotice('');
+    setAiPhase('idle');
+    setAiQuestions([]);
+    setAiAnswers([]);
+    setAiSavedAt('');
+  }
   useEffect(() => subscribeCompareAnalysisJob((job) => {
     if (job && job.key === myJobKey) {
       setAiPhase(job.phase === 'analyzing' || job.phase === 'quizLoading' ? job.phase : job.phase);
       setAiBusy(job.phase === 'quizLoading' || job.phase === 'analyzing');
       setAiStage(job.stage || null);
+      setAiPhaseStartedAt(job.phaseStartedAt || job.startedAt || null);
       setAiQuestions(job.questions || []);
       setAiAnswers(job.answers || []);
       if (job.text) setAiText(job.text);
@@ -911,6 +925,18 @@ export default function Compare() {
 
               {tab === 'ai' && (
                 <div className="cmp-ai-layout fade-up">
+                  {/* Üst çıkış çubuğu — diğer analiz akışlarıyla aynı. */}
+                  {aiPhase !== 'idle' && (
+                    <AnalysisExitBar
+                      lang={lang}
+                      onExit={exitCompareAnalysis}
+                      busy={aiBusy}
+                      context={products.map((x) => displayProductName(x, lang)).join(' vs ')}
+                      label={aiText
+                        ? L('New analysis', 'Yeni analiz', 'Neue Analyse')
+                        : L('Cancel analysis', 'Analizden çık', 'Analyse abbrechen')}
+                    />
+                  )}
                   <div className="card pad-lg cmp-ai">
                     {!aiText && aiPhase === 'idle' && (
                       <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
@@ -918,7 +944,7 @@ export default function Compare() {
                       </button>
                     )}
                     {!aiText && aiPhase === 'quizLoading' && (
-                      <AiWorkboard lang={lang} mode="quizCompare" />
+                      <AiWorkboard lang={lang} mode="quizCompare" startedAt={aiPhaseStartedAt} />
                     )}
                     {!aiText && aiPhase === 'quiz' && aiQuestions.length > 0 && (
                       <QuizFlow
@@ -934,7 +960,7 @@ export default function Compare() {
                       />
                     )}
                     {!aiText && aiPhase === 'analyzing' && (
-                      <AiWorkboard lang={lang} mode="compare" stage={aiStage} />
+                      <AiWorkboard lang={lang} mode="compare" stage={aiStage} startedAt={aiPhaseStartedAt} />
                     )}
                     {!aiText && aiPhase === 'error' && (
                       <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy || !aiAnswers.length}>

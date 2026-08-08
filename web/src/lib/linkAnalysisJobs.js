@@ -1,6 +1,8 @@
+import { searchProducts } from './typesense';
 import {
   analyzeLink,
   awaitResearch,
+  findCatalogMatch,
   compareAnalysis,
   enhancedAnalysis,
   generateCompareQuiz,
@@ -72,7 +74,17 @@ function emit() {
 
 function setJob(patch) {
   if (!activeJob) return;
-  activeJob = { ...activeJob, ...patch, updatedAt: new Date().toISOString() };
+  // Faz DEĞİŞTİĞİNDE o fazın başlangıcını damgala: yükleme tahtası geçen
+  // süreyi buradan sayar, böylece kullanıcı başka sayfaya gidip döndüğünde
+  // sayaç sıfırlanmaz (iş arka planda koşmaya devam ediyor, ekran da onu
+  // doğru anlatmalı).
+  const phaseChanged = patch.phase && patch.phase !== activeJob.phase;
+  activeJob = {
+    ...activeJob,
+    ...patch,
+    ...(phaseChanged ? { phaseStartedAt: new Date().toISOString() } : {}),
+    updatedAt: new Date().toISOString(),
+  };
   emit();
 }
 
@@ -84,6 +96,7 @@ function newJob({ type, urls, language, userProfile }) {
     language,
     userProfile,
     phase: 'identifying',
+    phaseStartedAt: new Date().toISOString(),
     stage: null,
     researched: false,
     bases: [],
@@ -99,6 +112,27 @@ function newJob({ type, urls, language, userProfile }) {
   };
   emit();
   return activeJob;
+}
+
+// Rapora gömülecek sade katalog kartı (tam ürün nesnesi localStorage'a
+// serileştirilmemeli — 700 KB'lık `_raw` alanları var).
+function catalogCard(p) {
+  if (!p?.id) return null;
+  return {
+    id: p.id,
+    name: p.name || '',
+    slug: p.slug || '',
+    imageUrl: p.imageUrl || p.imageURL || '',
+    category: p.category || '',
+    techScore: Number(p.techScore) || 0,
+    lowestPriceUSD: Number(p.lowestPriceUSD) || 0,
+    // Ülkeye göre fiyat için priceForCountry'nin okuduğu alanlar da taşınır.
+    pricesByCountry: p.pricesByCountry && typeof p.pricesByCountry === 'object' ? p.pricesByCountry : null,
+    priceTR: Number(p.priceTR) || 0,
+    priceUS: Number(p.priceUS) || 0,
+    priceDE: Number(p.priceDE) || 0,
+    priceGB: Number(p.priceGB) || 0,
+  };
 }
 
 function fallbackEnhancedResult(base) {
@@ -120,10 +154,11 @@ function fallbackEnhancedResult(base) {
 
 async function completeSingle(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
-  setJob({ phase: 'analyzing', stage: 'research', error: '' });
+  setJob({ phase: 'analyzing', stage: 'prep', error: '' });
   const base = activeJob.base;
   // Quiz sırasında başlatılan tarama genelde çoktan bitmiştir; bitmediyse
   // burada (üst sınırla) beklenir ve tahta "yorumlar taranıyor"da durur.
+  setJob({ stage: 'research' });
   const research = await awaitResearch(takeResearch(job.id));
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'report', researched: Boolean(research) });
@@ -139,6 +174,8 @@ async function completeSingle(job, answers = []) {
   } catch {
     data = fallbackEnhancedResult(base);
   }
+  if (!activeJob || activeJob.id !== job.id) return;
+  setJob({ stage: 'saving' });
   const saved = await saveLinkAnalysisHistory({
     urls: [base.url],
     analysis: data.verdict,
@@ -147,7 +184,7 @@ async function completeSingle(job, answers = []) {
   });
   setJob({
     phase: 'result',
-    enhanced: data,
+    enhanced: { ...data, catalogMatch: activeJob?.catalogMatch || null },
     compareText: '',
     savedAt: new Date().toISOString(),
     savedId: saved?.id || '',
@@ -156,8 +193,9 @@ async function completeSingle(job, answers = []) {
 
 async function completeCompare(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
-  setJob({ phase: 'analyzing', stage: 'research', error: '' });
+  setJob({ phase: 'analyzing', stage: 'prep', error: '' });
   const bases = activeJob.bases || [];
+  setJob({ stage: 'research' });
   const research = await awaitResearch(takeResearch(job.id));
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'report', researched: Boolean(research) });
@@ -222,7 +260,14 @@ export function startSingleLinkAnalysisJob({ url, language, userProfile }) {
         setJob({ phase: 'input', error: 'NOT_PRODUCT' });
         return;
       }
-      // Ürün belli oldu → yorum taraması ŞİMDİ başlar ve quiz boyunca koşar.
+      // Ürün belli oldu → KATALOG EŞLEŞMESİ (bizde de varsa rapor ona bağlansın)
+      // ve yorum taraması ŞİMDİ başlar; ikisi de quiz boyunca arka planda koşar.
+      findCatalogMatch(result.title, { searchProducts })
+        .then((match) => {
+          if (!match || !activeJob || activeJob.id !== job.id) return;
+          setJob({ catalogMatch: catalogCard(match) });
+        })
+        .catch(() => { /* eşleşme opsiyonel */ });
       startResearch(job.id, researchProductCommunity({
         title: result.title,
         category: result.category,

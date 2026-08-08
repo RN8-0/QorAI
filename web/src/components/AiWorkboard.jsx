@@ -149,33 +149,49 @@ const SETS = {
   },
 };
 
-// A real coarse pipeline stage → the furthest step that may light up (then it
-// HOLDS there). Used by the report flows that report prep → research → report.
-const STAGE_CEIL = { prep: 1, research: 2, report: 99 };
+// GERÇEK boru hattı aşaması → aydınlanabilecek EN İLERİ adım (orada BEKLER).
+// Aşama bildirilmediğinde tahta son adıma kadar doldurup "%100" gösteriyordu:
+// iş hâlâ sürerken ekran bitmiş gibi duruyordu ("animasyonlar sisteme göre
+// değil, başını alıp giden döngü"). Artık aşama yoksa SON ADIMA GİRİLMEZ.
+const STAGE_CEIL = { prep: 1, research: 2, report: 4, composing: 99, saving: 99 };
 
-export default function AiWorkboard({ lang = 'en', mode = 'product', stage = null }) {
+export default function AiWorkboard({
+  lang = 'en', mode = 'product', stage = null, startedAt = null, note = '',
+}) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (a) => (code === 'tr' ? a[1] : code === 'de' ? a[2] : a[0]);
   const set = SETS[mode] || SETS.product;
   const steps = set.steps;
   const lastIdx = steps.length - 1;
   // With a real stage, cap progress at that phase so the lit step is the actual
-  // current operation. Without one, fall back to timed pacing that fills to the
-  // end and stops (never loops back).
-  const ceil = stage == null ? lastIdx : Math.min(lastIdx, STAGE_CEIL[stage] ?? lastIdx);
+  // current operation. Without one, hold one step SHORT of the end — the board
+  // must never claim the work is finished while it is still running.
+  const ceil = stage == null
+    ? Math.max(0, lastIdx - 1)
+    : Math.min(lastIdx, STAGE_CEIL[stage] ?? lastIdx);
   const [active, setActive] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const rootRef = useRef(null);
-  const pct = Math.round(((active + 1) / steps.length) * 100);
+  // Yüzde de artık dürüst: iş sürerken %100 YAZILMAZ (en fazla %95).
+  const rawPct = ((active + 1) / steps.length) * 100;
+  const pct = Math.min(95, Math.round(rawPct));
 
-  // GECEN SURE: analiz 30-90 sn surebiliyor. Sayac olmadan ekran "donmus" gibi
-  // duruyordu; sayan bir sayi "calisiyor" sinyalinin en ucuz ve en net hali.
+  // GEÇEN SÜRE işin GERÇEK başlangıcından sayılır. Eskiden bileşen her monte
+  // olduğunda sıfırlanıyordu; kullanıcı başka sayfaya gidip döndüğünde sayaç
+  // "0 sn"den başlıyor ve analiz sanki yeni başlamış gibi görünüyordu —
+  // "sayfaya gelene kadar iş ilerlemiyor" izleniminin asıl kaynağı buydu.
+  const startMs = (() => {
+    const n = startedAt ? Date.parse(startedAt) : NaN;
+    return Number.isFinite(n) ? n : null;
+  })();
+  const startRef = useRef(startMs || Date.now());
+  if (startMs && startRef.current !== startMs) startRef.current = startMs;
   useEffect(() => {
-    setElapsed(0);
-    const t0 = Date.now();
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - startRef.current) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [mode]);
+  }, [startMs, mode]);
 
   // Bring the board into view whenever the step SET (mode) changes — i.e. on
   // quiz-prep start and again when the report analysis begins.
@@ -211,7 +227,12 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
             {L(['Qor AI is working', 'Qor AI çalışıyor', 'Qor AI arbeitet'])}
           </span>
           <strong>{L(set.title)}</strong>
-          <span className="aiwb-detail">{L(set.detail)}</span>
+          {/* ŞU AN NE YAPILIYOR — sabit tanıtım cümlesi yerine canlı iş adı.
+              Kullanıcı "o an hangi işlemin yapıldığı yazmıyor" dedi. */}
+          <span className="aiwb-detail">
+            <b>{L(['Now', 'Şu an', 'Jetzt'])}:</b> {L(steps[Math.min(active, lastIdx)])}
+          </span>
+          {note ? <span className="aiwb-subnote">{note}</span> : null}
         </div>
 
         <div className="aiwb-gauge" aria-hidden="true">

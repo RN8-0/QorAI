@@ -40,6 +40,7 @@ import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
+import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
 import Reveal from '../components/Reveal.jsx';
 import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
@@ -162,8 +163,10 @@ function ServiceCard({ s, isWinner, L }) {
 
       <div className="aic-row">
         {factors.length >= 3 && <RadarChart factors={factors} L={L} size={220} color="var(--brand-blue)" />}
-        <SentimentDonut breakdown={sentiment} L={L} compact />
-        <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
+        <div className="aic-col">
+          <SentimentDonut breakdown={sentiment} L={L} compact />
+          <DistributionBar strong={dist.strong} balanced={dist.balanced} weak={dist.weak} L={L} />
+        </div>
       </div>
 
       {factors.length > 0 && <FactorList factors={factors} columns={1} />}
@@ -251,6 +254,7 @@ export default function Subscriptions() {
   // Gerçek boru hattı aşaması (research | report) — tahta hangi işin
   // GERÇEKTEN koştuğunu göstersin diye.
   const [stage, setStage] = useState(null);
+  const [phaseStartedAt, setPhaseStartedAt] = useState(null);
   const lastSavedAt = useRef('');
 
   function profile() {
@@ -383,6 +387,7 @@ export default function Subscriptions() {
     if (!job) return;
     setActiveJobId(job.id || '');
     setStage(job.stage || null);
+    setPhaseStartedAt(job.phaseStartedAt || job.startedAt || null);
     setPendingItems(job.services || []);
     if (job.services?.length) setSelected(job.services);
     setQuestions(job.questions || []);
@@ -547,8 +552,17 @@ export default function Subscriptions() {
         </>
       )}
 
+      {!showPicker && (
+        <AnalysisExitBar
+          lang={lang}
+          onExit={resetAnalysis}
+          busy={phase === 'quizLoading' || phase === 'analyzing'}
+          context={(pendingItems.length ? pendingItems : selected).join(' · ')}
+        />
+      )}
+
       {phase === 'quizLoading' && (
-        <AiWorkboard lang={lang} mode="subQuiz" />
+        <AiWorkboard lang={lang} mode="subQuiz" startedAt={phaseStartedAt} />
       )}
 
       {phase === 'quiz' && questions.length > 0 && (
@@ -609,7 +623,7 @@ export default function Subscriptions() {
       )}
 
       {phase === 'analyzing' && (
-        <AiWorkboard lang={lang} mode={(pendingItems.length || selected.length) > 1 ? 'subCompare' : 'subAnalyze'} stage={stage} />
+        <AiWorkboard lang={lang} mode={(pendingItems.length || selected.length) > 1 ? 'subCompare' : 'subAnalyze'} stage={stage} startedAt={phaseStartedAt} />
       )}
 
       {phase === 'result' && result && (() => {

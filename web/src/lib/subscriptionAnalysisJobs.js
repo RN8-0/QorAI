@@ -65,7 +65,13 @@ function emit() {
 
 function setJob(patch) {
   if (!activeJob) return;
-  activeJob = { ...activeJob, ...patch, updatedAt: new Date().toISOString() };
+  const phaseChanged = patch.phase && patch.phase !== activeJob.phase;
+  activeJob = {
+    ...activeJob,
+    ...patch,
+    ...(phaseChanged ? { phaseStartedAt: new Date().toISOString() } : {}),
+    updatedAt: new Date().toISOString(),
+  };
   emit();
 }
 
@@ -77,6 +83,7 @@ function newJob({ services, language, userProfile }) {
     language,
     userProfile,
     phase: 'quizLoading',
+    phaseStartedAt: new Date().toISOString(),
     stage: null,
     researched: false,
     questions: [],
@@ -93,7 +100,8 @@ function newJob({ services, language, userProfile }) {
 
 async function completeSubscription(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
-  setJob({ phase: 'analyzing', stage: 'research', error: '' });
+  setJob({ phase: 'analyzing', stage: 'prep', error: '' });
+  setJob({ stage: 'research' });
   const research = await awaitResearch(takeResearch(job.id));
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'report', researched: Boolean(research) });
@@ -111,6 +119,7 @@ async function completeSubscription(job, answers = []) {
       || data?.winner?.reason
       || data?.services?.map((s) => s.name).filter(Boolean).join(' vs ')
       || 'Qor AI subscription analysis';
+    if (activeJob && activeJob.id === job.id) setJob({ stage: 'saving' });
     const saved = await saveSubscriptionHistory({
       services: job.services,
       quiz: answers,

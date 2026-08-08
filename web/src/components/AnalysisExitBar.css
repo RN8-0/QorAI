@@ -1,0 +1,77 @@
+/* Analiz akışlarının üst çıkış çubuğu — link / abonelik / ürün / karşılaştırma
+   akışlarında AYNI görünüm ve aynı davranış. */
+.axbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto 14px;
+  padding: 8px 10px 8px 8px;
+  border-radius: var(--r-pill, 999px);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.axbar-back {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px 7px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--brand-blue) 26%, var(--border));
+  background: color-mix(in srgb, var(--brand-blue) 8%, transparent);
+  color: var(--brand-blue);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.axbar-back:hover {
+  background: color-mix(in srgb, var(--brand-blue) 16%, transparent);
+  border-color: var(--brand-blue);
+  transform: translateX(-2px);
+}
+.axbar-back svg { flex: none; }
+.axbar-ctx {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.axbar-busy {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-cyan) 12%, transparent);
+  color: var(--text2);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.axbar-busy i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-cyan);
+  animation: axbarBlink 1.4s ease-in-out infinite;
+}
+@keyframes axbarBlink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+[data-theme='dark'] .axbar-back { color: var(--brand-sky); }
+
+@media (max-width: 620px) {
+  .axbar { flex-wrap: wrap; border-radius: 18px; }
+  .axbar-ctx { order: 3; flex-basis: 100%; white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .axbar-busy i { animation: none; }
+  .axbar-back:hover { transform: none; }
+}

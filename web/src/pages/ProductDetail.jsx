@@ -10,7 +10,7 @@ import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
 import {
-  runProductAnalysisJob, startProductAnalysisJob, subscribeProductAnalysisJob,
+  clearProductAnalysisJob, runProductAnalysisJob, startProductAnalysisJob, subscribeProductAnalysisJob,
 } from '../lib/productAnalysisJobs';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
@@ -31,6 +31,7 @@ import AiAnalysisView, {
   withFreshnessRetryInstruction,
 } from '../components/AiAnalysis.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
+import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
 import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import {
@@ -835,6 +836,12 @@ export default function ProductDetail() {
   }, [p, lang, user, aiFull.data, similar, offers]);
 
   // ARKA PLANDAKI ISIN ANLIK GORUNTUSU -> bilesen state'i.
+  // Akıştan çıkış: koşan işi bırak, panel baştaki "analizi başlat" hâline dönsün.
+  function exitProductAnalysis() {
+    clearProductAnalysisJob();
+    setAiFull({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
+  }
+
   useEffect(() => subscribeProductAnalysisJob((job) => {
     if (!p || !job || job.key !== p.id) return;
     setAiFull((s) => ({
@@ -843,6 +850,7 @@ export default function ProductDetail() {
       busy: job.phase === 'quizLoading' || job.phase === 'analyzing',
       checking: false,
       stage: job.stage || null,
+      phaseStartedAt: job.phaseStartedAt || job.startedAt || null,
       questions: job.questions || [],
       answers: job.answers || [],
       data: job.data || s.data,
@@ -1360,6 +1368,19 @@ export default function ProductDetail() {
               )}
               {tab === 'premium' && (
                 <div className="fade-up pd-ai-grid">
+                  {/* Üst çıkış çubuğu — akıştan çıkmak için raporun en altına
+                      inmek gerekmesin (diğer analiz akışlarıyla aynı). */}
+                  {(aiFull.data || aiFull.busy || aiFull.phase === 'quiz' || aiFull.phase === 'error') && (
+                    <AnalysisExitBar
+                      lang={lang}
+                      onExit={exitProductAnalysis}
+                      busy={aiFull.busy}
+                      context={displayName}
+                      label={aiFull.data
+                        ? L('New analysis', 'Yeni analiz', 'Neue Analyse')
+                        : L('Cancel analysis', 'Analizden çık', 'Analyse abbrechen')}
+                    />
+                  )}
                   {aiFull.data ? (
                     <div className="pd-ai-report">
                       {aiFull.savedAt && (
@@ -1399,8 +1420,8 @@ export default function ProductDetail() {
                     <div className="pd-ai-intro">
                       {aiFull.busy ? (
                         aiFull.phase === 'analyzing'
-                          ? <AiWorkboard lang={lang} mode="product" stage={aiFull.stage} />
-                          : <AiWorkboard lang={lang} mode="quizProduct" />
+                          ? <AiWorkboard lang={lang} mode="product" stage={aiFull.stage} startedAt={aiFull.phaseStartedAt} />
+                          : <AiWorkboard lang={lang} mode="quizProduct" startedAt={aiFull.phaseStartedAt} />
                       ) : (
                         <button type="button" className="btn btn-grad btn-shine pd-ai-run"
                           onClick={() => startFullAnalysisQuiz()} disabled={aiFull.checking}>

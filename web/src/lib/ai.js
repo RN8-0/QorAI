@@ -196,19 +196,36 @@ async function aiRequest({
   jsonMode = false,
   tools = null,
   timeoutMs = 90000,
+  // TOPLAM SÜRE BÜTÇESİ. Her denemenin kendi zaman aşımı vardı ama TOPLAM bir
+  // sınır yoktu: yavaş (hata vermeyen, sadece geç dönen) bir sağlayıcıda tek
+  // çağrı 4 sağlayıcı denemesi × 90 sn = 6 dakikaya kadar uzayabiliyordu ve
+  // kullanıcı "analiz hiç bitmiyor, sürekli dönüyor" durumunda kalıyordu.
+  budgetMs = null,
 }) {
+  const deadline = Date.now() + (budgetMs || timeoutMs * 2);
+  const left = () => deadline - Date.now();
   let lastErr;
   // Gemini first (app parity). Retry the SAME provider only on a true 5xx; on a
   // 429/404 (the common case for the free key) fall straight through to DeepSeek
   // instead of sleeping 2s for nothing.
   for (let i = 0; i < 2; i++) {
-    try { return await geminiOnce({ system, messages, maxOutputTokens, temperature, tools, jsonMode, timeoutMs }); }
-    catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
+    if (left() <= 2000) break;
+    try {
+      return await geminiOnce({
+        system, messages, maxOutputTokens, temperature, tools, jsonMode,
+        timeoutMs: Math.min(timeoutMs, left()),
+      });
+    } catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
   }
   // DeepSeek — the unlimited json_object workhorse — does the heavy lifting.
   for (let i = 0; i < 2; i++) {
-    try { return await deepseekOnce({ system, messages, maxOutputTokens, temperature, jsonMode, timeoutMs }); }
-    catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
+    if (left() <= 2000) break;
+    try {
+      return await deepseekOnce({
+        system, messages, maxOutputTokens, temperature, jsonMode,
+        timeoutMs: Math.min(timeoutMs, left()),
+      });
+    } catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
   }
   throw lastErr || new Error('AI failed');
 }
@@ -275,6 +292,7 @@ export async function askQorAiRaw({
   jsonMode = false,
   tools = null,
   timeoutMs,
+  budgetMs,
 }) {
   return aiRequest({
     system,
@@ -284,6 +302,7 @@ export async function askQorAiRaw({
     jsonMode,
     tools,
     timeoutMs,
+    budgetMs,
   });
 }
 
@@ -397,7 +416,15 @@ export function parseJsonLoose(text) {
   throw new Error('AI JSON parse failed');
 }
 
-export async function askQorAiJson({ system, user, maxOutputTokens = 4096 }) {
-  const text = await askQorAiRaw({ system, user, maxOutputTokens, temperature: 0.6, jsonMode: true });
+// SÜRE SINIRI (2026-08-08): varsayılan 90 sn zaman aşımı + sağlayıcı başına 2
+// deneme, en kötü durumda TEK bir JSON çağrısını 6 dakikaya kadar uzatabiliyordu
+// ("analiz sonuçlanmıyor, sürekli dönüyor"). Analiz çağrıları artık açık bir
+// üst sınırla koşuyor; sınırı aşan sağlayıcı iptal edilip diğerine geçiliyor.
+export async function askQorAiJson({
+  system, user, maxOutputTokens = 4096, timeoutMs = 70000, budgetMs = 150000,
+}) {
+  const text = await askQorAiRaw({
+    system, user, maxOutputTokens, temperature: 0.6, jsonMode: true, timeoutMs, budgetMs,
+  });
   return parseJsonLoose(text);
 }

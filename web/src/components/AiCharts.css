@@ -20,7 +20,26 @@
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-2);
+  /* Kart içeriği dikeyde ORTALANIR: radar kartı yanındakilerden çok daha
+     uzun olduğu için donut ve faktör dengesi kartlarının ALTI boş kalıyordu
+     (kullanıcı: "aşağısı bomboş"). Artık boşluk alta yığılmıyor. */
+  display: flex;
+  flex-direction: column;
 }
+.aic-card > .aic-card-title { flex: none; }
+.aic-card > :not(.aic-card-title) { margin-top: auto; margin-bottom: auto; }
+
+/* İki sütunlu grafik satırı: solda radar, sağda donut + faktör dengesi üst
+   üste. Böylece iki sütun AYNI yüksekliğe oturur, boşluk kalmaz. */
+.aic-col {
+  flex: 1 1 260px;
+  min-width: 220px;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.aic-col > .aic-card { flex: 1 1 auto; max-width: none; min-width: 0; }
 
 .aic-card-title {
   margin-bottom: 10px;
@@ -455,33 +474,79 @@
 .aic-tile b { display: block; margin-top: 4px; font-size: 19px; font-weight: 900; color: var(--text); line-height: 1.15; }
 .aic-tile small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--text3); font-weight: 650; }
 
-/* Isı matrisi */
+/* Faktör faktör karşılaştırma — hizalı mini çubuklar (eski düz renk blokları
+   sütun genişlikleri farklı olduğu için çarpık ve okunmaz duruyordu). */
 .aic-heat { margin: 4px 0; }
 .aic-heat-scroll { overflow-x: auto; }
-.aic-heat-table { width: 100%; border-collapse: separate; border-spacing: 4px; }
-.aic-heat-table th {
-  font-size: 11.5px;
-  font-weight: 850;
-  color: var(--text3);
+.aic-heat-table {
+  width: 100%;
+  min-width: 420px;
+  table-layout: fixed; /* sütunlar EŞİT genişlikte — hizasızlık buradan geliyordu */
+  border-collapse: separate;
+  border-spacing: 8px 6px;
+}
+.aic-heat-corner { width: 30%; }
+.aic-heat-col {
+  width: calc(70% / var(--cols, 2));
+  padding: 0 2px 4px;
   text-align: left;
-  padding: 2px 4px;
+}
+.aic-heat-col span {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--text2);
+  letter-spacing: .01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.aic-heat-table tbody th { color: var(--text2); max-width: 190px; white-space: normal; }
-.aic-heat-cell {
-  display: block;
-  min-width: 54px;
-  padding: 8px 6px;
-  border-radius: 10px;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 900;
-  color: var(--text);
-  border: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
-  animation: aicRise .4s cubic-bezier(.22, 1, .36, 1) both;
+.aic-heat-label {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--text2);
+  text-align: left;
+  padding-right: 6px;
+  white-space: normal;
+  line-height: 1.3;
 }
-.aic-heat-cell.best { border-color: color-mix(in srgb, var(--brand-cyan) 55%, var(--border)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-cyan) 24%, transparent); }
+.aic-heat-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px 0 0;
+  border-radius: 9px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.aic-heat-cell i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 9px 0 0 9px;
+  opacity: .34;
+}
+.aic-heat-cell b {
+  position: relative;
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.aic-heat-cell em {
+  position: relative;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--brand-blue);
+}
+.aic-heat-cell.best {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand-cyan) 60%, transparent);
+}
+[data-theme='dark'] .aic-heat-cell i { opacity: .42; }
+[data-theme='dark'] .aic-heat-cell em { color: var(--brand-cyan); }
 
 /* Karar afişi */
 .aic-verdict {

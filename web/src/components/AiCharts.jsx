@@ -552,38 +552,46 @@ export function HeatMatrix({ products = [], L = (en) => en, labelOf = (p) => p.n
   const rows = Array.isArray(products) ? products.filter((p) => p && p.name) : [];
   const labels = [...new Set(rows.flatMap((p) => (Array.isArray(p.factors) ? p.factors : []).map((f) => f?.label).filter(Boolean)))];
   if (!labels.length || rows.length < 2) return null;
+  // Eski hâli düz renk bloklarından oluşuyordu: sütunlar içeriğe göre farklı
+  // genişlikte, sayı kocaman bir bloğun ortasında kayboluyor, büyüklük farkı
+  // hiç okunmuyordu ("fazla çirkin"). Artık her hücre HİZALI bir mini çubuk:
+  // dolgu uzunluğu = puan, renk = güç bandı, kazanan işaretli.
   return (
     <section className="aic-heat">
-      <div className="aic-card-title">🧭 {L('Factor heat map', 'Faktör ısı haritası', 'Faktor-Heatmap')}</div>
+      <div className="aic-card-title">🧭 {L('Factor by factor', 'Faktör faktör karşılaştırma', 'Faktor für Faktor')}</div>
       <div className="aic-heat-scroll">
-        <table className="aic-heat-table">
+        <table className="aic-heat-table" style={{ '--cols': rows.length }}>
           <thead>
             <tr>
-              <th />
-              {rows.map((p) => <th key={p.name}>{labelOf(p)}</th>)}
+              <th className="aic-heat-corner" />
+              {rows.map((p) => (
+                <th key={p.name} className="aic-heat-col"><span>{labelOf(p)}</span></th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {labels.map((label, li) => {
+            {labels.map((label) => {
               const vals = rows.map((p) => Number((p.factors || []).find((f) => f?.label === label)?.score) || 0);
               const best = Math.max(...vals);
+              const tied = vals.filter((v) => v === best).length > 1;
               return (
                 <tr key={label}>
-                  <th scope="row">{label}</th>
-                  {vals.map((v, i) => (
-                    <td key={`${label}-${i}`}>
-                      {/* Renk BURADA veridir (ne kadar koyu = o kadar yüksek),
-                          o yüzden dolgu asla animasyona bağlı değil: yalnız
-                          hücrenin belirişi kademelendirilir. */}
-                      <span
-                        className={'aic-heat-cell' + (v === best && best > 0 ? ' best' : '')}
-                        style={{
-                          background: `color-mix(in srgb, ${scoreColor(v)} ${Math.max(10, Math.min(72, v * 0.72))}%, transparent)`,
-                          animationDelay: `${(li * rows.length + i) * 22}ms`,
-                        }}
-                      >{Math.round(v)}</span>
-                    </td>
-                  ))}
+                  <th scope="row" className="aic-heat-label">{label}</th>
+                  {vals.map((v, i) => {
+                    const col = scoreColor(v);
+                    const isBest = !tied && v === best && best > 0;
+                    return (
+                      <td key={`${label}-${i}`}>
+                        {/* Dolgu genişliği VERİDİR; animasyona bağlanmaz (arka
+                            plandaki sekmede transition donunca boş kalıyordu). */}
+                        <span className={'aic-heat-cell' + (isBest ? ' best' : '')}>
+                          <i style={{ width: `${Math.max(4, Math.min(100, v))}%`, background: col }} />
+                          <b style={{ color: col }}>{Math.round(v)}</b>
+                          {isBest && <em aria-label="best">★</em>}
+                        </span>
+                      </td>
+                    );
+                  })}
                 </tr>
               );
             })}

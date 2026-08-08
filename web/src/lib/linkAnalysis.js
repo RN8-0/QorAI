@@ -594,6 +594,53 @@ export async function researchSubscriptionsCommunity({ names = [], language }) {
   }
 }
 
+// ── Katalog eşleşmesi ─────────────────────────────────────────────────────
+// Kullanıcının yapıştırdığı ürün BİZDE de varsa raporun onu göstermesi ve o
+// sayfaya bağlanması gerekiyor (fiyat, tech score, karşılaştırma). Aksi hâlde
+// kullanıcı kendi kataloğumuzda duran ürünü dışarıya tıklayarak arıyor.
+const CATALOG_STOP = new Set([
+  'ile', 'için', 'and', 'the', 'with', 'for', 'gb', 'tb', 'mb', 'inch', 'inç',
+  'akıllı', 'telefon', 'cep', 'kablosuz', 'siyah', 'beyaz', 'gri', 'mavi',
+]);
+function catalogTokens(name) {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/[()[\]{}",]/g, ' ')
+    .split(/[\s/_-]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 1 && !CATALOG_STOP.has(t));
+}
+
+// İki ad arasındaki örtüşme oranı (0-1). Marka + model kodu tuttuğunda yüksek.
+function nameOverlap(a, b) {
+  const ta = catalogTokens(a);
+  const tb = new Set(catalogTokens(b));
+  if (!ta.length || !tb.size) return 0;
+  const hit = ta.filter((t) => tb.has(t)).length;
+  return hit / ta.length;
+}
+
+// Katalogda bu ürünü ara. Eşleşme ZAYIFSA null döner — yanlış ürüne bağlamak,
+// hiç bağlamamaktan kötüdür.
+export async function findCatalogMatch(title, { searchProducts, minScore = 0.55 } = {}) {
+  const name = String(title || '').trim();
+  if (!name || typeof searchProducts !== 'function') return null;
+  let hits = [];
+  try {
+    hits = await searchProducts(name, 8);
+  } catch {
+    return null;
+  }
+  let best = null;
+  for (const p of Array.isArray(hits) ? hits : []) {
+    if (!p?.id || !p?.name) continue;
+    // İki yönlü örtüşme: aday adı sorguyu, sorgu da aday adını karşılamalı.
+    const score = Math.min(nameOverlap(name, p.name), nameOverlap(p.name, name) + 0.15);
+    if (!best || score > best.score) best = { score, product: p };
+  }
+  return best && best.score >= minScore ? best.product : null;
+}
+
 // Araştırma quiz sırasında arka planda koşar; kullanıcı quizi ÇOK hızlı
 // geçerse rapor onu bekler. Grounded arama takılırsa rapor sonsuza kadar
 // beklemesin diye üst sınır koyuyoruz — araştırma zaten opsiyonel katman.

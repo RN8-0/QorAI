@@ -43,7 +43,13 @@ function emit() {
 
 function setJob(patch) {
   if (!activeJob) return;
-  activeJob = { ...activeJob, ...patch, updatedAt: new Date().toISOString() };
+  const phaseChanged = patch.phase && patch.phase !== activeJob.phase;
+  activeJob = {
+    ...activeJob,
+    ...patch,
+    ...(phaseChanged ? { phaseStartedAt: new Date().toISOString() } : {}),
+    updatedAt: new Date().toISOString(),
+  };
   emit();
 }
 
@@ -86,6 +92,7 @@ export function startProductAnalysisJob({ product, lang, user, productTitle, pro
     productPath: productUrl,
     lang,
     phase: 'quizLoading',
+    phaseStartedAt: new Date().toISOString(),
     stage: null,
     questions: [],
     answers: [],
@@ -170,6 +177,7 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       }
       if (!data || typeof data !== 'object') throw new Error('parse');
       if (!activeJob || activeJob.id !== job.id) return;
+      setJob({ stage: 'composing' });
       setJob({ data, phase: 'result', stage: null });
       try { await saveProductAnalysisHistory({ product, analysis: txt }); } catch { /* geçmiş yazımı analizi bozmasın */ }
     } catch {
