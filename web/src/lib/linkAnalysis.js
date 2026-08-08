@@ -147,6 +147,32 @@ Return valid JSON:
 
 // Derive a readable product title from the URL slug (free, no API) — used as a
 // trusted fallback so the AI cannot drift to a different product.
+// URL yolunda ürün ADI TAŞIMAYAN yapısal segmentler. "detay" burada YOKTU:
+// sahibinden.com/ilan/<gerçek-ürün-slug'ı>-123456/detay bağlantısında en son
+// harfli segment "detay" olduğu için ürün adı "Detay" çıkıyordu — ve tüm akış
+// (kategori "general", quiz, rapor) o boş isim üzerine kuruluyordu.
+const URL_JUNK_SEGMENTS = new Set([
+  'p', 'dp', 'pd', 'gp', 'aw', 'd', 'product', 'products', 'urun', 'urunler',
+  'item', 'items', 'ref', 'detay', 'detail', 'details', 'ilan', 'ilanlar',
+  'listing', 'listings', 'ad', 'ads', 'offer', 'offers', 'sayfa', 'page',
+  'satilik', 'kiralik', 'sahibinden', 'index', 'default', 'view', 'show',
+]);
+
+// Ürün adı yerine geçemeyecek "isim". Böyle bir başlık geldiğinde ürünü
+// TANIMADIK demektir → grounded arama şart.
+export function isJunkProductTitle(title) {
+  const t = String(title || '').trim().toLowerCase();
+  if (!t || t.length < 4) return true;
+  const words = t.split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  if (words.every((w) => URL_JUNK_SEGMENTS.has(w))) return true;
+  // "Detay", "Ilan", "Urun", "Product Page" gibi tek/iki kelimelik yapısal adlar
+  if (words.length <= 2 && words.some((w) => URL_JUNK_SEGMENTS.has(w))) return true;
+  // Sadece rakam/kod
+  if (!/[a-zçğıöşü]{3,}/i.test(t)) return true;
+  return false;
+}
+
 export function titleFromUrl(url) {
   try {
     const u = new URL(url);
@@ -156,13 +182,22 @@ export function titleFromUrl(url) {
       const dpIndex = segs.findIndex((s) => /^(dp|product)$/i.test(s));
       if (dpIndex > 0) slug = segs[dpIndex - 1];
     }
-    const ignore = /^(p|dp|pd|gp|aw|d|product|urun|item|ref|ref=.*|psc=.*|qid=.*|sr=.*)$/i;
+    const ignore = (s) => URL_JUNK_SEGMENTS.has(String(s).toLowerCase())
+      || /^(ref|psc|qid|sr)[=_-]/i.test(s);
     const idLike = /^(?:[a-z0-9]{10}|[a-f0-9]{16,}|[0-9]{8,})$/i;
-    const trackingLike = /^(ref[=_-]|sr[=_-]|qid[=_-]|psc[=_-])/i;
-    if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s) && !idLike.test(s) && !trackingLike.test(s)) || '';
-    if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore.test(s)) || '';
+    if (!slug) {
+      // EN AÇIKLAYICI segmenti seç (en son değil): mağazalar ürün adını uzun
+      // slug'da taşır, sonraki segmentler ("detay", "p", id) yapısaldır.
+      const candidates = segs.filter((s) => /[a-zçğıöşü]{3,}/i.test(s) && !ignore(s) && !idLike.test(s));
+      slug = candidates.sort((a, b) => b.replace(/[^a-zçğıöşü]/gi, '').length - a.replace(/[^a-zçğıöşü]/gi, '').length)[0] || '';
+    }
+    if (!slug) slug = [...segs].reverse().find((s) => /[a-z]/i.test(s) && !ignore(s)) || '';
     slug = slug.replace(/\.(html?|php|aspx?)$/i, '').replace(/[-_]+/g, ' ');
-    slug = slug.replace(/\b(p|dp|pd|product|urun|item|ref)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    slug = slug.replace(/\b(p|dp|pd|product|urun|item|ref|detay|ilan)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    // Sondaki ilan numarasını / mağaza stok kodunu at
+    // ("... ecoboost 1234567", "... g6 irl HBCV00004ABCDE" → temiz ad).
+    slug = slug.replace(/\s+\d{5,}$/, '').trim();
+    slug = slug.replace(/\s+[A-Za-z]{2,}\d[A-Za-z0-9]{5,}$/, '').trim();
     if (slug.length < 3) return '';
     return slug.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80);
   } catch {
@@ -170,17 +205,26 @@ export function titleFromUrl(url) {
   }
 }
 
+// Kategori çıkarımı. ARAÇLAR YOKTU: bir araba ilanı "general" olarak
+// etiketleniyor ve quiz motoru elinde kategori olmayınca telefon senaryolarına
+// kayıyordu. Liste artık teknoloji dışını da kapsıyor.
 function inferCategoryFromUrl(url, title) {
   const haystack = `${url || ''} ${title || ''}`.toLowerCase();
-  if (/(laptop|notebook|macbook|thinkpad|vivobook|zenbook|legion|rog|tuf|omen|victus|ideapad|nebula)/.test(haystack)) return 'laptops';
+  if (/(vasita|otomobil|arac|araba|\bauto\b|automobil|car|suv|pickup|kamyonet|motosiklet|motorcycle|ecoboost|tdi|tsi|dizel|benzin|hybrid|4x4|ranger|raptor|hilux|amarok)/.test(haystack)) return 'cars';
+  if (/(emlak|konut|daire|villa|arsa|real-?estate|apartment|kiralik-?ev)/.test(haystack)) return 'real-estate';
+  if (/(laptop|notebook|macbook|thinkpad|thinkbook|vivobook|zenbook|ultrabook|chromebook|legion|rog|tuf|omen|victus|ideapad|nebula)/.test(haystack)) return 'laptops';
   if (/(headphone|headset|kulaklik|earbud|airpods|buds|wh-|quietcomfort)/.test(haystack)) return 'headphones';
-  if (/(phone|iphone|galaxy|pixel|xiaomi|redmi|smartphone)/.test(haystack)) return 'smartphones';
+  if (/(tablet|ipad|galaxy-?tab|mediapad|matepad)/.test(haystack)) return 'tablets';
+  if (/(phone|iphone|galaxy|pixel|xiaomi|redmi|smartphone|telefon)/.test(haystack)) return 'smartphones';
   if (/(monitor|display|oled|qled|ultrawide)/.test(haystack)) return 'monitors';
   if (/(keyboard|mouse|klavye|fare)/.test(haystack)) return 'keyboards';
-  if (/(book|isbn|kindle|kitap)/.test(haystack)) return 'books';
-  if (/(shoe|shirt|dress|jacket|pantolon|ayakkabi|giyim)/.test(haystack)) return 'clothing';
-  if (/(kitchen|vacuum|robot|coffee|airfryer|home|mutfak|ev)/.test(haystack)) return 'home-appliances';
-  if (/(game|gaming|ps5|xbox|switch)/.test(haystack)) return 'gaming';
+  if (/(camera|kamera|objektif|lens|dslr|mirrorless)/.test(haystack)) return 'cameras';
+  // book: "thinkbook / macbook / chromebook" kitap DEĞİLDİR.
+  if (/(book|books|isbn|kindle|kitap)/.test(haystack)) return 'books';
+  if (/(shoe|shirt|dress|jacket|pantolon|ayakkabi|giyim|tekstil)/.test(haystack)) return 'clothing';
+  if (/(bisiklet|bicycle|scooter|skuter)/.test(haystack)) return 'bikes';
+  if (/(kitchen|vacuum|robot|coffee|airfryer|home|mutfak|beyaz-?esya|buzdolabi|camasir)/.test(haystack)) return 'home-appliances';
+  if (/(game|gaming|ps5|xbox|switch|konsol)/.test(haystack)) return 'gaming';
   return 'general';
 }
 
@@ -235,8 +279,12 @@ export async function analyzeLink(url, language, userProfile = {}) {
   // title), confirm the EXACT product with Google Search grounding. Optional —
   // on any failure we proceed without it, exactly like the app.
   let webResearch = '';
+  // "Detay" gibi YAPISAL bir slug da tanınmamış sayılır: eskiden 5 harf olduğu
+  // için araştırma atlanıyor, ürün adı "Detay" / kategori "general" kalıyor ve
+  // quiz motoru elinde bağlam olmadığı için telefon senaryolarına kayıyordu
+  // (araba ilanına telefon soruları). Artık junk başlık = araştırma ŞART.
   const needsResearch =
-    !fallbackTitle || fallbackTitle.length < 4 || /amazon\./i.test(siteName);
+    isJunkProductTitle(fallbackTitle) || /amazon\./i.test(siteName);
   if (needsResearch) {
     try {
       const researchPrompt =
@@ -282,14 +330,24 @@ export async function analyzeLink(url, language, userProfile = {}) {
     };
   }
   const aiTitle = String(res.title || '').trim();
-  const bad = !aiTitle || /erişim|hata|error|unknown|bilinmeyen/i.test(aiTitle);
-  const title = bad ? (fallbackTitle || aiTitle || siteName || url) : aiTitle;
+  const bad = !aiTitle
+    || /erişim|hata|error|unknown|bilinmeyen/i.test(aiTitle)
+    || isJunkProductTitle(aiTitle);
+  const title = bad
+    ? (!isJunkProductTitle(fallbackTitle) ? fallbackTitle : (aiTitle || siteName || url))
+    : aiTitle;
   return {
     url,
     title,
     score: Number(res.score) || 0,
     analysis: String(res.analysis || fallbackBaseAnalysis({ url, title, siteName, language })),
-    category: String(res.category || inferCategoryFromUrl(url, title)).toLowerCase(),
+    // AI "general" derse çıkarıma düş: boş kategori quiz motorunu kör bırakıyor.
+    category: (() => {
+      const aiCat = String(res.category || '').toLowerCase().trim();
+      if (aiCat && aiCat !== 'general' && aiCat !== 'other') return aiCat;
+      const guess = inferCategoryFromUrl(url, `${title} ${res.analysis || ''}`);
+      return guess !== 'general' ? guess : (aiCat || 'general');
+    })(),
     siteName: String(res.site_name || siteName || ''),
     price: res.price || null,
     isProduct: res.is_product !== false,
@@ -322,6 +380,13 @@ export function subscriptionQuizCount(names) {
   return (Array.isArray(names) ? names.length : 0) > 1 ? 6 : 5;
 }
 
+// Her koşuda FARKLI bir quiz: modele değişken bir tohum veriyoruz, ayrıca
+// quiz çağrıları daha yüksek sıcaklıkla koşuyor. Aksi hâlde aynı ürün için
+// hep aynı sorular geliyordu.
+function variationSeed() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ── Step 2: personalized quiz ─────────────────────────────────────
 function quizGenerationPrompt(language, count = 5) {
   const langName = languageName(language);
@@ -332,6 +397,22 @@ Pick only the ${count} most decisive, highest-signal questions — the ones whos
 change whether this product is the right fit. No filler, no nice-to-have questions.
 
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
+
+
+PRODUCT TYPE — HARD RULE (the #1 failure to avoid):
+- The item can be ANY category: a CAR, a house, a book, a bicycle, a coffee machine, a washing machine, clothing, a service, a tool — not just electronics.
+- NEVER assume it is a phone, laptop or any screen device. Do NOT mention screens, battery life, keyboards, cameras, storage or apps unless the product context genuinely establishes that the item HAS them.
+- Read the product context (name, category, store, base analysis) and write questions ONLY about the real item. If the category field is missing or says "general", infer the type from the product NAME and the base analysis text.
+- If you genuinely cannot tell what the item is, ask neutral ownership questions about THIS item (how often it will be used, where, by whom, what would make it a regret) — never invent a device type.
+
+QUESTION QUALITY BAR — these must be the DECISIVE questions an expert buyer of THIS category would ask, including the ones the buyer would NOT think of on their own:
+- a tablet → viewing distance and one-handed weight, laminated screen for stylus work, ecosystem lock-in, how long they keep devices
+- a car → the terrain and annual distance, towing/loading, fuel-cost tolerance, parking and city manoeuvring, how long they keep a vehicle
+- a coffee machine → cups per day, milk drinks, counter space, cleaning appetite
+- a book → why they are reading it, pace tolerance, prior familiarity with the subject
+Derive the equivalent decisive angles for the ACTUAL category in front of you. Generic "what is your budget / which brand" questions are forbidden.
+
+VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
@@ -365,12 +446,25 @@ Return valid JSON:
 }`;
 }
 
-export async function generateQuiz({ category, productTitle, url, language, userProfile = {} }) {
+export async function generateQuiz({
+  category, productTitle, url, language, userProfile = {}, productContext = '', siteName = '',
+}) {
   const count = productQuizCount(category);
   const res = await askQorAiJson({
     system: quizGenerationPrompt(language, count),
-    user: JSON.stringify({ category, productTitle, url, userProfile }),
+    // Ürün BAĞLAMI da gidiyor: kategori zayıfsa ("general") model ürünün ne
+    // olduğunu ad + baz analiz metninden çıkarabilsin.
+    user: JSON.stringify({
+      category: category || 'unknown',
+      productTitle,
+      url,
+      store: siteName,
+      productContext: String(productContext || '').slice(0, 1200),
+      userProfile,
+      variationSeed: variationSeed(),
+    }),
     maxOutputTokens: 3072,
+    temperature: 0.95,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({
@@ -392,6 +486,22 @@ ${count} most decisive trade-offs — the ones whose answers most change which p
 No filler questions.
 
 OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in ${langName}, and ONLY ${langName}. This is the site's selected language and overrides everything else: even if the product names, specs, categories, or user profile are in another language, the quiz itself is still written in ${langName}. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi…) may stay as-is.
+
+
+PRODUCT TYPE — HARD RULE (the #1 failure to avoid):
+- The item can be ANY category: a CAR, a house, a book, a bicycle, a coffee machine, a washing machine, clothing, a service, a tool — not just electronics.
+- NEVER assume it is a phone, laptop or any screen device. Do NOT mention screens, battery life, keyboards, cameras, storage or apps unless the product context genuinely establishes that the item HAS them.
+- Read the product context (name, category, store, base analysis) and write questions ONLY about the real item. If the category field is missing or says "general", infer the type from the product NAME and the base analysis text.
+- If you genuinely cannot tell what the item is, ask neutral ownership questions about THIS item (how often it will be used, where, by whom, what would make it a regret) — never invent a device type.
+
+QUESTION QUALITY BAR — these must be the DECISIVE questions an expert buyer of THIS category would ask, including the ones the buyer would NOT think of on their own:
+- a tablet → viewing distance and one-handed weight, laminated screen for stylus work, ecosystem lock-in, how long they keep devices
+- a car → the terrain and annual distance, towing/loading, fuel-cost tolerance, parking and city manoeuvring, how long they keep a vehicle
+- a coffee machine → cups per day, milk drinks, counter space, cleaning appetite
+- a book → why they are reading it, pace tolerance, prior familiarity with the subject
+Derive the equivalent decisive angles for the ACTUAL category in front of you. Generic "what is your budget / which brand" questions are forbidden.
+
+VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
@@ -434,13 +544,16 @@ export async function generateCompareQuiz({ products, language, userProfile = {}
       products: (products || []).map((p) => ({
         title: p.title,
         url: p.url,
-        category: p.category,
+        category: p.category || 'unknown',
+        store: p.siteName,
         initialScore: p.score,
-        initialAnalysis: p.analysis,
+        productContext: String(p.analysis || '').slice(0, 900),
       })),
       userProfile,
+      variationSeed: variationSeed(),
     }),
     maxOutputTokens: 8192,
+    temperature: 0.95,
   });
   return (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({
@@ -464,6 +577,8 @@ OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in $
 
 The goal: understand how the user uses ${isCompare ? 'these services' : 'this service'},
 their specific habits, preferences, and expectations.
+
+VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene and a different ordering than the most obvious default. Two runs on the same services must not share a question.
 
 Rules:
 - Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
@@ -498,8 +613,14 @@ export async function generateSubscriptionQuiz({ subscriptionNames, language, us
   const count = subscriptionQuizCount(subscriptionNames);
   const res = await askQorAiJson({
     system: subscriptionQuizPrompt(subscriptionNames.join(', '), isCompare, language, count),
-    user: JSON.stringify({ subscriptions: subscriptionNames, mode: isCompare ? 'compare' : 'single', userProfile }),
+    user: JSON.stringify({
+      subscriptions: subscriptionNames,
+      mode: isCompare ? 'compare' : 'single',
+      userProfile,
+      variationSeed: variationSeed(),
+    }),
     maxOutputTokens: 8192,
+    temperature: 0.95,
   });
   const questions = (Array.isArray(res.questions) ? res.questions : [])
     .map((q, i) => ({

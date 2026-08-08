@@ -109,6 +109,15 @@ export function startProductAnalysisJob({ product, lang, user, productTitle, pro
         category: product.category,
         productTitle,
         url: productUrl,
+        // Katalog ürününde gerçek özellikler bağlam olarak gider: sorular
+        // "bu üründe ne kritik" sorusuna göre kurulsun (jenerik değil).
+        productContext: [
+          product.brand ? `Brand: ${product.brand}` : '',
+          product.category ? `Category: ${product.category}` : '',
+          product.keySpecs && typeof product.keySpecs === 'object'
+            ? `Key specs: ${Object.entries(product.keySpecs).slice(0, 10).map(([k, v]) => `${k}: ${v}`).join('; ')}`
+            : '',
+        ].filter(Boolean).join(' · '),
         language: lang,
         userProfile: {
           ...aiUserProfile(user),

@@ -282,6 +282,10 @@ export function startSingleLinkAnalysisJob({ url, language, userProfile }) {
           category: result.category,
           productTitle: result.title,
           url,
+          siteName: result.siteName,
+          // Baz analiz metni ürünün NE olduğunu taşır; kategori zayıf çıktığında
+          // quiz motorunun tek tutamağı bu (araba ilanına telefon sorusu hatası).
+          productContext: result.analysis,
           language,
           userProfile,
         });

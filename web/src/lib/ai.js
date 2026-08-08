@@ -421,10 +421,10 @@ export function parseJsonLoose(text) {
 // ("analiz sonuçlanmıyor, sürekli dönüyor"). Analiz çağrıları artık açık bir
 // üst sınırla koşuyor; sınırı aşan sağlayıcı iptal edilip diğerine geçiliyor.
 export async function askQorAiJson({
-  system, user, maxOutputTokens = 4096, timeoutMs = 70000, budgetMs = 150000,
+  system, user, maxOutputTokens = 4096, timeoutMs = 70000, budgetMs = 150000, temperature = 0.6,
 }) {
   const text = await askQorAiRaw({
-    system, user, maxOutputTokens, temperature: 0.6, jsonMode: true, timeoutMs, budgetMs,
+    system, user, maxOutputTokens, temperature, jsonMode: true, timeoutMs, budgetMs,
   });
   return parseJsonLoose(text);
 }
