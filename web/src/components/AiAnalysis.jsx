@@ -5,8 +5,6 @@
 //  advisor and price prediction. Shared by the product detail + compare pages.
 // ─────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
-import { IconX } from './GlyphIcons.jsx';
-import { createPortal } from 'react-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
@@ -16,10 +14,9 @@ import {
   Collapsible,
   DecisionBadge,
   DistributionBar,
-  DonutChart,
+  HeatMatrix,
   SentimentDonut,
   factorDistribution,
-  normalizeSentiment,
   useCountUp,
   usePrefersReducedMotion,
 } from './AiCharts.jsx';
@@ -849,16 +846,6 @@ function BulletList({ items, tone = 'neutral' }) {
   );
 }
 
-function ReportSection({ eyebrow, title, children }) {
-  if (!children) return null;
-  return (
-    <section className="ai-report-section">
-      {eyebrow && <div className="ai-report-eyebrow">{eyebrow}</div>}
-      {title && <h4>{title}</h4>}
-      {children}
-    </section>
-  );
-}
 
 function ReportFactors({ factors = [], L }) {
   const list = arr(factors).map((f) => ({
@@ -879,34 +866,6 @@ function ReportFactors({ factors = [], L }) {
   );
 }
 
-function FeatureMatches({ items = [], L }) {
-  const list = arr(items).map((x) => ({
-    label: x.label || x.name || '',
-    productValue: x.productValue || x.value || '',
-    userNeed: x.userNeed || x.need || '',
-    score: toInt(x.score),
-    comment: x.comment || x.detail || '',
-  })).filter((x) => x.label || x.productValue || x.comment);
-  if (!list.length) return null;
-  return (
-    <div className="ai-feature-grid">
-      {list.map((x, i) => {
-        const color = scoreColor(x.score || 60);
-        return (
-          <article className="ai-feature-card" key={`${x.label}-${i}`}>
-            <div className="ai-feature-top">
-              <b>{x.label || L('Feature match', 'Özellik eşleşmesi', 'Merkmalsfit')}</b>
-              {x.score > 0 && <span style={{ color }}>{x.score}</span>}
-            </div>
-            {x.productValue && <div className="ai-feature-kv"><small>{L('Product', 'Ürün', 'Produkt')}</small><strong>{x.productValue}</strong></div>}
-            {x.userNeed && <div className="ai-feature-kv"><small>{L('Need', 'İhtiyaç', 'Bedarf')}</small><strong>{x.userNeed}</strong></div>}
-            {x.comment && <p>{x.comment}</p>}
-          </article>
-        );
-      })}
-    </div>
-  );
-}
 
 function CommunityBlock({ data = {}, L }) {
   if (!data || typeof data !== 'object') return null;
@@ -973,33 +932,6 @@ function AlternativeCards({ alternatives = [], L }) {
   );
 }
 
-function PriceForecastBlock({ data = {}, L }) {
-  if (!data || typeof data !== 'object') return null;
-  const trend = String(data.trend || 'stable').toLowerCase();
-  const color = trend === 'down' ? '#22c55e' : trend === 'up' ? '#f43f5e' : '#f59e0b';
-  const label = trend === 'down'
-    ? L('Likely to fall', 'Düşme eğiliminde', 'Fällt wahrscheinlich')
-    : trend === 'up'
-      ? L('Likely to rise', 'Yükselme eğiliminde', 'Steigt wahrscheinlich')
-      : L('Likely stable', 'Sabit kalabilir', 'Bleibt eher stabil');
-  return (
-    <div className="ai-price-full">
-      <div className="ai-price-head">
-        <div style={{ color }}>
-          <b>{label}</b>
-          {toInt(data.confidence) > 0 && <span>{L('Confidence', 'Güven', 'Sicherheit')}: {toInt(data.confidence)}%</span>}
-        </div>
-        {data.buyOrWait && <strong>{localizeAiText(data.buyOrWait, L)}</strong>}
-      </div>
-      <div className="ai-price-grid">
-        {data.expectedChange && <span><small>{L('Expected change', 'Beklenen değişim', 'Erwartete Änderung')}</small><b>{data.expectedChange}</b></span>}
-        {data.bestTimeToBuy && <span><small>{L('Best time', 'En iyi zaman', 'Beste Zeit')}</small><b>{data.bestTimeToBuy}</b></span>}
-      </div>
-      <Paragraphs text={data.analysis || data.reasoning} />
-      <BulletList items={data.drivers} tone="notes" />
-    </div>
-  );
-}
 
 // Spec yerleşimi: 1) hero (animasyonlu skor + karar rozeti + tek cümle özet)
 // 2) faktör çubukları 3) donut + dağılım çubuğu yan yana 4) kısa pro/con
@@ -1131,50 +1063,25 @@ function CompareProductDetail({ data = {}, L, lang }) {
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
 // can't collapse the fixed overlay (a known web-app pitfall). Holds one
 // product's complete review; Esc / backdrop / ✕ all close it.
-function CompareProductModal({ column, onClose, L, lang }) {
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
-  if (!column) return null;
-  return createPortal(
-    <div className="ai-cmp-modal-backdrop" onClick={onClose}>
-      <div className="ai-cmp-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-        <header className="ai-cmp-modal-head">
-          <div className="ai-cmp-modal-title">
-            {column.image && <ProductImg src={column.image} alt={column.name} size="thumb" />}
-            <div>
-              <small>{L('Full AI review', 'Detaylı AI incelemesi', 'Vollständige KI-Analyse')}</small>
-              <b>{column.name}</b>
-            </div>
-          </div>
-          <button type="button" className="ai-cmp-modal-close" onClick={onClose} aria-label={L('Close', 'Kapat', 'Schließen')}><IconX size={14} width={2.4} /></button>
-        </header>
-        <div className="ai-cmp-modal-body">
-          <CompareProductDetail data={column.ai} L={L} lang={lang} />
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
 
+// Karşılaştırma sonucu — ABONELİK ANALİZİYLE AYNI DÜZEN.
+//
+// Eski hâli: kazanan bandı, çirkin bir faktör matrisi, mini donut şeridi ve
+// "her ürünün detaylı incelemesini aç" tıklama ızgarası. Yani analiz bittiği
+// anda karşılayan ekran tabloydu; asıl rapor ancak bir ürüne TIKLAYINCA
+// modalde açılıyordu. Kullanıcı "analiz bittikten sonra hemen gelen ekran çok
+// çirkin, abonelik analizi gibi olsun, tıklamak gerekmesin" dedi.
+//
+// Artık: kazanan hükmü + tek bir hizalı faktör karşılaştırması (HeatMatrix),
+// ardından HER ÜRÜNÜN tam raporu kart içinde ALT ALTA — abonelikteki
+// `subs-svc-grid` düzeninin birebir karşılığı. Modal ve tıklama kalktı.
 function CompareFullReport({ data, L, lang, products = [] }) {
   const aiProducts = arr(data.products);
   const cmp = data.comparison || {};
-  const [openIdx, setOpenIdx] = useState(-1);
 
   const norm = (s) => cleanProductName(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
-  // Align columns with the spec-table order: iterate the real products and pair
-  // each with its AI entry by name (fallback to index) so column N here is the
-  // same product as column N in the spec table. Without the real product list
-  // (e.g. a history view) fall back to the AI products and their copied images.
+  // Kolonları spec tablosundaki sırayla eşle: gerçek ürün listesi varsa onu
+  // gez ve AI girdisini ADA göre bul (yoksa indekse düş).
   const columns = (products.length ? products : aiProducts).map((item, i) => {
     if (products.length) {
       const name = displayProductName(item, lang);
@@ -1186,91 +1093,40 @@ function CompareFullReport({ data, L, lang, products = [] }) {
   }).filter((c) => c.name || (c.ai && Object.keys(c.ai).length));
 
   const winnerNorm = norm(cmp.winner || '');
-  const active = openIdx >= 0 && openIdx < columns.length ? columns[openIdx] : null;
-
-  // Ürün başına küçük topluluk-memnuniyeti donutu (spec: karşılaştırma no. 4).
-  const miniDonuts = columns
-    .map((c) => {
-      const community = c.ai?.community || {};
-      const sat = toInt(community.satisfaction);
-      const bd = community.sentimentBreakdown || community.sentiment_breakdown;
-      if (!sat && !bd) return null;
-      // TUTARLILIK: donut ORTASINDA gösterilen sayı, ürün modalindeki
-      // "İnternet memnuniyet oranı" ile AYNI alan olmalı (`satisfaction`).
-      // Önceden ortaya `sentiment.positive` yazılıyordu — yani AI bir
-      // sentimentBreakdown döndürdüğünde kullanıcı aynı ürün için burada %65,
-      // modalde %82 görüyordu. Halka SEGMENTLERİ yine olumlu/nötr/olumsuz
-      // dağılımını gösterir; merkez ise tek ve tanımlı sayıdır.
-      return {
-        name: c.name,
-        key: c.key,
-        satisfaction: sat,
-        sentiment: normalizeSentiment(bd, sat || toInt(c.ai?.matchScore)),
-      };
-    })
-    .filter(Boolean);
+  // HeatMatrix her ürünün kendi faktörlerinden beslenir; AI ayrıca bir
+  // factorMatrix döndürdüyse onu da aynı şekle çeviririz (tek çizim yolu).
+  const heatProducts = columns.map((c) => ({
+    name: c.name,
+    factors: arr(c.ai?.factors).map((f) => ({ label: f?.label, score: toInt(f?.score) })),
+  })).filter((p) => p.factors.length > 0);
 
   return (
     <div className="ai-report ai-report-compare">
       <ComparisonOverview cmp={cmp} L={L} />
 
-      {miniDonuts.length > 0 && (
-        <section className="ai-report-section">
-          {/* Etiket de modaldekiyle AYNI olmalı — aynı sayının iki farklı adı
-              olması kullanıcıda "tutarsız analiz" izlenimi yaratıyordu. */}
-          <div className="ai-report-eyebrow">💬 {L('Internet satisfaction', 'İnternet memnuniyet oranı', 'Internet-Zufriedenheit')}</div>
-          <div className="aic-mini-donuts">
-            {miniDonuts.map((m) => (
-              <div className="aic-mini-donut" key={m.key}>
-                <DonutChart
-                  segments={[
-                    { label: L('Positive', 'Olumlu', 'Positiv'), value: m.sentiment.positive, color: '#22c55e' },
-                    { label: L('Neutral', 'Nötr', 'Neutral'), value: m.sentiment.neutral, color: '#f59e0b' },
-                    { label: L('Negative', 'Olumsuz', 'Negativ'), value: m.sentiment.negative, color: '#f43f5e' },
-                  ]}
-                  centerValue={`${m.satisfaction || Math.round(m.sentiment.positive)}%`}
-                  size={84}
-                  thickness={10}
-                />
-                <span>{m.name}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {heatProducts.length >= 2 && <HeatMatrix products={heatProducts} L={L} />}
 
       {columns.length > 0 && (
-        <section className="ai-report-section ai-cmp-eval">
-          <div className="ai-report-eyebrow">{L('Per-product analysis', 'Ürün ürün analiz', 'Analyse je Produkt')}</div>
-          <h4>{L('Open each detailed review', 'Her ürünün detaylı incelemesini aç', 'Jede Detailanalyse öffnen')}</h4>
-          <p className="ai-cmp-eval-hint">{L('Tap a product to open its full AI review in detail.', 'Tam AI incelemesini görmek için bir ürüne dokun.', 'Tippe ein Produkt für die vollständige KI-Analyse.')}</p>
-          <div className="ai-cmp-cols" style={{ '--ai-cmp-n': columns.length }}>
-            {columns.map((c, i) => {
-              const score = toInt(c.ai.matchScore);
-              const isWin = winnerNorm && norm(c.name) === winnerNorm;
-              const summary = firstSentences(c.ai.matchComment, 2);
-              return (
-                <button type="button" className={'ai-cmp-col' + (isWin ? ' win' : '')} key={c.key} onClick={() => setOpenIdx(i)}>
-                  {isWin && <span className="ai-cmp-col-badge">★ {L('AI pick', 'AI seçimi', 'KI-Wahl')}</span>}
-                  <div className="ai-cmp-col-media">
-                    {c.image ? <ProductImg src={c.image} alt={c.name} size="card" /> : <span>{i + 1}</span>}
+        <div className="ai-cmp-reports">
+          {columns.map((c, i) => {
+            const isWin = winnerNorm && norm(c.name) === winnerNorm;
+            return (
+              <section className={'ai-cmp-report' + (isWin ? ' winner' : '')} key={c.key}>
+                <header className="ai-cmp-report-head">
+                  {isWin && <span className="ai-cmp-report-win">★ {L('AI pick', 'AI seçimi', 'KI-Wahl')}</span>}
+                  <span className="ai-cmp-report-no">{i + 1}</span>
+                  {c.image ? <ProductImg src={c.image} alt={c.name} size="thumb" /> : null}
+                  <div className="ai-cmp-report-id">
+                    <small>{L('Full AI review', 'Detaylı AI incelemesi', 'Vollständige KI-Analyse')}</small>
+                    <b>{c.name}</b>
                   </div>
-                  <div className="ai-cmp-col-name">{c.name}</div>
-                  {score > 0 && (
-                    <div className="ai-cmp-col-score" style={{ color: scoreColor(score) }}>
-                      {score}<small>/100</small>
-                    </div>
-                  )}
-                  {summary && <p className="ai-cmp-col-sum">{summary}</p>}
-                  <span className="ai-cmp-col-cta">{L('View full review', 'Detaylı incele', 'Vollständige Analyse')} →</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+                </header>
+                <CompareProductDetail data={c.ai} L={L} lang={lang} />
+              </section>
+            );
+          })}
+        </div>
       )}
-
-      {active && <CompareProductModal column={active} onClose={() => setOpenIdx(-1)} L={L} lang={lang} />}
     </div>
   );
 }

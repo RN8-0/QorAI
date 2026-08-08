@@ -779,3 +779,94 @@
   .ai-cmp-modal-backdrop { padding: 0; }
   .ai-cmp-cols { grid-auto-columns: minmax(82%, 1fr); }
 }
+
+/* ── Karşılaştırma sonucu: ürün başına TAM rapor, alt alta ──────────────────
+   Analiz biter bitmez gelen ekran eskiden bir tablo + tıklama ızgarasıydı;
+   asıl rapor modalde saklıydı. Artık abonelik analizindeki gibi her ürünün
+   tam raporu kart içinde doğrudan görünür. */
+.ai-cmp-reports {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ai-cmp-report {
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 16px;
+  overflow: hidden;
+}
+.ai-cmp-report.winner {
+  border-color: color-mix(in srgb, #22c55e 45%, var(--border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #22c55e 22%, transparent);
+}
+.ai-cmp-report-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ai-cmp-report-no {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 900;
+}
+.ai-cmp-report-head img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--surface-3);
+  flex: none;
+}
+.ai-cmp-report-id { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ai-cmp-report-id small {
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.ai-cmp-report-id b {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.ai-cmp-report-win {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 5px 12px;
+  border-radius: 0 0 0 12px;
+  background: #22c55e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+/* Rapor gövdesi kart içinde ikinci bir çerçeve çizmesin. */
+.ai-cmp-report .la-result {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+.ai-cmp-report .la-result-body { padding: 0; }
+
+@media (max-width: 620px) {
+  .ai-cmp-report { padding: 13px; border-radius: 16px; }
+  .ai-cmp-report-id b { font-size: 14.5px; }
+  .ai-cmp-report-head img { width: 40px; height: 40px; }
+}

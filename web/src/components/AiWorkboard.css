@@ -170,20 +170,26 @@
 .aiwb-step {
   position: relative;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 44px;
+  min-height: 46px;
   padding: 8px 12px;
   border-radius: 12px;
   color: var(--text3);
   transition: color .2s ease, background .2s ease;
 }
 
+/* Nokta 30 px'lik sütunun TAM ORTASINDA durur; en/boy eşit olduğu için her
+   zaman kusursuz daire. Aktif adımda rakamın arkası 26 → 30 px büyür (renk
+   aynı kalır) — sütun zaten 30 px olduğu için hiçbir şey kaymaz. */
 .aiwb-dot {
   position: relative;
+  justify-self: center;
   width: 26px;
   height: 26px;
+  aspect-ratio: 1 / 1;
+  flex: none;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -216,6 +222,9 @@
   background: color-mix(in srgb, var(--brand-cyan) 7%, transparent);
 }
 .aiwb-step.active .aiwb-dot {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
   background: var(--grad-ai);
   border-color: transparent;
   color: #fff;
