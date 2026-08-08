@@ -13,6 +13,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile, hasCompletedQuiz } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import { historyPayload } from '../lib/historyPayload';
 import AiText from '../components/AiText.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import {
@@ -556,11 +557,17 @@ export default function Subscriptions() {
             <Reveal delay={140} className="subs-history">
               <HistoryPanel kind="subscription" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
+                  // GECMIS = CANLI SONUCLA AYNI EKRAN. Yapisal veri varsa
+                  // (kaydedilmis `result` ya da `analysis` icindeki JSON) tam
+                  // sonuc gorunumu acilir; yalnizca gercekten duz metin olan
+                  // ESKI kayitlar ozet gorunumune duser.
                   if (activeJobId) clearSubscriptionAnalysisJob(activeJobId);
                   setActiveJobId('');
-                  if (it.result && Array.isArray(it.result.services)) {
-                    setSelected(it.services.length ? it.services : it.result.services.map((s) => s.name).filter(Boolean));
-                    setResult(it.result);
+                  const payload = historyPayload(it);
+                  const data = payload && payload.kind === 'structured' ? payload.data : null;
+                  if (data && Array.isArray(data.services)) {
+                    setSelected(it.services.length ? it.services : data.services.map((s) => s.name).filter(Boolean));
+                    setResult(data);
                     setHistEntry(null);
                     setPhase('result');
                   } else {

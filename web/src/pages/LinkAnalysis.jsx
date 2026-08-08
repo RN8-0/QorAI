@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { useAuth } from '../lib/auth';
 import { aiUserProfile } from '../lib/qorCoins';
 import { useAiAccess } from '../lib/useAiAccess';
+import { historyPayload } from '../lib/historyPayload';
 import {
   clearLinkAnalysisJob,
   startCompareLinkAnalysisJob,
@@ -771,19 +772,27 @@ export default function LinkAnalysis() {
             <Reveal delay={140} className="la-history">
               <HistoryPanel kind="link" lang={lang} refreshToken={histRefresh}
                 onOpen={(it) => {
+                  // GECMIS = CANLI SONUCLA AYNI EKRAN.
+                  // Eskiden yalnizca `it.result` nesnesi varsa tam gorunum
+                  // aciliyordu; yoksa `it.analysis` DUZ METIN sanilip paragraf
+                  // olarak basiliyordu. Oysa tam rapor cogu kayitta `analysis`
+                  // icinde JSON METNI olarak duruyor (olculdu: 33 KB,
+                  // type=compare_full_report). historyPayload once yapisal
+                  // veriyi arar, gercekten yoksa metne duser.
                   setUrls(it.urls.length ? it.urls.slice(0, MAX_LINKS) : ['']);
-                  if (it.result && it.result.base) {
-                    setEnhanced(it.result);
+                  const payload = historyPayload(it);
+                  if (payload && payload.kind === 'structured' && payload.data.base) {
+                    setEnhanced(payload.data);
                     setCompareResult(null);
                     setCompareText('');
-                  } else if (it.result && (it.result.type === 'compare_structured' || Array.isArray(it.result.products))) {
+                  } else if (payload && payload.kind === 'structured') {
                     setEnhanced(null);
-                    setCompareResult(it.result);
+                    setCompareResult(payload.data);
                     setCompareText('');
                   } else {
                     setEnhanced(null);
                     setCompareResult(null);
-                    setCompareText(String(it.analysis || ''));
+                    setCompareText(payload ? payload.text : '');
                   }
                   setErr('');
                   setPhase('result');

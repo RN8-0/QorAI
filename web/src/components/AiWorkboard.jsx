@@ -157,7 +157,17 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
   // end and stops (never loops back).
   const ceil = stage == null ? lastIdx : Math.min(lastIdx, STAGE_CEIL[stage] ?? lastIdx);
   const [active, setActive] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const rootRef = useRef(null);
+
+  // GECEN SURE: analiz 30-90 sn surebiliyor. Sayac olmadan ekran "donmus" gibi
+  // duruyordu; sayan bir sayi "calisiyor" sinyalinin en ucuz ve en net hali.
+  useEffect(() => {
+    setElapsed(0);
+    const t0 = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [mode]);
 
   // Bring the board into view whenever the step SET (mode) changes — i.e. on
   // quiz-prep start and again when the report analysis begins.
@@ -190,6 +200,17 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
       <div className="aiwb-copy">
         <strong>{L(set.title)}</strong>
         <span>{L(set.detail)}</span>
+        <div className="aiwb-meter" role="progressbar"
+          aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={active + 1}>
+          <i style={{ width: `${Math.round(((active + 1) / steps.length) * 100)}%` }} />
+        </div>
+        <div className="aiwb-status">
+          <span>{L(['Step', 'Adım', 'Schritt'])} {active + 1}/{steps.length}</span>
+          <span className="aiwb-elapsed">
+            {elapsed < 60 ? `${elapsed} ${L(['s', 'sn', 's'])}`
+              : `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`}
+          </span>
+        </div>
       </div>
       <div className="aiwb-steps">
         {steps.map((s, i) => (
@@ -199,6 +220,13 @@ export default function AiWorkboard({ lang = 'en', mode = 'product', stage = nul
           </div>
         ))}
       </div>
+      <p className="aiwb-note">
+        {L([
+          'You can keep browsing — this keeps running in the background and Qor AI will ping you when it is ready.',
+          'Gezinmeye devam edebilirsin — analiz arka planda sürer, hazır olunca Qor AI seni uyarır.',
+          'Du kannst weiter browsen — die Analyse läuft im Hintergrund weiter und Qor AI meldet sich.',
+        ])}
+      </p>
     </div>
   );
 }

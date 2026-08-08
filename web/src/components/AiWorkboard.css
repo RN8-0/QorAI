@@ -133,3 +133,61 @@
   .aiwb-steps { width: 100%; }
   .aiwb-step { text-align: left; }
 }
+
+/* ── İlerleme göstergesi + geçen süre + arka plan notu (2026-08-08) ──────────
+   Kullanıcı ekranı "aşırı dandik" buldu. Eksik olan üç şey vardı:
+   (1) ne kadar ilerlediği görünmüyordu, (2) 30-90 sn süren analizde ekran
+   donmuş gibi duruyordu, (3) arka planda devam ettiği hiçbir yerde yazmıyordu.
+   Süslemek yerine bu üç bilgiyi ekliyoruz.                                   */
+.aiwb-copy { display: flex; flex-direction: column; gap: 6px; }
+
+.aiwb-meter {
+  margin-top: 4px;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brand-cyan) 14%, transparent);
+  overflow: hidden;
+}
+.aiwb-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-cyan), var(--brand-blue));
+  transition: width .55s cubic-bezier(.4, 0, .2, 1);
+}
+
+.aiwb-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  color: var(--text3);
+}
+.aiwb-elapsed { font-variant-numeric: tabular-nums; }
+
+/* Etkin adım: sabit renk yerine yumuşak bir nabız — "şu an bu çalışıyor". */
+.aiwb-step.active { position: relative; }
+.aiwb-step.active > span { animation: aiwbPulse 1.8s ease-in-out infinite; }
+@keyframes aiwbPulse { 0%, 100% { opacity: 1; } 50% { opacity: .62; } }
+
+.aiwb-note {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--brand-cyan) 16%, var(--border));
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text3);
+}
+
+@media (max-width: 620px) {
+  .aiwb-note { font-size: 11.5px; }
+  .aiwb-status { font-size: 10.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aiwb-step.active > span { animation: none; }
+  .aiwb-meter i { transition: none; }
+}
