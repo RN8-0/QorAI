@@ -736,10 +736,54 @@ class PbDataSource {
     }
   }
 
+  // Admin > Mağazalar sekmesinde kapatılan mağazalar. Site ve uygulama AYNI
+  // `public_config.store_settings` kaydını okur; bir mağaza kapatıldığında iki
+  // tarafta da görünmez olur. 10 dakika önbelleklenir.
+  Set<String>? _hiddenStoresCache;
+  DateTime? _hiddenStoresAt;
+
+  Future<Set<String>> _hiddenStores() async {
+    final cached = _hiddenStoresCache;
+    final at = _hiddenStoresAt;
+    if (cached != null &&
+        at != null &&
+        DateTime.now().difference(at) < const Duration(minutes: 10)) {
+      return cached;
+    }
+    var result = <String>{};
+    try {
+      final rec = await _pb
+          .collection('public_config')
+          .getFirstListItem('key = "store_settings"')
+          .timeout(const Duration(seconds: 8));
+      dynamic value = rec.data['value'];
+      if (value is String) {
+        try {
+          value = jsonDecode(value);
+        } catch (_) {
+          value = null;
+        }
+      }
+      final hidden = (value is Map) ? value['hidden'] : null;
+      if (hidden is List) {
+        result = hidden
+            .map((x) => x.toString().trim().toLowerCase())
+            .where((x) => x.isNotEmpty)
+            .toSet();
+      }
+    } catch (_) {
+      // Ayar kaydı yoksa hiçbir mağaza gizli değildir.
+    }
+    _hiddenStoresCache = result;
+    _hiddenStoresAt = DateTime.now();
+    return result;
+  }
+
   Future<List<ProductOfferModel>> getProductOffers(String productId) async {
     final id = productId.trim();
     if (id.isEmpty) return const <ProductOfferModel>[];
     final safeId = id.replaceAll('\\', '\\\\').replaceAll('"', r'\"');
+    final hidden = await _hiddenStores();
     try {
       final result = await _pb
           .collection('offers')
@@ -765,6 +809,13 @@ class PbDataSource {
           })
           .whereType<ProductOfferModel>()
           .where((offer) => offer.isLive)
+          .where(
+            (offer) => !hidden.contains(
+              (offer.store.isNotEmpty ? offer.store : offer.network)
+                  .trim()
+                  .toLowerCase(),
+            ),
+          )
           .toList();
       offers.sort((a, b) {
         if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;

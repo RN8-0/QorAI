@@ -503,6 +503,7 @@
           <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
           <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Affiliate</button>
           <button class="scraper-tab" data-tab="priceLab" onclick="switchScraperTab(this); priceLabInit()">💵 Price</button>
+          <button class="scraper-tab" data-tab="stores" onclick="switchScraperTab(this); storesLoad()">🏪 Mağazalar</button>
           <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
           <button class="scraper-tab" data-tab="jobRuns" onclick="switchScraperTab(this); jobRunsRefresh()">🗓️ Otomatik İşler</button>
         </div>
@@ -646,6 +647,25 @@
                 <thead><tr id="dictHead"></tr></thead>
                 <tbody id="dictBody"></tbody>
               </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Magaza kontrolu: hangi magaza sitede/uygulamada gorunsun -->
+        <div class="scraper-panel" id="storesPanel">
+          <div class="card">
+            <div class="card-title">🏪 Mağaza Kontrolü
+              <button class="btn btn-ghost btn-sm" style="float:right" onclick="storesLoad()">↻ Yenile</button>
+            </div>
+            <p class="text-muted" style="margin:0 0 12px;font-size:12px">
+              Teklif kayıtlarındaki mağazalar. Kapattığın mağaza <b>hem sitede hem uygulamada</b>
+              ürün sayfalarında görünmez (aynı <code>public_config.store_settings</code> kaydını
+              iki taraf da okur). Değişiklik istemcide 10 dakika içinde etkinleşir.
+            </p>
+            <div id="storesList"><div class="text-muted">Yüklemek için “Yenile”ye bas.</div></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+              <button class="btn btn-primary btn-sm" onclick="storesSave()">Kaydet</button>
+              <span id="storesSaveStatus" class="text-muted" style="font-size:12px"></span>
             </div>
           </div>
         </div>
@@ -1266,6 +1286,7 @@
         'js/categories.js',
         'js/scraper.js',
         'js/scraper-price.js',
+        'js/stores.js',
         'js/notifications.js',
         'js/support.js',
         'js/blog.js',

@@ -84,6 +84,36 @@ export function normalizeOffer(record) {
   };
 }
 
+// ── Mağaza kontrolü (admin panelden) ───────────────────────────────────────
+// Admin > Mağazalar sekmesi `public_config.store_settings` içine kapatılan
+// mağazaların anahtarlarını yazar. Site ve uygulama AYNI anahtarı okur, böylece
+// bir mağaza kapatıldığında iki tarafta da anında görünmez olur.
+export function storeKeyOf(offer) {
+  return String(offer?.store || offer?.network || '').trim().toLowerCase();
+}
+
+let hiddenStoresCache = null;
+let hiddenStoresAt = 0;
+const HIDDEN_STORES_TTL = 10 * 60 * 1000;
+
+export async function hiddenStores() {
+  const now = Date.now();
+  if (hiddenStoresCache && now - hiddenStoresAt < HIDDEN_STORES_TTL) return hiddenStoresCache;
+  let set = new Set();
+  try {
+    const rec = await pb.collection('public_config').getFirstListItem('key = "store_settings"');
+    let value = rec?.value;
+    if (typeof value === 'string') { try { value = JSON.parse(value); } catch { value = null; } }
+    const list = Array.isArray(value?.hidden) ? value.hidden : [];
+    set = new Set(list.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean));
+  } catch {
+    // Ayar kaydı yoksa hiçbir mağaza gizli değildir — sessizce geç.
+  }
+  hiddenStoresCache = set;
+  hiddenStoresAt = now;
+  return set;
+}
+
 export async function fetchProductOffers(productId) {
   if (!productId) return [];
   try {
@@ -101,7 +131,10 @@ export async function fetchProductOffers(productId) {
     // Linksiz vitrin satırları (epey_store: mağaza logosu + fiyat, tıklanmaz)
     // yalnız TAZE fiyatla anlamlıdır; linkli satırlar fiyatsızken de kalır
     // ("fiyata bak" linki).
-    return records.map(normalizeOffer).filter(o => (o.url || o.hasExactPrice) && isLiveOffer(o));
+    const hidden = await hiddenStores();
+    return records
+      .map(normalizeOffer)
+      .filter(o => (o.url || o.hasExactPrice) && isLiveOffer(o) && !hidden.has(storeKeyOf(o)));
   } catch (err) {
     console.warn('[offers] fetch failed', err);
     return [];
