@@ -217,9 +217,14 @@
   border-color: color-mix(in srgb, #22c55e 42%, transparent);
   color: #16a34a;
 }
+/* Aktif satırın YUVARLATILMIŞ DİKDÖRTGEN arka planı kaldırıldı.
+   Asıl şikâyet buydu: o dikdörtgen satırın en solundan başlıyor, rakamın
+   dairesi ise 12 px içeride duruyordu — arada kalan renkli şerit "rakamın
+   solundaki renk boşluğu" olarak görünüyordu. Ayrıca rakamın arkasındaki
+   arka plan bir DAİRE değil dikdörtgendi. Artık rakamı çevreleyen tek şey
+   kendi dairesi; aktif satır yalnız yazı rengi/kalınlığı ile öne çıkar. */
 .aiwb-step.active {
   color: var(--text);
-  background: color-mix(in srgb, var(--brand-cyan) 7%, transparent);
 }
 .aiwb-step.active .aiwb-dot {
   width: 30px;

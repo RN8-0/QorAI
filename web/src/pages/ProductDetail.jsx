@@ -48,6 +48,10 @@ import { usePageContext } from '../lib/pageContext';
 import ScrollRail from '../components/ScrollRail.jsx';
 import Reviews from '../components/Reviews.jsx';
 import './ProductDetail.css';
+// Ortak AI rapor govdesi (AiReportView) 'la-*' siniflarini kullanir. CSS'i
+// PAYLASILAN bilesen degil SAYFA import eder: boylece stil bu sayfanin tembel
+// parcasinda kalir, giris paketini (her sayfada indirilen CSS) sismez.
+import './LinkAnalysis.css';
 
 const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
 const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;

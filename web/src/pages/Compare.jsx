@@ -42,6 +42,10 @@ import { displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
 import CompareReviews from '../components/CompareReviews.jsx';
 import './Compare.css';
+// Ortak AI rapor govdesi (AiReportView) 'la-*' siniflarini kullanir. CSS'i
+// PAYLASILAN bilesen degil SAYFA import eder: boylece stil bu sayfanin tembel
+// parcasinda kalir, giris paketini (her sayfada indirilen CSS) sismez.
+import './LinkAnalysis.css';
 
 // Source-aware spec flattening for the compare table. The old path ran every
 // product through canonicalizeSpecMaps, which overlaid BOTH the Turkish `specs`

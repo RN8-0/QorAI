@@ -42,7 +42,14 @@ import {
   amazonStorefrontsForLang, formatPrice, formatPriceAmount, localizeAmazonUrl, priceForCountry,
   safeExternalUrl,
 } from '../lib/format';
-import '../pages/LinkAnalysis.css';
+// DİKKAT: Bu bileşen CSS'i KENDİ İMPORT ETMEZ.
+// Bir dönem burada `import '../pages/LinkAnalysis.css'` vardı. AiReportView
+// paylaşılan modül olduğu için Vite o CSS'i tembel LinkAnalysis parçasından
+// çıkarıp GİRİŞ paketine taşıdı: ana (render-blocking) CSS 91 KB → 120 KB
+// oldu ve ana sayfa dâhil HER sayfa onu indirip ayrıştırmaya başladı —
+// mobilde "bileşenler geç geliyor" şikâyetinin ölçülen sebebi buydu.
+// `la-*` sınıflarını kullanan SAYFALAR (LinkAnalysis, ProductDetail, Compare)
+// LinkAnalysis.css'i kendileri import eder; böylece stil tembel parçalarda kalır.
 
 // geo gates the affiliate tag: a cross-geo storefront button goes untagged so
 // Amazon's server-side gg3 router can't bounce the click to another store.
