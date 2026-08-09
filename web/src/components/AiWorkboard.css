@@ -226,13 +226,21 @@
 .aiwb-step.active {
   color: var(--text);
 }
+/* Aktif nokta: SADECE daire. Kenarlık tamamen kaldırılır (şeffaf bırakmak
+   yetmiyordu — arkadaki gri dolgu şeffaf kenarlığın altından görünüp mavi
+   dairenin çevresinde soluk bir çerçeve bırakıyordu, küçük boyutta kare gibi
+   okunuyordu). `background` kısayolu yerine renk ve görsel AYRI yazılır:
+   kısayol + var() bileşimi bazı tarayıcılarda alttaki dolguyu sıfırlamıyor. */
 .aiwb-step.active .aiwb-dot {
   width: 30px;
   height: 30px;
   font-size: 12px;
-  background: var(--grad-ai);
-  border-color: transparent;
+  border: 0;
+  background-color: transparent;
+  background-image: var(--grad-ai);
+  background-clip: border-box;
   color: #fff;
+  overflow: hidden;
 }
 .aiwb-step.active .aiwb-step-label { font-weight: 850; }
 
