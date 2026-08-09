@@ -21,6 +21,7 @@ import 'package:qor_ai/presentation/widgets/limit_reached_dialog.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/domain/entities/user_entity.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/routing/router.dart' show AppRoutes, routerProvider;
 import 'package:qor_ai/presentation/widgets/glass_container.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
@@ -468,6 +469,40 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
     });
   }
 
+  /// GERİ (çıkış) — analizi İPTAL ETMEZ.
+  ///
+  /// BUG (kullanıcı): "geri butonuna tıklayınca analiz devam etmiyor gibi
+  /// görünüyor animasyonlarda ama arka planda devam ediyor ve Qor AI chat
+  /// kısmında sonucu veriyor." Sebep: buton `_resetAllFlows()` çağırıyordu —
+  /// bu, koşan işin DURUMUNU sıfırlıyor (ekran boş başlangıca dönüyor) ama
+  /// arka plandaki async iş devam ediyor; sonuç sonradan bildirime düşüyor.
+  ///
+  /// Doğru davranış (abonelik ekranıyla aynı): analiz KOŞUYORSA durumu bırak,
+  /// sadece ekrandan çık — bildirim gelince kullanıcı geri döner ve ilerlemeyi
+  /// olduğu yerde bulur. Analiz koşmuyorsa (sonuç ekranı / hata) eski davranış
+  /// korunur: akışı temizle, giriş ekranına dön.
+  void _onBackFromFlow() {
+    HapticFeedback.mediumImpact();
+    final quiz = ref.read(linkQuizProvider);
+    final cmp = ref.read(compareAnalysisProvider);
+    final running =
+        quiz.phase == LinkFlowPhase.analyzing ||
+        quiz.phase == LinkFlowPhase.quizLoading ||
+        quiz.phase == LinkFlowPhase.computing ||
+        cmp.isWorking;
+    if (!running) {
+      _resetAllFlows();
+      return;
+    }
+    // Koşan iş: dokunma, sadece ekrandan çık.
+    final rootNav = Navigator.maybeOf(context, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
+      rootNav.pop();
+      return;
+    }
+    ref.read(routerProvider).go(AppRoutes.home);
+  }
+
   /// Continue to next product in multi-link flow (sequential quiz per product)
   // ignore: unused_element
   Future<void> _continueToNextProduct() async {
@@ -796,10 +831,7 @@ class _LinkPasteScreenState extends ConsumerState<LinkPasteScreen>
                           Icons.arrow_back_rounded,
                           color: context.textPrimary,
                         ),
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          _resetAllFlows();
-                        },
+                        onPressed: _onBackFromFlow,
                       )
                     : Padding(
                         padding: const EdgeInsets.only(left: 12),

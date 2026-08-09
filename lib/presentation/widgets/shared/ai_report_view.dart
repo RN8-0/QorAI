@@ -1568,15 +1568,20 @@ class _CompareMiniDonuts extends StatelessWidget {
     return _ReportSection(
       eyebrow: '💬',
       title: l('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit'),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final d in donuts)
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Column(
+      // SIMETRI: donutlar yatay scroll + Row icinde SOLA DAYALI duruyordu
+      // (kullanici: "yatay olarak ortalanmiyor hala kenarda"). Wrap ile hem
+      // ORTALANIR hem de cok servis oldugunda alt satira gecer — yatay kaydirma
+      // gerekmez, hicbir donut ekran disinda kalmaz.
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        runAlignment: WrapAlignment.center,
+        spacing: 16,
+        runSpacing: 14,
+        children: [
+          for (final d in donuts)
+            SizedBox(
+              width: 104,
+              child: Column(
                   children: [
                     AicDonut(
                       segments: [
@@ -1590,7 +1595,7 @@ class _CompareMiniDonuts extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     SizedBox(
-                      width: 90,
+                      width: 100,
                       child: Text(
                         d.name,
                         maxLines: 2,
@@ -1604,10 +1609,9 @@ class _CompareMiniDonuts extends StatelessWidget {
                       ),
                     ),
                   ],
-                ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

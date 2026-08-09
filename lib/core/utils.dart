@@ -41,6 +41,23 @@ class AppUtils {
     return format.format(amount);
   }
 
+  /// DAR ALAN için kısa fiyat: 1000 ve üstünde kuruş YAZILMAZ.
+  ///
+  /// Karşılaştırma kolonları dar; "₺105.999,00" (12 karakter) sığmıyor ve
+  /// "₺105.999,0" diye KIRPILIYORDU (kullanıcı bug'ı). Kuruş bu ölçekte zaten
+  /// bilgi taşımıyor → "₺105.999". Küçük tutarlarda (aksesuar, abonelik) kuruş
+  /// anlamlı olduğu için korunur.
+  static String formatCurrencyCompact(double amount, String currencyCode) {
+    final noDecimals =
+        amount.abs() >= 1000 || currencyCode == 'JPY' || currencyCode == 'KRW';
+    final format = NumberFormat.currency(
+      locale: _getLocaleForCurrency(currencyCode),
+      symbol: _getCurrencySymbol(currencyCode),
+      decimalDigits: noDecimals ? 0 : 2,
+    );
+    return format.format(amount);
+  }
+
   static String _getLocaleForCurrency(String currency) {
     switch (currency) {
       case 'USD':

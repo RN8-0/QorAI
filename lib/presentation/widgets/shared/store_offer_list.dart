@@ -254,9 +254,12 @@ class StoreOfferRow extends ConsumerWidget {
         offer.country.isNotEmpty &&
         offer.country != selectedCountry.trim().toUpperCase();
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
+    // Dar kolonda kuruş yazılmaz — "₺105.999,00" sığmayıp kırpılıyordu.
     final priceLabel = offer.hasExactPrice
-        ? AppUtils.formatCurrency(offer.price, offer.currency)
-        : (offer.priceText.isNotEmpty
+        ? (compact
+              ? AppUtils.formatCurrencyCompact(offer.price, offer.currency)
+              : AppUtils.formatCurrency(offer.price, offer.currency))
+        : (offer.priceText.isNotEmpty && !compact
               ? offer.priceText
               : (isTr ? 'Fiyata bak' : 'Check price'));
     // Epey mağaza teklifleri LİNKSİZ gelir (vitrin fiyatı). Böyle satırlar
@@ -298,70 +301,103 @@ class StoreOfferRow extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: context.dividerColor),
             ),
-            child: Row(
-              children: [
-                StoreLogo(brand: brand, size: compact ? 26 : 34),
-                SizedBox(width: compact ? 8 : 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            // DAR KOLON (compact): logo + FİYAT. Mağaza adı BİLEREK yazılmaz —
+            // kolon genişliği ~90-140 px; ad + fiyat yan yana sığmıyor, ad
+            // sıfır genişliğe eziliyor ve fiyat "₺105.999,0" diye kırpılıyordu
+            // (kullanıcı bug'ı). Logo mağazayı zaten belli ediyor; fiyat
+            // FittedBox ile ASLA kırpılmaz.
+            child: compact
+                ? Row(
                     children: [
-                      Text(
-                        brand.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: compact ? 10.5 : 12,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      if (showCountry ||
-                          (offer.priceText.isNotEmpty && !offer.hasExactPrice))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            [
-                              if (showCountry) offer.country,
-                              if (offer.priceText.isNotEmpty &&
-                                  !offer.hasExactPrice)
-                                offer.priceText,
-                            ].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: compact ? 9.5 : 11,
-                              color: context.textTertiaryColor,
+                      StoreLogo(brand: brand, size: 24),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              priceLabel,
+                              maxLines: 1,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: offer.hasExactPrice
+                                    ? AppTheme.scoreExcellent
+                                    : context.textSecondary,
+                              ),
                             ),
                           ),
                         ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      StoreLogo(brand: brand, size: 34),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              brand.displayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: context.textSecondary,
+                              ),
+                            ),
+                            if (showCountry ||
+                                (offer.priceText.isNotEmpty &&
+                                    !offer.hasExactPrice))
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  [
+                                    if (showCountry) offer.country,
+                                    if (offer.priceText.isNotEmpty &&
+                                        !offer.hasExactPrice)
+                                      offer.priceText,
+                                  ].join(' · '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: context.textTertiaryColor,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        priceLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: offer.hasExactPrice
+                              ? AppTheme.scoreExcellent
+                              : context.textSecondary,
+                        ),
+                      ),
+                      // Vitrin satırı tıklanmaz → "dışa aç" oku da GÖSTERİLMEZ.
+                      if (hasLink) ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.open_in_new_rounded,
+                          size: 16,
+                          color: context.textTertiaryColor,
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                SizedBox(width: compact ? 6 : 10),
-                Text(
-                  priceLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: compact ? 12 : 13,
-                    fontWeight: FontWeight.w800,
-                    color: offer.hasExactPrice
-                        ? AppTheme.scoreExcellent
-                        : context.textSecondary,
-                  ),
-                ),
-                // Vitrin satırı tıklanmaz → "dışa aç" oku da GÖSTERİLMEZ.
-                if (hasLink && !compact) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.open_in_new_rounded,
-                    size: 16,
-                    color: context.textTertiaryColor,
-                  ),
-                ],
-              ],
-            ),
           ),
         ),
       ),

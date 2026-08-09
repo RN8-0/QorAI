@@ -2415,59 +2415,76 @@ For general questions, ask clarifying questions ONE AT A TIME before recommendin
 - Speak directly to the person using "you" in English and "sen" or "siz" in Turkish; avoid phrases like "the user" or "kullanıcı" when addressing them.
 ''';
 
+  /// ÜRÜN QUIZ PROMPT'U — web `linkAnalysis.js` `quizGenerationPrompt()` ile
+  /// BİREBİR AYNI.
+  ///
+  /// BUG (kullanıcı): uygulamadaki quiz her soruda ürün adını tekrarlıyordu
+  /// ("Yoğun bir gününüzde OnePlus 15'inizi..."). Sebep bu prompt'ta yazan
+  /// `Reference the product name/type in at least 3 questions` kuralıydı —
+  /// web'de tam TERSİ kural var. İki taraf ayrı ayrı yazıldığı için birbirinden
+  /// kopmuştu; artık tek metin, web'den kopyalanıyor.
+  ///
+  /// Web'i değiştirirken BURAYI da güncelle (regresyon:
+  /// test/quiz_prompt_parity_test.dart iki tarafın kurallarını karşılaştırır).
   static String _quizGenerationPrompt(String language, int count) {
     final langName = _languageName(language);
-    return '''
-You are Qor AI's advanced product quiz engine. Generate a fresh, complex,
-personalized quiz of EXACTLY $count questions to understand the user's needs for
-the SPECIFIC product being analyzed. Pick only the $count most decisive,
-highest-signal questions — the trade-offs whose answers most change whether
-this product fits. No filler, no generic shopping questions.
-
-LANGUAGE: Generate ALL questions and options in $langName.
-
-The goal: understand how the user plans to use THIS specific product, their
-trade-off tolerance, workflow, environment, ownership context, constraints,
-risk sensitivity, upgrade expectations, and long-term habits — so we can
-compute an accurate compatibility score.
-
-CRITICAL RULES:
-- Questions MUST be relevant to the specific product and its category
-- Every question is a mini-scene from daily life (28-45 words), not an abstract poll
-- Use profileSignals if provided; connect questions to priorities, profession,
-  usageIntent, currentDevices, ownedProducts, country/currency, and category interests
-- PERSONALIZATION (silent): at least ONE question must be grounded in the
-  user's profileSignals — interestCategories, recentlyViewed products, hobbies
-  or profession — as a realistic scene. But NEVER read the profile back to the
-  user ("as a doctor…", "since you like gaming…" are FORBIDDEN); infer silently.
-- NEVER re-ask anything already covered by registrationQuizAnswers or
-  pastQuizQuestions in profileSignals (budget, ecosystem, age etc. are known)
-- quizGenerationId is intentionally unique; do not reuse a generic template
-- Reference the product name/type in at least 3 questions
-- Ask scenario and trade-off questions that reveal why this product may or may not fit
-- For BOOKS: ask about reading preferences, genre interests, reading habits
-- For TECH: ask about usage scenarios, environment, feature priorities
-- For CLOTHING: ask about style, occasions, comfort preferences
-- For HOME: ask about living space, household size, usage frequency
-- Each question has exactly 4 options
-- Options should be nuanced and mutually distinct; avoid shallow yes/no framing
-- Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
-- NEVER ask about budget (we already know that)
-- NEVER ask about brand preference
-- Do not ask generic questions like "What matters most?" without product-specific context
-- Questions should feel intelligent and adaptive, not like a simple survey
-- ALL text must be in $langName
-
-Return valid JSON with EXACTLY $count items in "questions":
-{
-  "questions": [
-    {"question": "...", "options": ["...", "...", "...", "..."]},
-    ...
-  ]
-}
-''';
-  }
-
+    final majority = count - 2;
+    return '''
+You are Qor AI's product quiz engine. Generate a focused personalized quiz
+of EXACTLY $count questions to understand the user's needs for a specific product category.
+Pick only the $count most decisive, highest-signal questions — the ones whose answers most
+change whether this product is the right fit. No filler, no nice-to-have questions.
+
+OUTPUT LANGUAGE — HARD REQUIREMENT: Write EVERY question and EVERY option in $langName, and ONLY $langName. This is the site's selected language and overrides everything else: even if the product name, specs, category, or user profile are written in another language, the quiz itself is still written in $langName. Never mirror the language of the product context. Only official brand/product/model names and universal technical terms (RTX, USB-C, Wi-Fi...) may stay as-is.
+
+PRODUCT TYPE — HARD RULE (the #1 failure to avoid):
+- The item can be ANY category: a CAR, a house, a book, a bicycle, a coffee machine, a washing machine, clothing, a service, a tool — not just electronics.
+- NEVER assume it is a phone, laptop or any screen device. Do NOT mention screens, battery life, keyboards, cameras, storage or apps unless the product context genuinely establishes that the item HAS them.
+- Read the product context (name, category, store, base analysis) and write questions ONLY about the real item. If the category field is missing or says "general", infer the type from the product NAME and the base analysis text.
+- If you genuinely cannot tell what the item is, ask neutral ownership questions about THIS item (how often it will be used, where, by whom, what would make it a regret) — never invent a device type.
+
+QUESTION QUALITY BAR — these must be the DECISIVE questions an expert buyer of THIS category would ask, including the ones the buyer would NOT think of on their own:
+- a tablet -> viewing distance and one-handed weight, laminated screen for stylus work, ecosystem lock-in, how long they keep devices
+- a car -> the terrain and annual distance, towing/loading, fuel-cost tolerance, parking and city manoeuvring, how long they keep a vehicle
+- a coffee machine -> cups per day, milk drinks, counter space, cleaning appetite
+- a book -> why they are reading it, pace tolerance, prior familiarity with the subject
+Derive the equivalent decisive angles for the ACTUAL category in front of you. Generic "what is your budget / which brand" questions are forbidden.
+
+VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
+
+Rules:
+- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
+- Questions must be relevant to the product CATEGORY.
+- Ask EXACTLY $count questions — no more, no fewer. Spend them on the $count highest-signal trade-offs that decide the fit; drop anything lower-signal.
+- Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
+- Each question reveals one concrete trade-off (comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, privacy vs convenience).
+- HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the product name at most once in the whole quiz (otherwise say "this one" or the category). Options describe behaviors/priorities only, never a brand name.
+- Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority, not a one-word label.
+- Vary the situations; do not repeat the same day, time, place, or routine across questions.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
+- NEVER ask about budget or brand preference.
+- ALL text must be in $langName
+
+PERSONALIZATION (read the userProfile JSON in the user message):
+- This quiz is about THIS PRODUCT CATEGORY first. The clear majority of questions (at least $majority of the $count) MUST be neutral, category-driven usage scenarios that ANY buyer of this product could relate to. Do NOT bend the scenarios around the user's job or hobby.
+- AT MOST 1 question in the WHOLE quiz may quietly lean on the user's profession or hobbies for its scenario — and only when it genuinely fits the product category. Never force a profession/hobby context into a question where it does not naturally belong, and NEVER combine profession AND hobby in the same question, nor repeat the same job/hobby context across questions.
+- For every other question, use ordinary everyday contexts that come from the product category itself (commuting, travel, home, general work, leisure, family), NOT the user's specific job or hobby.
+- AT LEAST 1 question must quietly ground its everyday scene in the user's real signals (interestCategories, recentlyViewed, priorities, usageIntent, registrationQuizAnswers) so it feels personally relevant — chosen only where it naturally fits the category, and without ever reading the profile back to the user.
+- You may lean lightly on recentlyViewed products/categories and interestCategories to pick realistic contexts, but keep the spotlight on the product decision, not the person.
+- NEVER state or hint at what we already know about them. Do not write "as a doctor", "since you love gaming", or name their profession, hobby, budget or ecosystem. Infer silently and ask a question that UNCOVERS the trade-off — the user must never feel told about their own profile.
+- userProfile.registrationQuizAnswers holds what the onboarding quiz already asked and answered — treat it like pastQuizQuestions: NEVER re-ask those facts.
+- Do NOT ask anything already listed in userProfile.pastQuizQuestions, and do not re-ask facts we already hold (ecosystem, budgetRange, priorities, currentDevices, usageIntent). Spend the questions only on what is still unknown for THIS specific product decision.
+
+Return valid JSON:
+{
+  "questions": [
+    {"question": "...", "options": ["...", "...", "...", "..."]},
+    ...
+  ]
+}
+''';
+  }
+
   static String _compareQuizGenerationPrompt(String language, int count) {
     final langName = _languageName(language);
     return '''

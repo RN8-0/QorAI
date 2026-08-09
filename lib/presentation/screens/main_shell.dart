@@ -1056,7 +1056,6 @@ class _MainShellState extends ConsumerState<MainShell>
   Widget _buildMobileLayout(int currentIndex, double bottomPadding) {
     final goState = GoRouterState.of(context);
     final path = goState.uri.path;
-    final location = goState.matchedLocation;
     // Kategori tarama: hem /browse hem /home/browse (sorgu yolu uri.path'te yok)
     final isBrowseRoute =
         path == AppRoutes.browse ||
@@ -1100,26 +1099,28 @@ class _MainShellState extends ConsumerState<MainShell>
                       s.phase == SubFlowPhase.analyzing,
                 ),
               );
-              final hideNavBar = ref.watch(hideNavBarProvider);
-              // Karşılaştırma sekmesinde (index 1) aktif bir karşılaştırma
-              // (2+ ürün) görüntülenirken alt bar KESİN gizlenir — compare_screen'in
-              // post-frame hideNavBar sinyaline bağlı kalmadan doğrudan burada
-              // kontrol edilir (kullanıcı isteği: compare ekranında alt bar olmasın).
+              // ── ALT BAR GÖRÜNÜRLÜĞÜ TEK YERDE ───────────────────────────
+              // BUG (kullanıcı): link analizinde analiz başlatıp gezinince alt
+              // bar KAYBOLUYORDU. Sebep: `compare_screen` global
+              // `hideNavBarProvider`'a `true` yazıyor ve YALNIZ dispose'ta
+              // temizliyordu — ama karşılaştırma bir shell DALI, sekme
+              // değişince dispose OLMAZ. Bayrak takılı kalıyor, shell de onu
+              // yalnız ANA SAYFA rotasında sıfırlıyordu; link/abonelik
+              // sekmelerinde bar gizli kalıyordu.
+              //
+              // Karar artık YALNIZCA burada, aktif sekmeye bakılarak verilir;
+              // hiçbir ekran global bayrak yazmaz. (`hideNavBarProvider` yalnız
+              // tam ekran gerektiren özel durumlar için okunur.)
               final comparingActive =
                   currentIndex == 1 &&
                   ref.watch(
                     compareSessionProvider.select(
-                      (s) => (s.comparedProducts?.length ?? 0) >= 2,
+                      (s) =>
+                          (s.comparedProducts?.length ?? 0) >= 2 ||
+                          s.selectedProductIds.length >= 2,
                     ),
                   );
-              final effectiveHideNavBar =
-                  isBrowseRoute || hideNavBar || comparingActive;
-              if (!isBrowseRoute && location == AppRoutes.home && hideNavBar) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  ref.read(hideNavBarProvider.notifier).state = false;
-                });
-              }
+              final effectiveHideNavBar = isBrowseRoute || comparingActive;
               if (effectiveHideNavBar) return const SizedBox.shrink();
               return RepaintBoundary(
                 child: _FloatingNavBar(

@@ -985,9 +985,19 @@ Pick only the $questionCount most decisive, highest-signal questions that determ
 
 LANGUAGE: Generate ALL questions and options in $langName.
 
+PRODUCT TYPE — HARD RULE: the item can be ANY category (car, book, bicycle,
+coffee machine, clothing, service...). NEVER assume it is a phone/laptop and do
+not mention screens, battery, cameras or apps unless the context establishes the
+item HAS them.
+
 Rules:
 - Questions must be relevant to the product CATEGORY
-- Each question has exactly 4 options
+- Each question is a vivid everyday-life mini-scene of about 28-45 words, then the question
+- HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the
+  product name AT MOST ONCE in the whole quiz (otherwise say "this one" or the
+  category). Options describe behaviors/priorities only, never a brand name.
+- Each question has exactly 4 options; each option is a concrete everyday behavior
+  or priority, not a one-word label
 - Add one or two fitting emojis to EACH question (matching the scene) so it feels lively and friendly — like the website. Every question MUST include at least one emoji
 - NEVER ask about budget or brand preference
 - ALL text must be in $langName

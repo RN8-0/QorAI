@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qor_ai/core/theme.dart';
+import 'package:qor_ai/core/utils.dart';
 import 'package:qor_ai/data/models/other_models.dart';
 import 'package:qor_ai/presentation/widgets/shared/store_offer_list.dart';
 
@@ -98,5 +99,50 @@ void main() {
     ));
     await tester.pump();
     expect(find.byType(StoreOfferRow), findsNWidgets(4));
+  });
+
+  _compactTests();
+}
+
+// ── Dar kolon (karsilastirma) fiyat kirpilmasi ────────────────────────────
+// BUG (kullanici): karsilastirma kolonunda fiyat "₺105.999,0" diye KIRPILIYOR,
+// magaza adi sifir genislige eziliyordu. Compact satir artik logo + fiyat.
+void _compactTests() {
+  test('compact fiyat kurussuz yazilir (dar kolonda kirpilmasin)', () {
+    expect(AppUtils.formatCurrencyCompact(105999, 'TRY').contains(','), isFalse);
+    expect(AppUtils.formatCurrencyCompact(105999, 'TRY').contains('105.999'), isTrue);
+    // Kucuk tutarda kurus ANLAMLI -> korunur.
+    expect(AppUtils.formatCurrencyCompact(9.99, 'USD').contains('.99'), isTrue);
+  });
+
+  testWidgets('compact satir 110px kolonda TASMAZ', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final offers = [
+      _o('Hepsiburada', 105999.0),
+      _o('Amazon.com.tr', 120799.0, url: 'https://www.amazon.com.tr/dp/X'),
+    ];
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 110,
+            child: StoreOfferList(
+              offers: offers,
+              country: 'TR',
+              productId: 'p1',
+              compact: true,
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+    // Tasma olsaydi Flutter test hatasi firlatirdi; ayrica fiyat metni TAM olmali.
+    expect(find.textContaining('105.999'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

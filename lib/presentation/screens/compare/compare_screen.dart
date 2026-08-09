@@ -510,18 +510,17 @@ class _CompareScreenState extends ConsumerState<CompareScreen> {
     final globalIds = ref.watch(comparisonStateProvider).selectedProductIds;
     final pendingPool = _comparisonLoadInFlight;
 
-    // Hide/show nav bar based on comparison state
+    // ALT BAR ARTIK BURADAN YONETILMIYOR. Bu ekran global `hideNavBarProvider`'a
+    // `true` yaziyor ve yalniz dispose'ta temizliyordu; ama bu bir shell DALI,
+    // sekme degisince dispose OLMAZ -> bayrak takili kaliyor ve link/abonelik
+    // sekmelerinde de alt bar kayboluyordu (kullanici bug'i). Karar artik
+    // MainShell'de, aktif sekmeye bakilarak veriliyor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _resumePendingComparisonIfNeeded(
         globalIds: globalIds,
         products: products,
       );
-      final shouldHide =
-          (products != null && products.length >= 2) || pendingPool;
-      if (_hideNavBarNotifier.state != shouldHide) {
-        _hideNavBarNotifier.state = shouldHide;
-      }
     });
 
     return Scaffold(
