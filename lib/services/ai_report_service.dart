@@ -286,20 +286,129 @@ class AiReportService {
         '  "alternatives": [{"name": "product name", "id": "copy the EXACT id from Qor catalog context when source is qor_catalog, otherwise empty", "imageUrl": "copy from Qor catalog context when available, otherwise empty", "url": "copy from Qor catalog context when available, otherwise empty", "source": "qor_catalog|external", "keySpecs": [{"label": "spec", "value": "value"}], "difference": "2-3 sentences vs target", "shortComment": "1-2 sentence recommendation"}],\n'
         '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n'
         '}\n\n'
-        'Rules:\n'
-        '- product.factors must include 8-10 varied factor scores for chart bars.\n'
-        '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, service coverage) — not restated specs.\n'
-        '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product.\n'
-        '- community.sentimentBreakdown must be integer percentages summing to ~100 and never all-positive; community.themes must include 5-6 topics with varied sentiment.\n'
-        '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n'
-        '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl AND id exactly from the context for those (source="qor_catalog"). External alternatives may have empty id/imageUrl/url.\n'
-        '- priceForecast must not pretend to know live prices unless research notes include them.\n\n'
+        '${_fullReportRules()}\n'
         'MARKET / AVAILABILITY CONTEXT:\n${_availabilityContext(p)}\n\n'
         'PRODUCT CONTEXT:\nName: ${l.name}\nBrand: ${l.brand.isEmpty ? '-' : l.brand}\nCategory: ${l.category}\nQor AI Tech Score: ${l.score}/100\nApprox catalog price: ${l.price}\nCatalog specs: ${l.ks}\n\n'
         'PRODUCT-SPECIFIC QUIZ ANSWERS:\n${_quizLines(quizAnswers)}\n\n'
         '${prof.isNotEmpty ? 'USER PROFILE / USER-RECOGNITION SIGNALS:\n$prof\n\n' : ''}'
         '${catalogAlts.isNotEmpty ? 'QOR CATALOG ALTERNATIVES:\n${jsonEncode(catalogAlts)}\n\n' : ''}'
         'WEB RESEARCH NOTES:\n${research.isNotEmpty ? research : 'No grounded research notes were available; rely on catalog specs and clearly label uncertainty.'}';
+  }
+
+  static String _fullReportRules() {
+    return 'Rules:\n'
+        '- product.factors must include 8-10 varied factor scores for chart bars.\n'
+        '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, service coverage) — not restated specs.\n'
+        '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product.\n'
+        '- community.sentimentBreakdown must be integer percentages summing to ~100 and never all-positive; community.themes must include 5-6 topics with varied sentiment.\n'
+        '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n'
+        '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl AND id exactly from the context for those (source="qor_catalog"). External alternatives may have empty id/imageUrl/url.\n'
+        '- priceForecast must not pretend to know live prices unless research notes include them.\n\n';
+  }
+
+  /// Prompt'un iki yarısının PAYLAŞTIĞI bağlam bloğu.
+  static String _reportContext(
+    ProductEntity p,
+    String lang,
+    Map<String, dynamic> profile,
+    List<dynamic> quizAnswers,
+    String research,
+    List<ProductEntity> similarProducts,
+  ) {
+    final l = _productLine(p, lang);
+    final prof = _profileString(profile);
+    final catalogAlts = _catalogAlternatives(similarProducts, lang);
+    return 'MARKET / AVAILABILITY CONTEXT:\n${_availabilityContext(p)}\n\n'
+        'PRODUCT CONTEXT:\nName: ${l.name}\nBrand: ${l.brand.isEmpty ? '-' : l.brand}\nCategory: ${l.category}\nQor AI Tech Score: ${l.score}/100\nApprox catalog price: ${l.price}\nCatalog specs: ${l.ks}\n\n'
+        'PRODUCT-SPECIFIC QUIZ ANSWERS:\n${_quizLines(quizAnswers)}\n\n'
+        '${prof.isNotEmpty ? 'USER PROFILE / USER-RECOGNITION SIGNALS:\n$prof\n\n' : ''}'
+        '${catalogAlts.isNotEmpty ? 'QOR CATALOG ALTERNATIVES:\n${jsonEncode(catalogAlts)}\n\n' : ''}'
+        'WEB RESEARCH NOTES:\n${research.isNotEmpty ? research : 'No grounded research notes were available; rely on catalog specs and clearly label uncertainty.'}';
+  }
+
+  // ── RAPOR İKİ PARALEL ÇAĞRI (web paritesi) ─────────────────────────────────
+  //
+  // NEDEN: tek çağrıda `product` + `community` + `alternatives` + `priceForecast`
+  // isteniyordu. İstenen metin miktarı (8-11 paragraf analiz + 5-7 paragraf
+  // topluluk özeti + 5-7 paragraf fiyat analizi) sağlayıcının çıktı sınırını
+  // zorluyor; web'de bu KIRPILMAYA yol açtığı ölçülmüştü ve tek uzun üretim
+  // beklemeyi de uzatıyor. İki yarı PARALEL koşar → duvar saati ~yarıya iner.
+  //
+  // ASİMETRİK: karar yarısı KRİTİKtir (boşsa rapor yok), topluluk/pazar yarısı
+  // ZENGİNLEŞTİRMEdir (boşsa rapor yine çıkar, sadece daha sade).
+
+  static String buildCoreReportPrompt(
+    ProductEntity p,
+    String lang,
+    Map<String, dynamic> profile, {
+    List<dynamic> quizAnswers = const [],
+    String research = '',
+    List<ProductEntity> similarProducts = const [],
+  }) {
+    final l = _productLine(p, lang);
+    return 'You are Qor AI\'s senior product analyst and product advisor. Analyse "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}). '
+        'Produce the PERSONAL DECISION half of a comprehensive match report. '
+        'Use the product name exactly as given. Do not replace it with a similar model.\n\n'
+        '${_languageGate(lang)}\n\n'
+        '${_freshnessRules()}\n'
+        'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n'
+        'Write like a professional buyer lab report: concrete, decisive, and detailed. Avoid generic praise. Mention exact catalog specs, compatibility constraints, who benefits, who should avoid it, and why.\n\n'
+        'Return ONLY one valid JSON object with this exact structure:\n'
+        '{\n'
+        '  "product": {\n'
+        '    "name": "exact product name",\n'
+        '    "matchScore": <0-100>,\n'
+        '    "decision": "buy|consider|skip",\n'
+        '    "confidence": <0-100>,\n'
+        '    "headline": "one decisive sentence a buyer can act on",\n'
+        '    "matchComment": "5-7 detailed sentences explaining quiz/profile fit, trade-offs, and who should care",\n'
+        '    "reviewedInputs": ["<input/source label in requested language>"],\n'
+        '    "factors": [{"label": "Usage fit", "score": <0-100>, "detail": "2 detailed sentences with evidence"}],\n'
+        '    "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences on why it changes the decision", "severity": "high|mid|low"}],\n'
+        '    "quizInsights": [{"topic": "what the question was about", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences on how it moved the score"}],\n'
+        '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 detailed sentences"}],\n'
+        '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n'
+        '    "strengths": ["6 detailed strengths grounded in specs"],\n'
+        '    "weaknesses": ["5 detailed weaknesses or caveats"],\n'
+        '    "reliabilityNotes": [{"title": "durability/support/warranty note", "detail": "1-2 sentences"}],\n'
+        '    "bestFor": "1-2 sentences describing the buyer this is perfect for",\n'
+        '    "notFor": "1-2 sentences describing who should skip it",\n'
+        '    "overallVerdict": "2-3 sentence closing verdict"\n'
+        '  }\n'
+        '}\n\n'
+        'Rules:\n'
+        '- product.factors must include 8-10 varied factor scores for chart bars.\n'
+        '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, service coverage) — not restated specs.\n'
+        '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product.\n'
+        '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n\n'
+        '${_reportContext(p, lang, profile, quizAnswers, research, similarProducts)}';
+  }
+
+  static String buildCommunityReportPrompt(
+    ProductEntity p,
+    String lang,
+    Map<String, dynamic> profile, {
+    List<dynamic> quizAnswers = const [],
+    String research = '',
+    List<ProductEntity> similarProducts = const [],
+  }) {
+    final l = _productLine(p, lang);
+    return 'You are Qor AI\'s community-research and market analyst. For "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}), '
+        'produce the COMMUNITY & MARKET half of the report. The personal-decision half is written separately — do NOT repeat it.\n\n'
+        '${_languageGate(lang)}\n\n'
+        '${_freshnessRules()}\n'
+        'Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n\n'
+        'Return ONLY one valid JSON object with this exact structure:\n'
+        '{\n'
+        '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "recurring discussion topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums and specialist reviews", "pros": ["6 recurring positives"], "cons": ["5 recurring negatives"], "sources": ["Reddit", "<source type in requested language>"], "verificationNotes": ["what is grounded", "what remains uncertain"]},\n'
+        '  "alternatives": [{"name": "product name", "id": "copy the EXACT id from Qor catalog context when source is qor_catalog, otherwise empty", "imageUrl": "copy from Qor catalog context when available, otherwise empty", "url": "copy from Qor catalog context when available, otherwise empty", "source": "qor_catalog|external", "keySpecs": [{"label": "spec", "value": "value"}], "difference": "2-3 sentences vs target", "shortComment": "1-2 sentence recommendation"}],\n'
+        '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n'
+        '}\n\n'
+        'Rules:\n'
+        '- community.sentimentBreakdown must be integer percentages summing to ~100 and never all-positive; community.themes must include 5-6 topics with varied sentiment.\n'
+        '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl AND id exactly from the context for those (source="qor_catalog"). External alternatives may have empty id/imageUrl/url.\n'
+        '- priceForecast must not pretend to know live prices unless research notes include them.\n\n'
+        '${_reportContext(p, lang, profile, quizAnswers, research, similarProducts)}';
   }
 
   static String buildCompareProductPrompt(
@@ -497,9 +606,26 @@ class AiReportService {
     String lang, {
     int maxTokens = 8192,
     double temperature = 0.45,
+    DateTime? deadline,
   }) async {
+    // TOPLAM SÜRE BÜTÇESİ (web `lib/ai.js` paritesi). Eskiden her denemenin
+    // kendi 60 sn'lik zaman aşımı vardı ama TOPLAM sınır YOKTU: yavaş (hata
+    // vermeyen, sadece geç dönen) bir sağlayıcıda 2×60 sn Gemini + DeepSeek
+    // arka arkaya koşabiliyor ve kullanıcı "analiz hiç bitmiyor" durumunda
+    // kalıyordu. Artık her deneme KALAN süreye göre kısılır; süre bitince
+    // elde olanla devam edilir.
+    int leftMs() => deadline == null
+        ? 60000
+        : deadline.difference(DateTime.now()).inMilliseconds;
+    Duration slice(int capSeconds) {
+      final left = leftMs();
+      final ms = left <= 0 ? 0 : (left < capSeconds * 1000 ? left : capSeconds * 1000);
+      return Duration(milliseconds: ms);
+    }
+
     final gemini = ref.read(geminiServiceProvider);
     for (var attempt = 0; attempt < 2; attempt++) {
+      if (leftMs() <= 3000) break;
       try {
         final result = await gemini
             .jsonFreeTextQuery(
@@ -509,21 +635,24 @@ class AiReportService {
               tier: AiTier.heavy,
               temperature: temperature,
             )
-            .timeout(const Duration(seconds: 60));
+            .timeout(slice(60));
         final parsed = parseAiJson(result);
         if (parsed != null) return parsed;
       } catch (e) {
         debugPrint('[Qor AI report] gemini attempt $attempt failed: $e');
       }
     }
+    if (leftMs() <= 3000) return null;
     try {
       final deepseek = ref.read(deepSeekServiceProvider);
-      final result = await deepseek.jsonFreeTextQuery(
-        prompt,
-        language: lang,
-        maxTokens: maxTokens,
-        temperature: temperature,
-      );
+      final result = await deepseek
+          .jsonFreeTextQuery(
+            prompt,
+            language: lang,
+            maxTokens: maxTokens,
+            temperature: temperature,
+          )
+          .timeout(slice(60));
       return parseAiJson(result);
     } catch (e) {
       debugPrint('[Qor AI report] deepseek fallback failed: $e');
@@ -630,7 +759,13 @@ class AiReportService {
     }
     onStage?.call(AiReportStage.report);
     final startedAt = DateTime.now();
-    final prompt = buildFullPrompt(
+    // Rapor üretimi için TOPLAM bütçe: bu süre dolunca elde ne varsa onunla
+    // devam edilir (tazelik yeniden denemesi de bu bütçeden pay alır).
+    final deadline = startedAt.add(const Duration(seconds: 150));
+
+    // İKİ YARI PARALEL. Karar yarısı kritik, topluluk/pazar yarısı
+    // zenginleştirme: ikincisi boş dönerse rapor yine üretilir.
+    final corePrompt = buildCoreReportPrompt(
       product,
       lang,
       profile,
@@ -638,14 +773,45 @@ class AiReportService {
       research: research,
       similarProducts: similarProducts,
     );
-    final data = await _askJson(
+    final coreFuture = _askJson(
       ref,
-      prompt,
+      corePrompt,
       lang,
       maxTokens: 8192,
       temperature: 0.45,
+      deadline: deadline,
     );
-    if (data == null) return null;
+    final communityFuture = _askJson(
+      ref,
+      buildCommunityReportPrompt(
+        product,
+        lang,
+        profile,
+        quizAnswers: quizAnswers,
+        research: research,
+        similarProducts: similarProducts,
+      ),
+      lang,
+      maxTokens: 8192,
+      temperature: 0.45,
+      deadline: deadline,
+    ).catchError((_) => null);
+
+    final halves = await Future.wait([coreFuture, communityFuture]);
+    final core = halves[0];
+    final extra = halves[1];
+    if (core == null) return null;
+
+    final data = <String, dynamic>{...core};
+    if (extra != null) {
+      for (final key in const ['community', 'alternatives', 'priceForecast']) {
+        final v = extra[key];
+        if (v != null) data[key] = v;
+      }
+    }
+    // Tazelik kapısı yalnız KARAR yarısını yeniden üretir; topluluk yarısı
+    // yeniden çağrılmaz (fazladan istek = fazladan bekleme + maliyet).
+    final prompt = corePrompt;
 
     // Freshness quality gate: if the report still carries stale launch/
     // availability claims, rewrite once at the model's stricter pass (mirrors
@@ -660,11 +826,13 @@ class AiReportService {
         lang,
         maxTokens: 8192,
         temperature: 0.25,
+        deadline: deadline,
       );
+      // Yeniden deneme YALNIZ karar yarısını üretir → topluluk/alternatif/fiyat
+      // bölümlerinin üzerine yazma, yoksa rapor yarım kalır.
       if (retry != null && !hasStaleAvailabilityClaims(jsonEncode(retry))) {
-        data
-          ..clear()
-          ..addAll(retry);
+        final p = retry['product'];
+        if (p != null) data['product'] = p;
       }
     }
     data['type'] = 'product_full_report';

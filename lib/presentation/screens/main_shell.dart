@@ -613,6 +613,32 @@ class _MainShellState extends ConsumerState<MainShell>
     return false;
   }
 
+  /// Şu an görüntülenen içeriğin kimliğini hub'a bildirir. Ürün detayı açıksa
+  /// o ürün, değilse aktif sekme (0=home → hedef yok).
+  void _syncHubViewing(AnalysisHubNotifier hub) {
+    String? key;
+    final pid = ref.read(productAnalysisProvider).viewingProductId;
+    if (pid != null && pid.isNotEmpty) {
+      key = 'product:$pid';
+    } else {
+      switch (widget.navigationShell.currentIndex) {
+        case 1:
+          key = AnalysisFlowKind.compare.name;
+        case 2:
+          key = AnalysisFlowKind.link.name;
+        case 3:
+          key = AnalysisFlowKind.subscription.name;
+        default:
+          key = null;
+      }
+    }
+    // Build sırasında state yazmak yasak → bir sonraki kareye ertele.
+    final next = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) hub.setViewing(next);
+    });
+  }
+
   int _indexFromLocation(String location) {
     // Branch indices match StatefulShellRoute definition:
     // 0=home(+browse+aiChat) 1=compare 2=linkPaste 3=subscriptions
@@ -711,6 +737,21 @@ class _MainShellState extends ConsumerState<MainShell>
     // Kullanıcı bu işlemleri artık YALNIZ Qor AI chat'ten kontrol eder.
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
     final hub = ref.read(analysisHubProvider.notifier);
+
+    // ── "ZATEN ORADAYSAN BİLDİRME" ─────────────────────────────────────────
+    // Kullanıcı şikâyeti: analiz/bildirim ekranı AÇIKKEN "analiz hazır"
+    // bildirimi düşüyordu. Bildirim, kullanıcıyı sonuca ÇAĞIRMAK içindir;
+    // sonucu zaten görüntülüyorsa yalnızca gürültüdür.
+    //
+    // Ölçüt ROTA DEĞİL, BİLDİRİMİN HEDEFİ: her bildirim ya bir sekmeye
+    // (compare/link/subscription) ya da bir ürüne gider. Hedef ile şu an
+    // görüntülenen içerik aynıysa hub bildirimi hiç basmaz.
+    // Ürün detayı shell'in ÜSTÜNE push edildiği için sekme indeksinden
+    // anlaşılmaz — `viewingProductId` ile saptanır (aynı desen: `_routePath`).
+    // `watch` şart: ürün detayı açılıp kapandığında shell yeniden kurulmazsa
+    // görüntüleme kimliği bayat kalır ve bildirimler yanlış bastırılır.
+    ref.watch(productAnalysisProvider.select((s) => s.viewingProductId));
+    _syncHubViewing(hub);
 
     // ── HESAP DEĞİŞİMİ GÜVENLİK AĞI ────────────────────────────────────────
     // Kullanıcıya özel provider'ların hiçbiri autoDispose DEĞİL. Çıkış/giriş

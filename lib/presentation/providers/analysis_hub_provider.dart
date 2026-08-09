@@ -37,6 +37,18 @@ class AnalysisNotice {
     this.productId,
     this.tabIndex,
   });
+
+  /// Bildirimin GÖTÜRDÜĞÜ içeriğin kimliği. [AnalysisHubState.viewing] ile
+  /// karşılaştırılır: kullanıcı zaten oradaysa bildirim basılmaz.
+  /// Ürün akışı ürüne özgüdür (`product:<id>`), diğerleri tekil ekrandır.
+  String get targetKey {
+    if (flow == AnalysisFlowKind.product) {
+      return productId != null && productId!.isNotEmpty
+          ? 'product:$productId'
+          : 'product';
+    }
+    return flow.name;
+  }
 }
 
 @immutable
@@ -53,10 +65,21 @@ class AnalysisHubState {
   /// sonuç gelince temizlenir.
   final String? alert;
 
+  /// Kullanıcının ŞU AN baktığı içeriğin kimliği ([AnalysisNotice.targetKey]
+  /// ile aynı biçim). Bildirim bastırma bunun üzerinden çalışır: kullanıcı
+  /// zaten link analizi ekranındaysa "link analizin hazır" bildirimi anlamsız
+  /// (ve rahatsız edici) — sonucu zaten ekranda görüyor.
+  ///
+  /// Rota yerine GÖRÜNTÜLENEN İÇERİK kimliği kullanılır: go_router
+  /// StatefulShellRoute'ta yalnız aktif SEKME'yi bildirir, shell'in üstüne
+  /// push edilen ürün sayfasını değil (bkz. `_routePath` yorumu).
+  final String? viewing;
+
   const AnalysisHubState({
     this.busy = const {},
     this.notices = const [],
     this.alert,
+    this.viewing,
   });
 
   bool get isBusy => busy.isNotEmpty;
@@ -65,11 +88,15 @@ class AnalysisHubState {
     Set<AnalysisFlowKind>? busy,
     List<AnalysisNotice>? notices,
     Object? alert = _noAlertChange,
+    Object? viewing = _noAlertChange,
   }) {
     return AnalysisHubState(
       busy: busy ?? this.busy,
       notices: notices ?? this.notices,
       alert: identical(alert, _noAlertChange) ? this.alert : alert as String?,
+      viewing: identical(viewing, _noAlertChange)
+          ? this.viewing
+          : viewing as String?,
     );
   }
 }
@@ -92,8 +119,35 @@ class AnalysisHubNotifier extends StateNotifier<AnalysisHubState> {
   /// (quiz bildirimi → rapor bildirimi dönüşümü tek satır olur) ve en öne alınır.
   /// Sonuç geldi → varsa geçici uyarı/hata satırını temizle.
   void pushNotice(AnalysisNotice n) {
+    // KULLANICI ZATEN ORADAYSA BİLDİRME. Bildirim, kullanıcıyı bulunduğu yerden
+    // sonuca ÇAĞIRMAK içindir; sonucu zaten görüntülüyorken basılması yalnızca
+    // gürültü (kullanıcı şikâyeti: "bildirim sayfası açıkken bildirim geliyor").
+    // Eski bildirim varsa yine de temizlenir: bayat satır ekranda kalmasın.
+    if (state.viewing != null && state.viewing == n.targetKey) {
+      final cleaned = state.notices.where((x) => x.id != n.id).toList();
+      state = state.copyWith(notices: cleaned, alert: null);
+      return;
+    }
     final list = state.notices.where((x) => x.id != n.id).toList()..insert(0, n);
     state = state.copyWith(notices: list, alert: null);
+  }
+
+  /// Ekran açılınca kendi içerik kimliğini bildirir, kapanınca (aynı kimlikle)
+  /// bırakır. Kapanışta başka bir ekran araya girmişse üzerine YAZMAZ.
+  void setViewing(String? key) {
+    if (state.viewing == key) return;
+    state = state.copyWith(viewing: key);
+    // O ekranın bekleyen bildirimi varsa artık gereksiz — kullanıcı geldi.
+    if (key != null && state.notices.any((x) => x.targetKey == key)) {
+      state = state.copyWith(
+        notices: state.notices.where((x) => x.targetKey != key).toList(),
+      );
+    }
+  }
+
+  void clearViewing(String key) {
+    if (state.viewing != key) return;
+    state = state.copyWith(viewing: null);
   }
 
   /// Geçici uyarı/hata satırı ayarla (chat bandında görünür). Aynı metni tekrar

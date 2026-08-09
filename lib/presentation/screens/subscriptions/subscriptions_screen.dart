@@ -16,6 +16,7 @@ import 'package:qor_ai/core/quiz_gate.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
+import 'package:qor_ai/routing/router.dart' show AppRoutes, routerProvider;
 import 'package:qor_ai/presentation/widgets/glass_container.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
@@ -631,6 +632,33 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
     );
   }
 
+  // ── Geri (çıkış) ──────────────────────────────────────────────────────────
+  //
+  // BUG (kullanıcı): analiz başladıktan sonra geri butonu doğru çalışmıyordu.
+  // ÖLÇÜLEN DAVRANIŞ: buton `subQuizProvider.reset()` çağırıyordu — yani
+  //   1) ekranı KAPATMIYOR, aynı sekmede boş başlangıç ekranına dönüyordu,
+  //   2) süren analizin ekrandaki tüm ilerlemesini SİLİYORDU (iş arka planda
+  //      koşmaya devam ettiği için sonuç sonradan boş ekranın üstüne düşüyordu).
+  //
+  // BEKLENEN: analiz arka planda SÜRSÜN, ekran kapansın, bildirimle geri
+  // dönülebilsin. `subQuizProvider` autoDispose DEĞİL — sekmeden çıkmak işi
+  // öldürmez; geri dönünce faz neyse o görünür.
+  //
+  // "Baştan başla" (sağ üst yenile ikonu, yalnız sonuç hazırken) gerçek
+  // sıfırlama için zaten duruyor — geri butonu artık onun işini yapmıyor.
+  void _onBack() {
+    HapticFeedback.selectionClick();
+    final rootNav = Navigator.maybeOf(context, rootNavigator: true);
+    if (rootNav != null && rootNav.canPop()) {
+      rootNav.pop();
+      return;
+    }
+    // Sekme kökündeyiz: shell'in ana sayfasına dön (MainShell.didPopRoute ile
+    // aynı davranış). Analiz koşmaya devam eder, hazır olunca Qor bildirimi
+    // kullanıcıyı buraya geri getirir.
+    ref.read(routerProvider).go(AppRoutes.home);
+  }
+
   // ── App Bar ────────────────────────────────────────────────────────────────
 
   SliverAppBar _buildAppBar(SubQuizState state) {
@@ -642,10 +670,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen>
       leading: state.phase != SubFlowPhase.idle
           ? IconButton(
               icon: Icon(Icons.arrow_back_rounded, color: context.textPrimary),
-              onPressed: () {
-                ref.read(subQuizProvider.notifier).reset();
-                setState(() {});
-              },
+              onPressed: _onBack,
             )
           : Padding(
               padding: const EdgeInsets.only(left: 12),

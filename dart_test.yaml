@@ -1,0 +1,3 @@
+tags:
+  network:
+    # Gercek aga cikan testler. Yerelde/CI da atlamak icin: flutter test -x network

@@ -87,12 +87,17 @@ class MetadataService {
 
   /// Kısa linki SUNUCUDA çözer.
   ///
-  /// NEDEN: Dart'ın TLS parmak izi bot sayılıyor — aynı URL'e curl 301 dönerken
-  /// Dio/dart:io 403 alıyor. Yani kısaltılmış Amazon linkleri (amzn.eu/d/…,
-  /// a.co/…) CİHAZDAN çözülemez, hangi başlık/istemci ayarı denenirse denensin.
-  /// Sunucu tarafındaki `/api/resolve-link` ucu zinciri izler ve nihai URL'i
-  /// (varsa sayfa başlığını) döndürür. Başarısız olursa boş döner ve çağıran
-  /// eski (yerel) yola devam eder.
+  /// ÖLÇÜM (2026-08-09, `tool/_verify_resolve.dart`, gerçek amzn.eu linki):
+  ///   HEAD → 404 · GET → 301 `https://www.amazon.com.tr/dp/B0DW1YGSHY?ref=…`
+  /// Yani yönlendirme BUGÜN cihazdan izlenebiliyor (eski "Dio 403 alıyor"
+  /// notu artık geçerli değil) — ama çözülen adres SLUG'SIZ `/dp/<ASIN>`.
+  /// Ürün adı URL'de yok, sayfa da cihazdan kazınamıyor (bot koruması) →
+  /// başlık boş kalıyor ve akış "ürünü tanıyamadık" uyarısına düşüyordu.
+  /// ASIL EKSİK BUYDU.
+  ///
+  /// `/api/resolve-link` ikisini birden verir: ürün adını TAŞIYAN kanonik URL
+  /// (`/Coverzone-Samsung-…/dp/B0DW1YGSHY`) ve sayfa `<title>`'ı. Başarısız
+  /// olursa boş döner ve çağıran eski (yerel) yola devam eder.
   Future<({String url, String title})> _resolveViaServer(String url) async {
     try {
       final resp = await _dio
@@ -128,12 +133,13 @@ class MetadataService {
   }
 
   Future<String> resolveShareUrl(String url) async {
-    // KISA LİNK → ÖNCE SUNUCU. Cihazdan çözülemediği ölçüldü (403), bu yüzden
-    // yerel zinciri boşuna denemek yalnızca gecikme üretir.
+    // KISA LİNK → ÖNCE SUNUCU: yalnız nihai adresi değil, ürün adını taşıyan
+    // KANONİK adresi ve sayfa başlığını da getirir (bkz. `_resolveViaServer`).
+    var serverTitle = '';
     if (_looksShortened(url)) {
       final server = await _resolveViaServer(url);
       if (server.url.isNotEmpty && server.url != url) {
-        if (server.title.isNotEmpty) _serverTitles[server.url] = server.title;
+        serverTitle = server.title;
         // Sunucudan gelen nihai URL hâlâ tracker/kısa olabilir → yerel zincir
         // onun üzerinden devam etsin.
         url = server.url;
@@ -189,8 +195,12 @@ class MetadataService {
         current = next;
       }
     } catch (_) {
+      if (serverTitle.isNotEmpty) _serverTitles[url] = serverTitle;
       return url;
     }
+    // Başlığı NİHAİ adrese bağla: `fetchMetadata` çağıranın elindeki bu adresle
+    // gelir; ara adrese yazsaydık arama ıskalar ve başlık kaybolurdu.
+    if (serverTitle.isNotEmpty) _serverTitles[current] = serverTitle;
     return current;
   }
 
