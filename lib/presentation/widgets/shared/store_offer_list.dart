@@ -311,23 +311,23 @@ class StoreOfferRow extends ConsumerWidget {
                     children: [
                       StoreLogo(brand: brand, size: 24),
                       const SizedBox(width: 6),
+                      // FittedBox KULLANILMAZ: uzun bir fiyati ("₺105.999")
+                      // kucultup kisa bir etiketi ("Fiyata bak") tam boyutta
+                      // birakiyordu -> etiket fiyattan BUYUK gorunuyordu
+                      // (kullanici bug'i). Sabit, kucuk bir punto ikisini de
+                      // AYNI boyutta tutar; tasma olursa ellipsis.
                       Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              priceLabel,
-                              maxLines: 1,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: offer.hasExactPrice
-                                    ? AppTheme.scoreExcellent
-                                    : context.textSecondary,
-                              ),
-                            ),
+                        child: Text(
+                          priceLabel,
+                          maxLines: 1,
+                          textAlign: TextAlign.right,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: offer.hasExactPrice
+                                ? AppTheme.scoreExcellent
+                                : context.textSecondary,
                           ),
                         ),
                       ),

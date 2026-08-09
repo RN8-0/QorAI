@@ -102,6 +102,7 @@ void main() {
   });
 
   _compactTests();
+  _labelSizeTests();
 }
 
 // ── Dar kolon (karsilastirma) fiyat kirpilmasi ────────────────────────────
@@ -143,6 +144,53 @@ void _compactTests() {
     await tester.pump();
     // Tasma olsaydi Flutter test hatasi firlatirdi; ayrica fiyat metni TAM olmali.
     expect(find.textContaining('105.999'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+// ── "Fiyata bak" fiyatla AYNI PUNTO ───────────────────────────────────────
+// BUG (kullanici): compact kolonda FittedBox uzun fiyati kucultup kisa etiketi
+// tam boyutta birakiyordu -> "Fiyata bak" fiyattan BUYUK gorunuyordu.
+void _labelSizeTests() {
+  testWidgets('compact: fiyat ve "Fiyata bak" ayni fontSize', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final offers = [
+      _o('Hepsiburada', 105999.0),
+      ProductOfferModel(
+        id: 'amz', productId: 'p1', store: 'Amazon.com.tr',
+        network: 'epey_amazon', country: 'TR', price: 0, currency: 'TRY',
+        priceUnknown: true, url: 'https://www.amazon.com.tr/s?k=x',
+        directUrl: 'https://www.amazon.com.tr/s?k=x', inStock: true,
+        expiresAt: DateTime.now().toUtc().add(const Duration(days: 3)),
+        lastCheckedAt: DateTime.now().toUtc(),
+      ),
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.lightTheme,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 128,
+            child: StoreOfferList(
+              offers: offers, country: 'TR', productId: 'p1', compact: true,
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    double sizeOf(Finder f) => tester.widget<Text>(f).style!.fontSize!;
+
+    final priceSize = sizeOf(find.textContaining('105.999'));
+    // Test ortaminda locale EN -> etiket "Check price".
+    final labelSize = sizeOf(find.textContaining('Check price'));
+    expect(labelSize, priceSize,
+        reason: '"Fiyata bak" ($labelSize) fiyattan ($priceSize) farkli boyutta');
     expect(tester.takeException(), isNull);
   });
 }

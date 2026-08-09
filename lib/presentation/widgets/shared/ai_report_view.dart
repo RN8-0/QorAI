@@ -442,7 +442,9 @@ class _ReportSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          child,
+          // Icerik TAM GENISLIK alir (bkz. UrSection aciklamasi):
+          // ortalanmak isteyen cocuklar aksi halde sola yapisiyordu.
+          SizedBox(width: double.infinity, child: child),
         ],
       ),
       ),
@@ -1572,12 +1574,17 @@ class _CompareMiniDonuts extends StatelessWidget {
       // (kullanici: "yatay olarak ortalanmiyor hala kenarda"). Wrap ile hem
       // ORTALANIR hem de cok servis oldugunda alt satira gecer — yatay kaydirma
       // gerekmez, hicbir donut ekran disinda kalmaz.
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        runAlignment: WrapAlignment.center,
-        spacing: 16,
-        runSpacing: 14,
-        children: [
+      // `_ReportSection` govdesi Column(crossAxisAlignment: start) — Wrap
+      // TIGHT genislik aliyordu, bu yuzden `alignment: center` HICBIR SEY
+      // yapmiyordu (donutlar sola yapisik kaliyordu). Tam genislik ver.
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          runAlignment: WrapAlignment.center,
+          spacing: 16,
+          runSpacing: 14,
+          children: [
           for (final d in donuts)
             SizedBox(
               width: 104,
@@ -1609,9 +1616,10 @@ class _CompareMiniDonuts extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1894,9 +1902,19 @@ void _openModal(
                 ),
                 Divider(height: 1, color: ctx.dividerColor),
                 Expanded(
+                  // ALT BAR BOSLUGU: yuzen alt cubuk bu sayfanin USTUNDE
+                  // ciziliyor; 28 px'lik eski bosluk yetmiyordu ve raporun son
+                  // satirlari cubugun ALTINDA kaliyordu (kullanici bug'i).
                   child: SingleChildScrollView(
                     controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      14,
+                      16,
+                      28 +
+                          AppTheme.navBarTotalClearance +
+                          MediaQuery.of(ctx).padding.bottom,
+                    ),
                     child: _CompareProductDetail(data: ai, l: l),
                   ),
                 ),

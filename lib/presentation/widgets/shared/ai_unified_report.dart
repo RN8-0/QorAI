@@ -112,7 +112,13 @@ class UrSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 11),
-            child,
+            // İçerik TAM GENİŞLİK alır. Kapsayıcı Column
+            // `crossAxisAlignment: start` olduğu için çocuk TIGHT genişlik
+            // alıyordu: içinde `alignment: center` olan her şey (donut satırı,
+            // ortalanmış grafik) sola yapışık kalıyor ve ortalama HİÇBİR ŞEY
+            // yapmıyordu — kullanıcı bunu iki kez bildirdi. Sola dayalı
+            // içerikler bundan etkilenmez.
+            SizedBox(width: double.infinity, child: child),
           ],
         ),
       ),
