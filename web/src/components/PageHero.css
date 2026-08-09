@@ -89,3 +89,42 @@
 @media (max-width: 560px) {
   .page-hero-icon { width: 54px; height: 54px; border-radius: 16px; }
 }
+
+/* ── Yalnız başlık varyantı ────────────────────────────────────────────────
+   Alt yazı / ikon / kicker yokken tam genişlikte gradyan bant + alt çizgi
+   sayfadan kopuk bir levha gibi duruyordu ("sırıtıyor"). Bu varyantta bant
+   ve çizgi kalkar; başlık sayfanın kendi zeminine oturur, nefes payı korunur.
+   Gradyan animasyonu kalır ama daha sakin ve daha dar bir renk aralığında. */
+.page-hero.title-only {
+  padding: clamp(26px, 3.6vh, 44px) 0 clamp(14px, 2vh, 22px);
+  margin-bottom: clamp(10px, 1.6vh, 18px);
+  border-bottom: 0;
+  background: none;
+}
+.page-hero.title-only .page-hero-inner { gap: 0; }
+.page-hero.title-only h1 {
+  font-size: clamp(27px, 3.9vw, 40px);
+  letter-spacing: -0.9px;
+  line-height: 1.08;
+}
+/* Sakin gradyan: mavi → mor arası, dört durak yerine üç; daha yavaş akar. */
+.page-hero.title-only h1.page-hero-anim {
+  background: linear-gradient(90deg,
+    var(--brand-deep), var(--brand-blue), var(--brand-deep));
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+[data-theme='dark'] .page-hero.title-only h1.page-hero-anim {
+  background: linear-gradient(90deg,
+    var(--brand-sky), var(--brand-cyan), var(--brand-sky));
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-hero.title-only h1.page-hero-anim { animation-duration: 14s; }
+}
+@media (max-width: 560px) {
+  .page-hero.title-only { padding: 20px 0 12px; margin-bottom: 8px; }
+}

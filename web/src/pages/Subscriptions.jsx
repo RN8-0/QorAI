@@ -42,6 +42,7 @@ import QuizFlow from '../components/QuizFlow.jsx';
 import AiWorkboard from '../components/AiWorkboard.jsx';
 import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
 import Reveal from '../components/Reveal.jsx';
+import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import './Subscriptions.css';
 
@@ -458,7 +459,8 @@ export default function Subscriptions() {
 
   return (
     <div className="subs-page">
-      {/* İkon KALDIRILDI (2026-08-08) — bkz. LinkAnalysis: tek odak başlık. */}
+      {/* İkon ve alt yazı KALDIRILDI — bkz. LinkAnalysis: tek odak başlık. */}
+      <PageHero animated title={t('subs.title')} />
 
       <div className="container subs-body">
       {showPicker && (

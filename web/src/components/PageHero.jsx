@@ -7,8 +7,12 @@ import './PageHero.css';
 // `animated`: ikonsuz sayfalarda (link analizi, abonelikler) başlığın KENDİSİ
 // hareketli gradyan olur — ekranın üstünde tek bir odak kalsın diye.
 export default function PageHero({ icon, title, subtitle, kicker, accent, animated = false }) {
+  // Yalnız başlık verildiğinde (link analizi, abonelikler) ağır gradyan bant
+  // sayfadan kopuk bir "levha" gibi duruyordu. O durumda bant kalkar, geriye
+  // sadece başlık kalır — sayfayla aynı zemine oturur, sırıtmaz.
+  const titleOnly = !subtitle && !icon && !kicker;
   return (
-    <section className="page-hero aurora">
+    <section className={'page-hero aurora' + (titleOnly ? ' title-only' : '')}>
       <div className="container page-hero-inner fade-up">
         {kicker && <span className="page-hero-kicker">{kicker}</span>}
         {icon && <div className="page-hero-icon" aria-hidden="true">{icon}</div>}

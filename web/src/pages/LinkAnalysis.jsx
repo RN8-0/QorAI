@@ -37,6 +37,7 @@ import Gauge from '../components/Gauge.jsx';
 import HistoryPanel from '../components/HistoryPanel.jsx';
 import HowItWorks from '../components/HowItWorks.jsx';
 import Reveal from '../components/Reveal.jsx';
+import PageHero from '../components/PageHero.jsx';
 import { useSeo } from '../lib/seo';
 import { safeExternalUrl } from '../lib/format';
 import { Link } from 'react-router-dom';
@@ -455,8 +456,9 @@ export default function LinkAnalysis() {
 
   return (
     <div className="la-page">
-      {/* İkon KALDIRILDI (2026-08-08): logo zaten navbar'da duruyordu, hero'da
-          ikinci kez tekrar edip dikkati bölüyordu. Tek odak: hareketli başlık. */}
+      {/* İkon ve alt yazı KALDIRILDI: logo zaten navbar'da, alt yazı da başlıkla
+          birlikte ekranın üstünü şişiriyordu. Tek odak hareketli başlık. */}
+      <PageHero animated title={t('la.title')} />
 
       <div className="container la-body">
       {showForm && (
