@@ -294,3 +294,167 @@ routerAdd('GET', '/api/img', (e) => {
     return e.json(502, { error: 'fetch_failed', detail: String(err) });
   }
 });
+
+// ── /api/resolve-link — kısa/paylaşım linkini NİHAİ URL'e çözer ──────────
+//
+// NEDEN SUNUCUDA: kısaltılmış Amazon linkleri (amzn.eu/d/…, a.co/…) CİHAZDAN
+// çözülemiyor. Ölçülen kanıt: aynı URL'e `curl` 301 dönerken Dart'ın
+// `Dio`/`dart:io` HttpClient'ı 403 alıyor — Dart'ın TLS parmak izi bot olarak
+// sınıflanıyor. Hiçbir istemci ayarıyla düzelmez; tek yol sunucu.
+//
+// İKİ YOLLU: `$http.send` sürüme göre yönlendirmeleri kendi izleyebilir.
+//   1) Elle hop: 3xx + `Location` görürsek zinciri biz yürütürüz (her hop'ta
+//      SSRF denetimi yapılabildiği için tercih edilen yol).
+//   2) Otomatik izlendiyse ilk yanıt 2xx gelir ve `Location` yoktur → nihai
+//      URL'i HTML'in `<link rel=canonical>` / `og:url` etiketinden okuruz.
+//
+// GÜVENLİK (SSRF): yalnız http/https; localhost, 127./10./172.16-31./192.168./
+// 169.254. (bulut metadata) /100.64-127. ve IPv6 yerel aralıkları HER hop'ta
+// engellenir; en fazla 5 yönlendirme; hop + toplam süre sınırı.
+//
+// NOT: PB JSVM her handler'ı İZOLE kapsamda koşturur — dosya kapsamındaki
+// fonksiyonlar GÖRÜNMEZ, bu yüzden tüm yardımcılar handler'ın içindedir.
+routerAdd('GET', '/api/resolve-link', (e) => {
+  const MAX_HOPS = 5;
+  const HOP_TIMEOUT_S = 8;
+  const TOTAL_BUDGET_MS = 20000;
+  const UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36';
+
+  function hostOf(u) {
+    try {
+      const m = String(u).match(/^https?:\/\/([^/?#]+)/i);
+      if (!m) return '';
+      let h = m[1];
+      const at = h.lastIndexOf('@');
+      if (at >= 0) h = h.slice(at + 1);
+      if (h.charAt(0) === '[') return h.slice(1, h.indexOf(']')).toLowerCase();
+      const colon = h.lastIndexOf(':');
+      if (colon > 0) h = h.slice(0, colon);
+      return h.toLowerCase();
+    } catch (_) { return ''; }
+  }
+
+  function isBlockedHost(h) {
+    if (!h) return true;
+    if (h === 'localhost' || h === '::1' || h === '0.0.0.0') return true;
+    if (h.length > 6 && h.slice(-6) === '.local') return true;
+    if (h.indexOf('.internal') > 0) return true;
+    const p = h.split('.');
+    if (p.length === 4 && p.every((x) => /^\d{1,3}$/.test(x))) {
+      const a = +p[0]; const b = +p[1];
+      if (a === 127 || a === 10 || a === 0) return true;
+      if (a === 172 && b >= 16 && b <= 31) return true;
+      if (a === 192 && b === 168) return true;
+      if (a === 169 && b === 254) return true;
+      if (a === 100 && b >= 64 && b <= 127) return true;
+      if (a >= 224) return true;
+    }
+    if (/^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h)) return true;
+    return false;
+  }
+
+  function isSafeUrl(u) {
+    if (!/^https?:\/\//i.test(String(u || ''))) return false;
+    return !isBlockedHost(hostOf(u));
+  }
+
+  function absolutize(base, loc) {
+    const l = String(loc || '').trim();
+    if (!l) return '';
+    if (/^https?:\/\//i.test(l)) return l;
+    const m = String(base).match(/^(https?:)\/\/([^/?#]+)([^?#]*)/i);
+    if (!m) return '';
+    const scheme = m[1]; const host = m[2]; const path = m[3] || '/';
+    if (l.indexOf('//') === 0) return scheme + l;
+    if (l.charAt(0) === '/') return scheme + '//' + host + l;
+    const dir = path.slice(0, path.lastIndexOf('/') + 1) || '/';
+    return scheme + '//' + host + dir + l;
+  }
+
+  function headerOf(res, name) {
+    try {
+      const hs = res.headers || {};
+      const v = hs[name] || hs[name.toLowerCase()] ||
+        hs[name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()];
+      return Array.isArray(v) ? String(v[0] || '') : String(v || '');
+    } catch (_) { return ''; }
+  }
+
+  function titleOf(html) {
+    const m = String(html || '').match(/<title[^>]*>([\s\S]{0,400}?)<\/title>/i);
+    if (!m) return '';
+    return m[1]
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ').trim().slice(0, 300);
+  }
+
+  // Otomatik yönlendirme durumunda nihai URL'i sayfanın kendisinden oku.
+  function canonicalOf(html, base) {
+    const s = String(html || '');
+    let m = s.match(/<link[^>]+rel=["']?canonical["']?[^>]*href=["']([^"']+)["']/i)
+      || s.match(/<link[^>]+href=["']([^"']+)["'][^>]*rel=["']?canonical["']?/i)
+      || s.match(/<meta[^>]+property=["']og:url["'][^>]*content=["']([^"']+)["']/i);
+    if (!m) return '';
+    const abs = absolutize(base, m[1]);
+    return isSafeUrl(abs) ? abs : '';
+  }
+
+  const raw = String(e.request.url.query().get('url') || '').trim();
+  if (!raw) return e.json(400, { error: 'url required' });
+  if (raw.length > 2048) return e.json(400, { error: 'url too long' });
+  if (!isSafeUrl(raw)) return e.json(400, { error: 'unsupported or blocked url' });
+
+  const startedAt = Date.now();
+  let current = raw;
+  let title = '';
+  let hops = 0;
+  let status = 0;
+
+  try {
+    for (; hops < MAX_HOPS; hops++) {
+      if (Date.now() - startedAt > TOTAL_BUDGET_MS) break;
+      const res = $http.send({
+        url: current,
+        method: 'GET',
+        headers: {
+          'User-Agent': UA,
+          Accept: 'text/html,application/xhtml+xml,*/*;q=0.8',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        timeout: HOP_TIMEOUT_S,
+      });
+      status = res.statusCode || 0;
+
+      const loc = headerOf(res, 'Location');
+      if (status >= 300 && status < 400 && loc) {
+        const next = absolutize(current, loc);
+        if (!next || next === current) break;
+        if (!isSafeUrl(next)) break;      // SSRF: iç ağa yönlendirme -> dur
+        current = next;
+        continue;
+      }
+
+      if (status >= 200 && status < 300) {
+        const html = res.raw || '';
+        title = titleOf(html);
+        // Yönlendirmeler istemci tarafından otomatik izlendiyse `current` hâlâ
+        // kısa link olur; sayfanın kendi kanonik adresi nihai URL'i verir.
+        const canon = canonicalOf(html, current);
+        if (canon && canon !== current) current = canon;
+      }
+      break;
+    }
+  } catch (err) {
+    return e.json(200, { url: current, resolved: current !== raw, hops: hops, title: title, error: String(err) });
+  }
+
+  return e.json(200, {
+    url: current,
+    resolved: current !== raw,
+    hops: hops,
+    status: status,
+    title: title,
+  });
+});
