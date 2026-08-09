@@ -24,12 +24,12 @@ import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/widgets/glass_container.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';
 import 'package:qor_ai/presentation/widgets/gradient_button.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/presentation/widgets/paywall_sheet.dart';
 import 'package:qor_ai/presentation/widgets/animated_gradient_input_shell.dart';
 import 'package:qor_ai/presentation/widgets/qor_badges.dart';
-import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_report_view.dart';
+import 'package:qor_ai/presentation/widgets/shared/ai_report_adapters.dart';
 import 'package:qor_ai/presentation/widgets/shared/scanning_arc.dart';
 
 // ── Part files ──

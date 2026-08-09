@@ -8,6 +8,8 @@ import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/data/models/chat_conversation.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 import 'package:qor_ai/presentation/providers/analysis_hub_provider.dart';
+import 'package:qor_ai/presentation/providers/compare_analysis_state_provider.dart'
+    show compareAiKey;
 import 'package:qor_ai/presentation/screens/ai_chat/chat_history_screen.dart';
 import 'package:qor_ai/routing/router.dart';
 import 'package:flutter/material.dart';
@@ -675,6 +677,25 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     final router = ref.read(routerProvider);
     if (n.productId != null && n.productId!.isNotEmpty) {
       router.push('/product/${n.productId}');
+    } else if (n.flow == AnalysisFlowKind.compare &&
+        (n.compareIds ?? '').isNotEmpty) {
+      // Kullanıcı bu arada karşılaştırmayı KAPATMIŞ ya da BAŞKA bir
+      // karşılaştırma kurmuş olabilir. Bildirim kendi ürün kümesini taşır →
+      // havuzu ondan yeniden kur, sonra sekmeye git: ekran hemen o
+      // karşılaştırmayı ve hazır raporu gösterir.
+      final ids = n.compareIds!
+          .split(',')
+          .map((x) => x.trim())
+          .where((x) => x.isNotEmpty)
+          .toList();
+      final session = ref.read(compareSessionProvider);
+      if (compareAiKey(session.selectedProductIds) != compareAiKey(ids)) {
+        ref.read(compareSessionProvider.notifier).state = session.copyWith(
+          selectedProductIds: ids,
+          comparedProducts: null,
+        );
+      }
+      router.go(AppRoutes.compare);
     } else {
       final route = switch (n.flow) {
         AnalysisFlowKind.compare => AppRoutes.compare,

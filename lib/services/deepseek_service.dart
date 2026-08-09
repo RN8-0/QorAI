@@ -608,6 +608,9 @@ Return valid JSON:
         }
         return null;
       }(),
+      // TEK RAPOR ŞABLONU: ham yanıt taşınır (criticalPoints, quizInsights,
+      // communityThemes, featureMatches, sources, priceOutlook...).
+      raw: Map<String, dynamic>.from(response),
     );
   }
 
@@ -1050,6 +1053,28 @@ Return valid JSON (all text in $langName):
     {"label": "$lifestyleMatch", "score": <0-100>, "emoji": "🏠"}
   ],
   "verdict": "EXACTLY 2 short paragraphs, ~90 words total: (1) technical overview, market positioning and real performance, (2) build/reliability, value assessment and who this product is best suited for. Professional tone, specific details, no filler. In $langName. NO user attribute lists.",
+  "decision": "buy|consider|skip",
+  "confidence": <0-100 integer>,
+  "bestFor": "1-2 sentences describing the buyer this is perfect for. In $langName.",
+  "notFor": "1-2 sentences describing who should skip it. In $langName.",
+  "criticalPoints": [
+    {"title": "short warning/insight", "detail": "2 sentences on why it changes the decision", "severity": "high|mid|low"}
+  ],
+  "quizInsights": [
+    {"topic": "what the question was about", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences on how it moved the score"}
+  ],
+  "featureMatches": [
+    {"label": "feature/spec", "productValue": "value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 sentences"}
+  ],
+  "communityThemes": [
+    {"label": "recurring discussion topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}
+  ],
+  "praisePoints": ["recurring positive 1", "recurring positive 2", "recurring positive 3"],
+  "complaintPoints": ["recurring complaint 1", "recurring complaint 2", "recurring complaint 3"],
+  "reliabilityNotes": [{"title": "durability/support/warranty note", "detail": "1-2 sentences"}],
+  "sources": ["Reddit", "<source type in $langName>"],
+  "verificationNotes": ["what is grounded", "what remains uncertain"],
+  "priceOutlook": {"trend": "up|down|stable", "bestTime": "specific window", "note": "1-2 sentences"},
   "prosForUser": ["Concise pro 1 citing a specific product trait", "Concise pro 2", "Concise pro 3", "Optional concise pro 4"],
   "consForUser": ["Concise con 1 with real-world impact", "Concise con 2", "Concise con 3"],
   "alternatives": ["Full model name of alternative 1", "Full model name of alternative 2", "Full model name of alternative 3"],
@@ -1062,6 +1087,12 @@ Return valid JSON (all text in $langName):
 }
 
 - sentimentBreakdown values are integers summing to ~100 — the share of positive/neutral/negative community voice about this product.
+- criticalPoints: 4-6 items that genuinely CHANGE the decision (compatibility traps, hidden costs, ecosystem lock-in, service coverage) - never restated specs.
+- quizInsights: ONE entry per answered quiz question (4-6). `impact` is NEGATIVE when the answer works against this product.
+- featureMatches: 6-10 need/feature matches using concrete product values.
+- communityThemes: 5-6 topics with VARIED sentiment (not all positive).
+- praisePoints / complaintPoints: 3-5 each, drawn from real community reception.
+- decision must agree with enhancedScore: >=75 buy, 55-74 consider, <55 skip.
 ''';
   }
 

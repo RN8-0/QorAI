@@ -274,6 +274,15 @@ class EnhancedAnalysisResult extends Equatable {
   /// Nullable: older saved analyses derive a fallback from the scores.
   final Map<String, int>? sentimentBreakdown;
 
+  /// AI'ın DÖNDÜRDÜĞÜ HAM JSON. Tek rapor şablonu (`AiReportView`) ürün
+  /// raporuyla AYNI bölümleri ister — criticalPoints, quizInsights,
+  /// communityThemes, featureMatches, sources, verificationNotes,
+  /// priceOutlook, bestFor/notFor, decision/confidence... Bunların her birini
+  /// ayrı alan yapmak yerine ham yanıt taşınır; `linkResultToUnified()`
+  /// bunu `product_full_report` şekline çevirir. Eski kayıtlarda boş olur ve
+  /// şablon o bölümleri sessizce atlar.
+  final Map<String, dynamic> raw;
+
   const EnhancedAnalysisResult({
     required this.baseResult,
     required this.enhancedScore,
@@ -288,6 +297,7 @@ class EnhancedAnalysisResult extends Equatable {
     this.personaAnalysis,
     this.overallVerdict,
     this.sentimentBreakdown,
+    this.raw = const {},
   });
 
   Map<String, dynamic> toJson() => {
@@ -304,6 +314,7 @@ class EnhancedAnalysisResult extends Equatable {
     if (personaAnalysis != null) 'personaAnalysis': personaAnalysis,
     if (overallVerdict != null) 'overallVerdict': overallVerdict,
     if (sentimentBreakdown != null) 'sentimentBreakdown': sentimentBreakdown,
+    if (raw.isNotEmpty) 'raw': raw,
   };
 
   factory EnhancedAnalysisResult.fromJson(Map<String, dynamic> j) => EnhancedAnalysisResult(
@@ -326,6 +337,7 @@ class EnhancedAnalysisResult extends Equatable {
             (k, v) => MapEntry(k.toString(), (v as num?)?.round() ?? 0),
           )
         : null,
+    raw: j['raw'] is Map ? Map<String, dynamic>.from(j['raw'] as Map) : const {},
   );
 
   @override

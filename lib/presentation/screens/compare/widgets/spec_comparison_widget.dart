@@ -102,19 +102,29 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
   // ignore: unused_field
   String _unifiedAiProgress = '';
 
-  // Web-parity unified compare report (compare_full_report).
-  Map<String, dynamic>? _fullCompareReport;
-  bool _fullCompareRunning = false;
-  bool _fullCompareError = false;
-  AiReportStageLite _fullCompareStage = AiReportStageLite.prep;
+  // ── KARŞILAŞTIRMA ANALİZİ DURUMU ARTIK GLOBAL ──────────────────────────────
+  // Eskiden quiz/rapor/faz bu widget'ın State'inde tutuluyordu; kullanıcı
+  // sekmeden çıkınca widget dispose oluyor ve üretilen quiz/rapor ÇÖPE
+  // gidiyordu (baloncuk sonsuza kadar dönüyordu). Durum `compareAiProvider`'da,
+  // motor MainShell'de. Burası yalnız ANLIK GÖRÜNTÜYÜ çizer.
+  //
+  // `build()` içinde `ref.watch` ile tazelenir; yalnız BU ürün kümesine ait iş
+  // gösterilir (kullanıcı başka bir karşılaştırma başlatmış olabilir).
+  CompareAiState _ai = const CompareAiState();
 
-  // Web-parity quiz step before the compare report (same UI as link/sub quiz).
-  ProductQuiz? _compareQuiz;
-  List<QuizQuestion> _compareQuizAnswers = const [];
-  int _compareQuizIndex = 0;
-  bool _compareQuizLoading = false;
-  // Workboard'un gerçek başlama zamanı → ilerleme senkron/kesintisiz.
-  DateTime? _compareWorkStartedAt;
+  String get _compareKey => compareAiKey(widget.products.map((p) => p.id));
+
+  Map<String, dynamic>? get _fullCompareReport => _ai.report;
+  bool get _fullCompareRunning => _ai.phase == CompareAiPhase.running;
+  bool get _fullCompareError => _ai.phase == CompareAiPhase.error;
+  AiReportStageLite get _fullCompareStage => _ai.stage;
+  ProductQuiz? get _compareQuiz => _ai.quiz;
+  List<QuizQuestion> get _compareQuizAnswers => _ai.answers;
+  int get _compareQuizIndex => _ai.quizIndex;
+  bool get _compareQuizLoading =>
+      _ai.phase == CompareAiPhase.quizLoading ||
+      _ai.phase == CompareAiPhase.startRequested;
+  DateTime? get _compareWorkStartedAt => _ai.workStartedAt;
   // Kayıtlı karşılaştırma analizinde "verdiğin cevaplar" bölümü açık mı?
   bool _compareSavedAnswersExpanded = false;
 
@@ -153,15 +163,29 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     }
   }
 
+  /// Riverpod dispose'ta `ref` kullanmayı yasaklar → notifier referansı burada
+  /// saklanır (product detay ekranıyla aynı desen).
+  CompareAiNotifier? _aiNotifier;
+  String _viewingKey = '';
+
   @override
   void dispose() {
     _closePiP();
+    // Ekran kapanıyor: "bu karşılaştırma açık" işaretini bırak (bildirim
+    // bastırma). İŞİ İPTAL ETME — arka planda sürmeli.
+    if (_viewingKey.isNotEmpty) _aiNotifier?.clearViewingIfMatches(_viewingKey);
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    _aiNotifier = ref.read(compareAiProvider.notifier);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _viewingKey = _compareKey;
+      ref.read(compareAiProvider.notifier).setViewing(_viewingKey);
+    });
     // Full spec table is built in a background isolate to avoid first-frame
     // jank; it is (re)computed in didChangeDependencies once a locale exists.
     _groupedSpecs = {};
@@ -5934,6 +5958,11 @@ Rules:
   @override
   Widget build(BuildContext context) {
     ref.watch(specDirectionServiceProvider);
+    // Global analiz durumundan BU karşılaştırmaya ait olanı al. Başka bir
+    // karşılaştırmanın işi buraya YANSIMAZ (kullanıcı iki farklı karşılaştırma
+    // yapabilir; ekran hep kendi işini gösterir).
+    final globalAi = ref.watch(compareAiProvider);
+    _ai = globalAi.matches(_compareKey) ? globalAi : const CompareAiState();
 
     return DefaultTabController(
       length: 3,
@@ -6558,8 +6587,10 @@ Rules:
 
     if (offers.isNotEmpty) {
       final offer = offers.first;
+      // Linksiz vitrin satırında domain `merchantProductId`'den gelir → favicon
+      // yine çözülür (aksi hâlde jenerik ikon çıkardı).
       brand = _resolveCompareStoreBrand(
-        '${offer.displayStore} ${offer.network} ${offer.url}',
+        '${offer.store} ${offer.network} ${offer.url.isNotEmpty ? offer.url : offer.storeDomain}',
       );
       url = offer.url;
       if (offer.hasExactPrice) {
@@ -6588,7 +6619,10 @@ Rules:
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (url.isNotEmpty)
+        // Linksiz teklifte de kutu ÇİZİLİR: kullanıcının burada beklediği şey
+        // fiyat. Eski `if (url.isNotEmpty)` koşulu, en ucuz teklif linksiz
+        // olduğunda kolonu tamamen boş bırakıyordu.
+        if (url.isNotEmpty || (shownPrice != null && shownPrice > 0) || loadingPrices)
           _buildCompareStoreBox(
             brand: brand,
             url: url,
@@ -6634,20 +6668,24 @@ Rules:
       alignment: Alignment.center,
       child: _CompareStoreLogo(brand: brand),
     );
+    // Epey vitrin satırı LİNKSİZDİR (fiyat referansı) → tıklanabilir görünmemeli.
+    final hasLink = url.trim().isNotEmpty;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () async {
-          // Amazon linkleri tıklama anında ziyaretçinin mağazasına göre
-          // yeniden etiketlenir (amazon_link.dart); Amazon-dışı URL'ler aynen.
-          final visitor = ref.read(detectedCountryProvider).valueOrNull;
-          final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
-          if (uri == null) return;
-          try {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } catch (_) {}
-        },
+        onTap: !hasLink
+            ? null
+            : () async {
+                // Amazon linkleri tıklama anında ziyaretçinin mağazasına göre
+                // yeniden etiketlenir (amazon_link.dart); diğerleri aynen.
+                final visitor = ref.read(detectedCountryProvider).valueOrNull;
+                final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
+                if (uri == null) return;
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
+              },
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: compact ? 6 : 10,
@@ -6703,11 +6741,12 @@ Rules:
     final selected = country.trim().toUpperCase();
     // Sıkı ülke kuralı: yalnız SEÇİLİ ülkenin canlı teklifleri — US/UK/EUR
     // asla karışmaz (Fiyatlar sekmesiyle birebir aynı davranış).
-    // Compare kolonundaki kutu TIKLANABİLİR bir "satın al" kutusudur, bu yüzden
-    // web'in `bestOfferForLang()` fonksiyonu gibi LİNKLİ teklif şart. (Fiyatlar
-    // sekmesi linksiz vitrin satırlarını da listeler — orası liste, burası link.)
+    // Fiyatlar sekmesiyle AYNI filtre: linksiz Epey vitrin satırları da girer.
+    // (Önce burada link şartı vardı; karşılaştırma ekranında fiyatların hiç
+    // görünmemesinin sebebi oydu — ürünlerin çoğunda en ucuz teklif LİNKSİZ.)
+    // Linksiz teklif seçildiğinde kutu tıklanamaz olur, fiyat yine görünür.
     final live = offers
-        .where((offer) => offer.isLive && offer.hasLink)
+        .where((offer) => offer.isDisplayable)
         .where((offer) => offer.country.trim().toUpperCase() == selected)
         .toList();
     live.sort((a, b) {
@@ -6953,11 +6992,6 @@ Rules:
     );
   }
 
-  AiReportStageLite _mapStage(AiReportStage s) => switch (s) {
-    AiReportStage.prep => AiReportStageLite.prep,
-    AiReportStage.research => AiReportStageLite.research,
-    AiReportStage.report => AiReportStageLite.report,
-  };
 
   Map<String, dynamic> _buildAiProfile() {
     final u = ref.read(userProfileProvider).valueOrNull;
@@ -7210,63 +7244,6 @@ Rules:
   }
 
   /// Karşılaştırma analizi bitince tam raporu + quiz cevaplarını geçmişe yazar.
-  void _saveCompareAnalysisHistory(
-    Map<String, dynamic> report,
-    List<QuizQuestion> quizAnswers,
-  ) {
-    if (widget.products.length < 2) return;
-    final ids = widget.products.map((p) => p.id).toList();
-    final signature = ([...ids]..sort()).join('|');
-    final names = widget.products
-        .map((p) => p.nameForLanguage(_appLang))
-        .toList();
-    final answered = quizAnswers
-        .where((q) => q.selectedOption != null)
-        .map(
-          (q) => {
-            'question': q.text,
-            'answer': q.selectedOption,
-            'options': q.options,
-          },
-        )
-        .toList();
-    final score =
-        (report['matchScore'] as num?)?.toDouble() ??
-        (report['overallScore'] as num?)?.toDouble() ??
-        0.0;
-    final entry = <String, dynamic>{
-      'id': DateTime.now().microsecondsSinceEpoch.toString(),
-      'type': 'compare',
-      'signature': signature,
-      'products': names,
-      'productIds': ids,
-      'category': widget.products.first.category,
-      'score': score,
-      'report': report,
-      'quizAnswers': answered,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    try {
-      ref
-          .read(pendingCompareAnalysisHistoryProvider.notifier)
-          .update(
-            (list) => [
-              entry,
-              ...list.where((e) => e['signature'] != signature),
-            ],
-          );
-    } catch (_) {}
-    try {
-      final auth = ref.read(authStateProvider).valueOrNull;
-      if (auth != null) {
-        ref
-            .read(pbDataSourceProvider)
-            .saveCompareAnalysisHistory(auth, entry)
-            .then((_) => ref.invalidate(compareAnalysisHistoryProvider))
-            .catchError((_) {});
-      }
-    } catch (_) {}
-  }
 
   Widget _buildCompareQuizSurround({required Widget child}) {
     return Container(
@@ -7389,95 +7366,26 @@ Rules:
     }
     // Web paritesi: önce karşılaştırmaya özel quiz üret + göster (link/abonelik
     // analizindeki AYNI quiz UI'ı), sonra cevaplarla raporu çalıştır.
-    setState(() {
-      _compareQuizLoading = true;
-      _compareQuiz = null;
-      _fullCompareError = false;
-      _compareWorkStartedAt = DateTime.now();
-    });
-    _setCompareBusy(true); // Q butonunda spinner: quiz üretimi başladı
-    // Web paritesi: Gemini öncelikli + allProducts ile compare quizi (link
-    // compare akışıyla aynı), DeepSeek fallback.
-    final names =
-        widget.products.map((p) => p.nameForLanguage(_appLang)).join(' vs ');
-    final cat = widget.products.first.category;
-    final allInfo = widget.products
-        .map((p) => {
-              'title': p.nameForLanguage(_appLang),
-              'url': '',
-              'category': p.category,
-            })
-        .toList();
-    final aiProfile = ref.read(userProfileProvider).valueOrNull;
-    ProductQuiz? quiz;
-    try {
-      quiz = await ref
-          .read(geminiServiceProvider)
-          .generateQuiz(
-            category: cat,
-            productTitle: names,
-            url: '',
-            language: _appLang,
-            allProducts: allInfo,
-            profile: aiProfile,
-          )
-          .timeout(const Duration(seconds: 45));
-    } catch (e) {
-      debugPrint('[Qor AI] compare quiz (gemini) failed, trying deepseek: $e');
-      try {
-        quiz = await ref
-            .read(deepSeekServiceProvider)
-            .generateQuiz(
-              category: cat,
-              productTitle: names,
-              url: '',
-              language: _appLang,
-            )
-            .timeout(const Duration(seconds: 45));
-      } catch (e2) {
-        debugPrint('[Qor AI] compare quiz generation failed: $e2');
-      }
-    }
-    // KRİTİK: quiz üretilirken kullanıcı ekrandan çıkarsa burada `mounted`
-    // false olur. Busy bayrağı GLOBAL hub'da duruyor ve autoDispose değil —
-    // temizlemeden dönersek "analiz sürüyor" kilidi uygulama kapanana kadar
-    // takılı kalır ve kullanıcı bir daha HİÇBİR analiz başlatamaz.
-    if (!mounted) {
-      _setCompareBusy(false);
-      return;
-    }
-    if (quiz != null && quiz.questions.isNotEmpty) {
-      setState(() {
-        _compareQuiz = quiz;
-        _compareQuizAnswers =
-            quiz!.questions.map((q) => q.copyWith()).toList();
-        _compareQuizIndex = 0;
-        _compareQuizLoading = false;
-      });
-      _signalCompareReady(AnalysisNoticeKind.quiz);
-    } else {
-      setState(() => _compareQuizLoading = false);
-      await _runCompareReport(const []);
-    }
+    //
+    // İŞ ARTIK BURADA KOŞMUYOR: durum `compareAiProvider`'a yazılır, motoru her
+    // zaman canlı olan MainShell yürütür. Böylece kullanıcı sekmeden çıksa,
+    // hatta karşılaştırmayı kapatsa bile quiz/rapor üretimi sürer ve hazır
+    // olunca bildirim düşer.
+    ref.read(compareAiProvider.notifier).requestStart(
+          products: widget.products,
+          label: widget.products.map((p) => p.nameForLanguage(_appLang)).join(' vs '),
+          lang: _appLang,
+          profile: _buildAiProfile(),
+        );
   }
 
   void _onCompareQuizAnswer(int index, String answer) {
-    if (index < 0 || index >= _compareQuizAnswers.length) return;
-    setState(() {
-      _compareQuizAnswers[index] =
-          _compareQuizAnswers[index].copyWith(selectedOption: answer);
-      if (index == _compareQuizIndex &&
-          _compareQuizIndex < _compareQuizAnswers.length - 1) {
-        _compareQuizIndex++;
-      }
-    });
+    ref.read(compareAiProvider.notifier).answer(index, answer);
   }
 
   Future<void> _submitCompareQuiz() async {
-    final answers = _compareQuizAnswers;
-    _persistCompareQuizAnswers(answers); // profile + tanıma algoritması
-    setState(() => _compareQuiz = null);
-    await _runCompareReport(answers);
+    _persistCompareQuizAnswers(_compareQuizAnswers); // profil + tanıma
+    ref.read(compareAiProvider.notifier).requestReport();
   }
 
   /// Karşılaştırma quiz cevaplarını kullanıcı profiline (quizHistory) yazar —
@@ -7515,97 +7423,17 @@ Rules:
   }
 
   Future<void> _skipCompareQuiz() async {
-    setState(() => _compareQuiz = null);
-    await _runCompareReport(const []);
+    ref.read(compareAiProvider.notifier).requestReport(skipQuiz: true);
   }
 
   /// Runs the compare_full_report with collected quiz answers. The AI feature
   /// limit is recorded by [_runCompareFullReport] before the quiz, so this does
   /// NOT re-gate.
-  String get _compareLabel {
-    final title = widget.products
-        .take(2)
-        .map((p) => p.nameForLanguage(_appLang))
-        .where((n) => n.trim().isNotEmpty)
-        .join(' vs ');
-    return title.isEmpty
-        ? (_appLang == 'tr' ? 'Karşılaştırma' : 'Comparison')
-        : title;
-  }
 
-  /// Compare quiz/analiz KOŞARKEN Q butonunda spinner için hub'a busy sinyali.
-  void _setCompareBusy(bool busy) {
-    ref
-        .read(analysisHubProvider.notifier)
-        .setBusy(AnalysisFlowKind.compare, busy);
-  }
-
-  /// Compare quiz/rapor HAZIR olduğunda Qor chat bildirim merkezine (hub) düşer;
-  /// kullanıcı chat'ten "Quize/Analize git" ile compare sekmesine döner.
-  void _signalCompareReady(AnalysisNoticeKind kind) {
-    ref.read(analysisHubProvider.notifier)
-      ..setBusy(AnalysisFlowKind.compare, false)
-      ..pushNotice(
-        AnalysisNotice(
-          id: 'compare',
-          flow: AnalysisFlowKind.compare,
-          kind: kind,
-          label: _compareLabel,
-          tabIndex: 1,
-        ),
-      );
-  }
-
-  Future<void> _runCompareReport(List<QuizQuestion> quizAnswers) async {
-    if (_fullCompareRunning) return;
-    if (!mounted) return;
-    setState(() {
-      _fullCompareRunning = true;
-      _fullCompareError = false;
-      _fullCompareStage = AiReportStageLite.prep;
-      _compareWorkStartedAt = DateTime.now();
-    });
-    _setCompareBusy(true); // Q butonunda spinner: analiz koşuyor
-    try {
-      final report = await AiReportService.runCompareReport(
-        ref: ref,
-        products: widget.products,
-        lang: _appLang,
-        profile: _buildAiProfile(),
-        quizAnswers: quizAnswers,
-        onStage: (s) {
-          if (!mounted) return;
-          setState(() => _fullCompareStage = _mapStage(s));
-        },
-      );
-      if (!mounted) {
-        _setCompareBusy(false);
-        return;
-      }
-      setState(() {
-        _fullCompareRunning = false;
-        if (report != null) {
-          _fullCompareReport = report;
-          _fullCompareError = false;
-        } else {
-          _fullCompareError = true;
-        }
-      });
-      if (report != null) {
-        _saveCompareAnalysisHistory(report, quizAnswers);
-        _signalCompareReady(AnalysisNoticeKind.report); // busy'yi de kapatır
-      } else {
-        _setCompareBusy(false);
-      }
-    } catch (e) {
-      _setCompareBusy(false);
-      if (!mounted) return;
-      setState(() {
-        _fullCompareRunning = false;
-        _fullCompareError = true;
-      });
-    }
-  }
+  // NOT: `_setCompareBusy`, `_signalCompareReady`, `_runCompareReport` ve
+  // widget içindeki geçmiş kaydı KALDIRILDI. Hepsi artık MainShell'de
+  // (`_runCompareQuizPhase` / `_runCompareReportPhase` / `_feedHubCatalogCompare`)
+  // — widget dispose olsa bile iş sürsün ve bildirim düşsün diye.
 
   // ignore: unused_element
   Widget _buildAiStartCard({

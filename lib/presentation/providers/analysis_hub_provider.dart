@@ -29,6 +29,12 @@ class AnalysisNotice {
   /// Link/abonelik/karşılaştırma için gidilecek sekme index'i (1/2/3).
   final int? tabIndex;
 
+  /// Katalog karşılaştırması için ÜRÜN KÜMESİ (`compareAiKey`, virgüllü sıralı
+  /// id listesi). Kullanıcı bu arada karşılaştırmayı kapatmış ya da BAŞKA bir
+  /// karşılaştırma kurmuş olabilir — bildirim, havuzu kendi id'leriyle yeniden
+  /// kurar, böylece "tıklayınca anında açılır".
+  final String? compareIds;
+
   const AnalysisNotice({
     required this.id,
     required this.flow,
@@ -36,6 +42,7 @@ class AnalysisNotice {
     required this.label,
     this.productId,
     this.tabIndex,
+    this.compareIds,
   });
 
   /// Bildirimin GÖTÜRDÜĞÜ içeriğin kimliği. [AnalysisHubState.viewing] ile
@@ -46,6 +53,13 @@ class AnalysisNotice {
       return productId != null && productId!.isNotEmpty
           ? 'product:$productId'
           : 'product';
+    }
+    // Karşılaştırma ürün kümesine özgüdür: kullanıcı BAŞKA bir karşılaştırma
+    // ekranındayken bu bildirimin bastırılmaması gerekir.
+    if (flow == AnalysisFlowKind.compare &&
+        compareIds != null &&
+        compareIds!.isNotEmpty) {
+      return 'compare:$compareIds';
     }
     return flow.name;
   }

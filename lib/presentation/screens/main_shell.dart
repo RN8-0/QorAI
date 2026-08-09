@@ -23,6 +23,7 @@ import "package:qor_ai/core/theme.dart";
 import "package:qor_ai/core/extensions.dart";
 import "package:qor_ai/l10n/app_localizations.dart";
 import "package:qor_ai/presentation/providers/product_analysis_provider.dart";
+import "package:qor_ai/presentation/providers/compare_analysis_state_provider.dart";
 import "package:qor_ai/presentation/providers/analysis_hub_provider.dart";
 import "package:qor_ai/services/ai_report_service.dart";
 import "package:qor_ai/presentation/widgets/shared/ai_report_view.dart"
@@ -214,6 +215,72 @@ class _MainShellState extends ConsumerState<MainShell>
           );
         }
       case SubFlowPhase.idle:
+        hub.setBusy(flow, false);
+    }
+  }
+
+  /// KATALOG karşılaştırma (ürün-vs-ürün) → hub. Bildirim id'si ÜRÜN KÜMESİNE
+  /// bağlıdır (`compare:<ids>`): kullanıcı başka bir karşılaştırma başlatırsa
+  /// iki bildirim birbirini ezmez, her biri kendi karşılaştırmasını açar.
+  void _feedHubCatalogCompare(
+    AnalysisHubNotifier hub,
+    CompareAiState? prev,
+    CompareAiState next,
+    bool isTr,
+  ) {
+    const flow = AnalysisFlowKind.compare;
+    if (next.key.isEmpty) {
+      hub.setBusy(flow, false);
+      return;
+    }
+    final id = 'compare:${next.key}';
+    final label = next.label.isNotEmpty
+        ? next.label
+        : (isTr ? 'Karşılaştırma' : 'Comparison');
+    switch (next.phase) {
+      case CompareAiPhase.startRequested:
+      case CompareAiPhase.quizLoading:
+      case CompareAiPhase.reportRequested:
+      case CompareAiPhase.running:
+        hub.setBusy(flow, true);
+        hub.clearNotice(flow, id: id);
+      case CompareAiPhase.quiz:
+        hub.setBusy(flow, false);
+        if (next.quizReadySeq > (prev?.quizReadySeq ?? 0)) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.quiz,
+              label: label,
+              tabIndex: 1,
+              compareIds: next.key,
+            ),
+          );
+        }
+      case CompareAiPhase.done:
+        hub.setBusy(flow, false);
+        if (next.reportReadySeq > (prev?.reportReadySeq ?? 0)) {
+          hub.pushNotice(
+            AnalysisNotice(
+              id: id,
+              flow: flow,
+              kind: AnalysisNoticeKind.report,
+              label: label,
+              tabIndex: 1,
+              compareIds: next.key,
+            ),
+          );
+        }
+      case CompareAiPhase.error:
+        hub.setBusy(flow, false);
+        hub.clearNotice(flow, id: id);
+        hub.setAlert(
+          isTr
+              ? '⚠️ $label karşılaştırma analizi tamamlanamadı. Lütfen tekrar deneyin.'
+              : '⚠️ Comparison analysis for $label could not be completed. Please try again.',
+        );
+      case CompareAiPhase.idle:
         hub.setBusy(flow, false);
     }
   }
@@ -413,6 +480,158 @@ class _MainShellState extends ConsumerState<MainShell>
     AiReportStage.research => AiReportStageLite.research,
     AiReportStage.report => AiReportStageLite.report,
   };
+
+  // ── KATALOG KARŞILAŞTIRMA MOTORU ────────────────────────────────────────
+  // Eskiden `SpecComparisonWidget`'ın State'inde koşuyordu: kullanıcı sekmeden
+  // çıkınca widget dispose oluyor, `if (!mounted) return;` dalları üretilen
+  // quiz/raporu ÇÖPE ATIYORDU → baloncuk dönüyor ama iş hiç "hazır" olmuyordu.
+  // Motor artık her zaman canlı olan shell'de; durum `compareAiProvider`'da.
+
+  Future<void> _runCompareQuizPhase(CompareAiState s) async {
+    if (s.products.length < 2) return;
+    final key = s.key;
+    final notifier = ref.read(compareAiProvider.notifier);
+    notifier.setQuizLoading(key);
+
+    final lang = s.lang;
+    final names = s.products.map((p) => p.nameForLanguage(lang)).join(' vs ');
+    final category = s.products.first.category;
+    final allInfo = s.products
+        .map(
+          (p) => {
+            'title': p.nameForLanguage(lang),
+            'url': '',
+            'category': p.category,
+          },
+        )
+        .toList();
+    final aiProfile = ref.read(userProfileProvider).valueOrNull;
+
+    ProductQuiz? quiz;
+    try {
+      quiz = await ref
+          .read(geminiServiceProvider)
+          .generateQuiz(
+            category: category,
+            productTitle: names,
+            url: '',
+            language: lang,
+            profile: aiProfile,
+            allProducts: allInfo,
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (_) {
+      try {
+        quiz = await ref
+            .read(deepSeekServiceProvider)
+            .generateQuiz(
+              category: category,
+              productTitle: names,
+              url: '',
+              language: lang,
+            )
+            .timeout(const Duration(seconds: 45));
+      } catch (e) {
+        debugPrint('[Qor AI] compare quiz generation failed: $e');
+      }
+    }
+
+    // Kullanıcı bu arada BAŞKA bir karşılaştırma başlattıysa bu sonuç bayattır.
+    final cur = ref.read(compareAiProvider);
+    if (!cur.matches(key) || cur.phase != CompareAiPhase.quizLoading) return;
+    if (quiz != null && quiz.questions.isNotEmpty) {
+      notifier.setQuiz(key, quiz);
+    } else {
+      // Quiz üretilemedi → raporu boş cevapla koş (eski davranış).
+      notifier.requestReport(skipQuiz: true);
+    }
+  }
+
+  Future<void> _runCompareReportPhase(CompareAiState s) async {
+    if (s.products.length < 2) return;
+    final key = s.key;
+    final notifier = ref.read(compareAiProvider.notifier);
+    notifier.setRunning(key);
+    try {
+      // Motor asla SONSUZA kadar takılmasın: aksi hâlde Q butonundaki spinner
+      // hiç durmaz (kullanıcının bildirdiği "sonsuz döngü" belirtisi).
+      final report = await AiReportService.runCompareReport(
+        ref: ref,
+        products: s.products,
+        lang: s.lang,
+        profile: s.profile,
+        quizAnswers: s.answers,
+        onStage: (st) => notifier.setStage(key, _mapProductStage(st)),
+      ).timeout(const Duration(minutes: 4));
+      final cur = ref.read(compareAiProvider);
+      if (!cur.matches(key)) return; // başka karşılaştırmayla değiştirilmiş
+      if (report != null) {
+        notifier.setReport(key, report);
+        _saveCompareAnalysisHistory(s, report);
+      } else {
+        notifier.setError(key);
+      }
+    } catch (_) {
+      notifier.setError(key);
+    }
+  }
+
+  /// Karşılaştırma raporunu geçmişe yazar. (Eskiden widget'ta duruyordu; motor
+  /// buraya taşınınca kayıt da buraya geldi — aksi hâlde kullanıcı ekrandan
+  /// çıkmışsa rapor üretilip HİÇBİR yere yazılmıyordu.)
+  void _saveCompareAnalysisHistory(
+    CompareAiState s,
+    Map<String, dynamic> report,
+  ) {
+    if (s.products.length < 2) return;
+    final ids = s.products.map((p) => p.id).toList();
+    final signature = ([...ids]..sort()).join('|');
+    final answered = s.answers
+        .where((q) => q.selectedOption != null)
+        .map(
+          (q) => {
+            'question': q.text,
+            'answer': q.selectedOption,
+            'options': q.options,
+          },
+        )
+        .toList();
+    final entry = <String, dynamic>{
+      'id': DateTime.now().microsecondsSinceEpoch.toString(),
+      'type': 'compare',
+      'signature': signature,
+      'products': s.products.map((p) => p.nameForLanguage(s.lang)).toList(),
+      'productIds': ids,
+      'category': s.products.first.category,
+      'score':
+          (report['matchScore'] as num?)?.toDouble() ??
+          (report['overallScore'] as num?)?.toDouble() ??
+          0.0,
+      'report': report,
+      'quizAnswers': answered,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    try {
+      ref
+          .read(pendingCompareAnalysisHistoryProvider.notifier)
+          .update(
+            (list) => [
+              entry,
+              ...list.where((e) => e['signature'] != signature),
+            ],
+          );
+    } catch (_) {}
+    try {
+      final auth = ref.read(authStateProvider).valueOrNull;
+      if (auth != null) {
+        ref
+            .read(pbDataSourceProvider)
+            .saveCompareAnalysisHistory(auth, entry)
+            .then((_) => ref.invalidate(compareAnalysisHistoryProvider))
+            .catchError((_) {});
+      }
+    } catch (_) {}
+  }
 
   Future<void> _runProductQuizPhase(ProductAnalysisState s) async {
     final product = s.product;
@@ -623,7 +842,12 @@ class _MainShellState extends ConsumerState<MainShell>
     } else {
       switch (widget.navigationShell.currentIndex) {
         case 1:
-          key = AnalysisFlowKind.compare.name;
+          // Karşılaştırma sekmesi: hangi ÜRÜN KÜMESİ açıksa o. Başka bir
+          // karşılaştırmanın bildirimi bastırılmamalı.
+          final open = ref.read(compareAiProvider).viewingKey;
+          key = (open != null && open.isNotEmpty)
+              ? 'compare:$open'
+              : AnalysisFlowKind.compare.name;
         case 2:
           key = AnalysisFlowKind.link.name;
         case 3:
@@ -801,6 +1025,19 @@ class _MainShellState extends ConsumerState<MainShell>
         Future.microtask(() => _runProductReportPhase(next));
       }
       _feedHubProduct(hub, prev, next, isTr);
+    });
+    // Katalog karşılaştırma akışı: MOTOR burada koşar (shell her zaman canlı),
+    // böylece kullanıcı sekmeden çıksa da quiz/rapor üretilmeye devam eder.
+    ref.listen<CompareAiState>(compareAiProvider, (prev, next) {
+      if (!mounted) return;
+      if (next.phase == CompareAiPhase.startRequested &&
+          prev?.phase != CompareAiPhase.startRequested) {
+        Future.microtask(() => _runCompareQuizPhase(next));
+      } else if (next.phase == CompareAiPhase.reportRequested &&
+          prev?.phase != CompareAiPhase.reportRequested) {
+        Future.microtask(() => _runCompareReportPhase(next));
+      }
+      _feedHubCatalogCompare(hub, prev, next, isTr);
     });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

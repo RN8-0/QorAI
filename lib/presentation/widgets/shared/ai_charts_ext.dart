@@ -335,23 +335,31 @@ class AicCriticalPoints extends StatelessWidget {
           for (var i = 0; i < rows.length; i++)
             Padding(
               padding: EdgeInsets.only(bottom: i == rows.length - 1 ? 0 : 10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(11),
-                decoration: BoxDecoration(
-                  color: context.surfaceColor,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border(
-                    left: BorderSide(
-                      color: tone(_s(rows[i]['severity'])),
-                      width: 3,
-                    ),
-                    top: BorderSide(color: context.dividerColor),
-                    right: BorderSide(color: context.dividerColor),
-                    bottom: BorderSide(color: context.dividerColor),
+              // ÖNEM ŞERİDİ AYRI BİR ELEMAN. Eskiden `Border(left: 3px, diğerleri
+              // 1px)` + `borderRadius` kullanılıyordu; Flutter yuvarlatılmış
+              // kutuda TEK TİP OLMAYAN kenarlığı çizemez ve paint sırasında
+              // assert atar ("The following is not uniform") → debug build'de
+              // bu bölüm kırmızı hata kutusuna dönüyordu.
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: context.surfaceColor,
+                    border: Border.all(color: context.dividerColor),
                   ),
-                ),
-                child: Column(
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: 3,
+                          color: tone(_s(rows[i]['severity'])),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(11),
+                            child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -387,7 +395,13 @@ class AicCriticalPoints extends StatelessWidget {
                           ),
                         ),
                       ),
-                  ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
