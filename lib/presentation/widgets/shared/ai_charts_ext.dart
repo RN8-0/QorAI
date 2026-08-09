@@ -731,14 +731,18 @@ class AicStatTiles extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: context.dividerColor),
                   ),
+                  // SIMETRI: kutu icindeki etiket/sayi/ipucu YATAY ORTALI.
+                  // Sola dayali oldugu icin rakamlar kutu icinde kayik
+                  // duruyordu (kullanici sikayeti).
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         '${x.icon} ${x.label}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
@@ -748,6 +752,7 @@ class AicStatTiles extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         x.value,
+                        textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 19,
                           fontWeight: FontWeight.w900,
@@ -759,6 +764,7 @@ class AicStatTiles extends StatelessWidget {
                           x.hint,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             fontSize: 10,
                             color: context.textSecondary,

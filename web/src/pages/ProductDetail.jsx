@@ -18,6 +18,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
+import OfferList, { sortedOffers } from '../components/OfferList.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
@@ -1237,45 +1238,10 @@ export default function ProductDetail() {
             ].filter(Boolean))];
 
             const amazonUrl = amazonUrlForProduct(p, sel || 'US');
-            const isAmazonOffer = (o) =>
-              String(o.network || '').toLowerCase().includes('amazon') || /(^|\.)amazon\./i.test(o.url || '');
-            // A REAL scraped Amazon offer for the selected country (epey_amazon
-            // writes price + direct /dp/ASIN link). When it exists it REPLACES
-            // the generic "see price" search link, so the row shows the actual
-            // price and the click lands on the product page, not a search.
-            const amazonOffer = offers
-              .filter((o) => o.url && isAmazonOffer(o) && String(o.country || '').toUpperCase() === sel)
-              .sort((a, b) => (a.hasExactPrice !== b.hasExactPrice ? (a.hasExactPrice ? -1 : 1) : (a.price || Infinity) - (b.price || Infinity)))
-              .find((o) => o.hasExactPrice) || null;
-            // STRICT country rule (user, 2026-07-04): the list shows ONLY the
-            // selected ship-to country's prices. No cross-market fallback —
-            // France selected must never render a German price row; a market
-            // without a scraped price gets just the Amazon geo "see price"
-            // link for that market.
-            // Other retailers shippable to the SELECTED country. Amazon is shown
-            // once as its own row (real offer or geo link), so its stored offers
-            // are dropped here. Linksiz vitrin satırları (epey_store — Epey'in
-            // en ucuz 3 TR mağazası) yalnız gerçek fiyatla listelenir ve
-            // TIKLANMAZ (affiliate yalnız Amazon'da var).
-            const priced = offers
-              .filter((o) => {
-                if (isAmazonOffer(o)) return false;
-                if (!o.url && !o.hasExactPrice) return false;
-                const oc = String(o.country || '').toUpperCase();
-                if (oc && sel && oc !== sel) return false;
-                return true;
-              })
-              .sort((a, b) => {
-                if (a.hasExactPrice !== b.hasExactPrice) return a.hasExactPrice ? -1 : 1;
-                return (a.price || Infinity) - (b.price || Infinity);
-              });
-            // Mağaza logosu: epey_store satırları domaini kayıttan taşır,
-            // linkli satırlarda url'nin hostname'i kullanılır.
-            const storeFavDomain = (o) => {
-              if (o.storeDomain) return o.storeDomain;
-              try { return new URL(o.directUrl || o.url).hostname.replace(/^www\./, ''); } catch { return ''; }
-            };
-            if (!amazonUrl && !amazonOffer && priced.length === 0 && countryOptions.length <= 1) return null;
+            // Liste mantigi + gorunumu PAYLASILAN bilesende (components/OfferList.jsx):
+            // urun sayfasi ve karsilastirma sayfasi AYNI kodu kullanir.
+            const priceRows = sortedOffers(offers, sel);
+            if (!amazonUrl && priceRows.length === 0 && countryOptions.length <= 1) return null;
             return (
               <section className="pd-block">
                 {/* Title + ship-to selector on one aligned row (selector right,
@@ -1297,45 +1263,13 @@ export default function ProductDetail() {
                     </label>
                   )}
                 </div>
-                <div className="pd-prices-list">
-                  {amazonOffer ? (
-                    <a className="pd-price-row" href={offerClickPath(amazonOffer, geoCountry)} target="_blank" rel="sponsored noopener nofollow">
-                      <span className="pd-price-store"><AmazonLogo height={26} /></span>
-                      <span className="pd-price-amt">{formatOfferPrice(amazonOffer, lang)}</span>
-                    </a>
-                  ) : amazonUrl && (
-                    <a className="pd-price-row" href={amazonGoPath(p, sel)} target="_blank" rel="sponsored noopener nofollow">
-                      <span className="pd-price-store"><AmazonLogo height={26} /></span>
-                      <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
-                    </a>
-                  )}
-                  {priced.map((o) => {
-                    const dom = storeFavDomain(o);
-                    const storeCell = (
-                      <span className="pd-price-store">
-                        {dom ? <img className="pd-store-fav" src={`https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(dom)}`} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} /> : null}
-                        {o.store || L('Store', 'Mağaza', 'Shop')}
-                      </span>
-                    );
-                    // Linksiz vitrin satırı: sadece logo + fiyat, tıklanmaz.
-                    if (!o.url) {
-                      return (
-                        <div key={o.id || `${o.store}-${o.price}`} className="pd-price-row pd-price-row-static">
-                          {storeCell}
-                          <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
-                        </div>
-                      );
-                    }
-                    return (
-                      <a key={o.id || o.url} className="pd-price-row" href={offerClickPath(o, geoCountry)} target="_blank" rel="sponsored noopener">
-                        {storeCell}
-                        {o.hasExactPrice
-                          ? <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
-                          : <span className="pd-price-amt pd-price-amt-link">{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>}
-                      </a>
-                    );
-                  })}
-                </div>
+                <OfferList
+                  offers={offers}
+                  country={sel}
+                  lang={lang}
+                  geoCountry={geoCountry}
+                  amazonHref={amazonUrl ? amazonGoPath(p, sel) : ''}
+                />
               </section>
             );
           })()}

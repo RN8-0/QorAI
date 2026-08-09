@@ -6552,179 +6552,118 @@ Rules:
     required bool isBest,
     bool showSimilar = false,
   }) {
+    // ── AYNI LISTE, TEK KAYNAK ────────────────────────────────────────────
+    // Burasi eskiden kendi "en iyi teklif" kutusunu ciziyordu: TEK kutuda tek
+    // magaza. Kullanici urun sayfasindaki listenin AYNISINI istiyor —
+    // magazalar alt alta, ucuzdan pahaliya, yeni fiyat eklendiginde kendi
+    // sirasina girsin. Iki ekran da artik `StoreOfferList` kullaniyor
+    // (widgets/shared/store_offer_list.dart); davranis tek yerde degisir.
     final offersAsync = ref.watch(productOffersProvider(product.id));
-    final offers = _sortCompareOffersForCountry(
-      offersAsync.valueOrNull ?? const <ProductOfferModel>[],
-      country,
-    );
-    final stores = product.getAffiliateLinksForCountry(country);
-    final entries = (stores.isNotEmpty ? stores : product.affiliateLinks)
-        .entries
-        .where((entry) => entry.value.trim().isNotEmpty)
-        .where(
-          (entry) => !offers.any(
-            (offer) =>
-                offer.url.trim().toLowerCase() ==
-                entry.value.trim().toLowerCase(),
-          ),
-        )
-        .take(1)
-        .toList(growable: false);
+    final offers = offersAsync.valueOrNull ?? const <ProductOfferModel>[];
+    final rows = bestPerStore(sortOffersForCountry(offers, country), limit: 6);
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
-    // 3-4 ürün karşılaştırılınca her kolon dar → compact fontlar/paddingler.
-    final compact = widget.products.length >= 3;
-
-    // TEK TİP mağaza kutusu (kullanıcı isteği): logo → küçük mağaza adı → fiyat
-    // (fiyat yoksa "Fiyata bak"). Kaynak önceliği: canlı teklif > kayıtlı
-    // affiliate > Amazon fallback. Fiyat: kesin teklif fiyatı > seçili ülke
-    // fiyatı (info.amount). Tüm kolonlar AYNI yapıda → fiyat OLSUN OLMASIN
-    // hepsi AYNI HİZADA. "En iyi fiyat" rozeti + üstteki ayrı büyük fiyat
-    // KALDIRILDI; kırpılan "A..." adı düzeltildi (fiyat ne ise o yazar).
-    _CompareStoreBrandData brand;
-    String url = '';
-    double? shownPrice;
-    String shownCurrency = info.currency;
-
-    if (offers.isNotEmpty) {
-      final offer = offers.first;
-      // Linksiz vitrin satırında domain `merchantProductId`'den gelir → favicon
-      // yine çözülür (aksi hâlde jenerik ikon çıkardı).
-      brand = _resolveCompareStoreBrand(
-        '${offer.store} ${offer.network} ${offer.url.isNotEmpty ? offer.url : offer.storeDomain}',
-      );
-      url = offer.url;
-      if (offer.hasExactPrice) {
-        shownPrice = offer.price;
-        shownCurrency = offer.currency;
-      } else {
-        shownPrice = info.amount;
-      }
-    } else if (entries.isNotEmpty) {
-      brand = _resolveCompareStoreBrand(entries.first.key);
-      url = entries.first.value;
-      shownPrice = info.amount;
-    } else {
-      final visitor = ref.watch(detectedCountryProvider).valueOrNull;
-      url = amazonUrlForProduct(product, country, visitorCountry: visitor);
-      brand = _resolveCompareStoreBrand('amazon $url');
-      shownPrice = info.amount;
-    }
-
-    final loadingPrices =
-        shownPrice == null &&
-        offers.isEmpty &&
-        entries.isEmpty &&
-        offersAsync is AsyncLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Linksiz teklifte de kutu ÇİZİLİR: kullanıcının burada beklediği şey
-        // fiyat. Eski `if (url.isNotEmpty)` koşulu, en ucuz teklif linksiz
-        // olduğunda kolonu tamamen boş bırakıyordu.
-        if (url.isNotEmpty || (shownPrice != null && shownPrice > 0) || loadingPrices)
-          _buildCompareStoreBox(
-            brand: brand,
-            url: url,
-            price: shownPrice,
-            currency: shownCurrency,
-            compact: compact,
-            isTr: isTr,
-            loading: loadingPrices,
-          ),
+        if (rows.isNotEmpty)
+          StoreOfferList(
+            offers: offers,
+            country: country,
+            productId: product.id,
+            compact: true,
+            limit: 6,
+          )
+        else if (offersAsync is AsyncLoading)
+          _buildComparePricePlaceholder(isTr ? 'Yükleniyor' : 'Loading')
+        else
+          // Hic teklif yok: ulkeye uygun Amazon arama satiri (liste ile ayni
+          // gorunum) — SIKI ULKE KURALI geregi baska pazarin fiyati gosterilmez.
+          _buildCompareAmazonRow(product: product, country: country, isTr: isTr),
         if (showSimilar) _buildCompareSimilarRow(product),
       ],
     );
   }
 
-  /// Tek tip compare mağaza kutusu: logo → küçük mağaza adı → fiyat (yoksa
-  /// "Fiyata bak"). Tüm ürün kolonlarında AYNI yapı → hizalı; "Amazon" adı
-  /// kırpılmaz, fiyat ne ise gösterilir.
-  Widget _buildCompareStoreBox({
-    required _CompareStoreBrandData brand,
-    required String url,
-    double? price,
-    required String currency,
-    required bool compact,
-    required bool isTr,
-    bool loading = false,
-  }) {
-    final hasPrice = price != null && price > 0;
-    final priceLabel = hasPrice
-        ? AppUtils.formatCurrency(price, currency)
-        : (loading
-              ? (isTr ? 'Yükleniyor' : 'Loading')
-              : (isTr ? 'Fiyata bak' : 'See price'));
-    final logo = Container(
-      width: compact ? 26 : 30,
-      height: compact ? 26 : 30,
-      decoration: BoxDecoration(
-        color: brand.logoUrl == null
-            ? brand.color.withValues(alpha: 0.12)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: brand.color.withValues(alpha: 0.2)),
-      ),
+  Widget _buildComparePricePlaceholder(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       alignment: Alignment.center,
-      child: _CompareStoreLogo(brand: brand),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.dividerColor),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: context.textSecondary,
+        ),
+      ),
     );
-    // Epey vitrin satırı LİNKSİZDİR (fiyat referansı) → tıklanabilir görünmemeli.
-    final hasLink = url.trim().isNotEmpty;
+  }
+
+  /// Teklif yokken gosterilen Amazon satiri — `StoreOfferRow` ile ayni olculer.
+  Widget _buildCompareAmazonRow({
+    required ProductEntity product,
+    required String country,
+    required bool isTr,
+  }) {
+    final visitor = ref.watch(detectedCountryProvider).valueOrNull;
+    final url = amazonUrlForProduct(product, country, visitorCountry: visitor);
+    if (url.isEmpty) {
+      return _buildComparePricePlaceholder(
+        isTr ? 'Bölgende fiyat yok' : 'No price in your region',
+      );
+    }
+    final brand = resolveStoreBrand('amazon');
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: !hasLink
-            ? null
-            : () async {
-                // Amazon linkleri tıklama anında ziyaretçinin mağazasına göre
-                // yeniden etiketlenir (amazon_link.dart); diğerleri aynen.
-                final visitor = ref.read(detectedCountryProvider).valueOrNull;
-                final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
-                if (uri == null) return;
-                try {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (_) {}
-              },
+        onTap: () async {
+          final uri = Uri.tryParse(amazonTagUrlForVisitor(url, visitor));
+          if (uri == null) return;
+          try {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } catch (_) {}
+        },
         child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 6 : 10,
-            vertical: compact ? 8 : 10,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: context.surfaceColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: context.dividerColor),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Row(
             children: [
-              logo,
-              const SizedBox(height: 6),
-              Text(
-                brand.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: compact ? 9.5 : 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.textSecondary,
+              StoreLogo(brand: brand, size: 26),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Amazon',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: context.textSecondary,
+                  ),
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(width: 6),
               Text(
-                priceLabel,
+                isTr ? 'Fiyata bak' : 'See price',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: compact ? 12 : 14,
-                  fontWeight: FontWeight.w900,
-                  color: hasPrice
-                      ? AppTheme.scoreExcellent
-                      : context.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: context.textSecondary,
                 ),
               ),
             ],
@@ -6734,33 +6673,7 @@ Rules:
     );
   }
 
-  List<ProductOfferModel> _sortCompareOffersForCountry(
-    List<ProductOfferModel> offers,
-    String country,
-  ) {
-    final selected = country.trim().toUpperCase();
-    // Sıkı ülke kuralı: yalnız SEÇİLİ ülkenin canlı teklifleri — US/UK/EUR
-    // asla karışmaz (Fiyatlar sekmesiyle birebir aynı davranış).
-    // Fiyatlar sekmesiyle AYNI filtre: linksiz Epey vitrin satırları da girer.
-    // (Önce burada link şartı vardı; karşılaştırma ekranında fiyatların hiç
-    // görünmemesinin sebebi oydu — ürünlerin çoğunda en ucuz teklif LİNKSİZ.)
-    // Linksiz teklif seçildiğinde kutu tıklanamaz olur, fiyat yine görünür.
-    final live = offers
-        .where((offer) => offer.isDisplayable)
-        .where((offer) => offer.country.trim().toUpperCase() == selected)
-        .toList();
-    live.sort((a, b) {
-      if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
-      if (a.hasExactPrice != b.hasExactPrice) {
-        return a.hasExactPrice ? -1 : 1;
-      }
-      if (a.hasExactPrice && b.hasExactPrice && a.price != b.price) {
-        return a.price.compareTo(b.price);
-      }
-      return a.displayStore.compareTo(b.displayStore);
-    });
-    return live;
-  }
+
 
   /// Detay sayfasındaki "Benzer Ürünler" satırının compare karşılığı. Fiyat
   /// bilgisi az olduğunda (≤3) her ürünün altında alternatif öneriler gösterir.

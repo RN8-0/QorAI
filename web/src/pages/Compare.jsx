@@ -3,6 +3,8 @@ import { IconX } from '../components/GlyphIcons.jsx';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
+import OfferList from '../components/OfferList.jsx';
+import { fetchProductOffers } from '../lib/offers';
 import { getSavedComparisonAnalysis, saveComparisonAnalysisHistory, saveComparisonHistory } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, amazonGoPath, scoreClass, scoreLabel } from '../lib/format';
@@ -360,6 +362,19 @@ export default function Compare() {
     const tm = setTimeout(() => saveComparisonHistory(ids, products), 600);
     return () => clearTimeout(tm);
   }, [ids.join(','), products.length]); // eslint-disable-line
+
+  // MAGAZA TEKLIFLERI — urun sayfasiyla AYNI kaynak (`fetchProductOffers`).
+  // Karsilastirma sayfasi eskiden yalnizca katalog rollup fiyatini gosteriyordu
+  // (tek kutuda "Bolgende fiyat yok" + Amazon arama linki); magaza listesi
+  // burada HIC yoktu. Artik iki sayfa ayni veriyi ve ayni bileseni kullaniyor.
+  const [offersById, setOffersById] = useState({});
+  useEffect(() => {
+    let live = true;
+    if (!ids.length) { setOffersById({}); return undefined; }
+    Promise.all(ids.map((id) => fetchProductOffers(id).then((o) => [id, o]).catch(() => [id, []])))
+      .then((pairs) => { if (live) setOffersById(Object.fromEntries(pairs)); });
+    return () => { live = false; };
+  }, [ids.join(',')]); // eslint-disable-line
 
   // Keep the product header cards, price cards and spec table scrolling together
   // horizontally so column N always lines up across all three rows — otherwise
@@ -840,20 +855,23 @@ export default function Compare() {
                 <div className="cmp-scroll-spacer" aria-hidden="true" />
                 <div className="cmp-prices">
                   {slots.map((p) => {
-                    const cp = priceForCountry(p, geoCountry);
                     const amz = amazonUrlForProduct(p, (geoCountry || 'US'));
-                    const amzGo = amazonGoPath(p, (geoCountry || 'US'));
                     const name = displayProductName(p, lang);
                     return (
                       <div className="cmp-price-card" key={p.id}>
                         <Link to={productPath(p)} className="cmp-price-name">{name}</Link>
-                        {cp ? <div className="cmp-price-amt">{formatPriceAmount(cp.price, cp.currency, lang)}</div>
-                          : <div className="cmp-price-none">{L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}</div>}
-                        {amz && (
-                          <a className="cmp-price-row-link" href={amzGo} target="_blank" rel="sponsored noopener nofollow">
-                            <AmazonLogo height={20} /><span>{L('See price', 'Fiyata bak', 'Preis ansehen')}</span>
-                          </a>
-                        )}
+                        {/* Urun sayfasindaki listenin AYNISI: magazalar alt alta,
+                            ucuzdan pahaliya. Yeni fiyat eklendiginde kendi
+                            sirasina girer — ayrica bir sey yapmak gerekmez. */}
+                        <OfferList
+                          offers={offersById[p.id] || []}
+                          country={(geoCountry || 'US').toUpperCase()}
+                          lang={lang}
+                          geoCountry={geoCountry}
+                          amazonHref={amz ? amazonGoPath(p, (geoCountry || 'US')) : ''}
+                          compact
+                          emptyText={L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}
+                        />
                       </div>
                     );
                   })}

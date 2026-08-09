@@ -961,62 +961,62 @@ class _UnifiedBody extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: context.dividerColor),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          // SIMETRI (kullanici istegi): skor halkasi ustte ORTADA, altindaki
+          // her sey yatay ortali. Eskiden halka solda, metinler saginda sola
+          // dayali duruyordu ve rapor "sola kaymis" gorunuyordu.
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             if (score > 0) ...[
               _ScoreRing(value: score.toDouble()),
-              const SizedBox(width: 13),
+              const SizedBox(height: 10),
             ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    urBandLabel(score, l),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: _scoreColor(score),
-                    ),
-                  ),
-                  Text(
-                    l(
-                      'Personalized match score',
-                      'Kişiselleştirilmiş uyum skoru',
-                      'Personalisierter Match-Score',
-                    ),
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: context.textSecondary,
-                    ),
-                  ),
-                  if (headline.isNotEmpty) ...[
-                    const SizedBox(height: 7),
-                    Text(
-                      headline,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600,
-                        color: context.textPrimary,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 9),
-                  DecisionBadge(
-                    score: decision == 'buy'
-                        ? 80
-                        : decision == 'skip'
-                        ? 30
-                        : decision == 'consider'
-                        ? 60
-                        : score,
-                    l: l,
-                  ),
-                ],
+            Text(
+              urBandLabel(score, l),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: _scoreColor(score),
               ),
+            ),
+            Text(
+              l(
+                'Personalized match score',
+                'Kişiselleştirilmiş uyum skoru',
+                'Personalisierter Match-Score',
+              ),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.textSecondary,
+              ),
+            ),
+            if (headline.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Text(
+                headline,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  height: 1.5,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
+              ),
+            ],
+            const SizedBox(height: 9),
+            DecisionBadge(
+              score: decision == 'buy'
+                  ? 80
+                  : decision == 'skip'
+                  ? 30
+                  : decision == 'consider'
+                  ? 60
+                  : score,
+              l: l,
             ),
           ],
         ),

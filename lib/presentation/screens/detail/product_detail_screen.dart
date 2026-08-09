@@ -36,6 +36,7 @@ import 'package:qor_ai/routing/router.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_similar_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_youtube_card.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_premium_section.dart';
+import 'package:qor_ai/presentation/widgets/shared/store_offer_list.dart';
 import 'package:qor_ai/presentation/providers/product_analysis_provider.dart';
 import 'package:qor_ai/presentation/widgets/shared/shared_key_specs_grid.dart';
 import 'package:qor_ai/presentation/widgets/login_required_dialog.dart';

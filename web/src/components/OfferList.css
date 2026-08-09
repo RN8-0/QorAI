@@ -1,0 +1,53 @@
+/* Mağaza fiyat listesi — ürün sayfası ve karşılaştırma sayfası AYNI kuralları
+   kullanır. Sınıf adları `pd-*` olarak KORUNDU: kurallar ProductDetail.css'ten
+   buraya taşındı, iki sayfa da bu dosyayı bileşen üzerinden yükler. */
+
+.pd-prices-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Satırın tamamı tıklama hedefi (solda mağaza logosu/adı, sağda fiyat).
+   Ok ya da "Görüntüle" butonu yok — uygulamayla aynı. */
+.pd-price-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  text-decoration: none; color: var(--text);
+  transition: border-color .15s, box-shadow .15s, transform .05s;
+}
+.pd-price-row:hover {
+  border-color: var(--accent-ring);
+  box-shadow: 0 6px 18px color-mix(in srgb, #020617 8%, transparent);
+}
+.pd-price-row:active { transform: translateY(1px); }
+.pd-price-store { font-weight: 850; font-size: 16px; display: inline-flex; align-items: center; min-width: 0; }
+/* Mağaza favicon'u (Epey vitrin satırları + linkli mağazalar) */
+.pd-store-fav { width: 22px; height: 22px; border-radius: 6px; margin-right: 10px; background: #fff; object-fit: contain; flex: 0 0 22px; }
+/* Linksiz vitrin satırı (epey_store): logo + fiyat, tıklanmaz — hover/basma
+   geri bildirimi yok ki link sanılmasın. */
+.pd-price-row-static { cursor: default; }
+.pd-price-row-static:hover { border-color: var(--border); box-shadow: none; }
+.pd-price-row-static:active { transform: none; }
+/* Country tag on cross-market Amazon rows (e.g. 🇩🇪 DE next to the logo) so
+   the visitor can always tell WHICH storefront a price belongs to. */
+.pd-price-cc { margin-left: 10px; font-size: 13px; font-weight: 800; opacity: 0.75; letter-spacing: 0.4px; }
+.pd-price-amt { margin-left: auto; font-weight: 850; color: #22c55e; font-size: 19px; white-space: nowrap; }
+/* Fiyatsız satırlar (Amazon arama linki) sağda sayı yerine vurgulu bir ipucu
+   gösterir — yine ok yok, satırın tamamı tıklanabilir. */
+.pd-price-amt-link { color: var(--accent); font-size: 14px; font-weight: 800; }
+
+/* ── Karşılaştırma kolonu (dar) ───────────────────────────────────────────
+   Aynı liste, aynı sıra; yalnız ölçüler kolona sığacak şekilde küçülür.
+   Mağaza adı taşarsa kırpılır, fiyat ASLA kırpılmaz. */
+.pd-prices-list-compact { gap: 6px; }
+.pd-prices-list-compact .pd-price-row { padding: 10px 12px; gap: 8px; border-radius: 10px; }
+.pd-prices-list-compact .pd-price-store {
+  font-size: 12.5px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pd-prices-list-compact .pd-store-fav { width: 18px; height: 18px; margin-right: 7px; flex: 0 0 18px; }
+.pd-prices-list-compact .pd-price-amt { font-size: 14.5px; }
+.pd-prices-list-compact .pd-price-amt-link { font-size: 12px; }
+
+.pd-price-empty {
+  padding: 14px 12px; text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--text-3);
+}

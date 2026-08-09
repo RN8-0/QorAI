@@ -24,7 +24,7 @@ class _PricesTabContent extends ConsumerWidget {
     // belirlenen teslimat ülkesinin teklifleri değerlendirilir; başka ülkenin
     // (örn. US) fiyatı ASLA gösterilmez. Web'deki gibi TEK en iyi fiyat + link
     // sunulur — aynı mağaza (Amazon) tekrar tekrar listelenmez.
-    final countryOffers = _sortOffersForCountry(
+    final countryOffers = sortOffersForCountry(
       offersAsync.valueOrNull ?? const <ProductOfferModel>[],
       selected,
     );
@@ -32,7 +32,7 @@ class _PricesTabContent extends ConsumerWidget {
     // gösteriliyordu: scraper yeni mağaza fiyatları eklese bile uygulamada
     // sadece Amazon görünüyordu ("yeni fiyat eklenince uygulamada çıkmıyor").
     // Web ile parite: Amazon'un ALTINDA diğer mağazalar logo + fiyatla listelenir.
-    final storeOffers = _bestPerStore(countryOffers);
+    final storeOffers = bestPerStore(countryOffers);
     final bestOffer = storeOffers.isEmpty ? null : storeOffers.first;
     final isLoadingOffers = offersAsync is AsyncLoading;
 
@@ -48,10 +48,14 @@ class _PricesTabContent extends ConsumerWidget {
               children: [
                 if (bestOffer != null) ...[
                   // Seçili ülkenin TEK en iyi teklifi (fiyat + link).
-                  _OfferLinksCard(
-                    product: product,
+                  // PAYLASILAN LISTE (widgets/shared/store_offer_list.dart):
+                  // karsilastirma ekrani da AYNI widget'i kullanir → magazalar
+                  // alt alta, ucuzdan pahaliya; yeni fiyat kendi sirasina girer.
+                  StoreOfferList(
+                    offers: offersAsync.valueOrNull ??
+                        const <ProductOfferModel>[],
                     country: country,
-                    offers: storeOffers,
+                    productId: product.id,
                   ),
                   const SizedBox(height: 16),
                 ] else if (isLoadingOffers) ...[
@@ -79,210 +83,6 @@ class _PricesTabContent extends ConsumerWidget {
     );
   }
 
-  /// Seçili ülkenin CANLI tekliflerini en iyi→en kötü sıralar (taze + gerçek
-  /// fiyatlı önce, sonra en ucuz). Sıkı ülke kuralı: yalnız `country == selected`
-  /// olan teklifler — başka pazarın fiyatı listeye HİÇ girmez.
-  static List<ProductOfferModel> _sortOffersForCountry(
-    List<ProductOfferModel> offers,
-    String selectedUpper,
-  ) {
-    final live = offers
-        // `isDisplayable` = web filtresi: linksiz ama TAZE fiyatlı Epey vitrin
-        // satırları da listelenir (logo + fiyat, tıklanmaz).
-        .where((offer) => offer.isDisplayable)
-        .where((offer) => offer.country.trim().toUpperCase() == selectedUpper)
-        .toList();
-    live.sort((a, b) {
-      if (a.isFresh != b.isFresh) return a.isFresh ? -1 : 1;
-      if (a.hasExactPrice != b.hasExactPrice) {
-        return a.hasExactPrice ? -1 : 1;
-      }
-      if (a.hasExactPrice && b.hasExactPrice && a.price != b.price) {
-        return a.price.compareTo(b.price);
-      }
-      return a.displayStore.compareTo(b.displayStore);
-    });
-    return live;
-  }
-
-  /// Mağaza başına TEK (en iyi) teklif — aynı mağaza tekrar listelenmez ama
-  /// FARKLI mağazalar da kaybolmaz. Sıra `_sortOffersForCountry` sırasını korur
-  /// (taze + gerçek fiyatlı önce, sonra en ucuz), yani ilk sıra en iyi tekliftir.
-  static List<ProductOfferModel> _bestPerStore(List<ProductOfferModel> sorted) {
-    final seen = <String>{};
-    final out = <ProductOfferModel>[];
-    for (final offer in sorted) {
-      final key = (offer.store.isNotEmpty ? offer.store : offer.network)
-          .trim()
-          .toLowerCase();
-      if (key.isEmpty || !seen.add(key)) continue;
-      out.add(offer);
-      if (out.length >= 10) break;
-    }
-    return out;
-  }
-}
-
-class _OfferLinksCard extends StatelessWidget {
-  final ProductEntity product;
-  final String country;
-  final List<ProductOfferModel> offers;
-  const _OfferLinksCard({
-    required this.product,
-    required this.country,
-    required this.offers,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Dış "kart" kutusu KALDIRILDI (kullanıcı isteği): mağaza satırı zaten
-    // kendi kutusuna (border + surfaceColor) sahip; iki iç içe kutu yerine
-    // TEK satır tam genişlikte gösterilir. Başlık/çift fiyat yok — "Fiyatlar"
-    // sekme başlığı zaten var.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final offer in offers)
-          _OfferLinkRow(
-            offer: offer,
-            selectedCountry: country,
-            productId: product.id,
-          ),
-      ],
-    );
-  }
-}
-
-class _OfferLinkRow extends ConsumerWidget {
-  final ProductOfferModel offer;
-  final String selectedCountry;
-  final String productId;
-  const _OfferLinkRow({
-    required this.offer,
-    required this.selectedCountry,
-    required this.productId,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Linksiz vitrin satırlarında domain `merchantProductId`'den gelir
-    // (offer.storeDomain) — favicon böyle çözülür, aksi hâlde jenerik ikon.
-    final brand = _resolveStoreBrand(
-      '${offer.store} ${offer.network}',
-      url: offer.url.isNotEmpty ? offer.url : offer.storeDomain,
-    );
-    final showCountry =
-        offer.country.isNotEmpty &&
-        offer.country != selectedCountry.trim().toUpperCase();
-    final priceLabel = offer.hasExactPrice
-        ? AppUtils.formatCurrency(offer.price, offer.currency)
-        : (offer.priceText.isNotEmpty
-              ? offer.priceText
-              : (Localizations.localeOf(context).languageCode == 'tr'
-                    ? 'Fiyati gor'
-                    : 'Check price'));
-    // Epey mağaza teklifleri LİNKSİZ gelir (vitrin fiyatı). Böyle satırlar
-    // tıklanabilir görünmemeli: fiyat referansı olarak durur.
-    final hasLink = offer.url.trim().isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: !hasLink ? null : () async {
-            // Amazon offers are re-tagged at click time for the storefront
-            // they already point at (stored tags can be stale/wrong-program;
-            // see amazon_link.dart) — non-Amazon URLs pass through untouched.
-            final visitor = ref.read(detectedCountryProvider).valueOrNull;
-            final uri = Uri.tryParse(
-              amazonTagUrlForVisitor(offer.url, visitor),
-            );
-            if (uri == null) return;
-            try {
-              ref.read(behaviorTrackingProvider).trackAffiliateTap(productId);
-            } catch (_) {}
-            try {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            } catch (_) {}
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: context.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.dividerColor),
-            ),
-            child: Row(
-              children: [
-                _StoreLogo(brand: brand),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Mağaza adı DAHA KÜÇÜK/ikincil (kullanıcı isteği): fiyat
-                      // asıl vurgu; mağaza adı küçük fontla yanında/üstünde durur.
-                      Text(
-                        brand.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      if (showCountry || offer.priceText.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            [
-                              if (showCountry) offer.country,
-                              if (offer.priceText.isNotEmpty &&
-                                  !offer.hasExactPrice)
-                                offer.priceText,
-                            ].join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: context.textTertiaryColor,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  priceLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: offer.hasExactPrice
-                        ? AppTheme.scoreExcellent
-                        : context.textSecondary,
-                  ),
-                ),
-                // Vitrin satırı tıklanmaz → "dışa aç" oku da GÖSTERİLMEZ.
-                if (hasLink) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.open_in_new_rounded,
-                    size: 16,
-                    color: context.textTertiaryColor,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ─── Amazon search card — always present, country-correct (mirrors web) ───────
@@ -303,7 +103,7 @@ class _AmazonSearchCard extends ConsumerWidget {
       visitorCountry: visitorCountry,
     );
     if (url.isEmpty) return const SizedBox.shrink();
-    final brand = _resolveStoreBrand('amazon');
+    final brand = resolveStoreBrand('amazon');
     final market = amazonMarketForCountry(country);
     final flag = amazonMarketFlag[market] ?? '🌍';
     final isTr = Localizations.localeOf(context).languageCode == 'tr';
@@ -339,7 +139,7 @@ class _AmazonSearchCard extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              _StoreLogo(brand: brand),
+              StoreLogo(brand: brand),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -390,214 +190,6 @@ class _AmazonSearchCard extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _StoreBrandData {
-  final String displayName;
-  final Color color;
-  final IconData icon;
-  final String? logoUrl;
-  const _StoreBrandData(
-    this.displayName,
-    this.color,
-    this.icon, [
-    this.logoUrl,
-  ]);
-}
-
-/// Bir URL/serbest metinden alan adını (host) çıkarır; favicon logosu için.
-/// Fiyat gibi "1.299" sayılarına yakalanmamak için son parça harf (TLD) olmalı.
-String? _extractStoreDomain(String? s) {
-  if (s == null || s.trim().isEmpty) return null;
-  final m = RegExp(
-    r'([a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.[a-z]{2,})',
-    caseSensitive: false,
-  ).firstMatch(s.toLowerCase());
-  if (m == null) return null;
-  return m.group(1)!.replaceFirst(RegExp(r'^www\.'), '');
-}
-
-_StoreBrandData _resolveStoreBrand(String rawName, {String? url}) {
-  final n = (url == null ? rawName : '$rawName $url').toLowerCase().trim();
-  if (n.contains('amazon')) {
-    return _StoreBrandData(
-      'Amazon',
-      const Color(0xFFFF9900),
-      Icons.shopping_cart_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=amazon.com',
-    );
-  }
-  if (n.contains('bestbuy') || n.contains('best buy')) {
-    return _StoreBrandData(
-      'Best Buy',
-      const Color(0xFF003B70),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=bestbuy.com',
-    );
-  }
-  if (n.contains('walmart')) {
-    return _StoreBrandData(
-      'Walmart',
-      const Color(0xFF0071CE),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=walmart.com',
-    );
-  }
-  if (n.contains('aliexpress') || n.contains('ali ')) {
-    return _StoreBrandData(
-      'AliExpress',
-      const Color(0xFFE62E04),
-      Icons.local_shipping_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=aliexpress.com',
-    );
-  }
-  if (n.contains('trendyol')) {
-    return _StoreBrandData(
-      'Trendyol',
-      const Color(0xFFF27A1A),
-      Icons.shopping_bag_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=trendyol.com',
-    );
-  }
-  if (n.contains('hepsiburada')) {
-    return _StoreBrandData(
-      'Hepsiburada',
-      const Color(0xFFFF6000),
-      Icons.shopping_bag_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=hepsiburada.com',
-    );
-  }
-  if (n.contains('n11')) {
-    return _StoreBrandData(
-      'n11',
-      const Color(0xFF923899),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=n11.com',
-    );
-  }
-  if (n.contains('gittigidiyor')) {
-    return _StoreBrandData(
-      'GittiGidiyor',
-      const Color(0xFFFFC600),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=gittigidiyor.com',
-    );
-  }
-  if (n.contains('vatan')) {
-    return _StoreBrandData(
-      'Vatan',
-      const Color(0xFFE60000),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=vatanbilgisayar.com',
-    );
-  }
-  if (n.contains('teknosa')) {
-    return _StoreBrandData(
-      'Teknosa',
-      const Color(0xFFE30613),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=teknosa.com',
-    );
-  }
-  if (n.contains('mediamarkt')) {
-    return _StoreBrandData(
-      'MediaMarkt',
-      const Color(0xFFE5121A),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=mediamarkt.com',
-    );
-  }
-  if (n.contains('newegg')) {
-    return _StoreBrandData(
-      'Newegg',
-      const Color(0xFFF7A028),
-      Icons.memory_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=newegg.com',
-    );
-  }
-  if (n.contains('apple')) {
-    return _StoreBrandData(
-      'Apple',
-      const Color(0xFF000000),
-      Icons.apple,
-      'https://www.google.com/s2/favicons?sz=64&domain=apple.com',
-    );
-  }
-  if (n.contains('samsung')) {
-    return _StoreBrandData(
-      'Samsung',
-      const Color(0xFF1428A0),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=samsung.com',
-    );
-  }
-  if (n.contains('google')) {
-    return _StoreBrandData(
-      'Google Store',
-      const Color(0xFF4285F4),
-      Icons.storefront_rounded,
-      'https://www.google.com/s2/favicons?sz=64&domain=store.google.com',
-    );
-  }
-  // Generic fallback — VERİ-ODAKLI: bilinmeyen/yeni eklenen merchant'lar için
-  // alan adından gerçek favicon logosunu çıkar. Böylece admin'den yeni bir
-  // affiliate (örn. Walmart, başka mağaza) eklenince app güncellemesi GEREKMEDEN
-  // logosuyla listede yer alır. Domain yoksa jenerik mağaza ikonu gösterilir.
-  final domain = _extractStoreDomain(url) ?? _extractStoreDomain(rawName);
-  // Görünen ad: domain varsa kökünü (örn. "walmart"), yoksa URL'siz ham adı kullan.
-  final source = domain != null
-      ? domain.split('.').first
-      : rawName.replaceAll(RegExp(r'https?://\S+'), '');
-  final display = source
-      .split(RegExp(r'[\s_.-]+'))
-      .where((p) => p.isNotEmpty)
-      .map((p) => p[0].toUpperCase() + p.substring(1).toLowerCase())
-      .join(' ');
-  return _StoreBrandData(
-    display.isEmpty ? 'Store' : display,
-    AppTheme.primaryBlue,
-    Icons.storefront_rounded,
-    domain != null
-        ? 'https://www.google.com/s2/favicons?sz=64&domain=$domain'
-        : null,
-  );
-}
-
-class _StoreLogo extends StatelessWidget {
-  final _StoreBrandData brand;
-  const _StoreLogo({required this.brand});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: brand.logoUrl == null
-            ? brand.color.withValues(alpha: 0.12)
-            : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: brand.color.withValues(alpha: 0.2)),
-      ),
-      alignment: Alignment.center,
-      child: brand.logoUrl == null
-          ? Icon(brand.icon, size: 18, color: brand.color)
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(7),
-              child: CachedNetworkImage(
-                imageUrl: brand.logoUrl!,
-                width: 22,
-                height: 22,
-                fit: BoxFit.contain,
-                fadeInDuration: Duration.zero,
-                placeholder: (_, _) =>
-                    Icon(brand.icon, size: 17, color: brand.color),
-                errorWidget: (_, _, _) =>
-                    Icon(brand.icon, size: 17, color: brand.color),
-              ),
-            ),
     );
   }
 }
