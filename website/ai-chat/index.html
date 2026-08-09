@@ -51,12 +51,33 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-KKwqO6DP.js"></script>
+  <script type="module" crossorigin src="/spa/index-pSoJjuYP.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
-  <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><h1 style="font-size:28px;margin:0 0 10px">Qor AI Chat</h1><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Phone, laptop, headphones or a subscription — ask your product question and get instant, unbiased advice from the Qor AI assistant. Ask things like “which laptop for this budget?” or “which of these two phones?”.</p><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Qor AI Chat is a research assistant; it explains the alternatives and surfaces the right questions. Verify key features and prices from the seller before buying.</p><p style="margin:18px 0;font-size:14px"><a href="/ai-chat" style="color:#2563eb;margin-right:14px">Start chatting</a><a href="/category" style="color:#2563eb;margin-right:14px">Categories</a><a href="/quiz" style="color:#2563eb;margin-right:14px">Personal quiz</a></p></main></div>
-  <script type="text/javascript" defer src="https://s.skimresources.com/js/303366X1791411.skimlinks.js"></script>
+  <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><h1 style="font-size:28px;margin:0 0 10px">Qor AI Chat</h1><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Phone, laptop, headphones or a subscription — ask your product question and get instant, unbiased advice from the Qor AI assistant. Ask things like “which laptop for this budget?” or “which of these two phones?”.</p><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Qor AI Chat is a research assistant; it explains the alternatives and surfaces the right questions. Verify key features and prices from the seller before buying.</p><p style="margin:18px 0;font-size:14px"><a href="/ai-chat" style="color:#2563eb;margin-right:14px">Start chatting</a><a href="/category" style="color:#2563eb;margin-right:14px">Categories</a><a href="/quiz" style="color:#2563eb;margin-right:14px">Personal quiz</a></p></main></div>
+  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+       parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
+       Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
+  <script>
+    (function () {
+      var loaded = false;
+      function loadSkimlinks() {
+        if (loaded) return; loaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://s.skimresources.com/js/303366X1791411.skimlinks.js';
+        document.body.appendChild(s);
+      }
+      function schedule() {
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(loadSkimlinks, { timeout: 4000 });
+        else setTimeout(loadSkimlinks, 2000);
+      }
+      if (document.readyState === 'complete') schedule();
+      else addEventListener('load', schedule, { once: true });
+    })();
+  </script>
 </body>
 </html>

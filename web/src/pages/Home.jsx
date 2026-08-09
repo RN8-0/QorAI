@@ -49,6 +49,28 @@ function StatItem({ n, l }) {
   );
 }
 
+// Akış gelene kadar spotlight'ın kapladığı alanı BİREBİR taklit eder (aynı
+// başlık satırı + aynı kart kutusu + aynı nokta satırı), böylece gerçek kart
+// yerine geçtiğinde tek piksel bile kaymaz.
+function HeroSpotlightPlaceholder({ L }) {
+  return (
+    <div className="hero-carousel" aria-hidden="true">
+      <div className="hero-carousel-head">
+        <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
+        <b className="skel" style={{ height: 12, width: 76, display: 'inline-block' }} />
+      </div>
+      <div className="hero-carousel-viewport">
+        <div className="hero-carousel-track">
+          <div className="hero-carousel-slide"><ProductCardSkeleton /></div>
+        </div>
+      </div>
+      <div className="hero-carousel-dots">
+        {[0, 1, 2].map((i) => <button key={i} type="button" className={i === 0 ? 'on' : ''} tabIndex={-1} disabled />)}
+      </div>
+    </div>
+  );
+}
+
 function HeroSpotlight({ products, lang, L }) {
   const safe = (products || []).filter(Boolean).slice(0, 10);
   const [index, setIndex] = useState(0);
@@ -470,12 +492,16 @@ export default function Home() {
               </div>
             </div>
 
-            {/* spotlight — highest-scored product from the live feed */}
-            {heroProducts.length > 0 && (
-              <div style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
-                <HeroSpotlight products={heroProducts} lang={lang} L={L} />
-              </div>
-            )}
+            {/* spotlight — highest-scored product from the live feed.
+                YER HER ZAMAN AYRILIR: akış ~6 sn'de gelince bu blok yoktan var
+                oluyor, hero 370→659 px büyüyor ve ALTINDAKİ HER ŞEY aşağı
+                kayıyordu. Ölçülen CLS 0.23 (kötü eşik 0.1) tek başına bu
+                kaymadan geliyordu. Boşken iskelet çizilir, düzen oynamaz. */}
+            <div className="hero-spotlight-slot" style={{ flex: '0 1 360px', width: '100%', maxWidth: 380 }}>
+              {heroProducts.length > 0
+                ? <HeroSpotlight products={heroProducts} lang={lang} L={L} />
+                : <HeroSpotlightPlaceholder L={L} />}
+            </div>
           </div>
         </section>
 

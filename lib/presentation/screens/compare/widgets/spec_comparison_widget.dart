@@ -6703,8 +6703,11 @@ Rules:
     final selected = country.trim().toUpperCase();
     // Sıkı ülke kuralı: yalnız SEÇİLİ ülkenin canlı teklifleri — US/UK/EUR
     // asla karışmaz (Fiyatlar sekmesiyle birebir aynı davranış).
+    // Compare kolonundaki kutu TIKLANABİLİR bir "satın al" kutusudur, bu yüzden
+    // web'in `bestOfferForLang()` fonksiyonu gibi LİNKLİ teklif şart. (Fiyatlar
+    // sekmesi linksiz vitrin satırlarını da listeler — orası liste, burası link.)
     final live = offers
-        .where((offer) => offer.isLive)
+        .where((offer) => offer.isLive && offer.hasLink)
         .where((offer) => offer.country.trim().toUpperCase() == selected)
         .toList();
     live.sort((a, b) {

@@ -11,6 +11,7 @@ library;
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:qor_ai/core/pb_client.dart' show kPbBaseUrl;
 import 'package:qor_ai/domain/entities/ai_entities.dart';
 import 'package:qor_ai/services/cache_service.dart';
 import 'package:qor_ai/services/webview_resolver.dart'
@@ -65,7 +66,79 @@ class MetadataService {
   /// de koca sayfa inmez.
   ///
   /// Hata olursa orijinal URL döner (çağıran koşulsuz kullanır).
+  /// URL kısaltılmış görünüyor mu? DOMAIN LİSTESİ YOK (yeni bir kısaltıcı
+  /// çıkınca kod güncellemek gerekmesin): imza YAPISALDIR — kısa host + kısa,
+  /// okunaksız (sözcük içermeyen) yol. `amzn.eu/d/0j9wMEax`, `a.co/xxxx`,
+  /// `ty.gl/xxxx` bu kalıba uyar; `amazon.com.tr/Apple-MacBook-Air/dp/…` uymaz.
+  static bool _looksShortened(String url) {
+    try {
+      final u = Uri.parse(url);
+      final host = u.host.replaceFirst(RegExp(r'^www\.'), '');
+      final path = u.path.replaceAll(RegExp(r'^/|/$'), '');
+      if (path.isEmpty) return false;
+      // Yolda tire/alt çizgiyle ayrılmış gerçek kelimeler varsa ürün slug'ıdır.
+      if (RegExp(r'[a-zA-Z]{4,}[-_][a-zA-Z]{3,}').hasMatch(path)) return false;
+      final shortHost = host.length <= 12 || host.split('.').first.length <= 5;
+      return shortHost && path.length <= 24;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Kısa linki SUNUCUDA çözer.
+  ///
+  /// NEDEN: Dart'ın TLS parmak izi bot sayılıyor — aynı URL'e curl 301 dönerken
+  /// Dio/dart:io 403 alıyor. Yani kısaltılmış Amazon linkleri (amzn.eu/d/…,
+  /// a.co/…) CİHAZDAN çözülemez, hangi başlık/istemci ayarı denenirse denensin.
+  /// Sunucu tarafındaki `/api/resolve-link` ucu zinciri izler ve nihai URL'i
+  /// (varsa sayfa başlığını) döndürür. Başarısız olursa boş döner ve çağıran
+  /// eski (yerel) yola devam eder.
+  Future<({String url, String title})> _resolveViaServer(String url) async {
+    try {
+      final resp = await _dio
+          .get<dynamic>(
+            '$kPbBaseUrl/api/resolve-link',
+            queryParameters: {'url': url},
+            options: Options(
+              responseType: ResponseType.json,
+              validateStatus: (s) => s != null && s < 500,
+            ),
+          )
+          .timeout(const Duration(seconds: 22));
+      final data = resp.data;
+      final map = data is String ? jsonDecode(data) : data;
+      if (map is! Map) return (url: '', title: '');
+      final resolved = (map['url'] ?? '').toString().trim();
+      if (resolved.isEmpty || !resolved.startsWith('http')) {
+        return (url: '', title: '');
+      }
+      return (url: resolved, title: (map['title'] ?? '').toString().trim());
+    } catch (_) {
+      return (url: '', title: '');
+    }
+  }
+
+  /// Sunucuda çözülen başlıklar burada saklanır: `fetchMetadata` cihazdan
+  /// sayfayı çekemediğinde (aynı 403) bu başlık kullanılır.
+  final Map<String, String> _serverTitles = {};
+
+  String? serverTitleFor(String url) {
+    final t = _serverTitles[url];
+    return (t != null && t.isNotEmpty) ? t : null;
+  }
+
   Future<String> resolveShareUrl(String url) async {
+    // KISA LİNK → ÖNCE SUNUCU. Cihazdan çözülemediği ölçüldü (403), bu yüzden
+    // yerel zinciri boşuna denemek yalnızca gecikme üretir.
+    if (_looksShortened(url)) {
+      final server = await _resolveViaServer(url);
+      if (server.url.isNotEmpty && server.url != url) {
+        if (server.title.isNotEmpty) _serverTitles[server.url] = server.title;
+        // Sunucudan gelen nihai URL hâlâ tracker/kısa olabilir → yerel zincir
+        // onun üzerinden devam etsin.
+        url = server.url;
+      }
+    }
     var current = url;
     try {
       for (var hop = 0; hop < 10; hop++) {
@@ -204,7 +277,21 @@ class MetadataService {
       );
 
       final html = response.data.toString();
-      final metadata = _parseMetadata(html, url);
+      var metadata = _parseMetadata(html, url);
+      // Cihaz sayfayı çekemediyse (bot koruması → boş/çöp başlık) sunucunun
+      // çözümleme sırasında okuduğu <title> devreye girer.
+      if (!_isUsableTitle(metadata.title, url)) {
+        final fromServer = serverTitleFor(url);
+        if (fromServer != null && _isUsableTitle(fromServer, url)) {
+          metadata = OgMetadata(
+            title: fromServer,
+            description: metadata.description,
+            image: metadata.image,
+            price: metadata.price,
+            siteName: metadata.siteName ?? _extractDomainName(url),
+          );
+        }
+      }
 
       // Save to cache - 24 hours. SADECE kullanılabilir bir başlık varsa!
       // Başarısız/boş sonucu cache'lemek, tek bir kötü denemeyi SAATLERCE
@@ -226,14 +313,15 @@ class MetadataService {
 
       return metadata;
     } on DioException {
-      // Return empty metadata on error
+      // Cihaz sayfayı çekemedi (bot koruması dâhil) — sunucunun okuduğu başlık
+      // varsa onu kullan, yoksa alan adına düş.
       return OgMetadata(
-        title: _extractDomainName(url),
+        title: serverTitleFor(url) ?? _extractDomainName(url),
         siteName: _extractDomainName(url),
       );
     } catch (e) {
       return OgMetadata(
-        title: _extractDomainName(url),
+        title: serverTitleFor(url) ?? _extractDomainName(url),
         siteName: _extractDomainName(url),
       );
     }

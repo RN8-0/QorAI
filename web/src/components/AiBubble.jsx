@@ -608,8 +608,11 @@ export default function AiBubble() {
 
   function goToAnalysis(a) {
     if (!a) return;
-    markAnalysisSeen(a.kind);
+    // ÖNCE git, SONRA ünlemi söndür. Ters sırada, yönlendirme başarısız olursa
+    // (ör. hedef sayfa kendini başka yere atarsa) ünlem sönüyor ve kullanıcı
+    // rapora BİR DAHA ulaşamıyordu.
     navigate(a.path);
+    markAnalysisSeen(a.kind);
   }
 
   // Ünlem YALNIZCA balona tıklayınca sönüyordu: kullanıcı zaten o sayfadaysa

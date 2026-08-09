@@ -87,7 +87,9 @@ class _PricesTabContent extends ConsumerWidget {
     String selectedUpper,
   ) {
     final live = offers
-        .where((offer) => offer.isLive)
+        // `isDisplayable` = web filtresi: linksiz ama TAZE fiyatlı Epey vitrin
+        // satırları da listelenir (logo + fiyat, tıklanmaz).
+        .where((offer) => offer.isDisplayable)
         .where((offer) => offer.country.trim().toUpperCase() == selectedUpper)
         .toList();
     live.sort((a, b) {
@@ -110,10 +112,12 @@ class _PricesTabContent extends ConsumerWidget {
     final seen = <String>{};
     final out = <ProductOfferModel>[];
     for (final offer in sorted) {
-      final key = offer.displayStore.trim().toLowerCase();
+      final key = (offer.store.isNotEmpty ? offer.store : offer.network)
+          .trim()
+          .toLowerCase();
       if (key.isEmpty || !seen.add(key)) continue;
       out.add(offer);
-      if (out.length >= 6) break;
+      if (out.length >= 10) break;
     }
     return out;
   }
@@ -161,9 +165,11 @@ class _OfferLinkRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Linksiz vitrin satırlarında domain `merchantProductId`'den gelir
+    // (offer.storeDomain) — favicon böyle çözülür, aksi hâlde jenerik ikon.
     final brand = _resolveStoreBrand(
-      '${offer.displayStore} ${offer.network}',
-      url: offer.url,
+      '${offer.store} ${offer.network}',
+      url: offer.url.isNotEmpty ? offer.url : offer.storeDomain,
     );
     final showCountry =
         offer.country.isNotEmpty &&
@@ -261,12 +267,15 @@ class _OfferLinkRow extends ConsumerWidget {
                         : context.textSecondary,
                   ),
                 ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.open_in_new_rounded,
-                  size: 16,
-                  color: context.textTertiaryColor,
-                ),
+                // Vitrin satırı tıklanmaz → "dışa aç" oku da GÖSTERİLMEZ.
+                if (hasLink) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.open_in_new_rounded,
+                    size: 16,
+                    color: context.textTertiaryColor,
+                  ),
+                ],
               ],
             ),
           ),

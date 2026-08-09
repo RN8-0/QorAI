@@ -242,9 +242,17 @@ export default function Compare() {
   // from the URL and seed the (otherwise localStorage-driven) compare pool so the
   // comparison renders for a fresh visitor instead of bouncing to home.
   const routeParams = useParams();
-  const urlPairIds = useMemo(() => parseComparePair(routeParams.pair), [routeParams.pair]);
+  const pairIds = useMemo(() => parseComparePair(routeParams.pair), [routeParams.pair]);
+  // Qor balonundaki "analiz hazır" bildirimi `/compare?ids=a,b&view=analysis`
+  // ile gelir. Havuz o sırada boşaltılmış olabilir — id'ler adreste taşındığı
+  // için sayfa yine de AÇILIR (eskiden ana sayfaya atıyordu, ölçüldü).
+  const queryIds = useMemo(() => {
+    const raw = searchParams.get('ids') || '';
+    return raw.split(',').map((x) => x.trim()).filter(Boolean).slice(0, COMPARE_MAX);
+  }, [searchParams]);
+  const urlPairIds = pairIds.length === 2 ? pairIds : queryIds;
   useEffect(() => {
-    if (urlPairIds.length === 2) setCompareList(urlPairIds);
+    if (urlPairIds.length >= 2) setCompareList(urlPairIds);
   }, [urlPairIds.join(',')]); // eslint-disable-line
   const comparePathname = routeParams.pair ? `/compare/${routeParams.pair}` : '/compare';
   useSeo({
@@ -260,7 +268,7 @@ export default function Compare() {
   // URL'deki çifti doğrudan kullanmak, sayfanın localStorage'a hiç bağlı
   // olmadan ilk karede doğru ürünleri çekmesini garantiler.
   const ids = useMemo(
-    () => (urlPairIds.length === 2 && poolIds.length === 0 ? urlPairIds : poolIds),
+    () => (urlPairIds.length >= 2 && poolIds.length === 0 ? urlPairIds : poolIds),
     [urlPairIds.join(','), poolIds.join(',')], // eslint-disable-line
   );
   const [products, setProducts] = useState([]);
@@ -494,7 +502,14 @@ export default function Compare() {
       setAiAnswers(job.answers || []);
       if (job.text) setAiText(job.text);
       if (job.phase === 'error') {
-        setAiNotice(L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
+        // Yarıda kalan iş (sayfa yenilendi / süre doldu) başarısızlıktan
+        // farklıdır: kullanıcı ne olduğunu bilmeli, ücret tekrar alınmaz.
+        const interrupted = job.error === 'ANALYSIS_INTERRUPTED' || job.error === 'ANALYSIS_TIMEOUT';
+        setAiNotice(interrupted
+          ? L('The analysis was interrupted. Start it again — this run is free.',
+            'Analiz yarıda kaldı. Tekrar başlat — bu deneme ücretsiz.',
+            'Die Analyse wurde unterbrochen. Starte sie erneut — dieser Versuch ist kostenlos.')
+          : L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
       }
       return;
     }
@@ -685,6 +700,8 @@ export default function Compare() {
   // no landing page to show, so send visitors home. But never redirect a
   // /compare/<a>-vs-<b> deep link: the seeding effect fills ids on the next tick.
   if (!ids.length && urlPairIds.length < 2) return <Navigate to="/" replace />;
+  // NOT: `urlPairIds` artık `?ids=` parametresini de kapsıyor, yani bildirimden
+  // gelen adres havuz boş olsa bile burada YÖNLENDİRİLMEZ.
 
   return (
     <div className="cmp" ref={cmpRef}>
@@ -972,10 +989,20 @@ export default function Compare() {
                     {!aiText && aiPhase === 'analyzing' && (
                       <AiWorkboard lang={lang} mode="compare" stage={aiStage} startedAt={aiPhaseStartedAt} />
                     )}
+                    {/* Cevaplar duruyorsa raporu ÜCRETSİZ yeniden üret; quiz
+                        aşamasında kesildiyse cevap yoktur → quizi baştan aç.
+                        Eskiden ikinci durumda buton DEVRE DIŞI kalıyor ve
+                        kullanıcı çıkmaz sokakta kalıyordu. */}
                     {!aiText && aiPhase === 'error' && (
-                      <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy || !aiAnswers.length}>
-                        {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
-                      </button>
+                      aiAnswers.length ? (
+                        <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy}>
+                          {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
+                        </button>
+                      ) : (
+                        <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
+                          {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                        </button>
+                      )
                     )}
                     {aiNotice && (
                       <div className="cmp-ai-notice">

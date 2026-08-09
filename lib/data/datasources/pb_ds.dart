@@ -796,7 +796,7 @@ class PbDataSource {
                 'id,collectionId,collectionName,created,updated,productId,store,network,country,'
                 'price,shipping,totalPrice,currency,priceText,url,affiliateUrl,condition,'
                 'availability,inStock,priceUnknown,matchConfidence,lastCheckedAt,'
-                'priceUpdatedAt,expiresAt,scrapedAt,source',
+                'priceUpdatedAt,expiresAt,scrapedAt,source,merchantProductId',
           )
           .timeout(const Duration(seconds: 12));
       final offers = result.items
@@ -808,7 +808,10 @@ class PbDataSource {
             }
           })
           .whereType<ProductOfferModel>()
-          .where((offer) => offer.isLive)
+          // Web `fetchProductOffers` ile aynı filtre: linksiz ama taze fiyatlı
+          // Epey vitrin satırları BURADA ELENMEZ (eski `isLive` url şartı
+          // yüzünden uygulamada yalnız Amazon görünüyordu).
+          .where((offer) => offer.isDisplayable)
           .where(
             (offer) => !hidden.contains(
               (offer.store.isNotEmpty ? offer.store : offer.network)

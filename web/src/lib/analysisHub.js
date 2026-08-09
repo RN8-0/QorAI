@@ -59,7 +59,15 @@ const META = {
 // karsilastirma sayfasinin ilk sekmesine dusuyordu.
 function pathFor(kind, job) {
   if (kind === 'product' && job.productPath) return `${job.productPath}?view=analysis`;
-  if (kind === 'compare') return `${META.compare.path}?view=analysis`;
+  if (kind === 'compare') {
+    // Karşılaştırma havuzu (localStorage) bu arada boşaltılmış olabilir; havuz
+    // boşken /compare ANA SAYFAYA yönlendirir ve rapor kaybolur (ölçüldü
+    // 2026-08-09). Bu yüzden analizin ürün id'leri adresin İÇİNE yazılır ve
+    // Compare.jsx havuzu bunlardan yeniden kurar.
+    const ids = (job.productIds || []).filter(Boolean);
+    const qs = ids.length ? `ids=${ids.join(',')}&view=analysis` : 'view=analysis';
+    return `${META.compare.path}?${qs}`;
+  }
   return META[kind].path;
 }
 

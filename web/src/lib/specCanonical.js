@@ -1,7 +1,27 @@
 const trMap = { ı: 'i', İ: 'i', ç: 'c', ğ: 'g', ö: 'o', ş: 's', ü: 'u' };
 const deMap = { ä: 'a', ö: 'o', ü: 'u', ß: 'ss' };
 
+// `normSpec` ve `canonicalSpecKey` bir ürün sayfasında yüzlerce kez, üstelik
+// AYNI girdilerle çağrılıyor (her spec × her alias × her render). Ölçümde
+// containsWord 263 ms, normSpec 92 ms, canonicalSpecKey 66 ms self-time
+// gösterdi (4x CPU kısıtlı mobil). İkisi de saf → ezberlenir.
+const _normCache = new Map();
+const _keyCache = new Map();
+const _CACHE_MAX = 4000;
+
 export function normSpec(text) {
+  if (typeof text === 'string' && text.length <= 200) {
+    const hit = _normCache.get(text);
+    if (hit !== undefined) return hit;
+    const out = normSpecUncached(text);
+    if (_normCache.size >= _CACHE_MAX) _normCache.clear();
+    _normCache.set(text, out);
+    return out;
+  }
+  return normSpecUncached(text);
+}
+
+function normSpecUncached(text) {
   return String(text || '')
     .toLowerCase()
     .replace(/[ıİçğöşü]/g, (c) => trMap[c] || c)
@@ -132,6 +152,21 @@ function mergeValue(a, b) {
 }
 
 export function canonicalSpecKey(key, value = '') {
+  const ck = typeof key === 'string' && key.length <= 200 && typeof value === 'string' && value.length <= 200
+    ? `${key} ${value}`
+    : null;
+  if (ck !== null) {
+    const hit = _keyCache.get(ck);
+    if (hit !== undefined) return hit;
+    const out = canonicalSpecKeyUncached(key, value);
+    if (_keyCache.size >= _CACHE_MAX) _keyCache.clear();
+    _keyCache.set(ck, out);
+    return out;
+  }
+  return canonicalSpecKeyUncached(key, value);
+}
+
+function canonicalSpecKeyUncached(key, value = '') {
   const k = normSpec(key);
   const v = normSpec(value);
   if (!k) return 'Specification';

@@ -29,10 +29,17 @@ const STORAGE_KEY = 'qor.compareAnalysis.activeJob';
 const listeners = new Set();
 let activeJob = null;
 
-// Yalnız bu aşamalar sayfa yenilendikten sonra geri yüklenir: koşan bir Promise
-// yeniden yükleme sonrası YOK, dolayısıyla 'quizLoading'/'analyzing' bir daha
-// asla ilerlemez ve kullanıcı sonsuz animasyonda kalırdı.
+// Koşan bir Promise sayfa yeniden yüklenince YOK olur, dolayısıyla 'quizLoading'
+// / 'analyzing' bir daha asla ilerleyemez.
 const RESTORABLE_PHASES = new Set(['quiz', 'result']);
+const BUSY_PHASES = new Set(['quizLoading', 'analyzing']);
+
+// ÖLÇÜLDÜ (2026-08-09): sert gezinme / sayfa yenilemesi 'analyzing' fazındaki
+// işi SESSİZCE yok ediyordu — kayıt hiç yazılmadığı için dönüşte ne baloncukta
+// ünlem, ne sayfada rapor, ne de "tekrar dene" vardı; harcanan Q Coin yanıyordu.
+// Artık BÜTÜN fazlar yazılır ve yeniden yüklemede koşan faz 'error'a çevrilir:
+// kullanıcı cevaplarıyla birlikte "Tekrar dene" ekranını görür.
+const INTERRUPTED = 'ANALYSIS_INTERRUPTED';
 
 /** Ürün kimlik kümesi — iş, hangi karşılaştırmaya ait olduğunu bilmeli. */
 export function compareJobKey(ids) {
@@ -47,7 +54,7 @@ function cloneJob(job = activeJob) {
 
 function persist() {
   try {
-    if (!activeJob || !RESTORABLE_PHASES.has(activeJob.phase)) localStorage.removeItem(STORAGE_KEY);
+    if (!activeJob) localStorage.removeItem(STORAGE_KEY);
     else localStorage.setItem(STORAGE_KEY, JSON.stringify(cloneJob()));
   } catch { /* depolama yalnız UI geri yüklemesi için */ }
 }
@@ -56,6 +63,24 @@ function emit() {
   persist();
   const snap = cloneJob();
   listeners.forEach((cb) => { try { cb(snap); } catch { /* dinleyici işi bozmasın */ } });
+}
+
+// ── Bekçi ────────────────────────────────────────────────────────────────────
+// Koşan bir faz SONSUZA KADAR koşamaz. `lib/ai.js` her çağrıya süre bütçesi
+// koyuyor (en kötü hâlde araştırma + raporlar + karar ≈ 7 dk), ama bir çağrı
+// hiç dönmezse baloncuk sonsuza kadar dönerdi. Bu bekçi bunu imkânsız kılar:
+// süre dolarsa iş 'error'a düşer, kullanıcı "Tekrar dene" görür.
+const STALL_MS = 9 * 60 * 1000;
+let stallTimer = 0;
+
+function armStallWatchdog() {
+  clearTimeout(stallTimer);
+  if (!activeJob || !BUSY_PHASES.has(activeJob.phase)) return;
+  const id = activeJob.id;
+  stallTimer = setTimeout(() => {
+    if (!activeJob || activeJob.id !== id || !BUSY_PHASES.has(activeJob.phase)) return;
+    setJob({ phase: 'error', stage: null, error: 'ANALYSIS_TIMEOUT' });
+  }, STALL_MS);
 }
 
 function setJob(patch) {
@@ -67,6 +92,7 @@ function setJob(patch) {
     ...(phaseChanged ? { phaseStartedAt: new Date().toISOString() } : {}),
     updatedAt: new Date().toISOString(),
   };
+  if (phaseChanged) armStallWatchdog();
   emit();
 }
 
@@ -76,8 +102,18 @@ function hydrate() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const job = JSON.parse(raw);
-    if (!job?.id || !RESTORABLE_PHASES.has(job.phase)) return;
-    activeJob = { ...job, promise: null };
+    if (!job?.id) return;
+    if (RESTORABLE_PHASES.has(job.phase)) {
+      activeJob = { ...job, promise: null };
+      return;
+    }
+    // Koşan faz yeniden yükleme sonrası ilerleyemez. Onu SESSİZCE ATMAK yerine
+    // 'error'a çeviriyoruz: baloncuk sonsuza kadar dönmez, karşılaştırma sayfası
+    // saklanan cevaplarla "Tekrar dene" gösterir (ücret tekrar alınmaz).
+    if (BUSY_PHASES.has(job.phase)) {
+      activeJob = { ...job, promise: null, phase: 'error', stage: null, error: INTERRUPTED };
+      persist();
+    }
   } catch { /* bozuk kayıt: yeni analiz üzerine yazar */ }
 }
 
@@ -96,6 +132,7 @@ export function getActiveCompareAnalysisJob() {
 export function clearCompareAnalysisJob(id) {
   if (!activeJob) return;
   if (id && activeJob.id !== id) return;
+  clearTimeout(stallTimer);
   activeJob = null;
   emit();
 }
@@ -120,6 +157,10 @@ export function startCompareAnalysisJob({ products, lang, user, fallbackQuiz }) 
   const job = {
     id: `cmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     key,
+    // Bildirimin gideceği adres bu id'lerden kurulur (/compare?ids=a,b&view=analysis).
+    // Karşılaştırma havuzu (localStorage) bu arada boşaltılmış olabilir; havuza
+    // güvenen eski yol kullanıcıyı ANA SAYFAYA atıyordu (ölçüldü 2026-08-09).
+    productIds: products.map((p) => p.id).filter(Boolean),
     lang,
     phase: 'quizLoading',
     phaseStartedAt: new Date().toISOString(),
@@ -167,7 +208,13 @@ export function startCompareAnalysisJob({ products, lang, user, fallbackQuiz }) 
 export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
   if (!activeJob) return null;
   const job = activeJob;
-  setJob({ answers, phase: 'analyzing', stage: 'prep', error: '' });
+  setJob({
+    answers,
+    phase: 'analyzing',
+    stage: 'prep',
+    error: '',
+    productIds: products.map((p) => p.id).filter(Boolean),
+  });
 
   job.promise = (async () => {
     try {

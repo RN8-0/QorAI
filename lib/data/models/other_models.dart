@@ -123,6 +123,10 @@ class ProductOfferModel {
   final String productId;
   final String store;
   final String network;
+  /// Vitrin (linksiz) satırların favicon kaynağı. Epey mağaza satırları mağaza
+  /// alan adını `merchantProductId` alanında taşır; linkli satırlarda domain
+  /// zaten `url`'den çıkarılır. (Web: offers.js `normalizeOffer.storeDomain`.)
+  final String storeDomain;
   final String country;
   final double price;
   final double itemPrice;
@@ -145,6 +149,7 @@ class ProductOfferModel {
     required this.productId,
     required this.store,
     this.network = '',
+    this.storeDomain = '',
     this.country = '',
     this.price = 0,
     this.itemPrice = 0,
@@ -185,6 +190,9 @@ class ProductOfferModel {
       productId: (data['productId'] ?? '').toString(),
       store: store.isEmpty ? 'Store' : store,
       network: (data['network'] ?? '').toString(),
+      storeDomain: (data['network'] ?? '').toString() == 'epey_store'
+          ? (data['merchantProductId'] ?? '').toString().trim()
+          : '',
       country: (data['country'] ?? '').toString().trim().toUpperCase(),
       price: computedTotal,
       itemPrice: rawPrice,
@@ -224,10 +232,15 @@ class ProductOfferModel {
     return age <= _offerTtlForCountry(country);
   }
 
+  bool get hasLink => url.trim().isNotEmpty;
+
+  /// Teklifin satılabilir durumda olup olmadığı. Web'deki `isLiveOffer()` ile
+  /// BİREBİR aynı: stok + durum + bulunabilirlik. URL'e BAKMAZ — Epey mağaza
+  /// vitrin satırları linksizdir (fiyat referansı) ama pekâlâ canlıdır.
   bool get isLive {
-    if (url.trim().isEmpty) return false;
     if (!inStock) return false;
     if (isExpired) return false;
+    if (condition.trim().toLowerCase() == 'used') return false;
     final availabilityText = availability.toLowerCase();
     if (availabilityText.contains('out') ||
         availabilityText.contains('unavailable') ||
@@ -236,6 +249,11 @@ class ProductOfferModel {
     }
     return true;
   }
+
+  /// Listede gösterilmeye değer mi? Web `fetchProductOffers` filtresinin aynısı:
+  /// `(url || hasExactPrice) && isLiveOffer`. Yani LİNKSİZ ama TAZE FİYATLI
+  /// satır gösterilir (vitrin), linkli satır fiyatsızken de kalır ("fiyata bak").
+  bool get isDisplayable => isLive && (hasLink || isFresh);
 
   String get displayStore {
     final cleanStore = store.trim();

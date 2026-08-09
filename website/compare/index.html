@@ -47,12 +47,33 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-KKwqO6DP.js"></script>
+  <script type="module" crossorigin src="/spa/index-pSoJjuYP.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/javascript" defer src="https://s.skimresources.com/js/303366X1791411.skimlinks.js"></script>
+  <div id="root"></div>
+  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+       parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
+       Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
+  <script>
+    (function () {
+      var loaded = false;
+      function loadSkimlinks() {
+        if (loaded) return; loaded = true;
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://s.skimresources.com/js/303366X1791411.skimlinks.js';
+        document.body.appendChild(s);
+      }
+      function schedule() {
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(loadSkimlinks, { timeout: 4000 });
+        else setTimeout(loadSkimlinks, 2000);
+      }
+      if (document.readyState === 'complete') schedule();
+      else addEventListener('load', schedule, { once: true });
+    })();
+  </script>
 </body>
 </html>
