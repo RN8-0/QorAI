@@ -58,6 +58,13 @@ echo ----- %time% adim 3/6: TR fiyat tazeleme ----- >> "%LOG%"
 node scripts\job_status.js step weekly "TR fiyat tazeleme" >> "%LOG%" 2>&1
 node scripts\sync_offers.js --connector=epey_amazon --all-variants "--filter-extra=pricedOfferCount>0" --sort=bestOfferExpiresAt --limit=32000 --concurrency=2 >> "%LOG%" 2>&1
 
+
+rem --- ara yayin: buraya kadar cekilen fiyatlar siteye yansisin ---------
+rem Zincir bir sonraki adimda kesilse bile (PC uyur/kapanir) o ana kadarki is
+rem BOSA GITMESIN. 2026-08-09 olcumu: adim 3 %44te kesildi, adim 6 hic kosmadi
+rem ve o gunun butun fiyat cekimi indekse HIC yansimadi. Backfill idempotent.
+node scripts\ts_backfill_lowest_price.js --confirm >> "%LOG%" 2>&1
+
 rem --- 4) Epey'de fiyati olan ama sitede olmayanlar ----------------------
 echo ----- %time% adim 4/6: fiyat kesfi ----- >> "%LOG%"
 node scripts\job_status.js step weekly "fiyat kesfi" >> "%LOG%" 2>&1
@@ -72,6 +79,7 @@ node scripts\sync_offers.js --connector=amazon_direct --all-variants "--filter-e
 node scripts\sync_offers.js --connector=amazon_direct "--filter-extra=source='epey.com' && pricedOfferCount<1 && bestOfferCheckedAt!=''" --sort=bestOfferCheckedAt --limit=1000 --concurrency=2 >> "%LOG%" 2>&1
 
 set NO_REINDEX=
+
 
 rem --- 6) Typesense backfill -------------------------------------------
 echo ----- %time% adim 6/6: Typesense backfill ----- >> "%LOG%"
