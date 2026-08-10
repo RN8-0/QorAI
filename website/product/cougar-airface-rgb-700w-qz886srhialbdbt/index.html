@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/pc_cases">PC Cases</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Cougar airface RGB 700W computer case (CGR-5ZD1B-AIR-RGB)</h1><p style="color:#475569;margin:0 0 12px">Cougar · PC Cases · Qor AI tech score 100/100</p><img src="https://resim.epey.com/922576/m_cougar-airface-700w-1.jpg" alt="Cougar airface RGB 700W computer case (CGR-5ZD1B-AIR-RGB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Cougar airface RGB 700W computer case (CGR-5ZD1B-AIR-RGB) key features: anakart uyumluluğu ATX, dahili fan count 3 fan, disk yuvası (2.5) 2 adet. Review Cougar airface RGB 700W computer case (CGR-5ZD1B-AIR-RGB)'s 31 technical specs, its Qor AI tech score and how it compares with similar models in pc cases below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anakart Uyumluluğu:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Dahili Fan Count:</span> <strong>3 fan</strong></li><li><span style="color:#64748b">Disk Yuvası (2.5):</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Disk Yuvası (3.5):</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Kapasitesi:</span> <strong>5 adet</strong></li><li><span style="color:#64748b">Güç Kaynağı (PSU):</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toz Filtresi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in PC Cases</h2><ul style="line-height:1.8"><li><a href="/product/cougar-mx660-mesh-rgb-wkluaydytlzhnhl" style="color:#2563eb">Cougar MX660 mesh RGB computer case</a></li><li><a href="/product/cougar-fv270-cgr-58m6w-rgb-81kvm0pre2gdro3" style="color:#2563eb">Cougar FV270 computer case (CGR-58M6W-RGB)</a></li><li><a href="/product/cougar-uniface-rgb-cgr-5c78b-rgb-b169ujfm2qr9lcs" style="color:#2563eb">Cougar uniface RGB computer case (CGR-5C78B-RGB)</a></li><li><a href="/product/cougar-mx600-cgr-57c9w-rgb-xgocvq0mqrlok52" style="color:#2563eb">Cougar MX600 computer safe (CGR-57C9W-RGB)</a></li><li><a href="/product/cougar-uniface-rgb-750w-beyaz-kyag6yjnrw6ntmt" style="color:#2563eb">Cougar uniface RGB 750W computer case</a></li><li><a href="/product/cougar-airface-pro-rgb-850w-owzsxeyhvzg17ma" style="color:#2563eb">Cougar airface pro RGB 850W computer case</a></li><li><a href="/product/antec-nx291-tgsquhtmn53g2vi" style="color:#2563eb">Antec NX291 computer safe</a></li><li><a href="/product/antec-nx290-650w-ybysl6fqrppckok" style="color:#2563eb">Antec NX290 650W computer case</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/pc_cases" style="color:#2563eb;font-weight:600">Compare all PC Cases →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

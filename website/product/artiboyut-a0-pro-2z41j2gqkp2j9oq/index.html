@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/3d_printers">3D Printers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Plusboyut A0 pro</h1><p style="color:#475569;margin:0 0 12px">ArtıBoyut · 3D Printers · Qor AI tech score 34/100</p><img src="https://resim.epey.com/333576/m_artiboyut-a0-pro-1.jpg" alt="Plusboyut A0 pro" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Plusboyut A0 pro key features: baskı teknolojisi FDM, dokunmatik display Yes, filament giriş count 1 Adet. Review Plusboyut A0 pro's 28 technical specs, its Qor AI tech score and how it compares with similar models in 3d printers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Teknolojisi:</span> <strong>FDM</strong></li><li><span style="color:#64748b">Dokunmatik Display:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filament Giriş Count:</span> <strong>1 Adet</strong></li><li><span style="color:#64748b">Isıtmalı Tabla:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Nozzle Count:</span> <strong>1 Adet</strong></li><li><span style="color:#64748b">Otomatik Kalibrasyon:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Tabla Tipi:</span> <strong>Hareketsiz</strong></li><li><span style="color:#64748b">Uzaktan Kontrol:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in 3D Printers</h2><ul style="line-height:1.8"><li><a href="/product/my3b-x40-plus-44rrugu1jdlml72" style="color:#2563eb">My3B X40 Plus</a></li><li><a href="/product/my3b-s45-plus-deu95ixqzkxjong" style="color:#2563eb">MY3B S45 Plus</a></li><li><a href="/product/my3b-z23-plus-ntxvi4qj9ttj67l" style="color:#2563eb">MY3B Z23 Plus</a></li><li><a href="/product/artillery-sidewinder-x1-qr681wfts6fb8f8" style="color:#2563eb">Artillery Sidewinder-X1</a></li><li><a href="/product/my3b-z35-plus-aplfkxzvkfj9xz4" style="color:#2563eb">MY3B Z35 Plus</a></li><li><a href="/product/my-z35-g2xzy2wzgofb1tm" style="color:#2563eb">MY Z35</a></li><li><a href="/product/anet-et5-pro-2js29xto7wpypx8" style="color:#2563eb">Anet ET5 Pro</a></li><li><a href="/product/anet-et4-pro-9x8l2wtynr1x6gw" style="color:#2563eb">Anet ET4 Pro</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/3d_printers" style="color:#2563eb;font-weight:600">Compare all 3D Printers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

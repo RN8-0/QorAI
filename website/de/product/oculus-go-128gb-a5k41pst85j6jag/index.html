@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/vr_headsets">VR-Headsets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Oculus Go 128GB (128GB)</h1><p style="color:#475569;margin:0 0 12px">Oculus · VR-Headsets · Qor AI Techscore 41/100</p><img src="https://resim.epey.com/647851/m_oculus-go-128gb-1.jpg" alt="Oculus Go 128GB (128GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Oculus Go 128GB (128GB) Highlights: battery capacity 128 GB, bağımsız çalışabilme Yes, display tipi LCD. Sieh dir unten 39 technische Merkmale von Oculus Go 128GB (128GB), den Qor AI Techscore und den Vergleich mit ähnlichen VR-Headsets-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>128 GB</strong></li><li><span style="color:#64748b">Bağımsız Çalışabilme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Display Tipi:</span> <strong>LCD</strong></li><li><span style="color:#64748b">Görüş Açısı:</span> <strong>100 °</strong></li><li><span style="color:#64748b">Göz Bebeği Mesafesi (IPD):</span> <strong>Sabit</strong></li><li><span style="color:#64748b">Gözlük ile Kullanabilme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Lens Mesafesi:</span> <strong>Sabit</strong></li><li><span style="color:#64748b">Output Tarihi:</span> <strong>2018</strong></li><li><span style="color:#64748b">Refresh rate:</span> <strong>72 Hz</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1280x1440</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche VR-Headsets-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/vr-box-vr-01-avp4tgznlkj02z3" style="color:#2563eb">VR Box VR-01</a></li><li><a href="/de/product/vr-box-2-0-xao0cwuj4ogzej0" style="color:#2563eb">VR Box 2.0 (v2.0)</a></li><li><a href="/de/product/htc-vive-cosmos-q17a8fy3dx9wxxg" style="color:#2563eb">HTC Vive Cosmos</a></li><li><a href="/de/product/oculus-rift-s-fdkxsl93ua7x0iq" style="color:#2563eb">Oculus Rift S</a></li><li><a href="/de/product/pimax-vision-5k-plus-3qjyrh8kf8d0tby" style="color:#2563eb">Pimax Vision 5k Plus</a></li><li><a href="/de/product/varjo-vr-3-v3lu1bzcf5bghif" style="color:#2563eb">Varjo VR-3</a></li><li><a href="/de/product/htc-vive-pro-gd6lql1x7nm5xq6" style="color:#2563eb">HTC Vive Pro</a></li><li><a href="/de/product/vr-shinecon-g13-lymuw29d97z5ini" style="color:#2563eb">Shinecon G13 (SC-G13)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/vr_headsets" style="color:#2563eb;font-weight:600">Alle VR-Headsets-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

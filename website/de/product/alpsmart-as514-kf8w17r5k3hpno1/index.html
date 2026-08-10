@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/media_players">Mediaplayer</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Alpsmart AS514 medienspieler (4 GB / 32 GB)</h1><p style="color:#475569;margin:0 0 12px">Alpsmart · Mediaplayer · Qor AI Techscore 92/100</p><img src="https://resim.epey.com/983028/m_alpsmart-as514-1.jpg" alt="Alpsmart AS514 medienspieler (4 GB / 32 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Alpsmart AS514 medienspieler (4 GB / 32 GB) Highlights: fps değeri 60 fps, hdmi standardı 2.0, hdr Yes. Sieh dir unten 30 technische Merkmale von Alpsmart AS514 medienspieler (4 GB / 32 GB), den Qor AI Techscore und den Vergleich mit ähnlichen Mediaplayer-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">FPS Değeri:</span> <strong>60 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.0</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160 p 4K UHD</strong></li><li><span style="color:#64748b">Storage:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 6E (802.11axe)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mediaplayer-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/techstorm-nitro-pro-64gb-vql8nl4aq8x82g9" style="color:#2563eb">Techstorm nitro pro 64 GB medienspieler (4 GB / 64 GB)</a></li><li><a href="/de/product/mecool-km6-deluxe-edition-32-xd74rphgn0agcn5" style="color:#2563eb">Mecool KM6 deluxe edition 32 media player (32 GB)</a></li><li><a href="/de/product/mecool-km6-deluxe-edition-64-ypwd1yh2n698ocg" style="color:#2563eb">Mecool KM6 deluxe edition 64 media player (64 GB)</a></li><li><a href="/de/product/mecool-km2-plus-deluxe-f48d4sdaxton31p" style="color:#2563eb">Mecool KM2 plus deluxe media player</a></li><li><a href="/de/product/dreamstar-i6-riiv4al43pbywmn" style="color:#2563eb">Dreamstar i6 media player</a></li><li><a href="/de/product/dreamstar-i4-cu3r378tren8k1y" style="color:#2563eb">Dreamstar i4 medienspieler</a></li><li><a href="/de/product/fobem-vision-pro-6k-zg1ayvxlpgx2bkz" style="color:#2563eb">Fobem vision pro 6K media player</a></li><li><a href="/de/product/fobem-vision-flex-6k-jfnldau3m0d9xtp" style="color:#2563eb">Fobem vision flex 6K media player</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/media_players" style="color:#2563eb;font-weight:600">Alle Mediaplayer-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

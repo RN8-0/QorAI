@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/printers">Yazıcı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Xerox ColorQube 8900 Yazıcı</h1><p style="color:#475569;margin:0 0 12px">Xerox · Yazıcı · Qor AI teknik skoru 71/100</p><img src="https://resim.epey.com/78640/m_xerox-colorqube-8900-3.jpg" alt="Xerox ColorQube 8900 Yazıcı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Xerox ColorQube 8900 Yazıcı öne çıkan özellikleri: baskı hızı (black) 44 sf/dk, baskı tekniği Lazer, baskı türü Renkli. Xerox ColorQube 8900 Yazıcı 27 teknik özelliğini, Qor AI teknik skorunu ve benzer yazıcı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Hızı (Black):</span> <strong>44 sf/dk</strong></li><li><span style="color:#64748b">Baskı Tekniği:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Baskı Türü:</span> <strong>Renkli</strong></li><li><span style="color:#64748b">Color:</span> <strong>44 sf/dk</strong></li><li><span style="color:#64748b">Kullanım Tipi:</span> <strong>Çok Fonksiyonlu</strong></li><li><span style="color:#64748b">Mobil Baskı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>2400 x 1200 px</strong></li><li><span style="color:#64748b">Tarayıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Kağıt Girişi:</span> <strong>625 sayfa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Yazıcı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/xerox-versalink-c405v-dn-t4qiuo2px1svbh9" style="color:#2563eb">Xerox VersaLink C405 Yazıcı</a></li><li><a href="/tr/product/xerox-workcentre-6605v-dn-tq8rrcdbjspniyc" style="color:#2563eb">Xerox WorkCentre 6605 Yazıcı</a></li><li><a href="/tr/product/xerox-b215v-dni-2exjkv663wqtclf" style="color:#2563eb">Xerox B215V-DNI Yazıcı</a></li><li><a href="/tr/product/xerox-workcentre-4260-54d9bg21pwfys9a" style="color:#2563eb">Xerox WorkCentre 4260 Yazıcı</a></li><li><a href="/tr/product/xerox-b1025-kh8t6krvvj1em4h" style="color:#2563eb">Xerox B1025 Yazıcı</a></li><li><a href="/tr/product/xerox-workcentre-3220-5cfkg8pnkr8y12x" style="color:#2563eb">Xerox WorkCentre 3220 Yazıcı</a></li><li><a href="/tr/product/xerox-workcentre-6515v-dn-lb5sterrqil4r7w" style="color:#2563eb">Xerox WorkCentre 6515 Yazıcı</a></li><li><a href="/tr/product/xerox-workcentre-3335-20lol54o8wtgihb" style="color:#2563eb">Xerox WorkCentre 3335 Yazıcı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/printers" style="color:#2563eb;font-weight:600">Tüm Yazıcı modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/monitors">Monitore</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Lg ultragear 45GX950A-B</h1><p style="color:#475569;margin:0 0 12px">LG · Monitore · Qor AI Techscore 98/100</p><img src="https://resim.epey.com/1039690/m_lg-ultragear-45gx950a-b-2.jpg" alt="Lg ultragear 45GX950A-B" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Lg ultragear 45GX950A-B Highlights: brightness 275 cd/m², display boyutu (i̇nç) 44.5 İnç, display teknolojisi OLED. Sieh dir unten 69 technische Merkmale von Lg ultragear 45GX950A-B, den Qor AI Techscore und den Vergleich mit ähnlichen Monitore-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Brightness:</span> <strong>275 cd/m²</strong></li><li><span style="color:#64748b">Display Boyutu (İnç):</span> <strong>44.5 İnç</strong></li><li><span style="color:#64748b">Display Teknolojisi:</span> <strong>OLED</strong></li><li><span style="color:#64748b">DisplayPort (DP):</span> <strong>Yes</strong></li><li><span style="color:#64748b">HDMI (Type A):</span> <strong>Yes</strong></li><li><span style="color:#64748b">Refresh rate:</span> <strong>165 Hz</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>5120x2160 piksel</strong></li><li><span style="color:#64748b">Tepki Süresi:</span> <strong>0.03 ms</strong></li><li><span style="color:#64748b">USB-A (Type-A) Hub:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB-C (Type-C):</span> <strong>Yes</strong></li><li><span style="color:#64748b">VESA Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Monitore-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/lg-ultragear-32gs95uv-b-ef3txevw2f65d2b" style="color:#2563eb">Lg ultragear 32GS95UV-B</a></li><li><a href="/de/product/aoc-agon-pro-ag276uzd-55zqlus73488wkc" style="color:#2563eb">Aoc agon pro AG276UZD is monitored</a></li><li><a href="/de/product/msi-mag-321upx-qd-oled-og6c7subt2t1rd7" style="color:#2563eb">Msi mag 321UPX qd-oled</a></li><li><a href="/de/product/msi-mag-272up-qd-oled-x24-wuedjqi6f1fuyeg" style="color:#2563eb">Msi mag 272UP qd-oled X24</a></li><li><a href="/de/product/msi-mpg-272urx-qd-oled-qmy88meui7dpycu" style="color:#2563eb">The msi mpg 272URX qd-oled</a></li><li><a href="/de/product/msi-mpg-321urx-qd-oled-vixp07z4vav30wh" style="color:#2563eb">Msi mpg 321URX qd-oled</a></li><li><a href="/de/product/msi-mpg-322urx-qd-oled-klzlgcbda4jqnds" style="color:#2563eb">Msi mpg 322URX qd-oled</a></li><li><a href="/de/product/msi-mpg-321curx-qd-oled-9yhvmuok6a0qqf6" style="color:#2563eb">Msi mpg 321CURX qd-oled</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/monitors" style="color:#2563eb;font-weight:600">Alle Monitore-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

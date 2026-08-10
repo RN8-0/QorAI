@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/webcams">Webcams</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Insta360 Link 2 Pro Webcam</h1><p style="color:#475569;margin:0 0 12px">Insta360 · Webcams · Qor AI tech score 92/100</p><img src="https://resim.epey.com/1063252/insta360-link-2-pro-1.png" alt="Insta360 Link 2 Pro Webcam" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Insta360 Link 2 Pro Webcam key features: brightness Yes, görüntü yakınlaştırma Yes, görüş açısı 84 °. Review Insta360 Link 2 Pro Webcam's 18 technical specs, its Qor AI tech score and how it compares with similar models in webcams below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Brightness:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüntü Yakınlaştırma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüş Açısı:</span> <strong>84 °</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Kare Hızı:</span> <strong>30 fps</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Montaj Klipsi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>UHD 4K (3840x2160p)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Webcams</h2><ul style="line-height:1.8"><li><a href="/product/jabra-panacast-zmran3d9moxv0do" style="color:#2563eb">Jabra PanaCast 180° Panoramic 4K Webcam (8100-119)</a></li><li><a href="/product/konftel-cam20-qm61ucdvomcnmim" style="color:#2563eb">Konftel CAM20 Webcam</a></li><li><a href="/product/hikvision-ds-u18-3cjttqhzeh5vxni" style="color:#2563eb">Hikvision DS-U18 Webcam</a></li><li><a href="/product/grandstream-gvc3210-21ug72wen8qalia" style="color:#2563eb">Grandstream GVC3210 Webcam</a></li><li><a href="/product/benq-dvy22-nfoj2rskm8db07n" style="color:#2563eb">BenQ DVY22 Webcam</a></li><li><a href="/product/depstech-dw40-wcwexn0sr8tufr3" style="color:#2563eb">Depstech DW40 Webcam</a></li><li><a href="/product/yealink-uvc30-desktop-a60ux895a3mz925" style="color:#2563eb">Yealink UVC30 Desktop Webcam</a></li><li><a href="/product/dell-wb5023-v7973pqg50gujh6" style="color:#2563eb">Dell WB5023 Webcam (722-BBBU)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/webcams" style="color:#2563eb;font-weight:600">Compare all Webcams →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

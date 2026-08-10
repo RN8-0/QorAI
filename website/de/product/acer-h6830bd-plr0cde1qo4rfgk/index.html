@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/projectors">Projektoren</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Acer H6830BD DLP Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">Acer · Projektoren · Qor AI Techscore 95/100</p><img src="https://resim.epey.com/858333/m_acer-h6830bd-1.jpg" alt="Acer H6830BD DLP Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Acer H6830BD DLP Projeksiyon Highlights: ağ bağlantısı No, color 1.07 Milyar, dinamik kontrast 10000:1. Sieh dir unten 30 technische Merkmale von Acer H6830BD DLP Projeksiyon, den Qor AI Techscore und den Vergleich mit ähnlichen Projektoren-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>No</strong></li><li><span style="color:#64748b">Color:</span> <strong>1.07 Milyar</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>10000:1</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>20000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>DLP</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160</strong></li><li><span style="color:#64748b">Weight:</span> <strong>4 kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Projektoren-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/acer-x1827-fm5o5bjt5qb8nf8" style="color:#2563eb">Acer X1827 dlp projection (MR.JWK11.00Q)</a></li><li><a href="/de/product/optoma-s331-iwem5udxp0w5hi8" style="color:#2563eb">Optoma S331 DLP Projeksiyon</a></li><li><a href="/de/product/optoma-s334e-o3epjw6eardfxm4" style="color:#2563eb">Optoma S334e DLP Projeksiyon</a></li><li><a href="/de/product/optoma-x342e-o4n934pxqnky1j1" style="color:#2563eb">Optoma X342e DLP Projeksiyon</a></li><li><a href="/de/product/optoma-uhd-38-7eralgducs5r8b0" style="color:#2563eb">Optoma UHD38 DLP Projeksiyon</a></li><li><a href="/de/product/optoma-uhz45-gu5vaajz10iju7f" style="color:#2563eb">Optoma UHZ45 DLP Projeksiyon</a></li><li><a href="/de/product/optoma-uhz66-svd20cz4f4s6ubx" style="color:#2563eb">Optoma UHZ66 DLP Projeksiyon</a></li><li><a href="/de/product/optoma-4k400stx-l0monejv5km1swv" style="color:#2563eb">Optoma 4K400STx DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/projectors" style="color:#2563eb;font-weight:600">Alle Projektoren-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

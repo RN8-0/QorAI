@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/flash_drives">USB-Sticks</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Normaler UV150 flash speicher (128 GB) (AUV150-128G)</h1><p style="color:#475569;margin:0 0 12px">Adata · USB-Sticks · Qor AI Techscore 42/100</p><img src="https://resim.epey.com/1055854/m_adata-64gb-auv150-64g-rbk-1.jpg" alt="Normaler UV150 flash speicher (128 GB) (AUV150-128G)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Normaler UV150 flash speicher (128 GB) (AUV150-128G) Highlights: battery capacity 128 GB, bağlantı arayüzü USB Type-A, storage NAND. Sieh dir unten 14 technische Merkmale von Normaler UV150 flash speicher (128 GB) (AUV150-128G), den Qor AI Techscore und den Vergleich mit ähnlichen USB-Sticks-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>128 GB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>100 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>50 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche USB-Sticks-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/kingston-datatraveler-r3-0-g2-64gb-e4uimzkk2lte218" style="color:#2563eb">Kingston datatraveler R3.0 G2 flash speicher (64 GB) (DTR30G2/64GB)</a></li><li><a href="/de/product/linktech-t616-691qo524y5sw786" style="color:#2563eb">Linktech T616 flash speicher (LOF-T616)</a></li><li><a href="/de/product/linktech-i032-e8sd46pdw9rnct1" style="color:#2563eb">Linktech I032 flash speicher (32 GB)</a></li><li><a href="/de/product/linktech-i064-ibwbqi7k825oec5" style="color:#2563eb">Linktech I064 flash speicher (64 GB)</a></li><li><a href="/de/product/idiskk-u006-64gb-sr4ven6bw94xhc4" style="color:#2563eb">Idiskk U006 flash speicher (64 GB)</a></li><li><a href="/de/product/photofast-max-gen2-bpf-ifdmaxg264gb-rs9llztiow1au0x" style="color:#2563eb">Photofast max Gen2 flash speicher (BPF-IFDMAXG264GB)</a></li><li><a href="/de/product/idiskk-u001-128gb-bxiuv1be9s50p7x" style="color:#2563eb">Idiskk U001 flash speicher (128 GB)</a></li><li><a href="/de/product/team-group-t193-tt19364gf01-cjgkyyve1hnrd3b" style="color:#2563eb">Team group T193 flash speicher (64 GB) (TT19364GF01)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/flash_drives" style="color:#2563eb;font-weight:600">Alle USB-Sticks-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

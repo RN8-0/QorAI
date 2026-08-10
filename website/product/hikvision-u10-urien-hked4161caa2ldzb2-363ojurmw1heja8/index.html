@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hikvision U10 Urien 16 GB 3600 MT (HKED4161CAA2LDZB2)</h1><p style="color:#475569;margin:0 0 12px">Hikvision · RAM · Qor AI tech score 84/100</p><img src="https://resim.epey.com/891985/m_hikvision-hked4161daa2f0zb2-1.jpg" alt="Hikvision U10 Urien 16 GB 3600 MT (HKED4161CAA2LDZB2)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Hikvision U10 Urien 16 GB 3600 MT (HKED4161CAA2LDZB2) key features: bellek hızı (oc) 3600 MT/s, bellek kapasitesi 16 GB, bellek teknolojisi DDR4. Review Hikvision U10 Urien 16 GB 3600 MT (HKED4161CAA2LDZB2)'s 18 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Hızı (OC):</span> <strong>3600 MT/s</strong></li><li><span style="color:#64748b">Bellek Kapasitesi:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR4</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/alpin-dr3200-16-4o66j1si9ipz4q3" style="color:#2563eb">Alpin DR3200-16 16 GB 3200 MT</a></li><li><a href="/product/alpin-dr3600-16-3xwpzy1ygo5fj6p" style="color:#2563eb">Alpin DR3600-16 16 GB 3600 MT</a></li><li><a href="/product/afox-afld416rs1c-kdh9axs2m2aknsc" style="color:#2563eb">Afox AFLD416RS1C 16 GB 3600 MT</a></li><li><a href="/product/afox-afld416ps1c-lx8mdtx9grjgia5" style="color:#2563eb">Afox AFLD416PS1C 16 GB 3200 MT</a></li><li><a href="/product/dell-aa937596-xx65vghfvj7pcmn" style="color:#2563eb">Dell AA937596 16 GB 3200 MT (SNPWTHG4C/16G)</a></li><li><a href="/product/dell-aa799064-n0r0plggc9u3sp4" style="color:#2563eb">Dell AA799064 16 GB 3200 MT (SNPM04W6C/16G)</a></li><li><a href="/product/dell-ab257576-h6ign6j09xdu2ro" style="color:#2563eb">Dell AB257576 16 GB 3200 MT (SNPM04W6C/16GNP)</a></li><li><a href="/product/dell-ac140401-emb7ldzwb23ngkm" style="color:#2563eb">Dell AC140401 16 GB 3200 MT</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/av_receivers">AV Receiver</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Acer WirelessCAST MWA3 (MC.JKY11.007)</h1><p style="color:#475569;margin:0 0 12px">Acer · AV Receiver · Qor AI teknik skoru 10/100</p><img src="https://resim.epey.com/142772/m_acer-mc-jky11-007-1.jpg" alt="Acer WirelessCAST MWA3 (MC.JKY11.007)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Acer WirelessCAST MWA3 (MC.JKY11.007) öne çıkan özellikleri: görüntü biçimi Full HD, hdmi Yes, resolution 1920x1080p. Acer WirelessCAST MWA3 (MC.JKY11.007) 13 teknik özelliğini, Qor AI teknik skorunu ve benzer av receiver modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Görüntü Biçimi:</span> <strong>Full HD</strong></li><li><span style="color:#64748b">HDMI:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1920x1080p</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer AV Receiver modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/asus-miracast-dongle-smrwlt2zch1enff" style="color:#2563eb">Asus Miracast Dongle</a></li><li><a href="/tr/product/azemax-w1-plus-brq7pyk0wacohet" style="color:#2563eb">Azemax W1 Plus</a></li><li><a href="/tr/product/ally-chromecast-g12-j6ek3qrpg857bkh" style="color:#2563eb">Ally Chromecast G12</a></li><li><a href="/tr/product/concord-c-x9-plus-4oolw6mdu4x0j2d" style="color:#2563eb">Concord C-X9 Plus</a></li><li><a href="/tr/product/benq-vs20-uqi215blsw6t1yw" style="color:#2563eb">BenQ VS20</a></li><li><a href="/tr/product/platoon-pl-8539-5mpospna1q2u0j5" style="color:#2563eb">Platoon -8539</a></li><li><a href="/tr/product/benq-qcast-mirror-qp30-idvhvn3cqvsme0n" style="color:#2563eb">BenQ Qcast Mirror QP30</a></li><li><a href="/tr/product/platoon-pl-8565-m4-plus-mk04oto5omhqsz4" style="color:#2563eb">Platoon -8565 M4 Plus</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/av_receivers" style="color:#2563eb;font-weight:600">Tüm AV Receiver modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

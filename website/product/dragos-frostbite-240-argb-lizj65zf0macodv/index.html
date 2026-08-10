@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/cpu_coolers">CPU Coolers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dragos frost is a 240 argb processor cooler</h1><p style="color:#475569;margin:0 0 12px">Dragos · CPU Coolers · Qor AI tech score 88/100</p><img src="https://resim.epey.com/1008377/m_dragos-frostbite-240-argb-4.png" alt="Dragos frost is a 240 argb processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dragos frost is a 240 argb processor cooler key features: aydınlatma Yes, fan audio seviyesi 31.21 dBA, fan bağlantısı 4 pin. Review Dragos frost is a 240 argb processor cooler's 32 technical specs, its Qor AI tech score and how it compares with similar models in cpu coolers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>31.21 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>2000 RPM</strong></li><li><span style="color:#64748b">Güç Tüketimi (Fan):</span> <strong>2.36 W</strong></li><li><span style="color:#64748b">Güç Tüketimi (Pompa):</span> <strong>3.1 W</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>49.35 CFM</strong></li><li><span style="color:#64748b">Hava Basıncı:</span> <strong>1.42 mm H2O</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>300 W</strong></li><li><span style="color:#64748b">Pompa Audio Seviyesi:</span> <strong>30 dBA</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Sıvı Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in CPU Coolers</h2><ul style="line-height:1.8"><li><a href="/product/dragos-vortex-v-360-argb-xckphdt9jnyfmxm" style="color:#2563eb">Dragos vortex V-360 argb processor cooler (3 units)</a></li><li><a href="/product/gametech-hd6-2-pro-srfb0qiotx26kvv" style="color:#2563eb">Gametech HD6.2 pro processor cooler</a></li><li><a href="/product/gametech-freezer-hd-3-0-or5kq2c2o3khtlm" style="color:#2563eb">Gametech freezer HD 3.0 processor cooler</a></li><li><a href="/product/darkflash-darkrock-px4-14qr6tsiyrlzfg5" style="color:#2563eb">Darkflash darkrock PX4 processor cooler (NB-CPU-DK4-BK)</a></li><li><a href="/product/dragos-digital-tvd70r57mwsvt86" style="color:#2563eb">Dragos digital processor cooler</a></li><li><a href="/product/dragos-frostbite-v2-240-ptbsrfg2gpk5l65" style="color:#2563eb">Dragos frostbite V2 240 processor cooler</a></li><li><a href="/product/dragos-vortex-v-240-argb-ku3qnl8ttc2q9ku" style="color:#2563eb">Dragos vortex V-240 argb processor cooler (2 units)</a></li><li><a href="/product/darkflash-twister-dx240-v2-6-argb-u2tkosgdj4yjtvf" style="color:#2563eb">Darkflash twister DX240 V2.6 argb processor cooler (2 units)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/cpu_coolers" style="color:#2563eb;font-weight:600">Compare all CPU Coolers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

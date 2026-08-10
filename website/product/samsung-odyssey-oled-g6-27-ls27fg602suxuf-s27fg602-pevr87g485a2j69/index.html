@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/monitors">Monitors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Samsung odyssey OLED G6 27&quot; LS27FG602SUXUF (S27Fg602)</h1><p style="color:#475569;margin:0 0 12px">Samsung · Monitors · Qor AI tech score 94/100</p><img src="https://resim.epey.com/1026154/m_samsung-odyssey-oled-g6-27-ls27fg602suxuf-s27fg602-9.jpg" alt="Samsung odyssey OLED G6 27&quot; LS27FG602SUXUF (S27Fg602)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Samsung odyssey OLED G6 27&quot; LS27FG602SUXUF (S27Fg602) key features: brightness 300 cd/m², display boyutu (i̇nç) 27 İnç, display teknolojisi OLED. Review Samsung odyssey OLED G6 27&quot; LS27FG602SUXUF (S27Fg602)'s 76 technical specs, its Qor AI tech score and how it compares with similar models in monitors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Brightness:</span> <strong>300 cd/m²</strong></li><li><span style="color:#64748b">Display Boyutu (İnç):</span> <strong>27 İnç</strong></li><li><span style="color:#64748b">Display Teknolojisi:</span> <strong>OLED</strong></li><li><span style="color:#64748b">DisplayPort (DP):</span> <strong>Yes</strong></li><li><span style="color:#64748b">HDMI (Type A):</span> <strong>Yes</strong></li><li><span style="color:#64748b">Refresh rate:</span> <strong>500 Hz</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>2560x1440 piksel</strong></li><li><span style="color:#64748b">Tepki Süresi:</span> <strong>0.03 ms</strong></li><li><span style="color:#64748b">USB-A (Type-A) Hub:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB-C (Type-C):</span> <strong>No</strong></li><li><span style="color:#64748b">VESA Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Monitors</h2><ul style="line-height:1.8"><li><a href="/product/corsair-xeneon-27qhd240-ysplhb7ccwoithf" style="color:#2563eb">The corsair xeneon 27QHD240</a></li><li><a href="/product/cooler-master-tempest-gz2711-0mn7s8rb7mycklu" style="color:#2563eb">Cooler Master Tempest GZ2711 Monitör</a></li><li><a href="/product/koorui-s2721xo-ylyh1xmr1nqnd4w" style="color:#2563eb">The koorui S2721XO</a></li><li><a href="/product/rampage-zenith-zn27ol240-g6dr23am9knowyk" style="color:#2563eb">Rampage zenith ZN27Ol240</a></li><li><a href="/product/gigabyte-aorus-fo48u-kc2yjotzx0q80z1" style="color:#2563eb">Gigabyte aorus FO48U</a></li><li><a href="/product/lenovo-legion-pro-32ud-10-gj91rnx1ouxwze9" style="color:#2563eb">The lenovo legion pro 32UD-10 is located at 69D0GACBTK</a></li><li><a href="/product/hp-omen-transcend-32-9r181aa-bud85qz2cc63sq2" style="color:#2563eb">The hp omen transcend 32 (9R181AA) is 9R182E9.</a></li><li><a href="/product/dell-alienware-32-aw3225qf-gv0thzy3ayoc4mc" style="color:#2563eb">Dell alienware 32 AW3225QF is monitored</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/monitors" style="color:#2563eb;font-weight:600">Compare all Monitors →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Eviz RE5 robot sweeper+mop</h1><p style="color:#475569;margin:0 0 12px">Ezviz · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/949239/m_ezviz-re5-1.jpg" alt="Eviz RE5 robot sweeper+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Eviz RE5 robot sweeper+mop key features: aşılabilir yükseklik 20 mm, charging süresi 5 saat, düşme engelleyici sensör Yes. Review Eviz RE5 robot sweeper+mop's 35 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aşılabilir Yükseklik:</span> <strong>20 mm</strong></li><li><span style="color:#64748b">Charging Süresi:</span> <strong>5 saat</strong></li><li><span style="color:#64748b">Düşme Engelleyici Sensör:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Emiş Gücü:</span> <strong>4000 Pa</strong></li><li><span style="color:#64748b">Emiş Gücü Kontrolü:</span> <strong>Otomatik</strong></li><li><span style="color:#64748b">Haritalama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Islak Mop:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Otomatik Charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Çalışma Süresi:</span> <strong>240 dk</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/ezviz-rs20-pro-21uj2u6uj8yutni" style="color:#2563eb">Eviz RS20 pro robot sweeper+mop</a></li><li><a href="/product/ezviz-re5-plus-psncvq46srkwfj7" style="color:#2563eb">It &#39;s a little bit like that.</a></li><li><a href="/product/yui-s7-04eltkue3x4p8hs" style="color:#2563eb">Yui S7 robot sweeper+mop</a></li><li><a href="/product/grundig-vcr-7230-gkcpzib08ex86kn" style="color:#2563eb">Grundig vcr 7230 robot sweeper+mop</a></li><li><a href="/product/grundig-vcr-6330-2fjn2ejhy85bnve" style="color:#2563eb">Grounded vcr 6330 robot sweeper+mop</a></li><li><a href="/product/grundig-vcr-7330-ddn7myrprtjvfg3" style="color:#2563eb">Grundig vcr 7330 robot sweeper+mop</a></li><li><a href="/product/grundig-vcr-6231-qv3ww7f230ianva" style="color:#2563eb">Grundig vcr 6231 robot sweeper+mop</a></li><li><a href="/product/ultenic-t10-pro-wl3cn8b4ng3y4n3" style="color:#2563eb">Ultenic T10 pro robot sweeper+mop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

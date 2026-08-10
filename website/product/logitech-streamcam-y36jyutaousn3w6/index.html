@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/webcams">Webcams</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Logitech Streamcam Webcam (960-001289)</h1><p style="color:#475569;margin:0 0 12px">Logitech · Webcams · Qor AI tech score 83/100</p><img src="https://resim.epey.com/694882/m_logitech-streamcam-1.jpg" alt="Logitech Streamcam Webcam (960-001289)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Logitech Streamcam Webcam (960-001289) key features: brightness Yes, görüntü yakınlaştırma No, görüş açısı 78 °. Review Logitech Streamcam Webcam (960-001289)'s 17 technical specs, its Qor AI tech score and how it compares with similar models in webcams below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Brightness:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüntü Yakınlaştırma:</span> <strong>No</strong></li><li><span style="color:#64748b">Görüş Açısı:</span> <strong>78 °</strong></li><li><span style="color:#64748b">HDR:</span> <strong>No</strong></li><li><span style="color:#64748b">Kablo Uzunluğu:</span> <strong>150 cm</strong></li><li><span style="color:#64748b">Kare Hızı:</span> <strong>60 fps</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Montaj Klipsi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>Full HD (1920x1080p)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Webcams</h2><ul style="line-height:1.8"><li><a href="/product/logitech-c922-pro-g9jnfry40ph13lc" style="color:#2563eb">Logitech C922 Pro Webcam (960-001088)</a></li><li><a href="/product/logitech-c920e-ew1p61mnffzri00" style="color:#2563eb">Logitech C920E Webcam (960-001360)</a></li><li><a href="/product/monster-pusat-1080p-bbpad1gj81o43nj" style="color:#2563eb">Monster Pusat 1080p Webcam</a></li><li><a href="/product/kensington-w2000-aaoe87lsxwdo6ml" style="color:#2563eb">Kensington W2000 Webcam (K81175WW)</a></li><li><a href="/product/havit-hv-hn12g-2m6dm3x8dpct9ty" style="color:#2563eb">Havit HV-HN12G Webcam</a></li><li><a href="/product/dahua-dh-uz5-plus-1d78lrzzzl45jsy" style="color:#2563eb">Dahua DH-UZ5+ Webcam</a></li><li><a href="/product/yealink-yn-uvc20-dxppnfuy8ygjdnw" style="color:#2563eb">Yealink YN-UVC20 Webcam</a></li><li><a href="/product/emeet-smartcam-nova-xlwbx7p68ry7fuf" style="color:#2563eb">Emeet SmartCam Nova Webcam</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/webcams" style="color:#2563eb;font-weight:600">Compare all Webcams →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

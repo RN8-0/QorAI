@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/cpu_coolers">CPU Coolers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Antec A30 processor cooler</h1><p style="color:#475569;margin:0 0 12px">Antec · CPU Coolers · Qor AI tech score 88/100</p><img src="https://resim.epey.com/814676/m_antec-a30-1.jpg" alt="Antec A30 processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Antec A30 processor cooler key features: aydınlatma Yes, fan audio seviyesi 20 dBA, fan bağlantısı 3 pin. Review Antec A30 processor cooler's 22 technical specs, its Qor AI tech score and how it compares with similar models in cpu coolers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>20 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>3 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>92 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>1750 RPM</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>36 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>95 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in CPU Coolers</h2><ul style="line-height:1.8"><li><a href="/product/endorfy-spartan-5-max-argb-gyoxjll7i9z93sf" style="color:#2563eb">Endorfy spartan 5 max argb processor cooler (EY3A004)</a></li><li><a href="/product/antec-symphony-360-t2o3utgnucsm4wp" style="color:#2563eb">Antec symphony 360 processor cooler (3 pieces)</a></li><li><a href="/product/endorfy-fortis-5-argb-mg2st0cqc73ii8d" style="color:#2563eb">Endorfy fortis 5 argb processor cooler (EY3A010)</a></li><li><a href="/product/antec-a450-frgb-jcc30bye5b3bznu" style="color:#2563eb">Antec A450 frgb processor cooler</a></li><li><a href="/product/antec-vortex-view-360-2rnve9hubould6a" style="color:#2563eb">Antec vortex view 360 processor cooler</a></li><li><a href="/product/antec-symphony-240-vmxrj6sn0g5xfsi" style="color:#2563eb">Antec symphony 240 processor cooler (2 units)</a></li><li><a href="/product/montech-metal-dt24-base-6l77j568w7zlw2u" style="color:#2563eb">Montech metal DT24 base processor cooler</a></li><li><a href="/product/montech-air-cooler-210-nhhs63nwgaym6el" style="color:#2563eb">Montech Air Cooler 210 İşlemci Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/cpu_coolers" style="color:#2563eb;font-weight:600">Compare all CPU Coolers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

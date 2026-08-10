@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/modem_routers">Modem</a></nav><h1 style="font-size:26px;margin:12px 0 4px">AirTies Air 6372 Modem</h1><p style="color:#475569;margin:0 0 12px">AirTies · Modem · Qor AI teknik skoru 49/100</p><img src="https://resim.epey.com/93296/m_airties-air-6372-1.png" alt="AirTies Air 6372 Modem" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">AirTies Air 6372 Modem öne çıkan özellikleri: bağlantı teknolojisi ADSL2+, dahili hücresel veri ağı No, diğer bağlantılar RJ11 (DSL SIMtı). AirTies Air 6372 Modem 39 teknik özelliğini, Qor AI teknik skorunu ve benzer modem modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Teknolojisi:</span> <strong>ADSL2+</strong></li><li><span style="color:#64748b">Dahili Hücresel Veri Ağı:</span> <strong>No</strong></li><li><span style="color:#64748b">Diğer Bağlantılar:</span> <strong>RJ11 (DSL SIMtı)</strong></li><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>0.1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>5 adet</strong></li><li><span style="color:#64748b">Ethernetten Güç (PoE):</span> <strong>No</strong></li><li><span style="color:#64748b">Hüzmeleme:</span> <strong>No</strong></li><li><span style="color:#64748b">MU-MIMO:</span> <strong>No</strong></li><li><span style="color:#64748b">USB:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB Standardı:</span> <strong>2.0</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>72 Mbps</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 4 (802.11n)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Modem modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/draytek-vigor-2710-w6vrr196z6hzmq1" style="color:#2563eb">Draytek Vigor 2710 Modem</a></li><li><a href="/tr/product/zyxel-vmg1312-b10a-ev5nrbnhvc3f4v8" style="color:#2563eb">Zyxel VMG1312-B10A Modem</a></li><li><a href="/tr/product/zyxel-p-2812hnul-f1-b1fx89n1bwjuis5" style="color:#2563eb">Zyxel P-2812HNUL-F1 Modem</a></li><li><a href="/tr/product/tp-link-td-w8968-q8tv0l9aecefvds" style="color:#2563eb">TP-Link TD-W8968 Modem</a></li><li><a href="/tr/product/tp-link-td-w9970-ujqjjrsh6cuy7dr" style="color:#2563eb">TP-Link TD-W9970 Modem</a></li><li><a href="/tr/product/asus-dsl-ac750-cs1jch8ffga37cu" style="color:#2563eb">Asus DSL-AC750 Modem</a></li><li><a href="/tr/product/tp-link-archer-vr300-ev17dmk9ec8l6q3" style="color:#2563eb">TP-Link Archer VR300 Modem</a></li><li><a href="/tr/product/airties-air-5050-7z2l8kslwzov47d" style="color:#2563eb">AirTies Air 5050 Modem</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/modem_routers" style="color:#2563eb;font-weight:600">Tüm Modem modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

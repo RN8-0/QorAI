@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/desktops">Desktop PCs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Raxius Zenith Z1 i9 4060Ti-149KF014</h1><p style="color:#475569;margin:0 0 12px">Raxius · Desktop PCs · Qor AI tech score 84/100</p><img src="https://resim.epey.com/1020291/m_raxius-zenith-z1-i9-4060ti-149kf-1.jpg" alt="Raxius Zenith Z1 i9 4060Ti-149KF014" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Raxius Zenith Z1 i9 4060Ti-149KF014 key features: display kartı modeli NVIDIA GeForce RTX 4060Ti, güç kaynağı 750 W, klavye &amp; mouse No. Review Raxius Zenith Z1 i9 4060Ti-149KF014's 36 technical specs, its Qor AI tech score and how it compares with similar models in desktop pcs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Kartı Modeli:</span> <strong>NVIDIA GeForce RTX 4060Ti</strong></li><li><span style="color:#64748b">Güç Kaynağı:</span> <strong>750 W</strong></li><li><span style="color:#64748b">Klavye &amp; Mouse:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Oyun</strong></li><li><span style="color:#64748b">RAM:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>No</strong></li><li><span style="color:#64748b">Storage:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli (CPU):</span> <strong>Intel Core i9-14900KF</strong></li><li><span style="color:#64748b">İşlemci Temel Frequency:</span> <strong>3.2 GHz</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>Windows 11 Pro</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Desktop PCs</h2><ul style="line-height:1.8"><li><a href="/product/raxius-zenith-z1-i9-4060-149kf007-rriuk9smqkbvzeb" style="color:#2563eb">Raxius Zenith Z1 i9 4060-149KF007</a></li><li><a href="/product/raxius-zenith-z1-i9-4060ti-149kf003-zy7amu4tgrpo0gy" style="color:#2563eb">Raxius Zenith Z1 i9 4060Ti-149KF003</a></li><li><a href="/product/raxius-zenith-z1-i9-4060ti-149kf008-a5hvk7smcehrimq" style="color:#2563eb">Raxius Zenith Z1 i9 4060Ti-149KF008</a></li><li><a href="/product/raxius-zenith-z1-i9-5090-149kf034-rsghitfznv9trl0" style="color:#2563eb">Raxius Zenith Z1 i9 5090-149KF034</a></li><li><a href="/product/raxius-zenith-z1-i9-4060ti-149kf007-0awwjv1icevqip0" style="color:#2563eb">Raxius Zenith Z1 i9 4060Ti-149KF007</a></li><li><a href="/product/raxius-zenith-z1-i9-4060ti-149kf016-ye2wm8llmyyiauv" style="color:#2563eb">Raxius Zenith Z1 i9 4060Ti-149KF016</a></li><li><a href="/product/dragos-drx6702-4sj04gzk50gzfqy" style="color:#2563eb">Dragos DRx6702 (ATM00011410)</a></li><li><a href="/product/dragos-drx6698-zxx1m3qe8yflfsb" style="color:#2563eb">Dragos DRx6698 (ATM00011406)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/desktops" style="color:#2563eb;font-weight:600">Compare all Desktop PCs →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

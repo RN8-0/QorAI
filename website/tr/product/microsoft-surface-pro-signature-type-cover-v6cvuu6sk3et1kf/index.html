@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/keyboards">Klavye</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Microsoft Surface Pro Signature Type Cover TouchPad Klavye (M1725)</h1><p style="color:#475569;margin:0 0 12px">Microsoft · Klavye · Qor AI teknik skoru 33/100</p><img src="https://resim.epey.com/646257/m_microsoft-surface-pro-signature-m1725-1.jpg" alt="Microsoft Surface Pro Signature Type Cover TouchPad Klavye (M1725)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Microsoft Surface Pro Signature Type Cover TouchPad Klavye (M1725) öne çıkan özellikleri: bağlantı şekli Wireless, klavye aydınlatması Yes, klavye tuş dizilimi Q Klavye. Microsoft Surface Pro Signature Type Cover TouchPad Klavye (M1725) 21 teknik özelliğini, Qor AI teknik skorunu ve benzer klavye modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Klavye Aydınlatması:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Klavye Tuş Dizilimi:</span> <strong>Q Klavye</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Taşınabilir Cihazlar</strong></li><li><span style="color:#64748b">Mekanik Tuşlar:</span> <strong>No</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>TouchPad Klavye</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Klavye modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/microsoft-surface-pro-copilot-plus-95l449owx857taj" style="color:#2563eb">Microsoft Surface Pro Copilot+ TouchPad Klavye (8XA-00145)</a></li><li><a href="/tr/product/microsoft-surface-pro-signature-touqglfkpdri1ps" style="color:#2563eb">Microsoft Surface Pro Signature TouchPad Klavye (8X6-00035)</a></li><li><a href="/tr/product/microsoft-surface-pro-copilot-plus-slim-pen-2-bmd3dzwvsq9b71o" style="color:#2563eb">Microsoft Surface Pro Copilot+ Slim Pen 2 TouchPad Klavye (8X6-00182)</a></li><li><a href="/tr/product/preo-k8-mini-frh31kroiynty33" style="color:#2563eb">Preo K8 Mini Klavye</a></li><li><a href="/tr/product/philips-spt6348-pk6vngih43k1b5o" style="color:#2563eb">Philips SPT6348 Klavye &amp; Mouse Seti</a></li><li><a href="/tr/product/dell-premier-wireless-2e0zduzpc2hp22k" style="color:#2563eb">Dell Premier Wireless Klavye &amp; Mouse Seti (KM717)</a></li><li><a href="/tr/product/dell-kb500-6nponumu1ouuv9o" style="color:#2563eb">Dell KB500 Klavye (580-AKOO)</a></li><li><a href="/tr/product/dell-kb700-tujtz0kfzb0vdvt" style="color:#2563eb">Dell KB700 Klavye (580-AKPT)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/keyboards" style="color:#2563eb;font-weight:600">Tüm Klavye modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

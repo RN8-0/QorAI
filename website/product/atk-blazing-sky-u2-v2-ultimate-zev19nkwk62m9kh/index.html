@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/mice">Mice</a></nav><h1 style="font-size:26px;margin:12px 0 4px">ATK Blazing Sky U2 V2 Ultimate Mouse</h1><p style="color:#475569;margin:0 0 12px">ATK · Mice · Qor AI tech score 91/100</p><img src="https://resim.epey.com/1043386/m_atk-blazing-sky-u2-v2-ultimate-1.jpg" alt="ATK Blazing Sky U2 V2 Ultimate Mouse" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">ATK Blazing Sky U2 V2 Ultimate Mouse key features: bağlantı şekli Wireless, kullanım amacı Oyun / E-Spor, mouse algılayıcı tipi Optik. Review ATK Blazing Sky U2 V2 Ultimate Mouse's 32 technical specs, its Qor AI tech score and how it compares with similar models in mice below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Oyun / E-Spor</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Optik</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>42000 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>6 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Mouse</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Mice</h2><ul style="line-height:1.8"><li><a href="/product/hp-400-0f77dwr6vyfofxb" style="color:#2563eb">HP 400 Mouse (AZ7B2AA)</a></li><li><a href="/product/razer-basilisk-v3-x-zfnrrjfgm2zedxd" style="color:#2563eb">Razer Basilisk V3 X Hyperspeed Mouse (RZ01-04870100-R3G1)</a></li><li><a href="/product/logitech-mx-master-2s-jnsg85lksfxr0jn" style="color:#2563eb">Logitech Master 2S Mouse (910-005139)</a></li><li><a href="/product/ugreen-90395-qxqu9n5n0dtplnh" style="color:#2563eb">Ugreen 90395 Mouse (MU101-90395)</a></li><li><a href="/product/xiaomi-mi-portable-mouse-2-da670q34s3dxcoj" style="color:#2563eb">Xiaomi Mi Portable Mouse 2 Mouse (BXSBMW02)</a></li><li><a href="/product/dell-mobile-pro-ms5120w-7dflz68ijhrb2ht" style="color:#2563eb">Dell Mobile Pro MS5120W Mouse</a></li><li><a href="/product/dell-ms3320w-qyejlobpm72w46y" style="color:#2563eb">Dell Mobile MS3320W Mouse</a></li><li><a href="/product/dell-ms700-54h0zclx5rfijww" style="color:#2563eb">Dell MS700 Mouse (570-ABQN)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/mice" style="color:#2563eb;font-weight:600">Compare all Mice →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

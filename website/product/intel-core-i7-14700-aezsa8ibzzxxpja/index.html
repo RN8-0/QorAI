@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/cpus">Processors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Intel Core i7-14700 (BX8071514700)</h1><p style="color:#475569;margin:0 0 12px">Intel · Processors · Qor AI tech score 74/100</p><img src="https://resim.epey.com/919222/m_intel-core-i7-14700-1.jpg" alt="Intel Core i7-14700 (BX8071514700)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Intel Core i7-14700 (BX8071514700) key features: artırılmış frequency 5.4 GHz, bellek hızı 5600 MHz, bellek türü DDR5. Review Intel Core i7-14700 (BX8071514700)'s 35 technical specs, its Qor AI tech score and how it compares with similar models in processors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Artırılmış Frequency:</span> <strong>5.4 GHz</strong></li><li><span style="color:#64748b">Bellek Hızı:</span> <strong>5600 MHz</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>20</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>65 W</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2024</strong></li><li><span style="color:#64748b">PCIe Sürümü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Temel Frequency:</span> <strong>2.1 GHz</strong></li><li><span style="color:#64748b">Önbellek L1:</span> <strong>1.6 MB</strong></li><li><span style="color:#64748b">Önbellek L2:</span> <strong>28 MB</strong></li><li><span style="color:#64748b">Önbellek L3:</span> <strong>33 MB</strong></li><li><span style="color:#64748b">İş Parçacığı:</span> <strong>28</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Processors</h2><ul style="line-height:1.8"><li><a href="/product/intel-core-i7-14700f-m6tietukkaiybrl" style="color:#2563eb">Intel Core i7-14700F (BX8071514700F)</a></li><li><a href="/product/amd-ryzen-7-9800x3d-q2qvcuyt018sv3z" style="color:#2563eb">AMD Ryzen 7 9800X3D (100-1000001084WOF)</a></li><li><a href="/product/amd-ryzen-7-9700x-u5d9xblmetfv640" style="color:#2563eb">AMD Ryzen 7 9700X (100-100001404WOF)</a></li><li><a href="/product/intel-core-i9-13900ks-024dlu5cqcwavga" style="color:#2563eb">Intel Core i9-13900KS (BX8071513900KS)</a></li><li><a href="/product/amd-ryzen-threadripper-7960x-unzke4oq2i6boos" style="color:#2563eb">AMD Ryzen Threadripper 7960X (100-000001352)</a></li><li><a href="/product/intel-core-i9-13900f-054rmr6sz4y9kd5" style="color:#2563eb">Intel Core i9-13900F (BX8071513900F)</a></li><li><a href="/product/intel-core-i9-13900-v0hatuof1galv0r" style="color:#2563eb">Intel Core i9-13900 (BX8071513900)</a></li><li><a href="/product/amd-ryzen-7-8700f-vf8zbhsa9h18k7l" style="color:#2563eb">AMD Ryzen 7 8700F (100-100001590BOX)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/cpus" style="color:#2563eb;font-weight:600">Compare all Processors →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

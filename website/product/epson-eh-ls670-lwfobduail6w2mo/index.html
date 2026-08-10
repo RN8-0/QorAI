@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/projectors">Projectors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Epson EH-LS670 LCD Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">Epson · Projectors · Qor AI tech score 99/100</p><img src="https://resim.epey.com/1050028/m_epson-eh-ls670w-1.png" alt="Epson EH-LS670 LCD Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Epson EH-LS670 LCD Projeksiyon key features: ağ bağlantısı Yes, color 1.07 Milyar, dinamik kontrast 5000000:1. Review Epson EH-LS670 LCD Projeksiyon's 36 technical specs, its Qor AI tech score and how it compares with similar models in projectors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Color:</span> <strong>1.07 Milyar</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>5000000:1</strong></li><li><span style="color:#64748b">Enerji Tüketimi (Güçlü):</span> <strong>254 W</strong></li><li><span style="color:#64748b">Gürültü Seviyesi (Güçlü):</span> <strong>29 dB</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>20000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>LCD</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160</strong></li><li><span style="color:#64748b">Weight:</span> <strong>7.4 kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Projectors</h2><ul style="line-height:1.8"><li><a href="/product/xgimi-aura-2-cre8zw8dyk8mvbf" style="color:#2563eb">XGIMI Aura 2 DLP Projeksiyon</a></li><li><a href="/product/lg-hu80ka-l1bvkyqo6rdd1zw" style="color:#2563eb">LG HU80KA DLP Projeksiyon</a></li><li><a href="/product/lg-hu85la-tgrgjm9bk21fcrn" style="color:#2563eb">LG HU85LA DLP Projeksiyon</a></li><li><a href="/product/lg-hu810p-no69i5wqsj678h6" style="color:#2563eb">LG HU810P LCD Projeksiyon</a></li><li><a href="/product/benq-tk800-7yiveswyba1iwdt" style="color:#2563eb">BenQ TK800 DLP Projeksiyon</a></li><li><a href="/product/benq-w2720i-6lcg3kr5c8o1htj" style="color:#2563eb">BenQ W2720i DLP Projeksiyon</a></li><li><a href="/product/epson-home-cinema-2350-s5detdck7bksgqm" style="color:#2563eb">Epson home cinema 2350 LCD projection (V11HA73020)</a></li><li><a href="/product/epson-eh-tw6250-zo80cmauqldir69" style="color:#2563eb">Epson EH-TW6250 LCD projection (V11HA73040)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/projectors" style="color:#2563eb;font-weight:600">Compare all Projectors →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

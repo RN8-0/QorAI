@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/flash_drives">USB Bellek</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)</h1><p style="color:#475569;margin:0 0 12px">Kingston · USB Bellek · Qor AI teknik skoru 51/100</p><img src="https://resim.epey.com/74716/m_kingston-datatraveler-ultimate-gt-1tb-1.jpg" alt="Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) öne çıkan özellikleri: battery capacity 1 TB, bağlantı arayüzü USB Type-A, storage NAND. Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) 14 teknik özelliğini, Qor AI teknik skorunu ve benzer usb bellek modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>300 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>200 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer USB Bellek modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/toshiba-transmemory-ex-ii-128gb-p7z9tgic2s2pu1s" style="color:#2563eb">Toshiba TransMemory-EX II Flash Bellek (128 GB) (THNV128OSUSILV(BL8)</a></li><li><a href="/tr/product/sandisk-extreme-usb-3-0-64gb-yqjqfw0qducycip" style="color:#2563eb">Sandisk Extreme Flash Bellek (64 GB) (SDCZ80-064G-G46)</a></li><li><a href="/tr/product/kingston-datatraveler-se9-g3-mm65c83lwwt22fj" style="color:#2563eb">Kingston DataTraveler SE9 G3 Flash Bellek (64 GB) (DTSE9G3/64GB)</a></li><li><a href="/tr/product/dm-fd063-sifreli-128-gb-jt888th6cwd8aiv" style="color:#2563eb">DM FD063 Şifreli Flash Bellek (128 GB)</a></li><li><a href="/tr/product/kingston-datatraveler-vault-privacy-3-0-64gb-up4g1u3loh1galp" style="color:#2563eb">Kingston DataTraveler Vault Privacy 3.0 Flash Bellek (64 GB) (DTVP30/64GB)</a></li><li><a href="/tr/product/kingston-datatraveler-4000-g2-dt4000g2dm-64gb-68m373gwop209w4" style="color:#2563eb">Kingston DataTraveler 4000 G2 Flash Bellek (DT4000G2DM/64GB)</a></li><li><a href="/tr/product/kingston-ironkey-d300-ikd300-128gb-avmb7fdvsukj2l6" style="color:#2563eb">Kingston IronKey D300 Flash Bellek (128 GB) (IKD300/128GB)</a></li><li><a href="/tr/product/kingston-ironkey-keypad-200-ikkp200-8gb-hb9mcc39y13jomr" style="color:#2563eb">Kingston IronKey Keypad 200 Flash Bellek (8 GB) (IKKP200/8GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/flash_drives" style="color:#2563eb;font-weight:600">Tüm USB Bellek modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Longline LNGDDR4240016GB 16 GB 2400 MT</h1><p style="color:#475569;margin:0 0 12px">Longline · RAM · Qor AI tech score 82/100</p><img src="https://resim.epey.com/168888/m_longline-16gb-lngddr4240016gb-1.jpg" alt="Longline LNGDDR4240016GB 16 GB 2400 MT" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Longline LNGDDR4240016GB 16 GB 2400 MT key features: bellek hızı (oc) 2400 MT/s, bellek kapasitesi 16 GB, bellek teknolojisi DDR4. Review Longline LNGDDR4240016GB 16 GB 2400 MT's 13 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Hızı (OC):</span> <strong>2400 MT/s</strong></li><li><span style="color:#64748b">Bellek Kapasitesi:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR4</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/longline-lngsddr4213316gb-mxhkkvjfqfspdph" style="color:#2563eb">Longline LNGSDDR4213316GB 16 GB 2133 MT</a></li><li><a href="/product/longline-lngddr4213316gb-kqhbjds0480y80u" style="color:#2563eb">Longline LNGDDR4213316GB 16 GB 2133 MT</a></li><li><a href="/product/sk-hynix-hma42gr7afr4n-tf-3gk2uz5ldf7arb0" style="color:#2563eb">SK Hynix HMA42GR7AFR4N-TF 16 GB 2133 MT</a></li><li><a href="/product/micron-mta16atf2g64hz-2g1b2-pt4s3babpvc4iwm" style="color:#2563eb">Micron MTA16ATF2G64HZ-2G1B2 16 GB 2133 MT</a></li><li><a href="/product/patriot-viper-4-blackout-su8r5ruu9kpw3r2" style="color:#2563eb">Patriot Viper 4 Blackout 64 GB 3600 MT (PVB464G360C8K)</a></li><li><a href="/product/samsung-sampc2400-16-p867cxc0j5hmyo0" style="color:#2563eb">Samsung SAMPC2400/16 16 GB 2400 MT</a></li><li><a href="/product/kingston-fury-renegade-kf426c13rb1k4-64-sgxgdflu9yy6by4" style="color:#2563eb">Kingston Fury Renegade 64 GB 2666 MT (KF426C13RB1K4/64)</a></li><li><a href="/product/kingston-fury-renegade-kf436c16rb1k4-64-g4on9f4v1170vuf" style="color:#2563eb">Kingston Fury Renegade 64 GB 3600 MT (KF436C16RB1K4/64)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

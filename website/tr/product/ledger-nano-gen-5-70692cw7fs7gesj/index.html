@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/hardware_wallets">Soğuk Cüzdan</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ledger Nano Gen 5 Soğuk Cüzdan</h1><p style="color:#475569;margin:0 0 12px">Ledger · Soğuk Cüzdan · Qor AI teknik skoru 39/100</p><img src="https://resim.epey.com/1059182/ledger-nano-gen-5-1.jpg" alt="Ledger Nano Gen 5 Soğuk Cüzdan" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ledger Nano Gen 5 Soğuk Cüzdan öne çıkan özellikleri: bluetooth Yes, kimlik doğrulama PIN Kodu, sertifika seviyesi EAL6+. Ledger Nano Gen 5 Soğuk Cüzdan 24 teknik özelliğini, Qor AI teknik skorunu ve benzer soğuk cüzdan modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Kimlik Doğrulama:</span> <strong>PIN Kodu</strong></li><li><span style="color:#64748b">Sertifika Seviyesi:</span> <strong>EAL6+</strong></li><li><span style="color:#64748b">Token Support:</span> <strong>500 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Soğuk Cüzdan modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/ledger-stax-yb9e7tqfxht9hw3" style="color:#2563eb">Ledger Stax Soğuk Cüzdan</a></li><li><a href="/tr/product/ledger-flex-a5ij1frew8m8vh7" style="color:#2563eb">Ledger Flex Soğuk Cüzdan</a></li><li><a href="/tr/product/onekey-classic-5sb8838urcmuae9" style="color:#2563eb">OneKey Classic Soğuk Cüzdan</a></li><li><a href="/tr/product/ledger-nano-s-26di9ysb1bxwqyj" style="color:#2563eb">Ledger Nano S Soğuk Cüzdan</a></li><li><a href="/tr/product/ledger-nano-x-ce5huvyzf5lg7um" style="color:#2563eb">Ledger Nano X Soğuk Cüzdan</a></li><li><a href="/tr/product/coolwallet-pro-m6xfs9nn5deuaz2" style="color:#2563eb">CoolWallet Pro Soğuk Cüzdan</a></li><li><a href="/tr/product/coolwallet-s-xsjqco3qqzm0j4u" style="color:#2563eb">CoolWallet S Soğuk Cüzdan</a></li><li><a href="/tr/product/trezor-safe-3-tj301savseiu64o" style="color:#2563eb">Trezor Safe 3 Soğuk Cüzdan</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/hardware_wallets" style="color:#2563eb;font-weight:600">Tüm Soğuk Cüzdan modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

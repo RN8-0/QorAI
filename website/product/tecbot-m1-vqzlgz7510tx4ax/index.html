@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Tecbot M1 robot sweeper+mop</h1><p style="color:#475569;margin:0 0 12px">Tecbot · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/744744/m_tecbot-m1-3.png" alt="Tecbot M1 robot sweeper+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Tecbot M1 robot sweeper+mop key features: aşılabilir yükseklik 20 mm, charging süresi 3 saat, düşme engelleyici sensör Yes. Review Tecbot M1 robot sweeper+mop's 32 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aşılabilir Yükseklik:</span> <strong>20 mm</strong></li><li><span style="color:#64748b">Charging Süresi:</span> <strong>3 saat</strong></li><li><span style="color:#64748b">Düşme Engelleyici Sensör:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Emiş Gücü:</span> <strong>4000 Pa</strong></li><li><span style="color:#64748b">Emiş Gücü Kontrolü:</span> <strong>Mobil Uygulama İle</strong></li><li><span style="color:#64748b">Haritalama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Islak Mop:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Otomatik Charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Zaman Planlama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Çalışma Süresi:</span> <strong>150 dk</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/hiking-x8-pro-9qc5o01n5lrcnvt" style="color:#2563eb">Hiking X8 pro robot sweeper+mop</a></li><li><a href="/product/irona-r2-0ezw3x6a55w3n64" style="color:#2563eb">Irona R2 robot sweeper+mop</a></li><li><a href="/product/eziclean-z10-plus-tyxkk9p5akp2z36" style="color:#2563eb">The eziclean Z10 plus robot sweeper+mop</a></li><li><a href="/product/jonr-t5-pro-gen-2-by7vvtp85psjitk" style="color:#2563eb">Jonr T5 pro gen 2 robot sweeper+mop</a></li><li><a href="/product/jonr-x1-max-ipv0ru9b5jmkkbe" style="color:#2563eb">Jonr X1 max robot sweeper+mop</a></li><li><a href="/product/soultech-rb002-4mbi79fnsu4grgj" style="color:#2563eb">Soultech RB002 robot syburge+mop</a></li><li><a href="/product/karaca-vantuz-off-road-premium-3in1-3qnt9dl1xpbtsrw" style="color:#2563eb">Karaca vantuz off-road premium 3in1 robot +mop (153.09.01.1018)</a></li><li><a href="/product/uoni-v980-plus-9qel29ueqjvojm9" style="color:#2563eb">The uoni V980 plus is a robot</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

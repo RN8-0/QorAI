@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/headphones">Kulaklık</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Philips SHB3175 Wireless Headphones</h1><p style="color:#475569;margin:0 0 12px">Philips · Kulaklık · Qor AI teknik skoru 94/100</p><img src="https://resim.epey.com/98481/m_philips-shb3175bk-1.jpg" alt="Philips SHB3175 Wireless Headphones" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Philips SHB3175 Wireless Headphones öne çıkan özellikleri: accuracy 104 dB, audio output Stereo, bekleme time (width fazla) 166 hours. Philips SHB3175 Wireless Headphones 24 teknik özelliğini, Qor AI teknik skorunu ve benzer kulaklık modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Accuracy:</span> <strong>104 dB</strong></li><li><span style="color:#64748b">Audio Output:</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Bekleme Time (Width Fazla):</span> <strong>166 hours</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Charging Type:</span> <strong>USB</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Control:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Empedans:</span> <strong>32 Ohm</strong></li><li><span style="color:#64748b">High Frequency (Tiz):</span> <strong>21 kHz</strong></li><li><span style="color:#64748b">Low Frequency (Head):</span> <strong>8 Hz</strong></li><li><span style="color:#64748b">Maximum Power:</span> <strong>40 mW</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Use Distance:</span> <strong>10 m</strong></li><li><span style="color:#64748b">Use Time (General):</span> <strong>12 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Kulaklık modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/philips-shb3075-63ekvdeetiwzn45" style="color:#2563eb">Philips SHB3075 Wireless Headphones</a></li><li><a href="/tr/product/cmf-headphone-pro-2ebknhz5c04afoi" style="color:#2563eb">CMF Headphone Pro Kablosuz Kulaklık</a></li><li><a href="/tr/product/fenix-fh-202-kugq224z18r9x9j" style="color:#2563eb">Fenix FH-202 Kablosuz Kulaklık</a></li><li><a href="/tr/product/sennheiser-momentum-4-zymlvk6q0eat2u1" style="color:#2563eb">Sennheiser Momentum 4 Wireless Headphones</a></li><li><a href="/tr/product/bowers-wilkins-px8-s2-mclaren-ptuoq5ovqa14imn" style="color:#2563eb">Bowers &amp; Wilkins Px8 S2 McLaren Kablosuz Kulaklık</a></li><li><a href="/tr/product/buff-bf25-hvujyqn4p55zbqt" style="color:#2563eb">Buff BF25 Kablosuz Kulaklık</a></li><li><a href="/tr/product/moondrop-edge-qp6jk62w1aiv7ke" style="color:#2563eb">Moondrop Edge Kablosuz Kulaklık</a></li><li><a href="/tr/product/atk-mercury-i-sfojarqn3wx883b" style="color:#2563eb">ATK Mercury I Kablosuz Kulaklık</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/headphones" style="color:#2563eb;font-weight:600">Tüm Kulaklık modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

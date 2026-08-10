@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/tablets">Tablet</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Huawei MatePad 11.5 S 2026 Tablet (512 GB)</h1><p style="color:#475569;margin:0 0 12px">Huawei · Tablet · Qor AI teknik skoru 74/100</p><img src="https://resim.epey.com/1041496/m_huawei-matepad-11-5-s-2026-512-1.jpg" alt="Huawei MatePad 11.5 S 2026 Tablet (512 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Huawei MatePad 11.5 S 2026 Tablet (512 GB) öne çıkan özellikleri: battery capacity 8800 mAh, display boyutu 11.5 İnç, ram 12 GB. Huawei MatePad 11.5 S 2026 Tablet (512 GB) 33 teknik özelliğini, Qor AI teknik skorunu ve benzer tablet modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>8800 mAh</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>11.5 İnç</strong></li><li><span style="color:#64748b">RAM:</span> <strong>12 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>13.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>512 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>HarmonyOS 4.3</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Tablet modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/huawei-matepad-mini-papermatte-edition-agjhe90u8ifwzpv" style="color:#2563eb">Huawei MatePad Mini PaperMatte Edition Tablet (12 GB / 256 GB)</a></li><li><a href="/tr/product/sprange-m50-8-256gb-7vi79mxhkcyi1ck" style="color:#2563eb">Sprange Vasoun M50 Tablet</a></li><li><a href="/tr/product/asus-vivobook-13-slate-oled-n5vtttsjaj18jqi" style="color:#2563eb">Asus Vivobook 13 Slate OLED Tablet (T3300)</a></li><li><a href="/tr/product/apple-ipad-mini-7-2024-512-gb-60qohbzixudioiz" style="color:#2563eb">Apple iPad Mini 7 (2024) Tablet (512 GB)</a></li><li><a href="/tr/product/motorola-moto-pad-70-pro-2-8hyna2ggmeg7bfi" style="color:#2563eb">Motorola Moto Pad 70 Pro Tablet (256 GB)</a></li><li><a href="/tr/product/galaxy-tab-s5e-10-5-wi-fi-968iccc8eqta9fu" style="color:#2563eb">Samsung Galaxy Tab S5e SM-T720 Tablet</a></li><li><a href="/tr/product/samsung-galaxy-tab-s4-10-5-apkmnga22l17qjr" style="color:#2563eb">Samsung Galaxy Tab S4 SM-T830 Tablet</a></li><li><a href="/tr/product/redmi-k-pad-16-1-tb-hd89p77z1u4e6tc" style="color:#2563eb">Redmi K Pad Tablet (16/1 TB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/tablets" style="color:#2563eb;font-weight:600">Tüm Tablet modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

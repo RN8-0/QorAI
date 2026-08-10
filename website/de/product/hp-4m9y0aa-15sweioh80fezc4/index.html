@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">HP 4M9Y0AA 16 GB 4800 MT</h1><p style="color:#475569;margin:0 0 12px">HP · RAM · Qor AI Techscore 86/100</p><img src="https://resim.epey.com/970507/m_hp-4m9y0aa-1.jpg" alt="HP 4M9Y0AA 16 GB 4800 MT" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">HP 4M9Y0AA 16 GB 4800 MT Highlights: bellek hızı (oc) 4800 MT/s, bellek kapasitesi 16 GB, bellek teknolojisi DDR5. Sieh dir unten 15 technische Merkmale von HP 4M9Y0AA 16 GB 4800 MT, den Qor AI Techscore und den Vergleich mit ähnlichen RAM-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Hızı (OC):</span> <strong>4800 MT/s</strong></li><li><span style="color:#64748b">Bellek Kapasitesi:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR5</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche RAM-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/crucial-cruso4800-16-q2jsen5rp0r3cvu" style="color:#2563eb">Crucial CRUSO4800/16 16 GB 4800 MT</a></li><li><a href="/de/product/warp-wr-r16x1-b-qprgbyrw3l88lix" style="color:#2563eb">Warp WR-R16X1-B 16 GB 3200 MT</a></li><li><a href="/de/product/warp-wr-r8x2-b-8gvfzzc6kypjzcw" style="color:#2563eb">Warp WR-R8X2-B 16 GB 3200 MT</a></li><li><a href="/de/product/oleas-pr3200pcd4s-16g-5xe9z9fbf8ezx0k" style="color:#2563eb">Oleas PR3200PCD4S-16G 16 GB 3200 MT</a></li><li><a href="/de/product/codegen-cdg-nbd425600-16g-f172fqqply76z6l" style="color:#2563eb">Codegen CDG-NBD425600/16G 16 GB 3200 MT</a></li><li><a href="/de/product/oleas-pr3200pcd4c2-16gb-sqlb9qrah8kfoko" style="color:#2563eb">Oleas PR3200PCD4C2-16GB 16 GB 3200 MT</a></li><li><a href="/de/product/lenovo-4x77a77495-wt0885lmlqu7zx0" style="color:#2563eb">Lenovo 4X77A77495 16 GB 3200 MT</a></li><li><a href="/de/product/ramaxel-rmsa3340mb88hbf-3200-u5hcm5hm70t2il1" style="color:#2563eb">Ramaxel RMSA3340MB88HBF-3200 16 GB 3200 MT</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ram" style="color:#2563eb;font-weight:600">Alle RAM-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/tablets">Tablets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Technopc Ultrapad Quantum Gaming TB19F10M8A4 Tablet</h1><p style="color:#475569;margin:0 0 12px">Technopc · Tablets · Qor AI Techscore 73/100</p><img src="https://resim.epey.com/986728/m_technopc-ultrapad-quantum-gaming-tb19f10m8a4-8680139091746-1.jpg" alt="Technopc Ultrapad Quantum Gaming TB19F10M8A4 Tablet" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Technopc Ultrapad Quantum Gaming TB19F10M8A4 Tablet Highlights: battery capacity 6500 mAh, cpu frequency 2.0 GHz, display boyutu 10.95 İnç. Sieh dir unten 29 technische Merkmale von Technopc Ultrapad Quantum Gaming TB19F10M8A4 Tablet, den Qor AI Techscore und den Vergleich mit ähnlichen Tablets-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>6500 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>2.0 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>10.95 İnç</strong></li><li><span style="color:#64748b">RAM:</span> <strong>8 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>13.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>Android 14</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Tablets-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/microsoft-surface-pro-8-1-tb-g9pf7zi51h7hywy" style="color:#2563eb">Microsoft Surface Pro 8 Tablet (1024 GB / 32 GB)</a></li><li><a href="/de/product/microsoft-surface-pro-9-qlq-00007-4g6j0w440t31q12" style="color:#2563eb">Microsoft Surface Pro 9 Tablet (32 GB / 1024 GB / Windows 11 Pro) (QLQ-00007)</a></li><li><a href="/de/product/microsoft-surface-pro-2tq4noynkijhq9z" style="color:#2563eb">Microsoft Surface Pro Tablet (Intel Core Ultra 7 165U / 5G) (EP2-27022)</a></li><li><a href="/de/product/galaxy-tab-s5e-10-5-wi-fi-plus-lte-czrv057l2eus87q" style="color:#2563eb">Samsung Galaxy Tab S5e SM-T727 LTE Tablet (4G)</a></li><li><a href="/de/product/samsung-galaxy-tab-s6-10-5-wi-fi-plus-lte-zdecmvns54w6byz" style="color:#2563eb">Samsung Galaxy Tab S6 LTE Tablet (3G / 4G) (SM-T867NZAATUR)</a></li><li><a href="/de/product/samsung-galaxy-tab-s4-sm-t837-3wvagn21sm65y61" style="color:#2563eb">Samsung Galaxy Tab S4 SM-T837 LTE Tablet (4G)</a></li><li><a href="/de/product/apple-ipad-mini-5-7-9-256-gb-wi-fi-f40gs6sfhvbghyu" style="color:#2563eb">Apple iPad Mini 5 Tablet (256 GB)</a></li><li><a href="/de/product/apple-ipad-7-10-2-128-gb-wi-fi-uekuuk3x8bmflfx" style="color:#2563eb">Apple Ipad 7 Tablet (128 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/tablets" style="color:#2563eb;font-weight:600">Alle Tablets-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

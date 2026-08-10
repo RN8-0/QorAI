@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/printers">Printers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Xerox B1025 printer</h1><p style="color:#475569;margin:0 0 12px">Xerox · Printers · Qor AI tech score 71/100</p><img src="https://resim.epey.com/145930/m_xerox-b1025v-1.png" alt="Xerox B1025 printer" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Xerox B1025 printer key features: baskı hızı (black) 25 sf/dk, baskı tekniği Lazer, baskı türü Black. Review Xerox B1025 printer's 32 technical specs, its Qor AI tech score and how it compares with similar models in printers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Hızı (Black):</span> <strong>25 sf/dk</strong></li><li><span style="color:#64748b">Baskı Tekniği:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Baskı Türü:</span> <strong>Black</strong></li><li><span style="color:#64748b">Kenarlıksız Baskı:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanım Tipi:</span> <strong>Çok Fonksiyonlu</strong></li><li><span style="color:#64748b">Mobil Baskı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1200 x 1200 px</strong></li><li><span style="color:#64748b">Tarayıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Kağıt Girişi:</span> <strong>350 sayfa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Printers</h2><ul style="line-height:1.8"><li><a href="/product/xerox-workcentre-3220-5cfkg8pnkr8y12x" style="color:#2563eb">Xerox workcentre 3220 printer</a></li><li><a href="/product/xerox-workcentre-6515v-dn-lb5sterrqil4r7w" style="color:#2563eb">Xerox workcentre 6515 printer</a></li><li><a href="/product/xerox-workcentre-3335-20lol54o8wtgihb" style="color:#2563eb">Xerox workcentre 3335 printer</a></li><li><a href="/product/xerox-workcentre-3025v-ni-8t8rjpdj642g1ha" style="color:#2563eb">Xerox workcentre 3025V-NI printer</a></li><li><a href="/product/xerox-versalink-b405v-dn-hyt2r4f9vrmdegv" style="color:#2563eb">Xerox versalink B405 printer</a></li><li><a href="/product/xerox-b305v-dni-bo3hfu3nsdpd7e4" style="color:#2563eb">Xerox B305V dni printer</a></li><li><a href="/product/xerox-b205v-ni-p2mt30v4s8u1axl" style="color:#2563eb">Xerox B205V-NI printer</a></li><li><a href="/product/xerox-b315v-dni-tx85fffem79dr7o" style="color:#2563eb">Xerox B315V-DNI printer</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/printers" style="color:#2563eb;font-weight:600">Compare all Printers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

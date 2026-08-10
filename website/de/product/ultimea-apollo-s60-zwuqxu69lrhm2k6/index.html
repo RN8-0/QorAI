@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/audio_systems">Audiosysteme</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ultimea Apollo S60 Soundbar (U3620)</h1><p style="color:#475569;margin:0 0 12px">Ultimea · Audiosysteme · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/1040093/m_ultimea-apollo-s60-5.jpg" alt="Ultimea Apollo S60 Soundbar (U3620)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ultimea Apollo S60 Soundbar (U3620) Highlights: audio output 3D Surround, bluetooth Yes, charging port Kablolu ve Wireless. Sieh dir unten 33 technische Merkmale von Ultimea Apollo S60 Soundbar (U3620), den Qor AI Techscore und den Vergleich mit ähnlichen Audiosysteme-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Output:</span> <strong>3D Surround</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>Kablolu ve Wireless</strong></li><li><span style="color:#64748b">En Düşük Frequency:</span> <strong>48 Hz</strong></li><li><span style="color:#64748b">En Yüksek Frequency:</span> <strong>18 KHz</strong></li><li><span style="color:#64748b">Kanal Yapısı:</span> <strong>4.1</strong></li><li><span style="color:#64748b">Subwoofer:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Güç (RMS):</span> <strong>200 W</strong></li><li><span style="color:#64748b">Uydu Count:</span> <strong>2 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Audiosysteme-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/tcl-ray-danz-q85h-pro-ztzitfepygt84uj" style="color:#2563eb">TCL Ray Danz Q85H Pro Soundbar</a></li><li><a href="/de/product/tcl-ray-danz-q85h-j45fom1u6orxqo1" style="color:#2563eb">TCL Ray Danz Q85H Soundbar</a></li><li><a href="/de/product/tcl-p735w-ehr9glry8f87owo" style="color:#2563eb">TCL P735W Soundbar</a></li><li><a href="/de/product/tcl-s522w-yt8ze0zsyfkyjm3" style="color:#2563eb">TCL S522W Soundbar</a></li><li><a href="/de/product/tcl-ts8132-3hr50jsn1phn6yd" style="color:#2563eb">TCL TS8132 Soundbar</a></li><li><a href="/de/product/tcl-ray-danz-ts9030-3thzkpivja3pw5u" style="color:#2563eb">TCL Ray Danz TS9030 Soundbar</a></li><li><a href="/de/product/tcl-ts6110-anrewqs84j1s8b4" style="color:#2563eb">TCL TS6110 Soundbar</a></li><li><a href="/de/product/tcl-x937u-g7sr8ov7fqvkvbw" style="color:#2563eb">TCL X937U Soundbar</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/audio_systems" style="color:#2563eb;font-weight:600">Alle Audiosysteme-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

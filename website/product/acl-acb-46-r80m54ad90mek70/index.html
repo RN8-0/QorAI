@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/headphones">Headphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">ACL ACB-46 Tam Wireless Headphones</h1><p style="color:#475569;margin:0 0 12px">ACL · Headphones · Qor AI tech score 94/100</p><img src="https://resim.epey.com/902916/m_acl-acb-46-1.jpg" alt="ACL ACB-46 Tam Wireless Headphones" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">ACL ACB-46 Tam Wireless Headphones key features: audio output Stereo, bluetooth Yes 5.2, charging type Charging Case. Review ACL ACB-46 Tam Wireless Headphones's 22 technical specs, its Qor AI tech score and how it compares with similar models in headphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Output:</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes 5.2</strong></li><li><span style="color:#64748b">Charging Type:</span> <strong>Charging Case</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>True Wireless</strong></li><li><span style="color:#64748b">Control:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Use Time (General):</span> <strong>3 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Headphones</h2><ul style="line-height:1.8"><li><a href="/product/acl-acb-54-492yj77215wiu8c" style="color:#2563eb">ACL ACB-54 Tam Wireless Headphones</a></li><li><a href="/product/acl-acb-58-w243b6ee468zcg8" style="color:#2563eb">ACL ACB-58 Tam Wireless Headphones</a></li><li><a href="/product/acl-acb-69-d0i893edj23n5jy" style="color:#2563eb">ACL ACB-69 Tam Wireless Headphones</a></li><li><a href="/product/sennheiser-momentum-true-wireless-4-2pj48fy1q1uud82" style="color:#2563eb">Sennheiser Momentum True Wireless 4 Tam Wireless Headphones</a></li><li><a href="/product/philips-shb7150-ciefnqjs9jo6xx0" style="color:#2563eb">Philips SHB7150 Wireless Headphones</a></li><li><a href="/product/philips-shb9850nc-byvfa2ahd382z96" style="color:#2563eb">Philips SHB9850NC Wireless Headphones</a></li><li><a href="/product/acl-acb-53-lifebeats-stzhwd3nh925u41" style="color:#2563eb">ACL ACB-53 LifeBeats Wireless Headphones</a></li><li><a href="/product/acl-acb-57-hlmmnzf8hcz7117" style="color:#2563eb">ACL ACB-57 Tam Wireless Headphones</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/headphones" style="color:#2563eb;font-weight:600">Compare all Headphones →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

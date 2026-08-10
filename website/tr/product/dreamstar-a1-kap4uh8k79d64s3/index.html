@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/media_players">Medya Oynatıcı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dreamstar A1 Medya Oynatıcı</h1><p style="color:#475569;margin:0 0 12px">Dreamstar · Medya Oynatıcı · Qor AI teknik skoru 86/100</p><img src="https://resim.epey.com/194162/m_dreamstar-a1-1.jpg" alt="Dreamstar A1 Medya Oynatıcı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dreamstar A1 Medya Oynatıcı öne çıkan özellikleri: ethernet hızı 100 Mbit/s, hdr Yes, ram 2 GB. Dreamstar A1 Medya Oynatıcı 25 teknik özelliğini, Qor AI teknik skorunu ve benzer medya oynatıcı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>2 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160 p 4K UHD</strong></li><li><span style="color:#64748b">Storage:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Medya Oynatıcı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/dreamstar-a2-t4uikdh6sitw0cc" style="color:#2563eb">Dreamstar A2 Medya Oynatıcı</a></li><li><a href="/tr/product/dreamstar-nova-2-wtvrs6sg1crq5zc" style="color:#2563eb">Dreamstar Nova 2 Medya Oynatıcı</a></li><li><a href="/tr/product/magbox-t95z-plus-32-gb-monz953cy0wj4sq" style="color:#2563eb">Magbox T95Z Plus 32 GB Medya Oynatıcı (32 GB / 3 GB)</a></li><li><a href="/tr/product/dreamstar-i3-plus-7xjtoaz6eavh9k1" style="color:#2563eb">Dreamstar i3 Plus Medya Oynatıcı</a></li><li><a href="/tr/product/turkcell-tv-plus-pro-za50hc1iw2zvvzb" style="color:#2563eb">Turkcell TV+ Pro Medya Oynatıcı</a></li><li><a href="/tr/product/zidoo-z9s-mrz6l102v1dgfbn" style="color:#2563eb">Zidoo Z9S Medya Oynatıcı</a></li><li><a href="/tr/product/yui-tb-01x-s07zw42um5jep67" style="color:#2563eb">Yui TB-01X Medya Oynatıcı</a></li><li><a href="/tr/product/atlanta-colovu-50nl655ufo4j3gs" style="color:#2563eb">Atlanta ColoVU Medya Oynatıcı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/media_players" style="color:#2563eb;font-weight:600">Tüm Medya Oynatıcı modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

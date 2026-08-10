@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/printers">Printers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Epson ecotank business L6376 printer</h1><p style="color:#475569;margin:0 0 12px">Epson · Printers · Qor AI tech score 71/100</p><img src="https://resim.epey.com/1057862/epson-ecotank-l6376-1.png" alt="Epson ecotank business L6376 printer" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Epson ecotank business L6376 printer key features: baskı hızı (black) 35 sf/dk, baskı tekniği Mürekkepli, baskı türü Renkli. Review Epson ecotank business L6376 printer's 27 technical specs, its Qor AI tech score and how it compares with similar models in printers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Hızı (Black):</span> <strong>35 sf/dk</strong></li><li><span style="color:#64748b">Baskı Tekniği:</span> <strong>Mürekkepli</strong></li><li><span style="color:#64748b">Baskı Türü:</span> <strong>Renkli</strong></li><li><span style="color:#64748b">Color:</span> <strong>18 sf/dk</strong></li><li><span style="color:#64748b">Kullanım Tipi:</span> <strong>Çok Fonksiyonlu</strong></li><li><span style="color:#64748b">Mobil Baskı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>4800 x 1200 px</strong></li><li><span style="color:#64748b">Tarayıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Kağıt Girişi:</span> <strong>250 sayfa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Printers</h2><ul style="line-height:1.8"><li><a href="/product/ricoh-mc-2000-xt85ncrjn6972mo" style="color:#2563eb">Ricoh mc 2000 printer</a></li><li><a href="/product/epson-workorce-pro-wf-em-c800rdwtf-n3llr2p3gfftso5" style="color:#2563eb">Epson workorce pro WF-EM-C800RDWTF printer</a></li><li><a href="/product/hp-laserjet-pro-m130fn-qz7m6id19oa08fh" style="color:#2563eb">Hp laserjet pro M130fn printer</a></li><li><a href="/product/samsung-clx-6260fr-1aa0yazd6bmts8d" style="color:#2563eb">Samsung CLX-6260 printer</a></li><li><a href="/product/samsung-proxpress-sl-c4060fx-2mrtrombg5m6hcx" style="color:#2563eb">Samsung proxpress SL-C4060FX printer (SS218C)</a></li><li><a href="/product/canon-maxify-mb5050-mksib7wnbuf1ltf" style="color:#2563eb">Canon maxify MB5050 printer</a></li><li><a href="/product/hp-laserjet-pro-m130fw-cdof8rw1dyo6ur8" style="color:#2563eb">Hp laserjet pro M130fw printer</a></li><li><a href="/product/deli-m2500adnw-w6yxqknsddzp8gs" style="color:#2563eb">Mad M2500ADNW printer</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/printers" style="color:#2563eb;font-weight:600">Compare all Printers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

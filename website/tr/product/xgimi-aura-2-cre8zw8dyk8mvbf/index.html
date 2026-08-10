@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">XGIMI Aura 2 DLP Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">XGIMI · Projeksiyon · Qor AI teknik skoru 98/100</p><img src="https://resim.epey.com/996689/m_xgimi-aura-2-2.png" alt="XGIMI Aura 2 DLP Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">XGIMI Aura 2 DLP Projeksiyon öne çıkan özellikleri: ağ bağlantısı Yes, brightness 2875 Lümen, dinamik kontrast 1000000:1. XGIMI Aura 2 DLP Projeksiyon 40 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Brightness:</span> <strong>2875 Lümen</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>1000000:1</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>20000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>DLP</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160</strong></li><li><span style="color:#64748b">Weight:</span> <strong>9 kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/lg-hu80ka-l1bvkyqo6rdd1zw" style="color:#2563eb">LG HU80KA DLP Projeksiyon</a></li><li><a href="/tr/product/lg-hu85la-tgrgjm9bk21fcrn" style="color:#2563eb">LG HU85LA DLP Projeksiyon</a></li><li><a href="/tr/product/lg-hu810p-no69i5wqsj678h6" style="color:#2563eb">LG HU810P LCD Projeksiyon</a></li><li><a href="/tr/product/benq-tk800-7yiveswyba1iwdt" style="color:#2563eb">BenQ TK800 DLP Projeksiyon</a></li><li><a href="/tr/product/benq-w2720i-6lcg3kr5c8o1htj" style="color:#2563eb">BenQ W2720i DLP Projeksiyon</a></li><li><a href="/tr/product/epson-home-cinema-2350-s5detdck7bksgqm" style="color:#2563eb">Epson Home Cinema 2350 LCD Projeksiyon (V11HA73020)</a></li><li><a href="/tr/product/epson-eh-tw6250-zo80cmauqldir69" style="color:#2563eb">Epson EH-TW6250 LCD Projeksiyon (V11HA73040)</a></li><li><a href="/tr/product/vava-va-lt002-8e9b7kwj5auknd8" style="color:#2563eb">Vava VA-LT002 DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/cpu_coolers">CPU Coolers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Zoko ice pro WP4 RGB processor cooler</h1><p style="color:#475569;margin:0 0 12px">Zoko · CPU Coolers · Qor AI tech score 88/100</p><img src="https://resim.epey.com/983770/m_zoko-ice-pro-4.png" alt="Zoko ice pro WP4 RGB processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Zoko ice pro WP4 RGB processor cooler key features: aydınlatma Yes, fan bağlantısı 4 pin, fan boyutu (büyük) 120 mm. Review Zoko ice pro WP4 RGB processor cooler's 23 technical specs, its Qor AI tech score and how it compares with similar models in cpu coolers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>2000 RPM</strong></li><li><span style="color:#64748b">Güç Tüketimi (Fan):</span> <strong>1.5 W</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>58.5 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>190 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in CPU Coolers</h2><ul style="line-height:1.8"><li><a href="/product/tryx-stage-360-argb-uxy0np05v72bv61" style="color:#2563eb">Tryx stage 360 argb processor cooler</a></li><li><a href="/product/xaser-xrc-240-117n6gg1794qfrv" style="color:#2563eb">Xaser XRC-240 processor cooler</a></li><li><a href="/product/tryx-panorama-360-argb-ge1ghh3yzqtzams" style="color:#2563eb">Tryx panorama 360 argb processor cooler</a></li><li><a href="/product/tryx-panorama-se-360-argb-en12mqeys72sf2g" style="color:#2563eb">Tryx panorama se 360 argb processor cooler (L-P360L-AM3M-G0K)</a></li><li><a href="/product/tryx-panorama-se-240-argb-b02lchu77zpxasq" style="color:#2563eb">Tryx panorama se 240 argb processor cooler (L-P240L-AM2M-G0W)</a></li><li><a href="/product/tryx-panorama-240-argb-t6re4wel3jocwcf" style="color:#2563eb">Tryx panorama 240 argb processor cooler</a></li><li><a href="/product/next-gaming-nitro-cool-ng-240c-uz2pmqpgharehel" style="color:#2563eb">Next gaming nitro cool NG-240C processor cooler</a></li><li><a href="/product/next-gaming-ng-frost-200-y937e1ndyr8goxe" style="color:#2563eb">Next gaming ng frost 200 processor cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/cpu_coolers" style="color:#2563eb;font-weight:600">Compare all CPU Coolers →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/case_fans">Kasa Fanı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hadron HD2501 Kasa Fanı</h1><p style="color:#475569;margin:0 0 12px">Hadron · Kasa Fanı · Qor AI teknik skoru 10/100</p><img src="https://resim.epey.com/754271/m_hadron-hd2501-1.jpg" alt="Hadron HD2501 Kasa Fanı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Hadron HD2501 Kasa Fanı öne çıkan özellikleri: audio seviyesi 17.5 dB, dönme hızı 1200 rpm, fan bağlantısı 4-Pin. Hadron HD2501 Kasa Fanı 7 teknik özelliğini, Qor AI teknik skorunu ve benzer kasa fanı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Seviyesi:</span> <strong>17.5 dB</strong></li><li><span style="color:#64748b">Dönme Hızı:</span> <strong>1200 rpm</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4-Pin</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>80 mm</strong></li><li><span style="color:#64748b">Fan Tipi:</span> <strong>Standart</strong></li><li><span style="color:#64748b">Hava Akımı:</span> <strong>38.4 cfm</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Kasa Fanı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/cooler-master-masterfan-pro-140-air-flow-mjawmq1wnbpd7th" style="color:#2563eb">Cooler Master MasterFan Pro 140 Air Flow Kasa Fanı (MFY-F4NN-08NMK-R1)</a></li><li><a href="/tr/product/dark-dkcf120rgb-vait4yedm1drxcz" style="color:#2563eb">Dark DKCF120RGB Kasa Fanı</a></li><li><a href="/tr/product/dark-dkccfb122b-s5r8s25ye4uor3b" style="color:#2563eb">Dark DKCCFB122B Kasa Fanı (Mavi)</a></li><li><a href="/tr/product/cooler-master-ra-fan-18025-3p-18025-la8wvojivrx7i10" style="color:#2563eb">Cooler Master Ra-Fan-18025-3P 18025 Kasa Fanı</a></li><li><a href="/tr/product/cooler-master-masterfan-sf240r-sz4sajscsvea7te" style="color:#2563eb">Cooler Master MasterFan SF240R Kasa Fanı (MFX-B2D2-18NPA-R1)</a></li><li><a href="/tr/product/cooler-master-masterfan-mf120-halo-gzhxfd4gu23hlos" style="color:#2563eb">Cooler Master MasterFan MF120 Halo Kasa Fanı (120 mm) (MFL-B2DN-18NPA-R1)</a></li><li><a href="/tr/product/cooler-master-masterfan-mf140-halo2-mxout2ofo9f4c3m" style="color:#2563eb">Cooler Master MasterFan MF140 Halo2 Kasa Fanı (140 mm) (MFL-B4DN-16NP2-R2)</a></li><li><a href="/tr/product/dark-dkcf127argb-edvt8s9rgeknul3" style="color:#2563eb">Dark DKCF127ARGB Kasa Fanı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/case_fans" style="color:#2563eb;font-weight:600">Tüm Kasa Fanı modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/modem_routers">Modems</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TP-Link TD-W9970 Modem</h1><p style="color:#475569;margin:0 0 12px">TP-Link · Modems · Qor AI tech score 49/100</p><img src="https://resim.epey.com/92721/m_tp-link-td-w9970-5.jpg" alt="TP-Link TD-W9970 Modem" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TP-Link TD-W9970 Modem key features: bağlantı teknolojisi VDSL2, dahili hücresel veri ağı No, diğer bağlantılar RJ11 (DSL SIMtı). Review TP-Link TD-W9970 Modem's 40 technical specs, its Qor AI tech score and how it compares with similar models in modems below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Teknolojisi:</span> <strong>VDSL2</strong></li><li><span style="color:#64748b">Dahili Hücresel Veri Ağı:</span> <strong>No</strong></li><li><span style="color:#64748b">Diğer Bağlantılar:</span> <strong>RJ11 (DSL SIMtı)</strong></li><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>0.1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Ethernetten Güç (PoE):</span> <strong>No</strong></li><li><span style="color:#64748b">Hüzmeleme:</span> <strong>No</strong></li><li><span style="color:#64748b">MU-MIMO:</span> <strong>No</strong></li><li><span style="color:#64748b">USB:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB Standardı:</span> <strong>2.0</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>300 Mbps</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 4 (802.11n)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Modems</h2><ul style="line-height:1.8"><li><a href="/product/asus-dsl-ac750-cs1jch8ffga37cu" style="color:#2563eb">Asus DSL-AC750 Modem</a></li><li><a href="/product/tp-link-archer-vr300-ev17dmk9ec8l6q3" style="color:#2563eb">TP-Link Archer VR300 Modem</a></li><li><a href="/product/airties-air-5050-7z2l8kslwzov47d" style="color:#2563eb">AirTies Air 5050 Modem</a></li><li><a href="/product/airties-rt-104-65mxdd0ik70wrcs" style="color:#2563eb">AirTies RT-104 Modem</a></li><li><a href="/product/airties-air-5021-ddvbfbh54g2wpfd" style="color:#2563eb">AirTies Air 5021 Modem</a></li><li><a href="/product/tp-link-td-8817-iyache6fdc523vb" style="color:#2563eb">TP-Link TD-8817 Modem</a></li><li><a href="/product/tp-link-archer-vc220-f3v-7lqi7rqszwz83g7" style="color:#2563eb">TP-Link Archer VC220-F3v Modem</a></li><li><a href="/product/zyxel-p-661h-d1-fqde2l0dyo5zi85" style="color:#2563eb">Zyxel P-661H-D1 Modem</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/modem_routers" style="color:#2563eb;font-weight:600">Compare all Modems →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

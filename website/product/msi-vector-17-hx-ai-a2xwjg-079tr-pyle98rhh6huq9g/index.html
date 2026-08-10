@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/laptops">Laptops</a></nav><h1 style="font-size:26px;margin:12px 0 4px">MSI Vector 17 HX AI A2XWJG-079 Laptop</h1><p style="color:#475569;margin:0 0 12px">MSI · Laptops · Qor AI tech score 91/100</p><img src="https://resim.epey.com/1011781/m_msi-vector-17-hx-ai-a2xwjg-079tr-5.jpg" alt="MSI Vector 17 HX AI A2XWJG-079 Laptop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">MSI Vector 17 HX AI A2XWJG-079 Laptop key features: display boyutu 17.0 İnç, gpu NVIDIA GeForce RTX 5090 175 W, ram 32 GB. Review MSI Vector 17 HX AI A2XWJG-079 Laptop's 77 technical specs, its Qor AI tech score and how it compares with similar models in laptops below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>17.0 İnç</strong></li><li><span style="color:#64748b">GPU:</span> <strong>NVIDIA GeForce RTX 5090 175 W</strong></li><li><span style="color:#64748b">RAM:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>2560 x 1600 Piksel Ultra HD (4K)</strong></li><li><span style="color:#64748b">Storage:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli:</span> <strong>Intel Core Ultra 9 275HX</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>Windows 11 Home</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Laptops</h2><ul style="line-height:1.8"><li><a href="/product/lenovo-legion-pro-7-83f500ggtr-zq0r2umv7x3qyp7" style="color:#2563eb">Lenovo Legion Pro 7 83F500GGTR Laptop</a></li><li><a href="/product/erazer-beast-18-x1-md62730-3nj4mvq11shcbdy" style="color:#2563eb">Erazer Beast 18 X1 MD62730 Laptop</a></li><li><a href="/product/casper-excalibur-g920-1490-en90h-e-80e6dv69rs61z2e" style="color:#2563eb">Casper Excalibur G920.1490-EN90H-E Laptop</a></li><li><a href="/product/casper-excalibur-g920-1490-ex90x-e-h19rcoa6ohetpuu" style="color:#2563eb">Casper Excalibur G920.1490-EX90X-E Laptop</a></li><li><a href="/product/casper-excalibur-g920-1490-ex90a-e-5ye6rpwbif67c2l" style="color:#2563eb">Casper Excalibur G920.1490-EX90A-E Laptop</a></li><li><a href="/product/casper-excalibur-g920-1490-en90x-e-t9knpv5yiwj2h2f" style="color:#2563eb">Casper Excalibur G920.1490-EN90X-E Laptop</a></li><li><a href="/product/casper-excalibur-g920-1490-ex90h-e-0d9v74y80343dat" style="color:#2563eb">Casper Excalibur G920.1490-EX90H-E Laptop</a></li><li><a href="/product/hp-omen-max-gaming-16-ah0014nt-ob8sq9eap23-jpakg4hzdgwhsho" style="color:#2563eb">HP OMEN MAX Gaming 16-ah0014nt (OB8SQ9EAP23) Laptop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/laptops" style="color:#2563eb;font-weight:600">Compare all Laptops →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

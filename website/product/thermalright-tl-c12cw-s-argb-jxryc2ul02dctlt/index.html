@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/case_fans">Case Fans</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Thermalright TL-C12CW-S argb box fan</h1><p style="color:#475569;margin:0 0 12px">Thermalright · Case Fans · Qor AI tech score 10/100</p><img src="https://resim.epey.com/1019700/m_thermalright-tl-c12cw-s-argb-1.jpg" alt="Thermalright TL-C12CW-S argb box fan" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Thermalright TL-C12CW-S argb box fan key features: audio seviyesi 25.6 dB, dönme hızı 1550 rpm, fan bağlantısı 4-Pin. Review Thermalright TL-C12CW-S argb box fan's 9 technical specs, its Qor AI tech score and how it compares with similar models in case fans below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Seviyesi:</span> <strong>25.6 dB</strong></li><li><span style="color:#64748b">Dönme Hızı:</span> <strong>1550 rpm</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4-Pin</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Tipi:</span> <strong>Işıklı</strong></li><li><span style="color:#64748b">Hava Akımı:</span> <strong>66 cfm</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Case Fans</h2><ul style="line-height:1.8"><li><a href="/product/thermalright-tl-c14c-s-argb-cf0xzvs2d1rgpfs" style="color:#2563eb">Thermalright TL-C14C-S argb box fan</a></li><li><a href="/product/dark-dkcf126f-mjscff8ah6q1luk" style="color:#2563eb">Dark DKCF126F box fan</a></li><li><a href="/product/thermalright-tl-b12-s-argb-rrv6fdlektcegvh" style="color:#2563eb">Thermalright TL-B12-S argb box fan</a></li><li><a href="/product/thermalright-tl-c12rb-s-v2-argb-q7abawr37mdlngh" style="color:#2563eb">Thermalright TL-C12RB-S V2 argb box fan</a></li><li><a href="/product/thermalright-tl-c14cw-s-argb-cd261ia48hvmstj" style="color:#2563eb">Thermalright TL-C14CW-S argb box fan</a></li><li><a href="/product/thermalright-tl-c12w-s-argb-i08cp6o9hitco33" style="color:#2563eb">Thermalright TL-C12W-S argb box fan</a></li><li><a href="/product/thermalright-tl-c12r-l-rgb-p1ml2jod7rsd7qt" style="color:#2563eb">Thermalright TL-C12R-L RGB box fan</a></li><li><a href="/product/thermalright-tl-m12-s-argb-n2607jo0umzaar6" style="color:#2563eb">Thermalright TL-M12-S argb box fan</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/case_fans" style="color:#2563eb;font-weight:600">Compare all Case Fans →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

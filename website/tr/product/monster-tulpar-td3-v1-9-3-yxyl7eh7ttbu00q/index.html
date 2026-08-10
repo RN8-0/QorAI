@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/desktops">Masaüstü PC</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Monster Tulpar TD3 V1.9.3</h1><p style="color:#475569;margin:0 0 12px">Monster · Masaüstü PC · Qor AI teknik skoru 74/100</p><img src="https://resim.epey.com/1049518/m_monster-tulpar-td3-v1-9-3-7.jpg" alt="Monster Tulpar TD3 V1.9.3" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Monster Tulpar TD3 V1.9.3 öne çıkan özellikleri: display kartı modeli Monster Arc B570, güç kaynağı 650 W, kullanım amacı Oyun. Monster Tulpar TD3 V1.9.3 44 teknik özelliğini, Qor AI teknik skorunu ve benzer masaüstü pc modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Kartı Modeli:</span> <strong>Monster Arc B570</strong></li><li><span style="color:#64748b">Güç Kaynağı:</span> <strong>650 W</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Oyun</strong></li><li><span style="color:#64748b">RAM:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Storage:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli (CPU):</span> <strong>Intel Core i5-14400F</strong></li><li><span style="color:#64748b">İşlemci Temel Frequency:</span> <strong>2.5 GHz</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>DOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Masaüstü PC modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/canar-desktoppc212-720h4nlpacr70sp" style="color:#2563eb">Canar Desktoppc212</a></li><li><a href="/tr/product/apple-imac-24-m3-mqru3tu-a-ytxb76zrxdlkgfp" style="color:#2563eb">Apple iMac 24&quot; M3 MQRU3TU/A</a></li><li><a href="/tr/product/dark-3060t-8-7zlag0dz3atwfim" style="color:#2563eb">Dark 3060T-8 -PC-3060T-8)</a></li><li><a href="/tr/product/dark-5700g-e17jwk9s31qrljg" style="color:#2563eb">Dark 5700G -PC-5700G)</a></li><li><a href="/tr/product/dark-x300-12-3bmx96n6arb28wu" style="color:#2563eb">Dark X300-12 -PC-X300-12)</a></li><li><a href="/tr/product/hp-proone-440-g9-9h6x8et08-djjxmqv23akpgh2" style="color:#2563eb">HP ProOne 440 G9 9H6X8ET08</a></li><li><a href="/tr/product/msi-mpg-infinite-x3-ai-2nvz9-028eu-zkb4oioke7d3vx0" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVZ9-028</a></li><li><a href="/tr/product/zetta-maxima-9-zet790017700-ovk9rfnuv2xeuvg" style="color:#2563eb">Zetta Maxima 9 ZET790017700</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/desktops" style="color:#2563eb;font-weight:600">Tüm Masaüstü PC modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

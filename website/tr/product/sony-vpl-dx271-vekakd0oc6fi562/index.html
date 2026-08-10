@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Sony VPL-DX271 LCD Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">Sony · Projeksiyon · Qor AI teknik skoru 95/100</p><img src="https://resim.epey.com/96814/m_sony-vpl-dx271-1.jpg" alt="Sony VPL-DX271 LCD Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Sony VPL-DX271 LCD Projeksiyon öne çıkan özellikleri: ağ bağlantısı No, brightness 3600 Lümen, dinamik kontrast 4000:1. Sony VPL-DX271 LCD Projeksiyon 25 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>No</strong></li><li><span style="color:#64748b">Brightness:</span> <strong>3600 Lümen</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>4000:1</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>10000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>LCD</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1024x768</strong></li><li><span style="color:#64748b">Weight:</span> <strong>2.7 kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sony-vpl-ex235-jgaw5yxdjis18un" style="color:#2563eb">Sony VPL-EX235 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-dx221-b956aw0t6obe6am" style="color:#2563eb">Sony VPL-DX221 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-sx631-fqn4deq9bndxoqx" style="color:#2563eb">Sony VPL-SX631 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-ex315-b7hyfqugagrhj1o" style="color:#2563eb">Sony VPL-EX315 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-ex255-pwc0zxurykciglv" style="color:#2563eb">Sony VPL-EX255 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-dx241-bd7msy88727g6vy" style="color:#2563eb">Sony VPL-DX241 LCD Projeksiyon</a></li><li><a href="/tr/product/sony-vpl-sx236-4noj0mmjd0ucmjh" style="color:#2563eb">Sony VPL-SX236 LCD Projeksiyon</a></li><li><a href="/tr/product/hitachi-cp-x8160-k9wndzn2gb95gg9" style="color:#2563eb">Hitachi CP-X8160 LCD Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

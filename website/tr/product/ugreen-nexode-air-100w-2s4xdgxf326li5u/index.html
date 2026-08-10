@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/chargers">Şarj Aleti</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ugreen Nexode Air 100W Şarj Aleti (35043)</h1><p style="color:#475569;margin:0 0 12px">Ugreen · Şarj Aleti · Qor AI teknik skoru 51/100</p><img src="https://resim.epey.com/998183/m_ugreen-nexode-air-100w-1.jpg" alt="Ugreen Nexode Air 100W Şarj Aleti (35043)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ugreen Nexode Air 100W Şarj Aleti (35043) öne çıkan özellikleri: 1. output gücü 100 W, charging teknolojisi Qualcomm QC 4.0, charging port Kablolu. Ugreen Nexode Air 100W Şarj Aleti (35043) 27 teknik özelliğini, Qor AI teknik skorunu ve benzer şarj aleti modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Gücü:</span> <strong>100 W</strong></li><li><span style="color:#64748b">Charging Teknolojisi:</span> <strong>Qualcomm QC 4.0</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>Kablolu</strong></li><li><span style="color:#64748b">Cihaz Tipi:</span> <strong>DuYes</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Giriş Arayüzü:</span> <strong>Fiş</strong></li><li><span style="color:#64748b">Output Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Output Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Toplam Anlık Güç:</span> <strong>100 W</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Şarj Aleti modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/oppo-33w-wjkyxosc7cctpm0" style="color:#2563eb">Oppo 33W Şarj Aleti</a></li><li><a href="/tr/product/lenovo-go-multi-port-130w-xk6ph9ye6z35bni" style="color:#2563eb">Lenovo Go Multi-Port 130W Şarj Aleti</a></li><li><a href="/tr/product/rocoren-rccc2p1a-zxc01-u8mfn4adobravir" style="color:#2563eb">Rocoren RCCC2P1A-ZXC01 Şarj Aleti</a></li><li><a href="/tr/product/rocoren-0232-185w-b0tgg00i4j07691" style="color:#2563eb">Rocoren 0232 185W Şarj Aleti</a></li><li><a href="/tr/product/winex-mdy11-0cqn9sbuy7ut062" style="color:#2563eb">Winex MDY11 Şarj Aleti</a></li><li><a href="/tr/product/aohi-youth-140w-drmikq5wfx039d4" style="color:#2563eb">Aohi Youth 140W Şarj Aleti</a></li><li><a href="/tr/product/joyroom-tcg05-140w-ls0jox9u1dnxp7i" style="color:#2563eb">Joyroom TCG05 140W Şarj Aleti</a></li><li><a href="/tr/product/baseus-gan5-pro-140w-uwjxdac49vy7n7e" style="color:#2563eb">Baseus GaN5 Pro 140W Şarj Aleti (CCGP100101)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/chargers" style="color:#2563eb;font-weight:600">Tüm Şarj Aleti modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/e_readers">E-Kitap Okuyucu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Boyue T63 JDRead</h1><p style="color:#475569;margin:0 0 12px">Boyue · E-Kitap Okuyucu · Qor AI teknik skoru 45/100</p><img src="https://resim.epey.com/406944/m_boyue-jdread-t-63-1.jpg" alt="Boyue T63 JDRead" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Boyue T63 JDRead öne çıkan özellikleri: display boyutu 6.0 İnç, pixel density 300 PPI, resolution 1448 x 1072 Piksel. Boyue T63 JDRead 14 teknik özelliğini, Qor AI teknik skorunu ve benzer e-kitap okuyucu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>6.0 İnç</strong></li><li><span style="color:#64748b">Pixel density:</span> <strong>300 PPI</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1448 x 1072 Piksel</strong></li><li><span style="color:#64748b">Storage:</span> <strong>8 GB Yes</strong></li><li><span style="color:#64748b">Weight:</span> <strong>190 gr</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer E-Kitap Okuyucu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/pocketbook-touch-lux-4-t3okqva37f8ajk0" style="color:#2563eb">PocketBook Touch Lux 4</a></li><li><a href="/tr/product/kobo-clara-hd-653r96ctvs1mgpv" style="color:#2563eb">Kobo Clara HD</a></li><li><a href="/tr/product/amazon-kindle-paperwhite-5-eb1lubz35uyz9cq" style="color:#2563eb">Amazon Kindle Paperwhite 5</a></li><li><a href="/tr/product/amazon-kindle-kids-edition-i03sbi3bdaikeh0" style="color:#2563eb">Amazon Kindle Kids Edition</a></li><li><a href="/tr/product/pocketbook-inkpad-3-o99012o66pisdb8" style="color:#2563eb">PocketBook InkPad 3</a></li><li><a href="/tr/product/kobo-glo-hd-zr5s2tkop922n20" style="color:#2563eb">Kobo Glo HD</a></li><li><a href="/tr/product/amazon-kindle-keyboard-3g-mhexj4zfx7i44cg" style="color:#2563eb">Amazon Kindle Keyboard 3G</a></li><li><a href="/tr/product/trekstor-pyrus-hjtzit97qs7zjlg" style="color:#2563eb">TrekStor Pyrus</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/e_readers" style="color:#2563eb;font-weight:600">Tüm E-Kitap Okuyucu modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

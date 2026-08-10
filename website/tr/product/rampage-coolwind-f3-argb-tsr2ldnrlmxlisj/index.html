@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/case_fans">Kasa Fanı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Rampage Coolwind F3 ARGB Kasa Fanı</h1><p style="color:#475569;margin:0 0 12px">Rampage · Kasa Fanı · Qor AI teknik skoru 10/100</p><img src="https://resim.epey.com/956885/rampage-coolwind-f3-2.png" alt="Rampage Coolwind F3 ARGB Kasa Fanı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Rampage Coolwind F3 ARGB Kasa Fanı öne çıkan özellikleri: dönme hızı 1200 rpm, fan bağlantısı 6-Pin, fan boyutu 120 mm. Rampage Coolwind F3 ARGB Kasa Fanı 8 teknik özelliğini, Qor AI teknik skorunu ve benzer kasa fanı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Dönme Hızı:</span> <strong>1200 rpm</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>6-Pin</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Tipi:</span> <strong>Işıklı</strong></li><li><span style="color:#64748b">Hava Akımı:</span> <strong>38 cfm</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Kasa Fanı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/rampage-rb-k8-argb-auwe4250xv5sige" style="color:#2563eb">Rampage RB-K8 ARGB Kasa Fanı</a></li><li><a href="/tr/product/rampage-jbt-21-9uxrd209vhof679" style="color:#2563eb">Rampage JBT-21 Kasa Fanı</a></li><li><a href="/tr/product/rampage-4c-15-white-ss8e75br4mzlzd5" style="color:#2563eb">Rampage 4C-15 White Kasa Fanı (Beyaz)</a></li><li><a href="/tr/product/rampage-6c-120-ngfb4n7jb3ydfzv" style="color:#2563eb">Rampage 6C-120 Kasa Fanı</a></li><li><a href="/tr/product/deep-cool-rf120r-jdh79ea0p7yye7j" style="color:#2563eb">DeepCool RF120R Kasa Fanı (Kırmızı)</a></li><li><a href="/tr/product/deep-cool-xfan-80-l-b-tya4vw3jytgvwv1" style="color:#2563eb">DeepCool Xfan 80 L/B Kasa Fanı</a></li><li><a href="/tr/product/rampage-4c-120-p2tx81jdqawhwdm" style="color:#2563eb">Rampage 4C-120 Kasa Fanı</a></li><li><a href="/tr/product/rampage-jbt-15-4pjqqh98tgyhmk1" style="color:#2563eb">Rampage JBT-15 Kasa Fanı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/case_fans" style="color:#2563eb;font-weight:600">Tüm Kasa Fanı modellerini karşılaştır →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

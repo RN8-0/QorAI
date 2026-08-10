@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ip_cameras">IP-Kameras</a></nav><h1 style="font-size:26px;margin:12px 0 4px">360 D806</h1><p style="color:#475569;margin:0 0 12px">360 · IP-Kameras · Qor AI Techscore 48/100</p><img src="https://resim.epey.com/588513/m_360-d806-2.jpg" alt="360 D806" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">360 D806 Highlights: bluetooth No, gece görüşü Yes, görüş açısı (geniş) 118 °. Sieh dir unten 37 technische Merkmale von 360 D806, den Qor AI Techscore und den Vergleich mit ähnlichen IP-Kameras-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bluetooth:</span> <strong>No</strong></li><li><span style="color:#64748b">Gece Görüşü:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüş Açısı (Geniş):</span> <strong>118 °</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Hafıza Kartı Tipi:</span> <strong>microSD</strong></li><li><span style="color:#64748b">Panoramik Çekim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Piksel Count:</span> <strong>1080 p</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>Full HD</strong></li><li><span style="color:#64748b">İki Yönlü Audioli İletişim:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche IP-Kameras-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/tp-link-insight-s485-g57krsrqey41x7m" style="color:#2563eb">TP-Link InSight S485</a></li><li><a href="/de/product/amcrest-ultrahd-4k-vn0y5wb2kkyxxem" style="color:#2563eb">Amcrest UltraHD 4K (IP8M-T2499EW)</a></li><li><a href="/de/product/amcrest-ip8m-2696ew-ai-dl0skabx2jkwp6u" style="color:#2563eb">Amcrest IP8M-2696EW-AI</a></li><li><a href="/de/product/amcrest-ip8m-t2499eb-28mm-rh0mi3xcof37chl" style="color:#2563eb">Amcrest IP8M-T2499EB-28MM</a></li><li><a href="/de/product/anker-eufy-security-indoor-cam-s350-nm8e6lvd3es7gbp" style="color:#2563eb">Anker Eufy Security Indoor Cam S350 (T8416)</a></li><li><a href="/de/product/anker-eufy-security-s330-eufycam-3-6kk276wwtxqvljh" style="color:#2563eb">Anker Eufy Security S330 eufyCam 3 (T8871)</a></li><li><a href="/de/product/uniview-ipc2128le-adf40km-g-6n9qvuh0nonu4g5" style="color:#2563eb">Uniview IPC2128LE-ADF40KM-G (4 mm)</a></li><li><a href="/de/product/uniview-ipc2128le-adf28km-g-nwf7z6m0fiv9ohi" style="color:#2563eb">Uniview IPC2128LE-ADF28KM-G (2.8 mm)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ip_cameras" style="color:#2563eb;font-weight:600">Alle IP-Kameras-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

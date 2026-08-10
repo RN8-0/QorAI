@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/media_players">Media Players</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Rio sate M5 media player</h1><p style="color:#475569;margin:0 0 12px">Rio · Media Players · Qor AI tech score 85/100</p><img src="https://resim.epey.com/678577/m_rio-sat-m5-1.jpg" alt="Rio sate M5 media player" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Rio sate M5 media player key features: ethernet hızı 100 Mbit/s, hdr Yes, ram 2 GB. Review Rio sate M5 media player's 25 technical specs, its Qor AI tech score and how it compares with similar models in media players below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>2 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160 p 4K UHD</strong></li><li><span style="color:#64748b">Storage:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Media Players</h2><ul style="line-height:1.8"><li><a href="/product/ugoos-am8-pro-b315kxr0c6q16cp" style="color:#2563eb">Ugoos AM8 pro media player (8 GB / 64 GB)</a></li><li><a href="/product/shaza-h96-max-igg7ojvsp88ketr" style="color:#2563eb">Shaza H96 max media player</a></li><li><a href="/product/thomson-streaming-box-plus-270-24nb5k8x4r6gbt5" style="color:#2563eb">Thomson streaming box plus 270 media player</a></li><li><a href="/product/rocktek-g2-eprc8z6mf3m50kq" style="color:#2563eb">Rocktek G2 media player</a></li><li><a href="/product/rocktek-gx1-streamer-upcjilgu20zlpee" style="color:#2563eb">Rocktek GX1 streamer media player</a></li><li><a href="/product/nokia-streaming-box-8010-9dhcrzltrw1plcq" style="color:#2563eb">Nokia streaming box 8010 media player</a></li><li><a href="/product/vontar-h618-64-gb-oydpbxhzqulgfsc" style="color:#2563eb">Vontar H618 64 GB media player (4 GB / 64 GB)</a></li><li><a href="/product/sunplus-tesla-s6-air-2nlynooihv21qp8" style="color:#2563eb">Sunplus tesla S6 air media player (4 GB / 64 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/media_players" style="color:#2563eb;font-weight:600">Compare all Media Players →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

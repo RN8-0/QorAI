@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartphones">Smartphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Xiaomi Civi 5 Pro</h1><p style="color:#475569;margin:0 0 12px">Xiaomi · Smartphones · Qor AI tech score 79/100</p><img src="https://resim.epey.com/1010000/m_xiaomi-civi-5-pro-1.png" alt="Xiaomi Civi 5 Pro" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Xiaomi Civi 5 Pro key features: 5g Yes, audio output USB Type-C, battery capacity 6000 mAh. Review Xiaomi Civi 5 Pro's 81 technical specs, its Qor AI tech score and how it compares with similar models in smartphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">5G:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Audio Output:</span> <strong>USB Type-C</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>6000 mAh</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8 Core</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>3.2 GHz</strong></li><li><span style="color:#64748b">Display / Body Ratio:</span> <strong>89.25 %</strong></li><li><span style="color:#64748b">Display Size:</span> <strong>6.55 I &#39;m not .</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>67 W Yes</strong></li><li><span style="color:#64748b">Fingerprint reader:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Height:</span> <strong>157.05 mm</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>50 MP</strong></li><li><span style="color:#64748b">RAM:</span> <strong>12 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1236x2750 (FHD+) pixels</strong></li><li><span style="color:#64748b">SIM Count:</span> <strong>Dual SIM</strong></li><li><span style="color:#64748b">Storage:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">Wireless charging:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartphones</h2><ul style="line-height:1.8"><li><a href="/product/xiaomi-mix-flip-68pqcijxxnxjfyv" style="color:#2563eb">Xiaomi Mix Flip</a></li><li><a href="/product/samsung-galaxy-s24-plus-gp3of931d7wg2el" style="color:#2563eb">Samsung Galaxy S24+ (SM-S926B)</a></li><li><a href="/product/zte-nubia-z70-ultra-codfs0vxz79a46k" style="color:#2563eb">ZTE Nubia Z70 Ultra</a></li><li><a href="/product/huawei-nova-14-acnpdw3oudbcuzn" style="color:#2563eb">Huawei Nova 14</a></li><li><a href="/product/honor-magic7-rsr-porsche-design-cgn8l6e1vnb718n" style="color:#2563eb">Honor Magic7 RSR Porsche Design</a></li><li><a href="/product/honor-win-rt-xcvizrluxc04maf" style="color:#2563eb">Honor Win RT</a></li><li><a href="/product/nothing-phone-4a-pro-2cvdu73f9yqri1m" style="color:#2563eb">Nothing Phone (4a) Pro</a></li><li><a href="/product/oneplus-ace-5-pro-uvj42wuz91sxqbn" style="color:#2563eb">OnePlus Ace 5 Pro</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartphones" style="color:#2563eb;font-weight:600">Compare all Smartphones →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

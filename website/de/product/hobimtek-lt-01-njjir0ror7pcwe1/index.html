@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/laptop_coolers">Laptop-Kühler</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hobimtek LT-01 laptop cooler</h1><p style="color:#475569;margin:0 0 12px">Hobimtek · Laptop-Kühler · Qor AI Techscore 50/100</p><img src="https://resim.epey.com/896828/m_hobimtek-lt-01-1.jpg" alt="Hobimtek LT-01 laptop cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Hobimtek LT-01 laptop cooler Highlights: aydınlatma Yes, aydınlatma türü RGB, fan count 2 adet. Sieh dir unten 11 technische Merkmale von Hobimtek LT-01 laptop cooler, den Qor AI Techscore und den Vergleich mit ähnlichen Laptop-Kühler-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma Türü:</span> <strong>RGB</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Laptop Ölçüsü (En Fazla):</span> <strong>17 inç</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Laptop-Kühler-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/trilogic-fs08-6eqodtpja56vd2o" style="color:#2563eb">Trilogic FS08 laptop cooler</a></li><li><a href="/de/product/claws-throne-arctic-pro-39wdxxq9z8wew28" style="color:#2563eb">Claw&#39;s throne arctic pro laptop cooler</a></li><li><a href="/de/product/concord-c-882-8544ggttpm7yx3f" style="color:#2563eb">The concord C-882 laptop cooler</a></li><li><a href="/de/product/powergate-pg-nc02-u7w1adadsgd0ijn" style="color:#2563eb">Powergate PG-NC02 laptop cooler</a></li><li><a href="/de/product/claws-vortex-3768es3v7au8xpa" style="color:#2563eb">Claw&#39;s vortex laptop cooler</a></li><li><a href="/de/product/torima-cf-02-zuorsl8ra31aimk" style="color:#2563eb">Torima CF-02 laptop cooler</a></li><li><a href="/de/product/promate-airbase-3-wh1ylydok54m1tn" style="color:#2563eb">Promate airbase 3 laptop cooler</a></li><li><a href="/de/product/preo-mgf03-npwto898n27xa4h" style="color:#2563eb">Preo MGF03 laptop cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/laptop_coolers" style="color:#2563eb;font-weight:600">Alle Laptop-Kühler-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

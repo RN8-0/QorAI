@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/mice">Mäuse</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Apera NR17 Mouse</h1><p style="color:#475569;margin:0 0 12px">Apera · Mäuse · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/911973/m_apera-nr17-6.jpg" alt="Apera NR17 Mouse" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Apera NR17 Mouse Highlights: bağlantı şekli Wireless, kullanım amacı General Kullanım, mouse algılayıcı tipi Optik. Sieh dir unten 25 technische Merkmale von Apera NR17 Mouse, den Qor AI Techscore und den Vergleich mit ähnlichen Mäuse-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Optik</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>1600 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>3 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Mouse</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mäuse-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/xiaomi-mi-wireless-mouse-gen-2-96mder7vqgtd47r" style="color:#2563eb">Xiaomi Mi Wireless Mouse Gen 2 Mouse (XMWS002TM)</a></li><li><a href="/de/product/rapoo-7300-l5jqkntjd99cwzj" style="color:#2563eb">Rapoo 7300 Mouse</a></li><li><a href="/de/product/rapoo-m660-silent-wig9f71my906m0d" style="color:#2563eb">Rapoo M660 Silent Mouse</a></li><li><a href="/de/product/rapoo-m50-plus-4lnfujih18nbn4y" style="color:#2563eb">Rapoo M50 Plus Mouse</a></li><li><a href="/de/product/gravastar-mercury-m1-pro-vu7db99j9hvmzfm" style="color:#2563eb">Gravastar Mercury M1 Pro Mouse</a></li><li><a href="/de/product/vertux-ammolite-y59pxh7i03z8m1r" style="color:#2563eb">Vertux Ammolite Mouse</a></li><li><a href="/de/product/microsoft-mobile-3600-m3aa6i8bg30ewfd" style="color:#2563eb">Microsoft Mobile 3600 Mouse (PN7-00003)</a></li><li><a href="/de/product/microsoft-sculpt-ergonomic-3kot04v4ipjysfy" style="color:#2563eb">Microsoft Sculpt Ergonomic Mouse (L6V-00003)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/mice" style="color:#2563eb;font-weight:600">Alle Mäuse-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

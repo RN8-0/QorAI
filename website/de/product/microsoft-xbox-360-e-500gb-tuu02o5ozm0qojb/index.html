@@ -52,17 +52,22 @@
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
   <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-DxVKYdvb.js"></script>
+  <script type="module" crossorigin src="/spa/index-Buav3B9S.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
 </head>
 <body>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/gaming_consoles">Spielkonsolen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Microsoft Xbox 360 E (500 GB)</h1><p style="color:#475569;margin:0 0 12px">Microsoft · Spielkonsolen · Qor AI Techscore 15/100</p><img src="https://resim.epey.com/82219/m_microsoft-xbox-360-500gb-1.jpg" alt="Microsoft Xbox 360 E (500 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Microsoft Xbox 360 E (500 GB) Highlights: cpu cores 3, grafik i̇şleme gücü 0.25 TFLOPs, resolution 1920x1080p (FHD). Sieh dir unten 37 technische Merkmale von Microsoft Xbox 360 E (500 GB), den Qor AI Techscore und den Vergleich mit ähnlichen Spielkonsolen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">CPU cores:</span> <strong>3</strong></li><li><span style="color:#64748b">Grafik İşleme Gücü:</span> <strong>0.25 TFLOPs</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1920x1080p (FHD)</strong></li><li><span style="color:#64748b">Storage:</span> <strong>500 GB</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 4 (N)</strong></li><li><span style="color:#64748b">İşlemci Frequency:</span> <strong>3.2 GHz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Spielkonsolen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/sony-playstation-3-super-slim-500gb-41zgdrj8vzgjr4u" style="color:#2563eb">Sony PlayStation 3 Super Slim (500 GB)</a></li><li><a href="/de/product/nintendo-nes-classic-edition-zme0x62gu1gm6mc" style="color:#2563eb">Nintendo NES Classic Edition</a></li><li><a href="/de/product/nintendo-2ds-xl-x195ze7c086u1ho" style="color:#2563eb">Nintendo 2DS XL (256 MB)</a></li><li><a href="/de/product/nintendo-2ds-xljkauilx5nlk7g" style="color:#2563eb">Nintendo 2DS (128 MB)</a></li><li><a href="/de/product/nintendo-new-3ds-xl-uvjpfc7lglzn112" style="color:#2563eb">Nintendo New 3DS XL</a></li><li><a href="/de/product/nintendo-wii-u-8gb-4c41asyk4e6p441" style="color:#2563eb">Nintendo Wii U (8 GB)</a></li><li><a href="/de/product/sony-playstation-portal-252yr5eu5gylao3" style="color:#2563eb">Sony PlayStation Portal</a></li><li><a href="/de/product/sony-playstation-classic-33n6o30vstnmld1" style="color:#2563eb">Sony PlayStation Classic (SCPH-1000R)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/gaming_consoles" style="color:#2563eb;font-weight:600">Alle Spielkonsolen-Modelle vergleichen →</a></p></main></div>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {
