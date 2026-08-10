@@ -1407,8 +1407,14 @@ async function main() {
   // signal that got the whole site suppressed. Always strip #root back to empty
   // before rendering (a fresh vite template is a no-op), and refuse to run if the
   // shell doesn't look right rather than mass-produce broken pages.
+  // Lookahead, #root kapanisi ile ilk <script> arasinda HTML YORUMU olmasina da
+  // izin verir. Eskiden yalnizca bosluk kabul ediyordu: 2026-08-10 gecesi oraya
+  // bir aciklama yorumu girdigi icin regex eslesmedi, sanitize basarisiz sayildi
+  // ve 04:17 cron'u SESSIZCE iptal etti — o gece hicbir yeni urun SEO sayfasi
+  // almadi ve tek belirti log'da bir satirdi. Koruma zayiflamiyor: asagidaki iki
+  // sart (bos #root + seo isaretcileri) hala kosuluyor.
   const template = readFileSync(templatePath, 'utf8')
-    .replace(/<div id="root">[\s\S]*?<\/div>(?=\s*<script)/, '<div id="root"></div>');
+    .replace(/<div id="root">[\s\S]*?<\/div>(?=(?:\s|<!--[\s\S]*?-->)*<script)/, '<div id="root"></div>');
   if (!template.includes('<div id="root"></div>') || !/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/.test(template)) {
     console.error('[seo] template sanitisation failed (no empty #root or seo markers) — aborting instead of regenerating every page from a dirty shell');
     process.exit(1);
