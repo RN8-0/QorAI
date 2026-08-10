@@ -128,3 +128,72 @@
 @media (max-width: 560px) {
   .page-hero.title-only { padding: 20px 0 12px; margin-bottom: 8px; }
 }
+
+/* ── Tanımlayıcı hero (kicker + başlık + SEO açıklaması) ───────────────────
+   Link analizi ve abonelik sayfalarında başlık tek başınaydı ("Link Analizi")
+   ve sayfanın ne yaptığını ANLATMIYORDU. Artık Premium sayfasıyla aynı
+   hiyerarşi kullanılıyor: etiket → başlık → kısa açıklama.
+
+   İki fark var:
+   1) BOYUT: bu sayfalarda asıl iş başlığın hemen altındaki formda, o yüzden
+      başlık Premium'dan (48px) ve eski yalnız-başlık halinden (40px) DAHA
+      KÜÇÜK. Ekranın üstünü şişirmez.
+   2) RENK: Premium'un mor vurgusu buraya taşınmaz; her sayfanın kendi
+      `variant` rengi var (aşağıda). */
+.page-hero.has-lead {
+  padding: clamp(26px, 3.4vh, 40px) 0 clamp(18px, 2.6vh, 28px);
+  margin-bottom: clamp(14px, 2vh, 24px);
+  border-bottom: 0;
+  background:
+    radial-gradient(760px 260px at 50% -34%, color-mix(in srgb, var(--brand-cyan) 13%, transparent), transparent 64%);
+}
+.page-hero.has-lead .page-hero-inner { gap: 9px; max-width: 760px; }
+.page-hero.has-lead h1 {
+  font-size: clamp(23px, 3.1vw, 33px);
+  letter-spacing: -0.5px;
+  line-height: 1.12;
+}
+/* Açıklama: SEO metni olduğu için biraz uzun — okunur satır uzunluğunda tut. */
+.page-hero.has-lead .page-hero-lead {
+  max-width: 640px;
+  font-size: clamp(13.5px, 1.45vw, 15px);
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--text-2);
+}
+/* Vurgulu kelime başlıkla aynı satırda; kendi gradyanını `variant` verir. */
+.page-hero.has-lead .page-hero-accent { white-space: nowrap; }
+
+/* Sayfaya özel vurgu renkleri — Premium'un mor/cyan karışımından AYRI. */
+.page-hero-link .page-hero-accent {
+  background: linear-gradient(90deg, var(--brand-deep), var(--brand-blue), var(--brand-deep));
+  background-size: 220% 100%;
+}
+[data-theme='dark'] .page-hero-link .page-hero-accent {
+  background: linear-gradient(90deg, var(--brand-sky), var(--brand-cyan), var(--brand-sky));
+  background-size: 220% 100%;
+}
+.page-hero-link .page-hero-kicker {
+  background: color-mix(in srgb, var(--brand-blue) 13%, transparent);
+  color: var(--brand-deep);
+}
+[data-theme='dark'] .page-hero-link .page-hero-kicker { color: var(--brand-sky); }
+
+.page-hero-subs .page-hero-accent {
+  background: linear-gradient(90deg, #0e7490, #0ea5e9, #14b8a6, #0e7490);
+  background-size: 260% 100%;
+}
+[data-theme='dark'] .page-hero-subs .page-hero-accent {
+  background: linear-gradient(90deg, #22d3ee, #38bdf8, #2dd4bf, #22d3ee);
+  background-size: 260% 100%;
+}
+.page-hero-subs .page-hero-kicker {
+  background: color-mix(in srgb, #0ea5e9 14%, transparent);
+  color: #0e7490;
+}
+[data-theme='dark'] .page-hero-subs .page-hero-kicker { color: #22d3ee; }
+
+@media (max-width: 560px) {
+  .page-hero.has-lead { padding: 20px 0 14px; margin-bottom: 10px; }
+  .page-hero.has-lead .page-hero-lead { font-size: 13px; }
+}

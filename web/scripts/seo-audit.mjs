@@ -26,7 +26,10 @@ function sitemapFiles(indexXml) {
 // #root prerender body — same boundary seo.mjs writes: the root div closes
 // immediately before the first following <script> tag.
 function rootBody(html) {
-  const m = html.match(/<div id="root">([\s\S]*?)<\/div>(?=\s*<script)/);
+  // `</div>` ile `<script>` arasina HTML YORUMU girebilir (index.html'deki
+  // aciklamalar). Eskiden desen buna izin vermiyordu ve tek bir yorum eklemek
+  // TUM urun sayfalarini "prerender body is missing" diye hatali gosteriyordu.
+  const m = html.match(/<div id="root">([\s\S]*?)<\/div>(?=(?:\s|<!--[\s\S]*?-->)*<script)/);
   return m ? m[1].trim() : '';
 }
 

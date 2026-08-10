@@ -8,8 +8,11 @@
   padding: clamp(20px, 3vh, 32px) 0 clamp(18px, 2.6vh, 26px);
   margin-bottom: clamp(18px, 2.4vh, 28px);
 }
+/* NOT: baslik/aciklama olculeri artik PAYLASILAN hero'da
+   (components/PageHero.css `.page-hero.has-lead`). Buradaki eski
+   `.la-page .page-hero h1` override'i daha yuksek ozgullukte oldugu
+   icin paylasilan olcuyu EZIYORDU — kaldirildi. */
 .la-page .page-hero-inner {
-  max-width: 560px;
   gap: 8px;
 }
 .la-page .page-hero-icon {
@@ -25,15 +28,6 @@
   height: 39px;
   display: block;
   object-fit: contain;
-}
-.la-page .page-hero h1 {
-  font-size: clamp(27px, 3.5vw, 38px);
-  line-height: 1.08;
-}
-.la-page .page-hero p {
-  max-width: 450px;
-  font-size: clamp(13px, 1.2vw, 14.5px);
-  line-height: 1.45;
 }
 .la-stage {
   width: 100%;

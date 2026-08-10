@@ -51,11 +51,16 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
-  <!-- Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
+  <script>
+    /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
        Affiliate link yeniden yazma ilk boyamayla yarışmak zorunda değil —
-       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez. -->
-  <script>
+       sayfa yerleştikten sonra (load + idle) yüklenir; davranışı değişmez.
+
+       NOT: bu blok bir HTML YORUMU olarak yazılmamalı. Vite giriş modülünü
+       <head>'e taşıdığı için `<div id="root">…</div>`u takip eden ilk düğüm bu
+       olur ve seo-audit'in `</div>(?=\s*<script)` deseni eşleşmez → "prerender
+       body is missing" hatası. Açıklama bu yüzden JS yorumunda. */
     (function () {
       var loaded = false;
       function loadSkimlinks() {

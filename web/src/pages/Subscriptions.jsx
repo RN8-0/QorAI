@@ -460,7 +460,14 @@ export default function Subscriptions() {
   return (
     <div className="subs-page">
       {/* İkon ve alt yazı KALDIRILDI — bkz. LinkAnalysis: tek odak başlık. */}
-      <PageHero animated title={t('subs.title')} />
+      <PageHero
+        variant="subs"
+        kicker={t('subs.heroKicker')}
+        title={t('subs.heroTitle')}
+        accent={t('subs.heroAccent')}
+        titleAfter={t('subs.heroTitleAfter')}
+        lead={t('subs.heroLead')}
+      />
 
       <div className="container subs-body">
       {showPicker && (

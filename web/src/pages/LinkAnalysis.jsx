@@ -458,7 +458,14 @@ export default function LinkAnalysis() {
     <div className="la-page">
       {/* İkon ve alt yazı KALDIRILDI: logo zaten navbar'da, alt yazı da başlıkla
           birlikte ekranın üstünü şişiriyordu. Tek odak hareketli başlık. */}
-      <PageHero animated title={t('la.title')} />
+      <PageHero
+        variant="link"
+        kicker={t('la.heroKicker')}
+        title={t('la.heroTitle')}
+        accent={t('la.heroAccent')}
+        titleAfter={t('la.heroTitleAfter')}
+        lead={t('la.heroLead')}
+      />
 
       <div className="container la-body">
       {showForm && (
