@@ -75,6 +75,19 @@ const MAX_RUN_MS = (parseInt(argVal('max-hours', '10'), 10) || 10) * 3600 * 1000
 function ts() { return new Date().toISOString().replace('T', ' ').slice(0, 19); }
 function log(msg) { console.log(`[${ts()}] ${msg}`); }
 
+// Süresiz bekleyen bir promise'i sınırla. Puppeteer'ın `page.evaluate`'i
+// varsayılan olarak zaman aşımı TAŞIMAZ; donmuş bir renderer'da await sonsuza
+// kadar bekler ve çağıran döngü bir daha hiç ilerlemez.
+function withTimeout(promise, ms) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${Math.round(ms / 1000)} sn içinde yanıt yok`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 // ─── .env ──────────────────────────────────────────────────────────
 function readDotEnv(file) {
   try {
@@ -326,21 +339,47 @@ async function runInBrowser(pbUrl, auth) {
     // AYRI bir kutuya (`dictXlateLog`) yazıyor — ikisini de okumazsak gece
     // koşusunda çeviri adımı kör nokta kalıyor.
     const seen = { scraperLog: 0, dictXlateLog: 0 };
+    // Yoklama HİÇ askıda kalmamalı. `page.evaluate` varsayılan olarak SÜRESİZ
+    // bekler: renderer yanıt vermeyi bırakırsa (uzun koşuda log kutusu şişip
+    // sekme donuyor) bu await asla dönmez, döngü aşağıdaki MAX_RUN_MS satırına
+    // BİR DAHA hiç gelmez ve emniyet freni tam da yazıldığı arıza tipinde ölü
+    // kod olur. 2026-08-09'da ölçüldü: panel son çıktısı 23:49, süreç 07:53'e
+    // (8 sa 22 dk) kadar asılı kaldı, --max-hours=3 hiç devreye girmedi ve
+    // haftalık zincirin bütün gününü yuttu.
+    const POLL_TIMEOUT_MS = 90000;
+    let stuckPolls = 0;
     for (;;) {
       await sleep(15000);
-      const snap = await page.evaluate((prev) => {
-        const read = (id, prevCount) => {
-          const box = document.getElementById(id);
-          const lines = box ? [...box.children].map((n) => n.textContent || '') : [];
-          const from = Math.min(Math.max(prevCount, lines.length - 40), lines.length);
-          return { total: lines.length, fresh: lines.slice(from) };
-        };
-        return {
-          result: window.qoraiAutoRunResult || null,
-          scraperLog: read('scraperLog', prev.scraperLog),
-          dictXlateLog: read('dictXlateLog', prev.dictXlateLog),
-        };
-      }, seen).catch((e) => { throw new Error(`sayfa yanıt vermiyor: ${e.message}`); });
+      const snap = await withTimeout(
+        page.evaluate((prev) => {
+          const read = (id, prevCount) => {
+            const box = document.getElementById(id);
+            const lines = box ? [...box.children].map((n) => n.textContent || '') : [];
+            const from = Math.min(Math.max(prevCount, lines.length - 40), lines.length);
+            return { total: lines.length, fresh: lines.slice(from) };
+          };
+          return {
+            result: window.qoraiAutoRunResult || null,
+            scraperLog: read('scraperLog', prev.scraperLog),
+            dictXlateLog: read('dictXlateLog', prev.dictXlateLog),
+          };
+        }, seen),
+        POLL_TIMEOUT_MS,
+      ).catch((e) => {
+        // Tek bir yavaş yoklama koşuyu öldürmesin; ÜST ÜSTE takılma öldürsün.
+        if (++stuckPolls <= 4) {
+          log(`  (uyarı) sayfa yoklaması yanıt vermedi (${stuckPolls}/4): ${e.message}`);
+          return null;
+        }
+        throw new Error(`sayfa yanıt vermiyor: ${e.message}`);
+      });
+
+      // Zaman kontrolleri askıya DAYANMAYAN yerde: yoklama boş dönse de işler.
+      if (Date.now() - started > MAX_RUN_MS) {
+        throw new Error(`koşu ${Math.round(MAX_RUN_MS / 3600000)} saati aştı — durduruldu`);
+      }
+      if (!snap) continue;
+      stuckPolls = 0;
 
       for (const key of ['scraperLog', 'dictXlateLog']) {
         for (const line of snap[key].fresh) {
@@ -352,9 +391,6 @@ async function runInBrowser(pbUrl, auth) {
       }
 
       if (snap.result) return snap.result;
-      if (Date.now() - started > MAX_RUN_MS) {
-        throw new Error(`koşu ${Math.round(MAX_RUN_MS / 3600000)} saati aştı — durduruldu`);
-      }
     }
   } finally {
     await browser.close().catch(() => {});

@@ -691,8 +691,16 @@ export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
     const tailSearches = [
       { // new arrivals
         q: '*', query_by: 'name',
-        sort_by: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
-        filter_by: `techScore:>=${HOME_MIN_SCORE}`,
+        // `scrapedAtTs` = urunun katalogda ILK gorulme damgasi. `updatedAtTs`
+        // ise "kayda EN SON hangi is dokundu" demek: gecelik fiyat kosusu bir
+        // grup aksesuara dokununca ray tamamen onlarla doluyordu (olculdu
+        // 2026-08-10: ilk 250 dokumanin %100'u cpu_coolers + pc_cases, ikisi de
+        // HOME_LOW_SIGNAL_CATEGORIES'te → hepsi elenip ray BOS kaliyor ve
+        // `Section` null donunce baslik bile cizilmiyordu).
+        sort_by: 'scrapedAtTs:desc,techScore:desc',
+        // Elenecek kategorileri SUNUCUDA dis birak: yoksa cekilen 40 dokumanin
+        // tamami dusuk-sinyalli cikip istemci tarafinda sifira iniyor.
+        filter_by: `techScore:>=${HOME_MIN_SCORE} && category:!=[${[...HOME_LOW_SIGNAL_CATEGORIES].map(lit).join(',')}]`,
         per_page: 40, include_fields: LIST_FIELDS_LEAN, // 80'di: yeni gelenler rayi ~12 kart gosteriyor, 40 dedupe icin fazlasiyla yeter
       },
       { // spotlight — top-trending smartphone
@@ -842,7 +850,10 @@ export async function getCategoryPage(opts = {}) {
       trend: 'trendScore:desc',
       priceUp: `_eval(${priceField}:>0):desc,${priceField}:asc`,
       priceDown: `_eval(${priceField}:>0):desc,${priceField}:desc`,
-      new: 'updatedAtTs:desc,scrapedAtTs:desc,techScore:desc',
+      // "En Yeni" = katalogda ILK gorulme (`scrapedAtTs`). `updatedAtTs` kayda
+      // en son dokunan isi gosterir; gecelik fiyat kosusu dokundugu icin 2023
+      // model bir urun gercekten yeni bir urunun uzerine cikiyordu.
+      new: 'scrapedAtTs:desc,techScore:desc',
     };
     const sort = sortMap[opts.sort] || sortMap.score;
     const data = await searchDocs({
