@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:qor_ai/core/constants.dart';
+import 'package:qor_ai/core/product_url_guard.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/core/pb_client.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
@@ -339,10 +340,23 @@ class GeminiService implements AIService {
         !title.startsWith('Amazon ASIN') &&
         !title.startsWith('Amazon ISBN') &&
         !isDomainOnlyTitle(title);
-    final aiSaysProduct = response['is_product'] as bool? ?? false;
-    final isProduct =
+    // ── URUN MU? AI'IN KARARI BAGLAYICIDIR ──────────────────────────────
+    // ESKI KURAL YANLISTI: `hasRealIdentity || (ecommerce && aiSaysProduct)`.
+    // Yani BASLIK DUZGUNSE urun sayiliyordu ve AI'in "is_product: false"
+    // cevabi e-ticaret disi alan adlarinda HIC dikkate alinmiyordu. Bir
+    // YouTube videosunun basligi da gayet duzgundur -> video urun sanilip
+    // analiz ediliyordu (kullanici bug'i: "her boku analiz ediyor").
+    //
+    // Web (`linkAnalysis.js`) ile ayni sira:
+    //   1) host on-filtresi (sosyal/forum/video/arama/cıplak ana sayfa) -> RED
+    //   2) AI acikca "is_product: false" dediyse -> RED
+    //   3) AI alani hic dondurmediyse (eski/bozuk yanit) basliga bak
+    final aiProductField = response['is_product'];
+    final aiSaysNotProduct = aiProductField == false;
+    final isProduct = looksLikeProductUrl(url) &&
         !_isBareHomepageUrl(url) &&
-        (hasRealIdentity || (_isEcommerceDomain(url) && aiSaysProduct));
+        !aiSaysNotProduct &&
+        (aiProductField == true || hasRealIdentity);
 
     return LinkAnalysisResult(
       url: url,
@@ -393,23 +407,6 @@ class GeminiService implements AIService {
       final uri = Uri.parse(url);
       final path = uri.path.replaceAll(RegExp(r'/+$'), '');
       return path.isEmpty && (uri.queryParameters.isEmpty);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Returns true if the URL belongs to a known e-commerce domain.
-  static bool _isEcommerceDomain(String url) {
-    try {
-      final host = Uri.parse(url).host.toLowerCase();
-      const ecommerceDomains = [
-        'amazon', 'trendyol', 'hepsiburada', 'n11', 'gittigidiyor',
-        'mediamarkt', 'teknosa', 'vatan', 'ciceksepeti', 'dr.com',
-        'kitapyurdu', 'idefix', 'bkmkitap', 'epey.com', 'akakce',
-        'aliexpress', 'banggood', 'bestbuy', 'walmart', 'newegg',
-        'apple.com', 'samsung.com', 'mi.com',
-      ];
-      return ecommerceDomains.any((d) => host.contains(d));
     } catch (_) {
       return false;
     }
@@ -2305,6 +2302,7 @@ CRITICAL — PRODUCT IDENTIFICATION (PRIORITY ORDER):
 6. For Amazon ASINs/ISBNs: if webResearch is available, use its product name. If not, and you are NOT 100% certain about the ASIN, set is_product to false.
 7. If productContext.title is a domain name (e.g. "trendyol.com"), treat as NO useful title — rely on webResearch or URL.
 8. If you genuinely cannot determine the product, set is_product to false. NEVER fabricate.
+9. NON-PRODUCT PAGES: if the URL is a social-media post, a forum / Q&A thread (Quora, Reddit...), a video (YouTube, TikTok...), a news article, a blog post, search results, or a store homepage / category listing rather than ONE specific product, set is_product to false and do NOT invent a product. A real product link points to a single purchasable item.
 
 PRODUCT VALIDATION:
 - TRUE if URL is from e-commerce site with product path pattern

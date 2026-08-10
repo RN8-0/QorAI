@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:qor_ai/core/product_url_guard.dart';
 import 'package:qor_ai/core/errors.dart';
 import 'package:qor_ai/data/datasources/pb_ds.dart';
 import 'package:qor_ai/data/models/other_models.dart';
@@ -237,7 +238,9 @@ class AIRepository {
       aiAnalysis: '',
       category: null,
       analyzedAt: DateTime.now(),
-      isProduct: hasRealIdentity,
+      // AI cagrisi patladiginda bile URUN OLMAYAN host'lar (YouTube, Reddit,
+      // haber, arama...) gecmemeli — baslik duzgun olsa bile.
+      isProduct: hasRealIdentity && looksLikeProductUrl(url),
     );
   }
 
