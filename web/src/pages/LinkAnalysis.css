@@ -4,17 +4,11 @@
   --la-col: 760px;
   padding-bottom: 90px;
 }
-.la-page .page-hero {
-  padding: clamp(20px, 3vh, 32px) 0 clamp(18px, 2.6vh, 26px);
-  margin-bottom: clamp(18px, 2.4vh, 28px);
-}
-/* NOT: baslik/aciklama olculeri artik PAYLASILAN hero'da
-   (components/PageHero.css `.page-hero.has-lead`). Buradaki eski
-   `.la-page .page-hero h1` override'i daha yuksek ozgullukte oldugu
-   icin paylasilan olcuyu EZIYORDU — kaldirildi. */
-.la-page .page-hero-inner {
-  gap: 8px;
-}
+/* NOT: hero'nun TUM olculeri (punto, dolgu, bosluk) artik PAYLASILAN bilesende
+   (components/PageHero.css `.page-hero.has-lead`). Buradaki `.la-page .page-hero`
+   dolgu/margin/gap override'lari daha yuksek ozgullukte oldugu icin paylasilan
+   olcuyu EZIYORDU (olculdu: 160px yerine 194px hero) — kaldirildi. Hero
+   yuksekligi degisecekse TEK YER: PageHero.css. */
 .la-page .page-hero-icon {
   width: 52px;
   height: 52px;

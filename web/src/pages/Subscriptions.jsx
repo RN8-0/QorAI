@@ -461,7 +461,6 @@ export default function Subscriptions() {
     <div className="subs-page">
       {/* İkon ve alt yazı KALDIRILDI — bkz. LinkAnalysis: tek odak başlık. */}
       <PageHero
-        variant="subs"
         kicker={t('subs.heroKicker')}
         title={t('subs.heroTitle')}
         accent={t('subs.heroAccent')}

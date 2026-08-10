@@ -459,7 +459,6 @@ export default function LinkAnalysis() {
       {/* İkon ve alt yazı KALDIRILDI: logo zaten navbar'da, alt yazı da başlıkla
           birlikte ekranın üstünü şişiriyordu. Tek odak hareketli başlık. */}
       <PageHero
-        variant="link"
         kicker={t('la.heroKicker')}
         title={t('la.heroTitle')}
         accent={t('la.heroAccent')}

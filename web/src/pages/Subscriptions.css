@@ -4,17 +4,10 @@
   --subs-col: 920px;
   padding-bottom: 90px;
 }
-.subs-page .page-hero {
-  padding: clamp(20px, 3vh, 32px) 0 clamp(18px, 2.6vh, 26px);
-  margin-bottom: clamp(18px, 2.4vh, 28px);
-}
-/* NOT: baslik/aciklama olculeri artik PAYLASILAN hero'da
-   (components/PageHero.css `.page-hero.has-lead`). Buradaki eski
-   `.subs-page .page-hero h1` override'i daha yuksek ozgullukte oldugu
-   icin paylasilan olcuyu EZIYORDU — kaldirildi. */
-.subs-page .page-hero-inner {
-  gap: 8px;
-}
+/* NOT: hero'nun TUM olculeri (punto, dolgu, bosluk) artik PAYLASILAN bilesende
+   (components/PageHero.css `.page-hero.has-lead`). Bkz. LinkAnalysis.css'teki
+   ayni not — sayfa duzeyindeki dolgu/margin/gap override'lari paylasilan olcuyu
+   EZIYORDU, kaldirildi. Hero yuksekligi degisecekse TEK YER: PageHero.css. */
 .subs-page .page-hero-icon {
   width: 52px;
   height: 52px;
