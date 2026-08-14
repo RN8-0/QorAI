@@ -1031,6 +1031,12 @@ function renderPage(template, seo, bodyHtml) {
   const lang = seo.lang || SEO_DEFAULT_LOCALE;
   if (lang !== 'tr') out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
   if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
+  // Acilis kabugundaki hero metni YALNIZCA ana sayfada kalir. Sablonda duruyor
+  // cunku kabuk statik; diger rotalarda buradan SILINIR. Aksi halde ana
+  // sayfanin uc dildeki basligi 23 bin sayfaya kopyalanir — bu sitenin daha
+  // once yandigi "olcekli/kopya icerik" sinyalinin ta kendisi. Silinince kabuk
+  // notr iskelete duser (.qb-skel).
+  if (!seo.isHome) out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, '<!--qb-hero--><!--/qb-hero-->');
   return out;
 }
 
@@ -1484,6 +1490,8 @@ async function main() {
         ...r.seo, ...localizedRouteMeta(r, lang),
         url: `${SITE}${prefix}${r.path}`,
         lang,
+        // Kabuktaki hero metni yalnizca ana sayfada kalsin (bkz. renderPage).
+        isHome: r.dir === '',
         alternates: multilang ? hreflangAlts(r.path) : null,
       }, body));
     }

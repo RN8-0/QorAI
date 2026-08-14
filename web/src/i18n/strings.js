@@ -714,15 +714,16 @@ const tr = {
   'seo.home': 'Teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile keşfet, karşılaştır ve karar ver. Telefonlar, laptoplar, GPU\'lar ve daha fazlası — Qor AI ile analiz edildi ve puanlandı.',
 };
 
+// SADECE tr + en + de. Bir zamanlar fr/es/it/pt/nl/pl/sv/ja/ar da import
+// ediliyordu ama i18n/index.jsx'teki LANGS listesi 2026-05-29'da DE/UK/TR'ye
+// daraltilmisti: `AVAILABLE = LANGS.filter(...)` ve `detectLang()` bu ucu disinda
+// HICBIR dil dondurmuyor, yani o dokuz tablo secilebilir bile degildi.
+// Ancak import edildikleri icin giris paketinde duruyor ve HER ziyaretci
+// tarafindan indirilip AYRISTIRILIYORDU — source map analiziyle olculdu:
+//   de 16 KB · fr/es/it/pt/nl/pl/sv 8'er KB · ar 7 KB · ja 6 KB
+// Dokuz olu dosya = 61 KB, giris paketinin ~%23'u.
+// Dosyalar locales/ altinda duruyor; kapsam yeniden genisletilirse LANGS'e
+// eklenip burada tekrar import edilmeleri yeterli.
 import de from './locales/de.js';
-import fr from './locales/fr.js';
-import es from './locales/es.js';
-import it from './locales/it.js';
-import pt from './locales/pt.js';
-import nl from './locales/nl.js';
-import pl from './locales/pl.js';
-import sv from './locales/sv.js';
-import ja from './locales/ja.js';
-import ar from './locales/ar.js';
 
-export const STRINGS = { en, tr, de, fr, es, it, pt, nl, pl, sv, ja, ar };
+export const STRINGS = { en, tr, de };

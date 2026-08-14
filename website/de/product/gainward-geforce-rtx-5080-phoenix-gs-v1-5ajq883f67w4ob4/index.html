@@ -61,6 +61,22 @@
     if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
+       Kurallar i18n/index.jsx -> detectLang() ile AYNI olmak ZORUNDA:
+       once /tr|/de|/en oneki, sonra tarayici dili, TR->tr, DE->de, geri kalan
+       her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
+       digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
+       icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
+    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var bl=pl;
+    if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
+      for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
+        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+      if(!bl)bl='en';}
+    d.setAttribute('data-boot-lang',bl);
+    /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
+       basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
+    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
@@ -115,7 +131,26 @@
   #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
   [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
   #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
-  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-body{flex:1;overflow:hidden}
+  #qor-boot .qb-skel{padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  /* Varsayilan: hero gizli, iskelet acik. Ana sayfada ve YALNIZCA eslesen dilde
+     hero acilir, iskelet kapanir. Boylece hicbir kosulda iki blok birden
+     gorunmez ve yanlis dil ekrana gelmez. */
+  #qor-boot .qb-hero{display:none}
+  /* Kabukta BASLIK ETIKETI KULLANILMAZ. Bir h1 etiketi konsaydi bu blok her
+     sayfanin ILK h1'i olurdu; seo-audit bunu "about: h1 ana sayfanin h1'iyle ayni, sayfa
+     kendi govdesini kaybetmis" diye YAKALADI. Uc dilde ana sayfa metnini 23 bin
+     sayfaya kopyalamak ayrica bu sitenin gecmiste yandigi "olcekli icerik"
+     sinyalinin ta kendisi. Bu yuzden notr div'ler + .hero h1 / .hero p.sub
+     kurallarinin BIREBIR kopyasi (global.css). O kurallar degisirse burasi da
+     guncellenmeli — yoksa kabuk kalkarken metin sicrar. */
+  #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
+  #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
+  html[data-boot-home] #qor-boot .qb-skel{display:none}
+  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -125,7 +160,7 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-B6b_Cudg.js"></script>
+  <script type="module" crossorigin src="/spa/index-9OISHqNk.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-C_I-6eh0.css">
 </head>
@@ -144,10 +179,25 @@
       <img src="/assets/qor_logo_144.png?v=20260814a" width="34" height="34" alt="" decoding="async" />
       <span class="qb-wm">Qor<i> AI</i></span>
     </div>
+    <!-- LCP blogu. Kabuk FCP'de (olculen ~1,6 sn) boyaniyor ama icerigi iskelet
+         oldugu icin LCP ADAYI yoktu: en buyuk icerik ancak React mount olunca
+         geliyor ve LCP 3,9 sn'de kaliyordu (iyi esik 2,5 sn).
+         Buradaki baslik+aciklama GERCEK hero metni ve SITENIN KENDI siniflarini
+         kullaniyor (.page/.container/.hero.card/h1/p.sub) — olcuyu elle
+         tutturmak yerine ayni CSS'i kullanmak konumu garantiliyor. Olculdu:
+         kabuk h1 45,125 / gercek h1 45,126 — 1 px.
+         UC DIL DE gomulu, gorunecek olani yukaridaki satir ici script secer.
+         Tek bir dili gomup "kok adres Ingilizce" demek YANLIS: kok adres SEO
+         icin Ingilizce ama gercek ziyaretcinin dili TARAYICIDAN geliyor, yani
+         Turk kullanici once Ingilizce baslik gorurdu.
+         Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <div class="qb-sk" style="height:210px"></div>
-      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-      <div class="qb-sk" style="height:150px"></div>
+      <!--qb-hero--><!--/qb-hero-->
+      <div class="qb-skel">
+        <div class="qb-sk" style="height:210px"></div>
+        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+        <div class="qb-sk" style="height:150px"></div>
+      </div>
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/graphics_cards">Grafikkarten</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gainward geforce RTX 5080 phoenix gs V1 bildschirmkarte (NE75080S19T2-GB2031C)</h1><p style="color:#475569;margin:0 0 12px">Gainward · Grafikkarten · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/1050731/m_gainward-geforce-rtx-5080-phoenix-gs-v1-1.jpg" alt="Gainward geforce RTX 5080 phoenix gs V1 bildschirmkarte (NE75080S19T2-GB2031C)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gainward geforce RTX 5080 phoenix gs V1 bildschirmkarte (NE75080S19T2-GB2031C) Highlights: aydınlatma tipi ARGB LED, bellek boyutu 16 GB, bellek türü GDDR7. Sieh dir unten 56 technische Merkmale von Gainward geforce RTX 5080 phoenix gs V1 bildschirmkarte (NE75080S19T2-GB2031C), den Qor AI Techscore und den Vergleich mit ähnlichen Grafikkarten-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma Tipi:</span> <strong>ARGB LED</strong></li><li><span style="color:#64748b">Bellek Boyutu:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>GDDR7</strong></li><li><span style="color:#64748b">GPU Mimarisi:</span> <strong>Blackwell</strong></li><li><span style="color:#64748b">Grafik Kartı Gücü:</span> <strong>360 W</strong></li><li><span style="color:#64748b">Gölgeleme Ünitesi:</span> <strong>10752 birim</strong></li><li><span style="color:#64748b">Işın İzleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">PCIe Arayüzü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>4K</strong></li><li><span style="color:#64748b">Soğutma Tipi:</span> <strong>Fan Soğutmalı</strong></li><li><span style="color:#64748b">Transistör Mesafesi:</span> <strong>4 nm</strong></li><li><span style="color:#64748b">Yapay Zeka Hızlandırıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşlemci Üreticisi:</span> <strong>NVIDIA</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Grafikkarten-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/colorful-igame-geforce-rtx-5080-advanced-oc-16gb-v-vr7odrmoifdmsto" style="color:#2563eb">Colorful igame geforce RTX 5080 advanced oc 16GB-V bildschirmkarte</a></li><li><a href="/de/product/colorful-igame-geforce-rtx-5080-neptune-oc-16gb-v-24vvkz6p4c730jy" style="color:#2563eb">Colorful igame geforce RTX 5080 neptune oc 16GB-V bildschirmkarte</a></li><li><a href="/de/product/colorful-igame-geforce-rtx-5080-ultra-w-oc-16gb-v-hfonae426fhsp6j" style="color:#2563eb">Colorful igame geforce RTX 5080 ultra W oc 16GB-V bildschirmkarte</a></li><li><a href="/de/product/inno3d-geforce-rtx-5080-ichill-frostbite-wywpgy021mc32fh" style="color:#2563eb">Inno3D geforce RTX 5080 ichill frostbite bildschirmkarte (C50803-16D7X-1760FB)</a></li><li><a href="/de/product/inno3d-geforce-rtx-5080-x3-oc-hlet1grfgiv7l5m" style="color:#2563eb">Inno3D geforce RTX 5080 X3 oc bildschirmkarte (N50803-16D7X-17603930)</a></li><li><a href="/de/product/inno3d-geforce-rtx-5080-x3-5yyw1s8xn70eux7" style="color:#2563eb">Inno3D geforce RTX 5080 X3 bildschirmkarte (N50803-16D7-176068N)</a></li><li><a href="/de/product/gigabyte-geforce-rtx-5070-ti-aorus-master-o3ug08jcxy4vy09" style="color:#2563eb">Gigabyte geforce RTX 5070 ti aorus master bildschirmkarte (GV-N507TAORUS M-16GD)</a></li><li><a href="/de/product/asus-rog-strix-geforce-rtx-5070-ti-oc-a9eoqy4saazaqdo" style="color:#2563eb">Asus rog strix geforce RTX 5070 ti oc bildschirmkarte (ROG-STRIX-RTX5070TI-O16G-GAMING)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/graphics_cards" style="color:#2563eb;font-weight:600">Alle Grafikkarten-Modelle vergleichen →</a></p></main></div>

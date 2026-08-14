@@ -59,6 +59,22 @@
     if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
+       Kurallar i18n/index.jsx -> detectLang() ile AYNI olmak ZORUNDA:
+       once /tr|/de|/en oneki, sonra tarayici dili, TR->tr, DE->de, geri kalan
+       her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
+       digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
+       icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
+    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var bl=pl;
+    if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
+      for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
+        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+      if(!bl)bl='en';}
+    d.setAttribute('data-boot-lang',bl);
+    /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
+       basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
+    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
@@ -113,7 +129,26 @@
   #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
   [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
   #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
-  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-body{flex:1;overflow:hidden}
+  #qor-boot .qb-skel{padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  /* Varsayilan: hero gizli, iskelet acik. Ana sayfada ve YALNIZCA eslesen dilde
+     hero acilir, iskelet kapanir. Boylece hicbir kosulda iki blok birden
+     gorunmez ve yanlis dil ekrana gelmez. */
+  #qor-boot .qb-hero{display:none}
+  /* Kabukta BASLIK ETIKETI KULLANILMAZ. Bir h1 etiketi konsaydi bu blok her
+     sayfanin ILK h1'i olurdu; seo-audit bunu "about: h1 ana sayfanin h1'iyle ayni, sayfa
+     kendi govdesini kaybetmis" diye YAKALADI. Uc dilde ana sayfa metnini 23 bin
+     sayfaya kopyalamak ayrica bu sitenin gecmiste yandigi "olcekli icerik"
+     sinyalinin ta kendisi. Bu yuzden notr div'ler + .hero h1 / .hero p.sub
+     kurallarinin BIREBIR kopyasi (global.css). O kurallar degisirse burasi da
+     guncellenmeli — yoksa kabuk kalkarken metin sicrar. */
+  #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
+  #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
+  html[data-boot-home] #qor-boot .qb-skel{display:none}
+  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -123,7 +158,7 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-B6b_Cudg.js"></script>
+  <script type="module" crossorigin src="/spa/index-9OISHqNk.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-C_I-6eh0.css">
 </head>
@@ -142,10 +177,25 @@
       <img src="/assets/qor_logo_144.png?v=20260814a" width="34" height="34" alt="" decoding="async" />
       <span class="qb-wm">Qor<i> AI</i></span>
     </div>
+    <!-- LCP blogu. Kabuk FCP'de (olculen ~1,6 sn) boyaniyor ama icerigi iskelet
+         oldugu icin LCP ADAYI yoktu: en buyuk icerik ancak React mount olunca
+         geliyor ve LCP 3,9 sn'de kaliyordu (iyi esik 2,5 sn).
+         Buradaki baslik+aciklama GERCEK hero metni ve SITENIN KENDI siniflarini
+         kullaniyor (.page/.container/.hero.card/h1/p.sub) — olcuyu elle
+         tutturmak yerine ayni CSS'i kullanmak konumu garantiliyor. Olculdu:
+         kabuk h1 45,125 / gercek h1 45,126 — 1 px.
+         UC DIL DE gomulu, gorunecek olani yukaridaki satir ici script secer.
+         Tek bir dili gomup "kok adres Ingilizce" demek YANLIS: kok adres SEO
+         icin Ingilizce ama gercek ziyaretcinin dili TARAYICIDAN geliyor, yani
+         Turk kullanici once Ingilizce baslik gorurdu.
+         Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <div class="qb-sk" style="height:210px"></div>
-      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-      <div class="qb-sk" style="height:150px"></div>
+      <!--qb-hero--><!--/qb-hero-->
+      <div class="qb-skel">
+        <div class="qb-sk" style="height:210px"></div>
+        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+        <div class="qb-sk" style="height:150px"></div>
+      </div>
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr/" style="color:#64748b">Ana Sayfa</a> › Qor AI ile İletişim</nav><h1 style="font-size:28px;margin:14px 0 6px">Qor AI ile İletişim</h1><p style="color:#475569;line-height:1.6">Qor AI destek, ödeme, iade, gizlilik, hesap silme, ürün verisi ve iş birliği için tek resmi iletişim adresi.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Son güncelleme: 7 Ağustos 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi contact@qorai.net adresidir.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. Tek Resmi İletişim Adresi</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Hesap Silme Talebi</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. Ödeme, Premium ve İade Yardımı</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. Ürün Verisi, Link Analizi ve AI Sonuçları</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. Yanıt Süreleri ve Öncelik</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. Güvenlik ve Kötüye Kullanım Bildirimleri</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Tek Resmi İletişim Adresi</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI için destek, hesap, ödeme, iade, gizlilik, hesap silme, ürün verisi, güvenlik bildirimi, basın ve iş birliği taleplerinde kullanılan tek resmi genel iletişim adresi contact@qorai.net adresidir. Qor AI web sitesinde veya uygulamasında başka bir destek e-posta adresi kullanılmaz; farklı adreslerden gelen yönlendirmeler resmi destek kanalı olarak kabul edilmemelidir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Mesaj gönderirken Qor AI hesabınıza bağlı e-posta adresini, talebinizin konusunu ve mümkünse ilgili ekran görüntüsü, ürün linki, ödeme sağlayıcısı veya işlem bilgisini ekleyin. Parola, tam kart numarası, CVV, kimlik belgesi, sağlık verisi veya gereksiz hassas belge paylaşmayın.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Hesap Silme Talebi</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Hesabınızı silmek için en hızlı yöntem uygulama veya web profilindeki Profilim bölümünden Hesabımı sil akışını başlatmaktır. Bu akış hesap sahibini doğrulamak için e-posta onayı isteyebilir ve onaydan sonra hesabınıza bağlı verileri silme sürecine alır.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Profilim bölümüne erişemiyorsanız aynı talebi contact@qorai.net adresine e-posta ile gönderebilirsiniz. E-postanın konu kısmına &quot;Hesap silme talebi&quot; yazın; mesajda Qor AI hesabınızda kullandığınız e-posta adresini belirtin. Talep hesap sahibine ait görünmüyorsa veya doğrulama tamamlanamazsa güvenliğiniz için işlem gecikebilir.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Ödeme, Premium ve İade Yardımı</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Premium erişimi görünmüyorsa, aboneliğiniz yanlış hesapta açıldıysa, ödeme başarılı olduğu halde özellikler aktif değilse veya iade talebiniz varsa ödeme sağlayıcısını, satın alma tarihini, plan adını, abonelik ID’sini veya mağaza sipariş numarasını ekleyin. Web ödemelerinde Polar, mobil satın almalarda Google Play süreçleri farklı çalışır.</p><p style="line-height:1.7;color:#334155;margin:8px 0">İptal işlemi gelecekteki yenilemeyi durdurur; iade talebi ayrıca değerlendirilir. İade ve abonelik yönetimiyle ilgili ayrıntılar İade Politikası ve Kullanım Koşulları sayfalarında açıklanır.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Ürün Verisi, Link Analizi ve AI Sonuçları</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI ürün katalogları, satıcı sayfaları, üretici bilgileri, partner verileri ve AI zenginleştirmesiyle çalışır. Bir ürünün fiyatı, stok durumu, teknik özelliği, görseli veya karşılaştırma sonucu hatalı görünüyorsa ilgili ürün linkini ve yanlış olduğunu düşündüğünüz alanı gönderin.</p><p style="line-height:1.7;color:#334155;margin:8px 0">AI yanıtları bazen eski, eksik veya hatalı olabilir. Bildirimleriniz katalog kalitesini, link analizini ve ürün karşılaştırma mantığını iyileştirmek için kullanılır; ancak satın alma kararından önce önemli bilgileri satıcı veya üretici kaynağından doğrulamanız gerekir.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Yanıt Süreleri ve Öncelik</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Mesajlara genellikle birkaç iş günü içinde yanıt vermeyi hedefleriz. Hesap erişimi, güvenlik, ödeme, iade ve gizlilik talepleri öncelikli değerlendirilir; ürün verisi düzeltmeleri katalog güncelleme döngüsüne göre işlenebilir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Aynı konu için birden fazla e-posta göndermek süreci hızlandırmayabilir. En hızlı yardım için tek e-postada açık konu, hesap e-postası ve gerekli bağlamı paylaşın.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Güvenlik ve Kötüye Kullanım Bildirimleri</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Hesabınıza izinsiz erişildiğini düşünüyorsanız, güvenlik açığı bulduysanız, şüpheli ödeme veya kötüye kullanım fark ettiyseniz contact@qorai.net adresine mümkün olduğunca net bilgiyle yazın.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Güvenlik bildirimlerinde yeniden üretme adımlarını, tarih/saat bilgisini, etkilenen sayfa veya özellik adını ve varsa güvenli ekran görüntülerini paylaşabilirsiniz. Başka kullanıcıların kişisel verilerini, parolaları veya gizli anahtarları gereksiz yere göndermeyin.</p></section><div style="margin:24px 0;font-size:14px"><strong>İlgili politikalar:</strong><br/><a href="/tr/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Kullanım Koşulları</a><a href="/tr/privacy" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Gizlilik Politikası</a><a href="/tr/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">İade Politikası</a><a href="/tr/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Çerez Politikası</a><a href="/tr/about" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Qor AI Hakkında</a><a href="/tr/faq" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">SSS</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">İletişim: contact@qorai.net</a></p></main></div>

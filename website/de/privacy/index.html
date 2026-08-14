@@ -59,6 +59,22 @@
     if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
+       Kurallar i18n/index.jsx -> detectLang() ile AYNI olmak ZORUNDA:
+       once /tr|/de|/en oneki, sonra tarayici dili, TR->tr, DE->de, geri kalan
+       her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
+       digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
+       icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
+    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var bl=pl;
+    if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
+      for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
+        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+      if(!bl)bl='en';}
+    d.setAttribute('data-boot-lang',bl);
+    /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
+       basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
+    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
@@ -113,7 +129,26 @@
   #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
   [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
   #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
-  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-body{flex:1;overflow:hidden}
+  #qor-boot .qb-skel{padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  /* Varsayilan: hero gizli, iskelet acik. Ana sayfada ve YALNIZCA eslesen dilde
+     hero acilir, iskelet kapanir. Boylece hicbir kosulda iki blok birden
+     gorunmez ve yanlis dil ekrana gelmez. */
+  #qor-boot .qb-hero{display:none}
+  /* Kabukta BASLIK ETIKETI KULLANILMAZ. Bir h1 etiketi konsaydi bu blok her
+     sayfanin ILK h1'i olurdu; seo-audit bunu "about: h1 ana sayfanin h1'iyle ayni, sayfa
+     kendi govdesini kaybetmis" diye YAKALADI. Uc dilde ana sayfa metnini 23 bin
+     sayfaya kopyalamak ayrica bu sitenin gecmiste yandigi "olcekli icerik"
+     sinyalinin ta kendisi. Bu yuzden notr div'ler + .hero h1 / .hero p.sub
+     kurallarinin BIREBIR kopyasi (global.css). O kurallar degisirse burasi da
+     guncellenmeli — yoksa kabuk kalkarken metin sicrar. */
+  #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
+  #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
+  html[data-boot-home] #qor-boot .qb-skel{display:none}
+  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -123,7 +158,7 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-B6b_Cudg.js"></script>
+  <script type="module" crossorigin src="/spa/index-9OISHqNk.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-C_I-6eh0.css">
 </head>
@@ -142,10 +177,25 @@
       <img src="/assets/qor_logo_144.png?v=20260814a" width="34" height="34" alt="" decoding="async" />
       <span class="qb-wm">Qor<i> AI</i></span>
     </div>
+    <!-- LCP blogu. Kabuk FCP'de (olculen ~1,6 sn) boyaniyor ama icerigi iskelet
+         oldugu icin LCP ADAYI yoktu: en buyuk icerik ancak React mount olunca
+         geliyor ve LCP 3,9 sn'de kaliyordu (iyi esik 2,5 sn).
+         Buradaki baslik+aciklama GERCEK hero metni ve SITENIN KENDI siniflarini
+         kullaniyor (.page/.container/.hero.card/h1/p.sub) — olcuyu elle
+         tutturmak yerine ayni CSS'i kullanmak konumu garantiliyor. Olculdu:
+         kabuk h1 45,125 / gercek h1 45,126 — 1 px.
+         UC DIL DE gomulu, gorunecek olani yukaridaki satir ici script secer.
+         Tek bir dili gomup "kok adres Ingilizce" demek YANLIS: kok adres SEO
+         icin Ingilizce ama gercek ziyaretcinin dili TARAYICIDAN geliyor, yani
+         Turk kullanici once Ingilizce baslik gorurdu.
+         Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <div class="qb-sk" style="height:210px"></div>
-      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-      <div class="qb-sk" style="height:150px"></div>
+      <!--qb-hero--><!--/qb-hero-->
+      <div class="qb-skel">
+        <div class="qb-sk" style="height:210px"></div>
+        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+        <div class="qb-sk" style="height:150px"></div>
+      </div>
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de/" style="color:#64748b">Startseite</a> › Datenschutzerklärung</nav><h1 style="font-size:28px;margin:14px 0 6px">Datenschutzerklärung</h1><p style="color:#475569;line-height:1.6">Wie Qor AI Daten für Konten, KI-Analysen, Abos, Analytik, Support und Kontolöschung erhebt, nutzt, schützt und löscht.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Zuletzt aktualisiert: 7. August 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI ist der KI-gestützte Shopping-Assistent auf qorai.net und in der Qor AI Mobile-App. Der Dienst hilft beim Vergleichen von Produkten, Analysieren von Links, Prüfen von Abonnements und bei Produktfragen vor dem Kauf. Die einzige offizielle öffentliche Kontaktadresse für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist contact@qorai.net.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. Erhobene Informationen</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Zahlungs- und Abodaten</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. KI-Eingaben und Produktlinks</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. Nutzung der Daten</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. Dienstleister</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. Cookies, lokaler Speicher und Analytik</a><a href="#s7" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">7. Aufbewahrung</a><a href="#s8" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">8. Ablauf der Kontolöschung</a><a href="#s9" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">9. Sicherheit</a><a href="#s10" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">10. Ihre Rechte</a><a href="#s11" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">11. Kinder</a><a href="#s12" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">12. Änderungen</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Erhobene Informationen</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Wir erheben Kontodaten wie E-Mail-Adresse, Anzeigename, Authentifizierungsanbieter, Kontostatus, Verifizierungsstatus und Profileinstellungen. Bei Empfehlungsprofilen können Budget, Interessen, Geräte, Abonnements, Prioritäten und Quizantworten gespeichert werden.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Zur Bereitstellung erfassen wir Suchanfragen, Produktaufrufe, Vergleichslisten, Linkanalysen, KI-Chat-Prompts, Produktscans, Abo-Analyse-Eingaben, Qor-Coin-Nutzung, Premium-Status und Supportinteraktionen.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Zahlungs- und Abodaten</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Webzahlungen werden von Polar verarbeitet; Polar handelt als Merchant of Record und verarbeitet Kartendaten, Steuern, Rechnungen, Belege, Betrugsprüfungen und Zahlungs-Compliance. Qor AI sieht und speichert keine vollständigen Kartennummern oder CVV.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Wir können begrenzte Abodaten von Polar oder App-Stores erhalten, etwa Produkt-ID, Plan, Kunden-ID, Abo-ID, Verlängerungsstatus, Kündigungsstatus, Land, Währung, Kaufdatum und Berechtigungsstatus.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">KI-Eingaben und Produktlinks</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Bei Fragen, Produktlinks, Produktanalysen oder Abo-Vergleichen können relevante Texte, URLs, Produktkontext und Profilsignale an KI-Anbieter gesendet werden, um eine Antwort zu erzeugen.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Senden Sie keine sensiblen personenbezogenen Daten, Passwörter, Ausweisdaten, Gesundheitsakten oder Kartendaten in KI-Prompts.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Nutzung der Daten</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Wir nutzen Daten für Authentifizierung, Qor-Coin-Balance, Premium-Freischaltung, KI-Antworten, Personalisierung, Missbrauchsprävention, Support, Fehlerbehebung und aggregierte Produktperformance.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Wir verkaufen keine personenbezogenen Daten und nutzen private Profile oder Chatverläufe nicht zum Verkauf von Werbeprofilen.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Dienstleister</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI kann vertrauenswürdige Anbieter für Hosting, Authentifizierung, Datenbank, KI, Analytik, E-Mail, Zahlungen, Affiliate-Zuordnung und Fehlermonitoring nutzen.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Beispiele sind PocketBase-Infrastruktur, KI-Modellanbieter, Analytiktools, Polar für Webabrechnung, App-Stores für mobile Abrechnung und Affiliate- oder Händlernetzwerke nach Klick auf externe Links.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Cookies, lokaler Speicher und Analytik</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Die Website nutzt notwendigen lokalen Speicher und Cookies für Sitzungen, Theme, Sicherheit und Betrieb. Die Sprache folgt der Browsersprache; es gibt keinen manuellen Sprachschalter.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Analytik kann Seitenbesuche, Feature-Nutzung und technische Performance messen. Affiliate-Partner oder Händler können nach externen Klicks Cookies zur Zuordnung setzen.</p></section><section id="s7" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Aufbewahrung</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Kontodaten bleiben während aktiver Konten gespeichert. Abo- und Transaktionsdaten bleiben so lange gespeichert, wie es für Buchhaltung, Steuern, Betrugsprävention, Chargebacks und Compliance nötig ist.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Nach Kontolöschung entfernen wir aktive Kontodaten nach Möglichkeit innerhalb von 30 Tagen. Backups, Logs und Zahlungsdaten können begrenzt weiterbestehen.</p></section><section id="s8" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Ablauf der Kontolöschung</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Die Kontolöschung kann im Profilbereich der App oder Website über Mein Konto löschen gestartet werden. Der Ablauf kann eine E-Mail-Bestätigung verlangen, bevor das Konto endgültig entfernt wird.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Wenn Sie sich nicht anmelden können, schreiben Sie an contact@qorai.net mit dem Betreff &quot;Account deletion request&quot; und nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos. Qor AI nutzt keine andere öffentliche Kontaktadresse für Kontolöschung oder Datenschutzanfragen.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Nach Abschluss werden aktives Profil, Empfehlungssignale, Favoriten, Vergleiche, gespeicherte Analysen, Supportnachrichten und Benachrichtigungen soweit möglich entfernt. Erforderliche Zahlungs-, Steuer-, Sicherheits- oder Missbrauchspräventionsdaten können begrenzt aufbewahrt werden.</p></section><section id="s9" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Sicherheit</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Wir nutzen HTTPS, Zugriffskontrollen, tokenbasierte Authentifizierung, serverseitige Berechtigungen und Monitoring. Kein Onlinedienst ist perfekt sicher, aber wir reduzieren Risiken mit angemessenen Maßnahmen.</p></section><section id="s10" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Ihre Rechte</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Je nach Standort können Sie Auskunft, Berichtigung, Löschung, Einschränkung, Übertragbarkeit oder Widerspruch verlangen.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Zur Ausübung dieser Rechte kontaktieren Sie contact@qorai.net. Wir müssen Ihr Konto möglicherweise verifizieren.</p></section><section id="s11" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Kinder</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI richtet sich nicht an Kinder unter 13 Jahren. Wenn Sie glauben, dass ein Kind Daten ohne Zustimmung bereitgestellt hat, kontaktieren Sie uns.</p></section><section id="s12" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Änderungen</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Wir können diese Datenschutzerklärung aktualisieren, wenn sich Dienst, Anbieter, Gesetze oder Zahlungsflüsse ändern. Das Datum auf dieser Seite zeigt die aktuelle Version.</p></section><div style="margin:24px 0;font-size:14px"><strong>Verwandte Richtlinien:</strong><br/><a href="/de/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Nutzungsbedingungen</a><a href="/de/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Rückerstattungsrichtlinie</a><a href="/de/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Cookie-Richtlinie</a><a href="/de/about" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Über Qor AI</a><a href="/de/faq" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">FAQ</a><a href="/de/contact" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Qor AI kontaktieren</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">Kontakt: contact@qorai.net</a></p></main></div>

@@ -61,6 +61,22 @@
     if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
+       Kurallar i18n/index.jsx -> detectLang() ile AYNI olmak ZORUNDA:
+       once /tr|/de|/en oneki, sonra tarayici dili, TR->tr, DE->de, geri kalan
+       her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
+       digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
+       icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
+    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var bl=pl;
+    if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
+      for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
+        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+      if(!bl)bl='en';}
+    d.setAttribute('data-boot-lang',bl);
+    /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
+       basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
+    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
@@ -115,7 +131,26 @@
   #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
   [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
   #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
-  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-body{flex:1;overflow:hidden}
+  #qor-boot .qb-skel{padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  /* Varsayilan: hero gizli, iskelet acik. Ana sayfada ve YALNIZCA eslesen dilde
+     hero acilir, iskelet kapanir. Boylece hicbir kosulda iki blok birden
+     gorunmez ve yanlis dil ekrana gelmez. */
+  #qor-boot .qb-hero{display:none}
+  /* Kabukta BASLIK ETIKETI KULLANILMAZ. Bir h1 etiketi konsaydi bu blok her
+     sayfanin ILK h1'i olurdu; seo-audit bunu "about: h1 ana sayfanin h1'iyle ayni, sayfa
+     kendi govdesini kaybetmis" diye YAKALADI. Uc dilde ana sayfa metnini 23 bin
+     sayfaya kopyalamak ayrica bu sitenin gecmiste yandigi "olcekli icerik"
+     sinyalinin ta kendisi. Bu yuzden notr div'ler + .hero h1 / .hero p.sub
+     kurallarinin BIREBIR kopyasi (global.css). O kurallar degisirse burasi da
+     guncellenmeli — yoksa kabuk kalkarken metin sicrar. */
+  #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
+  #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
+  html[data-boot-home] #qor-boot .qb-skel{display:none}
+  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -125,7 +160,7 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-B6b_Cudg.js"></script>
+  <script type="module" crossorigin src="/spa/index-9OISHqNk.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="stylesheet" crossorigin href="/spa/index-C_I-6eh0.css">
 </head>
@@ -144,10 +179,25 @@
       <img src="/assets/qor_logo_144.png?v=20260814a" width="34" height="34" alt="" decoding="async" />
       <span class="qb-wm">Qor<i> AI</i></span>
     </div>
+    <!-- LCP blogu. Kabuk FCP'de (olculen ~1,6 sn) boyaniyor ama icerigi iskelet
+         oldugu icin LCP ADAYI yoktu: en buyuk icerik ancak React mount olunca
+         geliyor ve LCP 3,9 sn'de kaliyordu (iyi esik 2,5 sn).
+         Buradaki baslik+aciklama GERCEK hero metni ve SITENIN KENDI siniflarini
+         kullaniyor (.page/.container/.hero.card/h1/p.sub) — olcuyu elle
+         tutturmak yerine ayni CSS'i kullanmak konumu garantiliyor. Olculdu:
+         kabuk h1 45,125 / gercek h1 45,126 — 1 px.
+         UC DIL DE gomulu, gorunecek olani yukaridaki satir ici script secer.
+         Tek bir dili gomup "kok adres Ingilizce" demek YANLIS: kok adres SEO
+         icin Ingilizce ama gercek ziyaretcinin dili TARAYICIDAN geliyor, yani
+         Turk kullanici once Ingilizce baslik gorurdu.
+         Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <div class="qb-sk" style="height:210px"></div>
-      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-      <div class="qb-sk" style="height:150px"></div>
+      <!--qb-hero--><!--/qb-hero-->
+      <div class="qb-skel">
+        <div class="qb-sk" style="height:210px"></div>
+        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+        <div class="qb-sk" style="height:150px"></div>
+      </div>
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/keyboards">Klavye</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dell Pro Compact Silent KM555 Klavye &amp; Mouse Seti</h1><p style="color:#475569;margin:0 0 12px">Dell · Klavye · Qor AI teknik skoru 33/100</p><img src="https://resim.epey.com/1031751/m_dell-pro-km555-1.jpg" alt="Dell Pro Compact Silent KM555 Klavye &amp; Mouse Seti" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dell Pro Compact Silent KM555 Klavye &amp; Mouse Seti öne çıkan özellikleri: bağlantı şekli Wireless, klavye aydınlatması No, klavye pil specificationsi AAA Tipi (İnce Kalem Pil). Dell Pro Compact Silent KM555 Klavye &amp; Mouse Seti 42 teknik özelliğini, Qor AI teknik skorunu ve benzer klavye modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Klavye Aydınlatması:</span> <strong>No</strong></li><li><span style="color:#64748b">Klavye Pil Specificationsi:</span> <strong>AAA Tipi (İnce Kalem Pil)</strong></li><li><span style="color:#64748b">Klavye Tuş Dizilimi:</span> <strong>Q Klavye</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mekanik Tuşlar:</span> <strong>No</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Optik</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>4020 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>3 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Klavye &amp; Mouse Seti</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Klavye modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/dell-km7120w-epcdguehn86fil3" style="color:#2563eb">Dell KM7120W Klavye &amp; Mouse Seti (580-AIWJ)</a></li><li><a href="/tr/product/dareu-ek807g-red-9a4n9z91tk6qpfw" style="color:#2563eb">Dareu EK807G Red Klavye</a></li><li><a href="/tr/product/iqunix-f97-graffiti-diary-dbq3h0s6zqoewa7" style="color:#2563eb">iQunix F97 Graffiti Diary Klavye</a></li><li><a href="/tr/product/iqunix-f97-x-little-prince-2s6f9v7f4ceelss" style="color:#2563eb">iQunix F97 X Little Prince Klavye</a></li><li><a href="/tr/product/iqunix-og80-e01543smmxco2n2" style="color:#2563eb">iQunix OG80 Klavye</a></li><li><a href="/tr/product/iqunix-zx75-q64dyj19y6gctq4" style="color:#2563eb">iQunix ZX75 Klavye</a></li><li><a href="/tr/product/lenovo-essential-gen2-g2v822hdzmzq8qa" style="color:#2563eb">Lenovo Essential Gen2 Klavye &amp; Mouse Seti (4X31N50743)</a></li><li><a href="/tr/product/lenovo-essential-4x30m39494-5grw59vzh2x57e3" style="color:#2563eb">Lenovo Essential Klavye &amp; Mouse Seti (4X30M39494)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/keyboards" style="color:#2563eb;font-weight:600">Tüm Klavye modellerini karşılaştır →</a></p></main></div>
