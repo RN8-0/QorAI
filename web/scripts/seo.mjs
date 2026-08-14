@@ -752,10 +752,10 @@ function routePreloadTags(routeKey) {
   if (!src) return [];
   const e = manifest()[src];
   if (!e || !e.file) return [];
-  const tags = [`<link rel="modulepreload" crossorigin href="/${e.file}" />`];
+  const tags = [`<link rel="modulepreload" crossorigin fetchpriority="low" href="/${e.file}" />`];
   // Rota CSS'i: `as="style"` ile onden cekilir. Stylesheet olarak eklemek
   // render-blocking yapardi — amac tam tersi.
-  for (const c of e.css || []) tags.push(`<link rel="preload" as="style" href="/${c}" />`);
+  for (const c of e.css || []) tags.push(`<link rel="preload" as="style" fetchpriority="low" href="/${c}" />`);
   return tags;
 }
 
@@ -774,7 +774,6 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
     // HTML -> JS -> Typesense -> render -> gorsel seklinde UC ardisik gidis-donus
     // oluyordu (olculdu: kategori LCP 9,5 sn / urun 7,5 sn, yavas 4G).
     ...(preloadImage ? [`<link rel="preload" as="image" href="${esc(preloadImage)}" fetchpriority="high" />`] : []),
-    ...routePreloadTags(routeKey),
     `<meta property="og:image" content="${esc(image)}" />`,
     `<meta property="og:image:alt" content="${esc(imageAlt)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
@@ -1086,6 +1085,14 @@ function renderPage(template, seo, bodyHtml) {
   // once yandigi "olcekli/kopya icerik" sinyalinin ta kendisi. Silinince kabuk
   // notr iskelete duser (.qb-skel).
   if (!seo.isHome) out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, '<!--qb-hero--><!--/qb-hero-->');
+  // Rota on-yuklemesi head'in EN SONUNA, yani vite'in giris modulunden SONRA.
+  // Ilk denemede seo blogunun icindeydi (head'in basi) ve OLCUM ONCELIK
+  // TERSLENMESI gosterdi: rota chunk'i 1585 ms'de indi ama ona BAGIMLI olan
+  // vendor+index 2366 ms'e itildi — yani on-yukleme LCP'yi iyilestirmek yerine
+  // kotulestiriyordu. Ayrica fetchpriority=low: bos bant genisligini kullansin,
+  // kritik paketin onune gecmesin.
+  const rp = routePreloadTags(seo.routeKey || '');
+  if (rp.length) out = out.replace('</head>', () => `  ${rp.join('\n  ')}\n</head>`);
   return out;
 }
 
