@@ -360,7 +360,9 @@ function pageGreeting(lang, pathname, meta, defaultGreeting) {
   }
 }
 
-export default function AiBubble() {
+// `autoOpen`: hafif AiFab'a dokunulunca gercek balon YUKLENIP hemen aciliyor —
+// kullanicinin ikinci kez dokunmasi gerekmiyor.
+export default function AiBubble({ autoOpen = false }) {
   const { lang } = useI18n();
   const { user, openAuth } = useAuth();
   const navigate = useNavigate();
@@ -373,7 +375,7 @@ export default function AiBubble() {
   const S = CHAT_STRINGS[chatLang] || CHAT_STRINGS.en;
   const requireAiAccess = useAiAccess(chatLang);
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [ctxVer, setCtxVer] = useState(0);

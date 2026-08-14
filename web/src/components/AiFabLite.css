@@ -1,0 +1,39 @@
+/* AiFab (hafif Qor düğmesi) — AiBubble.css'ten YALNIZCA düğme kuralları.
+   Tam AiBubble.css 7 KB ve panel/mesaj/analiz stillerinin tamamını taşıyor;
+   ekranda sadece yuvarlak düğme dururken onu indirmenin anlamı yok.
+   Sınıf adları BİREBİR aynı: kullanıcı düğmeye dokunup gerçek AiBubble
+   yüklendiğinde düğme yerinden oynamıyor, görünümü değişmiyor.
+   Bu iki dosya birlikte güncellenmeli — düğmenin ölçüsü/konumu burada ve
+   AiBubble.css'te AYNI olmak zorunda. */
+.aib-fab {
+  position: fixed; right: 22px; bottom: 22px; z-index: 150;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: linear-gradient(145deg, #111315 0%, #050607 58%, #000000 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.aib-fab:hover {
+  transform: scale(1.06);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.42);
+}
+.aib-fab img {
+  width: 35px;
+  height: 35px;
+  border-radius: 9px;
+  object-fit: contain;
+  filter: none;
+}
+.aib-fab-pulse { display: none; }
+
+/* Mobil alt sekme çubuğunun (≈72 px) üstüne kaldır — AiBubble.css ile aynı. */
+@media (max-width: 860px) {
+  .aib-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 480px) {
+  .aib-fab { right: 16px; }
+}

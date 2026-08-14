@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
@@ -7,6 +7,7 @@ import SiteBackground from './components/SiteBackground.jsx';
 import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
 import { useCompare } from './lib/compare.js';
+import AiFab, { hasActiveAnalysis } from './components/AiFab.jsx';
 import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
 
 // Home stays eager so the landing page paints on the first request (no extra
@@ -53,6 +54,16 @@ export default function App() {
   // çoğu o isteği hiç yapmıyor. AuthModal'da aynı mantık: kapalıyken hiçbir şey
   // çizmiyor ama modülü 120 ms CPU harcayarak çalışıyordu (profillendi).
   const { ids: compareIds } = useCompare();
+  // Qor balonu: agir panel YALNIZCA gerekince. Ayrinti icin AiFab.jsx.
+  const [aiOn, setAiOn] = useState(false);
+  const [aiAuto, setAiAuto] = useState(false);
+  const openAi = useCallback(() => { setAiAuto(true); setAiOn(true); }, []);
+  useEffect(() => {
+    // Arka planda calisan bir analiz varsa balon KENDILIGINDEN yuklenir ki
+    // "hazir" bildirimi eskisi gibi gorunsun. Kontrol tek bir localStorage
+    // okumasi — hicbir chunk indirmiyor.
+    if (hasActiveAnalysis()) setAiOn(true);
+  }, [loc.pathname]);
 
   // Açılış kabuğunu (index.html'deki #qor-boot) kaldır. Effect COMMIT sonrası
   // koşar, yani gerçek arayüz zaten boyanmıştır — kabuk kalkarken arkasında boş
@@ -136,8 +147,9 @@ export default function App() {
       <Suspense fallback={null}>
         {compareIds.length > 0 && <CompareBar />}
         {modalOpen && <AuthModal />}
-        <AiBubble />
+        {aiOn && <AiBubble autoOpen={aiAuto} />}
       </Suspense>
+      {!aiOn && <AiFab onOpen={openAi} />}
     </>
   );
 }
