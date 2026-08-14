@@ -202,12 +202,40 @@ function fullRows(products, columns = 3) {
   return keep >= columns ? list.slice(0, keep) : [];
 }
 
-function Section({ title, products, loading, seeAllTo, t, dense = false }) {
+// Ekran ALTINDAKI raylar icin gec baglama.
+// `content-visibility: auto` off-screen izgaralarin LAYOUT + PAINT maliyetini
+// zaten atliyordu ama React yine de ~69 kartin tamamini olusturuyordu; olculen
+// erken TBT'nin (LCP+1sn'e kadar 1196 ms) buyuk kismi buydu.
+// Yer tutucu olarak AYNI `.card-grid` bos halde biraktiriliyor: o zaten
+// `contain-intrinsic-size: auto 1400px` tasiyor, yani tarayicinin bugun de
+// varsaydigi yukseklik. Sayfa boyu ve kaydirma cubugu degismiyor.
+// rootMargin cok genis (1200px): ray goruntuye girmeden cok once baglanir,
+// dolayisiyla kullanici hicbir zaman bos kutu gormez ve kayma olusmaz.
+function useNearViewport(ref, aktif) {
+  const [near, setNear] = useState(!aktif);
+  useEffect(() => {
+    if (!aktif) { setNear(true); return undefined; }
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setNear(true); return undefined; }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) { setNear(true); io.disconnect(); }
+    }, { rootMargin: '1200px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [aktif, ref]);
+  return near;
+}
+
+function Section({ title, products, loading, seeAllTo, t, dense = false, defer = false }) {
+  const gridRef = useRef(null);
+  const near = useNearViewport(gridRef, defer);
   const visibleProducts = fullRows(products);
   if (!loading && visibleProducts.length === 0) return null;
-  const items = loading
-    ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
-    : visibleProducts.map((p) => <ProductCard key={p.id} product={p} />);
+  const items = !near
+    ? null
+    : loading
+      ? Array.from({ length: dense ? 21 : 6 }).map((_, i) => <ProductCardSkeleton key={i} />)
+      : visibleProducts.map((p) => <ProductCard key={p.id} product={p} />);
   const cls = `card-grid${dense ? ' card-grid-compact' : ''}`;
   return (
     <Reveal>
@@ -215,7 +243,7 @@ function Section({ title, products, loading, seeAllTo, t, dense = false }) {
         <h2><span className="bar" /> {title}</h2>
         {seeAllTo && <Link to={seeAllTo} className="see-all">{t('common.seeAll')} →</Link>}
       </div>
-      <div className={cls}>
+      <div className={cls} ref={gridRef}>
         {items}
       </div>
     </Reveal>
@@ -568,6 +596,7 @@ export default function Home() {
                 products={sec.products}
                 loading={loading}
                 t={t}
+                defer
                 seeAllTo={categoryPath(sec.category)} />
             ))}
 
@@ -575,11 +604,11 @@ export default function Home() {
 
             {/* RECENTLY VIEWED — 3×3 */}
             {recent.length > 0 && (
-              <Section title={t('home.recent')} products={recentCards.slice(0, 9)} loading={false} t={t} dense />
+              <Section title={t('home.recent')} products={recentCards.slice(0, 9)} loading={false} t={t} dense defer />
             )}
 
             {/* NEW ARRIVALS — 3×3 */}
-            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense />
+            <Section title={t('home.newArrivals')} products={feed.newArrivals} loading={loading} t={t} dense defer />
           </>
         )}
       </div>
