@@ -688,7 +688,30 @@ function lastmodAtLeastVersion(value) {
 }
 
 // Renders the <head> SEO block injected between the seo markers.
-function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null }) {
+// LCP gorseli icin on-yukleme URL'i. SPA'nin GERCEKTEN isteyecegi varyanti
+// uretmek ZORUNDA: og:image ham (oneksiz) URL'i tasiyor ama kart slotu `m_`,
+// urun galerisi `b_` varyantini istiyor. Yanlis varyanti preload etmek iki ayri
+// indirme demek — yani duzeltmek yerine ISI BOZAR.
+// TEK DOGRULUK KAYNAGI: web/src/lib/imageUrl.js -> epeyVariants().
+// Burada yalnizca oradaki iki kural yansitiliyor; o dosya degisirse burasi da
+// guncellenmeli.
+function lcpVariant(url, slot) {
+  const clean = String(url || '').trim();
+  if (!/^https?:\/\//i.test(clean) || !/resim\.epey\.com|(^|\.)epey\.com/i.test(clean)) return '';
+  if (slot === 'full') {
+    return clean
+      .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
+      .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
+      .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2');
+  }
+  return clean
+    .replace(/\/b_([^/?#]+)([?#].*)?$/i, '/m_$1$2')
+    .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/m_$1$2')
+    .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/m_$1$2')
+    .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}m_${file}`));
+}
+
+function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null, preloadImage = '' }) {
   const lines = [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(description)}" />`,
@@ -699,6 +722,10 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
     '<meta property="og:site_name" content="Qor AI" />',
     `<meta property="og:title" content="${esc(title)}" />`,
     `<meta property="og:description" content="${esc(description)}" />`,
+    // LCP gorseli: HTML ile BIRLIKTE inmeye baslar. Bu olmadan zincir
+    // HTML -> JS -> Typesense -> render -> gorsel seklinde UC ardisik gidis-donus
+    // oluyordu (olculdu: kategori LCP 9,5 sn / urun 7,5 sn, yavas 4G).
+    ...(preloadImage ? [`<link rel="preload" as="image" href="${esc(preloadImage)}" fetchpriority="high" />`] : []),
     `<meta property="og:image" content="${esc(image)}" />`,
     `<meta property="og:image:alt" content="${esc(imageAlt)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
@@ -1596,6 +1623,7 @@ async function main() {
         url,
         lang,
         image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
+        preloadImage: lcpVariant(heroImg, 'card'),
         type: 'website',
         alternates: hreflangAlts(path),
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
@@ -1649,7 +1677,7 @@ async function main() {
           `${prefix}${path}`.replace(/^\//, ''),
           renderPage(
             template,
-            { ...productSeo(d, label, ks, lang), alternates },
+            { ...productSeo(d, label, ks, lang), alternates, preloadImage: lcpVariant(d.imageUrl, 'full') },
             localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang), lang),
           ),
         );
