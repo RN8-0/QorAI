@@ -62,7 +62,8 @@
 }
 .cat-check:hover { background: var(--bg3); color: var(--text); }
 .cat-check.on { color: var(--text); }
-.cat-check input { width: 15px; height: 15px; accent-color: var(--accent); flex-shrink: 0; }
+/* Kutucuk kucuk ama GERCEK dokunma hedefi onu saran <label> (~31 px). */
+.cat-check input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
 .cat-check span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cat-check em { font-size: 11px; opacity: 0.55; font-weight: 700; font-style: normal; }
 .cat-brand-search {
@@ -114,7 +115,9 @@
   border: 1px solid var(--border); border-radius: 9px; background: var(--surface-2);
 }
 .cat-range-inputs input {
-  min-width: 0; width: 100%; border: 0; outline: 0; background: transparent;
+  /* 21 px yuksekligindeydi — dokunma hedefi olarak kucuk. Yazi boyutu mobilde
+     zaten 16px'e sabitlendi (iOS zoom), burada da dikey hedef buyutuldu. */
+  min-width: 0; width: 100%; min-height: 26px; border: 0; outline: 0; background: transparent;
   color: var(--text); font-size: 12px; font-weight: 750;
 }
 .cat-range-inputs span {

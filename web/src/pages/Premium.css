@@ -5,13 +5,26 @@
   --brand-cyan: #a78bfa;
   --brand-blue: #7c3aed;
   --violet: #6d28d9;
-  --accent: #7c3aed;
-  --accent-soft: rgba(124, 58, 237, 0.14);
-  --accent-ring: rgba(124, 58, 237, 0.32);
+  /* #7c3aed İDİ → açık zeminde 3.69:1, AA'da kalıyordu (ölçüldü: .premium-kicker).
+     --accent burada hem METİN hem buton ZEMİNİ olarak kullanılıyor, o yüzden bir
+     ton koyultmak iki tarafı birden geçiriyor. Gradyanlar #7c3aed'i doğrudan
+     kullanmaya devam ediyor, yani sayfanın mor kimliği aynı. */
+  --accent: #6D28D9;   /* acik temada 5.31:1 */
+  --accent-soft: rgba(109, 40, 217, 0.14);
+  --accent-ring: rgba(109, 40, 217, 0.32);
   --grad-ai: linear-gradient(135deg, #7c3aed, #a78bfa);
   --grad-violet: linear-gradient(135deg, #7c3aed, #4f46e5);
   --brand-grad: linear-gradient(135deg, #7c3aed, #a78bfa);
   padding-bottom: 64px;
+}
+
+/* Karanlik temada AYNI koyu mor siyah zeminde 2.96:1 — ters yonde kaliyor.
+   Metin tonu temaya gore ayrilmali. --on-accent karanlik temada zaten koyu
+   (#001018), yani accent ZEMINLI butonlar da bu acik morla yuksek kontrast. */
+[data-theme='dark'] .premium-page {
+  --accent: #A78BFA;   /* 7.24:1 */
+  --accent-soft: rgba(167, 139, 250, 0.16);
+  --accent-ring: rgba(167, 139, 250, 0.34);
 }
 
 .premium-hero {

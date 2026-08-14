@@ -4,9 +4,6 @@ import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import SiteBackground from './components/SiteBackground.jsx';
-import CompareBar from './components/CompareBar.jsx';
-import AuthModal from './components/AuthModal.jsx';
-import AiBubble from './components/AiBubble.jsx';
 import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
 import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
@@ -33,6 +30,18 @@ const Blog = lazy(() => import('./pages/Blog.jsx'));
 const BlogPost = lazy(() => import('./pages/BlogPost.jsx'));
 const LegalPage = lazy(() => import('./pages/Legal.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
+
+// Bu üçü HER sayfada duruyor ama HİÇBİRİ ilk boyama için gerekli değil; eager
+// import edildikleri için giriş paketini şişiriyorlardı. En pahalısı AiBubble:
+// kendisi 40 KB ve ai.js + analysisHub + pageContext + AiText zincirini de içeri
+// çekiyor. Mobilde asıl darboğaz indirme değil AYRIŞTIRMA/ÇALIŞTIRMA (ölçüldü:
+// TBT ağ hızından neredeyse bağımsız, 4x CPU'da ~2 s) — yani giriş paketinden
+// çıkan her KB doğrudan ana iş parçacığı süresi demek.
+// Üçü de yalnızca `position: fixed` katmanlar çiziyor, dolayısıyla biraz geç
+// gelmeleri hiçbir şeyi kaydırmaz (CLS'e etkisi yok).
+const CompareBar = lazy(() => import('./components/CompareBar.jsx'));
+const AuthModal = lazy(() => import('./components/AuthModal.jsx'));
+const AiBubble = lazy(() => import('./components/AiBubble.jsx'));
 
 export default function App() {
   const loc = useLocation();
@@ -72,8 +81,20 @@ export default function App() {
     <>
       <SiteBackground />
       <Header />
+      {/* Footer, Suspense sınırının İÇİNDE. Dışarıdayken chunk beklenirken de
+          render ediliyordu ve mobil CLS'in tek kaynağı buydu: yer tutucu kısa
+          kalınca footer ekranda görünüyor, içerik gelince savruluyordu.
+          Yer tutucuyu ekran boyuna çıkarmak ÇOĞU sayfayı düzeltti ama TERS
+          yönde yeni bir kayma doğurdu — içeriği yer tutucudan KISA olan
+          sayfalarda (profil 0.094, ai-chat 0.034) footer bu kez yukarı çıkıyordu.
+          Footer yükleme sırasında hiç var olmayınca kayacak bir şey de kalmıyor:
+          içerik geldiğinde altına EKLENİYOR, eklenen düğüm mevcut hiçbir şeyi
+          oynatmadığı için CLS'e yazılmıyor. Yer tutucu kendi <main>'ini taşır,
+          böylece `#root > main` düzen kuralları her iki durumda da geçerli. */}
+      <Suspense fallback={(
+        <main><div className="route-fallback"><div className="spinner" /></div></main>
+      )}>
       <main>
-        <Suspense fallback={<div className="route-fallback"><div className="spinner" /></div>}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/category" element={<Category />} />
@@ -100,13 +121,17 @@ export default function App() {
           <Route path="/faq" element={<LegalPage kind="faq" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-        </Suspense>
       </main>
       <Footer />
+      </Suspense>
       <BottomNav />
-      <CompareBar />
-      <AuthModal />
-      <AiBubble />
+      {/* Ayrı bir Suspense: bu katmanların gecikmesi route içeriğini bekletmesin.
+          fallback null — üçü de sabit konumlu katman, yer tutucuya gerek yok. */}
+      <Suspense fallback={null}>
+        <CompareBar />
+        <AuthModal />
+        <AiBubble />
+      </Suspense>
     </>
   );
 }

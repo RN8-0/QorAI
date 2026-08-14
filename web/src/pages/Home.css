@@ -170,21 +170,41 @@
 .hero-carousel-slide .q-product-card {
   width: 100%;
 }
+/* Noktalar 7x7 px BUTONDU: hem dokunulamayacak kadar küçüktü (WCAG 2.5.8 asgari
+   24x24) hem de aktif nokta 7 -> 20 px GENİŞLEDİĞİ için karusel her dönüşünde
+   satır yeniden diziliyor ve ölçülebilir bir kayma üretiyordu (ana sayfa
+   CLS 0.017'nin tek kaynağı buydu).
+   Çözüm: dokunma alanı SABİT genişlikte bir kutu, göstergeyi kutunun İÇİNDE
+   büyüt. Dış ölçü hiç değişmediği için kardeş düğümler hiç oynamıyor. */
 .hero-carousel-dots {
   display: flex;
   justify-content: center;
-  gap: 7px;
-  margin-top: 10px;
+  gap: 0;
+  margin-top: 4px;
 }
 .hero-carousel-dots button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border-radius: 999px;
+}
+.hero-carousel-dots button i {
+  display: block;
   width: 7px;
   height: 7px;
   border-radius: 999px;
   background: var(--border-strong);
+  transition: width 0.22s ease, background 0.22s ease;
 }
-.hero-carousel-dots button.on {
+.hero-carousel-dots button.on i {
   width: 20px;
   background: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel-dots button i { transition: none; }
 }
 
 @keyframes hPop {

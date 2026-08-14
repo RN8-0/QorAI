@@ -64,8 +64,13 @@ function HeroSpotlightPlaceholder({ L }) {
           <div className="hero-carousel-slide"><ProductCardSkeleton /></div>
         </div>
       </div>
+      {/* Gerçek karuselle AYNI iskelet (32 px'lik kutu + içteki gösterge),
+          yoksa yer tutucu gerçek noktalarla yer değiştirirken satır yüksekliği
+          değişir ve tam da önlemeye çalıştığımız kayma geri gelir. */}
       <div className="hero-carousel-dots">
-        {[0, 1, 2].map((i) => <button key={i} type="button" className={i === 0 ? 'on' : ''} tabIndex={-1} disabled />)}
+        {[0, 1, 2].map((i) => (
+          <button key={i} type="button" className={i === 0 ? 'on' : ''} tabIndex={-1} disabled><i /></button>
+        ))}
       </div>
     </div>
   );
@@ -74,17 +79,29 @@ function HeroSpotlightPlaceholder({ L }) {
 function HeroSpotlight({ products, lang, L }) {
   const safe = (products || []).filter(Boolean).slice(0, 10);
   const [index, setIndex] = useState(0);
+  // Otomatik dönüş DURDURULAMIYORDU (WCAG 2.2.2 "Pause, Stop, Hide" ihlali) ve
+  // `prefers-reduced-motion` dinlenmiyordu. Mobilde asıl zararı şuydu: karta
+  // dokunmak üzereyken kart 4,2 sn'de bir altınızdan değişiyordu.
+  const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (safe.length <= 1) return undefined;
+    if (safe.length <= 1 || paused) return undefined;
+    let reduce = false;
+    try { reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; } catch { /* yoksay */ }
+    if (reduce) return undefined;
     const id = setInterval(() => setIndex((i) => (i + 1) % safe.length), 4200);
     return () => clearInterval(id);
-  }, [safe.length]);
+  }, [safe.length, paused]);
 
   if (!safe.length) return null;
   const active = index % safe.length;
   return (
-    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi', 'Top-Kategorie-Auswahl')}>
+    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi', 'Top-Kategorie-Auswahl')}
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+      onPointerDown={() => setPaused(true)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}>
       <div className="hero-carousel-head">
         <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
         <b>{categoryLabel(safe[active]?.category, lang)}</b>
@@ -98,11 +115,18 @@ function HeroSpotlight({ products, lang, L }) {
           ))}
         </div>
       </div>
+      {/* Noktalar `aria-hidden` + `tabIndex={-1}` İDİ: karuselin tek gezinme
+          aracı klavye ve ekran okuyucu için tamamen erişilemezdi. */}
       {safe.length > 1 && (
-        <div className="hero-carousel-dots" aria-hidden="true">
+        <div className="hero-carousel-dots" role="tablist"
+          aria-label={L('Choose a pick', 'Seçkiyi değiştir', 'Auswahl wechseln')}>
           {safe.map((p, i) => (
-            <button key={p.id} type="button" className={i === active ? 'on' : ''}
-              onClick={() => setIndex(i)} tabIndex={-1} />
+            <button key={p.id} type="button" role="tab"
+              className={i === active ? 'on' : ''}
+              aria-selected={i === active}
+              aria-label={`${i + 1} / ${safe.length}`}
+              onClick={() => { setIndex(i); setPaused(true); }}
+            ><i /></button>
           ))}
         </div>
       )}

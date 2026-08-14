@@ -10,6 +10,18 @@ import { useEffect, useState } from 'react';
 // all cards) and then ran a `stroke-dashoffset` CSS transition, which is NOT
 // GPU-composited, so every ring repainted on the main thread each frame for ~1.1 s
 // right after load. Static card gauges paint once.
+// HALKA rengi ile RAKAM rengi ayrıldı. Rakam halkanın rengini birebir
+// kullanıyordu ve açık zeminde okunmuyordu (ölçüldü: cyan #00E5FF → 1.54:1,
+// mavi #2196F3 → 3.12:1; gerekli 4.5). Halka bir GRAFİK, kontrast kuralına tabi
+// değil ve canlı tonunu koruyor; rakam METİN olduğu için okunabilir karşılığına
+// eşleniyor. Eşleme burada yapıldığı için çağıran hiçbir yeri değiştirmek
+// gerekmedi — tanınmayan renkler olduğu gibi geçer.
+const INK = {
+  'var(--brand-cyan)': 'var(--ink-cyan)',
+  'var(--brand-blue)': 'var(--ink-blue)',
+  'var(--score-average)': 'var(--ink-amber)',
+};
+
 export default function Gauge({ value, size = 56, stroke = 5, color, track, fontSize, animate = true }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
   const r = (size - stroke) / 2;
@@ -32,7 +44,7 @@ export default function Gauge({ value, size = 56, stroke = 5, color, track, font
           style={animate ? { transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)' } : undefined}
         />
       </svg>
-      <span className="gv" style={{ color, fontSize: fontSize || size * 0.32 }}>{Math.round(v)}</span>
+      <span className="gv" style={{ color: INK[color] || color, fontSize: fontSize || size * 0.32 }}>{Math.round(v)}</span>
     </div>
   );
 }

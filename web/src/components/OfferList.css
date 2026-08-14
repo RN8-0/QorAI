@@ -29,7 +29,7 @@
 /* Country tag on cross-market Amazon rows (e.g. 🇩🇪 DE next to the logo) so
    the visitor can always tell WHICH storefront a price belongs to. */
 .pd-price-cc { margin-left: 10px; font-size: 13px; font-weight: 800; opacity: 0.75; letter-spacing: 0.4px; }
-.pd-price-amt { margin-left: auto; font-weight: 850; color: #22c55e; font-size: 19px; white-space: nowrap; }
+.pd-price-amt { margin-left: auto; font-weight: 850; color: var(--price); font-size: 19px; white-space: nowrap; }
 /* Fiyatsız satırlar (Amazon arama linki) sağda sayı yerine vurgulu bir ipucu
    gösterir — yine ok yok, satırın tamamı tıklanabilir. */
 .pd-price-amt-link { color: var(--accent); font-size: 14px; font-weight: 800; }

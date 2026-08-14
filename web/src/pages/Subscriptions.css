@@ -679,7 +679,9 @@
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--brand-blue) 30%, var(--border));
   background: color-mix(in srgb, var(--brand-blue) 10%, transparent);
-  color: var(--brand-blue);
+  /* Metin ham --brand-blue idi: acik zeminde 2.99:1. Cerceve/zemin hala marka
+     mavisinden turuyor, degisen yalnizca OKUNMASI gereken yazi. */
+  color: var(--accent);
   font-size: 11.5px;
   font-weight: 900;
   white-space: nowrap;

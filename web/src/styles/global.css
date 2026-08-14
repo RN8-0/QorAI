@@ -62,7 +62,11 @@
   --elevated: #1A1A1A;
   --text: #F1F5F9;
   --text-2: #94A3B8;
-  --text-3: #64748B;
+  /* #64748B IDI: siyah zeminde (#0A0A0A / #121212) 4.16:1 ile AA'da kaliyordu —
+     kart spec etiketleri, footer telifi, "01" adim numaralari hep bu tonda.
+     Karanlik tema artik gercekten kullaniciya ulastigi icin (tema tercihi
+     kalici hale geldi) bu ton da olculup duzeltildi. #7C8A9C -> 5.37:1 */
+  --text-3: #7C8A9C;
   --divider: #1E293B;
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
@@ -76,7 +80,7 @@
   --bg4: #181818;
   --bg5: #1A1A1A;
   --text2: #94A3B8;
-  --text3: #64748B;
+  --text3: #7C8A9C;
   /* soft body text — was undefined, so blog/guide text fell back to a dark
      slate (#334155) and became unreadable in dark mode. */
   --text-soft: #CBD5E1;
@@ -88,6 +92,13 @@
   --shadow-glow: 0 14px 40px rgba(33, 150, 243, 0.28);
   --premium-liquid: linear-gradient(105deg, #020617 0%, #111827 16%, #4f46e5 34%, #7c3aed 50%, #0ea5e9 68%, #1e3a8a 84%, #020617 100%);
   --premium-glow: rgba(79, 70, 229, 0.28);
+  /* Fiyat metni. Karanlık temada siyah üzerinde #22c55e zaten yüksek kontrast. */
+  --price: #22c55e;
+  /* Puan halkasının RAKAMI için okunabilir tonlar (halkanın kendi rengi değişmez).
+     Siyah zeminde marka tonları zaten yüksek kontrast, olduğu gibi kullanılıyor. */
+  --ink-cyan: #00E5FF;
+  --ink-blue: #4FC3F7;
+  --ink-amber: #F59E0B;
 }
 
 /* ── LIGHT (slate) ── */
@@ -103,7 +114,9 @@
   --elevated: #FFFFFF;
   --text: #0F172A;
   --text-2: #475569;
-  --text-3: #94A3B8;
+  --text-3: #5B6779;   /* #94A3B8 İDİ → 2.56:1. Hedef zemin BEYAZ DEĞİL: bu tonlar
+                          çoğunlukla --surface-2 (#F1F5F9) üzerinde duruyor, o yüzden
+                          #64748B bile 4.16:1 ile kalıyordu. #5B6779 → 5.11:1 */
   --divider: #E2E8F0;
   --border: rgba(15, 23, 42, 0.08);
   --border-strong: rgba(15, 23, 42, 0.14);
@@ -117,16 +130,40 @@
   --bg4: #E9EEF5;
   --bg5: #CBD5E1;
   --text2: #475569;
-  --text3: #94A3B8;
+  --text3: #5B6779;
   --text-soft: #475569;
   --border2: rgba(15, 23, 42, 0.14);
-  --accent-soft: rgba(33, 150, 243, 0.10);
-  --accent-ring: rgba(33, 150, 243, 0.22);
+  --accent-soft: rgba(21, 101, 192, 0.10);
+  --accent-ring: rgba(21, 101, 192, 0.22);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
   --shadow-glow: 0 14px 40px rgba(33, 150, 243, 0.18);
   --premium-liquid: linear-gradient(105deg, #020617 0%, #1e1b4b 18%, #3730a3 34%, #7c3aed 52%, #2563eb 70%, #020617 100%);
   --premium-glow: rgba(37, 99, 235, 0.22);
+
+  /* ── AÇIK TEMA KONTRAST DÜZELTMELERİ (WCAG AA) ──────────────────────────
+     Canlıda ölçülen oranlar (beyaz üzerinde, gerekli 4.5):
+       --text-3 #94A3B8 → 2.56  kart spec etiketleri (×264), footer telifi, "İNDİR"
+       --accent #2196F3 → 2.99  "Tümü →", kart marka adı, alt bar aktif sekme
+       fiyat    #16a34a → 3.30  kart fiyatı
+       fiyat    #22c55e → 2.08  ürün sayfası fiyatı (19px kalın, gerekli 3.0)
+     Yalnız AÇIK tema override ediliyor: karanlık temada aynı renkler siyah
+     üzerinde zaten yüksek kontrast, oradaki tonları bozmanın anlamı yok.
+     --brand-blue'ya DOKUNULMADI, yani gradyanlar/parıltılar birebir aynı kaldı;
+     değişen sadece METİN ve dolgu olarak kullanılan --accent.
+     Ek kazanç: --accent aynı zamanda birincil buton ZEMİNİ. #2196F3 üzerinde
+     beyaz yazı 3.1:1 ile KALIYORDU; #1976D2 ile 4.6:1 olup geçiyor. */
+  /* #1976D2 denendi: BEYAZ uzerinde 4.60 geciyordu ama bu tonlar cogunlukla
+     --bg (#F8FAFC) / --surface-2 (#F1F5F9) uzerinde duruyor ve orada 4.2-4.4'e
+     dusup KALIYORDU. #1565C0 zaten var olan --brand-deep tokeni: en kotu zeminde
+     5.11:1, beyaz yazi tasiyan buton zemini olarak da 5.74:1. */
+  --accent: #1565C0;
+  --price: #15803D;    /* 4.94:1 */
+  /* Puan halkasının RAKAMI. Halka canlı cyan/mavi kalıyor; okunması gereken
+     metin koyu karşılığına düşüyor (ölçülen: cyan 1.54:1, mavi 3.12:1). */
+  --ink-cyan: #0E7490;  /* 4.86:1 */
+  --ink-blue: #1976D2;  /* 4.60:1 */
+  --ink-amber: #92400E; /* 7.09:1 — amber-700 (#B45309) 4.11:1 ile kalıyordu */
 }
 
 /* ── RESET ── */
@@ -343,7 +380,9 @@ input, textarea, select { font-family: inherit; }
 .nav a.active, .nav button.active { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .searchbox { display: flex; align-items: center; gap: 10px; flex: 1; max-width: 340px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 9px 16px; color: var(--text-2); transition: 0.2s; }
 .searchbox:focus-within { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent); }
-.searchbox input { background: none; border: none; outline: none; color: var(--text); width: 100%; font-size: 14px; }
+/* min-height: alanin kendisi 21 px yuksekligindeydi; saran kutu buyuk olsa da
+   dogrudan alana dokunma hedefi olarak kucuk kaliyordu. */
+.searchbox input { background: none; border: none; outline: none; color: var(--text); width: 100%; font-size: 14px; min-height: 26px; }
 .searchbox svg { flex-shrink: 0; }
 .hero-search { flex: none; width: 100%; max-width: 560px; margin-top: 24px; padding: 6px 6px 6px 18px; }
 .hero-search input { font-size: 15px; }
@@ -463,7 +502,8 @@ input, textarea, select { font-family: inherit; }
 }
 .play-badge:hover { transform: translateY(-1px); border-color: var(--accent-ring); box-shadow: var(--card-glow); }
 .play-badge-txt { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; line-height: 1.05; min-width: 0; }
-.play-badge-txt small { font-size: 8px; font-weight: 800; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+/* 8px İDİ: sitedeki en küçük yazı, mobilde okunmuyordu. */
+.play-badge-txt small { font-size: 11px; font-weight: 800; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
 .play-badge-txt b { font-size: 13px; font-weight: 800; letter-spacing: 0; }
 .play-badge-sm { min-height: 36px; padding: 6px 12px 6px 9px; gap: 8px; }
 .play-badge-sm .play-badge-txt b { font-size: 12px; }
@@ -532,6 +572,15 @@ input, textarea, select { font-family: inherit; }
   .container { padding: 0 16px; }
   .page { padding-bottom: 90px; }
   body { font-size: 14px; }
+
+  /* iOS Safari, yazı boyutu 16px'in ALTINDA olan bir alana odaklanıldığında
+     sayfayı otomatik olarak YAKINLAŞTIRIR ve kullanıcı geri uzaklaştıramaz.
+     Sitede ölçülen ihlaller: ana arama 15px, .searchbox 14px, kategori marka
+     araması 12px, abonelik ekleme 13.5px, ürün ülke seçici 13.5px, kategori
+     filtre alanları 13.3px (×40). Tek tek düzeltmek yerine mobilde tabanı
+     burada sabitliyoruz — ileride eklenecek alanlar da otomatik korunur.
+     `!important` gerekli: ihlallerin çoğu daha spesifik seçicilerden geliyor. */
+  input, select, textarea { font-size: 16px !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

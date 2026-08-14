@@ -30,8 +30,6 @@
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=20260605a" />
   <link rel="shortcut icon" type="image/png" href="/assets/favicon.png?v=20260605a" />
   <link rel="apple-touch-icon" href="/assets/favicon.png?v=20260605a" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <!-- Ürün görselleri Epey'in CORP başlığı yüzünden ZORUNLU olarak wsrv.nl
        proxy'sinden geçiyor. Preconnect olmadan ilk görselde DNS + TLS el
        sıkışması bekleniyordu; ölçümde wsrv.nl istekleri 1.5-1.9 s sürüyordu.
@@ -39,7 +37,6 @@
   <link rel="preconnect" href="https://wsrv.nl" crossorigin />
   <link rel="dns-prefetch" href="https://wsrv.nl" />
   <link rel="dns-prefetch" href="https://resim.epey.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
   <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
@@ -69,7 +66,29 @@
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <style>.js-ready .seo-prerender{display:none!important}
+  <style>
+  /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
+     ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
+     Bu tek satir su zinciri dayatiyordu: googleapis'e DNS+TLS -> CSS indir ->
+     gstatic'e AYRI DNS+TLS -> woff2. Iki ayri 3. taraf origin, ilk boyamanin
+     onunde. Olculdu (Slow 4G + 4x CPU, canli ana sayfa): yalnizca fontu
+     engellemek FCP'yi 4024 -> 3456 ms yapiyordu (568 ms).
+     ARTIK: woff2'ler /assets/fonts/ altinda bizim orijinimizde, @font-face
+     dogrudan HTML'in icinde — ek round-trip YOK, 3. taraf YOK.
+     Yalnizca latin + latin-ext altkumeleri alindi (TR'nin g/s/I harfleri
+     latin-ext'te); cyrillic ve vietnamese sitede hic kullanilmiyor.
+     Yenilemek icin: node scripts/_selfhost_font.mjs */
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(/assets/fonts/jakarta-400-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:400;font-display:swap;src:url(/assets/fonts/jakarta-400-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(/assets/fonts/jakarta-500-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:500;font-display:swap;src:url(/assets/fonts/jakarta-500-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(/assets/fonts/jakarta-600-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:600;font-display:swap;src:url(/assets/fonts/jakarta-600-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(/assets/fonts/jakarta-700-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:700;font-display:swap;src:url(/assets/fonts/jakarta-700-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:800;font-display:swap;src:url(/assets/fonts/jakarta-800-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF}
+  @font-face{font-family:'Plus Jakarta Sans';font-style:normal;font-weight:800;font-display:swap;src:url(/assets/fonts/jakarta-800-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+  .js-ready .seo-prerender{display:none!important}
   /* ── Açılış kabuğu (#qor-boot) ────────────────────────────────────────────
      SORUN: #root ön-render bloğu `js-ready` ile GİZLENDİĞİ için sayfada
      boyanacak HİÇBİR ŞEY yoktu — ilk boyama 486 KB'lık paketin inip
@@ -105,9 +124,9 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DtgjJF1C.js"></script>
+  <script type="module" crossorigin src="/spa/index-0jz7eTu1.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-QEol8AHA.css">
+  <link rel="stylesheet" crossorigin href="/spa/index-C79l0GZS.css">
 </head>
 <body>
   <!-- Açılış kabuğu. #root açılışından ÖNCE durmak ZORUNDA: seo.mjs şablonu
@@ -130,7 +149,7 @@
       <div class="qb-sk" style="height:150px"></div>
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/laptops">Laptop</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Asus ROG Strix G16 G614PW-WRV038F29 Laptop</h1><p style="color:#475569;margin:0 0 12px">Asus · Laptop · Qor AI teknik skoru 90/100</p><img src="https://resim.epey.com/1054545/m_asus-rog-strix-g16-g614pw-wrv038f29-1.jpg" alt="Asus ROG Strix G16 G614PW-WRV038F29 Laptop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Asus ROG Strix G16 G614PW-WRV038F29 Laptop öne çıkan özellikleri: display boyutu 16.0 İnç, gpu NVIDIA GeForce RTX 5080 175 W, ram 64 GB. Asus ROG Strix G16 G614PW-WRV038F29 Laptop 68 teknik özelliğini, Qor AI teknik skorunu ve benzer laptop modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>16.0 İnç</strong></li><li><span style="color:#64748b">GPU:</span> <strong>NVIDIA GeForce RTX 5080 175 W</strong></li><li><span style="color:#64748b">RAM:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1920 x 1200 Piksel</strong></li><li><span style="color:#64748b">Storage:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli:</span> <strong>AMD Ryzen 9 8940HX</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>FreeDOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Laptop modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038f28-fhq4f59dxn37lls" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038F28 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038f52-693cg105omwev8e" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038F52 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038h29-lkgugvofv2foijc" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038H29 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038p29-tz78qcwfbgcpljw" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038P29 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a010-9cerxpj4mxh2eq1" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A010 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a009-3zwvtsoubkn6u1k" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A009 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a011-k66ysl1fzyzo0pd" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A011 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038p44-oxbz4rugpea5sze" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038P44 Laptop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/laptops" style="color:#2563eb;font-weight:600">Tüm Laptop modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/laptops">Laptop</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Asus ROG Strix G16 G614PW-WRV038F29 Laptop</h1><p style="color:#475569;margin:0 0 12px">Asus · Laptop · Qor AI teknik skoru 90/100</p><img src="https://resim.epey.com/1054545/m_asus-rog-strix-g16-g614pw-wrv038f29-1.jpg" alt="Asus ROG Strix G16 G614PW-WRV038F29 Laptop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Asus ROG Strix G16 G614PW-WRV038F29 Laptop öne çıkan özellikleri: display boyutu 16.0 İnç, gpu NVIDIA GeForce RTX 5080 175 W, ram 64 GB. Asus ROG Strix G16 G614PW-WRV038F29 Laptop 68 teknik özelliğini, Qor AI teknik skorunu ve benzer laptop modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>16.0 İnç</strong></li><li><span style="color:#64748b">GPU:</span> <strong>NVIDIA GeForce RTX 5080 175 W</strong></li><li><span style="color:#64748b">RAM:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1920 x 1200 Piksel</strong></li><li><span style="color:#64748b">Storage:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli:</span> <strong>AMD Ryzen 9 8940HX</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>FreeDOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Laptop modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038f28-fhq4f59dxn37lls" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038F28 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038f52-693cg105omwev8e" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038F52 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038h29-lkgugvofv2foijc" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038H29 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038p29-tz78qcwfbgcpljw" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038P29 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a010-9cerxpj4mxh2eq1" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A010 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a009-3zwvtsoubkn6u1k" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A009 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g615lw-s5188a011-k66ysl1fzyzo0pd" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A011 Laptop</a></li><li><a href="/tr/product/asus-rog-strix-g16-g614pw-wrv038p44-oxbz4rugpea5sze" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038P44 Laptop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/laptops" style="color:#2563eb;font-weight:600">Tüm Laptop modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
