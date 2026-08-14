@@ -93,9 +93,15 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
           {!p.brand && <span className="q-product-card-brand">{categoryLabel(p.category, lang)}</span>}
         </div>
         <span className="q-product-card-name">{cardName}</span>
-        {cardPrice && (
-          <span className="q-product-card-price">{formatPriceAmount(cardPrice.price, cardPrice.currency, lang)}</span>
-        )}
+        {/* Fiyat satırı KOŞULSUZ render edilir. Fiyat, ülke tespiti (useGeoCountry
+            -> /cdn-cgi/trace) döndükten SONRA beliriyordu; satır yoktan var olunca
+            kart 31 px büyüyordu. Ana sayfada bu, karuselin yüksekliğini
+            değiştirip ölçülebilir bir kaymaya yol açıyordu (CLS 0.023 — kayan
+            düğümler `section.hero.card::after` ve `.hero-carousel-dots`).
+            Fiyatı olmayan üründe boş bir satır kalır; kartın boyu artık sabit. */}
+        <span className="q-product-card-price">
+          {cardPrice ? formatPriceAmount(cardPrice.price, cardPrice.currency, lang) : ' '}
+        </span>
         <div className="q-product-card-specs">
           {specs.map((spec, index) => (
             <span className="q-product-card-spec" key={`${spec.label}-${index}`} title={`${spec.label}: ${spec.value}`}>
