@@ -91,6 +91,14 @@
   content: ''; width: 5px; height: 21px; border-radius: 999px; background: var(--brand-grad);
 }
 .cmp-picks-head span { color: var(--text3); font-size: 13px; font-weight: 700; }
+/* Mobilde baslik ve aciklama YAN YANA sikisiyordu: her ikisi de sariyor,
+   ekran goruntusunde "Populer urunler" iki satira bolunup aciklamayla ic ice
+   giriyordu. Ayrica metin yeniden sarildiginda olculebilir bir kayma uretiyordu
+   (/compare'de kalan tek CLS kaynagi, 0.009). Dar ekranda alt alta. */
+@media (max-width: 640px) {
+  .cmp-picks-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .cmp-picks-head span { font-size: 12.5px; }
+}
 .cmp-picks .card-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
 }
