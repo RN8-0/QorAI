@@ -7,6 +7,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Manifest, seo.mjs'in her rota icin DOGRU chunk dosya adini bulmasi icin
+    // gerekli (adlar hash'li). Ontanimli konum ../website/.vite/manifest.json.
+    manifest: true,
     outDir: '../website',
     emptyOutDir: false,
     assetsDir: 'spa',

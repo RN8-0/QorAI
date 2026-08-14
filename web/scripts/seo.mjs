@@ -711,7 +711,55 @@ function lcpVariant(url, slot) {
     .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}m_${file}`));
 }
 
-function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null, preloadImage = '' }) {
+
+// ── Rota chunk'ini ONDEN yukle ──────────────────────────────────────────────
+// Tembel rotalarda zincir suydu: index.js indi -> AYRISTI -> React lazy import'a
+// ULASTI -> ancak O ZAMAN rota chunk'i istendi. Yani rota kodu, ana paket
+// calisana kadar aga hic cikmiyordu. Olculdu (yavas 4G + 4x CPU): sayfanin
+// lead paragrafi (LCP elemani) /subscriptions'ta 4828 ms'de boyaniyordu.
+// modulepreload ile rota chunk'i ana paketle PARALEL iniyor.
+// Dosya adlari hash'li oldugu icin vite manifest'inden okunuyor. Gece cron'u
+// seo.mjs'i vite'siz kosuyor; o durumda manifest bir onceki build'e ait ve
+// website/spa altindaki dosyalar da degismedigi icin dogru kalir.
+let VITE_MANIFEST = null;
+function manifest() {
+  if (VITE_MANIFEST) return VITE_MANIFEST;
+  const f = join(site, '.vite', 'manifest.json');
+  try { VITE_MANIFEST = JSON.parse(readFileSync(f, 'utf8')); }
+  catch { VITE_MANIFEST = {}; console.warn('[seo] vite manifest okunamadi — rota on-yuklemesi atlandi'); }
+  return VITE_MANIFEST;
+}
+// Rota dizini -> kaynak dosya. Ana sayfa (dir '') EAGER, on-yukleme gerekmez.
+const ROUTE_ENTRY = {
+  category: 'src/pages/Category.jsx',
+  product: 'src/pages/ProductDetail.jsx',
+  compare: 'src/pages/Compare.jsx',
+  'link-analysis': 'src/pages/LinkAnalysis.jsx',
+  subscriptions: 'src/pages/Subscriptions.jsx',
+  premium: 'src/pages/Premium.jsx',
+  quiz: 'src/pages/Quiz.jsx',
+  profile: 'src/pages/Profile.jsx',
+  go: 'src/pages/Go.jsx',
+  blog: 'src/pages/Blog.jsx',
+  blogpost: 'src/pages/BlogPost.jsx',
+  terms: 'src/pages/Legal.jsx', privacy: 'src/pages/Legal.jsx', refund: 'src/pages/Legal.jsx',
+  cookies: 'src/pages/Legal.jsx', contact: 'src/pages/Legal.jsx', about: 'src/pages/Legal.jsx',
+  faq: 'src/pages/Legal.jsx',
+  'ai-chat': 'src/pages/AiChat.jsx',
+};
+function routePreloadTags(routeKey) {
+  const src = ROUTE_ENTRY[routeKey];
+  if (!src) return [];
+  const e = manifest()[src];
+  if (!e || !e.file) return [];
+  const tags = [`<link rel="modulepreload" crossorigin href="/${e.file}" />`];
+  // Rota CSS'i: `as="style"` ile onden cekilir. Stylesheet olarak eklemek
+  // render-blocking yapardi — amac tam tersi.
+  for (const c of e.css || []) tags.push(`<link rel="preload" as="style" href="/${c}" />`);
+  return tags;
+}
+
+function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null, preloadImage = '', routeKey = '' }) {
   const lines = [
     `<title>${esc(title)}</title>`,
     `<meta name="description" content="${esc(description)}" />`,
@@ -726,6 +774,7 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
     // HTML -> JS -> Typesense -> render -> gorsel seklinde UC ardisik gidis-donus
     // oluyordu (olculdu: kategori LCP 9,5 sn / urun 7,5 sn, yavas 4G).
     ...(preloadImage ? [`<link rel="preload" as="image" href="${esc(preloadImage)}" fetchpriority="high" />`] : []),
+    ...routePreloadTags(routeKey),
     `<meta property="og:image" content="${esc(image)}" />`,
     `<meta property="og:image:alt" content="${esc(imageAlt)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
@@ -1492,6 +1541,7 @@ async function main() {
         lang,
         // Kabuktaki hero metni yalnizca ana sayfada kalsin (bkz. renderPage).
         isHome: r.dir === '',
+        routeKey: r.dir,
         alternates: multilang ? hreflangAlts(r.path) : null,
       }, body));
     }
@@ -1632,6 +1682,7 @@ async function main() {
         lang,
         image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
         preloadImage: lcpVariant(heroImg, 'card'),
+        routeKey: 'category',
         type: 'website',
         alternates: hreflangAlts(path),
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
@@ -1685,7 +1736,7 @@ async function main() {
           `${prefix}${path}`.replace(/^\//, ''),
           renderPage(
             template,
-            { ...productSeo(d, label, ks, lang), alternates, preloadImage: lcpVariant(d.imageUrl, 'full') },
+            { ...productSeo(d, label, ks, lang), alternates, preloadImage: lcpVariant(d.imageUrl, 'full'), routeKey: 'product' },
             localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang), lang),
           ),
         );
@@ -1794,6 +1845,7 @@ async function main() {
       const url = `${SITE}${prefix}/blog`;
       writeHtml(`${prefix}/blog`.replace(/^\//, ''), renderPage(template, {
         title: tx.title, description: tx.desc, url, lang, type: 'website',
+        routeKey: 'blog',
         alternates: hreflangAlts('/blog'),
         jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${url}#blog`, name: 'Qor AI Blog', url },
       }, localizeBodyLinks(blogListBody(articles), lang)));
@@ -1834,6 +1886,7 @@ async function main() {
         writeHtml(`blog/${s}`, renderPage(template, {
           title: metaT || truncate(`${t('title')} | Qor AI`, 70), description: truncate(metaD || t('lead')),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
+          routeKey: 'blogpost',
           // <html lang> bu sayfanin GERCEK dili olsun: JS calistirmayan bir
           // tarayici/tarayici-botu Ingilizce govdeyi lang="tr" altinda
           // gormesin (2026-07-27: uc dil de lang="tr" ile yayindaydi).
