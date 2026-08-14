@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -41,22 +41,119 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
-  <!-- Google AdSense -->
+  <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
+       KALDIRILDI. Ölçüm (2026-08-14, Slow 4G + 4x CPU, canlı ana sayfa):
+       adsbygoogle.js + show_ads_impl = 272 KB ve ~210 ms TBT. Başvuru üçüncü kez
+       reddedildiği için şu an tek bir reklam bile sunulmuyor — yani bu maliyet
+       SIFIR gelir karşılığında ödeniyordu.
+       GERİ AÇMAK: pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
+       adresini client=ca-pub-1522897791319993 sorgusuyla async bir script
+       etiketi olarak buraya ekleyin. AdSlot + lib/ads.js olduğu gibi duruyor,
+       slot ID'leri verilince çalışır. Etiketi bu yoruma BİREBİR yazmayın:
+       yorumdaki etiket metni seo.mjs/seo-audit desenlerini şaşırtıyor. -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
-  <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
+  <script>try{var d=document.documentElement;
+    /* Tema: KAYITLI tercih → işletim sistemi tercihi → açık. Eskiden burada
+       sabit 'light' yazıyordu ve lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı
+       karanlık temayı açıyor, ilk yenilemede geri açığa dönüyordu (ölçüldü).
+       Boyamadan ÖNCE burada uygulanmalı, yoksa karanlık tema seçen kullanıcı her
+       açılışta beyaz bir flaş görür. */
+    var st=null; try{st=localStorage.getItem('qorai-theme')}catch(e){}
+    if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+    d.setAttribute('data-theme',st);
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-7NX5Rbte.js"></script>
+  <style>.js-ready .seo-prerender{display:none!important}
+  /* ── Açılış kabuğu (#qor-boot) ────────────────────────────────────────────
+     SORUN: #root ön-render bloğu `js-ready` ile GİZLENDİĞİ için sayfada
+     boyanacak HİÇBİR ŞEY yoktu — ilk boyama 486 KB'lık paketin inip
+     çalışmasına kilitliydi. Ölçüm (Slow 4G + 4x CPU): FCP 4040 ms; kısıtsız
+     wifi + üst segment cihazda bile 1428 ms.
+     DAHA KÖTÜSÜ: paket hiç gelmezse ekran SONSUZA DEK BEYAZ kalıyordu
+     (ölçüldü: FCP 0, body metni 0 karakter) — oysa içerik HTML'in içinde duruyor.
+     ÇÖZÜM: HTML ile birlikte gelen, dış kaynağa ihtiyacı olmayan sabit bir
+     kabuk. `position: fixed` ŞART — akışın dışında durduğu için React içeriği
+     altına yerleşir ve kabuk kaldırılınca tek piksel kaymaz (CLS 0). */
+  /* Kabuk YALNIZCA JS çalışan tarayıcıda görünür. JS'siz tarayıcı (AdSense'in
+     CSS'li anlık görüntüsü, arama motoru fallback'i) `js-ready` almaz: kabuk
+     hiç çizilmez, ön-render metni açıkta kalır. Yani her an ikisinden TAM
+     OLARAK BİRİ görünür — kabuk asla taranabilir metnin üstünü örtmez. */
+  #qor-boot{display:none}
+  .js-ready #qor-boot{position:fixed;inset:0;z-index:400;background:#F8FAFC;display:flex;flex-direction:column;pointer-events:none}
+  /* Karanlık temada gövde arka planı SAF SİYAH (--bg: #000). Kabuk başka bir
+     ton kullanırsa kaldırıldığı anda gözle görülür bir renk sıçraması olur. */
+  [data-theme='dark'] #qor-boot{background:#000000}
+  #qor-boot .qb-bar{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(15,23,42,.08)}
+  [data-theme='dark'] #qor-boot .qb-bar{border-bottom-color:rgba(255,255,255,.10)}
+  #qor-boot .qb-bar img{width:34px;height:34px}
+  #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
+  [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
+  #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
+  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  @media (prefers-reduced-motion: no-preference){
+    #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+  }
+  /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
+  #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
+  </style>
+  <script type="module" crossorigin src="/spa/index-DtgjJF1C.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
+  <link rel="stylesheet" crossorigin href="/spa/index-QEol8AHA.css">
 </head>
 <body>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr/" style="color:#64748b">Ana Sayfa</a> › Qor AI Hakkında</nav><h1 style="font-size:28px;margin:14px 0 6px">Qor AI Hakkında</h1><p style="color:#475569;line-height:1.6">Qor AI nedir, ne satar, kimler içindir, Premium nasıl çalışır, hesap silme ve bağımsız öneriler.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Son güncelleme: 7 Ağustos 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi contact@qorai.net adresidir.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. Qor AI Ne Yapar</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Qor AI Ne Satar</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. Kimler İçin Tasarlandı</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. Bağımsızlık ve Affiliate İlkesi</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. Veri Kaynakları ve AI Sınırları</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. Hesaplar, Profil ve Hesap Silme</a><a href="#s7" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">7. Bize Ulaşma</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Qor AI Ne Yapar</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI, satın almadan önce araştırma yapan kullanıcılar için tasarlanmış yapay zeka destekli ürün karar asistanıdır. Telefon, laptop, ekran kartı, kulaklık, kamera, tablet, televizyon, akıllı saat, bilgisayar bileşenleri ve dijital abonelikler gibi çok sayıda kategoride ürünleri tek ekranda anlamayı kolaylaştırır.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Amaç, kullanıcıyı onlarca satıcı sayfası, teknik özellik tablosu, inceleme videosu ve forum yorumu arasında kaybettirmeden daha temiz bir karar akışına taşımaktır. Qor AI ürünleri yan yana karşılaştırır, güçlü ve zayıf yönleri açıklar, teknik değerleri sadeleştirir, link analizi yapar, ürün görsellerini tarar ve AI Chat üzerinden takip sorularına yanıt verir.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Qor AI Ne Satar</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI fiziksel ürün satıcısı değildir; katalogda görünen telefon, laptop, kulaklık, PC parçası veya başka ürünlerin satışı ilgili mağaza, pazar yeri veya perakendeci tarafından yapılır. Qor AI, ürün kararını kolaylaştıran yazılım özellikleri ve Premium erişim sunar.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açar. Web ödemeleri Polar, mobil satın almalar Google Play üzerinden yönetilir.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Kimler İçin Tasarlandı</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI; &quot;bu ürün alınır mı&quot;, &quot;bu laptop bütçeme uygun mu&quot;, &quot;bu telefon diğer modele göre mantıklı mı&quot;, &quot;hangi abonelik bana daha çok değer sağlar&quot; gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Öğrenciler, içerik üreticileri, oyuncular, iş için laptop arayanlar, fiyat/performans ürün kovalayanlar, aboneliklerini sadeleştirmek isteyenler ve aynı anda birden fazla linki karşılaştırmak isteyen herkes Qor AI akışından faydalanabilir.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Bağımsızlık ve Affiliate İlkesi</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI bazı dış mağaza linklerinden affiliate komisyonu kazanabilir; ancak komisyonlar ürün skorlarını, Premium önerileri veya AI sonuçlarını belirlemez. Ürün uyumu, teknik bağlam, fiyat/performans sinyali ve kullanıcının ihtiyacı ticari ilişkilerden daha önemlidir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Bir mağazaya yönlendirme yapılması, Qor AI’ın o mağazadaki ürünün satıcısı olduğu anlamına gelmez. Satın alma, teslimat, garanti, iade, stok ve fiyat sorumluluğu ilgili satıcı veya pazar yerine aittir.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Veri Kaynakları ve AI Sınırları</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Ürün bilgileri herkese açık perakendeci sayfaları, pazar yeri sayfaları, üretici bilgileri, partner feed’leri, kullanıcı etkileşimleri ve AI zenginleştirmesinden gelebilir. Bu keşfi hızlandırır; ancak bazı fiyat, stok veya teknik özellikler Qor AI yenilemeden önce değişebilir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">AI analizi, alternatifleri açıklamak ve doğru soruları görünür yapmak için tasarlanmıştır. Garanti, satıcı taahhüdü, hukuki tavsiye veya nihai uyumluluk güvencesi olarak görülmemelidir.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Hesaplar, Profil ve Hesap Silme</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Bazı Qor AI özellikleri hesapla çalışır; bu sayede favoriler, karşılaştırmalar, kişisel profil sinyalleri, Premium durumu, Qor Coin kullanımı ve geçmiş analizler daha tutarlı yönetilir. Kişisel profil, satın alma tercihlerinizi ve kullanım amacınızı daha iyi anlamaya yardımcı olur.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Kullanıcılar hesaplarını Profilim bölümünden Hesabımı sil akışını başlatarak silebilir. Profilim bölümüne erişemeyen kullanıcılar hesap silme taleplerini contact@qorai.net adresine e-posta ile gönderebilir. Hesap silme ve gizlilik talepleri için Qor AI’ın başka bir resmi iletişim adresi yoktur.</p></section><section id="s7" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Bize Ulaşma</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Destek, gizlilik, hesap silme, iade, ödeme, ürün verisi, basın veya iş birliği konularında Qor AI’a yalnızca contact@qorai.net adresinden ulaşabilirsiniz. Mesajınızda Qor AI hesap e-postanızı ve talebinizin açık konusunu yazmanız daha hızlı yanıt almaya yardımcı olur.</p></section><div style="margin:24px 0;font-size:14px"><strong>İlgili politikalar:</strong><br/><a href="/tr/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Kullanım Koşulları</a><a href="/tr/privacy" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Gizlilik Politikası</a><a href="/tr/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">İade Politikası</a><a href="/tr/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Çerez Politikası</a><a href="/tr/faq" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">SSS</a><a href="/tr/contact" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Qor AI ile İletişim</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">İletişim: contact@qorai.net</a></p></main></div>
+  <!-- Açılış kabuğu. #root açılışından ÖNCE durmak ZORUNDA: seo.mjs şablonu
+       üretirken root div'ini (kapanışından sonraki ilk script etiketine kadar)
+       boşaltıyor, seo-audit de aynı sınırdan okuyor. Araya konsaydı hem kabuk
+       her derlemede silinir hem de denetim "prerender body missing" deyip
+       build'i kırardı.
+       UYARI: bu dosyadaki YORUMLARDA root div'inin açılış etiketini birebir
+       YAZMAYIN. seo.mjs deseni ilk eşleşmeyi alır; yorumun içindeki metni
+       gerçek düğüm sanıp oradan kesti ve kabuk üretilen HTML'den TAMAMEN
+       kayboldu (ölçüldü, ilk denemede tam olarak bu oldu). -->
+  <div id="qor-boot" aria-hidden="true">
+    <div class="qb-bar">
+      <img src="/assets/qor_logo_512.png?v=20260605a" width="34" height="34" alt="" decoding="async" />
+      <span class="qb-wm">Qor<i> AI</i></span>
+    </div>
+    <div class="qb-body">
+      <div class="qb-sk" style="height:210px"></div>
+      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+      <div class="qb-sk" style="height:150px"></div>
+    </div>
+  </div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr/" style="color:#64748b">Ana Sayfa</a> › Qor AI Hakkında</nav><h1 style="font-size:28px;margin:14px 0 6px">Qor AI Hakkında</h1><p style="color:#475569;line-height:1.6">Qor AI nedir, ne satar, kimler içindir, Premium nasıl çalışır, hesap silme ve bağımsız öneriler.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Son güncelleme: 7 Ağustos 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI; qorai.net web sitesi ve Qor AI mobil uygulaması üzerinden çalışan yapay zeka destekli alışveriş ve ürün karar asistanıdır. Kullanıcıların ürünleri karşılaştırmasına, linkleri analiz etmesine, abonelikleri değerlendirmesine ve satın alma öncesi ürün soruları sormasına yardımcı olur. Qor AI için destek, yasal bildirim, gizlilik, hesap silme ve ödeme konularındaki tek resmi genel iletişim adresi contact@qorai.net adresidir.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. Qor AI Ne Yapar</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Qor AI Ne Satar</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. Kimler İçin Tasarlandı</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. Bağımsızlık ve Affiliate İlkesi</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. Veri Kaynakları ve AI Sınırları</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. Hesaplar, Profil ve Hesap Silme</a><a href="#s7" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">7. Bize Ulaşma</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Qor AI Ne Yapar</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI, satın almadan önce araştırma yapan kullanıcılar için tasarlanmış yapay zeka destekli ürün karar asistanıdır. Telefon, laptop, ekran kartı, kulaklık, kamera, tablet, televizyon, akıllı saat, bilgisayar bileşenleri ve dijital abonelikler gibi çok sayıda kategoride ürünleri tek ekranda anlamayı kolaylaştırır.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Amaç, kullanıcıyı onlarca satıcı sayfası, teknik özellik tablosu, inceleme videosu ve forum yorumu arasında kaybettirmeden daha temiz bir karar akışına taşımaktır. Qor AI ürünleri yan yana karşılaştırır, güçlü ve zayıf yönleri açıklar, teknik değerleri sadeleştirir, link analizi yapar, ürün görsellerini tarar ve AI Chat üzerinden takip sorularına yanıt verir.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Qor AI Ne Satar</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI fiziksel ürün satıcısı değildir; katalogda görünen telefon, laptop, kulaklık, PC parçası veya başka ürünlerin satışı ilgili mağaza, pazar yeri veya perakendeci tarafından yapılır. Qor AI, ürün kararını kolaylaştıran yazılım özellikleri ve Premium erişim sunar.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Premium; daha kapsamlı AI kullanımı, ürün AI analizi, link analizi, link karşılaştırma, görsel tarayıcı, abonelik analizi, premium öneriler, daha derin karşılaştırma çıktıları ve genişletilmiş fiyat geçmişi gibi özellikleri açar. Web ödemeleri Polar, mobil satın almalar Google Play üzerinden yönetilir.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Kimler İçin Tasarlandı</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI; &quot;bu ürün alınır mı&quot;, &quot;bu laptop bütçeme uygun mu&quot;, &quot;bu telefon diğer modele göre mantıklı mı&quot;, &quot;hangi abonelik bana daha çok değer sağlar&quot; gibi sorularla karar vermeye çalışan kullanıcılar için geliştirilir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Öğrenciler, içerik üreticileri, oyuncular, iş için laptop arayanlar, fiyat/performans ürün kovalayanlar, aboneliklerini sadeleştirmek isteyenler ve aynı anda birden fazla linki karşılaştırmak isteyen herkes Qor AI akışından faydalanabilir.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Bağımsızlık ve Affiliate İlkesi</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Qor AI bazı dış mağaza linklerinden affiliate komisyonu kazanabilir; ancak komisyonlar ürün skorlarını, Premium önerileri veya AI sonuçlarını belirlemez. Ürün uyumu, teknik bağlam, fiyat/performans sinyali ve kullanıcının ihtiyacı ticari ilişkilerden daha önemlidir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Bir mağazaya yönlendirme yapılması, Qor AI’ın o mağazadaki ürünün satıcısı olduğu anlamına gelmez. Satın alma, teslimat, garanti, iade, stok ve fiyat sorumluluğu ilgili satıcı veya pazar yerine aittir.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Veri Kaynakları ve AI Sınırları</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Ürün bilgileri herkese açık perakendeci sayfaları, pazar yeri sayfaları, üretici bilgileri, partner feed’leri, kullanıcı etkileşimleri ve AI zenginleştirmesinden gelebilir. Bu keşfi hızlandırır; ancak bazı fiyat, stok veya teknik özellikler Qor AI yenilemeden önce değişebilir.</p><p style="line-height:1.7;color:#334155;margin:8px 0">AI analizi, alternatifleri açıklamak ve doğru soruları görünür yapmak için tasarlanmıştır. Garanti, satıcı taahhüdü, hukuki tavsiye veya nihai uyumluluk güvencesi olarak görülmemelidir.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Hesaplar, Profil ve Hesap Silme</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Bazı Qor AI özellikleri hesapla çalışır; bu sayede favoriler, karşılaştırmalar, kişisel profil sinyalleri, Premium durumu, Qor Coin kullanımı ve geçmiş analizler daha tutarlı yönetilir. Kişisel profil, satın alma tercihlerinizi ve kullanım amacınızı daha iyi anlamaya yardımcı olur.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Kullanıcılar hesaplarını Profilim bölümünden Hesabımı sil akışını başlatarak silebilir. Profilim bölümüne erişemeyen kullanıcılar hesap silme taleplerini contact@qorai.net adresine e-posta ile gönderebilir. Hesap silme ve gizlilik talepleri için Qor AI’ın başka bir resmi iletişim adresi yoktur.</p></section><section id="s7" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Bize Ulaşma</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Destek, gizlilik, hesap silme, iade, ödeme, ürün verisi, basın veya iş birliği konularında Qor AI’a yalnızca contact@qorai.net adresinden ulaşabilirsiniz. Mesajınızda Qor AI hesap e-postanızı ve talebinizin açık konusunu yazmanız daha hızlı yanıt almaya yardımcı olur.</p></section><div style="margin:24px 0;font-size:14px"><strong>İlgili politikalar:</strong><br/><a href="/tr/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Kullanım Koşulları</a><a href="/tr/privacy" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Gizlilik Politikası</a><a href="/tr/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">İade Politikası</a><a href="/tr/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Çerez Politikası</a><a href="/tr/faq" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">SSS</a><a href="/tr/contact" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Qor AI ile İletişim</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">İletişim: contact@qorai.net</a></p></main></div>
+  <script>
+    /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
+       Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
+       paketin inmediği senaryo, dolayısıyla mantık pakete bağlı olamaz.
+       React mount olunca App.jsx `window.__qorBootDone()` çağırır. Çağrı 12 sn
+       içinde gelmezse paket ölmüş demektir: kabuk kaldırılır ve HTML'de zaten
+       duran ön-render metni GÖRÜNÜR yapılır — kullanıcı beyaz ekran yerine
+       gerçek içeriği ve çalışan linkleri görür. */
+    (function () {
+      var done = false;
+      window.__qorBootDone = function () {
+        if (done) return; done = true;
+        var el = document.getElementById('qor-boot');
+        if (!el) return;
+        el.className = 'qb-out';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+      };
+      setTimeout(function () {
+        if (done) return;
+        document.documentElement.classList.remove('js-ready');
+        window.__qorBootDone();
+      }, 12000);
+    })();
+  </script>
   <script>
     /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.

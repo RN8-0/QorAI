@@ -39,6 +39,12 @@ export default function App() {
   const nav = useNavigate();
   const { user } = useAuth();
 
+  // Açılış kabuğunu (index.html'deki #qor-boot) kaldır. Effect COMMIT sonrası
+  // koşar, yani gerçek arayüz zaten boyanmıştır — kabuk kalkarken arkasında boş
+  // ekran kalmaz. Kabuk `position: fixed` olduğu için kaldırılması hiçbir şeyi
+  // kaydırmaz (CLS 0).
+  useEffect(() => { window.__qorBootDone?.(); }, []);
+
   // Scroll to top + report page view on every route change.
   // `behavior: 'instant'` ŞART: iki argümanlı `scrollTo(0, 0)` biçimi CSS'teki
   // `scroll-behavior`'a UYAR. Genel `html { scroll-behavior: smooth }` kuralı

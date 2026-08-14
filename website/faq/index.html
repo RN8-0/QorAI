@@ -41,22 +41,119 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
-  <!-- Google AdSense -->
+  <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
+       KALDIRILDI. Ölçüm (2026-08-14, Slow 4G + 4x CPU, canlı ana sayfa):
+       adsbygoogle.js + show_ads_impl = 272 KB ve ~210 ms TBT. Başvuru üçüncü kez
+       reddedildiği için şu an tek bir reklam bile sunulmuyor — yani bu maliyet
+       SIFIR gelir karşılığında ödeniyordu.
+       GERİ AÇMAK: pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
+       adresini client=ca-pub-1522897791319993 sorgusuyla async bir script
+       etiketi olarak buraya ekleyin. AdSlot + lib/ads.js olduğu gibi duruyor,
+       slot ID'leri verilince çalışır. Etiketi bu yoruma BİREBİR yazmayın:
+       yorumdaki etiket metni seo.mjs/seo-audit desenlerini şaşırtıyor. -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
-  <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
+  <script>try{var d=document.documentElement;
+    /* Tema: KAYITLI tercih → işletim sistemi tercihi → açık. Eskiden burada
+       sabit 'light' yazıyordu ve lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı
+       karanlık temayı açıyor, ilk yenilemede geri açığa dönüyordu (ölçüldü).
+       Boyamadan ÖNCE burada uygulanmalı, yoksa karanlık tema seçen kullanıcı her
+       açılışta beyaz bir flaş görür. */
+    var st=null; try{st=localStorage.getItem('qorai-theme')}catch(e){}
+    if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+    d.setAttribute('data-theme',st);
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-7NX5Rbte.js"></script>
+  <style>.js-ready .seo-prerender{display:none!important}
+  /* ── Açılış kabuğu (#qor-boot) ────────────────────────────────────────────
+     SORUN: #root ön-render bloğu `js-ready` ile GİZLENDİĞİ için sayfada
+     boyanacak HİÇBİR ŞEY yoktu — ilk boyama 486 KB'lık paketin inip
+     çalışmasına kilitliydi. Ölçüm (Slow 4G + 4x CPU): FCP 4040 ms; kısıtsız
+     wifi + üst segment cihazda bile 1428 ms.
+     DAHA KÖTÜSÜ: paket hiç gelmezse ekran SONSUZA DEK BEYAZ kalıyordu
+     (ölçüldü: FCP 0, body metni 0 karakter) — oysa içerik HTML'in içinde duruyor.
+     ÇÖZÜM: HTML ile birlikte gelen, dış kaynağa ihtiyacı olmayan sabit bir
+     kabuk. `position: fixed` ŞART — akışın dışında durduğu için React içeriği
+     altına yerleşir ve kabuk kaldırılınca tek piksel kaymaz (CLS 0). */
+  /* Kabuk YALNIZCA JS çalışan tarayıcıda görünür. JS'siz tarayıcı (AdSense'in
+     CSS'li anlık görüntüsü, arama motoru fallback'i) `js-ready` almaz: kabuk
+     hiç çizilmez, ön-render metni açıkta kalır. Yani her an ikisinden TAM
+     OLARAK BİRİ görünür — kabuk asla taranabilir metnin üstünü örtmez. */
+  #qor-boot{display:none}
+  .js-ready #qor-boot{position:fixed;inset:0;z-index:400;background:#F8FAFC;display:flex;flex-direction:column;pointer-events:none}
+  /* Karanlık temada gövde arka planı SAF SİYAH (--bg: #000). Kabuk başka bir
+     ton kullanırsa kaldırıldığı anda gözle görülür bir renk sıçraması olur. */
+  [data-theme='dark'] #qor-boot{background:#000000}
+  #qor-boot .qb-bar{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(15,23,42,.08)}
+  [data-theme='dark'] #qor-boot .qb-bar{border-bottom-color:rgba(255,255,255,.10)}
+  #qor-boot .qb-bar img{width:34px;height:34px}
+  #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
+  [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
+  #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
+  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  @media (prefers-reduced-motion: no-preference){
+    #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+  }
+  /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
+  #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
+  </style>
+  <script type="module" crossorigin src="/spa/index-DtgjJF1C.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
+  <link rel="stylesheet" crossorigin href="/spa/index-QEol8AHA.css">
 </head>
 <body>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/" style="color:#64748b">Home</a> › FAQ</nav><h1 style="font-size:28px;margin:14px 0 6px">FAQ</h1><p style="color:#475569;line-height:1.6">Common questions about Qor AI, Premium, billing, refunds, privacy, AI accuracy and product data.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Last updated: August 7, 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI is the AI-powered shopping assistant available on qorai.net and in the Qor AI mobile app. The service helps people compare products, analyse links, review subscriptions and ask product questions before they buy. The only official public contact address for Qor AI support, legal, privacy, account deletion and billing requests is contact@qorai.net.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. What is Qor AI Premium?</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Where is the pricing page?</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. Can I get a refund?</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. How do I cancel Premium?</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. How do I delete my account?</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. How do I contact Qor AI?</a><a href="#s7" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">7. Does Qor AI store my card details?</a><a href="#s8" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">8. Why can web and mobile billing differ?</a><a href="#s9" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">9. Is AI output always correct?</a><a href="#s10" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">10. What should I do if product data is wrong?</a><a href="#s11" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">11. How is the site language selected?</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">What is Qor AI Premium?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Premium is the paid plan for heavier AI usage. It expands access to Qor AI Chat, visual scanner, product AI analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Where is the pricing page?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The pricing page is /premium. It lists current public prices, trial information and the main Premium features.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Can I get a refund?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Premium starts with a 3-day free trial, so cancelling before it ends means no charge at all. For web purchases through Polar, new Premium charges may be refundable within 30 days. Renewal and app-store rules are explained in the Refund Policy.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I cancel Premium?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Cancel where you subscribed. Website: sign in at qorai.net → Profile → Account → Subscription → “Cancel website subscription” (or open https://polar.sh/qorai/portal). Mobile app: Play Store → profile → Payments &amp; subscriptions → Subscriptions → Qor AI.</p><p style="line-height:1.7;color:#334155;margin:8px 0">These are two separate subscriptions — cancelling the web one does NOT cancel a Google Play one, and vice versa. Cancel inside the 3-day trial and you are never charged.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I delete my account?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Open Profile in the Qor AI app or website and use Delete my account. The deletion flow may send a confirmation link to your account email before the account is permanently removed.</p><p style="line-height:1.7;color:#334155;margin:8px 0">If you cannot access Profile, email contact@qorai.net with the subject &quot;Account deletion request&quot; and include the email address connected to your Qor AI account. There is no other official public email address for Qor AI account deletion or privacy requests.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I contact Qor AI?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The only official public contact address for support, billing, refunds, privacy, account deletion, product data and partnerships is contact@qorai.net.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Include your account email, product link, transaction reference or a short issue description where relevant. Do not send passwords or card details.</p></section><section id="s7" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Does Qor AI store my card details?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">No. Web card details are handled by Polar, and app-store payments are handled by the relevant store. Qor AI stores only limited subscription status data needed to unlock Premium.</p></section><section id="s8" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Why can web and mobile billing differ?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Web purchases are handled by Polar, while mobile purchases are handled by Google Play. Taxes, receipts, refund steps and subscription management differ because each provider controls its own checkout flow — including where you cancel.</p></section><section id="s9" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Is AI output always correct?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">No. AI output can be wrong or outdated. Qor AI is a research assistant, not a guarantee. Always verify important specifications, prices and compatibility with official retailer or manufacturer sources.</p></section><section id="s10" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">What should I do if product data is wrong?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Send the product link and the incorrect field to contact@qorai.net. We use reports to improve catalog quality, but retailer prices and stock may still change faster than our refresh cycle.</p></section><section id="s11" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How is the site language selected?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The website follows your browser language. There is no manual language selector on the site.</p></section><div style="margin:24px 0;font-size:14px"><strong>Related policies:</strong><br/><a href="/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Terms of Service</a><a href="/privacy" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Privacy Policy</a><a href="/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Refund Policy</a><a href="/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Cookie Policy</a><a href="/about" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">About Qor AI</a><a href="/contact" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Contact Qor AI</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">Contact: contact@qorai.net</a></p></main></div>
+  <!-- Açılış kabuğu. #root açılışından ÖNCE durmak ZORUNDA: seo.mjs şablonu
+       üretirken root div'ini (kapanışından sonraki ilk script etiketine kadar)
+       boşaltıyor, seo-audit de aynı sınırdan okuyor. Araya konsaydı hem kabuk
+       her derlemede silinir hem de denetim "prerender body missing" deyip
+       build'i kırardı.
+       UYARI: bu dosyadaki YORUMLARDA root div'inin açılış etiketini birebir
+       YAZMAYIN. seo.mjs deseni ilk eşleşmeyi alır; yorumun içindeki metni
+       gerçek düğüm sanıp oradan kesti ve kabuk üretilen HTML'den TAMAMEN
+       kayboldu (ölçüldü, ilk denemede tam olarak bu oldu). -->
+  <div id="qor-boot" aria-hidden="true">
+    <div class="qb-bar">
+      <img src="/assets/qor_logo_512.png?v=20260605a" width="34" height="34" alt="" decoding="async" />
+      <span class="qb-wm">Qor<i> AI</i></span>
+    </div>
+    <div class="qb-body">
+      <div class="qb-sk" style="height:210px"></div>
+      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+      <div class="qb-sk" style="height:150px"></div>
+    </div>
+  </div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/" style="color:#64748b">Home</a> › FAQ</nav><h1 style="font-size:28px;margin:14px 0 6px">FAQ</h1><p style="color:#475569;line-height:1.6">Common questions about Qor AI, Premium, billing, refunds, privacy, AI accuracy and product data.</p><p style="font-size:13px;color:#94a3b8;margin:6px 0 0">Last updated: August 7, 2026</p><div style="background:#f1f5f9;border-radius:12px;padding:14px 16px;margin:16px 0"><strong>Qor AI</strong><p style="line-height:1.7;color:#334155;margin:6px 0 0">Qor AI is the AI-powered shopping assistant available on qorai.net and in the Qor AI mobile app. The service helps people compare products, analyse links, review subscriptions and ask product questions before they buy. The only official public contact address for Qor AI support, legal, privacy, account deletion and billing requests is contact@qorai.net.</p></div><nav style="margin:16px 0;font-size:14px"><a href="#s1" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">1. What is Qor AI Premium?</a><a href="#s2" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">2. Where is the pricing page?</a><a href="#s3" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">3. Can I get a refund?</a><a href="#s4" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">4. How do I cancel Premium?</a><a href="#s5" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">5. How do I delete my account?</a><a href="#s6" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">6. How do I contact Qor AI?</a><a href="#s7" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">7. Does Qor AI store my card details?</a><a href="#s8" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">8. Why can web and mobile billing differ?</a><a href="#s9" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">9. Is AI output always correct?</a><a href="#s10" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">10. What should I do if product data is wrong?</a><a href="#s11" style="color:#2563eb;text-decoration:none;margin:0 12px 6px 0;display:inline-block">11. How is the site language selected?</a></nav><section id="s1" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">What is Qor AI Premium?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Premium is the paid plan for heavier AI usage. It expands access to Qor AI Chat, visual scanner, product AI analysis, link analysis, link comparison, subscription analysis, premium recommendations and extended price history.</p></section><section id="s2" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Where is the pricing page?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The pricing page is /premium. It lists current public prices, trial information and the main Premium features.</p></section><section id="s3" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Can I get a refund?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Premium starts with a 3-day free trial, so cancelling before it ends means no charge at all. For web purchases through Polar, new Premium charges may be refundable within 30 days. Renewal and app-store rules are explained in the Refund Policy.</p></section><section id="s4" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I cancel Premium?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Cancel where you subscribed. Website: sign in at qorai.net → Profile → Account → Subscription → “Cancel website subscription” (or open https://polar.sh/qorai/portal). Mobile app: Play Store → profile → Payments &amp; subscriptions → Subscriptions → Qor AI.</p><p style="line-height:1.7;color:#334155;margin:8px 0">These are two separate subscriptions — cancelling the web one does NOT cancel a Google Play one, and vice versa. Cancel inside the 3-day trial and you are never charged.</p></section><section id="s5" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I delete my account?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Open Profile in the Qor AI app or website and use Delete my account. The deletion flow may send a confirmation link to your account email before the account is permanently removed.</p><p style="line-height:1.7;color:#334155;margin:8px 0">If you cannot access Profile, email contact@qorai.net with the subject &quot;Account deletion request&quot; and include the email address connected to your Qor AI account. There is no other official public email address for Qor AI account deletion or privacy requests.</p></section><section id="s6" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How do I contact Qor AI?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The only official public contact address for support, billing, refunds, privacy, account deletion, product data and partnerships is contact@qorai.net.</p><p style="line-height:1.7;color:#334155;margin:8px 0">Include your account email, product link, transaction reference or a short issue description where relevant. Do not send passwords or card details.</p></section><section id="s7" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Does Qor AI store my card details?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">No. Web card details are handled by Polar, and app-store payments are handled by the relevant store. Qor AI stores only limited subscription status data needed to unlock Premium.</p></section><section id="s8" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Why can web and mobile billing differ?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Web purchases are handled by Polar, while mobile purchases are handled by Google Play. Taxes, receipts, refund steps and subscription management differ because each provider controls its own checkout flow — including where you cancel.</p></section><section id="s9" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">Is AI output always correct?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">No. AI output can be wrong or outdated. Qor AI is a research assistant, not a guarantee. Always verify important specifications, prices and compatibility with official retailer or manufacturer sources.</p></section><section id="s10" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">What should I do if product data is wrong?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">Send the product link and the incorrect field to contact@qorai.net. We use reports to improve catalog quality, but retailer prices and stock may still change faster than our refresh cycle.</p></section><section id="s11" style="margin:22px 0"><h2 style="font-size:20px;margin:0 0 8px">How is the site language selected?</h2><p style="line-height:1.7;color:#334155;margin:8px 0">The website follows your browser language. There is no manual language selector on the site.</p></section><div style="margin:24px 0;font-size:14px"><strong>Related policies:</strong><br/><a href="/terms" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Terms of Service</a><a href="/privacy" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Privacy Policy</a><a href="/refund" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Refund Policy</a><a href="/cookies" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Cookie Policy</a><a href="/about" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">About Qor AI</a><a href="/contact" style="color:#2563eb;margin:0 12px 6px 0;display:inline-block">Contact Qor AI</a></div><p style="font-size:14px;margin:8px 0"><a href="mailto:contact@qorai.net" style="color:#2563eb">Contact: contact@qorai.net</a></p></main></div>
+  <script>
+    /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
+       Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
+       paketin inmediği senaryo, dolayısıyla mantık pakete bağlı olamaz.
+       React mount olunca App.jsx `window.__qorBootDone()` çağırır. Çağrı 12 sn
+       içinde gelmezse paket ölmüş demektir: kabuk kaldırılır ve HTML'de zaten
+       duran ön-render metni GÖRÜNÜR yapılır — kullanıcı beyaz ekran yerine
+       gerçek içeriği ve çalışan linkleri görür. */
+    (function () {
+      var done = false;
+      window.__qorBootDone = function () {
+        if (done) return; done = true;
+        var el = document.getElementById('qor-boot');
+        if (!el) return;
+        el.className = 'qb-out';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+      };
+      setTimeout(function () {
+        if (done) return;
+        document.documentElement.classList.remove('js-ready');
+        window.__qorBootDone();
+      }, 12000);
+    })();
+  </script>
   <script>
     /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.

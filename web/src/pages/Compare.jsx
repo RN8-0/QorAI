@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconX } from '../components/GlyphIcons.jsx';
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
 import OfferList from '../components/OfferList.jsx';
@@ -710,13 +710,15 @@ export default function Compare() {
   const visiblePopular = popularCandidates.slice(0, popularLimit);
   const showMorePopular = !popularLoading && popularCandidates.length > 0;
 
-  // The standalone Compare page was removed from navigation — it's only reached
-  // via the compare tray once products are queued. With nothing queued there is
-  // no landing page to show, so send visitors home. But never redirect a
-  // /compare/<a>-vs-<b> deep link: the seeding effect fills ids on the next tick.
-  if (!ids.length && urlPairIds.length < 2) return <Navigate to="/" replace />;
-  // NOT: `urlPairIds` artık `?ids=` parametresini de kapsıyor, yani bildirimden
-  // gelen adres havuz boş olsa bile burada YÖNLENDİRİLMEZ.
+  // BURADA `<Navigate to="/" replace />` VARDI — havuz boşsa ziyaretçi ana
+  // sayfaya atılıyordu. İki ayrı zarar veriyordu:
+  //  1) Ölçülen CLS 1.251 (!) — yönlendirme aynı belge içinde olduğu için tüm
+  //     düzen değişimi Core Web Vitals'a /compare'in hanesine yazılıyordu.
+  //  2) Aşağıdaki `cmp-empty` + "popüler ürünler" bölümü, yani sayfanın TASARLANMIŞ
+  //     boş durumu, hiçbir zaman görünmüyordu — yer imi, paylaşılan link veya
+  //     Google'dan gelen kullanıcı karşılaştırma sayfasını hiç göremiyordu.
+  // Boş havuz artık normal bir açılış ekranı: ürün ekleme kutusu + popüler
+  // seçkiler. Yönlendirme yok, kayma yok.
 
   return (
     <div className="cmp" ref={cmpRef}>

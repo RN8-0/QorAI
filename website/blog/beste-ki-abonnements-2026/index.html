@@ -42,21 +42,94 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
-  <!-- Google AdSense -->
+  <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
+       KALDIRILDI. Ölçüm (2026-08-14, Slow 4G + 4x CPU, canlı ana sayfa):
+       adsbygoogle.js + show_ads_impl = 272 KB ve ~210 ms TBT. Başvuru üçüncü kez
+       reddedildiği için şu an tek bir reklam bile sunulmuyor — yani bu maliyet
+       SIFIR gelir karşılığında ödeniyordu.
+       GERİ AÇMAK: pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
+       adresini client=ca-pub-1522897791319993 sorgusuyla async bir script
+       etiketi olarak buraya ekleyin. AdSlot + lib/ads.js olduğu gibi duruyor,
+       slot ID'leri verilince çalışır. Etiketi bu yoruma BİREBİR yazmayın:
+       yorumdaki etiket metni seo.mjs/seo-audit desenlerini şaşırtıyor. -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
-  <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
+  <script>try{var d=document.documentElement;
+    /* Tema: KAYITLI tercih → işletim sistemi tercihi → açık. Eskiden burada
+       sabit 'light' yazıyordu ve lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı
+       karanlık temayı açıyor, ilk yenilemede geri açığa dönüyordu (ölçüldü).
+       Boyamadan ÖNCE burada uygulanmalı, yoksa karanlık tema seçen kullanıcı her
+       açılışta beyaz bir flaş görür. */
+    var st=null; try{st=localStorage.getItem('qorai-theme')}catch(e){}
+    if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+    d.setAttribute('data-theme',st);
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-7NX5Rbte.js"></script>
+  <style>.js-ready .seo-prerender{display:none!important}
+  /* ── Açılış kabuğu (#qor-boot) ────────────────────────────────────────────
+     SORUN: #root ön-render bloğu `js-ready` ile GİZLENDİĞİ için sayfada
+     boyanacak HİÇBİR ŞEY yoktu — ilk boyama 486 KB'lık paketin inip
+     çalışmasına kilitliydi. Ölçüm (Slow 4G + 4x CPU): FCP 4040 ms; kısıtsız
+     wifi + üst segment cihazda bile 1428 ms.
+     DAHA KÖTÜSÜ: paket hiç gelmezse ekran SONSUZA DEK BEYAZ kalıyordu
+     (ölçüldü: FCP 0, body metni 0 karakter) — oysa içerik HTML'in içinde duruyor.
+     ÇÖZÜM: HTML ile birlikte gelen, dış kaynağa ihtiyacı olmayan sabit bir
+     kabuk. `position: fixed` ŞART — akışın dışında durduğu için React içeriği
+     altına yerleşir ve kabuk kaldırılınca tek piksel kaymaz (CLS 0). */
+  /* Kabuk YALNIZCA JS çalışan tarayıcıda görünür. JS'siz tarayıcı (AdSense'in
+     CSS'li anlık görüntüsü, arama motoru fallback'i) `js-ready` almaz: kabuk
+     hiç çizilmez, ön-render metni açıkta kalır. Yani her an ikisinden TAM
+     OLARAK BİRİ görünür — kabuk asla taranabilir metnin üstünü örtmez. */
+  #qor-boot{display:none}
+  .js-ready #qor-boot{position:fixed;inset:0;z-index:400;background:#F8FAFC;display:flex;flex-direction:column;pointer-events:none}
+  /* Karanlık temada gövde arka planı SAF SİYAH (--bg: #000). Kabuk başka bir
+     ton kullanırsa kaldırıldığı anda gözle görülür bir renk sıçraması olur. */
+  [data-theme='dark'] #qor-boot{background:#000000}
+  #qor-boot .qb-bar{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(15,23,42,.08)}
+  [data-theme='dark'] #qor-boot .qb-bar{border-bottom-color:rgba(255,255,255,.10)}
+  #qor-boot .qb-bar img{width:34px;height:34px}
+  #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
+  [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
+  #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
+  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  @media (prefers-reduced-motion: no-preference){
+    #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+  }
+  /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
+  #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
+  </style>
+  <script type="module" crossorigin src="/spa/index-DtgjJF1C.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
+  <link rel="stylesheet" crossorigin href="/spa/index-QEol8AHA.css">
 </head>
 <body>
+  <!-- Açılış kabuğu. #root açılışından ÖNCE durmak ZORUNDA: seo.mjs şablonu
+       üretirken root div'ini (kapanışından sonraki ilk script etiketine kadar)
+       boşaltıyor, seo-audit de aynı sınırdan okuyor. Araya konsaydı hem kabuk
+       her derlemede silinir hem de denetim "prerender body missing" deyip
+       build'i kırardı.
+       UYARI: bu dosyadaki YORUMLARDA root div'inin açılış etiketini birebir
+       YAZMAYIN. seo.mjs deseni ilk eşleşmeyi alır; yorumun içindeki metni
+       gerçek düğüm sanıp oradan kesti ve kabuk üretilen HTML'den TAMAMEN
+       kayboldu (ölçüldü, ilk denemede tam olarak bu oldu). -->
+  <div id="qor-boot" aria-hidden="true">
+    <div class="qb-bar">
+      <img src="/assets/qor_logo_512.png?v=20260605a" width="34" height="34" alt="" decoding="async" />
+      <span class="qb-wm">Qor<i> AI</i></span>
+    </div>
+    <div class="qb-body">
+      <div class="qb-sk" style="height:210px"></div>
+      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+      <div class="qb-sk" style="height:150px"></div>
+    </div>
+  </div>
   <div id="root"><article class="seo-prerender" style="max-width:920px;margin:0 auto;padding:24px 24px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/blog">Blog</a></nav><p style="font-size:14px;color:#64748b;margin:10px 0 0">📅 7. Juni 2026</p><h1 style="font-size:40px;font-weight:800;line-height:1.12;margin:6px 0 14px">Die 5 besten KI-Abonnements 2026: Claude, ChatGPT, Gemini im Vergleich</h1><p style="font-size:20px;color:#475569;line-height:1.6;margin:0 0 24px">Stand Juni 2026: Claude Pro, ChatGPT Plus, Google AI Pro, Perplexity Pro und SuperGrok kosten alle etwa 20 $/Monat – aber sie sind sehr unterschiedliche Produkte. Hier ist, welches sich wirklich lohnt.</p><div style="font-size:17.5px;line-height:1.85"><p>Im Jahr 2026 ist ein KI-Abonnement längst mehr als ein Chatbot. Für etwa 20 $ im Monat bekommt man eine Recherche-Engine, einen Coding-Assistenten, einen Dokumentenanalyser und einen Projekt-Workspace – manchmal alles in einem. Das Problem: Sie kosten fast alle gleich viel. Claude Pro, ChatGPT Plus, Google AI Pro und Perplexity Pro liegen alle bei rund 20 $/Monat. Welches lohnt sich also wirklich?</p><p>Wir haben Benchmarks, Nutzererfahrungen und Preisdaten vom Juni 2026 ausgewertet, um diese Frage klar zu beantworten. Die ehrliche Antwort: Das „beste" Abonnement hängt vollständig davon ab, was man damit macht.</p></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/claude-pro-aylik-20-en-iyi-kodlama-derin-akil-yurutme-uzun-baglam-c_mqpjh9idqkwu" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">1.</span> Claude Pro — Aylık $20 | En İyi: Kodlama, Derin Akıl Yürütme, Uzun Bağlam</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/claude-pro-aylik-20-en-iyi-kodlama-derin-akil-yurutme-uzun-baglam-c_mqpjh9idqkwu?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=Claude%20Pro%20%E2%80%94%20Ayl%C4%B1k%20%2420%20%7C%20En%20%C4%B0yi%3A%20Kodlama%2C%20Derin%20Ak%C4%B1l%20Y%C3%BCr%C3%BCtme%2C%20Uzun%20Ba%C4%9Flam" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/claude-pro-aylik-20-en-iyi-kodlama-derin-akil-yurutme-uzun-baglam-c_mqpjh9idqkwu" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div><a href="/product/claude-pro-aylik-20-en-iyi-kodlama-derin-akil-yurutme-uzun-baglam-c_mqpjh9idqkwu" style="display:block;margin:8px 0 16px"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Claude_AI_symbol.svg/3840px-Claude_AI_symbol.svg.png" alt="Claude Pro — Aylık $20 | En İyi: Kodlama, Derin Akıl Yürütme, Uzun Bağlam" style="display:block;max-width:100%;max-height:290px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a><p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">Claude, Anthropic tarafından geliştirilen ve son iki yılda ciddi bir dönüşüm geçiren yapay zeka modelidir. 2026 itibarıyla Claude Pro aboneliği, piyasadaki en güçlü muhakeme modeli olan Claude Opus 4.8&#39;e erişim sunuyor. Bunun yanında geliştiriciler için devrim niteliğinde bir araç olan Claude Code da Pro planına dahil — bu özellik tek başına aboneliği değerli kılmak için yeterli.
 Claude&#39;un en dikkat çekici özelliği, uzun belgeleri işleme kapasitesi ve talimatlara sadakatidir. On tur konuşma, iki düzeltme ve yön değişikliğinden sonra bile verdiğiniz kısıtlamaları koruyabiliyor. Özellikle karmaşık projelerde çalışan geliştiriciler ve araştırmacılar için bu bir oyun değiştirici.
 Artıları:
@@ -72,7 +145,31 @@ Sesi modları rakiplerine kıyasla sınırlı
 Ağır günlük kullanımda oturum limitlerine takılabilirsiniz
 Video üretimi hiç yok
 
-Kime Uygun? Yazılım geliştiriciler, araştırmacılar ve karmaşık, çok adımlı görevler üzerinde çalışan profesyoneller için birinci tercih. Eğer Claude Code&#39;u yoğun kullanıyorsanız, Max 5x planını ($100/ay) da değerlendirin.</p></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">2.</span> ChatGPT Plus — Aylık $20 | En İyi: Çok Yönlülük, Görüntü, Ses</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=ChatGPT%20Plus%20%E2%80%94%20Ayl%C4%B1k%20%2420%20%7C%20En%20%C4%B0yi%3A%20%C3%87ok%20Y%C3%B6nl%C3%BCl%C3%BCk%2C%20G%C3%B6r%C3%BCnt%C3%BC%2C%20Ses" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">3.</span> Google AI Pro — Aylık $19.99 | En İyi: Google Ekosistemi, Depolama, Araştırma</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=Google%20AI%20Pro%20%E2%80%94%20Ayl%C4%B1k%20%2419.99%20%7C%20En%20%C4%B0yi%3A%20Google%20Ekosistemi%2C%20Depolama%2C%20Ara%C5%9Ft%C4%B1rma" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">4.</span> Perplexity Pro — Aylık $20 | En İyi: Araştırma, Kaynak Doğrulama, Çoklu Model</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=Perplexity%20Pro%20%E2%80%94%20Ayl%C4%B1k%20%2420%20%7C%20En%20%C4%B0yi%3A%20Ara%C5%9Ft%C4%B1rma%2C%20Kaynak%20Do%C4%9Frulama%2C%20%C3%87oklu%20Model" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">5.</span> SuperGrok ($30/ay) | En İyi: Gerçek Zamanlı Veriler, Sosyal Medya Zekası, Görsel Üretim</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=SuperGrok%20(%2430%2Fay)%20%7C%20En%20%C4%B0yi%3A%20Ger%C3%A7ek%20Zamanl%C4%B1%20Veriler%2C%20Sosyal%20Medya%20Zekas%C4%B1%2C%20G%C3%B6rsel%20%C3%9Cretim" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="font-size:17.5px;line-height:1.85;margin-top:16px"><p>Es gibt kein einzelnes bestes KI-Abonnement im Jahr 2026. Aber die Aufteilung ist eindeutig: <strong>Claude Pro</strong> für Coding und tiefes Reasoning, <strong>ChatGPT Plus</strong> für Vielseitigkeit und kreative Ausgaben, <strong>Google AI Pro</strong> für Workspace-Nutzer, <strong>Perplexity Pro</strong> für recherche-intensive Workflows und <strong>SuperGrok</strong> für Echtzeit-Social- und Marktintelligenz. Jede Plattform bietet einen kostenlosen Tarif – starten Sie dort und upgraden Sie nur dann, wenn die Limits tatsächlich ein Problem werden.</p></div></article></div>
+Kime Uygun? Yazılım geliştiriciler, araştırmacılar ve karmaşık, çok adımlı görevler üzerinde çalışan profesyoneller için birinci tercih. Eğer Claude Code&#39;u yoğun kullanıyorsanız, Max 5x planını ($100/ay) da değerlendirin.</p></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">2.</span> ChatGPT Plus — Aylık $20 | En İyi: Çok Yönlülük, Görüntü, Ses</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=ChatGPT%20Plus%20%E2%80%94%20Ayl%C4%B1k%20%2420%20%7C%20En%20%C4%B0yi%3A%20%C3%87ok%20Y%C3%B6nl%C3%BCl%C3%BCk%2C%20G%C3%B6r%C3%BCnt%C3%BC%2C%20Ses" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/chatgpt-plus-aylik-20-en-iyi-cok-yonluluk-goruntu-ses-c_mqplxr6r12sb" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">3.</span> Google AI Pro — Aylık $19.99 | En İyi: Google Ekosistemi, Depolama, Araştırma</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=Google%20AI%20Pro%20%E2%80%94%20Ayl%C4%B1k%20%2419.99%20%7C%20En%20%C4%B0yi%3A%20Google%20Ekosistemi%2C%20Depolama%2C%20Ara%C5%9Ft%C4%B1rma" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/google-ai-pro-aylik-19-99-en-iyi-google-ekosistemi-depolama-arastirma-c_mqpn8tc3i7io" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">4.</span> Perplexity Pro — Aylık $20 | En İyi: Araştırma, Kaynak Doğrulama, Çoklu Model</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=Perplexity%20Pro%20%E2%80%94%20Ayl%C4%B1k%20%2420%20%7C%20En%20%C4%B0yi%3A%20Ara%C5%9Ft%C4%B1rma%2C%20Kaynak%20Do%C4%9Frulama%2C%20%C3%87oklu%20Model" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/perplexity-pro-aylik-20-en-iyi-arastirma-kaynak-dogrulama-coklu-model-c_mqpo12cuywlg" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="padding:30px 0;border-top:1px solid #e8edf3"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px"><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">5.</span> SuperGrok ($30/ay) | En İyi: Gerçek Zamanlı Veriler, Sosyal Medya Zekası, Görsel Üretim</a><div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto"><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo?ai=1" style="color:#64748b;text-decoration:none">✨ KI-Analyse</a><a href="/go?store=amazon&amp;m=TR&amp;q=SuperGrok%20(%2430%2Fay)%20%7C%20En%20%C4%B0yi%3A%20Ger%C3%A7ek%20Zamanl%C4%B1%20Veriler%2C%20Sosyal%20Medya%20Zekas%C4%B1%2C%20G%C3%B6rsel%20%C3%9Cretim" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/></a><a href="/product/supergrok-30-ay-en-iyi-gercek-zamanli-veriler-sosyal-medya-zekasi-gorsel-uretim-c_mqpo30mmbaoo" style="color:#64748b;text-decoration:none">→ Produkt</a></div></div></div><div style="font-size:17.5px;line-height:1.85;margin-top:16px"><p>Es gibt kein einzelnes bestes KI-Abonnement im Jahr 2026. Aber die Aufteilung ist eindeutig: <strong>Claude Pro</strong> für Coding und tiefes Reasoning, <strong>ChatGPT Plus</strong> für Vielseitigkeit und kreative Ausgaben, <strong>Google AI Pro</strong> für Workspace-Nutzer, <strong>Perplexity Pro</strong> für recherche-intensive Workflows und <strong>SuperGrok</strong> für Echtzeit-Social- und Marktintelligenz. Jede Plattform bietet einen kostenlosen Tarif – starten Sie dort und upgraden Sie nur dann, wenn die Limits tatsächlich ein Problem werden.</p></div></article></div>
+  <script>
+    /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
+       Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
+       paketin inmediği senaryo, dolayısıyla mantık pakete bağlı olamaz.
+       React mount olunca App.jsx `window.__qorBootDone()` çağırır. Çağrı 12 sn
+       içinde gelmezse paket ölmüş demektir: kabuk kaldırılır ve HTML'de zaten
+       duran ön-render metni GÖRÜNÜR yapılır — kullanıcı beyaz ekran yerine
+       gerçek içeriği ve çalışan linkleri görür. */
+    (function () {
+      var done = false;
+      window.__qorBootDone = function () {
+        if (done) return; done = true;
+        var el = document.getElementById('qor-boot');
+        if (!el) return;
+        el.className = 'qb-out';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+      };
+      setTimeout(function () {
+        if (done) return;
+        document.documentElement.classList.remove('js-ready');
+        window.__qorBootDone();
+      }, 12000);
+    })();
+  </script>
   <script>
     /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.

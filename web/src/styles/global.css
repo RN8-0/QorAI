@@ -511,9 +511,22 @@ input, textarea, select { font-family: inherit; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin 0.6s linear infinite; }
-/* Fallback shown while a lazily-loaded route chunk is fetched. Reserves height
-   so the footer doesn't jump up during the brief load. */
-.route-fallback { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+/* Tembel yüklenen route chunk'ı beklerken gösterilen yer tutucu.
+   60vh İDİ ve MOBİL CLS'İN TEK KAYNAĞI BUYDU (ölçüldü, Slow 4G + 4x CPU):
+   60vh = 506 px, üstüne 68 px başlık → footer 844 px'lik ekranın İÇİNDE
+   kalıyordu. Chunk gelince içerik 506 px'ten ~3000 px'e fırlıyor, footer
+   aşağı savruluyor ve bu tamamen CLS'e yazılıyordu:
+     /compare 1.251 · /category 0.172 · /subscriptions 0.172 · /blog 0.106
+   Yer tutucu artık kalan ekranın TAMAMINI kaplıyor, yani footer daha ilk
+   karede ekranın ALTINDA başlıyor; içerik gelince daha da aşağı iniyor ve
+   görünür alanda hiçbir kayma olmuyor.
+   NOT: bu bir YARIŞ hatasıydı — hızlı bağlantıda CLS 0 ölçülüyordu, yavaş
+   bağlantıda 0.172. Yani tam da kullanıcıların çoğunun olduğu koşulda bozuluyor
+   ve masaüstünde test ederken görünmüyordu. */
+.route-fallback {
+  display: flex; align-items: center; justify-content: center;
+  min-height: calc(100vh - var(--header-h));
+}
 
 @media (max-width: 760px) {
   .container { padding: 0 16px; }

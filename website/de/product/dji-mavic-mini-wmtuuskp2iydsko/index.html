@@ -42,22 +42,119 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
-  <!-- Google AdSense -->
+  <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
+       KALDIRILDI. Ölçüm (2026-08-14, Slow 4G + 4x CPU, canlı ana sayfa):
+       adsbygoogle.js + show_ads_impl = 272 KB ve ~210 ms TBT. Başvuru üçüncü kez
+       reddedildiği için şu an tek bir reklam bile sunulmuyor — yani bu maliyet
+       SIFIR gelir karşılığında ödeniyordu.
+       GERİ AÇMAK: pagead2.googlesyndication.com/pagead/js/adsbygoogle.js
+       adresini client=ca-pub-1522897791319993 sorgusuyla async bir script
+       etiketi olarak buraya ekleyin. AdSlot + lib/ads.js olduğu gibi duruyor,
+       slot ID'leri verilince çalışır. Etiketi bu yoruma BİREBİR yazmayın:
+       yorumdaki etiket metni seo.mjs/seo-audit desenlerini şaşırtıyor. -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1522897791319993" crossorigin="anonymous"></script>
-  <script>try{var d=document.documentElement;d.setAttribute('data-theme','light');d.classList.add('js-ready')}catch(e){}</script>
+  <script>try{var d=document.documentElement;
+    /* Tema: KAYITLI tercih → işletim sistemi tercihi → açık. Eskiden burada
+       sabit 'light' yazıyordu ve lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı
+       karanlık temayı açıyor, ilk yenilemede geri açığa dönüyordu (ölçüldü).
+       Boyamadan ÖNCE burada uygulanmalı, yoksa karanlık tema seçen kullanıcı her
+       açılışta beyaz bir flaş görür. */
+    var st=null; try{st=localStorage.getItem('qorai-theme')}catch(e){}
+    if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+    d.setAttribute('data-theme',st);
+    var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
+    d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <style>.js-ready .seo-prerender{display:none!important}</style>
-  <script type="module" crossorigin src="/spa/index-7NX5Rbte.js"></script>
+  <style>.js-ready .seo-prerender{display:none!important}
+  /* ── Açılış kabuğu (#qor-boot) ────────────────────────────────────────────
+     SORUN: #root ön-render bloğu `js-ready` ile GİZLENDİĞİ için sayfada
+     boyanacak HİÇBİR ŞEY yoktu — ilk boyama 486 KB'lık paketin inip
+     çalışmasına kilitliydi. Ölçüm (Slow 4G + 4x CPU): FCP 4040 ms; kısıtsız
+     wifi + üst segment cihazda bile 1428 ms.
+     DAHA KÖTÜSÜ: paket hiç gelmezse ekran SONSUZA DEK BEYAZ kalıyordu
+     (ölçüldü: FCP 0, body metni 0 karakter) — oysa içerik HTML'in içinde duruyor.
+     ÇÖZÜM: HTML ile birlikte gelen, dış kaynağa ihtiyacı olmayan sabit bir
+     kabuk. `position: fixed` ŞART — akışın dışında durduğu için React içeriği
+     altına yerleşir ve kabuk kaldırılınca tek piksel kaymaz (CLS 0). */
+  /* Kabuk YALNIZCA JS çalışan tarayıcıda görünür. JS'siz tarayıcı (AdSense'in
+     CSS'li anlık görüntüsü, arama motoru fallback'i) `js-ready` almaz: kabuk
+     hiç çizilmez, ön-render metni açıkta kalır. Yani her an ikisinden TAM
+     OLARAK BİRİ görünür — kabuk asla taranabilir metnin üstünü örtmez. */
+  #qor-boot{display:none}
+  .js-ready #qor-boot{position:fixed;inset:0;z-index:400;background:#F8FAFC;display:flex;flex-direction:column;pointer-events:none}
+  /* Karanlık temada gövde arka planı SAF SİYAH (--bg: #000). Kabuk başka bir
+     ton kullanırsa kaldırıldığı anda gözle görülür bir renk sıçraması olur. */
+  [data-theme='dark'] #qor-boot{background:#000000}
+  #qor-boot .qb-bar{height:68px;flex:0 0 68px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid rgba(15,23,42,.08)}
+  [data-theme='dark'] #qor-boot .qb-bar{border-bottom-color:rgba(255,255,255,.10)}
+  #qor-boot .qb-bar img{width:34px;height:34px}
+  #qor-boot .qb-wm{font:800 20px/1 'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;color:#0F172A}
+  [data-theme='dark'] #qor-boot .qb-wm{color:#E2E8F0}
+  #qor-boot .qb-wm i{font-style:normal;color:#2196F3}
+  #qor-boot .qb-body{flex:1;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  @media (prefers-reduced-motion: no-preference){
+    #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+  }
+  /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
+  #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
+  </style>
+  <script type="module" crossorigin src="/spa/index-DtgjJF1C.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-BR6o_sxF.css">
+  <link rel="stylesheet" crossorigin href="/spa/index-QEol8AHA.css">
 </head>
 <body>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/drones">Drohnen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">DJI Mavic Mini Drone</h1><p style="color:#475569;margin:0 0 12px">DJI · Drohnen · Qor AI Techscore 78/100</p><img src="https://resim.epey.com/370210/m_dji-mavic-mini-1.jpg" alt="DJI Mavic Mini Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">DJI Mavic Mini Drone Highlights: battery capacity 2400 mAh, dahili camera Yes, harici camera uyumu No. Sieh dir unten 36 technische Merkmale von DJI Mavic Mini Drone, den Qor AI Techscore und den Vergleich mit ähnlichen Drohnen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2400 mAh</strong></li><li><span style="color:#64748b">Dahili Camera:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Harici Camera Uyumu:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Deneyimli</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>4 km</strong></li><li><span style="color:#64748b">Sertifika Gereksinimi:</span> <strong>No</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>30 dk</strong></li><li><span style="color:#64748b">Video recording:</span> <strong>2.7K</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Drohnen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/dji-mavic-mini-fly-more-combo-buxd399hkykx09o" style="color:#2563eb">DJI Mavic Mini Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-se-fly-more-combo-qycqrw8syblsp3n" style="color:#2563eb">DJI Mini SE Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-fly-more-combo-6r5a4y6nde8ca5b" style="color:#2563eb">DJI Mini 2 Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-se-fly-more-combo-q7yj3h35pywaxnn" style="color:#2563eb">DJI Mini 2 SE Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-se-r6k3hka88w0y13g" style="color:#2563eb">DJI Mini 2 SE Drone</a></li><li><a href="/de/product/dji-mini-4k-zae7u6dku7zftq8" style="color:#2563eb">DJI Mini 4K Drone (Standart) (CP.MA.00000787.02)</a></li><li><a href="/de/product/corby-cx201-orion-exqibzo99warqy0" style="color:#2563eb">Corby CX201 Orion Drone</a></li><li><a href="/de/product/corby-volarix-cx034-p3px74e8ok7e2oc" style="color:#2563eb">Corby Volarix CX034 Drone</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/drones" style="color:#2563eb;font-weight:600">Alle Drohnen-Modelle vergleichen →</a></p></main></div>
+  <!-- Açılış kabuğu. #root açılışından ÖNCE durmak ZORUNDA: seo.mjs şablonu
+       üretirken root div'ini (kapanışından sonraki ilk script etiketine kadar)
+       boşaltıyor, seo-audit de aynı sınırdan okuyor. Araya konsaydı hem kabuk
+       her derlemede silinir hem de denetim "prerender body missing" deyip
+       build'i kırardı.
+       UYARI: bu dosyadaki YORUMLARDA root div'inin açılış etiketini birebir
+       YAZMAYIN. seo.mjs deseni ilk eşleşmeyi alır; yorumun içindeki metni
+       gerçek düğüm sanıp oradan kesti ve kabuk üretilen HTML'den TAMAMEN
+       kayboldu (ölçüldü, ilk denemede tam olarak bu oldu). -->
+  <div id="qor-boot" aria-hidden="true">
+    <div class="qb-bar">
+      <img src="/assets/qor_logo_512.png?v=20260605a" width="34" height="34" alt="" decoding="async" />
+      <span class="qb-wm">Qor<i> AI</i></span>
+    </div>
+    <div class="qb-body">
+      <div class="qb-sk" style="height:210px"></div>
+      <div class="qb-sk" style="height:52px;border-radius:999px"></div>
+      <div class="qb-sk" style="height:150px"></div>
+    </div>
+  </div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/drones">Drohnen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">DJI Mavic Mini Drone</h1><p style="color:#475569;margin:0 0 12px">DJI · Drohnen · Qor AI Techscore 78/100</p><img src="https://resim.epey.com/370210/m_dji-mavic-mini-1.jpg" alt="DJI Mavic Mini Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">DJI Mavic Mini Drone Highlights: battery capacity 2400 mAh, dahili camera Yes, harici camera uyumu No. Sieh dir unten 36 technische Merkmale von DJI Mavic Mini Drone, den Qor AI Techscore und den Vergleich mit ähnlichen Drohnen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2400 mAh</strong></li><li><span style="color:#64748b">Dahili Camera:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Harici Camera Uyumu:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Deneyimli</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>4 km</strong></li><li><span style="color:#64748b">Sertifika Gereksinimi:</span> <strong>No</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>30 dk</strong></li><li><span style="color:#64748b">Video recording:</span> <strong>2.7K</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Drohnen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/dji-mavic-mini-fly-more-combo-buxd399hkykx09o" style="color:#2563eb">DJI Mavic Mini Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-se-fly-more-combo-qycqrw8syblsp3n" style="color:#2563eb">DJI Mini SE Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-fly-more-combo-6r5a4y6nde8ca5b" style="color:#2563eb">DJI Mini 2 Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-se-fly-more-combo-q7yj3h35pywaxnn" style="color:#2563eb">DJI Mini 2 SE Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-se-r6k3hka88w0y13g" style="color:#2563eb">DJI Mini 2 SE Drone</a></li><li><a href="/de/product/dji-mini-4k-zae7u6dku7zftq8" style="color:#2563eb">DJI Mini 4K Drone (Standart) (CP.MA.00000787.02)</a></li><li><a href="/de/product/corby-cx201-orion-exqibzo99warqy0" style="color:#2563eb">Corby CX201 Orion Drone</a></li><li><a href="/de/product/corby-volarix-cx034-p3px74e8ok7e2oc" style="color:#2563eb">Corby Volarix CX034 Drone</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/drones" style="color:#2563eb;font-weight:600">Alle Drohnen-Modelle vergleichen →</a></p></main></div>
+  <script>
+    /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
+       Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
+       paketin inmediği senaryo, dolayısıyla mantık pakete bağlı olamaz.
+       React mount olunca App.jsx `window.__qorBootDone()` çağırır. Çağrı 12 sn
+       içinde gelmezse paket ölmüş demektir: kabuk kaldırılır ve HTML'de zaten
+       duran ön-render metni GÖRÜNÜR yapılır — kullanıcı beyaz ekran yerine
+       gerçek içeriği ve çalışan linkleri görür. */
+    (function () {
+      var done = false;
+      window.__qorBootDone = function () {
+        if (done) return; done = true;
+        var el = document.getElementById('qor-boot');
+        if (!el) return;
+        el.className = 'qb-out';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+      };
+      setTimeout(function () {
+        if (done) return;
+        document.documentElement.classList.remove('js-ready');
+        window.__qorBootDone();
+      }, 12000);
+    })();
+  </script>
   <script>
     /* Skimlinks: `defer` ile yüklenince SPA hidrasyonuyla AYNI anda ana iş
        parçacığına giriyor ve mobilde (4x CPU kısıtlı ölçüm) 320 ms CPU yiyordu.
