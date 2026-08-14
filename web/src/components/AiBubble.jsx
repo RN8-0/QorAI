@@ -638,7 +638,7 @@ export default function AiBubble() {
           ? `${alertLabel(alertReady)} ${chatLang === 'tr' ? 'hazır — görmek için tıkla' : chatLang === 'de' ? 'bereit — zum Ansehen klicken' : 'ready — click to view'}`
           : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : chatLang === 'de' ? 'läuft im Hintergrund…' : 'is running in the background…'}` : 'Qor AI')}
       >
-        {open ? '✕' : <img src="/assets/qor_logo_512.png?v=20260605a" alt="" />}
+        {open ? '✕' : <img src="/assets/qor_logo_144.png?v=20260814a" alt="" />}
         {!open && !alertBusy && !alertReady && <span className="aib-fab-pulse" />}
         {alertBusy && !alertReady && <span className="aib-fab-ring" aria-hidden="true" />}
         {alertReady && <span className="aib-fab-badge" aria-hidden="true">!</span>}
@@ -659,7 +659,7 @@ export default function AiBubble() {
         <div className="aib-panel fade-up">
           <div className="aib-head">
             <div className="aib-head-id">
-              <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" />
+              <img src="/assets/qor_logo_144.png?v=20260814a" alt="Qor AI" />
               <div>
                 <strong>Qor AI</strong>
                 <span>{S.subtitle}</span>

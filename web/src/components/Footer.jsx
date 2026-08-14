@@ -16,7 +16,7 @@ export default function Footer() {
           {/* Brand */}
           <div style={{ maxWidth: 340 }}>
             <Link to="/" className="brand" style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" style={{ width: 34, height: 34 }} />
+              <img src="/assets/qor_logo_144.png?v=20260814a" alt="Qor AI" style={{ width: 34, height: 34 }} />
               <span className="wm" style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0' }}>
                 Qor<b className="grad-text"> AI</b>
               </span>

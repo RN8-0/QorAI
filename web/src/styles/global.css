@@ -197,7 +197,15 @@ body {
   min-height: 100vh;
 }
 #root { display: flex; flex-direction: column; min-height: 100vh; }
-#root > main { flex: 1 0 auto; }
+/* min-height ŞART. `flex: 1 0 auto` yalnızca DAĞITILACAK boş alan varsa esner —
+   footer'ın kendisi 748 px olduğu için #root zaten ekrandan uzun oluyor ve main
+   hiç büyümüyordu. Sonuç (ölçüldü, ürün sayfası): içerik gelmeden önceki ilk
+   render'da main 714 px, footer 823 px'e yani 844 px'lik ekranın İÇİNE düşüyor;
+   veri gelip içerik 6659 px'e çıkınca footer 5945 px aşağı savruluyor ve bu
+   görünür kayma CLS'e yazılıyordu (0.025).
+   main her zaman en az ekranı doldurunca footer ilk kareden itibaren ekranın
+   ALTINDA başlıyor ve büyüme hiçbir zaman görünür bir kayma üretmiyor. */
+#root > main { flex: 1 0 auto; min-height: calc(100vh - var(--header-h)); }
 
 /* SEO prerender shell: seo.mjs bakes a crawlable text block into #root for
    non-JS crawlers; React (createRoot) wipes it on mount. The hide is gated on

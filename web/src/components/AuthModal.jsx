@@ -184,7 +184,7 @@ export default function AuthModal() {
       <div className="auth-modal fade-up" role="dialog" aria-modal="true">
         <button className="auth-close" onClick={closeAuth} aria-label="✕"><IconX size={14} width={2.4} /></button>
         <div className="auth-head">
-          <img src="/assets/qor_logo_512.png?v=20260605a" alt="Qor AI" />
+          <img src="/assets/qor_logo_144.png?v=20260814a" alt="Qor AI" />
           <h2>{headTitle}</h2>
           <p>{headSub}</p>
         </div>

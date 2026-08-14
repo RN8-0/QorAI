@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav.jsx';
 import SiteBackground from './components/SiteBackground.jsx';
 import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
+import { useCompare } from './lib/compare.js';
 import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
 
 // Home stays eager so the landing page paints on the first request (no extra
@@ -46,7 +47,12 @@ const AiBubble = lazy(() => import('./components/AiBubble.jsx'));
 export default function App() {
   const loc = useLocation();
   const nav = useNavigate();
-  const { user } = useAuth();
+  const { user, modalOpen } = useAuth();
+  // Havuz boşken CompareBar zaten `null` dönüyordu — ama bunu ÖĞRENMEK için
+  // chunk'ın inip çalışması gerekiyordu. Koşulu buraya taşıyınca ziyaretçilerin
+  // çoğu o isteği hiç yapmıyor. AuthModal'da aynı mantık: kapalıyken hiçbir şey
+  // çizmiyor ama modülü 120 ms CPU harcayarak çalışıyordu (profillendi).
+  const { ids: compareIds } = useCompare();
 
   // Açılış kabuğunu (index.html'deki #qor-boot) kaldır. Effect COMMIT sonrası
   // koşar, yani gerçek arayüz zaten boyanmıştır — kabuk kalkarken arkasında boş
@@ -128,8 +134,8 @@ export default function App() {
       {/* Ayrı bir Suspense: bu katmanların gecikmesi route içeriğini bekletmesin.
           fallback null — üçü de sabit konumlu katman, yer tutucuya gerek yok. */}
       <Suspense fallback={null}>
-        <CompareBar />
-        <AuthModal />
+        {compareIds.length > 0 && <CompareBar />}
+        {modalOpen && <AuthModal />}
         <AiBubble />
       </Suspense>
     </>

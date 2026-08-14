@@ -119,16 +119,31 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
 // primitive props); context changes (lang/geo/compare) still re-render via hooks.
 export default memo(ProductCard);
 
+// İskelet, GERÇEK kartın DOM yapısını birebir kullanır: aynı sınıflar, aynı
+// yazı boyutu/satır yüksekliği/ızgara. Yüksekliği elle px vermek yerine CSS'e
+// bırakmanın sebebi ölçüldü — eski iskelet (serbest yükseklikli çubuklar) 164 px,
+// gerçek kart 205 px geliyordu ve ana sayfada iskelet gerçek kartla yer
+// değiştirirken 41 px'lik bir sıçrama oluyordu (CLS 0.017'nin tek kaynağı).
+// Metin yerine `&nbsp;` konuyor: satır kutusu oluşuyor, içerik görünmüyor.
+const SKEL_SPECS = [0, 1, 2, 3];
 export function ProductCardSkeleton() {
   return (
-    <div className="q-product-card">
+    <div className="q-product-card" aria-hidden="true">
       <div className="q-product-card-media"><div className="q-product-card-img"><div className="skel" style={{ width: '100%', height: '100%' }} /></div></div>
       <div className="q-product-card-body">
-        <div className="skel" style={{ height: 11, width: '35%' }} />
-        <div className="skel" style={{ height: 15, width: '85%', marginTop: 8 }} />
-        <div className="skel" style={{ height: 8, width: '95%', marginTop: 12 }} />
-        <div className="skel" style={{ height: 8, width: '80%', marginTop: 8 }} />
-        <div className="skel" style={{ height: 8, width: '90%', marginTop: 8 }} />
+        <div className="q-product-card-head">
+          <span className="q-product-card-brand skel" style={{ width: '38%' }}>&nbsp;</span>
+        </div>
+        <span className="q-product-card-name skel" style={{ width: '88%' }}>&nbsp;</span>
+        <span className="q-product-card-price skel" style={{ width: '46%' }}>&nbsp;</span>
+        <div className="q-product-card-specs">
+          {SKEL_SPECS.map((i) => (
+            <span className="q-product-card-spec" key={i}>
+              <b className="q-product-card-spec-val skel" style={{ width: '62%' }}>&nbsp;</b>
+              <small className="q-product-card-spec-lbl skel" style={{ width: '80%' }}>&nbsp;</small>
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
