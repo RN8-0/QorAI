@@ -1,1 +1,77 @@
-{"category":"motherboards","label":"Anakart","title":"En İyi Anakartlar 2026: Performans ve Uyumluluk Rehberi","lead":"Bilgisayarınızın kalbi olan anakart seçimi, sisteminizin performansı ve geleceğe dönük uyumluluğu için kritik öneme sahiptir. Doğru anakartla hem işlemcinizden tam verim alabilir hem de diğer bileşenlerinizi sorunsuz bir şekilde entegre edebilirsiniz.","sections":[{"h":"Anakart Seçerken Nelere Dikkat Etmeli?","body":"İşlemci soketi (Intel için LGA 1851, AMD için AM5) ilk ve en önemli kriterdir. Ayrıca, bellek (DDR5) ve depolama (PCIe Gen5 M.2) desteği, genişleme yuvaları (PCIe 5.0), güç dağıtım fazları ve soğutma çözümleri de sisteminizin kararlılığı ve hız aşırtma potansiyeli açısından belirleyicidir. Ağ bağlantıları (Wi-Fi 7, 10 Gigabit Ethernet) ve arka paneldeki bağlantı noktaları (USB 4.0, Thunderbolt) da kullanım deneyiminizi doğrudan etkiler."},{"h":"İşlemci Mimarisi ve Çipset Uyumu","body":"Intel'in en yeni Z890 çipsetleri, LGA 1851 soketiyle yeni nesil işlemcilere güç verirken, AMD'nin X870E çipsetleri AM5 soketiyle Ryzen 8000 serisi işlemciler için üst düzey bir platform sunar. Bu çipsetler, PCIe Gen5 desteği ve gelişmiş bağlantı seçenekleri ile geleceğin yüksek performanslı sistemlerine kapı aralar. Seçiminiz, kullanmayı planladığınız işlemciye göre şekillenmelidir."},{"h":"Genişleme ve Bağlantı Olanakları","body":"Modern anakartlar, yüksek hızlı M.2 SSD'ler için PCIe Gen5 yuvaları, en yeni nesil ekran kartları için PCIe 5.0 x16 yuvaları ve zengin USB bağlantı noktaları sunar. Özellikle üst seviye modellerde Wi-Fi 7 ve hızlı Ethernet gibi gelişmiş ağ çözümleri bulunur. Bu özellikler, sisteminizin hem güncel kalmasını hem de gelecekteki yükseltmelere açık olmasını sağlar."}],"picks":[{"name":"Asus ROG Crosshair X870E Apex AM5 (LGA 1718) Soket Anakart","why":"Hız aşırtma tutkunları için tasarlanmış, ekstrem güç dağıtımı ve soğutma özellikleriyle öne çıkan bir modeldir.","id":"ogu2md78cwh9dur","slug":"asus-rog-crosshair-x870e-apex"},{"name":"Asus ROG Strix Z890-E Gaming WiFi LGA 1851 Soket Anakart (90MB1IM0-M0EAY0)","why":"Intel platformunda oyunculara yönelik, dengeli performansı ve zengin bağlantı seçenekleriyle dikkat çeker.","id":"wwcw8p7z3t877a4","slug":"asus-rog-strix-z890-e-gaming-wifi"},{"name":"Sapphire Pure X870A WiFi7 AM5 (LGA 1718) Soket Anakart","why":"AMD sistemleri için güçlü bir alternatif sunan, modern bağlantı özellikleriyle donatılmış bir seçenektir.","id":"t91ytajtdk89zss","slug":"sapphire-pure-x870a-wifi7"},{"name":"Maxsun Terminator Z890-A WiFi LGA 1851 Soket Anakart","why":"Fiyat/performans odaklı Intel sistemler için uygun, sağlam bir temel sunan modellerden biridir.","id":"e52ehgosgrhqq6y","slug":"maxsun-terminator-z890-a-wifi"},{"name":"Colorful iGame X870 Senna V14 AM5 (LGA 1718) Soket Anakart","why":"Estetik tasarımı ve üst düzey performansı bir araya getiren, AMD kullanıcıları için şık bir tercih.","id":"lj1pk01e8d23uo2","slug":"colorful-igame-x870-senna-v14"},{"name":"Colorful CVN Z890 Ark Frozen V20 LGA 1851 Soket Anakart","why":"Beyaz temalı sistem kurmak isteyen Intel kullanıcıları için hem görsel hem de performans açısından çekici bir seçenektir.","id":"btn412204szhy18","slug":"colorful-cvn-z890-ark-frozen-v20"}],"faq":[{"q":"AM5 ve LGA 1851 arasındaki fark nedir?","a":"AM5, AMD'nin Ryzen işlemcileri için kullanılan soket tipiyken, LGA 1851 Intel'in yeni nesil Core işlemcileri için tasarlanmış sokettir; ikisi birbiriyle uyumlu değildir."},{"q":"DDR5 bellek desteği neden önemli?","a":"DDR5, önceki nesil DDR4'e göre daha yüksek bant genişliği ve daha düşük güç tüketimi sunarak sistem performansına önemli katkı sağlar."},{"q":"Anakartın güç fazları ne işe yarar?","a":"Güç fazları, işlemciye istikrarlı ve yeterli güç sağlamak için kritik öneme sahiptir; yüksek faz sayısı, daha iyi hız aşırtma potansiyeli ve kararlılık anlamına gelir."},{"q":"Wi-Fi 7'ye ihtiyacım var mı?","a":"Eğer en yeni nesil kablosuz ağ hızlarına erişmek ve geleceğe dönük bir sistem kurmak istiyorsanız Wi-Fi 7 desteği önemli bir avantaj sunar."}],"updatedAt":"2026-07-22T01:18:41.332Z"}
+{
+  "category": "motherboards",
+  "label": "Anakart",
+  "title": "En İyi Anakartlar 2026: Performans ve Uyumluluk Rehberi",
+  "lead": "Bilgisayarınızın kalbi olan anakart seçimi, sisteminizin performansı ve geleceğe dönük uyumluluğu için kritik öneme sahiptir. Doğru anakartla hem işlemcinizden tam verim alabilir hem de diğer bileşenlerinizi sorunsuz bir şekilde entegre edebilirsiniz.",
+  "sections": [
+    {
+      "h": "Anakart Seçerken Nelere Dikkat Etmeli?",
+      "body": "İşlemci soketi (Intel için LGA 1851, AMD için AM5) ilk ve en önemli kriterdir. Ayrıca, bellek (DDR5) ve depolama (PCIe Gen5 M.2) desteği, genişleme yuvaları (PCIe 5.0), güç dağıtım fazları ve soğutma çözümleri de sisteminizin kararlılığı ve hız aşırtma potansiyeli açısından belirleyicidir. Ağ bağlantıları (Wi-Fi 7, 10 Gigabit Ethernet) ve arka paneldeki bağlantı noktaları (USB 4.0, Thunderbolt) da kullanım deneyiminizi doğrudan etkiler."
+    },
+    {
+      "h": "İşlemci Mimarisi ve Çipset Uyumu",
+      "body": "Intel'in en yeni Z890 çipsetleri, LGA 1851 soketiyle yeni nesil işlemcilere güç verirken, AMD'nin X870E çipsetleri AM5 soketiyle Ryzen 8000 serisi işlemciler için üst düzey bir platform sunar. Bu çipsetler, PCIe Gen5 desteği ve gelişmiş bağlantı seçenekleri ile geleceğin yüksek performanslı sistemlerine kapı aralar. Seçiminiz, kullanmayı planladığınız işlemciye göre şekillenmelidir."
+    },
+    {
+      "h": "Genişleme ve Bağlantı Olanakları",
+      "body": "Modern anakartlar, yüksek hızlı M.2 SSD'ler için PCIe Gen5 yuvaları, en yeni nesil ekran kartları için PCIe 5.0 x16 yuvaları ve zengin USB bağlantı noktaları sunar. Özellikle üst seviye modellerde Wi-Fi 7 ve hızlı Ethernet gibi gelişmiş ağ çözümleri bulunur. Bu özellikler, sisteminizin hem güncel kalmasını hem de gelecekteki yükseltmelere açık olmasını sağlar."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Asus ROG Crosshair X870E Apex AM5 (LGA 1718) Soket Anakart",
+      "why": "Hız aşırtma tutkunları için tasarlanmış, ekstrem güç dağıtımı ve soğutma özellikleriyle öne çıkan bir modeldir.",
+      "id": "ogu2md78cwh9dur",
+      "slug": "asus-rog-crosshair-x870e-apex"
+    },
+    {
+      "name": "Asus ROG Strix Z890-E Gaming WiFi LGA 1851 Soket Anakart (90MB1IM0-M0EAY0)",
+      "why": "Intel platformunda oyunculara yönelik, dengeli performansı ve zengin bağlantı seçenekleriyle dikkat çeker.",
+      "id": "wwcw8p7z3t877a4",
+      "slug": "asus-rog-strix-z890-e-gaming-wifi"
+    },
+    {
+      "name": "Sapphire Pure X870A WiFi7 AM5 (LGA 1718) Soket Anakart",
+      "why": "AMD sistemleri için güçlü bir alternatif sunan, modern bağlantı özellikleriyle donatılmış bir seçenektir.",
+      "id": "t91ytajtdk89zss",
+      "slug": "sapphire-pure-x870a-wifi7"
+    },
+    {
+      "name": "Maxsun Terminator Z890-A WiFi LGA 1851 Soket Anakart",
+      "why": "Fiyat/performans odaklı Intel sistemler için uygun, sağlam bir temel sunan modellerden biridir.",
+      "id": "e52ehgosgrhqq6y",
+      "slug": "maxsun-terminator-z890-a-wifi"
+    },
+    {
+      "name": "Colorful iGame X870 Senna V14 AM5 (LGA 1718) Soket Anakart",
+      "why": "Estetik tasarımı ve üst düzey performansı bir araya getiren, AMD kullanıcıları için şık bir tercih.",
+      "id": "lj1pk01e8d23uo2",
+      "slug": "colorful-igame-x870-senna-v14"
+    },
+    {
+      "name": "Colorful CVN Z890 Ark Frozen V20 LGA 1851 Soket Anakart",
+      "why": "Beyaz temalı sistem kurmak isteyen Intel kullanıcıları için hem görsel hem de performans açısından çekici bir seçenektir.",
+      "id": "btn412204szhy18",
+      "slug": "colorful-cvn-z890-ark-frozen-v20"
+    }
+  ],
+  "faq": [
+    {
+      "q": "AM5 ve LGA 1851 arasındaki fark nedir?",
+      "a": "AM5, AMD'nin Ryzen işlemcileri için kullanılan soket tipiyken, LGA 1851 Intel'in yeni nesil Core işlemcileri için tasarlanmış sokettir; ikisi birbiriyle uyumlu değildir."
+    },
+    {
+      "q": "DDR5 bellek desteği neden önemli?",
+      "a": "DDR5, önceki nesil DDR4'e göre daha yüksek bant genişliği ve daha düşük güç tüketimi sunarak sistem performansına önemli katkı sağlar."
+    },
+    {
+      "q": "Anakartın güç fazları ne işe yarar?",
+      "a": "Güç fazları, işlemciye istikrarlı ve yeterli güç sağlamak için kritik öneme sahiptir; yüksek faz sayısı, daha iyi hız aşırtma potansiyeli ve kararlılık anlamına gelir."
+    },
+    {
+      "q": "Wi-Fi 7'ye ihtiyacım var mı?",
+      "a": "Eğer en yeni nesil kablosuz ağ hızlarına erişmek ve geleceğe dönük bir sistem kurmak istiyorsanız Wi-Fi 7 desteği önemli bir avantaj sunar."
+    }
+  ],
+  "updatedAt": "2026-07-22T01:18:41.332Z"
+}

@@ -1,1 +1,77 @@
-{"category":"chargers","label":"Şarj Aleti","title":"En İyi Şarj Aleti 2024: Gücünü Yanına Al!","lead":"Modern yaşamda akıllı telefonlarımızdan dizüstü bilgisayarlarımıza kadar her cihazımız enerjiye bağımlı. Güvenilir ve hızlı bir şarj aleti, günlük rutininizin aksamadan devam etmesini sağlayan en kritik aksesuarlardan biri.","sections":[{"h":"Cihazlarınıza Hız Katın: Neden Yüksek Watt?","body":"Sadece telefonunuzu değil, tabletinizi ve hatta dizüstü bilgisayarınızı da tek bir adaptörle şarj etme kolaylığı artık mümkün. Yüksek watt çıkışı sunan şarj aletleri, özellikle USB-C Power Delivery (PD) teknolojisi sayesinde farklı cihazları optimum hızda besleyebilir. Bu sayede, yanınızda birden fazla adaptör taşıma derdinden kurtulur, tüm elektronik eşyalarınızı aynı noktadan hızlıca şarj edebilirsiniz."},{"h":"Şarj Aleti Seçerken Nelere Dikkat Etmeli?","body":"Öncelikle, cihazlarınızın desteklediği maksimum şarj gücünü ve port tipini (USB-C veya USB-A) kontrol etmelisiniz. GaN (Galyum Nitrür) teknolojisine sahip modeller, daha küçük boyutlarda daha yüksek güç sunarak hem taşınabilirlik hem de performans açısından öne çıkar. Ayrıca, çoklu port seçenekleri, aynı anda birden fazla cihazı şarj etme imkanı sunarken, güvenilirlik ve markanın sunduğu güvenlik sertifikaları da göz ardı edilmemesi gereken önemli kriterlerdir."},{"h":"Hızlı Şarj Standartları ve Uyum","body":"Şarj aletleri dünyası, Power Delivery (PD), Quick Charge (QC), SuperVOOC ve HyperCharge gibi farklı hızlı şarj standartlarıyla dolu. Cihazınızın hangi standardı desteklediğini bilmek, en yüksek verimi almanız için kritik. Örneğin, bir Xiaomi telefonunuz varsa 120W HyperCharge destekli bir adaptörle en hızlı dolumu elde edersiniz; benzer şekilde OnePlus kullanıcıları SuperVOOC teknolojisini aramalıdır. Evrensel uyumluluk için PD 3.0 veya PPS (Programmable Power Supply) destekli modeller genellikle en iyi seçenektir."}],"picks":[{"name":"Aohi Youth 140W Şarj Aleti","why":"Yüksek güç çıkışı ve GaN teknolojisiyle hem dizüstü bilgisayarlar hem de telefonlar için hızlı ve verimli bir çözüm sunar.","id":"drmikq5wfx039d4","slug":"aohi-youth-140w"},{"name":"Baseus GaN5 Pro 140W Şarj Aleti (CCGP100101)","why":"Kompakt tasarımı ve 140W gücü sayesinde, birden fazla cihazı aynı anda hızlıca şarj etmek isteyenler için idealdir.","id":"uwjxdac49vy7n7e","slug":"baseus-gan5-pro-140w"},{"name":"Xiaomi 120W Charging Combo Type-A Şarj Aleti (MDY-13-EG)","why":"Xiaomi'nin özel HyperCharge teknolojisini destekleyen cihazlar için en hızlı ve optimize şarj deneyimini sağlar.","id":"eeggu5c2sfkppod","slug":"xiaomi-120w-charging-combo-type-a"},{"name":"Ugreen Nexode 200W Şarj Aleti (40913)","why":"Piyasadaki en güçlü şarj aletlerinden biri olarak, aynı anda çok sayıda yüksek güç gerektiren cihazı sorunsuz şarj edebilir.","id":"30tw3q74k9uvl1y","slug":"ugreen-nexode-200w"},{"name":"OnePlus Supervooc 100W Şarj Aleti","why":"OnePlus cihaz sahipleri için özel olarak tasarlanmış bu adaptör, markanın ultra hızlı SuperVOOC şarj standardını en iyi şekilde sunar.","id":"pe2y6p69vclazmu","slug":"oneplus-supervooc-100w"},{"name":"Anker B2737 Şarj Aleti","why":"Güvenilir Anker kalitesiyle, geniş uyumluluk ve stabil bir şarj performansı arayanlar için dengeli bir seçenek.","id":"ibrfcjspdgairsw","slug":"anker-b2737"}],"faq":[{"q":"GaN (Galyum Nitrür) teknolojisi nedir ve neden önemlidir?","a":"GaN, silikon yerine kullanılan yarı iletken bir malzemedir; daha küçük boyutlarda daha yüksek güç verimliliği ve daha az ısı üretimi sağlayarak şarj aletlerinin küçülmesini ve daha güçlü olmasını mümkün kılar."},{"q":"Yüksek watt çıkışına sahip bir şarj aleti telefonuma zarar verir mi?","a":"Hayır, modern şarj aletleri ve cihazlar akıllı çiplere sahiptir; cihazınız ihtiyacı olan maksimum gücü çeker ve fazlasını almaz, böylece pilinize zarar vermez."},{"q":"Seyahat ederken tek portlu mu, yoksa çok portlu bir şarj aleti mi tercih etmeliyim?","a":"Birden fazla cihaz taşıyorsanız, çok portlu bir şarj aleti hem yerden tasarruf etmenizi sağlar hem de tüm cihazlarınızı aynı anda şarj etme kolaylığı sunar."},{"q":"Orijinal kutudan çıkan şarj aletini kullanmak her zaman en iyi seçenek midir?","a":"Orijinal adaptörler cihazınızla tam uyumlu olsa da, günümüzde Anker, Ugreen, Baseus gibi markaların kaliteli üçüncü parti şarj aletleri, genellikle daha fazla güç, port veya GaN teknolojisi sunarak daha iyi bir deneyim sağlayabilir."}],"updatedAt":"2026-07-22T01:17:54.878Z"}
+{
+  "category": "chargers",
+  "label": "Şarj Aleti",
+  "title": "En İyi Şarj Aleti 2024: Gücünü Yanına Al!",
+  "lead": "Modern yaşamda akıllı telefonlarımızdan dizüstü bilgisayarlarımıza kadar her cihazımız enerjiye bağımlı. Güvenilir ve hızlı bir şarj aleti, günlük rutininizin aksamadan devam etmesini sağlayan en kritik aksesuarlardan biri.",
+  "sections": [
+    {
+      "h": "Cihazlarınıza Hız Katın: Neden Yüksek Watt?",
+      "body": "Sadece telefonunuzu değil, tabletinizi ve hatta dizüstü bilgisayarınızı da tek bir adaptörle şarj etme kolaylığı artık mümkün. Yüksek watt çıkışı sunan şarj aletleri, özellikle USB-C Power Delivery (PD) teknolojisi sayesinde farklı cihazları optimum hızda besleyebilir. Bu sayede, yanınızda birden fazla adaptör taşıma derdinden kurtulur, tüm elektronik eşyalarınızı aynı noktadan hızlıca şarj edebilirsiniz."
+    },
+    {
+      "h": "Şarj Aleti Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle, cihazlarınızın desteklediği maksimum şarj gücünü ve port tipini (USB-C veya USB-A) kontrol etmelisiniz. GaN (Galyum Nitrür) teknolojisine sahip modeller, daha küçük boyutlarda daha yüksek güç sunarak hem taşınabilirlik hem de performans açısından öne çıkar. Ayrıca, çoklu port seçenekleri, aynı anda birden fazla cihazı şarj etme imkanı sunarken, güvenilirlik ve markanın sunduğu güvenlik sertifikaları da göz ardı edilmemesi gereken önemli kriterlerdir."
+    },
+    {
+      "h": "Hızlı Şarj Standartları ve Uyum",
+      "body": "Şarj aletleri dünyası, Power Delivery (PD), Quick Charge (QC), SuperVOOC ve HyperCharge gibi farklı hızlı şarj standartlarıyla dolu. Cihazınızın hangi standardı desteklediğini bilmek, en yüksek verimi almanız için kritik. Örneğin, bir Xiaomi telefonunuz varsa 120W HyperCharge destekli bir adaptörle en hızlı dolumu elde edersiniz; benzer şekilde OnePlus kullanıcıları SuperVOOC teknolojisini aramalıdır. Evrensel uyumluluk için PD 3.0 veya PPS (Programmable Power Supply) destekli modeller genellikle en iyi seçenektir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Aohi Youth 140W Şarj Aleti",
+      "why": "Yüksek güç çıkışı ve GaN teknolojisiyle hem dizüstü bilgisayarlar hem de telefonlar için hızlı ve verimli bir çözüm sunar.",
+      "id": "drmikq5wfx039d4",
+      "slug": "aohi-youth-140w"
+    },
+    {
+      "name": "Baseus GaN5 Pro 140W Şarj Aleti (CCGP100101)",
+      "why": "Kompakt tasarımı ve 140W gücü sayesinde, birden fazla cihazı aynı anda hızlıca şarj etmek isteyenler için idealdir.",
+      "id": "uwjxdac49vy7n7e",
+      "slug": "baseus-gan5-pro-140w"
+    },
+    {
+      "name": "Xiaomi 120W Charging Combo Type-A Şarj Aleti (MDY-13-EG)",
+      "why": "Xiaomi'nin özel HyperCharge teknolojisini destekleyen cihazlar için en hızlı ve optimize şarj deneyimini sağlar.",
+      "id": "eeggu5c2sfkppod",
+      "slug": "xiaomi-120w-charging-combo-type-a"
+    },
+    {
+      "name": "Ugreen Nexode 200W Şarj Aleti (40913)",
+      "why": "Piyasadaki en güçlü şarj aletlerinden biri olarak, aynı anda çok sayıda yüksek güç gerektiren cihazı sorunsuz şarj edebilir.",
+      "id": "30tw3q74k9uvl1y",
+      "slug": "ugreen-nexode-200w"
+    },
+    {
+      "name": "OnePlus Supervooc 100W Şarj Aleti",
+      "why": "OnePlus cihaz sahipleri için özel olarak tasarlanmış bu adaptör, markanın ultra hızlı SuperVOOC şarj standardını en iyi şekilde sunar.",
+      "id": "pe2y6p69vclazmu",
+      "slug": "oneplus-supervooc-100w"
+    },
+    {
+      "name": "Anker B2737 Şarj Aleti",
+      "why": "Güvenilir Anker kalitesiyle, geniş uyumluluk ve stabil bir şarj performansı arayanlar için dengeli bir seçenek.",
+      "id": "ibrfcjspdgairsw",
+      "slug": "anker-b2737"
+    }
+  ],
+  "faq": [
+    {
+      "q": "GaN (Galyum Nitrür) teknolojisi nedir ve neden önemlidir?",
+      "a": "GaN, silikon yerine kullanılan yarı iletken bir malzemedir; daha küçük boyutlarda daha yüksek güç verimliliği ve daha az ısı üretimi sağlayarak şarj aletlerinin küçülmesini ve daha güçlü olmasını mümkün kılar."
+    },
+    {
+      "q": "Yüksek watt çıkışına sahip bir şarj aleti telefonuma zarar verir mi?",
+      "a": "Hayır, modern şarj aletleri ve cihazlar akıllı çiplere sahiptir; cihazınız ihtiyacı olan maksimum gücü çeker ve fazlasını almaz, böylece pilinize zarar vermez."
+    },
+    {
+      "q": "Seyahat ederken tek portlu mu, yoksa çok portlu bir şarj aleti mi tercih etmeliyim?",
+      "a": "Birden fazla cihaz taşıyorsanız, çok portlu bir şarj aleti hem yerden tasarruf etmenizi sağlar hem de tüm cihazlarınızı aynı anda şarj etme kolaylığı sunar."
+    },
+    {
+      "q": "Orijinal kutudan çıkan şarj aletini kullanmak her zaman en iyi seçenek midir?",
+      "a": "Orijinal adaptörler cihazınızla tam uyumlu olsa da, günümüzde Anker, Ugreen, Baseus gibi markaların kaliteli üçüncü parti şarj aletleri, genellikle daha fazla güç, port veya GaN teknolojisi sunarak daha iyi bir deneyim sağlayabilir."
+    }
+  ],
+  "updatedAt": "2026-07-22T01:17:54.878Z"
+}

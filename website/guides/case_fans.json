@@ -1,1 +1,77 @@
-{"category":"case_fans","label":"Kasa Fanı","title":"En İyi Kasa Fanı Seçimi: Bilgisayarınızı Serin Tutun","lead":"Bilgisayarınızın serin kalması, performansını koruması ve ömrünü uzatması için kasa fanları hayati önem taşır. Doğru fan seçimiyle hem sıcaklıkları düşürebilir hem de daha sessiz bir deneyim yaşayabilirsiniz.","sections":[{"h":"Neden Kasa Fanı Gerekli?","body":"Bilgisayar bileşenleri çalışırken ısı üretir; bu ısı sistemin kararlılığını ve performansını olumsuz etkileyebilir. Kasa fanları, içerideki sıcak havayı dışarı atarak veya dışarıdaki serin havayı içeri çekerek etkili bir hava akışı sağlar. Bu, işlemci, ekran kartı ve diğer parçaların optimum sıcaklıkta çalışmasına yardımcı olur."},{"h":"Kasa Fanı Seçerken Nelere Dikkat Etmeli?","body":"Fan boyutu (genellikle 120mm veya 140mm), hava akışı (CFM), statik basınç değeri ve gürültü seviyesi (dB) en önemli kriterlerdir. Radyatörler veya dar alanlar için yüksek statik basınca sahip fanlar tercih edilirken, açık alanlar için yüksek CFM değerleri idealdir. Ayrıca, RGB aydınlatma gibi estetik özellikler de son kullanıcılar için önemli bir seçim nedeni olabilir."},{"h":"Fan Montajı ve Hava Akışı Optimizasyonu","body":"Kasa fanlarının doğru yönde monte edilmesi, etkili bir hava akışı için kritik öneme sahiptir. Genellikle öne ve alta soğuk hava girişi, arkaya ve üste ise sıcak hava çıkışı sağlanır. Bu düzenleme, içerideki sıcak havanın dışarı atılmasını kolaylaştırırken, dışarıdan gelen serin havanın tüm bileşenlere ulaşmasını sağlar."}],"picks":[{"name":"Rampage 6C-120 Kasa Fanı","why":"Bütçe dostu sistemler için uygun fiyatlı ve temel soğutma performansı sunan bir seçenektir.","id":"ngfb4n7jb3ydfzv","slug":"rampage-6c-120"},{"name":"DeepCool RF120R Kasa Fanı (Kırmızı)","why":"Estetik kırmızı LED aydınlatmasıyla birlikte tatmin edici bir soğutma çözümü arayanlar için iyi bir denge sunar.","id":"jdh79ea0p7yye7j","slug":"deep-cool-rf120r"},{"name":"MSI Max F12A-3H Kasa Fanı","why":"Güvenilir bir markadan gelen, genel kullanım için dengeli performans ve kalite vaat eden bir modeldir.","id":"mwh6umfh554roxy","slug":"msi-max-f12a-3h"},{"name":"Performax Aurora RGB Kasa Fanı","why":"RGB aydınlatmanın ön planda olduğu, kasasına renk katmak isteyen kullanıcılar için dikkat çekici bir alternatiftir.","id":"d8rlv6301iz2grd","slug":"performax-aurora-rgb"},{"name":"Galax Vortex Kasa Fanı","why":"Farklı bir tasarıma sahip, sistemine estetik bir dokunuş katmak isteyenler için tercih edilebilir.","id":"pmmxmna1btq0f15","slug":"galax-vortex"},{"name":"Dragos LS300 ARGB Kasa Fanı","why":"Adreslenebilir RGB (ARGB) aydınlatmasıyla kasanızda dinamik ışıklandırma efektleri yaratmanızı sağlar.","id":"ny70uahebco2q6n","slug":"dragos-ls300-argb"}],"faq":[{"q":"Kasa fanı boyutu ne kadar önemli?","a":"Fan boyutu, genellikle hava akış kapasitesi ve gürültü seviyesiyle doğrudan ilişkilidir; büyük fanlar aynı hava akışını daha düşük devirde ve sessizce sağlayabilir."},{"q":"Kaç tane kasa fanına ihtiyacım var?","a":"Bu, kasanızın boyutuna, bileşenlerinizin ısı üretimine ve kullanım senaryonuza bağlıdır, ancak minimum 2 giriş, 1 çıkış fanı iyi bir başlangıçtır."},{"q":"RGB aydınlatmalı fanlar daha mı iyi soğutur?","a":"Hayır, RGB aydınlatma sadece estetik bir özelliktir ve fanın soğutma performansına doğrudan bir etkisi yoktur."},{"q":"Statik basınç mı, hava akışı (CFM) mı daha önemli?","a":"Radyatör veya dar alanlar gibi engelli yerlerde statik basınç, açık alanlarda ise hava akışı (CFM) daha önemlidir."}],"updatedAt":"2026-07-23T01:18:36.426Z"}
+{
+  "category": "case_fans",
+  "label": "Kasa Fanı",
+  "title": "En İyi Kasa Fanı Seçimi: Bilgisayarınızı Serin Tutun",
+  "lead": "Bilgisayarınızın serin kalması, performansını koruması ve ömrünü uzatması için kasa fanları hayati önem taşır. Doğru fan seçimiyle hem sıcaklıkları düşürebilir hem de daha sessiz bir deneyim yaşayabilirsiniz.",
+  "sections": [
+    {
+      "h": "Neden Kasa Fanı Gerekli?",
+      "body": "Bilgisayar bileşenleri çalışırken ısı üretir; bu ısı sistemin kararlılığını ve performansını olumsuz etkileyebilir. Kasa fanları, içerideki sıcak havayı dışarı atarak veya dışarıdaki serin havayı içeri çekerek etkili bir hava akışı sağlar. Bu, işlemci, ekran kartı ve diğer parçaların optimum sıcaklıkta çalışmasına yardımcı olur."
+    },
+    {
+      "h": "Kasa Fanı Seçerken Nelere Dikkat Etmeli?",
+      "body": "Fan boyutu (genellikle 120mm veya 140mm), hava akışı (CFM), statik basınç değeri ve gürültü seviyesi (dB) en önemli kriterlerdir. Radyatörler veya dar alanlar için yüksek statik basınca sahip fanlar tercih edilirken, açık alanlar için yüksek CFM değerleri idealdir. Ayrıca, RGB aydınlatma gibi estetik özellikler de son kullanıcılar için önemli bir seçim nedeni olabilir."
+    },
+    {
+      "h": "Fan Montajı ve Hava Akışı Optimizasyonu",
+      "body": "Kasa fanlarının doğru yönde monte edilmesi, etkili bir hava akışı için kritik öneme sahiptir. Genellikle öne ve alta soğuk hava girişi, arkaya ve üste ise sıcak hava çıkışı sağlanır. Bu düzenleme, içerideki sıcak havanın dışarı atılmasını kolaylaştırırken, dışarıdan gelen serin havanın tüm bileşenlere ulaşmasını sağlar."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Rampage 6C-120 Kasa Fanı",
+      "why": "Bütçe dostu sistemler için uygun fiyatlı ve temel soğutma performansı sunan bir seçenektir.",
+      "id": "ngfb4n7jb3ydfzv",
+      "slug": "rampage-6c-120"
+    },
+    {
+      "name": "DeepCool RF120R Kasa Fanı (Kırmızı)",
+      "why": "Estetik kırmızı LED aydınlatmasıyla birlikte tatmin edici bir soğutma çözümü arayanlar için iyi bir denge sunar.",
+      "id": "jdh79ea0p7yye7j",
+      "slug": "deep-cool-rf120r"
+    },
+    {
+      "name": "MSI Max F12A-3H Kasa Fanı",
+      "why": "Güvenilir bir markadan gelen, genel kullanım için dengeli performans ve kalite vaat eden bir modeldir.",
+      "id": "mwh6umfh554roxy",
+      "slug": "msi-max-f12a-3h"
+    },
+    {
+      "name": "Performax Aurora RGB Kasa Fanı",
+      "why": "RGB aydınlatmanın ön planda olduğu, kasasına renk katmak isteyen kullanıcılar için dikkat çekici bir alternatiftir.",
+      "id": "d8rlv6301iz2grd",
+      "slug": "performax-aurora-rgb"
+    },
+    {
+      "name": "Galax Vortex Kasa Fanı",
+      "why": "Farklı bir tasarıma sahip, sistemine estetik bir dokunuş katmak isteyenler için tercih edilebilir.",
+      "id": "pmmxmna1btq0f15",
+      "slug": "galax-vortex"
+    },
+    {
+      "name": "Dragos LS300 ARGB Kasa Fanı",
+      "why": "Adreslenebilir RGB (ARGB) aydınlatmasıyla kasanızda dinamik ışıklandırma efektleri yaratmanızı sağlar.",
+      "id": "ny70uahebco2q6n",
+      "slug": "dragos-ls300-argb"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kasa fanı boyutu ne kadar önemli?",
+      "a": "Fan boyutu, genellikle hava akış kapasitesi ve gürültü seviyesiyle doğrudan ilişkilidir; büyük fanlar aynı hava akışını daha düşük devirde ve sessizce sağlayabilir."
+    },
+    {
+      "q": "Kaç tane kasa fanına ihtiyacım var?",
+      "a": "Bu, kasanızın boyutuna, bileşenlerinizin ısı üretimine ve kullanım senaryonuza bağlıdır, ancak minimum 2 giriş, 1 çıkış fanı iyi bir başlangıçtır."
+    },
+    {
+      "q": "RGB aydınlatmalı fanlar daha mı iyi soğutur?",
+      "a": "Hayır, RGB aydınlatma sadece estetik bir özelliktir ve fanın soğutma performansına doğrudan bir etkisi yoktur."
+    },
+    {
+      "q": "Statik basınç mı, hava akışı (CFM) mı daha önemli?",
+      "a": "Radyatör veya dar alanlar gibi engelli yerlerde statik basınç, açık alanlarda ise hava akışı (CFM) daha önemlidir."
+    }
+  ],
+  "updatedAt": "2026-07-23T01:18:36.426Z"
+}

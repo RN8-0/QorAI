@@ -1,1 +1,77 @@
-{"category":"printers","label":"Yazıcı","title":"En İyi Yazıcılar 2026: Doğru Modeli Seçin","lead":"Ev ve ofis ortamlarında vazgeçilmez bir yardımcı olan yazıcılar, dijital dünyayı somut belgelere dönüştürmenin en pratik yoludur. İster belge basımı ister fotoğraf çıktısı için olsun, doğru yazıcıyı seçmek iş akışınızı büyük ölçüde kolaylaştırır.","sections":[{"h":"Yazıcı Türleri ve Kullanım Amaçları","body":"Yazıcılar temel olarak mürekkep püskürtmeli ve lazer olmak üzere iki ana kategoriye ayrılır. Mürekkep püskürtmeli modeller genellikle daha uygun maliyetli olup renkli baskılar ve fotoğraf kalitesi için idealdir; lazer yazıcılar ise daha yüksek baskı hızları, düşük sayfa başı maliyet ve yoğun belge basımı gerektiren ofis ortamları için biçilmiş kaftandır."},{"h":"Nelere Dikkat Etmeli?","body":"Bir yazıcı seçerken baskı hızı, kalitesi ve sarf malzeme maliyeti kritik öneme sahiptir. Çift taraflı baskı (duplex), kablosuz bağlantı (Wi-Fi) ve mobil baskı yetenekleri gibi özellikler kullanım kolaylığını artırırken, tarama, fotokopi ve faks gibi çok fonksiyonlu yetenekler ofisinizdeki diğer cihazlara olan ihtiyacı azaltabilir. Toplam sahip olma maliyetini değerlendirirken yazıcının kendisinden çok, kartuş veya toner fiyatlarını göz önünde bulundurmalısınız."},{"h":"Akıllı Özellikler ve Verimlilik","body":"Modern yazıcılar, sadece baskıdan fazlasını sunar. Bulut entegrasyonu, dokunmatik ekran arayüzleri ve uzaktan yönetim gibi akıllı özellikler, iş süreçlerinizi basitleştirerek verimliliği artırır. Özellikle küçük işletmeler ve ev ofisler için, az yer kaplayan ancak tüm temel ofis fonksiyonlarını yerine getirebilen çok fonksiyonlu modeller büyük avantaj sağlar."}],"picks":[{"name":"HP LaserJet Pro M130fn Yazıcı","why":"Kompakt tasarımı ve çok fonksiyonlu lazer yetenekleriyle küçük ofisler için ideal, hızlı ve güvenilir bir çözüm sunar.","id":"qz7m6id19oa08fh","slug":"hp-laserjet-pro-m130fn"},{"name":"Samsung ProXpress SL-C4060FX Yazıcı (SS218C)","why":"Yüksek baskı kapasitesi ve canlı renkli lazer baskı kalitesi arayan işletmeler için güçlü bir performans sunar.","id":"2mrtrombg5m6hcx","slug":"samsung-proxpress-sl-c4060fx"},{"name":"Canon Maxify MB5050 Yazıcı","why":"İşletmeler için tasarlanmış bu mürekkep püskürtmeli model, yüksek hızda ve uygun maliyetli renkli baskılar sunarak verimliliği destekler.","id":"mksib7wnbuf1ltf","slug":"canon-maxify-mb5050"},{"name":"Ricoh SP C261SFNw Yazıcı","why":"Renkli lazer çok fonksiyonelliği, güvenli kablosuz bağlantısı ve sağlam yapısıyla yoğun iş yükleri için uygun bir seçenektir.","id":"k16zb7mb7c1zsg4","slug":"ricoh-sp-c261sfnw"},{"name":"HP LaserJet Pro M130fw Yazıcı","why":"Wi-Fi ve mobil baskı özellikleriyle öne çıkan bu lazer yazıcı, ev ofis kullanıcıları için pratik ve hızlı baskı çözümleri sunar.","id":"cdof8rw1dyo6ur8","slug":"hp-laserjet-pro-m130fw"},{"name":"Deli M2500ADNW Yazıcı","why":"Ekonomik segmentte kablosuz bağlantı ve çok fonksiyonlu lazer deneyimi arayanlar için cazip bir fiyat/performans ürünüdür.","id":"w6yxqknsddzp8gs","slug":"deli-m2500adnw"}],"faq":[{"q":"Lazer mi mürekkep püskürtmeli mi almalıyım?","a":"Yoğun belge basımı ve hız için lazer, fotoğraf ve ara sıra renkli baskı için mürekkep püskürtmeli modelleri tercih etmelisiniz."},{"q":"Yazıcının sarf malzeme maliyeti neden önemlidir?","a":"Kartuş veya toner fiyatları, yazıcının ilk satın alma maliyetinden daha uzun vadede daha yüksek toplam sahip olma maliyetine neden olabilir, bu yüzden dikkatli olunmalıdır."},{"q":"Çok fonksiyonlu yazıcı almalı mıyım?","a":"Tarama, fotokopi veya faks gibi ek özelliklere ihtiyacınız varsa, yer ve maliyetten tasarruf etmek için çok fonksiyonlu bir model almak daha mantıklıdır."},{"q":"Kablosuz bağlantı ne işe yarar?","a":"Kablosuz bağlantı (Wi-Fi) sayesinde yazıcınızı ağınıza bağlayabilir, bilgisayar, telefon veya tabletten kolayca baskı alabilirsiniz, böylece kablo karmaşası ortadan kalkar."}],"updatedAt":"2026-07-23T01:17:31.312Z"}
+{
+  "category": "printers",
+  "label": "Yazıcı",
+  "title": "En İyi Yazıcılar 2026: Doğru Modeli Seçin",
+  "lead": "Ev ve ofis ortamlarında vazgeçilmez bir yardımcı olan yazıcılar, dijital dünyayı somut belgelere dönüştürmenin en pratik yoludur. İster belge basımı ister fotoğraf çıktısı için olsun, doğru yazıcıyı seçmek iş akışınızı büyük ölçüde kolaylaştırır.",
+  "sections": [
+    {
+      "h": "Yazıcı Türleri ve Kullanım Amaçları",
+      "body": "Yazıcılar temel olarak mürekkep püskürtmeli ve lazer olmak üzere iki ana kategoriye ayrılır. Mürekkep püskürtmeli modeller genellikle daha uygun maliyetli olup renkli baskılar ve fotoğraf kalitesi için idealdir; lazer yazıcılar ise daha yüksek baskı hızları, düşük sayfa başı maliyet ve yoğun belge basımı gerektiren ofis ortamları için biçilmiş kaftandır."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Bir yazıcı seçerken baskı hızı, kalitesi ve sarf malzeme maliyeti kritik öneme sahiptir. Çift taraflı baskı (duplex), kablosuz bağlantı (Wi-Fi) ve mobil baskı yetenekleri gibi özellikler kullanım kolaylığını artırırken, tarama, fotokopi ve faks gibi çok fonksiyonlu yetenekler ofisinizdeki diğer cihazlara olan ihtiyacı azaltabilir. Toplam sahip olma maliyetini değerlendirirken yazıcının kendisinden çok, kartuş veya toner fiyatlarını göz önünde bulundurmalısınız."
+    },
+    {
+      "h": "Akıllı Özellikler ve Verimlilik",
+      "body": "Modern yazıcılar, sadece baskıdan fazlasını sunar. Bulut entegrasyonu, dokunmatik ekran arayüzleri ve uzaktan yönetim gibi akıllı özellikler, iş süreçlerinizi basitleştirerek verimliliği artırır. Özellikle küçük işletmeler ve ev ofisler için, az yer kaplayan ancak tüm temel ofis fonksiyonlarını yerine getirebilen çok fonksiyonlu modeller büyük avantaj sağlar."
+    }
+  ],
+  "picks": [
+    {
+      "name": "HP LaserJet Pro M130fn Yazıcı",
+      "why": "Kompakt tasarımı ve çok fonksiyonlu lazer yetenekleriyle küçük ofisler için ideal, hızlı ve güvenilir bir çözüm sunar.",
+      "id": "qz7m6id19oa08fh",
+      "slug": "hp-laserjet-pro-m130fn"
+    },
+    {
+      "name": "Samsung ProXpress SL-C4060FX Yazıcı (SS218C)",
+      "why": "Yüksek baskı kapasitesi ve canlı renkli lazer baskı kalitesi arayan işletmeler için güçlü bir performans sunar.",
+      "id": "2mrtrombg5m6hcx",
+      "slug": "samsung-proxpress-sl-c4060fx"
+    },
+    {
+      "name": "Canon Maxify MB5050 Yazıcı",
+      "why": "İşletmeler için tasarlanmış bu mürekkep püskürtmeli model, yüksek hızda ve uygun maliyetli renkli baskılar sunarak verimliliği destekler.",
+      "id": "mksib7wnbuf1ltf",
+      "slug": "canon-maxify-mb5050"
+    },
+    {
+      "name": "Ricoh SP C261SFNw Yazıcı",
+      "why": "Renkli lazer çok fonksiyonelliği, güvenli kablosuz bağlantısı ve sağlam yapısıyla yoğun iş yükleri için uygun bir seçenektir.",
+      "id": "k16zb7mb7c1zsg4",
+      "slug": "ricoh-sp-c261sfnw"
+    },
+    {
+      "name": "HP LaserJet Pro M130fw Yazıcı",
+      "why": "Wi-Fi ve mobil baskı özellikleriyle öne çıkan bu lazer yazıcı, ev ofis kullanıcıları için pratik ve hızlı baskı çözümleri sunar.",
+      "id": "cdof8rw1dyo6ur8",
+      "slug": "hp-laserjet-pro-m130fw"
+    },
+    {
+      "name": "Deli M2500ADNW Yazıcı",
+      "why": "Ekonomik segmentte kablosuz bağlantı ve çok fonksiyonlu lazer deneyimi arayanlar için cazip bir fiyat/performans ürünüdür.",
+      "id": "w6yxqknsddzp8gs",
+      "slug": "deli-m2500adnw"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Lazer mi mürekkep püskürtmeli mi almalıyım?",
+      "a": "Yoğun belge basımı ve hız için lazer, fotoğraf ve ara sıra renkli baskı için mürekkep püskürtmeli modelleri tercih etmelisiniz."
+    },
+    {
+      "q": "Yazıcının sarf malzeme maliyeti neden önemlidir?",
+      "a": "Kartuş veya toner fiyatları, yazıcının ilk satın alma maliyetinden daha uzun vadede daha yüksek toplam sahip olma maliyetine neden olabilir, bu yüzden dikkatli olunmalıdır."
+    },
+    {
+      "q": "Çok fonksiyonlu yazıcı almalı mıyım?",
+      "a": "Tarama, fotokopi veya faks gibi ek özelliklere ihtiyacınız varsa, yer ve maliyetten tasarruf etmek için çok fonksiyonlu bir model almak daha mantıklıdır."
+    },
+    {
+      "q": "Kablosuz bağlantı ne işe yarar?",
+      "a": "Kablosuz bağlantı (Wi-Fi) sayesinde yazıcınızı ağınıza bağlayabilir, bilgisayar, telefon veya tabletten kolayca baskı alabilirsiniz, böylece kablo karmaşası ortadan kalkar."
+    }
+  ],
+  "updatedAt": "2026-07-23T01:17:31.312Z"
+}

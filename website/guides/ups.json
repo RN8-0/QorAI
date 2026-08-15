@@ -1,1 +1,71 @@
-{"category":"ups","label":"UPS","title":"En İyi UPS Rehberi 2026: Güç Kesintilerine Son","lead":"Evdeki veya ofisteki elektronik cihazlarınızın ani elektrik kesintilerinden zarar görmesini istemezsiniz değil mi? Kesintisiz Güç Kaynağı (UPS) cihazları, tam da bu noktada devreye girerek değerli ekipmanlarınızı korumanın ve çalışmalarınızı güvence altına almanın en kritik yolu.","sections":[{"h":"UPS Neden Gerekli?","body":"Ani voltaj dalgalanmaları veya elektrik kesintileri, bilgisayarlar, modemler, NAS cihazları gibi hassas elektroniklerinize ciddi zararlar verebilir, veri kaybına yol açabilir. Bir UPS, bu tür durumlarda devreye girerek cihazlarınıza güvenli bir kapatma süresi tanır veya kısa süreli kesintilerde çalışmaya devam etmelerini sağlar, böylece hem cihazlarınızın ömrünü uzatır hem de potansiyel iş kayıplarını önler."},{"h":"Doğru UPS Nasıl Seçilir? (Nelere Dikkat Etmeli)","body":"UPS seçimi yaparken en önemli kriter, bağlayacağınız cihazların toplam güç tüketimidir. VA (Volt Amper) değeri, UPS'in ne kadar yükü kaldırabileceğini gösterir; genellikle bağlı cihazların toplam güç ihtiyacından %20-30 daha yüksek bir VA değeri seçmek güvenli tarafta kalmanızı sağlar. Ayrıca, tepki süresi, batarya yedekleme süresi ve pure sine wave (gerçek sinüs dalgası) çıkışı gibi özellikler, özellikle hassas elektronikler için kritik öneme sahiptir."},{"h":"Farklı İhtiyaçlara Göre UPS Türleri","body":"Piyasada genellikle line-interactive ve online (çevrimiçi) olmak üzere iki ana UPS türü bulunur. Line-interactive modeller, daha uygun fiyatlı olup kısa kesintiler ve voltaj dalgalanmalarına karşı iyi bir koruma sunarken, online UPS'ler sürekli olarak temiz ve sabit güç sağlayarak en üst düzey korumayı hedefler. Ev kullanıcıları veya küçük ofisler için line-interactive genellikle yeterli olurken, kritik sunucular ve profesyonel sistemler için online çözümler tercih edilmelidir."}],"picks":[{"name":"AG Plus 11 3 kVA UPS (3000 VA)","why":"Yüksek kapasitesiyle büyük ofisler ve birden fazla cihazı korumak isteyenler için ideal bir seçimdir.","id":"u37vjqv1hfjdyrq","slug":"ag-plus-11-3-kva"},{"name":"AG Plus 11 1 kVA UPS (1000 VA)","why":"Orta ölçekli ev veya küçük ofis kullanıcıları için dengeli bir performans ve koruma sunar.","id":"917r064dcp3balr","slug":"ag-plus-11-1-kva"},{"name":"Powercom RPT 1025VA UPS (1025 VA)","why":"Güvenilir performansıyla genel kullanım ve günlük ihtiyaçlar için bütçe dostu bir alternatiftir.","id":"k4q8qdgijvy5i1e","slug":"powercom-rpt-1025va"},{"name":"Andees AD-2000 UPS (2000 VA)","why":"Daha fazla güç gereksinimi olan ev eğlence sistemleri veya küçük iş istasyonları için sağlam bir koruma sağlar.","id":"cyd8tp9zvgwiznk","slug":"andees-ad-2000"},{"name":"Enel L1 650VA UPS (650 VA)","why":"Tek bir bilgisayar veya modem gibi temel cihazlar için ekonomik ve yeterli bir çözüm sunar.","id":"g1v3yrl90bvl421","slug":"enel-l1-650va"}],"faq":[{"q":"UPS alırken VA değeri ne anlama gelir?","a":"VA (Volt Amper), UPS'in maksimum güç kapasitesini gösterir; bağlayacağınız cihazların toplam gücünden biraz daha yüksek seçmelisiniz."},{"q":"UPS bataryası ne kadar dayanır?","a":"Kullanım yoğunluğuna ve modeline bağlı olarak değişmekle birlikte, ortalama bir UPS bataryası 3-5 yıl arasında ömre sahiptir."},{"q":"Pure sine wave (gerçek sinüs dalgası) neden önemlidir?","a":"Özellikle hassas elektronik cihazlar (bazı güç kaynakları, aktif PFC'li sistemler) için temiz ve stabil güç sağlayarak uyumluluk ve güvenliği artırır."},{"q":"UPS'e hangi cihazları bağlamalıyım?","a":"Bilgisayar, monitör, modem, router, NAS cihazı gibi veri kaybı veya zarar görmesini istemediğiniz kritik elektroniklerinizi bağlamalısınız."}],"updatedAt":"2026-07-23T01:18:33.976Z"}
+{
+  "category": "ups",
+  "label": "UPS",
+  "title": "En İyi UPS Rehberi 2026: Güç Kesintilerine Son",
+  "lead": "Evdeki veya ofisteki elektronik cihazlarınızın ani elektrik kesintilerinden zarar görmesini istemezsiniz değil mi? Kesintisiz Güç Kaynağı (UPS) cihazları, tam da bu noktada devreye girerek değerli ekipmanlarınızı korumanın ve çalışmalarınızı güvence altına almanın en kritik yolu.",
+  "sections": [
+    {
+      "h": "UPS Neden Gerekli?",
+      "body": "Ani voltaj dalgalanmaları veya elektrik kesintileri, bilgisayarlar, modemler, NAS cihazları gibi hassas elektroniklerinize ciddi zararlar verebilir, veri kaybına yol açabilir. Bir UPS, bu tür durumlarda devreye girerek cihazlarınıza güvenli bir kapatma süresi tanır veya kısa süreli kesintilerde çalışmaya devam etmelerini sağlar, böylece hem cihazlarınızın ömrünü uzatır hem de potansiyel iş kayıplarını önler."
+    },
+    {
+      "h": "Doğru UPS Nasıl Seçilir? (Nelere Dikkat Etmeli)",
+      "body": "UPS seçimi yaparken en önemli kriter, bağlayacağınız cihazların toplam güç tüketimidir. VA (Volt Amper) değeri, UPS'in ne kadar yükü kaldırabileceğini gösterir; genellikle bağlı cihazların toplam güç ihtiyacından %20-30 daha yüksek bir VA değeri seçmek güvenli tarafta kalmanızı sağlar. Ayrıca, tepki süresi, batarya yedekleme süresi ve pure sine wave (gerçek sinüs dalgası) çıkışı gibi özellikler, özellikle hassas elektronikler için kritik öneme sahiptir."
+    },
+    {
+      "h": "Farklı İhtiyaçlara Göre UPS Türleri",
+      "body": "Piyasada genellikle line-interactive ve online (çevrimiçi) olmak üzere iki ana UPS türü bulunur. Line-interactive modeller, daha uygun fiyatlı olup kısa kesintiler ve voltaj dalgalanmalarına karşı iyi bir koruma sunarken, online UPS'ler sürekli olarak temiz ve sabit güç sağlayarak en üst düzey korumayı hedefler. Ev kullanıcıları veya küçük ofisler için line-interactive genellikle yeterli olurken, kritik sunucular ve profesyonel sistemler için online çözümler tercih edilmelidir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "AG Plus 11 3 kVA UPS (3000 VA)",
+      "why": "Yüksek kapasitesiyle büyük ofisler ve birden fazla cihazı korumak isteyenler için ideal bir seçimdir.",
+      "id": "u37vjqv1hfjdyrq",
+      "slug": "ag-plus-11-3-kva"
+    },
+    {
+      "name": "AG Plus 11 1 kVA UPS (1000 VA)",
+      "why": "Orta ölçekli ev veya küçük ofis kullanıcıları için dengeli bir performans ve koruma sunar.",
+      "id": "917r064dcp3balr",
+      "slug": "ag-plus-11-1-kva"
+    },
+    {
+      "name": "Powercom RPT 1025VA UPS (1025 VA)",
+      "why": "Güvenilir performansıyla genel kullanım ve günlük ihtiyaçlar için bütçe dostu bir alternatiftir.",
+      "id": "k4q8qdgijvy5i1e",
+      "slug": "powercom-rpt-1025va"
+    },
+    {
+      "name": "Andees AD-2000 UPS (2000 VA)",
+      "why": "Daha fazla güç gereksinimi olan ev eğlence sistemleri veya küçük iş istasyonları için sağlam bir koruma sağlar.",
+      "id": "cyd8tp9zvgwiznk",
+      "slug": "andees-ad-2000"
+    },
+    {
+      "name": "Enel L1 650VA UPS (650 VA)",
+      "why": "Tek bir bilgisayar veya modem gibi temel cihazlar için ekonomik ve yeterli bir çözüm sunar.",
+      "id": "g1v3yrl90bvl421",
+      "slug": "enel-l1-650va"
+    }
+  ],
+  "faq": [
+    {
+      "q": "UPS alırken VA değeri ne anlama gelir?",
+      "a": "VA (Volt Amper), UPS'in maksimum güç kapasitesini gösterir; bağlayacağınız cihazların toplam gücünden biraz daha yüksek seçmelisiniz."
+    },
+    {
+      "q": "UPS bataryası ne kadar dayanır?",
+      "a": "Kullanım yoğunluğuna ve modeline bağlı olarak değişmekle birlikte, ortalama bir UPS bataryası 3-5 yıl arasında ömre sahiptir."
+    },
+    {
+      "q": "Pure sine wave (gerçek sinüs dalgası) neden önemlidir?",
+      "a": "Özellikle hassas elektronik cihazlar (bazı güç kaynakları, aktif PFC'li sistemler) için temiz ve stabil güç sağlayarak uyumluluk ve güvenliği artırır."
+    },
+    {
+      "q": "UPS'e hangi cihazları bağlamalıyım?",
+      "a": "Bilgisayar, monitör, modem, router, NAS cihazı gibi veri kaybı veya zarar görmesini istemediğiniz kritik elektroniklerinizi bağlamalısınız."
+    }
+  ],
+  "updatedAt": "2026-07-23T01:18:33.976Z"
+}

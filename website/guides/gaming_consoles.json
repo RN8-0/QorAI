@@ -1,1 +1,71 @@
-{"category":"gaming_consoles","label":"Oyun Konsolu","title":"En İyi Oyun Konsolları 2026: Detaylı Seçim Rehberi","lead":"Oyun dünyası sürekli gelişiyor ve artık sadece sabit konsollarla sınırlı değiliz. Cebinizde veya çantanızda taşıyabileceğiniz güçlü oyun cihazları sayesinde dilediğiniz yerde en yeni oyunların keyfini çıkarabilirsiniz.","sections":[{"h":"Taşınabilir Oyun Bilgisayarları Yükselişte","body":"Geleneksel konsolların sunduğu deneyimi avuç içimize sığdıran taşınabilir oyun bilgisayarları, son yılların en büyük trendlerinden. Bu cihazlar, genellikle Windows işletim sistemiyle gelerek devasa bir oyun kütüphanesine erişim imkanı sunuyor ve hem PC hem de konsol oyuncularının ilgisini çekiyor. Mobilite ve performansın birleşimi, onları modern oyuncular için vazgeçilmez kılıyor."},{"h":"Oyun Konsolu Seçerken Nelere Dikkat Etmeli?","body":"Konsol seçimi yaparken donanım gücü, ekran kalitesi, batarya ömrü ve ergonomi gibi faktörler ön planda olmalı. Güçlü bir işlemci ve grafik birimi akıcı bir oyun deneyimi sağlarken, yüksek çözünürlüklü ve tepki süresi düşük bir ekran görselliği artırır. Uzun batarya ömrü taşınabilirlik için kritik; rahat bir tutuş ve kontrol yerleşimi ise uzun oyun seanslarında konforunuzu garanti eder."},{"h":"Geleceğin Konsolları: Yapay Zeka Destekli Performans","body":"Günümüz konsollarında yapay zeka entegrasyonu, oyun deneyimini bir üst seviyeye taşıyor. Özellikle AI işlemcilerine sahip yeni nesil çipler, oyun performansını optimize ederek daha yüksek kare hızları ve daha verimli enerji kullanımı sunabiliyor. Bu sayede cihazlar hem daha güçlü hem de daha uzun süre oyun oynanabilir hale geliyor, geleceğin oyun teknolojilerinin kapısını aralıyor."}],"picks":[{"name":"Acer Nitro Blaze 8 (GN782U)","why":"Yüksek Qor AI skoruyla üst düzey performans arayanlar için ideal bir seçenek.","id":"pi0udi8ddks7fnu","slug":"acer-nitro-blaze-8"},{"name":"Lenovo Legion Go 2","why":"Geniş ekranı ve modüler kontrolcüleri sayesinde eşsiz bir esneklik ve sürükleyici bir deneyim sunar.","id":"wg25dlbb6u45f6f","slug":"lenovo-legion-go-2"},{"name":"Asus ROG Xbox Ally X (AMD Ryzen AI Z2 Extreme) (RC73XA)","why":"AMD'nin güçlü Ryzen AI işlemcisiyle yüksek performans ve verimlilik vadediyor.","id":"8h12ja08cn3sezh","slug":"asus-rog-xbox-ally-x"},{"name":"MSI Claw A1M (Intel Core Ultra 7 155H / 1 TB) (A1M-089)","why":"Intel Core Ultra işlemcisiyle farklı bir mimari sunarak güçlü ve stabil bir oyun deneyimi sağlar.","id":"id1wb4wz72f6ejj","slug":"msi-claw-a1m"},{"name":"Acer Nitro Blaze 8 (GN782U)","why":"En yeni oyunları akıcı bir şekilde oynamak isteyenler için Qor AI skoru 100/100 ile öne çıkar.","id":"pi0udi8ddks7fnu","slug":"acer-nitro-blaze-8"}],"faq":[{"q":"Taşınabilir oyun konsolları PC oyunlarını çalıştırır mı?","a":"Evet, çoğu modern taşınabilir oyun konsolu Windows işletim sistemiyle geldiği için geniş bir PC oyun kütüphanesine erişim sağlar."},{"q":"Batarya ömrü ne kadar önemli?","a":"Taşınabilir bir cihazda oyun keyfinizin kesintiye uğramaması için batarya ömrü kritik öneme sahiptir. Uzun süreli kullanım için yüksek kapasiteli bataryalar tercih edilmeli."},{"q":"Ekran boyutu ve çözünürlüğü neyi etkiler?","a":"Ekran boyutu ve çözünürlük, oyunların görsel kalitesini ve sürükleyiciliğini doğrudan etkilerken, cihazın taşınabilirliği ve batarya tüketimi üzerinde de rol oynar."},{"q":"Hangi işletim sistemi daha iyi?","a":"Windows, geniş oyun uyumluluğu ve esneklik sunar; diğer özel işletim sistemleri ise daha basit bir kullanıcı deneyimi ve optimizasyon sağlayabilir."}],"updatedAt":"2026-07-24T01:17:40.179Z"}
+{
+  "category": "gaming_consoles",
+  "label": "Oyun Konsolu",
+  "title": "En İyi Oyun Konsolları 2026: Detaylı Seçim Rehberi",
+  "lead": "Oyun dünyası sürekli gelişiyor ve artık sadece sabit konsollarla sınırlı değiliz. Cebinizde veya çantanızda taşıyabileceğiniz güçlü oyun cihazları sayesinde dilediğiniz yerde en yeni oyunların keyfini çıkarabilirsiniz.",
+  "sections": [
+    {
+      "h": "Taşınabilir Oyun Bilgisayarları Yükselişte",
+      "body": "Geleneksel konsolların sunduğu deneyimi avuç içimize sığdıran taşınabilir oyun bilgisayarları, son yılların en büyük trendlerinden. Bu cihazlar, genellikle Windows işletim sistemiyle gelerek devasa bir oyun kütüphanesine erişim imkanı sunuyor ve hem PC hem de konsol oyuncularının ilgisini çekiyor. Mobilite ve performansın birleşimi, onları modern oyuncular için vazgeçilmez kılıyor."
+    },
+    {
+      "h": "Oyun Konsolu Seçerken Nelere Dikkat Etmeli?",
+      "body": "Konsol seçimi yaparken donanım gücü, ekran kalitesi, batarya ömrü ve ergonomi gibi faktörler ön planda olmalı. Güçlü bir işlemci ve grafik birimi akıcı bir oyun deneyimi sağlarken, yüksek çözünürlüklü ve tepki süresi düşük bir ekran görselliği artırır. Uzun batarya ömrü taşınabilirlik için kritik; rahat bir tutuş ve kontrol yerleşimi ise uzun oyun seanslarında konforunuzu garanti eder."
+    },
+    {
+      "h": "Geleceğin Konsolları: Yapay Zeka Destekli Performans",
+      "body": "Günümüz konsollarında yapay zeka entegrasyonu, oyun deneyimini bir üst seviyeye taşıyor. Özellikle AI işlemcilerine sahip yeni nesil çipler, oyun performansını optimize ederek daha yüksek kare hızları ve daha verimli enerji kullanımı sunabiliyor. Bu sayede cihazlar hem daha güçlü hem de daha uzun süre oyun oynanabilir hale geliyor, geleceğin oyun teknolojilerinin kapısını aralıyor."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Acer Nitro Blaze 8 (GN782U)",
+      "why": "Yüksek Qor AI skoruyla üst düzey performans arayanlar için ideal bir seçenek.",
+      "id": "pi0udi8ddks7fnu",
+      "slug": "acer-nitro-blaze-8"
+    },
+    {
+      "name": "Lenovo Legion Go 2",
+      "why": "Geniş ekranı ve modüler kontrolcüleri sayesinde eşsiz bir esneklik ve sürükleyici bir deneyim sunar.",
+      "id": "wg25dlbb6u45f6f",
+      "slug": "lenovo-legion-go-2"
+    },
+    {
+      "name": "Asus ROG Xbox Ally X (AMD Ryzen AI Z2 Extreme) (RC73XA)",
+      "why": "AMD'nin güçlü Ryzen AI işlemcisiyle yüksek performans ve verimlilik vadediyor.",
+      "id": "8h12ja08cn3sezh",
+      "slug": "asus-rog-xbox-ally-x"
+    },
+    {
+      "name": "MSI Claw A1M (Intel Core Ultra 7 155H / 1 TB) (A1M-089)",
+      "why": "Intel Core Ultra işlemcisiyle farklı bir mimari sunarak güçlü ve stabil bir oyun deneyimi sağlar.",
+      "id": "id1wb4wz72f6ejj",
+      "slug": "msi-claw-a1m"
+    },
+    {
+      "name": "Acer Nitro Blaze 8 (GN782U)",
+      "why": "En yeni oyunları akıcı bir şekilde oynamak isteyenler için Qor AI skoru 100/100 ile öne çıkar.",
+      "id": "pi0udi8ddks7fnu",
+      "slug": "acer-nitro-blaze-8"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Taşınabilir oyun konsolları PC oyunlarını çalıştırır mı?",
+      "a": "Evet, çoğu modern taşınabilir oyun konsolu Windows işletim sistemiyle geldiği için geniş bir PC oyun kütüphanesine erişim sağlar."
+    },
+    {
+      "q": "Batarya ömrü ne kadar önemli?",
+      "a": "Taşınabilir bir cihazda oyun keyfinizin kesintiye uğramaması için batarya ömrü kritik öneme sahiptir. Uzun süreli kullanım için yüksek kapasiteli bataryalar tercih edilmeli."
+    },
+    {
+      "q": "Ekran boyutu ve çözünürlüğü neyi etkiler?",
+      "a": "Ekran boyutu ve çözünürlük, oyunların görsel kalitesini ve sürükleyiciliğini doğrudan etkilerken, cihazın taşınabilirliği ve batarya tüketimi üzerinde de rol oynar."
+    },
+    {
+      "q": "Hangi işletim sistemi daha iyi?",
+      "a": "Windows, geniş oyun uyumluluğu ve esneklik sunar; diğer özel işletim sistemleri ise daha basit bir kullanıcı deneyimi ve optimizasyon sağlayabilir."
+    }
+  ],
+  "updatedAt": "2026-07-24T01:17:40.179Z"
+}
