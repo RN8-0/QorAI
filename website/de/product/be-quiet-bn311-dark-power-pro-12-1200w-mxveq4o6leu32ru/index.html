@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/psu">Netzteile</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Be Quiet! BN311 Dark Power Pro 12 1200W</h1><p style="color:#475569;margin:0 0 12px">Be · Netzteile · Qor AI Techscore 93/100</p><img src="https://resim.epey.com/715096/m_be-quiet-bn311-dark-power-pro-12-1200w-3.png" alt="Be Quiet! BN311 Dark Power Pro 12 1200W" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Be Quiet! BN311 Dark Power Pro 12 1200W Highlights: anahtar Yes, aydınlatma No, fan boyutu 120 mm. Sieh dir unten 12 technische Merkmale von Be Quiet! BN311 Dark Power Pro 12 1200W, den Qor AI Techscore und den Vergleich mit ähnlichen Netzteile-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anahtar:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 Adet</strong></li><li><span style="color:#64748b">Fast charging power:</span> <strong>1200 W</strong></li><li><span style="color:#64748b">Güç Verimliliği:</span> <strong>94.7 %</strong></li><li><span style="color:#64748b">Kablo Tipi:</span> <strong>Tam Modüler</strong></li><li><span style="color:#64748b">PFC:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sertifika:</span> <strong>80+ Titanyum</strong></li><li><span style="color:#64748b">Çalışma Sıcaklığı (max):</span> <strong>50 °C</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Netzteile-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/be-quiet-bn346-pure-power-12m-1200w-o3u4k91wcn8ez3p" style="color:#2563eb">Be Quiet! BN346 Pure Power 12M 1200W</a></li><li><a href="/de/product/zalman-teramax-1200w-jo4cc3cpr7wrred" style="color:#2563eb">Zalman TeraMax 1200W</a></li><li><a href="/de/product/zalman-teramax-ii-zm1200-tmx2-1200w-7sctxtk4ubpyj6q" style="color:#2563eb">Zalman TeraMax II ZM1200-TMX2 1200W</a></li><li><a href="/de/product/aerocool-strike-x-1100m-pdhqp95ih6iak69" style="color:#2563eb">Aerocool Strike-X 1100M</a></li><li><a href="/de/product/gamemax-gm-1050-1050w-8zgg6ur3crypbtc" style="color:#2563eb">Gamemax GM-1050 1050W</a></li><li><a href="/de/product/gamepower-gm-1050-1050w-7s5dyzt67bdjca2" style="color:#2563eb">Gamepower GM-1050 1050W</a></li><li><a href="/de/product/high-power-super-gd-1050w-s7lkyg85m8bfju7" style="color:#2563eb">High Power Super GD 1050W (HP1-H1050GD-F14C)</a></li><li><a href="/de/product/lian-li-edge-eg1200g-1200w-d6qac1q15tqfhbm" style="color:#2563eb">Lian Li Edge EG1200G 1200W</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/psu" style="color:#2563eb;font-weight:600">Alle Netzteile-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/psu">Netzteile</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Be Quiet! BN311 Dark Power Pro 12 1200W</h1><p style="color:#475569;margin:0 0 12px">Be · Netzteile · Qor AI Techscore 93/100</p><img src="https://resim.epey.com/715096/m_be-quiet-bn311-dark-power-pro-12-1200w-3.png" alt="Be Quiet! BN311 Dark Power Pro 12 1200W" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Be Quiet! BN311 Dark Power Pro 12 1200W Highlights: anahtar Yes, aydınlatma No, fan boyutu 120 mm. Sieh dir unten 12 technische Merkmale von Be Quiet! BN311 Dark Power Pro 12 1200W, den Qor AI Techscore und den Vergleich mit ähnlichen Netzteile-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anahtar:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 Adet</strong></li><li><span style="color:#64748b">Fast charging power:</span> <strong>1200 W</strong></li><li><span style="color:#64748b">Güç Verimliliği:</span> <strong>94.7 %</strong></li><li><span style="color:#64748b">Kablo Tipi:</span> <strong>Tam Modüler</strong></li><li><span style="color:#64748b">PFC:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sertifika:</span> <strong>80+ Titanyum</strong></li><li><span style="color:#64748b">Çalışma Sıcaklığı (max):</span> <strong>50 °C</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Netzteile-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/be-quiet-bn346-pure-power-12m-1200w-o3u4k91wcn8ez3p" style="color:#2563eb">Be Quiet! BN346 Pure Power 12M 1200W</a></li><li><a href="/de/product/zalman-teramax-1200w-jo4cc3cpr7wrred" style="color:#2563eb">Zalman TeraMax 1200W</a></li><li><a href="/de/product/zalman-teramax-ii-zm1200-tmx2-1200w-7sctxtk4ubpyj6q" style="color:#2563eb">Zalman TeraMax II ZM1200-TMX2 1200W</a></li><li><a href="/de/product/aerocool-strike-x-1100m-pdhqp95ih6iak69" style="color:#2563eb">Aerocool Strike-X 1100M</a></li><li><a href="/de/product/gamemax-gm-1050-1050w-8zgg6ur3crypbtc" style="color:#2563eb">Gamemax GM-1050 1050W</a></li><li><a href="/de/product/gamepower-gm-1050-1050w-7s5dyzt67bdjca2" style="color:#2563eb">Gamepower GM-1050 1050W</a></li><li><a href="/de/product/high-power-super-gd-1050w-s7lkyg85m8bfju7" style="color:#2563eb">High Power Super GD 1050W (HP1-H1050GD-F14C)</a></li><li><a href="/de/product/lian-li-edge-eg1200g-1200w-d6qac1q15tqfhbm" style="color:#2563eb">Lian Li Edge EG1200G 1200W</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/psu" style="color:#2563eb;font-weight:600">Alle Netzteile-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

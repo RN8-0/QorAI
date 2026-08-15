@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/powerbanks">Powerbanks</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Havit PB5228 10000 mAh Powerbank</h1><p style="color:#475569;margin:0 0 12px">Havit · Powerbanks · Qor AI Techscore 86/100</p><img src="https://resim.epey.com/1006657/m_havit-pb5228-1.jpg" alt="Havit PB5228 10000 mAh Powerbank" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Havit PB5228 10000 mAh Powerbank Highlights: 1. output akımı 2 A, 1. output bağlantı tipi USB Type-C, battery capacity 10000 mAh. Sieh dir unten 26 technische Merkmale von Havit PB5228 10000 mAh Powerbank, den Qor AI Techscore und den Vergleich mit ähnlichen Powerbanks-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Akımı:</span> <strong>2 A</strong></li><li><span style="color:#64748b">1. Output Bağlantı Tipi:</span> <strong>USB Type-C</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>10000 mAh</strong></li><li><span style="color:#64748b">Doluluk Göstergesi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">El Feneri Özelliği:</span> <strong>No</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>PPS Yes</strong></li><li><span style="color:#64748b">Output Adedi:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Weight:</span> <strong>198 g</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Powerbanks-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/duracell-core-10-dpipgso7tqk3gzd" style="color:#2563eb">Duracell Core 10 10000 mAh Powerbank (DRPB3040A)</a></li><li><a href="/de/product/newface-x01-ss01jtzzxrvv85l" style="color:#2563eb">Newface X01 20000 mAh Powerbank</a></li><li><a href="/de/product/newface-mag101-d49g8gkdo9nvblv" style="color:#2563eb">Newface MAG101 10000 mAh Powerbank</a></li><li><a href="/de/product/simex-w-power-s-33-4pafgl92n6npbqy" style="color:#2563eb">Simex W-Power S-33 10000 mAh Powerbank</a></li><li><a href="/de/product/newface-nf20-bq2cahg59qz8lqf" style="color:#2563eb">Newface NF20 10000 mAh Powerbank</a></li><li><a href="/de/product/simex-polite-s-38-t1070lrqy1wskqj" style="color:#2563eb">Simex Polite S-38 10000 mAh Powerbank</a></li><li><a href="/de/product/robor-luxury-r765-h4mqi0dzcpl3ymg" style="color:#2563eb">Robor Luxury R765 20000 mAh Powerbank</a></li><li><a href="/de/product/rock-p90-fmxpsq54bs9inyb" style="color:#2563eb">Rock P90 10000 mAh Powerbank</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/powerbanks" style="color:#2563eb;font-weight:600">Alle Powerbanks-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/powerbanks">Powerbanks</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Havit PB5228 10000 mAh Powerbank</h1><p style="color:#475569;margin:0 0 12px">Havit · Powerbanks · Qor AI Techscore 86/100</p><img src="https://resim.epey.com/1006657/m_havit-pb5228-1.jpg" alt="Havit PB5228 10000 mAh Powerbank" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Havit PB5228 10000 mAh Powerbank Highlights: 1. output akımı 2 A, 1. output bağlantı tipi USB Type-C, battery capacity 10000 mAh. Sieh dir unten 26 technische Merkmale von Havit PB5228 10000 mAh Powerbank, den Qor AI Techscore und den Vergleich mit ähnlichen Powerbanks-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Akımı:</span> <strong>2 A</strong></li><li><span style="color:#64748b">1. Output Bağlantı Tipi:</span> <strong>USB Type-C</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>10000 mAh</strong></li><li><span style="color:#64748b">Doluluk Göstergesi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">El Feneri Özelliği:</span> <strong>No</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>PPS Yes</strong></li><li><span style="color:#64748b">Output Adedi:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Weight:</span> <strong>198 g</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Powerbanks-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/duracell-core-10-dpipgso7tqk3gzd" style="color:#2563eb">Duracell Core 10 10000 mAh Powerbank (DRPB3040A)</a></li><li><a href="/de/product/newface-x01-ss01jtzzxrvv85l" style="color:#2563eb">Newface X01 20000 mAh Powerbank</a></li><li><a href="/de/product/newface-mag101-d49g8gkdo9nvblv" style="color:#2563eb">Newface MAG101 10000 mAh Powerbank</a></li><li><a href="/de/product/simex-w-power-s-33-4pafgl92n6npbqy" style="color:#2563eb">Simex W-Power S-33 10000 mAh Powerbank</a></li><li><a href="/de/product/newface-nf20-bq2cahg59qz8lqf" style="color:#2563eb">Newface NF20 10000 mAh Powerbank</a></li><li><a href="/de/product/simex-polite-s-38-t1070lrqy1wskqj" style="color:#2563eb">Simex Polite S-38 10000 mAh Powerbank</a></li><li><a href="/de/product/robor-luxury-r765-h4mqi0dzcpl3ymg" style="color:#2563eb">Robor Luxury R765 20000 mAh Powerbank</a></li><li><a href="/de/product/rock-p90-fmxpsq54bs9inyb" style="color:#2563eb">Rock P90 10000 mAh Powerbank</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/powerbanks" style="color:#2563eb;font-weight:600">Alle Powerbanks-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

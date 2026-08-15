@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/pc_cases">PC Cases</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gamdias athena M3 750W computer case</h1><p style="color:#475569;margin:0 0 12px">Gamdias · PC Cases · Qor AI tech score 100/100</p><img src="https://resim.epey.com/1027808/m_gamdias-athena-m3-750wss-1.jpg" alt="Gamdias athena M3 750W computer case" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gamdias athena M3 750W computer case key features: anakart uyumluluğu ATX, dahili fan count 4 fan, disk yuvası (2.5) 4 adet. Review Gamdias athena M3 750W computer case's 30 technical specs, its Qor AI tech score and how it compares with similar models in pc cases below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anakart Uyumluluğu:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Dahili Fan Count:</span> <strong>4 fan</strong></li><li><span style="color:#64748b">Disk Yuvası (2.5):</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Fan Kapasitesi:</span> <strong>7 adet</strong></li><li><span style="color:#64748b">Güç Kaynağı (PSU):</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toz Filtresi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in PC Cases</h2><ul style="line-height:1.8"><li><a href="/product/gamdias-athena-m3-1600w-z9ayielxwras8ak" style="color:#2563eb">Gamdias athena M3 1600W computer case</a></li><li><a href="/product/gamdias-athena-m3-850w-36a1xaascdgzw48" style="color:#2563eb">Gamdias athena M3 850W computer case</a></li><li><a href="/product/montech-x5-hsefvdzbuy49pgt" style="color:#2563eb">Montech X5 computer case</a></li><li><a href="/product/montech-air-903-max-wlwlot0sbahwwtc" style="color:#2563eb">Montech air 903 max computer case</a></li><li><a href="/product/fazeon-f20-650w-24h2nbessoulj81" style="color:#2563eb">Fazeon F20 650W computer case</a></li><li><a href="/product/xpg-battlecruiser-siyah-c00rouke9sk82ee" style="color:#2563eb">Xpg battlecruiser computer case</a></li><li><a href="/product/fazeon-f8-650w-l8gj7qrm3g0rmfo" style="color:#2563eb">Fazeon F8 650W computer case</a></li><li><a href="/product/xpg-defender-pro-beyaz-wi9wqt93uajmkll" style="color:#2563eb">Xpg defender pro computer case</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/pc_cases" style="color:#2563eb;font-weight:600">Compare all PC Cases →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/pc_cases">PC Cases</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gamdias athena M3 750W computer case</h1><p style="color:#475569;margin:0 0 12px">Gamdias · PC Cases · Qor AI tech score 100/100</p><img src="https://resim.epey.com/1027808/m_gamdias-athena-m3-750wss-1.jpg" alt="Gamdias athena M3 750W computer case" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gamdias athena M3 750W computer case key features: anakart uyumluluğu ATX, dahili fan count 4 fan, disk yuvası (2.5) 4 adet. Review Gamdias athena M3 750W computer case's 30 technical specs, its Qor AI tech score and how it compares with similar models in pc cases below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anakart Uyumluluğu:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Dahili Fan Count:</span> <strong>4 fan</strong></li><li><span style="color:#64748b">Disk Yuvası (2.5):</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Fan Kapasitesi:</span> <strong>7 adet</strong></li><li><span style="color:#64748b">Güç Kaynağı (PSU):</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toz Filtresi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in PC Cases</h2><ul style="line-height:1.8"><li><a href="/product/gamdias-athena-m3-1600w-z9ayielxwras8ak" style="color:#2563eb">Gamdias athena M3 1600W computer case</a></li><li><a href="/product/gamdias-athena-m3-850w-36a1xaascdgzw48" style="color:#2563eb">Gamdias athena M3 850W computer case</a></li><li><a href="/product/montech-x5-hsefvdzbuy49pgt" style="color:#2563eb">Montech X5 computer case</a></li><li><a href="/product/montech-air-903-max-wlwlot0sbahwwtc" style="color:#2563eb">Montech air 903 max computer case</a></li><li><a href="/product/fazeon-f20-650w-24h2nbessoulj81" style="color:#2563eb">Fazeon F20 650W computer case</a></li><li><a href="/product/xpg-battlecruiser-siyah-c00rouke9sk82ee" style="color:#2563eb">Xpg battlecruiser computer case</a></li><li><a href="/product/fazeon-f8-650w-l8gj7qrm3g0rmfo" style="color:#2563eb">Fazeon F8 650W computer case</a></li><li><a href="/product/xpg-defender-pro-beyaz-wi9wqt93uajmkll" style="color:#2563eb">Xpg defender pro computer case</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/pc_cases" style="color:#2563eb;font-weight:600">Compare all PC Cases →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB)</h1><p style="color:#475569;margin:0 0 12px">Gigabyte · SSDs · Qor AI Techscore 87/100</p><img src="https://resim.epey.com/854046/m_gigabyte-aorus-gen5-10000-ag510k2tb-1.jpg" alt="Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB) Highlights: battery capacity 2 TB, bağlantı arayüzü m.2, storage NAND. Sieh dir unten 24 technische Merkmale von Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB), den Qor AI Techscore und den Vergleich mit ähnlichen SSDs-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>10000 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>9500 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>1.400 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li><li><span style="color:#64748b">Ön Bellek Kapasitesi:</span> <strong>4 GB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche SSDs-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/msi-spatium-m570-2tb-kpvtqxcbszkzi9m" style="color:#2563eb">MSI Spatium M570 SSD (2 TB)</a></li><li><a href="/de/product/kioxia-exceria-g3-2-tb-315a5w2r6han0dz" style="color:#2563eb">Kioxia Exceria G3 SSD (2 TB) (LVC10Z002TG8)</a></li><li><a href="/de/product/corsair-mp700-cssd-f2000gbmp700r2-sd4oh0641j10r6q" style="color:#2563eb">Corsair MP700 SSD (2 TB) (CSSD-F2000GBMP700R2)</a></li><li><a href="/de/product/adata-legend-970-sleg-970-2000gci-m5qzlw2vaxvnsok" style="color:#2563eb">Adata Legend 970 SSD (2 TB) (SLEG-970-2000GCI)</a></li><li><a href="/de/product/crucial-p510-pcie-gen5-1-tb-9e62z4b4icr1g91" style="color:#2563eb">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)</a></li><li><a href="/de/product/seagate-firecuda-540-zp2000gm3a004-vykyzju8xph9g3i" style="color:#2563eb">Seagate FireCuda 540 SSD (2 TB) (ZP2000GM3A004)</a></li><li><a href="/de/product/mld-m800-2-tb-gfl0qrpzl36mo4i" style="color:#2563eb">MLD M800 SSD (2 TB) (MLD22M800E31-2000)</a></li><li><a href="/de/product/goodram-core-4-tb-tuivl55btllde9p" style="color:#2563eb">Goodram Core SSD (4 TB) (SSDR-GRC01-4K0-80)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ssd" style="color:#2563eb;font-weight:600">Alle SSDs-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB)</h1><p style="color:#475569;margin:0 0 12px">Gigabyte · SSDs · Qor AI Techscore 87/100</p><img src="https://resim.epey.com/854046/m_gigabyte-aorus-gen5-10000-ag510k2tb-1.jpg" alt="Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB) Highlights: battery capacity 2 TB, bağlantı arayüzü m.2, storage NAND. Sieh dir unten 24 technische Merkmale von Gigabyte Aorus Gen5 10000 SSD (2 TB) (AG510K2TB), den Qor AI Techscore und den Vergleich mit ähnlichen SSDs-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>10000 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>9500 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>1.400 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li><li><span style="color:#64748b">Ön Bellek Kapasitesi:</span> <strong>4 GB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche SSDs-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/msi-spatium-m570-2tb-kpvtqxcbszkzi9m" style="color:#2563eb">MSI Spatium M570 SSD (2 TB)</a></li><li><a href="/de/product/kioxia-exceria-g3-2-tb-315a5w2r6han0dz" style="color:#2563eb">Kioxia Exceria G3 SSD (2 TB) (LVC10Z002TG8)</a></li><li><a href="/de/product/corsair-mp700-cssd-f2000gbmp700r2-sd4oh0641j10r6q" style="color:#2563eb">Corsair MP700 SSD (2 TB) (CSSD-F2000GBMP700R2)</a></li><li><a href="/de/product/adata-legend-970-sleg-970-2000gci-m5qzlw2vaxvnsok" style="color:#2563eb">Adata Legend 970 SSD (2 TB) (SLEG-970-2000GCI)</a></li><li><a href="/de/product/crucial-p510-pcie-gen5-1-tb-9e62z4b4icr1g91" style="color:#2563eb">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)</a></li><li><a href="/de/product/seagate-firecuda-540-zp2000gm3a004-vykyzju8xph9g3i" style="color:#2563eb">Seagate FireCuda 540 SSD (2 TB) (ZP2000GM3A004)</a></li><li><a href="/de/product/mld-m800-2-tb-gfl0qrpzl36mo4i" style="color:#2563eb">MLD M800 SSD (2 TB) (MLD22M800E31-2000)</a></li><li><a href="/de/product/goodram-core-4-tb-tuivl55btllde9p" style="color:#2563eb">Goodram Core SSD (4 TB) (SSDR-GRC01-4K0-80)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ssd" style="color:#2563eb;font-weight:600">Alle SSDs-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

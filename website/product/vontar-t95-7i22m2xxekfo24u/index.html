@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/media_players">Media Players</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Vontar T95 media player</h1><p style="color:#475569;margin:0 0 12px">Vontar · Media Players · Qor AI tech score 88/100</p><img src="https://resim.epey.com/420133/m_vontar-t95-1.jpg" alt="Vontar T95 media player" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Vontar T95 media player key features: ethernet hızı 100 Mbit/s, fps değeri 30 fps, hdmi standardı 2.0. Review Vontar T95 media player's 30 technical specs, its Qor AI tech score and how it compares with similar models in media players below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">FPS Değeri:</span> <strong>30 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.0</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>5760x3240 p 6K</strong></li><li><span style="color:#64748b">Storage:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Media Players</h2><ul style="line-height:1.8"><li><a href="/product/fobem-vision-s-dtustg8m48b3fsf" style="color:#2563eb">Fobem vision s media player</a></li><li><a href="/product/vontar-x3-0pch5c2ce1kgpv6" style="color:#2563eb">Vontar X3 media player</a></li><li><a href="/product/vontar-kk-max-ui0tdddtple5fgl" style="color:#2563eb">Vontar kk max media player</a></li><li><a href="/product/inka-v9-32-gb-wstg4xbrsdt7c6o" style="color:#2563eb">Inca V9 32 GB media player</a></li><li><a href="/product/formuler-z10-pro-max-5xmypj4ujg6xemv" style="color:#2563eb">Formuler Z10 Pro Max Medya Oynatıcı</a></li><li><a href="/product/beelink-gt-king-11asn3s7kd6a5y7" style="color:#2563eb">Beelink gt-king media player</a></li><li><a href="/product/ugoos-am6-plus-0mdzynu8yqp4z9k" style="color:#2563eb">Ugoos AM6 plus media player</a></li><li><a href="/product/beelink-gs-king-x-bjlmpvuje0liwnz" style="color:#2563eb">Beelink gs-king x media player</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/media_players" style="color:#2563eb;font-weight:600">Compare all Media Players →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/media_players">Media Players</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Vontar T95 media player</h1><p style="color:#475569;margin:0 0 12px">Vontar · Media Players · Qor AI tech score 88/100</p><img src="https://resim.epey.com/420133/m_vontar-t95-1.jpg" alt="Vontar T95 media player" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Vontar T95 media player key features: ethernet hızı 100 Mbit/s, fps değeri 30 fps, hdmi standardı 2.0. Review Vontar T95 media player's 30 technical specs, its Qor AI tech score and how it compares with similar models in media players below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">FPS Değeri:</span> <strong>30 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.0</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>5760x3240 p 6K</strong></li><li><span style="color:#64748b">Storage:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Media Players</h2><ul style="line-height:1.8"><li><a href="/product/fobem-vision-s-dtustg8m48b3fsf" style="color:#2563eb">Fobem vision s media player</a></li><li><a href="/product/vontar-x3-0pch5c2ce1kgpv6" style="color:#2563eb">Vontar X3 media player</a></li><li><a href="/product/vontar-kk-max-ui0tdddtple5fgl" style="color:#2563eb">Vontar kk max media player</a></li><li><a href="/product/inka-v9-32-gb-wstg4xbrsdt7c6o" style="color:#2563eb">Inca V9 32 GB media player</a></li><li><a href="/product/formuler-z10-pro-max-5xmypj4ujg6xemv" style="color:#2563eb">Formuler Z10 Pro Max Medya Oynatıcı</a></li><li><a href="/product/beelink-gt-king-11asn3s7kd6a5y7" style="color:#2563eb">Beelink gt-king media player</a></li><li><a href="/product/ugoos-am6-plus-0mdzynu8yqp4z9k" style="color:#2563eb">Ugoos AM6 plus media player</a></li><li><a href="/product/beelink-gs-king-x-bjlmpvuje0liwnz" style="color:#2563eb">Beelink gs-king x media player</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/media_players" style="color:#2563eb;font-weight:600">Compare all Media Players →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

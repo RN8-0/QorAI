@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpus">İşlemci</a></nav><h1 style="font-size:26px;margin:12px 0 4px">AMD Ryzen 7 7700 (100-000000592)</h1><p style="color:#475569;margin:0 0 12px">AMD · İşlemci · Qor AI teknik skoru 62/100</p><img src="https://resim.epey.com/837217/m_amd-ryzen-7-7700-4.jpg" alt="AMD Ryzen 7 7700 (100-000000592)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">AMD Ryzen 7 7700 (100-000000592) öne çıkan özellikleri: artırılmış frequency 5.3 GHz, bellek hızı 5200 MHz, bellek türü DDR5. AMD Ryzen 7 7700 (100-000000592) 34 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Artırılmış Frequency:</span> <strong>5.3 GHz</strong></li><li><span style="color:#64748b">Bellek Hızı:</span> <strong>5200 MHz</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>65 W</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2023</strong></li><li><span style="color:#64748b">PCIe Sürümü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Temel Frequency:</span> <strong>3.8 GHz</strong></li><li><span style="color:#64748b">Önbellek L1:</span> <strong>512 KB</strong></li><li><span style="color:#64748b">Önbellek L2:</span> <strong>8 MB</strong></li><li><span style="color:#64748b">Önbellek L3:</span> <strong>32 MB</strong></li><li><span style="color:#64748b">İş Parçacığı:</span> <strong>16</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/intel-core-i9-12900t-szvkx2rrds8fme1" style="color:#2563eb">Intel Core i9-12900T</a></li><li><a href="/tr/product/intel-core-i5-14400t-vso5i794mxesckb" style="color:#2563eb">Intel Core i5-14400T (CM8071505092805)</a></li><li><a href="/tr/product/amd-ryzen-5-7400-kxwt1ukr0kff35i" style="color:#2563eb">AMD Ryzen 5 7400 (100-000001900)</a></li><li><a href="/tr/product/intel-core-i5-14600k-vfyx9dhs3w6sb2l" style="color:#2563eb">Intel Core i5-14600K (BX8071514600K)</a></li><li><a href="/tr/product/intel-core-i5-14600kf-a8x5ltfuk51uxq8" style="color:#2563eb">Intel Core i5-14600KF (BX8071514600KF)</a></li><li><a href="/tr/product/amd-ryzen-9-5900-j3nzzhhja3t9qpa" style="color:#2563eb">AMD Ryzen 9 5900</a></li><li><a href="/tr/product/amd-ryzen-5-8400f-7vifv24v7tdxrfl" style="color:#2563eb">AMD Ryzen 5 8400F (100-100001591BOX)</a></li><li><a href="/tr/product/amd-ryzen-5-7600x3d-6cdiexnnjsyu845" style="color:#2563eb">AMD Ryzen 5 7600X3D (100-000001721)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpus" style="color:#2563eb;font-weight:600">Tüm İşlemci modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpus">İşlemci</a></nav><h1 style="font-size:26px;margin:12px 0 4px">AMD Ryzen 7 7700 (100-000000592)</h1><p style="color:#475569;margin:0 0 12px">AMD · İşlemci · Qor AI teknik skoru 62/100</p><img src="https://resim.epey.com/837217/m_amd-ryzen-7-7700-4.jpg" alt="AMD Ryzen 7 7700 (100-000000592)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">AMD Ryzen 7 7700 (100-000000592) öne çıkan özellikleri: artırılmış frequency 5.3 GHz, bellek hızı 5200 MHz, bellek türü DDR5. AMD Ryzen 7 7700 (100-000000592) 34 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Artırılmış Frequency:</span> <strong>5.3 GHz</strong></li><li><span style="color:#64748b">Bellek Hızı:</span> <strong>5200 MHz</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>65 W</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2023</strong></li><li><span style="color:#64748b">PCIe Sürümü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Temel Frequency:</span> <strong>3.8 GHz</strong></li><li><span style="color:#64748b">Önbellek L1:</span> <strong>512 KB</strong></li><li><span style="color:#64748b">Önbellek L2:</span> <strong>8 MB</strong></li><li><span style="color:#64748b">Önbellek L3:</span> <strong>32 MB</strong></li><li><span style="color:#64748b">İş Parçacığı:</span> <strong>16</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/intel-core-i9-12900t-szvkx2rrds8fme1" style="color:#2563eb">Intel Core i9-12900T</a></li><li><a href="/tr/product/intel-core-i5-14400t-vso5i794mxesckb" style="color:#2563eb">Intel Core i5-14400T (CM8071505092805)</a></li><li><a href="/tr/product/amd-ryzen-5-7400-kxwt1ukr0kff35i" style="color:#2563eb">AMD Ryzen 5 7400 (100-000001900)</a></li><li><a href="/tr/product/intel-core-i5-14600k-vfyx9dhs3w6sb2l" style="color:#2563eb">Intel Core i5-14600K (BX8071514600K)</a></li><li><a href="/tr/product/intel-core-i5-14600kf-a8x5ltfuk51uxq8" style="color:#2563eb">Intel Core i5-14600KF (BX8071514600KF)</a></li><li><a href="/tr/product/amd-ryzen-9-5900-j3nzzhhja3t9qpa" style="color:#2563eb">AMD Ryzen 9 5900</a></li><li><a href="/tr/product/amd-ryzen-5-8400f-7vifv24v7tdxrfl" style="color:#2563eb">AMD Ryzen 5 8400F (100-100001591BOX)</a></li><li><a href="/tr/product/amd-ryzen-5-7600x3d-6cdiexnnjsyu845" style="color:#2563eb">AMD Ryzen 5 7600X3D (100-000001721)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpus" style="color:#2563eb;font-weight:600">Tüm İşlemci modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

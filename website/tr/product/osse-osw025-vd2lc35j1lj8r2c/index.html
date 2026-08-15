@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartwatches">Akıllı Saat</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Osse OSW025 Smartwatch</h1><p style="color:#475569;margin:0 0 12px">Osse · Akıllı Saat · Qor AI teknik skoru 68/100</p><img src="https://resim.epey.com/728746/m_osse-osw025-1.jpg" alt="Osse OSW025 Smartwatch" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Osse OSW025 Smartwatch öne çıkan özellikleri: flicker Yes, location info No, main camera No. Osse OSW025 Smartwatch 28 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı saat modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Flicker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Location Info:</span> <strong>No</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Speakers:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Saat modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/ferrucci-s8-plus-4pmb6sli7e71or3" style="color:#2563eb">Ferrucci S8 Plus Smartwatch</a></li><li><a href="/tr/product/hiking-wh2-gabg9jw8idm7ql1" style="color:#2563eb">Hiking WH2 Smartwatch</a></li><li><a href="/tr/product/ferrucci-027t-t8ued84w97e78wk" style="color:#2563eb">Ferrucci 027T Smartwatch</a></li><li><a href="/tr/product/samsung-galaxy-watch-8-44mm-84chmq6kad75j7u" style="color:#2563eb">Samsung Galaxy Watch 8 44mm Smartwatch (SM-L330NZSATUR)</a></li><li><a href="/tr/product/samsung-galaxy-watch-8-classic-zm457iy3ga2dses" style="color:#2563eb">Samsung Galaxy Watch 8 Classic Smartwatch (SM-L500NZKATUR)</a></li><li><a href="/tr/product/apple-watch-series-11-cellular-42mm-titanyum-kasa-ve-milano-loop-btm44gioayb5t80" style="color:#2563eb">Apple Watch Series 11 Cellular 42mm Titanium Case ve Milano Loop Smartwatch</a></li><li><a href="/tr/product/apple-watch-se-3-cellular-40mm-aluminyum-kasa-ve-spor-kordon-hduuwcksyf3a182" style="color:#2563eb">Apple Watch SE 3 Cellular 40mm Aluminum Case ve Spor Kordon Smartwatch</a></li><li><a href="/tr/product/apple-watch-series-11-cellular-42mm-aluminyum-kasa-ve-spor-kordon-3rwyqyp0uyf5113" style="color:#2563eb">Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartwatches" style="color:#2563eb;font-weight:600">Tüm Akıllı Saat modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartwatches">Akıllı Saat</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Osse OSW025 Smartwatch</h1><p style="color:#475569;margin:0 0 12px">Osse · Akıllı Saat · Qor AI teknik skoru 68/100</p><img src="https://resim.epey.com/728746/m_osse-osw025-1.jpg" alt="Osse OSW025 Smartwatch" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Osse OSW025 Smartwatch öne çıkan özellikleri: flicker Yes, location info No, main camera No. Osse OSW025 Smartwatch 28 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı saat modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Flicker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Location Info:</span> <strong>No</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Speakers:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Saat modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/ferrucci-s8-plus-4pmb6sli7e71or3" style="color:#2563eb">Ferrucci S8 Plus Smartwatch</a></li><li><a href="/tr/product/hiking-wh2-gabg9jw8idm7ql1" style="color:#2563eb">Hiking WH2 Smartwatch</a></li><li><a href="/tr/product/ferrucci-027t-t8ued84w97e78wk" style="color:#2563eb">Ferrucci 027T Smartwatch</a></li><li><a href="/tr/product/samsung-galaxy-watch-8-44mm-84chmq6kad75j7u" style="color:#2563eb">Samsung Galaxy Watch 8 44mm Smartwatch (SM-L330NZSATUR)</a></li><li><a href="/tr/product/samsung-galaxy-watch-8-classic-zm457iy3ga2dses" style="color:#2563eb">Samsung Galaxy Watch 8 Classic Smartwatch (SM-L500NZKATUR)</a></li><li><a href="/tr/product/apple-watch-series-11-cellular-42mm-titanyum-kasa-ve-milano-loop-btm44gioayb5t80" style="color:#2563eb">Apple Watch Series 11 Cellular 42mm Titanium Case ve Milano Loop Smartwatch</a></li><li><a href="/tr/product/apple-watch-se-3-cellular-40mm-aluminyum-kasa-ve-spor-kordon-hduuwcksyf3a182" style="color:#2563eb">Apple Watch SE 3 Cellular 40mm Aluminum Case ve Spor Kordon Smartwatch</a></li><li><a href="/tr/product/apple-watch-series-11-cellular-42mm-aluminyum-kasa-ve-spor-kordon-3rwyqyp0uyf5113" style="color:#2563eb">Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartwatches" style="color:#2563eb;font-weight:600">Tüm Akıllı Saat modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

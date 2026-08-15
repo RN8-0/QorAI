@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/pc_cases">PC-Gehäuse</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Antec C8 computer safe</h1><p style="color:#475569;margin:0 0 12px">Antec · PC-Gehäuse · Qor AI Techscore 100/100</p><img src="https://resim.epey.com/1047071/m_antec-c8-1.jpg" alt="Antec C8 computer safe" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Antec C8 computer safe Highlights: anakart uyumluluğu ATX, dahili fan count 0 fan, disk yuvası (2.5) 4 adet. Sieh dir unten 28 technische Merkmale von Antec C8 computer safe, den Qor AI Techscore und den Vergleich mit ähnlichen PC-Gehäuse-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anakart Uyumluluğu:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Dahili Fan Count:</span> <strong>0 fan</strong></li><li><span style="color:#64748b">Disk Yuvası (2.5):</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Disk Yuvası (3.5):</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Kapasitesi:</span> <strong>10 adet</strong></li><li><span style="color:#64748b">Güç Kaynağı (PSU):</span> <strong>No</strong></li><li><span style="color:#64748b">Toz Filtresi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche PC-Gehäuse-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/antec-ax1000-argb-ooif7lqbq604bq5" style="color:#2563eb">Antec AX1000 argb computer case</a></li><li><a href="/de/product/antec-c8-argb-6p4s5geu1od0n4y" style="color:#2563eb">Antec C8 argb computer case</a></li><li><a href="/de/product/antec-c8-wood-0xshpnuk8jnnzlq" style="color:#2563eb">Antec C8 wood computer case</a></li><li><a href="/de/product/antec-flux-beyaz-v7iegaw2axhpuap" style="color:#2563eb">Antec flux computer safe</a></li><li><a href="/de/product/bitfenix-dh50-850w-ifbt0riqg27cryj" style="color:#2563eb">Bitfenix DH50 850W computer case</a></li><li><a href="/de/product/gamebooster-nyvra-alpha-750w-jzj8ftyaeq3u7nu" style="color:#2563eb">Gamebooster nyvra alpha 750W computer case</a></li><li><a href="/de/product/nzxt-h5-flow-cc-h52fb-01-z2fxvbtkko8en52" style="color:#2563eb">Nzxt H5 flow computer case (CC-H52FB-01)</a></li><li><a href="/de/product/gamebooster-mystral-750w-j106x6szkhnl2s9" style="color:#2563eb">Gamebooster mystral 750W computer case</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/pc_cases" style="color:#2563eb;font-weight:600">Alle PC-Gehäuse-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/pc_cases">PC-Gehäuse</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Antec C8 computer safe</h1><p style="color:#475569;margin:0 0 12px">Antec · PC-Gehäuse · Qor AI Techscore 100/100</p><img src="https://resim.epey.com/1047071/m_antec-c8-1.jpg" alt="Antec C8 computer safe" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Antec C8 computer safe Highlights: anakart uyumluluğu ATX, dahili fan count 0 fan, disk yuvası (2.5) 4 adet. Sieh dir unten 28 technische Merkmale von Antec C8 computer safe, den Qor AI Techscore und den Vergleich mit ähnlichen PC-Gehäuse-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anakart Uyumluluğu:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Dahili Fan Count:</span> <strong>0 fan</strong></li><li><span style="color:#64748b">Disk Yuvası (2.5):</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Disk Yuvası (3.5):</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Kapasitesi:</span> <strong>10 adet</strong></li><li><span style="color:#64748b">Güç Kaynağı (PSU):</span> <strong>No</strong></li><li><span style="color:#64748b">Toz Filtresi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche PC-Gehäuse-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/antec-ax1000-argb-ooif7lqbq604bq5" style="color:#2563eb">Antec AX1000 argb computer case</a></li><li><a href="/de/product/antec-c8-argb-6p4s5geu1od0n4y" style="color:#2563eb">Antec C8 argb computer case</a></li><li><a href="/de/product/antec-c8-wood-0xshpnuk8jnnzlq" style="color:#2563eb">Antec C8 wood computer case</a></li><li><a href="/de/product/antec-flux-beyaz-v7iegaw2axhpuap" style="color:#2563eb">Antec flux computer safe</a></li><li><a href="/de/product/bitfenix-dh50-850w-ifbt0riqg27cryj" style="color:#2563eb">Bitfenix DH50 850W computer case</a></li><li><a href="/de/product/gamebooster-nyvra-alpha-750w-jzj8ftyaeq3u7nu" style="color:#2563eb">Gamebooster nyvra alpha 750W computer case</a></li><li><a href="/de/product/nzxt-h5-flow-cc-h52fb-01-z2fxvbtkko8en52" style="color:#2563eb">Nzxt H5 flow computer case (CC-H52FB-01)</a></li><li><a href="/de/product/gamebooster-mystral-750w-j106x6szkhnl2s9" style="color:#2563eb">Gamebooster mystral 750W computer case</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/pc_cases" style="color:#2563eb;font-weight:600">Alle PC-Gehäuse-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

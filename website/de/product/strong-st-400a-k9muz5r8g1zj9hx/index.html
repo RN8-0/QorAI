@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/cpu_coolers">CPU-Kühler</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Strong ST-400A processor cooler</h1><p style="color:#475569;margin:0 0 12px">Strong · CPU-Kühler · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/936145/m_strong-st-400a-1.jpg" alt="Strong ST-400A processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Strong ST-400A processor cooler Highlights: aydınlatma Yes, fan audio seviyesi 28 dBA, fan bağlantısı 4 pin. Sieh dir unten 18 technische Merkmale von Strong ST-400A processor cooler, den Qor AI Techscore und den Vergleich mit ähnlichen CPU-Kühler-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>28 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>1800 RPM</strong></li><li><span style="color:#64748b">Güç Tüketimi (Fan):</span> <strong>3.2 W</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>71 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>165 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche CPU-Kühler-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/xpg-levante-ii-360-prj7wrqx8drgpyz" style="color:#2563eb">Xpg levante ii 360 processor cooler</a></li><li><a href="/de/product/strong-st-120h-akw2vsfbudrf21m" style="color:#2563eb">Strong ST-120H processor cooler</a></li><li><a href="/de/product/xpg-maestro-plus-62da-jc4w5g8x90uqxeu" style="color:#2563eb">Xpg maestro plus 62DA processor cooler</a></li><li><a href="/de/product/strong-st-r600-rx7gnz45s9z5ve3" style="color:#2563eb">Strong ST-R600 processor cooler</a></li><li><a href="/de/product/strong-m3-206jmfr5ryodvpj" style="color:#2563eb">Strong M3 processor cooler</a></li><li><a href="/de/product/strong-m4-12xpro-zwkfl1bgtmqrurn" style="color:#2563eb">Strong M4-12XPRO processor cooler</a></li><li><a href="/de/product/sharkoon-a50-rgb-dy14tp2cel7uadq" style="color:#2563eb">Sharkoon A50 RGB processor cooler</a></li><li><a href="/de/product/sharkoon-a50-f8gosyvwwc30cky" style="color:#2563eb">Sharkoon A50 processor cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/cpu_coolers" style="color:#2563eb;font-weight:600">Alle CPU-Kühler-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/cpu_coolers">CPU-Kühler</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Strong ST-400A processor cooler</h1><p style="color:#475569;margin:0 0 12px">Strong · CPU-Kühler · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/936145/m_strong-st-400a-1.jpg" alt="Strong ST-400A processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Strong ST-400A processor cooler Highlights: aydınlatma Yes, fan audio seviyesi 28 dBA, fan bağlantısı 4 pin. Sieh dir unten 18 technische Merkmale von Strong ST-400A processor cooler, den Qor AI Techscore und den Vergleich mit ähnlichen CPU-Kühler-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>28 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>1800 RPM</strong></li><li><span style="color:#64748b">Güç Tüketimi (Fan):</span> <strong>3.2 W</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>71 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>165 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche CPU-Kühler-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/xpg-levante-ii-360-prj7wrqx8drgpyz" style="color:#2563eb">Xpg levante ii 360 processor cooler</a></li><li><a href="/de/product/strong-st-120h-akw2vsfbudrf21m" style="color:#2563eb">Strong ST-120H processor cooler</a></li><li><a href="/de/product/xpg-maestro-plus-62da-jc4w5g8x90uqxeu" style="color:#2563eb">Xpg maestro plus 62DA processor cooler</a></li><li><a href="/de/product/strong-st-r600-rx7gnz45s9z5ve3" style="color:#2563eb">Strong ST-R600 processor cooler</a></li><li><a href="/de/product/strong-m3-206jmfr5ryodvpj" style="color:#2563eb">Strong M3 processor cooler</a></li><li><a href="/de/product/strong-m4-12xpro-zwkfl1bgtmqrurn" style="color:#2563eb">Strong M4-12XPRO processor cooler</a></li><li><a href="/de/product/sharkoon-a50-rgb-dy14tp2cel7uadq" style="color:#2563eb">Sharkoon A50 RGB processor cooler</a></li><li><a href="/de/product/sharkoon-a50-f8gosyvwwc30cky" style="color:#2563eb">Sharkoon A50 processor cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/cpu_coolers" style="color:#2563eb;font-weight:600">Alle CPU-Kühler-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

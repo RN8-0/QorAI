@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/flash_drives">USB Flash Drives</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)</h1><p style="color:#475569;margin:0 0 12px">Longline · USB Flash Drives · Qor AI tech score 57/100</p><img src="https://resim.epey.com/809669/m_longline-lmpssdb-120gb-1.jpg" alt="Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB) key features: battery capacity 256 GB, bağlantı arayüzü USB Type-A, storage NAND. Review Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)'s 13 technical specs, its Qor AI tech score and how it compares with similar models in usb flash drives below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>550 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>500 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in USB Flash Drives</h2><ul style="line-height:1.8"><li><a href="/product/hiksemi-swift-s309c-500-gb-m6d9a6nvnxj602m" style="color:#2563eb">Intelligent swift S309C flash memory (500 GB)</a></li><li><a href="/product/adata-sc610-cleww8v7bhhsc8z" style="color:#2563eb">Adata SC610 SSD (500 GB) (SC610-500G-CBK)</a></li><li><a href="/product/corsair-flash-voyeger-gtx-qn8unohacaoh14z" style="color:#2563eb">Corsair flash voyeger GTX flash memory (128 GB) (CMFVYGTX3C-128GB)</a></li><li><a href="/product/hiksemi-sync-c-pro-mini-s450-128-gb-yzqyegic7vx5g0e" style="color:#2563eb">Smart sync c pro mini S450 flash memory (128 GB) (HS-USB-S450-128G-U3)</a></li><li><a href="/product/lexar-jumpdrive-fingerprint-f35-pro-64-gb-rl4nbslu0xx6po7" style="color:#2563eb">Lexar jumpdrive fingerprint F35 pro flash memory is 64 GB (LJDF35P064G)</a></li><li><a href="/product/transcend-jetflash-930c-ts256gjf930c-eujzl6non8ann8b" style="color:#2563eb">Transcend jetflash 930C flash memory (256 GB) (TS256GJF930C)</a></li><li><a href="/product/sandisk-extreme-pro-sdcz880-1t00-g46-z0xxlj86p09yl92" style="color:#2563eb">Sandisk extreme pro flash memory (SDCZ880-1T00-G46)</a></li><li><a href="/product/kingston-hyperx-savage-128gb-bepxbrzi26v9jb2" style="color:#2563eb">Hyperx savage flash memory (128 GB) (HXS3/128 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/flash_drives" style="color:#2563eb;font-weight:600">Compare all USB Flash Drives →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/flash_drives">USB Flash Drives</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)</h1><p style="color:#475569;margin:0 0 12px">Longline · USB Flash Drives · Qor AI tech score 57/100</p><img src="https://resim.epey.com/809669/m_longline-lmpssdb-120gb-1.jpg" alt="Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB) key features: battery capacity 256 GB, bağlantı arayüzü USB Type-A, storage NAND. Review Longline micro portable SSD flash memory (256 GB) (LMPSSD/256 GB)'s 13 technical specs, its Qor AI tech score and how it compares with similar models in usb flash drives below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>550 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>500 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in USB Flash Drives</h2><ul style="line-height:1.8"><li><a href="/product/hiksemi-swift-s309c-500-gb-m6d9a6nvnxj602m" style="color:#2563eb">Intelligent swift S309C flash memory (500 GB)</a></li><li><a href="/product/adata-sc610-cleww8v7bhhsc8z" style="color:#2563eb">Adata SC610 SSD (500 GB) (SC610-500G-CBK)</a></li><li><a href="/product/corsair-flash-voyeger-gtx-qn8unohacaoh14z" style="color:#2563eb">Corsair flash voyeger GTX flash memory (128 GB) (CMFVYGTX3C-128GB)</a></li><li><a href="/product/hiksemi-sync-c-pro-mini-s450-128-gb-yzqyegic7vx5g0e" style="color:#2563eb">Smart sync c pro mini S450 flash memory (128 GB) (HS-USB-S450-128G-U3)</a></li><li><a href="/product/lexar-jumpdrive-fingerprint-f35-pro-64-gb-rl4nbslu0xx6po7" style="color:#2563eb">Lexar jumpdrive fingerprint F35 pro flash memory is 64 GB (LJDF35P064G)</a></li><li><a href="/product/transcend-jetflash-930c-ts256gjf930c-eujzl6non8ann8b" style="color:#2563eb">Transcend jetflash 930C flash memory (256 GB) (TS256GJF930C)</a></li><li><a href="/product/sandisk-extreme-pro-sdcz880-1t00-g46-z0xxlj86p09yl92" style="color:#2563eb">Sandisk extreme pro flash memory (SDCZ880-1T00-G46)</a></li><li><a href="/product/kingston-hyperx-savage-128gb-bepxbrzi26v9jb2" style="color:#2563eb">Hyperx savage flash memory (128 GB) (HXS3/128 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/flash_drives" style="color:#2563eb;font-weight:600">Compare all USB Flash Drives →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/laptop_coolers">Laptop Coolers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Xigmatek D1611 laptop cooler</h1><p style="color:#475569;margin:0 0 12px">Xigmatek · Laptop Coolers · Qor AI tech score 50/100</p><img src="https://resim.epey.com/760826/m_xigmatek-d1611-1.jpg" alt="Xigmatek D1611 laptop cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Xigmatek D1611 laptop cooler key features: ana fan boyutu 160 mm, aydınlatma No, bağlantı count 2 adet. Review Xigmatek D1611 laptop cooler's 8 technical specs, its Qor AI tech score and how it compares with similar models in laptop coolers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ana Fan Boyutu:</span> <strong>160 mm</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Bağlantı Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Laptop Coolers</h2><ul style="line-height:1.8"><li><a href="/product/gamebooster-gb-ns04-2pl6mgyzuwhcjqm" style="color:#2563eb">The gamebooster GB-NS04 laptop cooler</a></li><li><a href="/product/versatile-vrc-d17-8bgtm4mkq026txn" style="color:#2563eb">Versatile VRC-D17 laptop cooler</a></li><li><a href="/product/bix-bx-cp01g-omqeim5ph60jvu7" style="color:#2563eb">Bix BX-CP01G laptop cooler</a></li><li><a href="/product/promate-airbase-1-q6a1kpgacaymz9g" style="color:#2563eb">Promate airbase 1 laptop cooler</a></li><li><a href="/product/platoon-nb339-04y23faba0pw3b9" style="color:#2563eb">Platoon NB339 laptop cooler</a></li><li><a href="/product/gamebooster-gb-ns50-pfzcxuczdkp9d4p" style="color:#2563eb">The gamebooster GB-NS50 laptop cooler</a></li><li><a href="/product/promate-airbase-6-krhwcblvilso4q6" style="color:#2563eb">Promate airbase 6 laptop cooler</a></li><li><a href="/product/revenge-m8-66v82oe9xnug0at" style="color:#2563eb">Revenge M8 laptop cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/laptop_coolers" style="color:#2563eb;font-weight:600">Compare all Laptop Coolers →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/laptop_coolers">Laptop Coolers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Xigmatek D1611 laptop cooler</h1><p style="color:#475569;margin:0 0 12px">Xigmatek · Laptop Coolers · Qor AI tech score 50/100</p><img src="https://resim.epey.com/760826/m_xigmatek-d1611-1.jpg" alt="Xigmatek D1611 laptop cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Xigmatek D1611 laptop cooler key features: ana fan boyutu 160 mm, aydınlatma No, bağlantı count 2 adet. Review Xigmatek D1611 laptop cooler's 8 technical specs, its Qor AI tech score and how it compares with similar models in laptop coolers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ana Fan Boyutu:</span> <strong>160 mm</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Bağlantı Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Laptop Coolers</h2><ul style="line-height:1.8"><li><a href="/product/gamebooster-gb-ns04-2pl6mgyzuwhcjqm" style="color:#2563eb">The gamebooster GB-NS04 laptop cooler</a></li><li><a href="/product/versatile-vrc-d17-8bgtm4mkq026txn" style="color:#2563eb">Versatile VRC-D17 laptop cooler</a></li><li><a href="/product/bix-bx-cp01g-omqeim5ph60jvu7" style="color:#2563eb">Bix BX-CP01G laptop cooler</a></li><li><a href="/product/promate-airbase-1-q6a1kpgacaymz9g" style="color:#2563eb">Promate airbase 1 laptop cooler</a></li><li><a href="/product/platoon-nb339-04y23faba0pw3b9" style="color:#2563eb">Platoon NB339 laptop cooler</a></li><li><a href="/product/gamebooster-gb-ns50-pfzcxuczdkp9d4p" style="color:#2563eb">The gamebooster GB-NS50 laptop cooler</a></li><li><a href="/product/promate-airbase-6-krhwcblvilso4q6" style="color:#2563eb">Promate airbase 6 laptop cooler</a></li><li><a href="/product/revenge-m8-66v82oe9xnug0at" style="color:#2563eb">Revenge M8 laptop cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/laptop_coolers" style="color:#2563eb;font-weight:600">Compare all Laptop Coolers →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

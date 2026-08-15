@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/media_players">Mediaplayer</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Wechip V9 medienspieler</h1><p style="color:#475569;margin:0 0 12px">Wechip · Mediaplayer · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/427014/m_wechip-v9-1.jpg" alt="Wechip V9 medienspieler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Wechip V9 medienspieler Highlights: ethernet hızı 100 Mbit/s, fps değeri 24 fps, hdmi standardı 2.1. Sieh dir unten 28 technische Merkmale von Wechip V9 medienspieler, den Qor AI Techscore und den Vergleich mit ähnlichen Mediaplayer-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">FPS Değeri:</span> <strong>24 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.1</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>7680x4320 p 8K</strong></li><li><span style="color:#64748b">Storage:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 3.2 Gen 1</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mediaplayer-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/wechip-t95-64-gb-swu4w2moc5r4ieg" style="color:#2563eb">Wechip T95 64 GB medienspieler</a></li><li><a href="/de/product/wechip-x96-max-plus-32-gb-jal2f6owyflld6l" style="color:#2563eb">Wechip X96 max+ 32 GB medienspieler (4 GB / 32 GB)</a></li><li><a href="/de/product/wechip-x88-pro-4g-64g-ux438jlfpw098cz" style="color:#2563eb">Wechip X88 pro medienspieler</a></li><li><a href="/de/product/alfawise-h96-proplus-xnb7mlv5bycmmfh" style="color:#2563eb">Alphawise H96 pro+ media player</a></li><li><a href="/de/product/sungate-ranger-eivjmdi1laitxp1" style="color:#2563eb">Sungate ranger medienspieler</a></li><li><a href="/de/product/shoami-sh-sb2-m8emk4qzzh0ljyd" style="color:#2563eb">Shoami SH-SB2 medienspieler</a></li><li><a href="/de/product/nvidia-shield-tv-pro-oe2n7xdsex4yfgy" style="color:#2563eb">Nvidia shield tv pro media player (16 GB)</a></li><li><a href="/de/product/nvidia-shield-tv-gaming-edition-e3ikerpa6s90h3t" style="color:#2563eb">Nvidia shield tv gaming edition medienspieler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/media_players" style="color:#2563eb;font-weight:600">Alle Mediaplayer-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/media_players">Mediaplayer</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Wechip V9 medienspieler</h1><p style="color:#475569;margin:0 0 12px">Wechip · Mediaplayer · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/427014/m_wechip-v9-1.jpg" alt="Wechip V9 medienspieler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Wechip V9 medienspieler Highlights: ethernet hızı 100 Mbit/s, fps değeri 24 fps, hdmi standardı 2.1. Sieh dir unten 28 technische Merkmale von Wechip V9 medienspieler, den Qor AI Techscore und den Vergleich mit ähnlichen Mediaplayer-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>100 Mbit/s</strong></li><li><span style="color:#64748b">FPS Değeri:</span> <strong>24 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.1</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>7680x4320 p 8K</strong></li><li><span style="color:#64748b">Storage:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 3.2 Gen 1</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mediaplayer-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/wechip-t95-64-gb-swu4w2moc5r4ieg" style="color:#2563eb">Wechip T95 64 GB medienspieler</a></li><li><a href="/de/product/wechip-x96-max-plus-32-gb-jal2f6owyflld6l" style="color:#2563eb">Wechip X96 max+ 32 GB medienspieler (4 GB / 32 GB)</a></li><li><a href="/de/product/wechip-x88-pro-4g-64g-ux438jlfpw098cz" style="color:#2563eb">Wechip X88 pro medienspieler</a></li><li><a href="/de/product/alfawise-h96-proplus-xnb7mlv5bycmmfh" style="color:#2563eb">Alphawise H96 pro+ media player</a></li><li><a href="/de/product/sungate-ranger-eivjmdi1laitxp1" style="color:#2563eb">Sungate ranger medienspieler</a></li><li><a href="/de/product/shoami-sh-sb2-m8emk4qzzh0ljyd" style="color:#2563eb">Shoami SH-SB2 medienspieler</a></li><li><a href="/de/product/nvidia-shield-tv-pro-oe2n7xdsex4yfgy" style="color:#2563eb">Nvidia shield tv pro media player (16 GB)</a></li><li><a href="/de/product/nvidia-shield-tv-gaming-edition-e3ikerpa6s90h3t" style="color:#2563eb">Nvidia shield tv gaming edition medienspieler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/media_players" style="color:#2563eb;font-weight:600">Alle Mediaplayer-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

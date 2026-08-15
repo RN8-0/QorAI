@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/flash_drives">USB Bellek</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)</h1><p style="color:#475569;margin:0 0 12px">Kingston · USB Bellek · Qor AI teknik skoru 51/100</p><img src="https://resim.epey.com/74716/m_kingston-datatraveler-ultimate-gt-1tb-1.jpg" alt="Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) öne çıkan özellikleri: battery capacity 1 TB, bağlantı arayüzü USB Type-A, storage NAND. Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) 14 teknik özelliğini, Qor AI teknik skorunu ve benzer usb bellek modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>300 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>200 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer USB Bellek modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/toshiba-transmemory-ex-ii-128gb-p7z9tgic2s2pu1s" style="color:#2563eb">Toshiba TransMemory-EX II Flash Bellek (128 GB) (THNV128OSUSILV(BL8)</a></li><li><a href="/tr/product/sandisk-extreme-usb-3-0-64gb-yqjqfw0qducycip" style="color:#2563eb">Sandisk Extreme Flash Bellek (64 GB) (SDCZ80-064G-G46)</a></li><li><a href="/tr/product/kingston-datatraveler-se9-g3-mm65c83lwwt22fj" style="color:#2563eb">Kingston DataTraveler SE9 G3 Flash Bellek (64 GB) (DTSE9G3/64GB)</a></li><li><a href="/tr/product/dm-fd063-sifreli-128-gb-jt888th6cwd8aiv" style="color:#2563eb">DM FD063 Şifreli Flash Bellek (128 GB)</a></li><li><a href="/tr/product/kingston-datatraveler-vault-privacy-3-0-64gb-up4g1u3loh1galp" style="color:#2563eb">Kingston DataTraveler Vault Privacy 3.0 Flash Bellek (64 GB) (DTVP30/64GB)</a></li><li><a href="/tr/product/kingston-datatraveler-4000-g2-dt4000g2dm-64gb-68m373gwop209w4" style="color:#2563eb">Kingston DataTraveler 4000 G2 Flash Bellek (DT4000G2DM/64GB)</a></li><li><a href="/tr/product/kingston-ironkey-d300-ikd300-128gb-avmb7fdvsukj2l6" style="color:#2563eb">Kingston IronKey D300 Flash Bellek (128 GB) (IKD300/128GB)</a></li><li><a href="/tr/product/kingston-ironkey-keypad-200-ikkp200-8gb-hb9mcc39y13jomr" style="color:#2563eb">Kingston IronKey Keypad 200 Flash Bellek (8 GB) (IKKP200/8GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/flash_drives" style="color:#2563eb;font-weight:600">Tüm USB Bellek modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/flash_drives">USB Bellek</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)</h1><p style="color:#475569;margin:0 0 12px">Kingston · USB Bellek · Qor AI teknik skoru 51/100</p><img src="https://resim.epey.com/74716/m_kingston-datatraveler-ultimate-gt-1tb-1.jpg" alt="Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) öne çıkan özellikleri: battery capacity 1 TB, bağlantı arayüzü USB Type-A, storage NAND. Kingston DataTraveler Ultimate GT Flash Bellek (1 TB) (DTUGT/1TB) 14 teknik özelliğini, Qor AI teknik skorunu ve benzer usb bellek modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>300 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>200 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer USB Bellek modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/toshiba-transmemory-ex-ii-128gb-p7z9tgic2s2pu1s" style="color:#2563eb">Toshiba TransMemory-EX II Flash Bellek (128 GB) (THNV128OSUSILV(BL8)</a></li><li><a href="/tr/product/sandisk-extreme-usb-3-0-64gb-yqjqfw0qducycip" style="color:#2563eb">Sandisk Extreme Flash Bellek (64 GB) (SDCZ80-064G-G46)</a></li><li><a href="/tr/product/kingston-datatraveler-se9-g3-mm65c83lwwt22fj" style="color:#2563eb">Kingston DataTraveler SE9 G3 Flash Bellek (64 GB) (DTSE9G3/64GB)</a></li><li><a href="/tr/product/dm-fd063-sifreli-128-gb-jt888th6cwd8aiv" style="color:#2563eb">DM FD063 Şifreli Flash Bellek (128 GB)</a></li><li><a href="/tr/product/kingston-datatraveler-vault-privacy-3-0-64gb-up4g1u3loh1galp" style="color:#2563eb">Kingston DataTraveler Vault Privacy 3.0 Flash Bellek (64 GB) (DTVP30/64GB)</a></li><li><a href="/tr/product/kingston-datatraveler-4000-g2-dt4000g2dm-64gb-68m373gwop209w4" style="color:#2563eb">Kingston DataTraveler 4000 G2 Flash Bellek (DT4000G2DM/64GB)</a></li><li><a href="/tr/product/kingston-ironkey-d300-ikd300-128gb-avmb7fdvsukj2l6" style="color:#2563eb">Kingston IronKey D300 Flash Bellek (128 GB) (IKD300/128GB)</a></li><li><a href="/tr/product/kingston-ironkey-keypad-200-ikkp200-8gb-hb9mcc39y13jomr" style="color:#2563eb">Kingston IronKey Keypad 200 Flash Bellek (8 GB) (IKKP200/8GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/flash_drives" style="color:#2563eb;font-weight:600">Tüm USB Bellek modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

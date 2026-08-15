@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/powerbanks">Powerbank</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Fulltech FP5 20000 mAh Powerbank</h1><p style="color:#475569;margin:0 0 12px">Fulltech · Powerbank · Qor AI teknik skoru 86/100</p><img src="https://resim.epey.com/962368/m_fulltech-fp5-1.jpg" alt="Fulltech FP5 20000 mAh Powerbank" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Fulltech FP5 20000 mAh Powerbank öne çıkan özellikleri: 1. output akımı 3 A, 1. output bağlantı tipi Standart USB (Type-A), battery capacity 20000 mAh. Fulltech FP5 20000 mAh Powerbank 22 teknik özelliğini, Qor AI teknik skorunu ve benzer powerbank modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Akımı:</span> <strong>3 A</strong></li><li><span style="color:#64748b">1. Output Bağlantı Tipi:</span> <strong>Standart USB (Type-A)</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>20000 mAh</strong></li><li><span style="color:#64748b">Doluluk Göstergesi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">El Feneri Özelliği:</span> <strong>No</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Adedi:</span> <strong>2 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Powerbank modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/fulltech-fp18-8r0g8h7ighv0lp9" style="color:#2563eb">Fulltech FP18 10000 mAh Powerbank</a></li><li><a href="/tr/product/buff-bp11-qdkhxxz9evxg5vs" style="color:#2563eb">Buff BP11 10000 mAh Powerbank</a></li><li><a href="/tr/product/dexim-s5-l0nroah99crji3t" style="color:#2563eb">Dexim S5 10000 mAh Powerbank (DCA0061)</a></li><li><a href="/tr/product/dexim-cz03-65w-vks9xqo6itvnbvu" style="color:#2563eb">Dexim CZ03 65W 20000 mAh Powerbank (DCA0071)</a></li><li><a href="/tr/product/dexim-dx-069-rsixj6bw4xr1fld" style="color:#2563eb">Dexim DX-069 10000 mAh Powerbank (DCA0060)</a></li><li><a href="/tr/product/philips-dlp1965cb-00-t4zw03phv4mla63" style="color:#2563eb">Philips DLP1965CB/00 27000 mAh Powerbank</a></li><li><a href="/tr/product/philips-dlp9859-rckzi4s1p9asb6b" style="color:#2563eb">Philips DLP9859 10000 mAh Powerbank</a></li><li><a href="/tr/product/linktech-wp23-r9i8rp6cogn5okv" style="color:#2563eb">LinkTech WP23 10000 mAh Powerbank (LPP-WP23)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/powerbanks" style="color:#2563eb;font-weight:600">Tüm Powerbank modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/powerbanks">Powerbank</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Fulltech FP5 20000 mAh Powerbank</h1><p style="color:#475569;margin:0 0 12px">Fulltech · Powerbank · Qor AI teknik skoru 86/100</p><img src="https://resim.epey.com/962368/m_fulltech-fp5-1.jpg" alt="Fulltech FP5 20000 mAh Powerbank" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Fulltech FP5 20000 mAh Powerbank öne çıkan özellikleri: 1. output akımı 3 A, 1. output bağlantı tipi Standart USB (Type-A), battery capacity 20000 mAh. Fulltech FP5 20000 mAh Powerbank 22 teknik özelliğini, Qor AI teknik skorunu ve benzer powerbank modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Akımı:</span> <strong>3 A</strong></li><li><span style="color:#64748b">1. Output Bağlantı Tipi:</span> <strong>Standart USB (Type-A)</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>20000 mAh</strong></li><li><span style="color:#64748b">Doluluk Göstergesi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">El Feneri Özelliği:</span> <strong>No</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Adedi:</span> <strong>2 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Powerbank modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/fulltech-fp18-8r0g8h7ighv0lp9" style="color:#2563eb">Fulltech FP18 10000 mAh Powerbank</a></li><li><a href="/tr/product/buff-bp11-qdkhxxz9evxg5vs" style="color:#2563eb">Buff BP11 10000 mAh Powerbank</a></li><li><a href="/tr/product/dexim-s5-l0nroah99crji3t" style="color:#2563eb">Dexim S5 10000 mAh Powerbank (DCA0061)</a></li><li><a href="/tr/product/dexim-cz03-65w-vks9xqo6itvnbvu" style="color:#2563eb">Dexim CZ03 65W 20000 mAh Powerbank (DCA0071)</a></li><li><a href="/tr/product/dexim-dx-069-rsixj6bw4xr1fld" style="color:#2563eb">Dexim DX-069 10000 mAh Powerbank (DCA0060)</a></li><li><a href="/tr/product/philips-dlp1965cb-00-t4zw03phv4mla63" style="color:#2563eb">Philips DLP1965CB/00 27000 mAh Powerbank</a></li><li><a href="/tr/product/philips-dlp9859-rckzi4s1p9asb6b" style="color:#2563eb">Philips DLP9859 10000 mAh Powerbank</a></li><li><a href="/tr/product/linktech-wp23-r9i8rp6cogn5okv" style="color:#2563eb">LinkTech WP23 10000 mAh Powerbank (LPP-WP23)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/powerbanks" style="color:#2563eb;font-weight:600">Tüm Powerbank modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/mice">Mice</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Inca IWM-505 Mouse</h1><p style="color:#475569;margin:0 0 12px">Inca · Mice · Qor AI tech score 88/100</p><img src="https://resim.epey.com/98214/m_inca-iwm-505-2.jpg" alt="Inca IWM-505 Mouse" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Inca IWM-505 Mouse key features: bağlantı şekli Wireless, kullanım amacı General Kullanım, mouse algılayıcı tipi Lazer. Review Inca IWM-505 Mouse's 25 technical specs, its Qor AI tech score and how it compares with similar models in mice below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>1600 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>6 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Mouse</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Mice</h2><ul style="line-height:1.8"><li><a href="/product/redragon-m690-pro-e50odnw9041ccf3" style="color:#2563eb">Redragon M690 Pro Mouse</a></li><li><a href="/product/redragon-m901p-1b1e5f2lzrceui8" style="color:#2563eb">Redragon M901P Mouse</a></li><li><a href="/product/hp-930-creator-go73cvnkcog9pt4" style="color:#2563eb">HP 930 Creator Mouse (1D0K9AA)</a></li><li><a href="/product/razer-pro-click-v2-vertical-e2lncy13mpckmk3" style="color:#2563eb">Razer Pro Click V2 Vertical Mouse (RZ01-05250100-R3G1)</a></li><li><a href="/product/logitech-g604-lightspeed-lcscqekionufyls" style="color:#2563eb">Logitech G604 Lightspeed Mouse (910-005650)</a></li><li><a href="/product/ajazz-aj159-nl-w0qwsre6qqsent8" style="color:#2563eb">Ajazz AJ159 Mouse</a></li><li><a href="/product/3dconnexion-cadmouse-wireless-7f5dt8ecpy1oxsc" style="color:#2563eb">3Dconnexion CadMouse Wireless Mouse (3DX-700062)</a></li><li><a href="/product/3dconnexion-cadmouse-pro-wireless-77l5mhenmhwbbqo" style="color:#2563eb">3Dconnexion CadMouse Pro Wireless Mouse (3DX-700116)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/mice" style="color:#2563eb;font-weight:600">Compare all Mice →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/mice">Mice</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Inca IWM-505 Mouse</h1><p style="color:#475569;margin:0 0 12px">Inca · Mice · Qor AI tech score 88/100</p><img src="https://resim.epey.com/98214/m_inca-iwm-505-2.jpg" alt="Inca IWM-505 Mouse" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Inca IWM-505 Mouse key features: bağlantı şekli Wireless, kullanım amacı General Kullanım, mouse algılayıcı tipi Lazer. Review Inca IWM-505 Mouse's 25 technical specs, its Qor AI tech score and how it compares with similar models in mice below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>1600 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>6 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Mouse</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Mice</h2><ul style="line-height:1.8"><li><a href="/product/redragon-m690-pro-e50odnw9041ccf3" style="color:#2563eb">Redragon M690 Pro Mouse</a></li><li><a href="/product/redragon-m901p-1b1e5f2lzrceui8" style="color:#2563eb">Redragon M901P Mouse</a></li><li><a href="/product/hp-930-creator-go73cvnkcog9pt4" style="color:#2563eb">HP 930 Creator Mouse (1D0K9AA)</a></li><li><a href="/product/razer-pro-click-v2-vertical-e2lncy13mpckmk3" style="color:#2563eb">Razer Pro Click V2 Vertical Mouse (RZ01-05250100-R3G1)</a></li><li><a href="/product/logitech-g604-lightspeed-lcscqekionufyls" style="color:#2563eb">Logitech G604 Lightspeed Mouse (910-005650)</a></li><li><a href="/product/ajazz-aj159-nl-w0qwsre6qqsent8" style="color:#2563eb">Ajazz AJ159 Mouse</a></li><li><a href="/product/3dconnexion-cadmouse-wireless-7f5dt8ecpy1oxsc" style="color:#2563eb">3Dconnexion CadMouse Wireless Mouse (3DX-700062)</a></li><li><a href="/product/3dconnexion-cadmouse-pro-wireless-77l5mhenmhwbbqo" style="color:#2563eb">3Dconnexion CadMouse Pro Wireless Mouse (3DX-700116)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/mice" style="color:#2563eb;font-weight:600">Compare all Mice →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

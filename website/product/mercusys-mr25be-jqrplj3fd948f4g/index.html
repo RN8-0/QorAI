@@ -191,14 +191,24 @@
      ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
      agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
      standart font fallback'i, davranisi kesin. */
-  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
-  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
-  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
-  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
-  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
-  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
-  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
-  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -233,7 +243,12 @@
      Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
      gercegi 14 px). */
   @media (max-width:560px){
-    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    /* ust dolgu 14 DEGIL 18: kaynaktaki deger 14 px ama kabugun `.qb-body`
+       sarmalayicisi, gercek sayfanin `.page` zincirinin kattigi 4 px'i
+       tasimiyor. Olculdu — 14 px yazilinca sapma 1 px'ten 5 px'e CIKTI, 18 px
+       ile 1 px'e donuyor. Yani buradaki fark bilerek birakilmis bir telafi;
+       "kaynakla ayni olsun" diye 14'e cekmeyin. */
+    #qor-boot .qb-ph{padding:18px 0 10px;margin-bottom:8px}
     #qor-boot .qb-lead{font-size:12.5px}
   }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
@@ -294,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/routers">Routers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Mercusys MR25BE Router</h1><p style="color:#475569;margin:0 0 12px">Mercusys · Routers · Qor AI tech score 82/100</p><img src="https://resim.epey.com/1018715/m_mercusys-mr25be-1.jpg" alt="Mercusys MR25BE Router" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Mercusys MR25BE Router key features: ethernet hızı 1 Gbps, ethernet portu count 4 adet, hüzmeleme Yes. Review Mercusys MR25BE Router's 36 technical specs, its Qor AI tech score and how it compares with similar models in routers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Hüzmeleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">MU-MIMO:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB:</span> <strong>No</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>688 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı (5 GHz):</span> <strong>2880 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı Sembolü:</span> <strong>BE3600</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 7 (802.11be)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Routers</h2><ul style="line-height:1.8"><li><a href="/product/tp-link-deco-be22-3-fi5lvprbqc9sfcv" style="color:#2563eb">Tp-link deco BE22 router with 3 wheels</a></li><li><a href="/product/asus-rt-axe7800-89uc4fr0qedxab7" style="color:#2563eb">Asus RT-AXE7800 Router</a></li><li><a href="/product/xiaomi-5g-cpe-pro-pj3le04a69nv7mc" style="color:#2563eb">Xiaomi 5G CPE PRO Mobil Hotspot</a></li><li><a href="/product/keenetic-skipper-4g-jq5v8a3fbi5vnvl" style="color:#2563eb">Keenetic Skipper 4G Modem</a></li><li><a href="/product/mercusys-halo-h25be-3lu-arlmzku30h42exs" style="color:#2563eb">Mercusys halo H25BE router (3 rows)</a></li><li><a href="/product/tenda-mf3-l2gwrb8q7pd65xl" style="color:#2563eb">Tenda MF3 Router</a></li><li><a href="/product/tenda-mf6-fzbm2c2v72ntctv" style="color:#2563eb">Tenda MF6 Router</a></li><li><a href="/product/asus-rog-rapture-gt-axe11000-hu53ybsgabfdasp" style="color:#2563eb">Asus ROG Rapture GT-AXE11000 Router</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/routers" style="color:#2563eb;font-weight:600">Compare all Routers →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/routers">Routers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Mercusys MR25BE Router</h1><p style="color:#475569;margin:0 0 12px">Mercusys · Routers · Qor AI tech score 82/100</p><img src="https://resim.epey.com/1018715/m_mercusys-mr25be-1.jpg" alt="Mercusys MR25BE Router" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Mercusys MR25BE Router key features: ethernet hızı 1 Gbps, ethernet portu count 4 adet, hüzmeleme Yes. Review Mercusys MR25BE Router's 36 technical specs, its Qor AI tech score and how it compares with similar models in routers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Hüzmeleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">MU-MIMO:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB:</span> <strong>No</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>688 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı (5 GHz):</span> <strong>2880 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı Sembolü:</span> <strong>BE3600</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 7 (802.11be)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Routers</h2><ul style="line-height:1.8"><li><a href="/product/tp-link-deco-be22-3-fi5lvprbqc9sfcv" style="color:#2563eb">Tp-link deco BE22 router with 3 wheels</a></li><li><a href="/product/asus-rt-axe7800-89uc4fr0qedxab7" style="color:#2563eb">Asus RT-AXE7800 Router</a></li><li><a href="/product/xiaomi-5g-cpe-pro-pj3le04a69nv7mc" style="color:#2563eb">Xiaomi 5G CPE PRO Mobil Hotspot</a></li><li><a href="/product/keenetic-skipper-4g-jq5v8a3fbi5vnvl" style="color:#2563eb">Keenetic Skipper 4G Modem</a></li><li><a href="/product/mercusys-halo-h25be-3lu-arlmzku30h42exs" style="color:#2563eb">Mercusys halo H25BE router (3 rows)</a></li><li><a href="/product/tenda-mf3-l2gwrb8q7pd65xl" style="color:#2563eb">Tenda MF3 Router</a></li><li><a href="/product/tenda-mf6-fzbm2c2v72ntctv" style="color:#2563eb">Tenda MF6 Router</a></li><li><a href="/product/asus-rog-rapture-gt-axe11000-hu53ybsgabfdasp" style="color:#2563eb">Asus ROG Rapture GT-AXE11000 Router</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/routers" style="color:#2563eb;font-weight:600">Compare all Routers →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
