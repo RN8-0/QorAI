@@ -1133,17 +1133,37 @@ function writeHtml(routeDir, html) {
 async function fetchAllProducts() {
   const perPage = 250;
   const fields = 'id,name,slug,brand,category,subcategory,imageUrl,techScore,trendScore,lowestPriceUSD,specsCount,screenSizeValue,batteryCapacityValue,weightValueKg,updatedAtTs,scrapedAtTs';
+  // Katalog ~430 sayfada cekiliyor. Tek bir sayfanin gecici olarak dusmesi TUM
+  // build'i iptal ediyordu — ve prebuild website/'i coktan bosalttigi icin geriye
+  // gutted bir agac kaliyordu. 2026-08-15: Hetzner'a giden yol %40 paket kaybina
+  // dustu; kapiyi gecen (3/3 agir sorgu) bir kosu bile sayfalama ortasinda
+  // oluyordu. Yuzlerce ardisik istekte tek seferlik hata KACINILMAZ, dolayisiyla
+  // dogru davranis "yeniden dene", "pes et" degil.
   const page = async (p) => {
     const qs = new URLSearchParams({
       q: '*', query_by: 'name', sort_by: 'techScore:desc',
       per_page: String(perPage), page: String(p), include_fields: fields,
     });
-    const res = await fetch(
-      `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`,
-      { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } },
-    );
-    if (!res.ok) throw new Error(`Typesense ${res.status}`);
-    return res.json();
+    const url = `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`;
+    let son = null;
+    for (let deneme = 1; deneme <= 5; deneme += 1) {
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 45000);
+        try {
+          const res = await fetch(url, { headers: { 'X-TYPESENSE-API-KEY': TS_KEY }, signal: ctrl.signal });
+          if (!res.ok) throw new Error(`Typesense ${res.status}`);
+          return await res.json();
+        } finally { clearTimeout(to); }
+      } catch (err) {
+        son = err;
+        if (deneme === 5) break;
+        // Artan bekleme: 1,5 / 3 / 6 / 12 sn. Yol dalgali oldugu icin beklemek
+        // tekrar denemekten daha etkili.
+        await new Promise((r) => setTimeout(r, 1500 * (2 ** (deneme - 1))));
+      }
+    }
+    throw new Error(`sayfa ${p} 5 denemede alinamadi: ${son?.message || son}`);
   };
 
   const first = await page(1);
