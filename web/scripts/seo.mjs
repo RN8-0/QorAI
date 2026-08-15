@@ -1093,19 +1093,24 @@ function bootSkeleton() {
 
 // PageHero'nun (subscriptions / link-analysis / premium) kabuk karsiligi.
 function pageHeroBlock(lang, kicker, title, accent, after, lead) {
-  return `<div class="qb-hero" data-l="${lang}"><section class="page-hero has-lead">`
-    + '<div class="container page-hero-inner">'
-    + (kicker ? `<span class="page-hero-kicker">${esc(kicker)}</span>` : '')
-    + `<div class="qb-ph-title">${esc(title)}${accent ? `<span class="page-hero-accent">${esc(accent)}</span>` : ''}${esc(after || '')}</div>`
-    + `<p class="page-hero-lead">${esc(lead)}</p>`
+  // Siniflar KABUGA OZEL (qb-*). Onceden gercek sayfanin siniflari
+  // (.page-hero, .page-hero-inner...) kullaniliyordu ve ROTA CSS'i sonradan
+  // inince KABUGUN KENDI dugumlerini yeniden bicimlendirip oynatiyordu —
+  // olculen CLS'in kaynagi buydu (0.007-0.015). Kendi adlarini kullanan kabuga
+  // hicbir rota CSS'i dokunamaz, dolayisiyla gec gelen stil onu kimildatamaz.
+  return `<div class="qb-hero" data-l="${lang}"><section class="qb-ph">`
+    + '<div class="container qb-ph-inner">'
+    + (kicker ? `<span class="qb-kicker">${esc(kicker)}</span>` : '')
+    + `<div class="qb-ph-title">${esc(title)}${accent ? `<span class="qb-accent">${esc(accent)}</span>` : ''}${esc(after || '')}</div>`
+    + `<p class="qb-lead">${esc(lead)}</p>`
     + '</div></section></div>';
 }
 
 // Kategori sayfasinin kendi basligi (.cat-hero).
 function catHeroBlock(lang, label) {
-  return `<div class="qb-hero" data-l="${lang}"><div class="cat-hero"><div class="container">`
+  return `<div class="qb-hero" data-l="${lang}"><div class="qb-cat"><div class="container">`
     + `<div class="qb-cat-title">${esc(label)}</div>`
-    + `<p>${esc(T(lang, 'catalog.subtitle'))}</p>`
+    + `<p class="qb-cat-sub">${esc(T(lang, 'catalog.subtitle'))}</p>`
     + '</div></div></div>';
 }
 

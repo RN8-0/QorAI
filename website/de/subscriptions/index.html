@@ -156,15 +156,15 @@
      kapsanmis halde tekrarlaniyor; kaynak dosyalar degisirse burasi da
      guncellenmeli. Olculen viewport 390 px, yani 560 px altindaki mobil
      override'lar gecerli. */
-  #qor-boot .page-hero.has-lead{position:relative;padding:14px 0 10px;margin-bottom:8px;border-bottom:0}
-  #qor-boot .page-hero-inner{max-width:720px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
-  #qor-boot .page-hero-kicker{display:inline-flex;align-items:center;padding:5px 13px;border-radius:var(--r-pill,999px);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase}
-  #qor-boot .page-hero-lead{max-width:620px;font-size:12.5px;line-height:1.5;font-weight:500;color:var(--text-2)}
+  #qor-boot .qb-ph{position:relative;padding:18px 0 10px;margin-bottom:8px;border-bottom:0}
+  #qor-boot .qb-ph-inner{max-width:720px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
+  #qor-boot .qb-kicker{display:inline-flex;align-items:center;padding:5px 13px;border-radius:var(--r-pill,999px);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase}
+  #qor-boot .qb-lead{max-width:620px;font-size:12.5px;line-height:1.5;font-weight:500;color:var(--text-2)}
   /* .page-hero.has-lead h1 olcusu (30-46 px olan .page-hero h1 DEGIL). */
   #qor-boot .qb-ph-title{font-size:clamp(22px,2.9vw,31px);font-weight:900;letter-spacing:-0.5px;line-height:1.05;color:var(--text)}
-  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
-  #qor-boot .cat-hero{padding:26px 0 20px;text-align:left;border-bottom:1px solid var(--border)}
-  #qor-boot .cat-hero p{color:var(--text-2);margin-top:6px;font-size:14px}
+  #qor-boot .qb-ph-title .qb-accent{color:var(--accent)}
+  #qor-boot .qb-cat{padding:26px 0 20px;text-align:left;border-bottom:1px solid var(--border)}
+  #qor-boot .qb-cat-sub{color:var(--text-2);margin-top:6px;font-size:14px}
   #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
      seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
@@ -217,7 +217,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-hero" data-l="en"><section class="page-hero has-lead"><div class="container page-hero-inner"><span class="page-hero-kicker">Subscription analysis</span><div class="qb-ph-title">Compare subscriptions with <span class="page-hero-accent">Qor AI</span></div><p class="page-hero-lead">Netflix, Spotify, ChatGPT Plus and dozens more, side by side — price, content and real reviews weighed.</p></div></section></div><div class="qb-hero" data-l="tr"><section class="page-hero has-lead"><div class="container page-hero-inner"><span class="page-hero-kicker">Abonelik analizi</span><div class="qb-ph-title">Aboneliklerini <span class="page-hero-accent">Qor AI</span> ile karşılaştır</div><p class="page-hero-lead">Netflix, Spotify, ChatGPT Plus ve onlarcası yan yana — fiyat, içerik ve gerçek yorumlar tartılsın.</p></div></section></div><div class="qb-hero" data-l="de"><section class="page-hero has-lead"><div class="container page-hero-inner"><span class="page-hero-kicker">Abo-Analyse</span><div class="qb-ph-title">Abos mit <span class="page-hero-accent">Qor AI</span> vergleichen</div><p class="page-hero-lead">Netflix, Spotify, ChatGPT Plus und Dutzende mehr im Vergleich — Preis, Inhalte, echte Nutzerstimmen.</p></div></section></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-hero" data-l="en"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Subscription analysis</span><div class="qb-ph-title">Compare subscriptions with <span class="qb-accent">Qor AI</span></div><p class="qb-lead">Netflix, Spotify, ChatGPT Plus and dozens more, side by side — price, content and real reviews weighed.</p></div></section></div><div class="qb-hero" data-l="tr"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Abonelik analizi</span><div class="qb-ph-title">Aboneliklerini <span class="qb-accent">Qor AI</span> ile karşılaştır</div><p class="qb-lead">Netflix, Spotify, ChatGPT Plus ve onlarcası yan yana — fiyat, içerik ve gerçek yorumlar tartılsın.</p></div></section></div><div class="qb-hero" data-l="de"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Abo-Analyse</span><div class="qb-ph-title">Abos mit <span class="qb-accent">Qor AI</span> vergleichen</div><p class="qb-lead">Netflix, Spotify, ChatGPT Plus und Dutzende mehr im Vergleich — Preis, Inhalte, echte Nutzerstimmen.</p></div></section></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><h1 style="font-size:28px;margin:0 0 10px">Abo-Vergleich</h1><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Vergleiche Netflix, Spotify, YouTube Premium, Disney+, Amazon Prime, ChatGPT Plus, Game Pass und weitere digitale Abos nach Preis, Inhalt und Wert mit KI. Welche Plattform bietet dir den meisten Wert, welche passt zu deinem Budget — Qor AI zeigt sie nebeneinander.</p><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Bewerte Musik-, Streaming-, Gaming- und KI-Abos auf einem Bildschirm, wähle das passende Paket und kündige, was du nicht nutzt.</p><p style="margin:18px 0;font-size:14px"><a href="/de/subscriptions" style="color:#2563eb;margin-right:14px">Abos vergleichen</a><a href="/de/premium" style="color:#2563eb;margin-right:14px">Premium</a><a href="/blog" style="color:#2563eb;margin-right:14px">Ratgeber</a></p></main></div>
