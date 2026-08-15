@@ -436,6 +436,18 @@ export default function Subscriptions() {
     } catch { /* ignore stale pending payloads */ }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 32 kutucugun HEPSI ilk render'da SubLogo ciziyordu ve sayfanin hero
+  // paragrafinin BOYANMASI bu isin arkasinda kaliyordu. Olculdu (yavas 4G +
+  // 4x CPU): icerik 4211 ms'de DOM'a giriyor ama LCP 5244 ms'de fire ediyor —
+  // arada ana is parcacigi 32 logoyu cozmekle mesgul.
+  // Logolar ILK BOYAMADAN SONRA baglanir. Kutucugun kendisi ve ismi hemen
+  // cizilir; logo yeri 44x44 ayrilir, yani yerlesim degismez (CLS 0).
+  const [logosReady, setLogosReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setLogosReady(true)));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   const showPicker = phase === 'select';
   const winnerName = result?.winner?.best || result?.winner?.overall || '';
 
@@ -494,7 +506,9 @@ export default function Subscriptions() {
                     aria-pressed={on}
                     className={'subs-tile' + (on ? ' active' : '')}
                     onClick={() => toggle(name)}>
-                    <SubLogo name={name} size={44} radius={12} />
+                    {logosReady
+                      ? <SubLogo name={name} size={44} radius={12} />
+                      : <span style={{ width: 44, height: 44, display: 'block', flexShrink: 0 }} aria-hidden="true" />}
                     <span className="subs-tile-name">{name}</span>
                     {on && <span className="subs-tile-check pop-in" aria-hidden="true">✓</span>}
                   </button>
