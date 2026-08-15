@@ -21,6 +21,13 @@ export default defineConfig({
         // changes. App pages are split per-route via React.lazy in App.jsx.
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom', 'pocketbase'],
+          // AiText KENDI chunk'ina. Kaynagi 1,1 KB ama rollup onu AI analiz
+          // agaciyla AYNI paylasilan chunk'a koyuyordu (109 KB) — cunku ayni
+          // rotalar hem AiText'i hem AiAnalysis ailesini import ediyor.
+          // Sonuc: yalnizca AiText'e ihtiyaci olan /subscriptions gibi sayfalar
+          // 109 KB'lik agaci indirip CALISTIRIYORDU. Olculdu: React 2748 ms'de
+          // mount oluyor ama sayfanin lead paragrafi 4183 ms'de boyaniyordu.
+          aitext: ['./src/components/AiText.jsx'],
         },
       },
     },
