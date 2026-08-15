@@ -3,7 +3,7 @@
 // because clean routes like /privacy must resolve to the generated SPA route
 // shell, not to stale privacy.html files.
 
-import { rmSync, existsSync } from 'fs';
+import { rmSync, existsSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -42,6 +42,57 @@ function nukeDir(dir) {
   }
   if (existsSync(dir)) {
     throw new Error(`[prebuild] could not remove ${dir} after multiple attempts`);
+  }
+}
+
+// ── SILMEDEN ONCE: katalog gercekten erisilebilir mi? ───────────────────────
+// Bu dosya website/ altindaki product/ (6 bin dizin), compare/ (1,3 bin) ve tum
+// rota kabuklarini SILIYOR; seo.mjs sonra hepsini yeniden uretiyor. Build o
+// arada duserse — ki Typesense'e ulasilamadiginda seo.mjs "stripped sitemap
+// yayinlamayi reddediyorum" deyip HAKLI OLARAK duruyor — geriye BOSALTILMIS bir
+// website/ kaliyor. 2026-08-15'te bu iki kez yasandi: agac 23 bin sayfayi
+// kaybetti, elle `git checkout origin/master -- website/` ile geri alindi.
+// Boyle bir agac commit'lenip deploy edilseydi sitenin TUM SEO sayfalari
+// silinirdi.
+// Cozum: yikmadan once katalogun ayakta oldugunu dogrula. Basarisizsa hicbir sey
+// silinmeden cikilir, calisma agaci saglam kalir.
+// Baglanti sabitleri seo.mjs'ten OKUNUR, kopyalanmaz: iki yerde tutmak
+// kacinilmaz olarak ayrisir ve bu kontrol sessizce yanlis hedefi yoklamaya
+// baslar (yani korumasi oldugunu sanip korumaz).
+const seoSrc = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'seo.mjs'), 'utf8');
+const pick = (name) => (seoSrc.match(new RegExp(`const ${name} = '([^']+)'`)) || [])[1] || '';
+const TS_URL = pick('TS_URL');
+const TS_KEY = pick('TS_KEY');
+const TS_COLLECTION = pick('TS_COLLECTION');
+async function catalogReachable() {
+  // seo.mjs'in GERCEKTEN kullandigi agir sorgunun ayni sekli (per_page=250 +
+  // ayni alanlar). Hafif bir `per_page=1` sorgusu yaniltici: yol bozukken o
+  // geciyor ama asil sayfalama dusuyordu (olculdu).
+  const fields = 'id,name,slug,brand,category,subcategory,imageUrl,techScore,trendScore,lowestPriceUSD,specsCount,screenSizeValue,batteryCapacityValue,weightValueKg,updatedAtTs,scrapedAtTs';
+  const qs = new URLSearchParams({
+    q: '*', query_by: 'name', sort_by: 'techScore:desc',
+    per_page: '250', page: '1', include_fields: fields,
+  });
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 25000);
+  try {
+    const res = await fetch(`${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`, {
+      headers: { 'X-TYPESENSE-API-KEY': TS_KEY }, signal: ctrl.signal,
+    });
+    if (!res.ok) return `HTTP ${res.status}`;
+    const j = await res.json();
+    return (j && j.found > 0) ? '' : 'katalog bos dondu';
+  } catch (e) {
+    return e.name === 'AbortError' ? '25 sn icinde yanit yok' : String(e.message || e);
+  } finally { clearTimeout(to); }
+}
+
+if (process.env.SEO_ALLOW_EMPTY_CATALOG !== '1' && TS_URL && TS_KEY && TS_COLLECTION) {
+  const hata = await catalogReachable();
+  if (hata) {
+    console.error(`[prebuild] katalog erisilemez (${hata}) — HICBIR SEY SILINMEDI.`);
+    console.error('[prebuild] website/ oldugu gibi birakildi; Typesense erisilir olunca tekrar deneyin.');
+    process.exit(1);
   }
 }
 
