@@ -7,13 +7,19 @@ import { generateQuiz } from './linkAnalysis';
 import { saveProductAnalysisHistory } from './pbHistory';
 import { getRecentProducts } from './recentViewed';
 import { aiUserProfile } from './qorCoins';
-import {
-  buildFullPrompt,
-  buildProductResearchPrompt,
-  hasStaleAvailabilityClaims,
-  parseAiJson,
-  withFreshnessRetryInstruction,
-} from '../components/AiAnalysis.jsx';
+// AiAnalysis.jsx'ten STATIK import EDILMEZ. Bu modul urun sayfasinin statik
+// bagimlilik agacinda; AiAnalysis.jsx ise AiCharts.jsx'i (109 KB) ve kendi
+// CSS'ini (20 KB) tasiyor. Yani su zincir yuzunden urun sayfasi her aciliste
+// analiz agacinin TAMAMINI indiriyordu:
+//   ProductDetail -> productAnalysisJobs -> AiAnalysis -> AiCharts
+// Olculdu (2026-08-15): bu chunk'larin CSS'i 3196 ms'de kesfediliyor, React
+// 5076 ms'de boyuyordu; LCP gorseli 1782 ms'de HAZIRDI.
+// Buradaki isimlerin hepsi SAF FONKSIYON ve yalnizca analiz KOSARKEN gerekiyor,
+// yani modul is basladiginda dinamik olarak yuklenir. ProductDetail.jsx'te
+// bilesenler de lazy(); ikisi birlikte agaci ilk boyamanin yolundan cikarir.
+async function aiHelpers() {
+  return import('../components/AiAnalysis.jsx');
+}
 
 const STORAGE_KEY = 'qor.productAnalysis.activeJob';
 const listeners = new Set();
@@ -146,6 +152,10 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
 
   job.promise = (async () => {
     try {
+      const {
+        buildFullPrompt, buildProductResearchPrompt, hasStaleAvailabilityClaims,
+        parseAiJson, withFreshnessRetryInstruction,
+      } = await aiHelpers();
       let research = '';
       try {
         if (activeJob && activeJob.id === job.id) setJob({ stage: 'research' });

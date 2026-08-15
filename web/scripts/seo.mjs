@@ -749,15 +749,38 @@ const ROUTE_ENTRY = {
   faq: 'src/pages/Legal.jsx',
   'ai-chat': 'src/pages/AiChat.jsx',
 };
+// Rota chunk'inin DOLAYLI CSS'i de sayilir. Manifest girdisindeki `css` yalnizca
+// o chunk'in KENDI stilini listeler; rota baska chunk'lari import ediyorsa
+// onlarin CSS'i ancak rota chunk'i AYRISTIKTAN sonra kesfediliyor.
+// Olculdu (2026-08-15, urun sayfasi, yavas 4G + 4x CPU): ilk dalga 1364 ms'de
+// cikiyor, IKINCI CSS dalgasi (AiCharts, AiAnalysis, profileMatch, QuizFlow,
+// Reviews) 3196 ms'de kesfediliyor ve React ancak 5076 ms'de boyuyordu. LCP
+// gorseli 1782 ms'de HAZIRDI — yani darbogaz gorsel degil, gec kesfedilen bu
+// stil dalgasiydi. Transitif yuruyus hepsini ilk dalgaya alir.
+function routeCssAll(src, manifestObj, gorulen = new Set()) {
+  const out = [];
+  const yuru = (anahtar) => {
+    if (!anahtar || gorulen.has(anahtar)) return;
+    gorulen.add(anahtar);
+    const e = manifestObj[anahtar];
+    if (!e) return;
+    for (const c of e.css || []) out.push(c);
+    for (const imp of e.imports || []) yuru(imp);
+  };
+  yuru(src);
+  return [...new Set(out)];
+}
+
 function routePreloadTags(routeKey) {
   const src = ROUTE_ENTRY[routeKey];
   if (!src) return [];
-  const e = manifest()[src];
+  const m = manifest();
+  const e = m[src];
   if (!e || !e.file) return [];
   const tags = [`<link rel="modulepreload" crossorigin fetchpriority="low" href="/${e.file}" />`];
   // Rota CSS'i: `as="style"` ile onden cekilir. Stylesheet olarak eklemek
   // render-blocking yapardi — amac tam tersi.
-  for (const c of e.css || []) tags.push(`<link rel="preload" as="style" fetchpriority="low" href="/${c}" />`);
+  for (const c of routeCssAll(src, m)) tags.push(`<link rel="preload" as="style" fetchpriority="low" href="/${c}" />`);
   return tags;
 }
 

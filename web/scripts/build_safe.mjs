@@ -38,15 +38,29 @@ const kos = (cmd) => execSync(cmd, { stdio: 'inherit', cwd: process.cwd() });
 const git = (cmd) => execSync(`git ${cmd}`, { stdio: 'inherit', cwd: '..' });
 
 function agacTemizMi() {
-  const out = execSync('git status --porcelain website/', { cwd: '..', encoding: 'utf8' });
-  return out.trim() === '';
+  // `git status --porcelain website/` ciktisi 23 bin satir olabiliyor ve
+  // execSync'in varsayilan 1 MB maxBuffer'ini asinca ENOBUFS ile PATLIYOR —
+  // yani kontrolun kendisi build'i dusuruyordu. Yalnizca "fark var mi" bilgisi
+  // gerektigi icin cikti kesilebilir; buyuk bir tampon yeterli.
+  try {
+    const out = execSync('git status --porcelain website/', {
+      cwd: '..', encoding: 'utf8', maxBuffer: 256 * 1024 * 1024,
+    });
+    return out.trim() === '';
+  } catch {
+    return false; // okunamadiysa "kirli" varsay: sadece uyari uretir
+  }
 }
 
+// Kirli agac ENGEL DEGIL, UYARI. Basarili bir build'den sonra website/ zaten
+// kirlidir (cikti henuz commit'lenmemistir) ve ard arda build almak normal bir
+// akis — burasi hata dondurseydi guard kendi isini bloklardi. Onemli olan sey
+// su: hata halinde geri alma HEAD'e doner, yani commit'lenmemis ONCEKI build
+// ciktisi kaybolur. O cikti her zaman yeniden uretilebilir; bosaltilmis bir
+// agac ise sitenin SEO sayfalarini silecek kadar tehlikeli. Takas net.
 if (!agacTemizMi()) {
-  console.error('[build] website/ altinda commit\'lenmemis degisiklik var.');
-  console.error('[build] Bu build agaci silip yeniden uretecek ve hata halinde HEAD\'e dondurecek,');
-  console.error('[build] yani o degisiklikler kaybolur. Once commit\'leyin ya da geri alin.');
-  process.exit(1);
+  console.warn('[build] not: website/ altinda commit\'lenmemis cikti var.');
+  console.warn('[build] Build duserse agac HEAD\'e dondurulecek, yani o cikti gider (yeniden uretilebilir).');
 }
 
 let yikimBasladi = false;

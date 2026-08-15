@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
 import { getProduct, getSimilar, getVariants } from '../lib/typesense';
@@ -24,16 +24,21 @@ import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { IconX, IconChevronLeft, IconChevronRight } from '../components/GlyphIcons.jsx';
 import Gauge, { techColor, inkColor } from '../components/Gauge.jsx';
-import AiAnalysisView, {
-  buildFullPrompt,
-  buildProductResearchPrompt,
-  hasStaleAvailabilityClaims,
-  parseAiJson,
-  withFreshnessRetryInstruction,
-} from '../components/AiAnalysis.jsx';
-import AiWorkboard from '../components/AiWorkboard.jsx';
+// AI ANALIZ AGACI TEMBEL. Bu dort bilesen yalnizca kullanici "Analiz" sekmesini
+// acinca ciziliyor, ama STATIK import edildikleri icin urun sayfasi her
+// aciliste hepsini indiriyordu: AiCharts 108 KB + AiAnalysis 42 KB + QuizFlow
+// 17 KB + Reviews 11 KB JS ve ~46 KB CSS. Olculdu (2026-08-15, yavas 4G + 4x
+// CPU): bu chunk'larin CSS'i 3196 ms'de KESFEDILIYOR ve React ancak 5076 ms'de
+// boyuyordu — LCP gorseli 1782 ms'de hazir olmasina ragmen.
+// AiAnalysis.jsx'ten BES isim aliniyordu ama dordu bu dosyada HIC kullanilmiyor
+// (buildFullPrompt, buildProductResearchPrompt, hasStaleAvailabilityClaims,
+// withFreshnessRetryInstruction); modul zaten import edildigi icin rollup
+// bunlari eleyemiyordu. Kullanilan tek isim `parseAiJson` ve o da yalnizca
+// GIRIS YAPMIS + kayitli analizi olan kullanicida calisiyor -> dinamik import.
+const AiAnalysisView = lazy(() => import('../components/AiAnalysis.jsx'));
+const AiWorkboard = lazy(() => import('../components/AiWorkboard.jsx'));
+const QuizFlow = lazy(() => import('../components/QuizFlow.jsx'));
 import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
-import QuizFlow from '../components/QuizFlow.jsx';
 import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
 import {
   isHiddenSpec, isHighlightsTitle, localizedSpecLabel, localizedSpecValue,
@@ -47,7 +52,7 @@ import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch
 import { cleanProductName, displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
 import ScrollRail from '../components/ScrollRail.jsx';
-import Reviews from '../components/Reviews.jsx';
+const Reviews = lazy(() => import('../components/Reviews.jsx'));
 import './ProductDetail.css';
 // Ortak AI rapor govdesi (AiReportView) 'la-*' siniflarini kullanir. CSS'i
 // PAYLASILAN bilesen degil SAYFA import eder: boylece stil bu sayfanin tembel
@@ -794,8 +799,12 @@ export default function ProductDetail() {
   useEffect(() => {
     let live = true;
     if (!p?.id || !user) return undefined;
-    getSavedProductAnalysis(p.id).then((saved) => {
+    getSavedProductAnalysis(p.id).then(async (saved) => {
       if (!live || !saved?.analysis) return;
+      // Ayristirici AI analiz chunk'inda; buraya ancak kayitli bir rapor VARSA
+      // gelinir, yani chunk ilk boyamanin yolunda degil.
+      const { parseAiJson } = await import('../components/AiAnalysis.jsx');
+      if (!live) return;
       const parsed = parseAiJson(saved.analysis);
       if (!parsed || typeof parsed !== 'object') return;
       setAiFull((s) => (s.data || s.busy || s.phase !== 'idle'
@@ -1334,6 +1343,10 @@ export default function ProductDetail() {
                 </div>
               )}
               {tab === 'premium' && (
+                /* KENDI Suspense siniri: tembel AI agaci yuklenirken App.jsx'teki
+                   rota siniri devreye girseydi TUM urun sayfasi spinner'a
+                   donerdi. Yer tutucu sekmenin kendi alani kadar. */
+                <Suspense fallback={<div className="pd-ai-grid"><div className="pd-ai-intro"><div className="spinner" /></div></div>}>
                 <div className="fade-up pd-ai-grid">
                   {/* Üst çıkış çubuğu — akıştan çıkmak için raporun en altına
                       inmek gerekmesin (diğer analiz akışlarıyla aynı). */}
@@ -1413,11 +1426,16 @@ export default function ProductDetail() {
                     </div>
                   )}
                 </div>
+                </Suspense>
               )}
             </div>
           </section>
 
-          <Reviews productId={p.id} productName={displayName} lang={lang} />
+          {/* Yorumlar ekranin ALTINDA: yer tutucu yuksekligi olan bos bir kutu,
+              boylece gec gelmesi bir kayma uretmez. */}
+          <Suspense fallback={<div style={{ minHeight: 220 }} />}>
+            <Reviews productId={p.id} productName={displayName} lang={lang} />
+          </Suspense>
         </div>
 
         {/* SIMILAR */}
