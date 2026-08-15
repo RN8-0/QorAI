@@ -166,24 +166,49 @@
      kapsanmis halde tekrarlaniyor; kaynak dosyalar degisirse burasi da
      guncellenmeli. Olculen viewport 390 px, yani 560 px altindaki mobil
      override'lar gecerli. */
-  /* METRIK-ESLI YEDEK YUZ KALDIRILDI (2026-08-15) — OLCUM KARARI.
-     Amac dogruydu: yedek font Jakarta ile ayni yeri kaplasin ki font gelince
-     metin yeniden sarmasin. Bedeli ise LCP'ydi. Chrome, kaynagi yalnizca
-     local() olsa bile @font-face'i "yuklenmesi gereken font" sayiyor ve o
-     bekleme boyunca metin GORUNMUYOR; font-display:swap bile kapatmadi.
-     Canliya CSS enjekte edilerek olculdu (ana sayfa, yavas 4G + 4x CPU,
-     senaryo basina 3 kosunun medyani):
+  /* Kabuk ONCE yedek fontla ciziliyor, Plus Jakarta Sans gelince metin YENIDEN
+     SARILIYORDU: /subscriptions basligi 2 satirdan 1 satira dusuyor ve bu
+     olculebilir bir kayma uretiyordu (CLS 0.013; izde qb-ph-title 51 -> 29 px).
+     Metrigi eslesen bir yedek yuz tanimlaninca yedek font ayni yeri kaplar ve
+     font gelince satir sayisi DEGISMEZ. Maliyeti sifir bayt — indirilen bir sey
+     yok, yalnizca yerel fontun olcusu duzeltiliyor.
 
-       zincirde QB yuzleri var    FCP 1696  LCP 2516   (fark 820 ms)
-       yalniz sistem fontu        FCP 1644  LCP 1828   (fark 184 ms)
-       Jakarta + system-ui        FCP 1684  LCP 1740   (fark  56 ms)
+     2026-08-15 DUZELTME — burada TEK bir size-adjust (%94,4) vardi ve TEK bir
+     yuze uc farkli agirlik bagliydi. Oran agirliga gore degisiyor, olculdu
+     (Jakarta genisligi / yerel font genisligi, ayni metin):
 
-     Yani yedek yuzler LCP'ye 776 ms ekliyordu ve 2500 ms esigini TEK BASINA
-     kaybettiriyordu. Karsiliginda kazanilan sey ise bir KAYMA degil: kabuk
-     `position: fixed` bir katman, altindaki icerik oynamiyor, CLS 0 kaliyor.
-     Kalan tek etki, kabuk kalkarken metnin bir an farkli sarmasi — gorsel ve
-     anlik. Takas net: 776 ms > kozmetik.
-     GERI EKLERSEN once _hero_paint.mjs ile olc. */
+       agirlik   Segoe UI (Windows)   Roboto (Android)
+         400          104,2 %              109,9 %
+         500           91,7 %              100,0 %
+         700          100,5 %              107,9 %
+         800           96,7 %              109,2 %
+
+     Yani 400'luk metin icin yedek %10 DAR ciziliyordu: masaustunde ana sayfa
+     alt yazisi kabukta 2 satir (55,8 px), font gelince 3 satir (83,7 px) —
+     handoff aninda 27,9 px'lik gorunur bir sicrama. Artik her agirlik kendi
+     oranini tasiyor ve her platform kendi AILE adini kullaniyor: 'QB Win'de
+     Segoe UI yoksa (Android) glif bulunamaz ve zincir 'QB Droid'e duser. Tek
+     ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
+     agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
+     standart font fallback'i, davranisi kesin. */
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -194,7 +219,7 @@
      Yedegin agirlik-basina size-adjust'i font gelene kadarki sarmayi eslestirir. */
   #qor-boot .qb-ph-title,#qor-boot .qb-lead,#qor-boot .qb-kicker,
   #qor-boot .qb-cat-title,#qor-boot .qb-cat-sub,
-  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans','QB Win','QB Droid',system-ui,-apple-system,'Segoe UI',sans-serif}
   /* .page-hero.has-lead'in BIREBIR kopyasi. 2026-08-15'e kadar burada
      `18px 0 10px` / `margin-bottom:8px` yaziyordu — bunlar kaynaktaki
      `@media (max-width:560px)` OVERRIDE degerleri. Masaustunde gercek kural
@@ -281,7 +306,7 @@
       <!--qb-hero--><div class="qb-hero" data-l="en"><div class="qb-cat"><div class="container"><div class="qb-cat-title">Hardware Wallets</div><p class="qb-cat-sub">AI-scored tech products — pick, compare, decide.</p></div></div></div><div class="qb-hero" data-l="tr"><div class="qb-cat"><div class="container"><div class="qb-cat-title">Soğuk Cüzdan</div><p class="qb-cat-sub">AI puanlı teknoloji ürünleri — seç, karşılaştır, karar ver.</p></div></div></div><div class="qb-hero" data-l="de"><div class="qb-cat"><div class="container"><div class="qb-cat-title">Hardware-Wallets</div><p class="qb-cat-sub">KI-bewertete Technikprodukte — auswählen, vergleichen, entscheiden.</p></div></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › Hardware Wallets</nav><h1 style="font-size:28px;margin:12px 0 6px">Hardware Wallets Comparison</h1><p style="line-height:1.7;color:#334155;max-width:680px">Compare the best hardware wallets models with Qor AI: AI tech score, key features and current prices together. Pick one of the models below or filter to find the one that fits you best in seconds.</p><ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none"><li style="margin:4px 0"><a href="/product/dcent-biometric-wallet-d4b3s5is2ulih6j" style="color:#0f172a;text-decoration:none">D&#39;cent biometric wallet cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-v20-sx604sbdhp9skov" style="color:#0f172a;text-decoration:none">Secux V20 cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-nifty-6r7kiw3noygv62e" style="color:#0f172a;text-decoration:none">Secux nifty cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-w20-bo6fd87zf8n1cwd" style="color:#0f172a;text-decoration:none">Secux W20 cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/safepal-s1-d8eg3tg98o1ulkz" style="color:#0f172a;text-decoration:none">Safepal S1 cold wallet <span style="color:#64748b;font-size:12px">· 41/100</span></a></li><li style="margin:4px 0"><a href="/product/blockstream-jade-34dwupbeapxbof8" style="color:#0f172a;text-decoration:none">Blockstream jade cold wallet <span style="color:#64748b;font-size:12px">· 40/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-gen-5-70692cw7fs7gesj" style="color:#0f172a;text-decoration:none">Ledger nano gen 5 cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-stax-yb9e7tqfxht9hw3" style="color:#0f172a;text-decoration:none">Ledger stax cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-flex-a5ij1frew8m8vh7" style="color:#0f172a;text-decoration:none">Ledger flex cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/onekey-classic-5sb8838urcmuae9" style="color:#0f172a;text-decoration:none">Onekey classic cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-s-26di9ysb1bxwqyj" style="color:#0f172a;text-decoration:none">Ledger nano s cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-x-ce5huvyzf5lg7um" style="color:#0f172a;text-decoration:none">Ledger nano x cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/coolwallet-pro-m6xfs9nn5deuaz2" style="color:#0f172a;text-decoration:none">Coolwallet pro cold wallet <span style="color:#64748b;font-size:12px">· 28/100</span></a></li><li style="margin:4px 0"><a href="/product/coolwallet-s-xsjqco3qqzm0j4u" style="color:#0f172a;text-decoration:none">Coolwallet s cold wallet <span style="color:#64748b;font-size:12px">· 28/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-safe-3-tj301savseiu64o" style="color:#0f172a;text-decoration:none">Trezor safe 3 cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-model-t-oosi21znk5lziar" style="color:#0f172a;text-decoration:none">Trezor model t cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-one-k9mmvwfpso2yzi1" style="color:#0f172a;text-decoration:none">Trezor one cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-w10-0w5i0lrfjz2xf5k" style="color:#0f172a;text-decoration:none">Secux W10 cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-s-plus-7qgpkh2818iut43" style="color:#0f172a;text-decoration:none">Ledger nano s plus cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/tangem-ring-59dhhth2xuzcoh6" style="color:#0f172a;text-decoration:none">Tangem ring cold wallet <span style="color:#64748b;font-size:12px">· 10/100</span></a></li><li style="margin:4px 0"><a href="/product/tangem-2-0-ps8e4qiptxewfgi" style="color:#0f172a;text-decoration:none">Tangem 2.0 cold wallet <span style="color:#64748b;font-size:12px">· 10/100</span></a></li></ul></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › Hardware Wallets</nav><h1 style="font-size:28px;margin:12px 0 6px">Hardware Wallets Comparison</h1><p style="line-height:1.7;color:#334155;max-width:680px">Compare the best hardware wallets models with Qor AI: AI tech score, key features and current prices together. Pick one of the models below or filter to find the one that fits you best in seconds.</p><ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none"><li style="margin:4px 0"><a href="/product/dcent-biometric-wallet-d4b3s5is2ulih6j" style="color:#0f172a;text-decoration:none">D&#39;cent biometric wallet cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-v20-sx604sbdhp9skov" style="color:#0f172a;text-decoration:none">Secux V20 cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-nifty-6r7kiw3noygv62e" style="color:#0f172a;text-decoration:none">Secux nifty cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-w20-bo6fd87zf8n1cwd" style="color:#0f172a;text-decoration:none">Secux W20 cold wallet <span style="color:#64748b;font-size:12px">· 43/100</span></a></li><li style="margin:4px 0"><a href="/product/safepal-s1-d8eg3tg98o1ulkz" style="color:#0f172a;text-decoration:none">Safepal S1 cold wallet <span style="color:#64748b;font-size:12px">· 41/100</span></a></li><li style="margin:4px 0"><a href="/product/blockstream-jade-34dwupbeapxbof8" style="color:#0f172a;text-decoration:none">Blockstream jade cold wallet <span style="color:#64748b;font-size:12px">· 40/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-gen-5-70692cw7fs7gesj" style="color:#0f172a;text-decoration:none">Ledger nano gen 5 cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-stax-yb9e7tqfxht9hw3" style="color:#0f172a;text-decoration:none">Ledger stax cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-flex-a5ij1frew8m8vh7" style="color:#0f172a;text-decoration:none">Ledger flex cold wallet <span style="color:#64748b;font-size:12px">· 39/100</span></a></li><li style="margin:4px 0"><a href="/product/onekey-classic-5sb8838urcmuae9" style="color:#0f172a;text-decoration:none">Onekey classic cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-s-26di9ysb1bxwqyj" style="color:#0f172a;text-decoration:none">Ledger nano s cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-x-ce5huvyzf5lg7um" style="color:#0f172a;text-decoration:none">Ledger nano x cold wallet <span style="color:#64748b;font-size:12px">· 37/100</span></a></li><li style="margin:4px 0"><a href="/product/coolwallet-pro-m6xfs9nn5deuaz2" style="color:#0f172a;text-decoration:none">Coolwallet pro cold wallet <span style="color:#64748b;font-size:12px">· 28/100</span></a></li><li style="margin:4px 0"><a href="/product/coolwallet-s-xsjqco3qqzm0j4u" style="color:#0f172a;text-decoration:none">Coolwallet s cold wallet <span style="color:#64748b;font-size:12px">· 28/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-safe-3-tj301savseiu64o" style="color:#0f172a;text-decoration:none">Trezor safe 3 cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-model-t-oosi21znk5lziar" style="color:#0f172a;text-decoration:none">Trezor model t cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/trezor-one-k9mmvwfpso2yzi1" style="color:#0f172a;text-decoration:none">Trezor one cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/secux-w10-0w5i0lrfjz2xf5k" style="color:#0f172a;text-decoration:none">Secux W10 cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/ledger-nano-s-plus-7qgpkh2818iut43" style="color:#0f172a;text-decoration:none">Ledger nano s plus cold wallet <span style="color:#64748b;font-size:12px">· 14/100</span></a></li><li style="margin:4px 0"><a href="/product/tangem-ring-59dhhth2xuzcoh6" style="color:#0f172a;text-decoration:none">Tangem ring cold wallet <span style="color:#64748b;font-size:12px">· 10/100</span></a></li><li style="margin:4px 0"><a href="/product/tangem-2-0-ps8e4qiptxewfgi" style="color:#0f172a;text-decoration:none">Tangem 2.0 cold wallet <span style="color:#64748b;font-size:12px">· 10/100</span></a></li></ul></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

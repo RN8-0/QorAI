@@ -166,24 +166,49 @@
      kapsanmis halde tekrarlaniyor; kaynak dosyalar degisirse burasi da
      guncellenmeli. Olculen viewport 390 px, yani 560 px altindaki mobil
      override'lar gecerli. */
-  /* METRIK-ESLI YEDEK YUZ KALDIRILDI (2026-08-15) — OLCUM KARARI.
-     Amac dogruydu: yedek font Jakarta ile ayni yeri kaplasin ki font gelince
-     metin yeniden sarmasin. Bedeli ise LCP'ydi. Chrome, kaynagi yalnizca
-     local() olsa bile @font-face'i "yuklenmesi gereken font" sayiyor ve o
-     bekleme boyunca metin GORUNMUYOR; font-display:swap bile kapatmadi.
-     Canliya CSS enjekte edilerek olculdu (ana sayfa, yavas 4G + 4x CPU,
-     senaryo basina 3 kosunun medyani):
+  /* Kabuk ONCE yedek fontla ciziliyor, Plus Jakarta Sans gelince metin YENIDEN
+     SARILIYORDU: /subscriptions basligi 2 satirdan 1 satira dusuyor ve bu
+     olculebilir bir kayma uretiyordu (CLS 0.013; izde qb-ph-title 51 -> 29 px).
+     Metrigi eslesen bir yedek yuz tanimlaninca yedek font ayni yeri kaplar ve
+     font gelince satir sayisi DEGISMEZ. Maliyeti sifir bayt — indirilen bir sey
+     yok, yalnizca yerel fontun olcusu duzeltiliyor.
 
-       zincirde QB yuzleri var    FCP 1696  LCP 2516   (fark 820 ms)
-       yalniz sistem fontu        FCP 1644  LCP 1828   (fark 184 ms)
-       Jakarta + system-ui        FCP 1684  LCP 1740   (fark  56 ms)
+     2026-08-15 DUZELTME — burada TEK bir size-adjust (%94,4) vardi ve TEK bir
+     yuze uc farkli agirlik bagliydi. Oran agirliga gore degisiyor, olculdu
+     (Jakarta genisligi / yerel font genisligi, ayni metin):
 
-     Yani yedek yuzler LCP'ye 776 ms ekliyordu ve 2500 ms esigini TEK BASINA
-     kaybettiriyordu. Karsiliginda kazanilan sey ise bir KAYMA degil: kabuk
-     `position: fixed` bir katman, altindaki icerik oynamiyor, CLS 0 kaliyor.
-     Kalan tek etki, kabuk kalkarken metnin bir an farkli sarmasi — gorsel ve
-     anlik. Takas net: 776 ms > kozmetik.
-     GERI EKLERSEN once _hero_paint.mjs ile olc. */
+       agirlik   Segoe UI (Windows)   Roboto (Android)
+         400          104,2 %              109,9 %
+         500           91,7 %              100,0 %
+         700          100,5 %              107,9 %
+         800           96,7 %              109,2 %
+
+     Yani 400'luk metin icin yedek %10 DAR ciziliyordu: masaustunde ana sayfa
+     alt yazisi kabukta 2 satir (55,8 px), font gelince 3 satir (83,7 px) —
+     handoff aninda 27,9 px'lik gorunur bir sicrama. Artik her agirlik kendi
+     oranini tasiyor ve her platform kendi AILE adini kullaniyor: 'QB Win'de
+     Segoe UI yoksa (Android) glif bulunamaz ve zincir 'QB Droid'e duser. Tek
+     ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
+     agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
+     standart font fallback'i, davranisi kesin. */
+  /* font-display:swap ZORUNLU. Bu yuzler yalnizca local() kaynak tasisa da
+     Chrome bunlari YUKLENMESI GEREKEN font sayar ve varsayilan (auto/block)
+     davranista metni block periyodu boyunca GORUNMEZ birakir. Olculdu
+     (2026-08-15, ana sayfa, yavas 4G + 4x CPU): FCP 1904 ms'de ekranda yalnizca
+     ust bardaki "Qor AI" kelimesi vardi (LCP adayi 1755 px2), hero metni ancak
+     2576 ms'de boyandi (31828 px2) — yani LCP'yi 670 ms geciktiren sey bu
+     gorunmez-metin penceresiydi. `.qb-wm` bu zincirde olmadigi icin zamaninda
+     boyaniyor ve farki gorunur kiliyordu.
+     Not: Plus Jakarta Sans'in kendi font-display'i zaten swap; asil sorun
+     ONUN YEDEGININ block'ta olmasiydi. */
+  @font-face{font-family:'QB Win';font-weight:400;font-display:swap;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;font-display:swap;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;font-display:swap;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;font-display:swap;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;font-display:swap;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;font-display:swap;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;font-display:swap;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;font-display:swap;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -194,7 +219,7 @@
      Yedegin agirlik-basina size-adjust'i font gelene kadarki sarmayi eslestirir. */
   #qor-boot .qb-ph-title,#qor-boot .qb-lead,#qor-boot .qb-kicker,
   #qor-boot .qb-cat-title,#qor-boot .qb-cat-sub,
-  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans','QB Win','QB Droid',system-ui,-apple-system,'Segoe UI',sans-serif}
   /* .page-hero.has-lead'in BIREBIR kopyasi. 2026-08-15'e kadar burada
      `18px 0 10px` / `margin-bottom:8px` yaziyordu — bunlar kaynaktaki
      `@media (max-width:560px)` OVERRIDE degerleri. Masaustunde gercek kural
@@ -284,7 +309,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/microphones">Mikrofone</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Torima K60 Mikrofon</h1><p style="color:#475569;margin:0 0 12px">Torima · Mikrofone · Qor AI Techscore 17/100</p><img src="https://resim.epey.com/871274/m_torima-k60-1.jpg" alt="Torima K60 Mikrofon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Torima K60 Mikrofon Highlights: charging port Wireless, titreşim engelleyici No. Sieh dir unten 11 technische Merkmale von Torima K60 Mikrofon, den Qor AI Techscore und den Vergleich mit ähnlichen Mikrofone-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Charging port:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Titreşim Engelleyici:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mikrofone-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/torima-wm02-yy9fflsvyg19n93" style="color:#2563eb">Torima WM02 Mikrofon</a></li><li><a href="/de/product/torima-k6-vj1w292h5azi217" style="color:#2563eb">Torima K6 Mikrofon</a></li><li><a href="/de/product/torima-wm-01-puzdtr6lg08ucxv" style="color:#2563eb">Torima WM-01 Mikrofon</a></li><li><a href="/de/product/torima-wm03-buu0jmdvqn103fj" style="color:#2563eb">Torima WM03 Mikrofon</a></li><li><a href="/de/product/ally-k8-47dhnm4lmceqswr" style="color:#2563eb">Ally K8 Mikrofon</a></li><li><a href="/de/product/ally-vuxbeeg-up30-1ylnlercywl381s" style="color:#2563eb">Ally Vuxbeeg UP30 Mikrofon (AL-34613)</a></li><li><a href="/de/product/hollyland-lark-c1-duo-wu14wlxt4xvttug" style="color:#2563eb">Hollyland Lark C1 Duo Mikrofon</a></li><li><a href="/de/product/hollyland-lark-m2s-mini-combo-nhicuud2ayeapgj" style="color:#2563eb">Hollyland Lark M2S Mini Combo Mikrofon (3.5mm Jak)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/microphones" style="color:#2563eb;font-weight:600">Alle Mikrofone-Modelle vergleichen →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/microphones">Mikrofone</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Torima K60 Mikrofon</h1><p style="color:#475569;margin:0 0 12px">Torima · Mikrofone · Qor AI Techscore 17/100</p><img src="https://resim.epey.com/871274/m_torima-k60-1.jpg" alt="Torima K60 Mikrofon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Torima K60 Mikrofon Highlights: charging port Wireless, titreşim engelleyici No. Sieh dir unten 11 technische Merkmale von Torima K60 Mikrofon, den Qor AI Techscore und den Vergleich mit ähnlichen Mikrofone-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Charging port:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Titreşim Engelleyici:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mikrofone-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/torima-wm02-yy9fflsvyg19n93" style="color:#2563eb">Torima WM02 Mikrofon</a></li><li><a href="/de/product/torima-k6-vj1w292h5azi217" style="color:#2563eb">Torima K6 Mikrofon</a></li><li><a href="/de/product/torima-wm-01-puzdtr6lg08ucxv" style="color:#2563eb">Torima WM-01 Mikrofon</a></li><li><a href="/de/product/torima-wm03-buu0jmdvqn103fj" style="color:#2563eb">Torima WM03 Mikrofon</a></li><li><a href="/de/product/ally-k8-47dhnm4lmceqswr" style="color:#2563eb">Ally K8 Mikrofon</a></li><li><a href="/de/product/ally-vuxbeeg-up30-1ylnlercywl381s" style="color:#2563eb">Ally Vuxbeeg UP30 Mikrofon (AL-34613)</a></li><li><a href="/de/product/hollyland-lark-c1-duo-wu14wlxt4xvttug" style="color:#2563eb">Hollyland Lark C1 Duo Mikrofon</a></li><li><a href="/de/product/hollyland-lark-m2s-mini-combo-nhicuud2ayeapgj" style="color:#2563eb">Hollyland Lark M2S Mini Combo Mikrofon (3.5mm Jak)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/microphones" style="color:#2563eb;font-weight:600">Alle Mikrofone-Modelle vergleichen →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
