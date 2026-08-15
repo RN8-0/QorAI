@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/camera_lenses">Camera Lenses</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Fujifilm Fujinon XF 23mm F2.8 R WR</h1><p style="color:#475569;margin:0 0 12px">Fujifilm · Camera Lenses · Qor AI tech score 64/100</p><img src="https://resim.epey.com/1044046/m_fujifilm-fujinon-xf-23mm-f2-8-r-wr-1.jpg" alt="Fujifilm Fujinon XF 23mm F2.8 R WR" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Fujifilm Fujinon XF 23mm F2.8 R WR key features: audiosiz odaklama Yes, camera aperture f/2.8, diyafram bıçağı 11 adet. Review Fujifilm Fujinon XF 23mm F2.8 R WR's 36 technical specs, its Qor AI tech score and how it compares with similar models in camera lenses below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audiosiz Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera aperture:</span> <strong>f/2.8</strong></li><li><span style="color:#64748b">Diyafram Bıçağı:</span> <strong>11 adet</strong></li><li><span style="color:#64748b">Fast Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filtre Çapı:</span> <strong>39 mm</strong></li><li><span style="color:#64748b">Görüntü Sabitleyici:</span> <strong>No</strong></li><li><span style="color:#64748b">Lens Tipi:</span> <strong>Geniş Açılı</strong></li><li><span style="color:#64748b">Lens Türü:</span> <strong>Prime (Sabit Odaklı)</strong></li><li><span style="color:#64748b">Odak Uzaklığı:</span> <strong>23 mm</strong></li><li><span style="color:#64748b">Odaklama Mesafesi:</span> <strong>20 cm</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2025</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Camera Lenses</h2><ul style="line-height:1.8"><li><a href="/product/sigma-56mm-f1-4-dc-dn-contemporary-sony-e-807p6jcmrfo0t0d" style="color:#2563eb">Sigma 56mm F1.4 DC DN Contemporary (Sony E)</a></li><li><a href="/product/nikon-z-70-180mm-f2-8-jasbxhgsupqy19g" style="color:#2563eb">Nikon Z 70-180mm F2.8 (JMA721DA)</a></li><li><a href="/product/nikon-nikkor-z-40mm-f2-se-bczzsqqthen1plu" style="color:#2563eb">Nikon Nikkor Z 40mm F2 SE (JMA110DA)</a></li><li><a href="/product/nikon-nikkor-z-24-70mm-f2-8-s-ii-nikon-z-nmj7i6nhd3k62is" style="color:#2563eb">Nikon Nikkor Z 24-70mm F2.8 S II (2025) (JMA724DA)</a></li><li><a href="/product/canon-rf-85mm-f1-2l-usm-ds-8jt2pwuk0jo32ak" style="color:#2563eb">Canon RF 85mm F1.2L USM DS</a></li><li><a href="/product/canon-rf-85mm-f-1-2l-usm-awkcio6wlnl82tz" style="color:#2563eb">Canon RF 85mm F1.2L USM (3447C002)</a></li><li><a href="/product/tamron-16-30mm-f2-8-di-iii-vxd-g2-nikon-z-64498sgjihdf8we" style="color:#2563eb">Tamron 16-30mm F2.8 Di III VXD G2 (Nikon Z) (A064Z)</a></li><li><a href="/product/tokina-atx-m-85mm-f1-8-fe-tphaccnl8qcwb48" style="color:#2563eb">Tokina ATX-m 85mm F1.8 FE (ATX-M-AF85FE)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/camera_lenses" style="color:#2563eb;font-weight:600">Compare all Camera Lenses →</a></p></main></div>

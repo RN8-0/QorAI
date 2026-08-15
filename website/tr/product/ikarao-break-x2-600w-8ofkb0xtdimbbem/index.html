@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/audio_systems">Ses Sistemi</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ikarao Break X2 600W Müzik Sistemi</h1><p style="color:#475569;margin:0 0 12px">Ikarao · Ses Sistemi · Qor AI teknik skoru 90/100</p><img src="https://resim.epey.com/1050091/m_ikarao-break-x2-600w-1.jpg" alt="Ikarao Break X2 600W Müzik Sistemi" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ikarao Break X2 600W Müzik Sistemi öne çıkan özellikleri: audio output Stereo, bluetooth Yes, charging port Kablolu ve Wireless. Ikarao Break X2 600W Müzik Sistemi 25 teknik özelliğini, Qor AI teknik skorunu ve benzer ses sistemi modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Output:</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>Kablolu ve Wireless</strong></li><li><span style="color:#64748b">Dahili Batarya:</span> <strong>Yes</strong></li><li><span style="color:#64748b">En Düşük Frequency:</span> <strong>48 Hz</strong></li><li><span style="color:#64748b">En Yüksek Frequency:</span> <strong>20 KHz</strong></li><li><span style="color:#64748b">Subwoofer:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Güç (RMS):</span> <strong>300 W</strong></li><li><span style="color:#64748b">Uydu Count:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Ses Sistemi modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/linktech-m425-67sw9rb1ec76htf" style="color:#2563eb">LinkTech M425 Bluetooth Hoparlör (LPS-M425)</a></li><li><a href="/tr/product/bang-olufsen-beosound-a5-edp5dsndn75xqts" style="color:#2563eb">Bang &amp; Olufsen Beosound A5 Bluetooth Hoparlör</a></li><li><a href="/tr/product/marshall-bromley-450-6ms42ry25yqcij8" style="color:#2563eb">Marshall Bromley 450 Müzik Sistemi (ZD.1008199)</a></li><li><a href="/tr/product/anker-soundcore-rave-plus-x9nynufzlelz81j" style="color:#2563eb">Anker Soundcore Rave+ Müzik Sistemi (A3391)</a></li><li><a href="/tr/product/jbl-xtreme-5-1227ykk73nftc3k" style="color:#2563eb">JBL Xtreme 5 Bluetooth Hoparlör (JBLXTREME5BLKAM)</a></li><li><a href="/tr/product/sony-bravia-theatre-bar-8-w22azjco479bh88" style="color:#2563eb">Sony Bravia Theatre Bar 8 Soundbar (HT-A8000 -SW3 -RS8)</a></li><li><a href="/tr/product/sennheiser-ambeo-soundbar-plus-25k8q7lcgh117vb" style="color:#2563eb">Sennheiser AMBEO Soundbar Plus Soundbar (SB02M)</a></li><li><a href="/tr/product/sennheiser-ambeo-soundbar-max-76lhdu7sohpn7nc" style="color:#2563eb">Sennheiser AMBEO Soundbar Max Soundbar (SB01)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/audio_systems" style="color:#2563eb;font-weight:600">Tüm Ses Sistemi modellerini karşılaştır →</a></p></main></div>

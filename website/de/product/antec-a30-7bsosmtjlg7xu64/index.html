@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/cpu_coolers">CPU-Kühler</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Antec A30 processor cooler</h1><p style="color:#475569;margin:0 0 12px">Antec · CPU-Kühler · Qor AI Techscore 88/100</p><img src="https://resim.epey.com/814676/m_antec-a30-1.jpg" alt="Antec A30 processor cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Antec A30 processor cooler Highlights: aydınlatma Yes, fan audio seviyesi 20 dBA, fan bağlantısı 3 pin. Sieh dir unten 22 technische Merkmale von Antec A30 processor cooler, den Qor AI Techscore und den Vergleich mit ähnlichen CPU-Kühler-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>20 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>3 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>92 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>1750 RPM</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>36 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>95 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche CPU-Kühler-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/endorfy-spartan-5-max-argb-gyoxjll7i9z93sf" style="color:#2563eb">Endorfy spartan 5 max argb processor cooler (EY3A004)</a></li><li><a href="/de/product/antec-symphony-360-t2o3utgnucsm4wp" style="color:#2563eb">Antec symphony 360 processor cooler (3 pieces)</a></li><li><a href="/de/product/endorfy-fortis-5-argb-mg2st0cqc73ii8d" style="color:#2563eb">Endorfy fortis 5 argb processor cooler (EY3A010)</a></li><li><a href="/de/product/antec-a450-frgb-jcc30bye5b3bznu" style="color:#2563eb">Antec A450 frgb processor cooler</a></li><li><a href="/de/product/antec-vortex-view-360-2rnve9hubould6a" style="color:#2563eb">Antec vortex view 360 processor cooler</a></li><li><a href="/de/product/antec-symphony-240-vmxrj6sn0g5xfsi" style="color:#2563eb">Antec symphony 240 processor cooler (2 units)</a></li><li><a href="/de/product/montech-metal-dt24-base-6l77j568w7zlw2u" style="color:#2563eb">Montech metal DT24 base processor cooler</a></li><li><a href="/de/product/montech-air-cooler-210-nhhs63nwgaym6el" style="color:#2563eb">Montech Air Cooler 210 İşlemci Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/cpu_coolers" style="color:#2563eb;font-weight:600">Alle CPU-Kühler-Modelle vergleichen →</a></p></main></div>

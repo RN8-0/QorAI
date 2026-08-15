@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/ssd">SSD</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Micron 3400 SSD (2 TB) (MTFDKBA2T0TFH-1BC1AABYY)</h1><p style="color:#475569;margin:0 0 12px">Micron · SSD · Qor AI teknik skoru 83/100</p><img src="https://resim.epey.com/749298/m_micron-ssd-3400-1.jpg" alt="Micron 3400 SSD (2 TB) (MTFDKBA2T0TFH-1BC1AABYY)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Micron 3400 SSD (2 TB) (MTFDKBA2T0TFH-1BC1AABYY) öne çıkan özellikleri: battery capacity 2 TB, bağlantı arayüzü m.2, rastgele okuma (qd32) 720 K IOPS. Micron 3400 SSD (2 TB) (MTFDKBA2T0TFH-1BC1AABYY) 19 teknik özelliğini, Qor AI teknik skorunu ve benzer ssd modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Rastgele Okuma (QD32):</span> <strong>720 K IOPS</strong></li><li><span style="color:#64748b">Rastgele Yazma (QD32):</span> <strong>700 K IOPS</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>6600 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>5000 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>1.200 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer SSD modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/lexar-nq790-1-tb-p51lvesc8huocm9" style="color:#2563eb">Lexar NQ790 SSD (1 TB) (LNQ790X001T)</a></li><li><a href="/tr/product/adata-legend-900-1-tb-ildj5tru0cj64ot" style="color:#2563eb">Adata Legend 900 SSD (1 TB) (SLEG-900-1TCS)</a></li><li><a href="/tr/product/crucial-p310-4-tb-26q8vnvzydxe2mz" style="color:#2563eb">Crucial P310 SSD (4 TB) (CT4000P310SSD8)</a></li><li><a href="/tr/product/crucial-p5-plus-ct2000p5pssd5-cv7cg495l4p1pwd" style="color:#2563eb">Crucial P5 Plus SSD (2 TB) (CT2000P5PSSD5)</a></li><li><a href="/tr/product/team-group-mp44-4-tb-6h133n5j7utupqi" style="color:#2563eb">Team Group MP44 SSD (TM8FPW004T0C101)</a></li><li><a href="/tr/product/samsung-mzvl22t0hblb-xds1uvc5yu1ikxk" style="color:#2563eb">Samsung MZVL22T0HBLB SSD</a></li><li><a href="/tr/product/samsung-980-pro-sogutuculu-mz-v8p2t0cw-5zk2d1y552eg3lk" style="color:#2563eb">Samsung 980 Pro Soğutuculu SSD (2 TB) (MZ-V8P2T0CW)</a></li><li><a href="/tr/product/samsung-pm9a1a-2-tb-jdcxngwlq7sqf7u" style="color:#2563eb">Samsung PM9A1a SSD (2 TB) (MZVL22T0HDLB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/ssd" style="color:#2563eb;font-weight:600">Tüm SSD modellerini karşılaştır →</a></p></main></div>

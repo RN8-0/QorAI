@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/e_readers">E-Reader</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Akozon Q35DH9KOYR-01</h1><p style="color:#475569;margin:0 0 12px">Akozon · E-Reader · Qor AI Techscore 84/100</p><img src="https://resim.epey.com/931084/m_akozon-q35dh9koyr-01-3.jpg" alt="Akozon Q35DH9KOYR-01" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Akozon Q35DH9KOYR-01 Highlights: display boyutu 7.0 İnç, ram 512 MB, resolution 800 x 480 Piksel. Sieh dir unten 10 technische Merkmale von Akozon Q35DH9KOYR-01, den Qor AI Techscore und den Vergleich mit ähnlichen E-Reader-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>7.0 İnç</strong></li><li><span style="color:#64748b">RAM:</span> <strong>512 MB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>800 x 480 Piksel</strong></li><li><span style="color:#64748b">Storage:</span> <strong>4 GB Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche E-Reader-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/pocketbook-touch-lux-3-w1587ptahnskwwa" style="color:#2563eb">PocketBook Touch Lux 3</a></li><li><a href="/de/product/pocketbook-basic-touch-2-n9yuky0hw01fglg" style="color:#2563eb">PocketBook Basic Touch 2</a></li><li><a href="/de/product/pocketbook-touch-lux-5-qx8l16ae88vmr8y" style="color:#2563eb">PocketBook Touch Lux 5</a></li><li><a href="/de/product/pocketbook-basic-2-djdt3df4yv33eoa" style="color:#2563eb">PocketBook Basic 2</a></li><li><a href="/de/product/kobo-nia-5sselg4jdlv1f6w" style="color:#2563eb">Kobo Nia</a></li><li><a href="/de/product/tolino-shine-2-hd-f05cm9mlmhnxjt1" style="color:#2563eb">Tolino Shine 2 HD</a></li><li><a href="/de/product/inkbook-lumos-ya2ltun4jybhnk0" style="color:#2563eb">inkBOOK Lumos</a></li><li><a href="/de/product/calibro-basic-763sh9uaz0vdna0" style="color:#2563eb">Calibro Basic</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/e_readers" style="color:#2563eb;font-weight:600">Alle E-Reader-Modelle vergleichen →</a></p></main></div>

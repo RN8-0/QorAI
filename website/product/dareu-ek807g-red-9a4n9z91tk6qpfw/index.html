@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/keyboards">Keyboards</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dareu EK807G Red Keyboard</h1><p style="color:#475569;margin:0 0 12px">Dareu · Keyboards · Qor AI tech score 33/100</p><img src="https://resim.epey.com/940391/m_dareu-ek807g-1.jpg" alt="Dareu EK807G Red Keyboard" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dareu EK807G Red Keyboard key features: bağlantı şekli Wireless, klavye aydınlatması No, klavye pil specificationsi AAA Tipi (İnce Kalem Pil). Review Dareu EK807G Red Keyboard's 23 technical specs, its Qor AI tech score and how it compares with similar models in keyboards below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Klavye Aydınlatması:</span> <strong>No</strong></li><li><span style="color:#64748b">Klavye Pil Specificationsi:</span> <strong>AAA Tipi (İnce Kalem Pil)</strong></li><li><span style="color:#64748b">Klavye Tuş Dizilimi:</span> <strong>Q Klavye</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Oyun / E-Spor</strong></li><li><span style="color:#64748b">Mekanik Tuşlar:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Klavye</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Keyboards</h2><ul style="line-height:1.8"><li><a href="/product/iqunix-f97-graffiti-diary-dbq3h0s6zqoewa7" style="color:#2563eb">iQunix F97 Graffiti Diary Keyboard</a></li><li><a href="/product/iqunix-f97-x-little-prince-2s6f9v7f4ceelss" style="color:#2563eb">iQunix F97 X Little Prince Keyboard</a></li><li><a href="/product/iqunix-og80-e01543smmxco2n2" style="color:#2563eb">iQunix OG80 Keyboard</a></li><li><a href="/product/iqunix-zx75-q64dyj19y6gctq4" style="color:#2563eb">iQunix ZX75 Keyboard</a></li><li><a href="/product/lenovo-essential-gen2-g2v822hdzmzq8qa" style="color:#2563eb">Lenovo essential Gen2 keyboard and mouse set (4X31N50743)</a></li><li><a href="/product/lenovo-essential-4x30m39494-5grw59vzh2x57e3" style="color:#2563eb">Lenovo essential keyboard and mouse set (4X30M39494)</a></li><li><a href="/product/lenovo-thinkpad-trackpoint-ii-n010b6k010sxu3f" style="color:#2563eb">Lenovo thinkpad trackpoint ii keyboard (4Y40X49519)</a></li><li><a href="/product/lenovo-4x30h56872-jib5zsry9n7d4ya" style="color:#2563eb">Lenovo 4X30H56872 Keyboard</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/keyboards" style="color:#2563eb;font-weight:600">Compare all Keyboards →</a></p></main></div>

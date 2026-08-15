@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gaming_consoles">Game Consoles</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Sony playstation 5 (blu-ray player) (CFI-1015A)</h1><p style="color:#475569;margin:0 0 12px">Sony · Game Consoles · Qor AI tech score 52/100</p><img src="https://resim.epey.com/430620/m_sony-playstation-5-1.jpg" alt="Sony playstation 5 (blu-ray player) (CFI-1015A)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Sony playstation 5 (blu-ray player) (CFI-1015A) key features: bellek bant genişliği 448 GB/sn, bluetooth Yes, cpu cores 8. Review Sony playstation 5 (blu-ray player) (CFI-1015A)'s 41 technical specs, its Qor AI tech score and how it compares with similar models in game consoles below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Bant Genişliği:</span> <strong>448 GB/sn</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8</strong></li><li><span style="color:#64748b">Grafik İşleme Gücü:</span> <strong>10.28 TFLOPs</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160p (4K/UHD) 7680x4320p (8K)</strong></li><li><span style="color:#64748b">Storage:</span> <strong>825 GB</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 6 (AX)</strong></li><li><span style="color:#64748b">İşlem Birimi:</span> <strong>36 CUs</strong></li><li><span style="color:#64748b">İşlemci Frequency:</span> <strong>3.5 GHz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Game Consoles</h2><ul style="line-height:1.8"><li><a href="/product/microsoft-xbox-series-x-ne288qteg4kmlje" style="color:#2563eb">Microsoft Xbox Series X (Siyah) (RRT-00010)</a></li><li><a href="/product/microsoft-xbox-series-s-1tb-ihvv2inoszvw9he" style="color:#2563eb">Microsoft Xbox Series S (1 TB)</a></li><li><a href="/product/anbernic-rg35xx-h-31i2x9vqu9tqtz9" style="color:#2563eb">Anbernic RG35XX H</a></li><li><a href="/product/sony-playstation-4-pro-2tb-z58nb7ej1aeihhu" style="color:#2563eb">Sony PlayStation 4 Pro 500 Million Limited Edition (2 TB)</a></li><li><a href="/product/nintendo-switch-oled-b1aqk3uoaq8plul" style="color:#2563eb">Nintendo Switch OLED</a></li><li><a href="/product/microsoft-xbox-one-x-1tb-lfx06znpa0m72gz" style="color:#2563eb">Microsoft Xbox One X</a></li><li><a href="/product/microsoft-xbox-one-s-2tb-4aaeuoa8czitoo6" style="color:#2563eb">Microsoft xbox one s (2 TB / blu-ray player)</a></li><li><a href="/product/microsoft-xbox-one-s-all-digital-edition-x0j91yjea9k5i2b" style="color:#2563eb">Microsoft Xbox One S All-Digital Edition (1 TB) (NJP-00024)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/gaming_consoles" style="color:#2563eb;font-weight:600">Compare all Game Consoles →</a></p></main></div>

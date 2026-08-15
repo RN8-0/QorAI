@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/printers">Yazıcı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">OKI ES4192DN Yazıcı</h1><p style="color:#475569;margin:0 0 12px">OKI · Yazıcı · Qor AI teknik skoru 71/100</p><img src="https://resim.epey.com/96736/m_oki-es4192-1.jpg" alt="OKI ES4192DN Yazıcı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">OKI ES4192DN Yazıcı öne çıkan özellikleri: baskı hızı (black) 40 sf/dk, baskı tekniği Lazer, baskı türü Black. OKI ES4192DN Yazıcı 25 teknik özelliğini, Qor AI teknik skorunu ve benzer yazıcı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Hızı (Black):</span> <strong>40 sf/dk</strong></li><li><span style="color:#64748b">Baskı Tekniği:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Baskı Türü:</span> <strong>Black</strong></li><li><span style="color:#64748b">Kenarlıksız Baskı:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanım Tipi:</span> <strong>Çok Fonksiyonlu</strong></li><li><span style="color:#64748b">Mobil Baskı:</span> <strong>No</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1200 x 1200 px</strong></li><li><span style="color:#64748b">Tarayıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Kağıt Girişi:</span> <strong>250 sayfa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Yazıcı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/oki-mb492dn-l5y3mrwns90d3z3" style="color:#2563eb">OKI MB492Dn Yazıcı</a></li><li><a href="/tr/product/lexmark-mx511de-c5s2hox3xxnhog5" style="color:#2563eb">Lexmark MX511de Yazıcı</a></li><li><a href="/tr/product/lexmark-cx310dn-pqmkk5gqtsj7pim" style="color:#2563eb">Lexmark CX310dn Yazıcı</a></li><li><a href="/tr/product/lexmark-mx310dn-tv9c6q7vwsqg4yv" style="color:#2563eb">Lexmark MX310dn Yazıcı</a></li><li><a href="/tr/product/lexmark-cx410de-j9qcs2s332b5q97" style="color:#2563eb">Lexmark CX410de Yazıcı</a></li><li><a href="/tr/product/lexmark-mx410de-xn1l29yutvjjnvf" style="color:#2563eb">Lexmark MX410de Yazıcı</a></li><li><a href="/tr/product/lexmark-mx510de-9rzorhj8xkthshy" style="color:#2563eb">Lexmark MX510de Yazıcı</a></li><li><a href="/tr/product/lexmark-mx417de-gz5mc2kijlhxc04" style="color:#2563eb">Lexmark MX417de Yazıcı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/printers" style="color:#2563eb;font-weight:600">Tüm Yazıcı modellerini karşılaştır →</a></p></main></div>

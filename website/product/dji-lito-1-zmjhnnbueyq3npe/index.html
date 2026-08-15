@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/drones">Drones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">DJI Lito 1 Drone</h1><p style="color:#475569;margin:0 0 12px">DJI · Drones · Qor AI tech score 87/100</p><img src="https://resim.epey.com/1057053/m_dji-lito-1-1.jpg" alt="DJI Lito 1 Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">DJI Lito 1 Drone key features: battery capacity 2590 mAh, dahili camera Yes, harici camera uyumu No. Review DJI Lito 1 Drone's 44 technical specs, its Qor AI tech score and how it compares with similar models in drones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2590 mAh</strong></li><li><span style="color:#64748b">Dahili Camera:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Harici Camera Uyumu:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Başlangıç</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>8 km</strong></li><li><span style="color:#64748b">Sertifika Gereksinimi:</span> <strong>No</strong></li><li><span style="color:#64748b">Uçuş Ağırlığı:</span> <strong>340 g</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>36 dk</strong></li><li><span style="color:#64748b">Video recording:</span> <strong>4K</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Drones</h2><ul style="line-height:1.8"><li><a href="/product/dji-mini-5-pro-msab99eqlgjmmi9" style="color:#2563eb">DJI Mini 5 Pro Drone (Standart)</a></li><li><a href="/product/sjrc-f5s-pro-plus-yxchztf127v4x6y" style="color:#2563eb">SJRC F5S Pro Plus Drone</a></li><li><a href="/product/sjrc-f5s-pro-w56musg4vyzldht" style="color:#2563eb">SJRC F5S Pro Drone</a></li><li><a href="/product/fimi-x8-se-voyage-edition-qnvum1bsdv0hk2l" style="color:#2563eb">Fimi X8 SE Voyage Edition Drone</a></li><li><a href="/product/dji-phantom-4-pro-8tuur908z26ni7d" style="color:#2563eb">DJI Phantom 4 Pro Drone</a></li><li><a href="/product/dji-phantom-4-advanced-qt6l6cky7ouqsdb" style="color:#2563eb">DJI Phantom 4 Advanced Drone</a></li><li><a href="/product/dji-phantom-4-pro-v2-0-hj5tgr4eadvp4gh" style="color:#2563eb">DJI Phantom 4 Pro V2.0 Drone (CP.PT.00000244.01)</a></li><li><a href="/product/dji-mavic-air-2-dqjevfhiem9zwcg" style="color:#2563eb">DJI Mavic Air 2 Drone</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/drones" style="color:#2563eb;font-weight:600">Compare all Drones →</a></p></main></div>

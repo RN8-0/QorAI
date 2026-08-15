@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/projectors">Projectors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">XGIMI Horizon 20 DLP Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">XGIMI · Projectors · Qor AI tech score 95/100</p><img src="https://resim.epey.com/1038742/m_xgimi-horizon-20-2.png" alt="XGIMI Horizon 20 DLP Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">XGIMI Horizon 20 DLP Projeksiyon key features: ağ bağlantısı Yes, dinamik kontrast 20000:1, projeksiyon sistemi DLP. Review XGIMI Horizon 20 DLP Projeksiyon's 38 technical specs, its Qor AI tech score and how it compares with similar models in projectors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>20000:1</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>DLP</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160</strong></li><li><span style="color:#64748b">Weight:</span> <strong>4.8 kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Projectors</h2><ul style="line-height:1.8"><li><a href="/product/canon-lv-x320-0wlo7hxsi72d1mc" style="color:#2563eb">Canon LV-X320 DLP Projeksiyon</a></li><li><a href="/product/nec-m332xs-ws9ebirf9m4gjhk" style="color:#2563eb">NEC M332XS DLP Projeksiyon</a></li><li><a href="/product/nec-m420x-w6kx57fkktm955p" style="color:#2563eb">NEC M420X LCD Projeksiyon</a></li><li><a href="/product/casio-xj-m251-v5d0x9ac74t8dza" style="color:#2563eb">Casio XJ-M251 DLP Projeksiyon</a></li><li><a href="/product/casio-xj-v1-7937ubgfocnk64x" style="color:#2563eb">Casio XJ-V1 DLP Projeksiyon</a></li><li><a href="/product/panasonic-pt-lb300-jwgxh024y605aom" style="color:#2563eb">Panasonic -LB300 LCD Projeksiyon</a></li><li><a href="/product/lg-hu70ls-gf8svxjvi6p11a2" style="color:#2563eb">LG HU70LS DLP Projeksiyon</a></li><li><a href="/product/lg-au810p-jo0g14c7yyfdlv7" style="color:#2563eb">LG AU810P DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/projectors" style="color:#2563eb;font-weight:600">Compare all Projectors →</a></p></main></div>

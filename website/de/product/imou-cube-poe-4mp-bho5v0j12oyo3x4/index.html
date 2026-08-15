@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ip_cameras">IP-Kameras</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Imou Cube PoE 4MP (QHD) (IPC-K42AP)</h1><p style="color:#475569;margin:0 0 12px">Imou · IP-Kameras · Qor AI Techscore 74/100</p><img src="https://resim.epey.com/789971/m_imou-cube-poe-4mp-1.jpg" alt="Imou Cube PoE 4MP (QHD) (IPC-K42AP)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Imou Cube PoE 4MP (QHD) (IPC-K42AP) Highlights: gece görüşü Yes, görüş açısı (geniş) 97 °, hafıza kartı support Yes. Sieh dir unten 31 technische Merkmale von Imou Cube PoE 4MP (QHD) (IPC-K42AP), den Qor AI Techscore und den Vergleich mit ähnlichen IP-Kameras-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Gece Görüşü:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüş Açısı (Geniş):</span> <strong>97 °</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Hafıza Kartı Tipi:</span> <strong>microSD</strong></li><li><span style="color:#64748b">Panoramik Çekim:</span> <strong>No</strong></li><li><span style="color:#64748b">Piksel Count:</span> <strong>1440 p</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>QHD</strong></li><li><span style="color:#64748b">İki Yönlü Audioli İletişim:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche IP-Kameras-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/imou-rex-4mp-dvfnebq2la3lnbl" style="color:#2563eb">Imou Rex 4MP (QHD) (IPC-A46LP-D)</a></li><li><a href="/de/product/xiaomi-solar-outdoor-camera-bw400-pro-set-p80dx7bhnqsnnuk" style="color:#2563eb">Xiaomi Solar Outdoor Camera BW400 Pro Set (MJSXJ03BY)</a></li><li><a href="/de/product/xiaomi-outdoor-camera-cw400-4c7hjd53q9tuftx" style="color:#2563eb">Xiaomi Outdoor Camera CW400 (MJSXJ04HL)</a></li><li><a href="/de/product/neutron-neu-ipb410-28a-azf2f0be7irg473" style="color:#2563eb">Neutron NEU-IPB410-28A</a></li><li><a href="/de/product/hilook-ipc-b141h-f-liss0wc9ulgv1n4" style="color:#2563eb">HiLook IPC-B141H-F</a></li><li><a href="/de/product/neutron-neu-ipb410-28-r8azr0q8wej21fj" style="color:#2563eb">Neutron NEU-IPB410-28</a></li><li><a href="/de/product/neutron-neu-ipd422-28a-r8vo2xrv5t53tqb" style="color:#2563eb">Neutron NEU-IPD422-28A</a></li><li><a href="/de/product/hilook-ipc-b640h-z-b3hb32w9ter7355" style="color:#2563eb">HiLook IPC-B640H-Z</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ip_cameras" style="color:#2563eb;font-weight:600">Alle IP-Kameras-Modelle vergleichen →</a></p></main></div>

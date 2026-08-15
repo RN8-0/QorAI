@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartwatches">Smartwatches</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Qualis A47 Smart The height. Hour</h1><p style="color:#475569;margin:0 0 12px">Qualis · Smartwatches · Qor AI tech score 68/100</p><img src="https://resim.epey.com/559713/m_qualis-a47-1.jpg" alt="Qualis A47 Smart The height. Hour" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Qualis A47 Smart The height. Hour key features: battery capacity 400 mAh, display size 1.44 inch, main camera Yes. Review Qualis A47 Smart The height. Hour's 21 technical specs, its Qor AI tech score and how it compares with similar models in smartwatches below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>400 mAh</strong></li><li><span style="color:#64748b">Display Size:</span> <strong>1.44 inch</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>128x64 pixels</strong></li><li><span style="color:#64748b">Speakers:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartwatches</h2><ul style="line-height:1.8"><li><a href="/product/pufwin-vmax-hr-lfoeigedoyiuzf9" style="color:#2563eb">Pufwin Vmax HR Smart The height. Hour</a></li><li><a href="/product/patric-7-plus-mwmnnq5w6q5ntl3" style="color:#2563eb">Patric 7 Plus Smartwatch</a></li><li><a href="/product/qualis-e11-webi3vnay0itees" style="color:#2563eb">Qualis E11 Smartwatch</a></li><li><a href="/product/patric-gear-one-0o2w0zsl2eknedu" style="color:#2563eb">Patric Gear One Smartwatch</a></li><li><a href="/product/blue-inter-m4-rqxv3nebfme5a0s" style="color:#2563eb">Blue Inter M4 Smart Bileklik</a></li><li><a href="/product/lokmat-sky-gt-gtm6v84c3dkeha5" style="color:#2563eb">Lokmat SKY GT Smartwatch</a></li><li><a href="/product/qualis-e7a-nhx7w4ij2vm29h1" style="color:#2563eb">Qualis E7A Smartwatch</a></li><li><a href="/product/tcl-movetime-mt48-qs2049fyddejb0l" style="color:#2563eb">TCL Movetime MT48 Smart The height. Hour</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartwatches" style="color:#2563eb;font-weight:600">Compare all Smartwatches →</a></p></main></div>

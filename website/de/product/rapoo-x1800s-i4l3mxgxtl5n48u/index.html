@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/keyboards">Tastaturen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Rapoo X1800S klavier &amp; maus</h1><p style="color:#475569;margin:0 0 12px">Rapoo · Tastaturen · Qor AI Techscore 33/100</p><img src="https://resim.epey.com/794167/m_rapoo-x1800s-3.jpg" alt="Rapoo X1800S klavier &amp; maus" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Rapoo X1800S klavier &amp; maus Highlights: bağlantı şekli Wireless, klavye aydınlatması No, klavye pil specificationsi AA Tipi (Normal Kalem Pil). Sieh dir unten 42 technische Merkmale von Rapoo X1800S klavier &amp; maus, den Qor AI Techscore und den Vergleich mit ähnlichen Tastaturen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Klavye Aydınlatması:</span> <strong>No</strong></li><li><span style="color:#64748b">Klavye Pil Specificationsi:</span> <strong>AA Tipi (Normal Kalem Pil)</strong></li><li><span style="color:#64748b">Klavye Tuş Dizilimi:</span> <strong>Q Klavye</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mekanik Tuşlar:</span> <strong>No</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Optik</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>1000 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>3 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Klavye &amp; Mouse Seti</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Tastaturen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/rapoo-e2710-vx3xjirkxwa607v" style="color:#2563eb">Rapoo E2710 TouchPad Tastatur</a></li><li><a href="/de/product/rapoo-8000m-8op0tuoj1spiw7e" style="color:#2563eb">Rapoo 8000M tastatur &amp; maus-set</a></li><li><a href="/de/product/rapoo-8110m-g9i7zdmtrrc2p71" style="color:#2563eb">Rapoo 8110M tastatur &amp; maus-set</a></li><li><a href="/de/product/rapoo-9010m-pf5gbyino71q1f0" style="color:#2563eb">Rapoo 9010M tastatur &amp; maus</a></li><li><a href="/de/product/rapoo-x1800-pro-p1v68fck7pmklbm" style="color:#2563eb">Rapoo X1800 pro tastatur &amp; maus</a></li><li><a href="/de/product/rapoo-8000gt-bm1ku4wjxbsgtte" style="color:#2563eb">Rapoo 8000GT tastatur &amp; maus-set</a></li><li><a href="/de/product/coverzone-fsa8-5a-8juyzxuknc6ekpc" style="color:#2563eb">Coverzone FSA8-5A tastatur</a></li><li><a href="/de/product/microsoft-sculpt-ergonomic-desktop-ux76ds3g1n8adx0" style="color:#2563eb">Microsoft sculpt ergonomic desktop klavier &amp; maus (L5V-00016)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/keyboards" style="color:#2563eb;font-weight:600">Alle Tastaturen-Modelle vergleichen →</a></p></main></div>

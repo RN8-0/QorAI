@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/e_readers">E-Readers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">PocketBook Basic Lux</h1><p style="color:#475569;margin:0 0 12px">PocketBook · E-Readers · Qor AI tech score 41/100</p><img src="https://resim.epey.com/160041/m_pocketbook-basic-lux-1.png" alt="PocketBook Basic Lux" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">PocketBook Basic Lux key features: display boyutu 6.0 İnç, ram 256 MB, resolution 758 x 1024 Piksel. Review PocketBook Basic Lux's 15 technical specs, its Qor AI tech score and how it compares with similar models in e-readers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>6.0 İnç</strong></li><li><span style="color:#64748b">RAM:</span> <strong>256 MB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>758 x 1024 Piksel</strong></li><li><span style="color:#64748b">Storage:</span> <strong>8 GB Yes</strong></li><li><span style="color:#64748b">Weight:</span> <strong>170 gr</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in E-Readers</h2><ul style="line-height:1.8"><li><a href="/product/kobo-touch-2-0-teiabzo0ir1rxvv" style="color:#2563eb">Kobo Touch 2.0</a></li><li><a href="/product/amazon-kindle-paperwhite-2-w0ordhxbyo0r2vp" style="color:#2563eb">Amazon Kindle Paperwhite 2</a></li><li><a href="/product/amazon-kindle-2014-c0lzvdeyy8e9zat" style="color:#2563eb">Amazon Kindle 2014</a></li><li><a href="/product/amazon-kindle-touch-2019-8gb-3b9if2840ca971u" style="color:#2563eb">Amazon Kindle Touch 2019 (8 GB)</a></li><li><a href="/product/sony-prs-350-b02rc8d2fls627w" style="color:#2563eb">Sony PRS-350</a></li><li><a href="/product/calibro-touch-lux-w47prp7kjkigp1s" style="color:#2563eb">Calibro Touch Lux</a></li><li><a href="/product/calibro-sense-3z71behequ49y0b" style="color:#2563eb">Calibro Sense</a></li><li><a href="/product/sony-prs-t1-vaouthwi6ux0ybf" style="color:#2563eb">Sony PRS-T1</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/e_readers" style="color:#2563eb;font-weight:600">Compare all E-Readers →</a></p></main></div>

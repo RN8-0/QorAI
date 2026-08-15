@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/psu">PSU</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Everest EPS-2000 2000W</h1><p style="color:#475569;margin:0 0 12px">Everest · PSU · Qor AI teknik skoru 94/100</p><img src="https://resim.epey.com/425981/m_everest-eps-2000-2000w-1.png" alt="Everest EPS-2000 2000W" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Everest EPS-2000 2000W öne çıkan özellikleri: anahtar Yes, aydınlatma No, derinlik 235 mm. Everest EPS-2000 2000W 11 teknik özelliğini, Qor AI teknik skorunu ve benzer psu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anahtar:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Derinlik:</span> <strong>235 mm</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>80 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 Adet</strong></li><li><span style="color:#64748b">Fast charging power:</span> <strong>2000 W</strong></li><li><span style="color:#64748b">Genişlik:</span> <strong>86 mm</strong></li><li><span style="color:#64748b">Kablo Tipi:</span> <strong>Modüler Olmayan</strong></li><li><span style="color:#64748b">Yükseklik:</span> <strong>150 mm</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer PSU modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/msi-mag-a1250gl-1250w-9oqm2n29yz6e6wv" style="color:#2563eb">MSI MAG A1250GL 1250W</a></li><li><a href="/tr/product/xigmatek-x-miner-bt-1800w-sznqlk4rj5kxpdh" style="color:#2563eb">Xigmatek X Miner BT 1800W</a></li><li><a href="/tr/product/everest-eps-1650-1650w-ul7p34fgr8ybead" style="color:#2563eb">Everest EPS-1650 1650W</a></li><li><a href="/tr/product/everest-btc-1650-1650w-gl3tbz5cztl3vju" style="color:#2563eb">Everest BTC-1650 1650W</a></li><li><a href="/tr/product/fsp-aurum-pt-1200w-sadpsvycweesoj6" style="color:#2563eb">FSP Aurum 1200W (1200 W)</a></li><li><a href="/tr/product/aerocool-kcas-1200w-k4dyhekn640ugzs" style="color:#2563eb">Aerocool KCAS 1200M (1200 W)</a></li><li><a href="/tr/product/fsp-hydro-ptm-pro-1650-w-kc96z8h9o96i6a3" style="color:#2563eb">FSP Hydro PTM Pro ATX 3.1 1650 W</a></li><li><a href="/tr/product/fsp-cannon-fsp1600-55yd-1600w-9gw0b4founeh8q8" style="color:#2563eb">FSP Cannon FSP1600-55YD 1600W</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/psu" style="color:#2563eb;font-weight:600">Tüm PSU modellerini karşılaştır →</a></p></main></div>

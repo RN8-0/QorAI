@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/laptop_coolers">Laptop-Kühler</a></nav><h1 style="font-size:26px;margin:12px 0 4px">The vertux arctic laptop cooler</h1><p style="color:#475569;margin:0 0 12px">Vertux · Laptop-Kühler · Qor AI Techscore 50/100</p><img src="https://resim.epey.com/760754/m_vertux-arctic-2.jpg" alt="The vertux arctic laptop cooler" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">The vertux arctic laptop cooler Highlights: ana fan boyutu 180 mm, ana fan dönüş hızı 800 RPM, audio seviyesi 22 dBA. Sieh dir unten 16 technische Merkmale von The vertux arctic laptop cooler, den Qor AI Techscore und den Vergleich mit ähnlichen Laptop-Kühler-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ana Fan Boyutu:</span> <strong>180 mm</strong></li><li><span style="color:#64748b">Ana Fan Dönüş Hızı:</span> <strong>800 RPM</strong></li><li><span style="color:#64748b">Audio Seviyesi:</span> <strong>22 dBA</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma Türü:</span> <strong>RGB</strong></li><li><span style="color:#64748b">Bağlantı Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Laptop Ölçüsü (En Fazla):</span> <strong>17 inç</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Yükseklik Kademesi:</span> <strong>7 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Laptop-Kühler-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/rush-arctic-rc501-aonkeolcg43duwu" style="color:#2563eb">Rush arctic RC501 laptop cooler</a></li><li><a href="/de/product/gaman-vers17-fk-t364zx7wjlrk71x" style="color:#2563eb">Gaman VERS17-FK laptop cooler</a></li><li><a href="/de/product/concord-c-885-hel6jojrnz0qx37" style="color:#2563eb">Concord C-885 laptop cooler</a></li><li><a href="/de/product/newface-sr04-u4bvff9l9hkh7fl" style="color:#2563eb">Newface SR04 laptop cooler</a></li><li><a href="/de/product/xigmatek-d1611-oh21kjo91ah03f5" style="color:#2563eb">Xigmatek D1611 laptop cooler</a></li><li><a href="/de/product/gamebooster-gb-ns04-2pl6mgyzuwhcjqm" style="color:#2563eb">The gamebooster GB-NS04 laptop cooler</a></li><li><a href="/de/product/versatile-vrc-d17-8bgtm4mkq026txn" style="color:#2563eb">Versatile VRC-D17 laptop cooler</a></li><li><a href="/de/product/bix-bx-cp01g-omqeim5ph60jvu7" style="color:#2563eb">Bix BX-CP01G laptop cooler</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/laptop_coolers" style="color:#2563eb;font-weight:600">Alle Laptop-Kühler-Modelle vergleichen →</a></p></main></div>

@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/camera_lenses">Kameraobjektive</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Viltrox AF 85mm F1.8 II Z (Nikon Z)</h1><p style="color:#475569;margin:0 0 12px">Viltrox · Kameraobjektive · Qor AI Techscore 62/100</p><img src="https://resim.epey.com/961280/m_viltrox-af-85mm-f1-8-ii-z-1.jpg" alt="Viltrox AF 85mm F1.8 II Z (Nikon Z)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Viltrox AF 85mm F1.8 II Z (Nikon Z) Highlights: audiosiz odaklama Yes, camera aperture f/1.8, diyafram bıçağı 9 adet. Sieh dir unten 37 technische Merkmale von Viltrox AF 85mm F1.8 II Z (Nikon Z), den Qor AI Techscore und den Vergleich mit ähnlichen Kameraobjektive-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audiosiz Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera aperture:</span> <strong>f/1.8</strong></li><li><span style="color:#64748b">Diyafram Bıçağı:</span> <strong>9 adet</strong></li><li><span style="color:#64748b">Fast Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filtre Çapı:</span> <strong>72 mm</strong></li><li><span style="color:#64748b">Görüntü Sabitleyici:</span> <strong>No</strong></li><li><span style="color:#64748b">Görüş Açısı:</span> <strong>28 °</strong></li><li><span style="color:#64748b">Lens Tipi:</span> <strong>Dar Açılı</strong></li><li><span style="color:#64748b">Lens Türü:</span> <strong>Prime (Sabit Odaklı)</strong></li><li><span style="color:#64748b">Odak Uzaklığı:</span> <strong>85 mm</strong></li><li><span style="color:#64748b">Odaklama Mesafesi:</span> <strong>80 cm</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2020</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Kameraobjektive-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/viltrox-af-85mm-f-1-8-ii-xf-cuurbrcymg7jrq1" style="color:#2563eb">Viltrox AF 85mm F1.8 II XF (Fujifilm X)</a></li><li><a href="/de/product/viltrox-af-25mm-f1-7-air-sony-e-5r20yac6nuppvl4" style="color:#2563eb">Viltrox AF 25mm F1.7 Air (Sony E)</a></li><li><a href="/de/product/viltrox-af-85mm-f-1-8-ii-fe-t3kw3i0d1df1agc" style="color:#2563eb">Viltrox AF 85mm F1.8 II FE (Sony E)</a></li><li><a href="/de/product/sigma-28-105mm-f2-8-dg-dn-art-sony-e-ab3m5jz9s2jddiy" style="color:#2563eb">Sigma 28-105mm F2.8 DG DN Art</a></li><li><a href="/de/product/sony-fe-16-25-mm-f2-8-g-0thmxr8bat6mfx2" style="color:#2563eb">Sony FE 16-25 mm F2.8 G (SEL1625G)</a></li><li><a href="/de/product/sony-fe-24-50-mm-f2-8-g-tg6372zlucxrbtm" style="color:#2563eb">Sony FE 24-50 mm F2.8 G (SEL2450G)</a></li><li><a href="/de/product/nikon-nikkor-z-dx-16-50mm-f2-8-vr-nikon-z-6px0ta9hv21howb" style="color:#2563eb">Nikon Nikkor Z DX 16-50mm F2.8 VR (JMA725DA)</a></li><li><a href="/de/product/canon-rf-28-70mm-f2-8-is-stm-canon-rf-fi0qmx5blvd0kzp" style="color:#2563eb">Canon RF 28-70mm F2.8 IS STM</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/camera_lenses" style="color:#2563eb;font-weight:600">Alle Kameraobjektive-Modelle vergleichen →</a></p></main></div>

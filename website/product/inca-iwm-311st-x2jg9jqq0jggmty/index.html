@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/mice">Mice</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Inca IWM-311ST Mouse</h1><p style="color:#475569;margin:0 0 12px">Inca · Mice · Qor AI tech score 88/100</p><img src="https://resim.epey.com/982336/m_inca-iwm-311st-1.jpg" alt="Inca IWM-311ST Mouse" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Inca IWM-311ST Mouse key features: bağlantı şekli Wireless, kullanım amacı General Kullanım, mouse algılayıcı tipi Optik. Review Inca IWM-311ST Mouse's 28 technical specs, its Qor AI tech score and how it compares with similar models in mice below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mouse Algılayıcı Tipi:</span> <strong>Optik</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>1600 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Mouse</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Mice</h2><ul style="line-height:1.8"><li><a href="/product/inca-iwm-505-o8e2yyqy2sfhyld" style="color:#2563eb">Inca IWM-505 Mouse</a></li><li><a href="/product/redragon-m690-pro-e50odnw9041ccf3" style="color:#2563eb">Redragon M690 Pro Mouse</a></li><li><a href="/product/redragon-m901p-1b1e5f2lzrceui8" style="color:#2563eb">Redragon M901P Mouse</a></li><li><a href="/product/hp-930-creator-go73cvnkcog9pt4" style="color:#2563eb">HP 930 Creator Mouse (1D0K9AA)</a></li><li><a href="/product/razer-pro-click-v2-vertical-e2lncy13mpckmk3" style="color:#2563eb">Razer Pro Click V2 Vertical Mouse (RZ01-05250100-R3G1)</a></li><li><a href="/product/logitech-g604-lightspeed-lcscqekionufyls" style="color:#2563eb">Logitech G604 Lightspeed Mouse (910-005650)</a></li><li><a href="/product/ajazz-aj159-nl-w0qwsre6qqsent8" style="color:#2563eb">Ajazz AJ159 Mouse</a></li><li><a href="/product/3dconnexion-cadmouse-wireless-7f5dt8ecpy1oxsc" style="color:#2563eb">3Dconnexion CadMouse Wireless Mouse (3DX-700062)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/mice" style="color:#2563eb;font-weight:600">Compare all Mice →</a></p></main></div>

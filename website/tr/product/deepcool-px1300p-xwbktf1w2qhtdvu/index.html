@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/psu">PSU</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Deepcool PX1300P 1300W</h1><p style="color:#475569;margin:0 0 12px">Deepcool · PSU · Qor AI teknik skoru 94/100</p><img src="https://resim.epey.com/991851/m_deepcool-px1300p-4.jpg" alt="Deepcool PX1300P 1300W" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Deepcool PX1300P 1300W öne çıkan özellikleri: anahtar Yes, aydınlatma No, derinlik 160 mm. Deepcool PX1300P 1300W 16 teknik özelliğini, Qor AI teknik skorunu ve benzer psu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Anahtar:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Derinlik:</span> <strong>160 mm</strong></li><li><span style="color:#64748b">Fan Boyutu:</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>1 Adet</strong></li><li><span style="color:#64748b">Fast charging power:</span> <strong>1300 W</strong></li><li><span style="color:#64748b">Genişlik:</span> <strong>150 mm</strong></li><li><span style="color:#64748b">Güç Verimliliği:</span> <strong>92 %</strong></li><li><span style="color:#64748b">Kablo Tipi:</span> <strong>Tam Modüler</strong></li><li><span style="color:#64748b">PFC:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sertifika:</span> <strong>80+ Platin</strong></li><li><span style="color:#64748b">Yükseklik:</span> <strong>86 mm</strong></li><li><span style="color:#64748b">Çalışma Sıcaklığı (max):</span> <strong>40 °C</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer PSU modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/be-quiet-bn255-dark-power-pro-11-1200w-q29903sdswmtw6n" style="color:#2563eb">Be Quiet! BN255 Dark Power Pro 11 1200W</a></li><li><a href="/tr/product/be-quiet-bn310-straight-power-11-1200-w-5cpmk2eo4optgmn" style="color:#2563eb">Be quiet! BN310 Straight Power 11 1200 W</a></li><li><a href="/tr/product/be-quiet-bn312-dark-power-pro-12-1500w-42vdmbk9emif4pr" style="color:#2563eb">Be quiet! BN312 Dark Power Pro 12 1500W</a></li><li><a href="/tr/product/be-quiet-bn332-dark-power-13-1600w-0yewnxxpfoaedkg" style="color:#2563eb">Be Quiet! BN332 Dark Power 13 1600W</a></li><li><a href="/tr/product/be-quiet-bn331-titanium-dark-power-13-1300w-9fa8t7fqa9dqsrb" style="color:#2563eb">Be Quiet! BN331 Dark Power 13 1300W</a></li><li><a href="/tr/product/zalman-zm1200-arx-1200-w-7wrubnrz2fmi1ht" style="color:#2563eb">Zalman ZM1200-ARX 1200 W</a></li><li><a href="/tr/product/zalman-zm1200-ebt-1200w-sxcg6fiyy9zr5c5" style="color:#2563eb">Zalman ZM1200-EBT 1200W</a></li><li><a href="/tr/product/zalman-watttera-zm1200-ebtii-1200w-qsqrittt3gkfud2" style="color:#2563eb">Zalman Watttera ZM1200-EBTII 1200W</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/psu" style="color:#2563eb;font-weight:600">Tüm PSU modellerini karşılaştır →</a></p></main></div>

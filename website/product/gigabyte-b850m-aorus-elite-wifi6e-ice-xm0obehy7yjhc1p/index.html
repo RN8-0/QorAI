@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/motherboards">Motherboards</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gigabyte B850M Aorus Elite WiFi6E Ice AM5 (LGA 1718) Soket Anakart</h1><p style="color:#475569;margin:0 0 12px">Gigabyte · Motherboards · Qor AI tech score 96/100</p><img src="https://resim.epey.com/1012994/m_gigabyte-b850m-aorus-elite-wifi6e-ice-1.jpg" alt="Gigabyte B850M Aorus Elite WiFi6E Ice AM5 (LGA 1718) Soket Anakart" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gigabyte B850M Aorus Elite WiFi6E Ice AM5 (LGA 1718) Soket Anakart key features: aydınlatma Yes, bios hafıza boyutu 256 Mbit, bellek kanalı 2 kanal. Review Gigabyte B850M Aorus Elite WiFi6E Ice AM5 (LGA 1718) Soket Anakart's 66 technical specs, its Qor AI tech score and how it compares with similar models in motherboards below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">BIOS Hafıza Boyutu:</span> <strong>256 Mbit</strong></li><li><span style="color:#64748b">Bellek Kanalı:</span> <strong>2 kanal</strong></li><li><span style="color:#64748b">Bellek Saat Hızı (OC):</span> <strong>8200 MT/s</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Chipset:</span> <strong>AMD B850 2025</strong></li><li><span style="color:#64748b">Form Faktörü:</span> <strong>Micro ATX (mATX)</strong></li><li><span style="color:#64748b">Hız Aşırtma (Overclock) Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">M.2 Yuvası:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşlemci Soketi:</span> <strong>AM5 (LGA 1718)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Motherboards</h2><ul style="line-height:1.8"><li><a href="/product/gigabyte-b850-gaming-x-wifi6e-bpebadj464bh91c" style="color:#2563eb">Gigabyte B850 Gaming X WiFi6E AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/gigabyte-b850-aorus-elite-wifi7-ice-95vsrj9cr3eyfh5" style="color:#2563eb">Gigabyte B850 Aorus Elite WiFi7 Ice AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/gigabyte-b850-aorus-elite-wifi7-769vpxnlreiksk8" style="color:#2563eb">Gigabyte B850 Aorus Elite WiFi7 AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/gigabyte-b850-ai-top-slshgj9vhww80dy" style="color:#2563eb">Gigabyte B850 AI TOP AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/asus-rog-crosshair-x870e-apex-ogu2md78cwh9dur" style="color:#2563eb">Asus ROG Crosshair X870E Apex AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/asus-rog-crosshair-x870e-hero-btf-ejphtjclwqubiny" style="color:#2563eb">Asus ROG Crosshair X870E Hero BTF AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/product/asus-rog-strix-z890-e-gaming-wifi-wwcw8p7z3t877a4" style="color:#2563eb">Asus ROG Strix Z890-E Gaming WiFi LGA 1851 Soket Anakart (90MB1IM0-M0EAY0)</a></li><li><a href="/product/sapphire-pure-x870a-wifi7-t91ytajtdk89zss" style="color:#2563eb">Sapphire Pure X870A WiFi7 AM5 (LGA 1718) Soket Anakart</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/motherboards" style="color:#2563eb;font-weight:600">Compare all Motherboards →</a></p></main></div>

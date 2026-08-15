@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Warp WR-K2000 SSD (2 TB)</h1><p style="color:#475569;margin:0 0 12px">Warp · SSDs · Qor AI tech score 84/100</p><img src="https://resim.epey.com/924622/m_warp-wr-k2000-1.jpg" alt="Warp WR-K2000 SSD (2 TB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Warp WR-K2000 SSD (2 TB) key features: battery capacity 2 TB, bağlantı arayüzü m.2, storage NAND. Review Warp WR-K2000 SSD (2 TB)'s 14 technical specs, its Qor AI tech score and how it compares with similar models in ssds below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>7400 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>6600 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in SSDs</h2><ul style="line-height:1.8"><li><a href="/product/warp-wr-k1000-6mi100w9isvefc9" style="color:#2563eb">Warp WR-K1000 SSD (1 TB)</a></li><li><a href="/product/thull-apex-1-tb-05gj6y6191ehqsp" style="color:#2563eb">Thull Apex SSD (1 TB) (THL-M2PCIE-APXG4X4/1TB)</a></li><li><a href="/product/verbatim-vi7000g-4-tb-019moi061q34oam" style="color:#2563eb">Verbatim Vi7000G SSD (4 TB) (49369)</a></li><li><a href="/product/klevv-cras-c930-1-tb-frtawgjn5zujohy" style="color:#2563eb">Klevv Cras C930 SSD (1 TB) (K01TBM2SP0-C93)</a></li><li><a href="/product/mld-m700-bm-mld22m700p18-2000-gte2enf6ecv3d2r" style="color:#2563eb">MLD M700 SSD (2 TB) (BM-MLD22M700P18-2000)</a></li><li><a href="/product/addlink-s95-ad2tbs95m2p-vredxtarkq6rmuw" style="color:#2563eb">addlink S95 SSD (2 TB) (AD2TBS95M2P)</a></li><li><a href="/product/mushkin-vortex-mknssdvt4tb-d8-a59001m3mg4r07v" style="color:#2563eb">Mushkin Vortex SSD (4 TB) (MKNSSDVT4TB-D8)</a></li><li><a href="/product/hiksemi-futurex-1-tb-jf5pkvd38nldyoy" style="color:#2563eb">Hiksemi FutureX SSD (1 TB) (HS-SSD-FUTUREX-1024G)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ssd" style="color:#2563eb;font-weight:600">Compare all SSDs →</a></p></main></div>

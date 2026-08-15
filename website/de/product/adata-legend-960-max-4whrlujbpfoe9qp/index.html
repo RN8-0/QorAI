@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Adata Legend 960 Max SSD (1 TB) (ALEG-960M-1TCS)</h1><p style="color:#475569;margin:0 0 12px">Adata · SSDs · Qor AI Techscore 84/100</p><img src="https://resim.epey.com/932589/m_adata-legend-960-max-1.jpg" alt="Adata Legend 960 Max SSD (1 TB) (ALEG-960M-1TCS)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Adata Legend 960 Max SSD (1 TB) (ALEG-960M-1TCS) Highlights: battery capacity 1 TB, bağlantı arayüzü m.2, rastgele okuma (qd32) 730 K IOPS. Sieh dir unten 29 technische Merkmale von Adata Legend 960 Max SSD (1 TB) (ALEG-960M-1TCS), den Qor AI Techscore und den Vergleich mit ähnlichen SSDs-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Rastgele Okuma (QD32):</span> <strong>730 K IOPS</strong></li><li><span style="color:#64748b">Rastgele Yazma (QD32):</span> <strong>610 K IOPS</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>7400 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>6000 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>780 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li><li><span style="color:#64748b">Ön Bellek Kapasitesi:</span> <strong>1 GB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche SSDs-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/adata-legend-900-pro-2-tb-i5waf25ducwcsep" style="color:#2563eb">Adata Legend 900 Pro SSD (2 TB) (SLEG-900P-2TCS)</a></li><li><a href="/de/product/crucial-t500-ct4000t500ssd5-obpjzbi5hu5sixz" style="color:#2563eb">Crucial T500 SSD (4 TB) (CT4000T500SSD5)</a></li><li><a href="/de/product/crucial-t500-sogutuculu-ct2000t500ssd5-9wvik7u8lj0qhin" style="color:#2563eb">Crucial T500 cooling SSD (2 TB) (CT2000T500SSD5)</a></li><li><a href="/de/product/team-group-t-force-cardea-a440-pro-special-tm8fpy004t0c129-sqdb4dh65haly5t" style="color:#2563eb">Team Group T-Force Cardea A440 Pro Special SSD (4 TB) (TM8FPY004T0C129)</a></li><li><a href="/de/product/team-group-mp44q-y88lhu18x3nu36e" style="color:#2563eb">Team Group MP44Q SSD (1 TB) (TM8FFD001T0C101)</a></li><li><a href="/de/product/team-group-t-force-g70-pro-2-tb-e3b180rpsav2kwz" style="color:#2563eb">Team Group T-Force G70 Pro SSD (2 TB) (TM8FFH002T0C129)</a></li><li><a href="/de/product/kingston-fury-renegade-sogutuculu-y6r1uqct3tk1h60" style="color:#2563eb">Kingston fury renegade cooled SSD (2 TB) (SFYRDK/2000G)</a></li><li><a href="/de/product/kingston-fury-renegade-sfyrd-4000g-fyyrchdhsn6xc27" style="color:#2563eb">Kingston Fury Renegade SSD (4 TB) (SFYRD/4000G)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/ssd" style="color:#2563eb;font-weight:600">Alle SSDs-Modelle vergleichen →</a></p></main></div>

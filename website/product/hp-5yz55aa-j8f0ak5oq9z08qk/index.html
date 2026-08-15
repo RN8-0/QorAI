@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">HP 5YZ55AA 32 GB 2933 MT</h1><p style="color:#475569;margin:0 0 12px">HP · RAM · Qor AI tech score 90/100</p><img src="https://resim.epey.com/854597/m_hp-5yz55aa-2.jpg" alt="HP 5YZ55AA 32 GB 2933 MT" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">HP 5YZ55AA 32 GB 2933 MT key features: bellek hızı (oc) 2933 MT/s, bellek kapasitesi 32 GB, bellek teknolojisi DDR4. Review HP 5YZ55AA 32 GB 2933 MT's 13 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Hızı (OC):</span> <strong>2933 MT/s</strong></li><li><span style="color:#64748b">Bellek Kapasitesi:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR4</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/longline-storm-lngddr4st2933dt-32gb-ltodq4b14lw2q2m" style="color:#2563eb">Longline Storm 32 GB 2933 MT (LNGDDR4ST2933DT/32GB)</a></li><li><a href="/product/longline-storm-lngddr4st2133dt-32gb-i5sm0nkhp0d7jsz" style="color:#2563eb">Longline Storm 32 GB 2133 MT (LNGDDR4ST2133DT/32GB)</a></li><li><a href="/product/dragos-aquarius-id9994194-vkrpgckwak0ab46" style="color:#2563eb">Dragos Aquarius 16 GB 5600 MT (ID9994194)</a></li><li><a href="/product/dell-ac958788-8w4o83cthq4ufp8" style="color:#2563eb">Dell AC958788 16 GB 5600 MT</a></li><li><a href="/product/dell-ac774048-qr2cji3z439q3z9" style="color:#2563eb">Dell AC774048 16 GB 5600 MT (SNPW1KKYC/16G)</a></li><li><a href="/product/neo-forza-nmso516f82-5600ja10-5fink4ixam57yv7" style="color:#2563eb">Neo Forza NMSO516F82-5600JA10 16 GB 5600 MT</a></li><li><a href="/product/sk-hynix-hmcg78agbsa092n-ppsczwqpevpp689" style="color:#2563eb">SK Hynix HMCG78AGBSA092N 16 GB 5600 MT</a></li><li><a href="/product/samsung-m323r2ga3db0-cwm-ym3g0t25j9pb5e7" style="color:#2563eb">Samsung M323R2GA3DB0-CWM 16 GB 5600 MT</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>

@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gamepads">Gamepads</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gamesir nova lite player hand</h1><p style="color:#475569;margin:0 0 12px">GameSir · Gamepads · Qor AI tech score 100/100</p><img src="https://resim.epey.com/958639/m_gamesir-nova-lite-1.png" alt="Gamesir nova lite player hand" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gamesir nova lite player hand key features: charging port Wireless, değiştirilebilir düğme No, işıklandırma No. Review Gamesir nova lite player hand's 21 technical specs, its Qor AI tech score and how it compares with similar models in gamepads below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Charging port:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Değiştirilebilir Düğme:</span> <strong>No</strong></li><li><span style="color:#64748b">Işıklandırma:</span> <strong>No</strong></li><li><span style="color:#64748b">Titreşim:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Gamepads</h2><ul style="line-height:1.8"><li><a href="/product/hadron-dualshock-4-v2-dt25uwhqvlfzhg2" style="color:#2563eb">Hadron Dualshock 4 V2 Oyun Kolu</a></li><li><a href="/product/rampage-sg-rps4-joi7iebiq8ddcs2" style="color:#2563eb">Rampage SG-RPS4 Oyun Kolu</a></li><li><a href="/product/rampage-hydra-frgwuy7083nilir" style="color:#2563eb">Rampage hydra game hand</a></li><li><a href="/product/snopy-rampage-sg-rps4-plus-hk86txr9xv9zmpm" style="color:#2563eb">Snopy Rampage SG-RPS4 Plus Oyun Kolu</a></li><li><a href="/product/snopy-sg-rps4-zgnquho2lp4qt1d" style="color:#2563eb">Snopy SG-RPS4 Oyun Kolu</a></li><li><a href="/product/xiaomi-gamepad-elite-edition-cbtnhjzam4umw35" style="color:#2563eb">Xiaomi gamepad elite edition player hand (XMGP01YM)</a></li><li><a href="/product/shinecon-sc-c018-vhuepi7ta1m0aor" style="color:#2563eb">Shinecon SC-C018 Oyun Kolu</a></li><li><a href="/product/cooler-master-storm-0m33pela47jr12w" style="color:#2563eb">Cooler master storm playing hand (CMI-GSCX-BK1)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/gamepads" style="color:#2563eb;font-weight:600">Compare all Gamepads →</a></p></main></div>

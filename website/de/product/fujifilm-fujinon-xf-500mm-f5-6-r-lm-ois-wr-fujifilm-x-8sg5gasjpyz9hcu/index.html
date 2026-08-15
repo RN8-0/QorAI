@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/camera_lenses">Kameraobjektive</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Fujifilm Fujinon XF 500mm F5.6 R LM OIS WR</h1><p style="color:#475569;margin:0 0 12px">Fujifilm · Kameraobjektive · Qor AI Techscore 72/100</p><img src="https://resim.epey.com/1043553/m_fujifilm-fujinon-xf-500mm-f5-6-r-lm-ois-wr-1.jpg" alt="Fujifilm Fujinon XF 500mm F5.6 R LM OIS WR" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Fujifilm Fujinon XF 500mm F5.6 R LM OIS WR Highlights: audiosiz odaklama Yes, camera aperture f/5.6, diyafram bıçağı 9 adet. Sieh dir unten 38 technische Merkmale von Fujifilm Fujinon XF 500mm F5.6 R LM OIS WR, den Qor AI Techscore und den Vergleich mit ähnlichen Kameraobjektive-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audiosiz Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera aperture:</span> <strong>f/5.6</strong></li><li><span style="color:#64748b">Diyafram Bıçağı:</span> <strong>9 adet</strong></li><li><span style="color:#64748b">Fast Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filtre Çapı:</span> <strong>95 mm</strong></li><li><span style="color:#64748b">Görüntü Sabitleyici:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Lens Tipi:</span> <strong>Dar Açılı</strong></li><li><span style="color:#64748b">Lens Türü:</span> <strong>Prime (Sabit Odaklı)</strong></li><li><span style="color:#64748b">Odak Uzaklığı:</span> <strong>500 mm</strong></li><li><span style="color:#64748b">Odaklama Mesafesi:</span> <strong>275 cm</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2024</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Kameraobjektive-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/sigma-17-40mm-f1-8-dc-art-sony-e-ge4l8x2zcwzqocs" style="color:#2563eb">Sigma 17-40mm F1.8 DC Art (A025E)</a></li><li><a href="/de/product/sony-fe-100mm-f2-8-macro-gm-oss-sony-e-bekmhwts3vtkdec" style="color:#2563eb">Sony FE 100mm F2.8 Macro GM OSS (SEL100M28GM)</a></li><li><a href="/de/product/nikon-nikkor-z-400mm-f2-8-tc-vr-s-b70nhearf0q110f" style="color:#2563eb">Nikon Nikkor Z 400mm F2.8 TC VR S (JMA501DA)</a></li><li><a href="/de/product/canon-rf-135mm-f1-8l-is-usm-312anclniudsz9x" style="color:#2563eb">Canon RF 135mm F1.8L IS USM (5776C005AA)</a></li><li><a href="/de/product/tamron-35-150mm-f2-2-8-di-iii-vxd-z-nqjuiu8cnto3oa8" style="color:#2563eb">Tamron 35-150mm F2-2.8 Di III VXD Z (A058Z)</a></li><li><a href="/de/product/sigma-28-45mm-f1-8-dg-dn-art-sony-e-iz7psdf7hd1iuud" style="color:#2563eb">Sigma 28-45mm F1.8 DG DN Art</a></li><li><a href="/de/product/sony-fe-70-200mm-f-2-8-g-oss-ii-myi7sw2a442yxwv" style="color:#2563eb">Sony FE 70-200mm F2.8 G OSS II (1045 g) (SEL70200GM2)</a></li><li><a href="/de/product/sony-fe-16mm-f1-8-g-sony-e-ianv3mrsu6xqdez" style="color:#2563eb">Sony FE 16mm F1.8 G (SEL16F18G)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/camera_lenses" style="color:#2563eb;font-weight:600">Alle Kameraobjektive-Modelle vergleichen →</a></p></main></div>

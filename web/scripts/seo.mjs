@@ -12,6 +12,8 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync, readdirSync } from 'fs';
+// UI metinleri TEK KAYNAKTAN: kabuga gomulen hero yazilari SPA ile birebir ayni olmali.
+import { STRINGS } from '../src/i18n/strings.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
@@ -1068,6 +1070,61 @@ function landingBody(kind, guides, lang = 'tr') {
     + '</main>';
 }
 
+
+// ── Acilis kabugunun LCP blogu ──────────────────────────────────────────────
+// Kabuk FCP'de (~1,7 sn) boyaniyor. Icerigi iskelet oldugunda LCP ADAYI yok:
+// en buyuk icerik React mount + rota chunk'i bekliyor. Olculdu (/subscriptions,
+// yavas 4G + 4x CPU): icerik 4211 ms'de DOM'a giriyor, LCP 5244 ms.
+// Ana sayfada gercek hero'yu kabuga koymak LCP'yi 3932 -> 2488 yapmisti; ayni
+// sey rota sayfalari icin de gecerli. FARK: her sayfa KENDI metnini tasir —
+// ana sayfanin basligini 23 bin sayfaya kopyalamak "olcekli icerik" sinyali
+// olurdu, o yuzden reddedilmisti.
+// Metinler i18n'den OKUNUR, kopyalanmaz: iki yerde tutulsa ayrisir ve kabuk
+// kalkarken kullanici metnin degistigini GORUR.
+const T = (lang, key) => (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || '';
+const BOOT_LANGS = ['en', 'tr', 'de'];
+
+function bootSkeleton() {
+  return '<div class="qb-skel">'
+    + '<div class="qb-sk" style="height:210px"></div>'
+    + '<div class="qb-sk" style="height:52px;border-radius:999px"></div>'
+    + '<div class="qb-sk" style="height:150px"></div></div>';
+}
+
+// PageHero'nun (subscriptions / link-analysis / premium) kabuk karsiligi.
+function pageHeroBlock(lang, kicker, title, accent, after, lead) {
+  return `<div class="qb-hero" data-l="${lang}"><section class="page-hero has-lead">`
+    + '<div class="container page-hero-inner">'
+    + (kicker ? `<span class="page-hero-kicker">${esc(kicker)}</span>` : '')
+    + `<div class="qb-ph-title">${esc(title)}${accent ? `<span class="page-hero-accent">${esc(accent)}</span>` : ''}${esc(after || '')}</div>`
+    + `<p class="page-hero-lead">${esc(lead)}</p>`
+    + '</div></section></div>';
+}
+
+// Kategori sayfasinin kendi basligi (.cat-hero).
+function catHeroBlock(lang, label) {
+  return `<div class="qb-hero" data-l="${lang}"><div class="cat-hero"><div class="container">`
+    + `<div class="qb-cat-title">${esc(label)}</div>`
+    + `<p>${esc(T(lang, 'catalog.subtitle'))}</p>`
+    + '</div></div></div>';
+}
+
+// routeKey -> uc dilde kabuk hero'su. Bos donerse iskelet kullanilir.
+function bootHero(routeKey, extra = {}) {
+  if (routeKey === 'subscriptions') {
+    return BOOT_LANGS.map((l) => pageHeroBlock(l, T(l, 'subs.heroKicker'), T(l, 'subs.heroTitle'),
+      T(l, 'subs.heroAccent'), T(l, 'subs.heroTitleAfter'), T(l, 'subs.heroLead'))).join('');
+  }
+  if (routeKey === 'link-analysis') {
+    return BOOT_LANGS.map((l) => pageHeroBlock(l, T(l, 'la.heroKicker'), T(l, 'la.heroTitle'),
+      T(l, 'la.heroAccent'), T(l, 'la.heroTitleAfter'), T(l, 'la.heroLead'))).join('');
+  }
+  if (routeKey === 'category' && extra.labels) {
+    return BOOT_LANGS.map((l) => catHeroBlock(l, extra.labels[l] || extra.labels.en || '')).join('');
+  }
+  return '';
+}
+
 function renderPage(template, seo, bodyHtml) {
   // Function replacers, not string replacers: product names flow into the SEO
   // block and body, and a literal "$&"/"$1" in a name would otherwise be
@@ -1084,7 +1141,17 @@ function renderPage(template, seo, bodyHtml) {
   // sayfanin uc dildeki basligi 23 bin sayfaya kopyalanir — bu sitenin daha
   // once yandigi "olcekli/kopya icerik" sinyalinin ta kendisi. Silinince kabuk
   // notr iskelete duser (.qb-skel).
-  if (!seo.isHome) out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, '<!--qb-hero--><!--/qb-hero-->');
+  // Kabuktaki LCP blogu: ana sayfa sablondaki kendi hero'sunu KORUR; diger
+  // rotalar kendi hero'suyla degistirilir; geri kalanlar iskelete duser.
+  if (seo.isHome) {
+    // Ana sayfanin hero'su sablonda duruyor (metni Home.jsx'te satir ici, i18n
+    // anahtari yok). Yalnizca iskeleti cikar: aksi halde hero'nun ALTINDA bos
+    // iskelet cubuklari da cizilir.
+    out = out.replace(/<div class="qb-skel">[\s\S]*?<\/div>\s*<!--\/qb-hero-->/, '<!--/qb-hero-->');
+  } else {
+    const blok = bootHero(seo.routeKey || '', seo.bootExtra || {}) || bootSkeleton();
+    out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, () => `<!--qb-hero-->${blok}<!--/qb-hero-->`);
+  }
   // Rota on-yuklemesi head'in EN SONUNA, yani vite'in giris modulunden SONRA.
   // Ilk denemede seo blogunun icindeydi (head'in basi) ve OLCUM ONCELIK
   // TERSLENMESI gosterdi: rota chunk'i 1585 ms'de indi ama ona BAGIMLI olan
@@ -1710,6 +1777,8 @@ async function main() {
         image: /^https?:\/\//i.test(heroImg) ? heroImg : DEFAULT_IMG,
         preloadImage: lcpVariant(heroImg, 'card'),
         routeKey: 'category',
+        // Kabuktaki hero her dilde kendi kategori adini gostersin.
+        bootExtra: { labels: Object.fromEntries(SEO_LOCALES.map((l) => [l, categoryLabel(cat, l)])) },
         type: 'website',
         alternates: hreflangAlts(path),
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },

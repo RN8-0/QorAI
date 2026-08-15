@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/headphones">Kopfhörer</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Heyplus H1 Kabellose Kopfhörer</h1><p style="color:#475569;margin:0 0 12px">Heyplus · Kopfhörer · Qor AI Techscore 94/100</p><img src="https://resim.epey.com/941040/m_xiaomi-heyplus-h1-2.jpg" alt="Heyplus H1 Kabellose Kopfhörer" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Heyplus H1 Kabellose Kopfhörer Highlights: audio output Stereo, bluetooth Yes 5.3, charging süresi 150 dk. Sieh dir unten 27 technische Merkmale von Heyplus H1 Kabellose Kopfhörer, den Qor AI Techscore und den Vergleich mit ähnlichen Kopfhörer-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Output:</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes 5.3</strong></li><li><span style="color:#64748b">Charging Süresi:</span> <strong>150 dk</strong></li><li><span style="color:#64748b">Charging Tipi:</span> <strong>USB</strong></li><li><span style="color:#64748b">Charging port:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>10 m</strong></li><li><span style="color:#64748b">Kullanım Süresi (General):</span> <strong>79 saat</strong></li><li><span style="color:#64748b">Kumanda:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sürücü Çapı:</span> <strong>40 mm</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Kopfhörer-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/james-donkey-830-70ravk01bgq8gyh" style="color:#2563eb">James Donkey 830 Kabellose Kopfhörer</a></li><li><a href="/de/product/hifuture-futuretour-la4khu6xk8wox4c" style="color:#2563eb">HiFuture FutureTour Kabellose Kopfhörer</a></li><li><a href="/de/product/audeze-maxwell-playstation-grygb786jp51u76" style="color:#2563eb">Audeze maxwell playstation wireless headset (208-MW-1120-01)</a></li><li><a href="/de/product/audeze-maxwell-xbox-vmajjm25pb7bomw" style="color:#2563eb">Audeze maxwell xbox wireless earphones (207-MW-1120-01)</a></li><li><a href="/de/product/audeze-mobius-op9kr6ziqjzwfjy" style="color:#2563eb">Audeze Mobius Kabellose Kopfhörer</a></li><li><a href="/de/product/marley-positive-vibration-2-wireless-mik8m88b1h1uzgh" style="color:#2563eb">House of marley positive vibration 2 wireless wireless earphones (EM-JH133)</a></li><li><a href="/de/product/house-of-marley-positive-vibration-frequency-f5tp5s0i98twut4" style="color:#2563eb">House of Marley Positive Vibration Frequency Kabellose Kopfhörer</a></li><li><a href="/de/product/bowers-wilkins-px7-s3-m8th3ms3v51vcl6" style="color:#2563eb">Bowers &amp; Wilkins Px7 S3 Kabellose Kopfhörer</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/headphones" style="color:#2563eb;font-weight:600">Alle Kopfhörer-Modelle vergleichen →</a></p></main></div>

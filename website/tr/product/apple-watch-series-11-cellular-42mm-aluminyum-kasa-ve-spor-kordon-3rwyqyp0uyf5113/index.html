@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartwatches">Akıllı Saat</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch</h1><p style="color:#475569;margin:0 0 12px">Apple · Akıllı Saat · Qor AI teknik skoru 94/100</p><img src="https://resim.epey.com/1026781/m_apple-watch-series-11-cellular-42mm-aluminyum-kasa-ve-spor-kordon-1.jpg" alt="Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch öne çıkan özellikleri: device operating system WatchOS, display size 1.77 inch, flicker Yes. Apple Watch Series 11 Cellular 42mm Aluminum Case ve Spor Kordon Smartwatch 69 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı saat modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Device Operating System:</span> <strong>WatchOS</strong></li><li><span style="color:#64748b">Display Size:</span> <strong>1.77 inch</strong></li><li><span style="color:#64748b">Flicker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Location Info:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>374x446 pixels Ultra HD (4K)</strong></li><li><span style="color:#64748b">Speakers:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Saat modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/apple-watch-series-11-cellular-42mm-anduvaz-titanyum-kasa-ve-siyah-spor-kordon-cnh8gi1ttrn4q8l" style="color:#2563eb">Apple Watch Series 11 Cellular 42mm Titanium Case ve Spor Kordon Smartwatch</a></li><li><a href="/tr/product/apple-watch-ultra-3-trail-loop-ev41y9jtxmtdv0n" style="color:#2563eb">Apple Watch Ultra 3 Trail Loop Smartwatch</a></li><li><a href="/tr/product/samsung-galaxy-watch7-44mm-d88el5ddbdequet" style="color:#2563eb">Samsung Galaxy Watch 7 (44mm) Smartwatch (SM-L310)</a></li><li><a href="/tr/product/samsung-galaxy-watch7-lte-40mm-gcpcx6vkpteyg9a" style="color:#2563eb">Samsung Galaxy Watch 7 LTE (40mm) Smartwatch (SM-L305)</a></li><li><a href="/tr/product/apple-watch-ultra-2-2024-milano-loop-bjlsw8j7csb823z" style="color:#2563eb">Apple Watch Ultra 2 2024 Milano Loop Smartwatch (MX4W3TU/A)</a></li><li><a href="/tr/product/apple-watch-series-10-cellular-46mm-aluminyum-kasa-ve-spor-loop-nt0gyfwvq67h1vj" style="color:#2563eb">Apple Watch Series 10 Cellular 46mm Aluminum Case ve Spor Loop Smartwatch (MWY83TU/A)</a></li><li><a href="/tr/product/apple-watch-series-10-cellular-46mm-titanyum-kasa-ve-milano-loop-17nczg55edyxfmn" style="color:#2563eb">Apple Watch Series 10 Cellular 46mm Titanium Case ve Milano Loop Smartwatch (MC7R4TU/A)</a></li><li><a href="/tr/product/apple-watch-series-10-cellular-46mm-titanyum-kasa-ve-spor-kordon-y5dohprgrfbujpq" style="color:#2563eb">Apple Watch Series 10 Cellular 46mm Titanium Case ve Spor Kordon Smartwatch (MWYD3TU/A)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartwatches" style="color:#2563eb;font-weight:600">Tüm Akıllı Saat modellerini karşılaştır →</a></p></main></div>

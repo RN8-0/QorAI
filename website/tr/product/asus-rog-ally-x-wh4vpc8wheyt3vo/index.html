@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/gaming_consoles">Oyun Konsolu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Asus ROG Ally X (RC72LA)</h1><p style="color:#475569;margin:0 0 12px">Asus · Oyun Konsolu · Qor AI teknik skoru 86/100</p><img src="https://resim.epey.com/942574/m_asus-rog-ally-x-2.jpg" alt="Asus ROG Ally X (RC72LA)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Asus ROG Ally X (RC72LA) öne çıkan özellikleri: bellek bant genişliği 120 GB/sn, bluetooth Yes, cpu cores 8. Asus ROG Ally X (RC72LA) 55 teknik özelliğini, Qor AI teknik skorunu ve benzer oyun konsolu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Bant Genişliği:</span> <strong>120 GB/sn</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8</strong></li><li><span style="color:#64748b">Grafik İşleme Gücü:</span> <strong>8.6 TFLOPs</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>1920x1080p (FHD)</strong></li><li><span style="color:#64748b">Storage:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 6E (AXE)</strong></li><li><span style="color:#64748b">İşlem Birimi:</span> <strong>12 CUs</strong></li><li><span style="color:#64748b">İşlemci Frequency:</span> <strong>3.3 GHz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Oyun Konsolu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sony-playstation-5-pro-aqbm7fpz1wr5uj5" style="color:#2563eb">Sony PlayStation 5 Pro</a></li><li><a href="/tr/product/asus-rog-xbox-ally-zb0wknetienkcnf" style="color:#2563eb">Asus ROG Xbox Ally (AMD Ryzen Z2 A) (RC73YA)</a></li><li><a href="/tr/product/microsoft-xbox-series-x-digital-edition-4lfsy804u0rre0s" style="color:#2563eb">Microsoft Xbox Series X Digital Edition (Beyaz)</a></li><li><a href="/tr/product/zotac-zone-78bbjnh94islyw0" style="color:#2563eb">Zotac Zone (ZGC-G1A1W-01)</a></li><li><a href="/tr/product/acer-nitro-blaze-7-dlapavq9diph20h" style="color:#2563eb">Acer Nitro Blaze 7 (GN771)</a></li><li><a href="/tr/product/nintendo-switch-2-bjui6kv5wl53k8p" style="color:#2563eb">Nintendo Switch 2</a></li><li><a href="/tr/product/ayaneo-2-32g-2t-in0cjr1eb7cuj1f" style="color:#2563eb">Ayaneo 2 32G/2T (2 TB / 32 GB)</a></li><li><a href="/tr/product/lenovo-legion-go-1tb-khs4ldfopdq3ggq" style="color:#2563eb">Lenovo Legion Go (1 TB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/gaming_consoles" style="color:#2563eb;font-weight:600">Tüm Oyun Konsolu modellerini karşılaştır →</a></p></main></div>

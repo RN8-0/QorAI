@@ -146,10 +146,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -192,12 +202,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/media_players">Medya Oynatıcı</a></nav><h1 style="font-size:26px;margin:12px 0 6px">Shaza H96 Max Medya Oynatıcı <span style="color:#94a3b8">vs</span> Nokia Streaming Box 8010 Medya Oynatıcı</h1><p style="line-height:1.7;color:#334155">Shaza H96 Max Medya Oynatıcı ile Nokia Streaming Box 8010 Medya Oynatıcı karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.</p><table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px"><thead><tr><th></th><th style="padding:8px 12px;text-align:left"><a href="/tr/product/shaza-h96-max-igg7ojvsp88ketr" style="color:#2563eb">Shaza H96 Max Medya Oynatıcı</a></th><th style="padding:8px 12px;text-align:left"><a href="/tr/product/nokia-streaming-box-8010-9dhcrzltrw1plcq" style="color:#2563eb">Nokia Streaming Box 8010 Medya Oynatıcı</a></th></tr></thead><tbody><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Qor AI teknik skoru</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">92/100</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">92/100</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Marka</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Shaza</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Nokia</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Bluetooth</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">5.0</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">5.0</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Ethernet Hızı</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">100 Mbit/s</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1000 Mbit/s</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">HDR</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">RAM</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">4 GB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">4 GB</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Resolution</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">7680x4320 p 8K</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">3840x2160 p 4K UHD</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Storage</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">64 GB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">32 GB</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">USB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">USB 3.2 Gen 1</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">USB 3.2 Gen 1</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Wi-Fi</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 6 (802.11ax)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 6 (802.11ax)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">FPS Değeri</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">—</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">60 fps</td></tr></tbody></table><p><a href="https://qorai.net/tr/category/media_players" style="color:#2563eb;font-weight:600">Tüm Medya Oynatıcı modellerini karşılaştır →</a></p></main></div>

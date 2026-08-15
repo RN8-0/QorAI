@@ -146,10 +146,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -192,12 +202,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/vr_headsets">Sanal Gerçeklik</a></nav><h1 style="font-size:26px;margin:12px 0 6px">Samsung Galaxy XR <span style="color:#94a3b8">vs</span> Apple Vision Pro M5</h1><p style="line-height:1.7;color:#334155">Samsung Galaxy XR ile Apple Vision Pro M5 karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.</p><table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px"><thead><tr><th></th><th style="padding:8px 12px;text-align:left"><a href="/tr/product/samsung-galaxy-xr-yst9sxuzsbv8c32" style="color:#2563eb">Samsung Galaxy XR</a></th><th style="padding:8px 12px;text-align:left"><a href="/tr/product/apple-vision-pro-m5-yrq3amifvn2nf6v" style="color:#2563eb">Apple Vision Pro M5</a></th></tr></thead><tbody><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Qor AI teknik skoru</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">100/100</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">86/100</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Marka</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Samsung</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Apple</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Battery capacity</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">256 GB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">256 GB</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Bağımsız Çalışabilme</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Display Tipi</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Micro OLED</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">OLED</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Görüş Açısı</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">123 °</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">—</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Göz Bebeği Mesafesi (IPD)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Ayarlanabilir</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Otomatik Ayarlı</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Gözlük ile Kullanabilme</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">No</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Lens Mesafesi</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Ayarlanabilir</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">—</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Output Tarihi</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2025</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2025</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Refresh rate</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">90 Hz</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">120 Hz</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Resolution</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1776x3840</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">—</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Wi-Fi</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 7</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 6 (802.11ax)</td></tr></tbody></table><p><a href="https://qorai.net/tr/category/vr_headsets" style="color:#2563eb;font-weight:600">Tüm Sanal Gerçeklik modellerini karşılaştır →</a></p></main></div>

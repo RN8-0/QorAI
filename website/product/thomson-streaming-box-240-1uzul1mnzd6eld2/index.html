@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/media_players">Media Players</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Thomson streaming box 240 media player</h1><p style="color:#475569;margin:0 0 12px">Thomson · Media Players · Qor AI tech score 85/100</p><img src="https://resim.epey.com/998849/m_thomson-streaming-box-240-1.png" alt="Thomson streaming box 240 media player" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Thomson streaming box 240 media player key features: bluetooth 5.0, fps değeri 60 fps, hdmi standardı 2.1. Review Thomson streaming box 240 media player's 30 technical specs, its Qor AI tech score and how it compares with similar models in media players below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bluetooth:</span> <strong>5.0</strong></li><li><span style="color:#64748b">FPS Değeri:</span> <strong>60 fps</strong></li><li><span style="color:#64748b">HDMI Standardı:</span> <strong>2.1</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>2 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>3840x2160 p 4K UHD</strong></li><li><span style="color:#64748b">Storage:</span> <strong>8 GB</strong></li><li><span style="color:#64748b">USB:</span> <strong>USB 2.0</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Media Players</h2><ul style="line-height:1.8"><li><a href="/product/rocktek-gt1-xp7fj5beo70e16z" style="color:#2563eb">Rocktek GT1 media player</a></li><li><a href="/product/rio-sat-m5-17hlm7pi0yp2yox" style="color:#2563eb">Rio sate M5 media player</a></li><li><a href="/product/ugoos-am8-pro-b315kxr0c6q16cp" style="color:#2563eb">Ugoos AM8 pro media player (8 GB / 64 GB)</a></li><li><a href="/product/shaza-h96-max-igg7ojvsp88ketr" style="color:#2563eb">Shaza H96 max media player</a></li><li><a href="/product/thomson-streaming-box-plus-270-24nb5k8x4r6gbt5" style="color:#2563eb">Thomson streaming box plus 270 media player</a></li><li><a href="/product/rocktek-g2-eprc8z6mf3m50kq" style="color:#2563eb">Rocktek G2 media player</a></li><li><a href="/product/rocktek-gx1-streamer-upcjilgu20zlpee" style="color:#2563eb">Rocktek GX1 streamer media player</a></li><li><a href="/product/nokia-streaming-box-8010-9dhcrzltrw1plcq" style="color:#2563eb">Nokia streaming box 8010 media player</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/media_players" style="color:#2563eb;font-weight:600">Compare all Media Players →</a></p></main></div>

@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/powerbanks">Power Banks</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Auris T160 52000 mAh Powerbank (ARS-T160)</h1><p style="color:#475569;margin:0 0 12px">Auris · Power Banks · Qor AI tech score 92/100</p><img src="https://resim.epey.com/944146/m_auris-ars-t160-1.jpg" alt="Auris T160 52000 mAh Powerbank (ARS-T160)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Auris T160 52000 mAh Powerbank (ARS-T160) key features: 1. output bağlantı tipi Standart USB (Type-A), battery capacity 52000 mAh, doluluk göstergesi Yes. Review Auris T160 52000 mAh Powerbank (ARS-T160)'s 24 technical specs, its Qor AI tech score and how it compares with similar models in power banks below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">1. Output Bağlantı Tipi:</span> <strong>Standart USB (Type-A)</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>52000 mAh</strong></li><li><span style="color:#64748b">Doluluk Göstergesi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">El Feneri Özelliği:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Adedi:</span> <strong>4 adet</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Power Banks</h2><ul style="line-height:1.8"><li><a href="/product/auris-t158-6tnxpj0i9skgdew" style="color:#2563eb">Auris T158 32000 mAh Powerbank (ARS-T158)</a></li><li><a href="/product/phixi-ultimate-up180-3n3vwti9f5v1ps2" style="color:#2563eb">Phixi Ultimate UP180 30000 mAh Powerbank</a></li><li><a href="/product/aukey-spark-sling-0k0u29ufg24edg8" style="color:#2563eb">Aukey Spark Sling 20000 mAh Powerbank (PB-Y48)</a></li><li><a href="/product/intouch-ultra-130w-k9sjzk18pk1a2ig" style="color:#2563eb">Intouch Ultra 130W 20000 mAh Powerbank -PRE020)</a></li><li><a href="/product/ttec-recharger-pro-lcd-ps8v15jn2b7qj42" style="color:#2563eb">ttec ReCharger Pro LCD 20000 mAh Powerbank (2BB218UG)</a></li><li><a href="/product/baseus-nomos-qi2-45w-xsmc3jofl5n8fap" style="color:#2563eb">Baseus Nomos Qi2 45W 10000 mAh Powerbank (P10078800123-00)</a></li><li><a href="/product/baseus-picogo-am61-sycnsci239wx85j" style="color:#2563eb">Baseus PicoGo AM61 10000 mAh Powerbank (E0028V00)</a></li><li><a href="/product/baseus-adaman-overseas-edition-140w-4j39ciy4klk74u6" style="color:#2563eb">Baseus Adaman Overseas Edition 140W 24000 mAh Powerbank (P10021508113-00)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/powerbanks" style="color:#2563eb;font-weight:600">Compare all Power Banks →</a></p></main></div>

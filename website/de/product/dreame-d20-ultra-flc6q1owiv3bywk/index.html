@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/robot_vacuums">Saugroboter</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dreame D20 ultra robot sweeper+mop</h1><p style="color:#475569;margin:0 0 12px">Dreame · Saugroboter · Qor AI Techscore 100/100</p><img src="https://resim.epey.com/1018459/m_dreame-d20-ultra-1.png" alt="Dreame D20 ultra robot sweeper+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dreame D20 ultra robot sweeper+mop Highlights: aşılabilir yükseklik 20 mm, charging süresi 3.5 saat, emiş gücü 13000 Pa. Sieh dir unten 41 technische Merkmale von Dreame D20 ultra robot sweeper+mop, den Qor AI Techscore und den Vergleich mit ähnlichen Saugroboter-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aşılabilir Yükseklik:</span> <strong>20 mm</strong></li><li><span style="color:#64748b">Charging Süresi:</span> <strong>3.5 saat</strong></li><li><span style="color:#64748b">Emiş Gücü:</span> <strong>13000 Pa</strong></li><li><span style="color:#64748b">Emiş Gücü Kontrolü:</span> <strong>Otomatik</strong></li><li><span style="color:#64748b">Haritalama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Islak Mop:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Otomatik Charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Zaman Planlama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Çalışma Süresi:</span> <strong>260 dk</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Saugroboter-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/umie-ls5-fkmzfzuyujs48n5" style="color:#2563eb">Umie LS5 robot sweeper+mop (25968)</a></li><li><a href="/de/product/lura-wipen-clean-mhvp7pu8non5ws5" style="color:#2563eb">Lura wipe&#39;s clean robot +mop</a></li><li><a href="/de/product/icotech-f10-max-plus-ai-ebmq79rv7193n6y" style="color:#2563eb">The icotech F10 max plus AI robot is splurge+mop</a></li><li><a href="/de/product/arnica-sil-supur-tbotvvkegquqhpd" style="color:#2563eb">Arnica sil swirling robot swirled+mop (ET13350)</a></li><li><a href="/de/product/realme-techlife-tio8vyzwhkr03v9" style="color:#2563eb">Realme techlife robot sweeper+mop</a></li><li><a href="/de/product/dersar-l1-plus-w5jogt2qqmxmcsv" style="color:#2563eb">Classroom L1 plus robot sweeper+mop</a></li><li><a href="/de/product/wero-m8-max-0l2vt5mxv2wvs9n" style="color:#2563eb">Wero M8 max robot sweeper+mop</a></li><li><a href="/de/product/xwow-r2-p2of1xv0858p027" style="color:#2563eb">Xwow R2 robot sweeper+mop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/robot_vacuums" style="color:#2563eb;font-weight:600">Alle Saugroboter-Modelle vergleichen →</a></p></main></div>

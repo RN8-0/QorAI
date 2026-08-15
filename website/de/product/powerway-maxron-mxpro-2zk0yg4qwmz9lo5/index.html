@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/tablets">Tablets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Powerway Maxron MXPro Tablet</h1><p style="color:#475569;margin:0 0 12px">Powerway · Tablets · Qor AI Techscore 69/100</p><img src="https://resim.epey.com/997450/m_powerway-maxron-mxpro-1.png" alt="Powerway Maxron MXPro Tablet" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Powerway Maxron MXPro Tablet Highlights: battery capacity 6000 mAh, cpu frequency 1.6 GHz, display boyutu 10.1 İnç. Sieh dir unten 34 technische Merkmale von Powerway Maxron MXPro Tablet, den Qor AI Techscore und den Vergleich mit ähnlichen Tablets-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>6000 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>1.6 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>10.1 İnç</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>6 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>5.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>Android 14</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Tablets-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/tcl-note-a1-nxtpaper-csjai6lhx0kiuai" style="color:#2563eb">TCL Note A1 NXTPAPER Tablet</a></li><li><a href="/de/product/tcl-tab-11-gen2-yc4swhgvayhell7" style="color:#2563eb">TCL Tab 11 Gen2 Tablet</a></li><li><a href="/de/product/honor-pad-10-pro-q1npner5xmcaqbk" style="color:#2563eb">Honor Pad 10 Pro Tablet</a></li><li><a href="/de/product/microsoft-surface-pro-x-lte-mu-00001j-cwkouhzmhcrar7w" style="color:#2563eb">Microsoft Surface Pro X LTE Tablet (512 GB / 16 GB) (MJU-00001)</a></li><li><a href="/de/product/hometech-alfa-10-mx-exf6jy4l4udel9q" style="color:#2563eb">Hometech Alfa 10 Tablet</a></li><li><a href="/de/product/apple-ipad-pro-11-m5-wi-fi-2-qvvc8exnlf3amdp" style="color:#2563eb">Apple iPad Pro 11&quot; (M5) Wi-Fi Tablet (12 GB / 256 GB)</a></li><li><a href="/de/product/apple-ipad-pro-13-m5-wi-fi-2-3nc5orgtblrqh3r" style="color:#2563eb">Apple iPad Pro 13&quot; (M5) Wi-Fi Tablet (12 GB / 512 GB)</a></li><li><a href="/de/product/oneplus-pad-4-2-h1mbgo7cs1kk1kz" style="color:#2563eb">OnePlus Pad 4 Tablet (12 GB / 512 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/tablets" style="color:#2563eb;font-weight:600">Alle Tablets-Modelle vergleichen →</a></p></main></div>

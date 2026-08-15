@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpu_coolers">İşlemci Soğutucu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Daryun DY-500X İşlemci Soğutucu</h1><p style="color:#475569;margin:0 0 12px">Daryun · İşlemci Soğutucu · Qor AI teknik skoru 88/100</p><img src="https://resim.epey.com/1055754/m_daryun-dy-500x-4.png" alt="Daryun DY-500X İşlemci Soğutucu" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Daryun DY-500X İşlemci Soğutucu öne çıkan özellikleri: aydınlatma Yes, fan audio seviyesi 32 dBA, fan bağlantısı 4 pin. Daryun DY-500X İşlemci Soğutucu 19 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci soğutucu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>32 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>1600 RPM</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>93 CFM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>6 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>230 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci Soğutucu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/gelid-rev-5-tranquillo-dhjo46hzqxxj9p0" style="color:#2563eb">Gelid Rev.5 Tranquillo İşlemci Soğutucu (CC-TRANQ-05-A)</a></li><li><a href="/tr/product/james-donkey-lugis-jdc120-j2md3kepooe19ju" style="color:#2563eb">James Donkey Lugis JDC120 İşlemci Soğutucu</a></li><li><a href="/tr/product/snt-energy-snt-ss360-3f-ug4uhn0drcismgy" style="color:#2563eb">SNT Energy SNT SS360-3F İşlemci Soğutucu</a></li><li><a href="/tr/product/performax-perfan-120-h-dfstazy8qbdw2rs" style="color:#2563eb">Performax Perfan-120-H İşlemci Soğutucu</a></li><li><a href="/tr/product/bugatek-liquid-240-argb-zjhmpsdfnizfksv" style="color:#2563eb">Bugatek Liquid 240 ARGB İşlemci Soğutucu</a></li><li><a href="/tr/product/performax-perfan-240-k-c4etih6kv4hjzws" style="color:#2563eb">Performax Perfan-240-K İşlemci Soğutucu (2 adet)</a></li><li><a href="/tr/product/snt-energy-snt-ss240-2f-l7qkfaohsxahb6f" style="color:#2563eb">SNT Energy SNT SS240-2F İşlemci Soğutucu</a></li><li><a href="/tr/product/hyper-rocket-wl360yn-argb-0ue6dp5p5colojo" style="color:#2563eb">Hyper Rocket WL360YN ARGB İşlemci Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpu_coolers" style="color:#2563eb;font-weight:600">Tüm İşlemci Soğutucu modellerini karşılaştır →</a></p></main></div>

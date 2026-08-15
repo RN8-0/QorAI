@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -195,12 +205,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-hero" data-l="en"><div class="cat-hero"><div class="container"><div class="qb-cat-title">Smart Rings</div><p>AI-scored tech products — pick, compare, decide.</p></div></div></div><div class="qb-hero" data-l="tr"><div class="cat-hero"><div class="container"><div class="qb-cat-title">Akıllı Yüzük</div><p>AI puanlı teknoloji ürünleri — seç, karşılaştır, karar ver.</p></div></div></div><div class="qb-hero" data-l="de"><div class="cat-hero"><div class="container"><div class="qb-cat-title">Smart Rings</div><p>KI-bewertete Technikprodukte — auswählen, vergleichen, entscheiden.</p></div></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › Smart Rings</nav><h1 style="font-size:28px;margin:12px 0 6px">Smart Rings Comparison</h1><p style="line-height:1.7;color:#334155;max-width:680px">Compare the best smart rings models with Qor AI: AI tech score, key features and current prices together. Pick one of the models below or filter to find the one that fits you best in seconds.</p><ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none"><li style="margin:4px 0"><a href="/product/amazfit-helio-ring-dcw9ve83igzlbe9" style="color:#0f172a;text-decoration:none">Amazfit Helio Ring <span style="color:#64748b;font-size:12px">· 100/100</span></a></li><li style="margin:4px 0"><a href="/product/spovan-ring-o6tmsicea5d6n5m" style="color:#0f172a;text-decoration:none">Spovan SP02 Ring <span style="color:#64748b;font-size:12px">· 75/100</span></a></li><li style="margin:4px 0"><a href="/product/samsung-galaxy-ring-8nemf58p4lzf7jb" style="color:#0f172a;text-decoration:none">Samsung Galaxy Ring (SM-Q50) <span style="color:#64748b;font-size:12px">· 48/100</span></a></li><li style="margin:4px 0"><a href="/product/motions-ring-kpc4tpyld6p4ell" style="color:#0f172a;text-decoration:none">Motions Ring <span style="color:#64748b;font-size:12px">· 38/100</span></a></li><li style="margin:4px 0"><a href="/product/xo-rs01-k61ssxnrn71nb35" style="color:#0f172a;text-decoration:none">XO RS01 <span style="color:#64748b;font-size:12px">· 38/100</span></a></li><li style="margin:4px 0"><a href="/product/ultrahuman-ring-air-j65urmp3f6t6g38" style="color:#0f172a;text-decoration:none">Ultrahuman Ring Air <span style="color:#64748b;font-size:12px">· 35/100</span></a></li><li style="margin:4px 0"><a href="/product/imiki-smart-ring-7ewjg78ge5y3lp6" style="color:#0f172a;text-decoration:none">Imiki Smart Ring <span style="color:#64748b;font-size:12px">· 35/100</span></a></li><li style="margin:4px 0"><a href="/product/nexuring-titanyum-xtpd1dwto97ywrk" style="color:#0f172a;text-decoration:none">Nexuring Titanyum <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/hifuture-future-ring-iawsye5h2mpzenj" style="color:#0f172a;text-decoration:none">HiFuture Future Ring <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/reeder-reefit-akilli-yuzuk-twko6uviqbwj1lg" style="color:#0f172a;text-decoration:none">Reeder ReeFIT Smart <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/henix-r02-jfcp31qzn4xi4na" style="color:#0f172a;text-decoration:none">Henix R02 <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/yesido-io32-h4kza064bpsac2j" style="color:#0f172a;text-decoration:none">Yesido IO32 <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/zeitwatch-bx-ring-cd9uqhfy0vzbfb9" style="color:#0f172a;text-decoration:none">ZeitWatch BX-Ring <span style="color:#64748b;font-size:12px">· 30/100</span></a></li><li style="margin:4px 0"><a href="/product/oura-ring-5-c846uzxsrnsbkaf" style="color:#0f172a;text-decoration:none">Oura Ring 5 <span style="color:#64748b;font-size:12px">· 17/100</span></a></li><li style="margin:4px 0"><a href="/product/oura-ring-4-rltd6v37x1iv4h9" style="color:#0f172a;text-decoration:none">Oura Ring 4 <span style="color:#64748b;font-size:12px">· 17/100</span></a></li></ul></main></div>

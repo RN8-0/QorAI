@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/flash_drives">USB Flash Drives</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Linktech ultra flash memory (LUF-U204)</h1><p style="color:#475569;margin:0 0 12px">LinkTech · USB Flash Drives · Qor AI tech score 32/100</p><img src="https://resim.epey.com/397142/m_linktech-u264-ultra-64gb-1.jpg" alt="Linktech ultra flash memory (LUF-U204)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Linktech ultra flash memory (LUF-U204) key features: battery capacity 4 GB, bağlantı arayüzü USB Type-A, storage NAND. Review Linktech ultra flash memory (LUF-U204)'s 15 technical specs, its Qor AI tech score and how it compares with similar models in usb flash drives below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>4 GB</strong></li><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>USB Type-A</strong></li><li><span style="color:#64748b">Storage:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>25 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>15 MB/s</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in USB Flash Drives</h2><ul style="line-height:1.8"><li><a href="/product/linktech-fit-premium-t5opn1r0841f1af" style="color:#2563eb">Linktech fit premium flash memory (LUF-F364)</a></li><li><a href="/product/linktech-ultra-u232-1et8yp7jl7a91td" style="color:#2563eb">Linktech ultra U232 flash memory (LUF-U232)</a></li><li><a href="/product/linktech-ultra-u216-8hv67ffsktll9p7" style="color:#2563eb">Linktech ultra U216 flash memory (LUF-U216)</a></li><li><a href="/product/linktech-ultra-u264-q0jpcszvawmdls4" style="color:#2563eb">LinkTech Ultra U264 Flash Bellek</a></li><li><a href="/product/syrox-style-st64-0c907c0gcgkmyw2" style="color:#2563eb">Syrox style flash memory is 64 GB (ST64)</a></li><li><a href="/product/syrox-lock-lk64-b3ewhd4xz732x51" style="color:#2563eb">Syrox lock flash memory (64 GB) (LK64)</a></li><li><a href="/product/syrox-pr64-043vswch2ooeovc" style="color:#2563eb">Syrox PR64 flash memory (64 GB)</a></li><li><a href="/product/syrox-pr128-bsh3z4klr5y1652" style="color:#2563eb">Syrox PR128 flash memory (128 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/flash_drives" style="color:#2563eb;font-weight:600">Compare all USB Flash Drives →</a></p></main></div>

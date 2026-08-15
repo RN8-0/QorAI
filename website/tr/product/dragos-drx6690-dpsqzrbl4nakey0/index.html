@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/desktops">Masaüstü PC</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dragos DRx6690 (ATM00011398)</h1><p style="color:#475569;margin:0 0 12px">Dragos · Masaüstü PC · Qor AI teknik skoru 69/100</p><img src="https://resim.epey.com/943287/m_dragos-drx6690-1.jpg" alt="Dragos DRx6690 (ATM00011398)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dragos DRx6690 (ATM00011398) öne çıkan özellikleri: display kartı modeli NVIDIA GeForce RTX 4070 Ti, kullanım amacı Oyun, ram 64 GB. Dragos DRx6690 (ATM00011398) 35 teknik özelliğini, Qor AI teknik skorunu ve benzer masaüstü pc modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Kartı Modeli:</span> <strong>NVIDIA GeForce RTX 4070 Ti</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>Oyun</strong></li><li><span style="color:#64748b">RAM:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>No</strong></li><li><span style="color:#64748b">Storage:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli (CPU):</span> <strong>Intel Core i7-14700KF</strong></li><li><span style="color:#64748b">İşlemci Temel Frequency:</span> <strong>3.4 GHz</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>DOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Masaüstü PC modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/dragos-drx6694-bllocmn1z8m8p4m" style="color:#2563eb">Dragos DRx6694 (ATM00011402)</a></li><li><a href="/tr/product/dragos-drx6668-twp7edsgn9ep2bb" style="color:#2563eb">Dragos DRx6668 (ATM00011376)</a></li><li><a href="/tr/product/dragos-drx6672-jhxgkwho3xd0o25" style="color:#2563eb">Dragos DRx6672 (ATM00011380)</a></li><li><a href="/tr/product/dragos-drx6714-0kwsbxflt2qe6xr" style="color:#2563eb">Dragos DRx6714 (ATM00011422)</a></li><li><a href="/tr/product/dragos-drx6487-e8gct1s7kcguyme" style="color:#2563eb">Dragos DRx6487 (ATM00010799)</a></li><li><a href="/tr/product/dragos-drx6505-nvse0i1jggrdfu6" style="color:#2563eb">Dragos DRx6505 (ATM00010817)</a></li><li><a href="/tr/product/asus-v440va-3238764427898-30dne04nnldx5o2" style="color:#2563eb">Asus V440VA -3238764427898</a></li><li><a href="/tr/product/dell-tower-ect1250-rpls-r-003-u516-cqfs2rsvmmga2gb" style="color:#2563eb">Dell Tower ECT1250_RPLS-R_003_U516</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/desktops" style="color:#2563eb;font-weight:600">Tüm Masaüstü PC modellerini karşılaştır →</a></p></main></div>

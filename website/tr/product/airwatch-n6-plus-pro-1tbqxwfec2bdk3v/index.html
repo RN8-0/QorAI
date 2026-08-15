@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartwatches">Akıllı Saat</a></nav><h1 style="font-size:26px;margin:12px 0 4px">AirWatch N6+ Pro Smartwatch</h1><p style="color:#475569;margin:0 0 12px">AirWatch · Akıllı Saat · Qor AI teknik skoru 68/100</p><img src="https://resim.epey.com/687712/m_airwatch-n6-plus-pro-1.jpg" alt="AirWatch N6+ Pro Smartwatch" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">AirWatch N6+ Pro Smartwatch öne çıkan özellikleri: display size 1.75 inch, flicker Yes, location info No. AirWatch N6+ Pro Smartwatch 33 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı saat modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Size:</span> <strong>1.75 inch</strong></li><li><span style="color:#64748b">Flicker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Location Info:</span> <strong>No</strong></li><li><span style="color:#64748b">Main camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>320x385 pixels Ultra HD (4K)</strong></li><li><span style="color:#64748b">Speakers:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>No</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Saat modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/hoco-watch-y3-pro-rra8o70mbmvtkrn" style="color:#2563eb">Hoco Watch Y3 Pro Smartwatch</a></li><li><a href="/tr/product/airwatch-w6-8ulc40ne4grct7t" style="color:#2563eb">AirWatch W6 Smartwatch</a></li><li><a href="/tr/product/imilab-w01-lrodjv3ad5i1x9y" style="color:#2563eb">Imilab W01 Smartwatch</a></li><li><a href="/tr/product/wesse-wwc2002-utqjjrdzh54vohv" style="color:#2563eb">Wesse WWC2002 Smartwatch</a></li><li><a href="/tr/product/wesse-connect-wwc2003-02-54ek2lqd9iq1b3w" style="color:#2563eb">Wesse Connect WWC2003-02 Smartwatch</a></li><li><a href="/tr/product/wesse-connect-wwc2020-lb8du0cevps1km1" style="color:#2563eb">Wesse Connect WWC2020 Smartwatch</a></li><li><a href="/tr/product/sony-smartband-talk-mss8qa8va6y9c88" style="color:#2563eb">Sony SmartBand Talk SWR30 Smart Bileklik</a></li><li><a href="/tr/product/hoco-y11-2bjn2mtleff2czv" style="color:#2563eb">Hoco Y11 Smartwatch</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartwatches" style="color:#2563eb;font-weight:600">Tüm Akıllı Saat modellerini karşılaştır →</a></p></main></div>

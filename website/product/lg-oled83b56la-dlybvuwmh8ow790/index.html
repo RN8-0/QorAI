@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tvs">TVs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">LG OLED83B56LA Ultra HD (4K) TV</h1><p style="color:#475569;margin:0 0 12px">LG · TVs · Qor AI tech score 88/100</p><img src="https://resim.epey.com/1013855/m_lg-oled83b56la-10.jpg" alt="LG OLED83B56LA Ultra HD (4K) TV" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">LG OLED83B56LA Ultra HD (4K) TV key features: audio output gücü (rms) 20 W, display boyutu 83 İnç, hd uydu alıcı (dvb-s2) Yes. Review LG OLED83B56LA Ultra HD (4K) TV's 70 technical specs, its Qor AI tech score and how it compares with similar models in tvs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audio Output Gücü (RMS):</span> <strong>20 W</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>83 İnç</strong></li><li><span style="color:#64748b">HD Uydu Alıcı (DVB-S2):</span> <strong>Yes</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2025</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>Ultra HD (4K)</strong></li><li><span style="color:#64748b">SDR Enerji Tüketim Sınıfı (A-G):</span> <strong>F</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>OLED</strong></li><li><span style="color:#64748b">Smart TV:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Subwoofer:</span> <strong>No</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>webOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in TVs</h2><ul style="line-height:1.8"><li><a href="/product/lg-oled77c54la-ncqqoxfyko2a9os" style="color:#2563eb">LG OLED77C54LA Ultra HD (4K) TV</a></li><li><a href="/product/samsung-55m80h-w1ffq7ogeoob5yi" style="color:#2563eb">Samsung 55M80H Ultra HD (4K) TV (UE55M80HAUXTK)</a></li><li><a href="/product/samsung-85m80h-rf9oofi2vlz726s" style="color:#2563eb">Samsung 85M80H Ultra HD (4K) TV (UE85M80HAUXTK)</a></li><li><a href="/product/samsung-65m80h-yyi37omgfljjjq1" style="color:#2563eb">Samsung 65M80H Ultra HD (4K) TV (UE65M80HAUXTK)</a></li><li><a href="/product/samsung-75m80h-7njbo8ijquyamb2" style="color:#2563eb">Samsung 75M80H Ultra HD (4K) TV (UE75M80HAUXTK)</a></li><li><a href="/product/samsung-100qn80h-5fageg34tqfltq9" style="color:#2563eb">Samsung 100QN80H Ultra HD (4K) TV (QE100QN80HUXTK)</a></li><li><a href="/product/evaio-pro-4k-32-fameuzh1sex00mx" style="color:#2563eb">Evaio pro 4K 32&quot; ultra HD (4K) screen</a></li><li><a href="/product/iffalcon-65u95a-z3jbf824i5kni38" style="color:#2563eb">iFFALCON 65U95A Ultra HD (4K) TV</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tvs" style="color:#2563eb;font-weight:600">Compare all TVs →</a></p></main></div>

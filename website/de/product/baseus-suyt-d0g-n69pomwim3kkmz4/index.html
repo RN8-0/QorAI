@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/gimbals">Gimbals</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Baseus Handheld Gimbal (SUYT-D0G)</h1><p style="color:#475569;margin:0 0 12px">Baseus · Gimbals · Qor AI Techscore 51/100</p><img src="https://resim.epey.com/840369/m_baseus-suyt-d0g-1.jpg" alt="Baseus Handheld Gimbal (SUYT-D0G)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Baseus Handheld Gimbal (SUYT-D0G) Highlights: akıllı takip Yes, battery capacity 4500 mAh, bluetooth Yes. Sieh dir unten 25 technische Merkmale von Baseus Handheld Gimbal (SUYT-D0G), den Qor AI Techscore und den Vergleich mit ähnlichen Gimbals-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Akıllı Takip:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Battery capacity:</span> <strong>4500 mAh</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Dönüş Ekseni:</span> <strong>3 Eksenli</strong></li><li><span style="color:#64748b">Fast Cihaz Bağlantısı:</span> <strong>No</strong></li><li><span style="color:#64748b">Kullanım Alanı:</span> <strong>Telefon</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>No</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>No</strong></li><li><span style="color:#64748b">Weight:</span> <strong>330 g</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Çalışma Süresi:</span> <strong>12 sa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Gimbals-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/wiwu-wi-se007-8ebyabnokx7e4bj" style="color:#2563eb">Wiwu Wi-SE007 Gimbal</a></li><li><a href="/de/product/insta360-flow-kp2ky761plx9nss" style="color:#2563eb">Insta360 Flow Gimbal</a></li><li><a href="/de/product/aochuan-smart-x-7vz6jf4mahk9asq" style="color:#2563eb">Aochuan Smart X Gimbal (2600 mAh)</a></li><li><a href="/de/product/benro-reddog-r1-7dgqky6qq7i3lsw" style="color:#2563eb">Benro RedDog R1 Gimbal</a></li><li><a href="/de/product/aochuan-smart-x-pro-8y195zq77u9vu9c" style="color:#2563eb">Aochuan Smart X Pro Gimbal (3200 mAh)</a></li><li><a href="/de/product/insta360-flow-creator-kit-ky55h8rp1kbt60f" style="color:#2563eb">Insta360 Flow Creator Kit Gimbal</a></li><li><a href="/de/product/feiyutech-mg-lite-ebtil0xccchb28o" style="color:#2563eb">FeiyuTech MG Lite Gimbal</a></li><li><a href="/de/product/benro-3xs-gt4pihra9ebrcea" style="color:#2563eb">Benro 3XS Gimbal</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/gimbals" style="color:#2563eb;font-weight:600">Alle Gimbals-Modelle vergleichen →</a></p></main></div>

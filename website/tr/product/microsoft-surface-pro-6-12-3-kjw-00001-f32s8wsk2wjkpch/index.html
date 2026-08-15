@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/tablets">Tablet</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Microsoft Surface Pro 6 Tablet (Intel Core i7-8650U / 16 GB / 1024 GB)</h1><p style="color:#475569;margin:0 0 12px">Microsoft · Tablet · Qor AI teknik skoru 78/100</p><img src="https://resim.epey.com/155944/m_microsoft-surface-pro-6-4.png" alt="Microsoft Surface Pro 6 Tablet (Intel Core i7-8650U / 16 GB / 1024 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Microsoft Surface Pro 6 Tablet (Intel Core i7-8650U / 16 GB / 1024 GB) öne çıkan özellikleri: battery capacity 5940 mAh, cpu frequency 4.20 GHz, display boyutu 12.3 İnç. Microsoft Surface Pro 6 Tablet (Intel Core i7-8650U / 16 GB / 1024 GB) 31 teknik özelliğini, Qor AI teknik skorunu ve benzer tablet modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>5940 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>4.20 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>12.3 İnç</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>8.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>1024 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>Windows 10</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Tablet modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/ipad-a16-256-256-k9q3fqliy0rb83i" style="color:#2563eb">Apple iPad 11&quot; (A16) Tablet (256)</a></li><li><a href="/tr/product/apple-ipad-11-a16-wi-fi-plus-cellular-128-03d4bgsn0kw5lux" style="color:#2563eb">Apple iPad 11&quot; (A16) Wi-Fi + Cellular Tablet (128)</a></li><li><a href="/tr/product/huawei-matepad-pro-12-2-papermatte-edition-2025-06ccd2nuorrsf08" style="color:#2563eb">Huawei MatePad Pro 12.2&quot; PaperMatte Edition (2025) Tablet</a></li><li><a href="/tr/product/xiaomi-pad-7-ultra-16-1tb-74eqor57p772m30" style="color:#2563eb">Xiaomi Pad 7 Ultra Tablet (16 GB / 1024 GB)</a></li><li><a href="/tr/product/honor-magicpad-4-16gb-512ssd-pczaa0lumvdh3gz" style="color:#2563eb">Honor MagicPad4 Tablet (16 GB / 512 GB)</a></li><li><a href="/tr/product/samsung-galaxy-tab-s7-plus-sm-t970-wi-fi-siyah-mqiizvg2mrfvc8a" style="color:#2563eb">Samsung Galaxy Tab S7+ SM-T970 Tablet</a></li><li><a href="/tr/product/samsung-galaxy-tab-s10-ultra-wi-fi-1tb-pcit9vcw9vyxb3s" style="color:#2563eb">Samsung Galaxy Tab S10 Ultra Wi-Fi Tablet (1024 GB / 16 GB)</a></li><li><a href="/tr/product/samsung-galaxy-tab-s10-ultra-5g-2-1nvtndads01i4lk" style="color:#2563eb">Samsung Galaxy Tab S10 Ultra Tablet (512 GB / 12 GB / 5G)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/tablets" style="color:#2563eb;font-weight:600">Tüm Tablet modellerini karşılaştır →</a></p></main></div>

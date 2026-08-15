@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/laptops">Laptops</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Casper Excalibur G920.1490-DX90A-E Laptop</h1><p style="color:#475569;margin:0 0 12px">Casper · Laptops · Qor AI tech score 88/100</p><img src="https://resim.epey.com/1008176/m_casper-excalibur-g920-1490-dx90a-e-1.jpg" alt="Casper Excalibur G920.1490-DX90A-E Laptop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Casper Excalibur G920.1490-DX90A-E Laptop key features: display boyutu 16.0 İnç, gpu NVIDIA GeForce RTX 5090 175 W, ram 32 GB. Review Casper Excalibur G920.1490-DX90A-E Laptop's 66 technical specs, its Qor AI tech score and how it compares with similar models in laptops below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Display Boyutu:</span> <strong>16.0 İnç</strong></li><li><span style="color:#64748b">GPU:</span> <strong>NVIDIA GeForce RTX 5090 175 W</strong></li><li><span style="color:#64748b">RAM:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>2560 x 1600 Piksel Ultra HD (4K)</strong></li><li><span style="color:#64748b">Storage:</span> <strong>2 TB</strong></li><li><span style="color:#64748b">İşlemci Modeli:</span> <strong>Intel Core i9-14900HX</strong></li><li><span style="color:#64748b">İşletim Sistemi:</span> <strong>Windows 11 Home</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Laptops</h2><ul style="line-height:1.8"><li><a href="/product/hp-omen-max-gaming-16-ah0012nt-b8sq7ea-cnk1o6ezta0xy6t" style="color:#2563eb">HP OMEN MAX Gaming 16-ah0012nt (B8SQ7EA) Laptop</a></li><li><a href="/product/hp-omen-max-gaming-16-ah0009nt-b92qqea-siyah-553m85icv5el3nl" style="color:#2563eb">HP OMEN MAX Gaming 16-ah0009nt (B92QQEA) Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g614pm-s5074-sfcfdqrmtwz40ey" style="color:#2563eb">Asus ROG Strix G16 G614PM-S5074 Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g614fr-s5111-e93w8qirgj8fyg8" style="color:#2563eb">Asus ROG Strix G16 G614FR-S5111 Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g614fr-s5110-06ojgbuj5viupd5" style="color:#2563eb">Asus ROG Strix G16 G614FR-S5110 Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g615lw-s5188a006-fjy7bpky8uf4u4b" style="color:#2563eb">Asus ROG Strix G16 G615LW-S5188A006 Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g614pw-wrv038h12-kvqwi7zgwsxdeeo" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038H12 Laptop</a></li><li><a href="/product/asus-rog-strix-g16-g614pw-wrv038f15-43tqm2g1g77ar4s" style="color:#2563eb">Asus ROG Strix G16 G614PW-WRV038F15 Laptop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/laptops" style="color:#2563eb;font-weight:600">Compare all Laptops →</a></p></main></div>

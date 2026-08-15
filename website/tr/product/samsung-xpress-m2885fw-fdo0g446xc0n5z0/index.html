@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/printers">Yazıcı</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Samsung Xpress M2885FW Yazıcı</h1><p style="color:#475569;margin:0 0 12px">Samsung · Yazıcı · Qor AI teknik skoru 71/100</p><img src="https://resim.epey.com/77017/m_samsung-sl-m2885fw-1.jpg" alt="Samsung Xpress M2885FW Yazıcı" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Samsung Xpress M2885FW Yazıcı öne çıkan özellikleri: baskı hızı (black) 29 sf/dk, baskı tekniği Lazer, baskı türü Black. Samsung Xpress M2885FW Yazıcı 30 teknik özelliğini, Qor AI teknik skorunu ve benzer yazıcı modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Baskı Hızı (Black):</span> <strong>29 sf/dk</strong></li><li><span style="color:#64748b">Baskı Tekniği:</span> <strong>Lazer</strong></li><li><span style="color:#64748b">Baskı Türü:</span> <strong>Black</strong></li><li><span style="color:#64748b">Kullanım Tipi:</span> <strong>Çok Fonksiyonlu</strong></li><li><span style="color:#64748b">Mobil Baskı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>4800 x 600 px</strong></li><li><span style="color:#64748b">Tarayıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Toplam Kağıt Girişi:</span> <strong>250 sayfa</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Yazıcı modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/samsung-scx-5835fn-p98fbsdbebxdnhb" style="color:#2563eb">Samsung SCX-5835FN Yazıcı</a></li><li><a href="/tr/product/samsung-proxpress-m4070fx-l463lf1bbmhk4o5" style="color:#2563eb">Samsung ProXpress M4070FX Yazıcı</a></li><li><a href="/tr/product/samsung-clx-4195fn-hdg0ze524pq1r4s" style="color:#2563eb">Samsung CLX-4195FN Yazıcı</a></li><li><a href="/tr/product/samsung-sl-c480fw-kqkqcko2xbi77by" style="color:#2563eb">Samsung SL-C480FW Yazıcı</a></li><li><a href="/tr/product/samsung-proxpress-c3060fr-4ewr3l8te5c8lxc" style="color:#2563eb">Samsung ProXpress C3060FR Yazıcı</a></li><li><a href="/tr/product/samsung-proxpress-sl-m4583fx-gl7wc8vb4omcig7" style="color:#2563eb">Samsung ProXpress SL-M4583FX Yazıcı (SS402B)</a></li><li><a href="/tr/product/xerox-workcentre-3225-uxsa9ig41adqs2o" style="color:#2563eb">Xerox WorkCentre 3225 Yazıcı</a></li><li><a href="/tr/product/samsung-scx-4623f-c0j0io4s4pav7bc" style="color:#2563eb">Samsung SCX-4623F Yazıcı</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/printers" style="color:#2563eb;font-weight:600">Tüm Yazıcı modellerini karşılaştır →</a></p></main></div>

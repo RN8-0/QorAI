@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpus">İşlemci</a></nav><h1 style="font-size:26px;margin:12px 0 4px">AMD Ryzen 7 7800X3D (100-000000910)</h1><p style="color:#475569;margin:0 0 12px">AMD · İşlemci · Qor AI teknik skoru 63/100</p><img src="https://resim.epey.com/862941/m_amd-ryzen-7-7800x3d-1.jpg" alt="AMD Ryzen 7 7800X3D (100-000000910)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">AMD Ryzen 7 7800X3D (100-000000910) öne çıkan özellikleri: artırılmış frequency 5.0 GHz, bellek hızı 5200 MHz, bellek türü DDR5. AMD Ryzen 7 7800X3D (100-000000910) 34 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Artırılmış Frequency:</span> <strong>5.0 GHz</strong></li><li><span style="color:#64748b">Bellek Hızı:</span> <strong>5200 MHz</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>8</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>120 W</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2023</strong></li><li><span style="color:#64748b">PCIe Sürümü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Temel Frequency:</span> <strong>4.2 GHz</strong></li><li><span style="color:#64748b">Önbellek L1:</span> <strong>512 KB</strong></li><li><span style="color:#64748b">Önbellek L2:</span> <strong>8 MB</strong></li><li><span style="color:#64748b">Önbellek L3:</span> <strong>96 MB</strong></li><li><span style="color:#64748b">İş Parçacığı:</span> <strong>16</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/intel-core-i7-13700t-7iq250mvotnokie" style="color:#2563eb">Intel Core i7-13700T (CM8071504820903)</a></li><li><a href="/tr/product/intel-core-i5-14400f-8276xim5wmo92bs" style="color:#2563eb">Intel Core i5-14400F (CM8071505093011)</a></li><li><a href="/tr/product/intel-core-i5-14400-5nrtfmhm3xo0u85" style="color:#2563eb">Intel Core i5-14400 (CM8071505093012)</a></li><li><a href="/tr/product/intel-core-i9-12900ks-25183d0il2ay9ex" style="color:#2563eb">Intel Core i9-12900KS (BX8071512900KS)</a></li><li><a href="/tr/product/intel-core-i9-12900f-kj6rg3tqq85j8mk" style="color:#2563eb">Intel Core i9-12900F</a></li><li><a href="/tr/product/intel-core-i9-12900-y5mjiihufohjah4" style="color:#2563eb">Intel Core i9-12900</a></li><li><a href="/tr/product/intel-core-i7-13700-elq7mqcjqkbv45d" style="color:#2563eb">Intel Core i7-13700 (BX8071513700)</a></li><li><a href="/tr/product/intel-core-i7-13700f-gdzs187gqnota1a" style="color:#2563eb">Intel Core i7-13700F (BX8071513700F)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpus" style="color:#2563eb;font-weight:600">Tüm İşlemci modellerini karşılaştır →</a></p></main></div>

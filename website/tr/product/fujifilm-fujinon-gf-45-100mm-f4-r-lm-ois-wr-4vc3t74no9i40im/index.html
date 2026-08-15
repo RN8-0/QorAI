@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/camera_lenses">Lens</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Fujifilm Fujinon GF 45-100mm F4 R LM OIS WR</h1><p style="color:#475569;margin:0 0 12px">Fujifilm · Lens · Qor AI teknik skoru 55/100</p><img src="https://resim.epey.com/956993/m_fujifilm-fujinon-gf-45-100mm-f4-r-lm-ois-wr-1.jpg" alt="Fujifilm Fujinon GF 45-100mm F4 R LM OIS WR" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Fujifilm Fujinon GF 45-100mm F4 R LM OIS WR öne çıkan özellikleri: audiosiz odaklama Yes, camera aperture f/4, diyafram bıçağı 9 adet. Fujifilm Fujinon GF 45-100mm F4 R LM OIS WR 39 teknik özelliğini, Qor AI teknik skorunu ve benzer lens modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audiosiz Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera aperture:</span> <strong>f/4</strong></li><li><span style="color:#64748b">Diyafram Bıçağı:</span> <strong>9 adet</strong></li><li><span style="color:#64748b">Fast Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filtre Çapı:</span> <strong>82 mm</strong></li><li><span style="color:#64748b">Görüntü Sabitleyici:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Lens Tipi:</span> <strong>Geniş-Dar Açılı</strong></li><li><span style="color:#64748b">Lens Türü:</span> <strong>Zoom (Değişken Odaklı)</strong></li><li><span style="color:#64748b">Odak Uzaklığı:</span> <strong>45-100 mm</strong></li><li><span style="color:#64748b">Odaklama Mesafesi:</span> <strong>65 cm</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2020</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Lens modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sigma-105mm-f2-8-dg-dn-macro-art-fkbie1tzkzac6nq" style="color:#2563eb">Sigma 105mm F2.8 DG DN Macro Art (A020E)</a></li><li><a href="/tr/product/sigma-16-300mm-f3-5-6-7-dc-os-contemporary-sony-e-qxplf0y988a5qj3" style="color:#2563eb">Sigma 16-300mm F3.5-6.7 DC OS Contemporary (C025E)</a></li><li><a href="/tr/product/sony-sonnar-t-fe-55mm-f-1-8-za-d7fzj5o0an18fub" style="color:#2563eb">Sony Sonnar T* FE 55mm F1.8 ZA (SEL55F18Z)</a></li><li><a href="/tr/product/nikon-nikkor-z-24-105mm-f4-7-1-nikon-z-jfyyss5keqih57m" style="color:#2563eb">Nikon Nikkor Z 24-105mm F4-7.1 (JMA727DA)</a></li><li><a href="/tr/product/viltrox-s-20mm-t2-0-cine-l-mount-esxq873fld67g9r" style="color:#2563eb">Viltrox S 20mm T2.0 Cine L-Mount</a></li><li><a href="/tr/product/viltrox-af-56mm-f1-4-m-pigwm15gatrqykr" style="color:#2563eb">Viltrox AF 56mm F1.4 M</a></li><li><a href="/tr/product/sigma-135mm-f1-4-dg-art-sony-e-xlh70gzgp4vqezd" style="color:#2563eb">Sigma 135mm F1.4 DG Art</a></li><li><a href="/tr/product/nikon-z-35mm-f1-2-s-nikon-z-yyiqdc4cd5g9fwp" style="color:#2563eb">Nikon Z 35mm F1.2 S (JMA111DA)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/camera_lenses" style="color:#2563eb;font-weight:600">Tüm Lens modellerini karşılaştır →</a></p></main></div>

@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/graphics_cards">Grafikkarten</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Colorful geforce RTX 5070 gaming 12GB-V bildschirmkarte</h1><p style="color:#475569;margin:0 0 12px">Colorful · Grafikkarten · Qor AI Techscore 79/100</p><img src="https://resim.epey.com/1053494/m_colorful-geforce-rtx-5070-gaming-12gb-v-1.jpg" alt="Colorful geforce RTX 5070 gaming 12GB-V bildschirmkarte" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Colorful geforce RTX 5070 gaming 12GB-V bildschirmkarte Highlights: bellek boyutu 12 GB, bellek türü GDDR7, gpu mimarisi Blackwell. Sieh dir unten 52 technische Merkmale von Colorful geforce RTX 5070 gaming 12GB-V bildschirmkarte, den Qor AI Techscore und den Vergleich mit ähnlichen Grafikkarten-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Boyutu:</span> <strong>12 GB</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>GDDR7</strong></li><li><span style="color:#64748b">GPU Mimarisi:</span> <strong>Blackwell</strong></li><li><span style="color:#64748b">Grafik Kartı Gücü:</span> <strong>250 W</strong></li><li><span style="color:#64748b">Gölgeleme Ünitesi:</span> <strong>6144 birim</strong></li><li><span style="color:#64748b">Işın İzleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">PCIe Arayüzü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>4K</strong></li><li><span style="color:#64748b">Soğutma Tipi:</span> <strong>Fan Soğutmalı</strong></li><li><span style="color:#64748b">Transistör Mesafesi:</span> <strong>4 nm</strong></li><li><span style="color:#64748b">Yapay Zeka Hızlandırıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşlemci Üreticisi:</span> <strong>NVIDIA</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Grafikkarten-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/colorful-igame-geforce-rtx-5070-ultra-w-oc-12gb-v-1grr394an5zcf1u" style="color:#2563eb">Colorful igame geforce RTX 5070 ultra W oc 12GB-V bildschirmkarte</a></li><li><a href="/de/product/inno3d-geforce-rtx-5070-x3-oc-ix99ywsse1bikfm" style="color:#2563eb">Inno3D geforce RTX 5070 X3 oc bildschirmkarte (N50703-12D7X-195064L)</a></li><li><a href="/de/product/inno3d-geforce-rtx-5070-twin-x2-qv7ifztziithirv" style="color:#2563eb">Inno3D geforce RTX 5070 twin X2 bildschirmkarte (N50702-12D7-195064N)</a></li><li><a href="/de/product/asrock-radeon-rx-9060-xt-challenger-oc-16gb-jrp8gad6apx3msq" style="color:#2563eb">Asrock radeon rx 9060 xt challenger oc 16GB bildschirmkarte (RX9060XT cl 16GO)</a></li><li><a href="/de/product/asrock-radeon-rx-9070-xt-steel-legend-dark-27m2tqmp8obnuo2" style="color:#2563eb">Asrock radeon rx 9070 xt steel legend dark screen card (90-GA5VZZ-00UANF)</a></li><li><a href="/de/product/asrock-radeon-rx-9070-xt-challenger-6meufdqirtsj9n3" style="color:#2563eb">Asrock radeon rx 9070 xt challenger bildschirmkarte (RX9070XT cl 16G)</a></li><li><a href="/de/product/asrock-radeon-rx-9070-xt-taichi-oc-mad68zncevuiyuq" style="color:#2563eb">Asrock radeon rx 9070 xt taichi oc bildschirmkarte (90-GA5HZZ-00UANF)</a></li><li><a href="/de/product/asrock-radeon-rx-9070-steel-legend-oc-2tjwbkgsi2i29v3" style="color:#2563eb">Asrock radeon rx 9070 steel legend oc bildschirmkarte (90-GA5EZZ-00UANF)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/graphics_cards" style="color:#2563eb;font-weight:600">Alle Grafikkarten-Modelle vergleichen →</a></p></main></div>

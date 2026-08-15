@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/keyboards">Tastaturen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hp 680 comfort tastatur &amp; maus (8T6L6AA)</h1><p style="color:#475569;margin:0 0 12px">HP · Tastaturen · Qor AI Techscore 33/100</p><img src="https://resim.epey.com/971534/m_hp-680-8t6l6aa-1.jpg" alt="Hp 680 comfort tastatur &amp; maus (8T6L6AA)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Hp 680 comfort tastatur &amp; maus (8T6L6AA) Highlights: bağlantı şekli Wireless, klavye aydınlatması No, klavye pil specificationsi AA Tipi (Normal Kalem Pil). Sieh dir unten 41 technische Merkmale von Hp 680 comfort tastatur &amp; maus (8T6L6AA), den Qor AI Techscore und den Vergleich mit ähnlichen Tastaturen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Şekli:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Klavye Aydınlatması:</span> <strong>No</strong></li><li><span style="color:#64748b">Klavye Pil Specificationsi:</span> <strong>AA Tipi (Normal Kalem Pil)</strong></li><li><span style="color:#64748b">Klavye Tuş Dizilimi:</span> <strong>Q Klavye</strong></li><li><span style="color:#64748b">Kullanım Amacı:</span> <strong>General Kullanım</strong></li><li><span style="color:#64748b">Mekanik Tuşlar:</span> <strong>No</strong></li><li><span style="color:#64748b">Mouse Azami Hassasiyet:</span> <strong>4000 dpi</strong></li><li><span style="color:#64748b">Mouse Tuşları:</span> <strong>7 adet</strong></li><li><span style="color:#64748b">Ürün Tipi:</span> <strong>Klavye &amp; Mouse Seti</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Tastaturen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/hp-475-dual-mode-gmeei00q5083wt4" style="color:#2563eb">Hp 475 dual mode tastatur (7N7B9AA)</a></li><li><a href="/de/product/hp-685-comfort-mqftd8ggsmqshfi" style="color:#2563eb">Hp 685 comfort-tastatur (8T6L9UT)</a></li><li><a href="/de/product/hp-725-multi-device-combo-bi6dsf2gki3yrfm" style="color:#2563eb">Hp 725 multi device combo tastatur &amp; maus (9T5B0UT)</a></li><li><a href="/de/product/hp-720-multi-device-draidxp3vutli5k" style="color:#2563eb">Hp 720 multi device tastatur (9T5B1AA)</a></li><li><a href="/de/product/hp-720-multi-device-9t5a9aa-0mzbgc3j36gayik" style="color:#2563eb">Hp 720 multi device tastatur und maus (9T5A9AA)</a></li><li><a href="/de/product/hp-cs10l-z1kmj5todile0vo" style="color:#2563eb">Hp CS10L tastatur und maussatz (6NY40PA)</a></li><li><a href="/de/product/hp-460-bluetooth-515ei0uic3oourf" style="color:#2563eb">Hp 460 bluetooth-tastatur (7N7B8AA)</a></li><li><a href="/de/product/hp-680-comfort-8t6l8aa-cyqy13tkrtkqt7a" style="color:#2563eb">Hp 680 comfort tastatur (8T6L8AA)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/keyboards" style="color:#2563eb;font-weight:600">Alle Tastaturen-Modelle vergleichen →</a></p></main></div>

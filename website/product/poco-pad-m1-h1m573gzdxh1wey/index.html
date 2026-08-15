@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tablets">Tablets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Poco Pad M1 Tablet</h1><p style="color:#475569;margin:0 0 12px">Poco · Tablets · Qor AI tech score 70/100</p><img src="https://resim.epey.com/1035641/m_poco-pad-m1-2.jpg" alt="Poco Pad M1 Tablet" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Poco Pad M1 Tablet key features: battery capacity 12000 mAh, cpu frequency 2.7 GHz, display boyutu 12.1 İnç. Review Poco Pad M1 Tablet's 43 technical specs, its Qor AI tech score and how it compares with similar models in tablets below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>12000 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>2.7 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>12.1 İnç</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">RAM:</span> <strong>8 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>8.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>Android 15</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Tablets</h2><ul style="line-height:1.8"><li><a href="/product/techstorm-winpad-p04-11uckr42liugpaf" style="color:#2563eb">Techstorm Winpad P04 Tablet</a></li><li><a href="/product/vorcom-quartzpro-td5ujp6oik2o9yh" style="color:#2563eb">Vorcom QuartzPro Tablet</a></li><li><a href="/product/powerway-maxron-mxmax-6gb-128gb-h5jwtfoaewvt6jj" style="color:#2563eb">Powerway Maxron Mxmax Tablet</a></li><li><a href="/product/hometech-alfa-10bt-0n6lhvo4h4uqw1r" style="color:#2563eb">Hometech Alfa 10BT Tablet</a></li><li><a href="/product/hometech-alfa-10yc-pro-0t4fo6neksxkz5b" style="color:#2563eb">Hometech Alfa 10YC PRO Tablet</a></li><li><a href="/product/hometech-alfa-10yf-pro-i0v07vn2t9ol97z" style="color:#2563eb">Hometech Alfa 10YF Pro Tablet</a></li><li><a href="/product/hometech-alfa-11bt-n4moqk5x6a6as6t" style="color:#2563eb">Hometech Alfa 11BT Tablet</a></li><li><a href="/product/samsung-galaxy-tab-active5-pro-5g-8gb-256gb-1lpyvfk97zlpf86" style="color:#2563eb">Samsung Galaxy Tab Active5 Pro 5G Tablet (8 GB / 256 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tablets" style="color:#2563eb;font-weight:600">Compare all Tablets →</a></p></main></div>

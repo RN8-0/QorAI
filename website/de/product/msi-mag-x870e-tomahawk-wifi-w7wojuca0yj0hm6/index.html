@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/motherboards">Mainboards</a></nav><h1 style="font-size:26px;margin:12px 0 4px">MSI MAG X870E Tomahawk WiFi AM5 (LGA 1718) Soket Anakart</h1><p style="color:#475569;margin:0 0 12px">MSI · Mainboards · Qor AI Techscore 100/100</p><img src="https://resim.epey.com/990334/m_msi-mag-x870e-tomahawk-wifi-1.jpg" alt="MSI MAG X870E Tomahawk WiFi AM5 (LGA 1718) Soket Anakart" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">MSI MAG X870E Tomahawk WiFi AM5 (LGA 1718) Soket Anakart Highlights: aydınlatma No, bios hafıza boyutu 256 Mbit, bellek kanalı 2 kanal. Sieh dir unten 67 technische Merkmale von MSI MAG X870E Tomahawk WiFi AM5 (LGA 1718) Soket Anakart, den Qor AI Techscore und den Vergleich mit ähnlichen Mainboards-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">BIOS Hafıza Boyutu:</span> <strong>256 Mbit</strong></li><li><span style="color:#64748b">Bellek Kanalı:</span> <strong>2 kanal</strong></li><li><span style="color:#64748b">Bellek Saat Hızı (OC):</span> <strong>8400 MT/s</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR5</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Chipset:</span> <strong>AMD X870E 2024</strong></li><li><span style="color:#64748b">Form Faktörü:</span> <strong>ATX</strong></li><li><span style="color:#64748b">Hız Aşırtma (Overclock) Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">M.2 Yuvası:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşlemci Soketi:</span> <strong>AM5 (LGA 1718)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Mainboards-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/msi-mpg-z890-edge-ti-wifi-xdszk7q2aqpn29y" style="color:#2563eb">MSI MPG Z890 Edge Ti WiFi LGA 1851 Soket Anakart</a></li><li><a href="/de/product/msi-mag-z890-tomahawk-wifi-v9o3tpic7klvz02" style="color:#2563eb">MSI MAG Z890 Tomahawk WiFi LGA 1851 Soket Anakart</a></li><li><a href="/de/product/msi-mpg-x870e-carbon-wifi-4dz47jc8l2g9hsl" style="color:#2563eb">MSI MPG X870E Carbon WiFi AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/de/product/msi-meg-x870e-godlike-x-nbotb739vcv9isq" style="color:#2563eb">MSI MEG X870E Godlike X AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/de/product/msi-meg-x870e-godlike-hcplvrezsilbd2l" style="color:#2563eb">MSI MEG X870E Godlike AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/de/product/msi-meg-z890-ace-an34tx4dr8ma423" style="color:#2563eb">MSI MEG Z890 Ace LGA 1851 Soket Anakart</a></li><li><a href="/de/product/gigabyte-x870i-aorus-pro-ice-gywsjdaxwr13ux0" style="color:#2563eb">Gigabyte X870I Aorus Pro Ice AM5 (LGA 1718) Soket Anakart</a></li><li><a href="/de/product/gigabyte-x870m-aorus-elite-wifi7-z8farwch44dl2b2" style="color:#2563eb">Gigabyte X870M Aorus Elite WiFi7 AM5 (LGA 1718) Soket Anakart</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/motherboards" style="color:#2563eb;font-weight:600">Alle Mainboards-Modelle vergleichen →</a></p></main></div>

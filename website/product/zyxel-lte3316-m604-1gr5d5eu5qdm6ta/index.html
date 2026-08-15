@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/modem_routers">Modems</a></nav><h1 style="font-size:26px;margin:12px 0 4px">ZyXEL LTE3316-M604 Modem</h1><p style="color:#475569;margin:0 0 12px">Zyxel · Modems · Qor AI tech score 77/100</p><img src="https://resim.epey.com/152987/m_zyxel-lte3316-m604-1.jpg" alt="ZyXEL LTE3316-M604 Modem" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">ZyXEL LTE3316-M604 Modem key features: dahili hücresel veri ağı Yes, ethernet hızı 1 Gbps, ethernet portu count 4 adet. Review ZyXEL LTE3316-M604 Modem's 30 technical specs, its Qor AI tech score and how it compares with similar models in modems below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Dahili Hücresel Veri Ağı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>4 adet</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>300 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı (5 GHz):</span> <strong>867 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı Sembolü:</span> <strong>AC1200</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 5 (802.11ac)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Modems</h2><ul style="line-height:1.8"><li><a href="/product/tp-link-deco-x73-dsl-3p-zpf6qz93l6ffkwz" style="color:#2563eb">TP-Link Deco X73-DSL 3P Modem</a></li><li><a href="/product/tp-link-deco-x73-dsl-2p-3y3zwi3o8vt9y3x" style="color:#2563eb">TP-Link Deco X73-DSL 2P Modem</a></li><li><a href="/product/tp-link-deco-x73-dsl-1q9o7mq11ox879r" style="color:#2563eb">TP-Link Deco X73-DSL Modem</a></li><li><a href="/product/draytek-vigor-2766ac-j1e8xa2nxjiry08" style="color:#2563eb">Draytek Vigor 2766AC Modem</a></li><li><a href="/product/general-mobile-gp500-c9216u4sdje1v2r" style="color:#2563eb">General Mobile GP500 Modem</a></li><li><a href="/product/netmaster-infinity-401-r8ud3ljkgylhn9p" style="color:#2563eb">Netmaster Infinity 401 Modem</a></li><li><a href="/product/draytek-vigor-2866ax-9qfn0b23phst2p1" style="color:#2563eb">Draytek Vigor 2866AX Modem</a></li><li><a href="/product/general-mobile-gp600-8bjpfd8ytcbopf4" style="color:#2563eb">General Mobile GP600 Modem</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/modem_routers" style="color:#2563eb;font-weight:600">Compare all Modems →</a></p></main></div>

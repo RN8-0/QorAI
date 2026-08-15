@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpu_coolers">İşlemci Soğutucu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">XPG Levante II 240 İşlemci Soğutucu</h1><p style="color:#475569;margin:0 0 12px">XPG · İşlemci Soğutucu · Qor AI teknik skoru 88/100</p><img src="https://resim.epey.com/1052571/m_xpg-levante-ii-240-2.png" alt="XPG Levante II 240 İşlemci Soğutucu" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">XPG Levante II 240 İşlemci Soğutucu öne çıkan özellikleri: aydınlatma Yes, fan audio seviyesi 26.7 dBA, fan bağlantısı 4 pin. XPG Levante II 240 İşlemci Soğutucu 28 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci soğutucu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>26.7 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>120 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>2000 RPM</strong></li><li><span style="color:#64748b">Hava Akışı:</span> <strong>58 CFM</strong></li><li><span style="color:#64748b">Hava Basıncı:</span> <strong>2.04 mm H2O</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>300 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Sıvı Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci Soğutucu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/strong-st-400a-k9muz5r8g1zj9hx" style="color:#2563eb">Strong ST-400A İşlemci Soğutucu</a></li><li><a href="/tr/product/xpg-levante-ii-360-prj7wrqx8drgpyz" style="color:#2563eb">XPG Levante II 360 İşlemci Soğutucu</a></li><li><a href="/tr/product/strong-st-120h-akw2vsfbudrf21m" style="color:#2563eb">Strong ST-120H İşlemci Soğutucu</a></li><li><a href="/tr/product/xpg-maestro-plus-62da-jc4w5g8x90uqxeu" style="color:#2563eb">XPG Maestro Plus 62DA İşlemci Soğutucu</a></li><li><a href="/tr/product/strong-st-r600-rx7gnz45s9z5ve3" style="color:#2563eb">Strong ST-R600 İşlemci Soğutucu</a></li><li><a href="/tr/product/strong-m3-206jmfr5ryodvpj" style="color:#2563eb">Strong M3 İşlemci Soğutucu</a></li><li><a href="/tr/product/strong-m4-12xpro-zwkfl1bgtmqrurn" style="color:#2563eb">Strong M4-12XPRO İşlemci Soğutucu</a></li><li><a href="/tr/product/sharkoon-a50-rgb-dy14tp2cel7uadq" style="color:#2563eb">Sharkoon A50 RGB İşlemci Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpu_coolers" style="color:#2563eb;font-weight:600">Tüm İşlemci Soğutucu modellerini karşılaştır →</a></p></main></div>

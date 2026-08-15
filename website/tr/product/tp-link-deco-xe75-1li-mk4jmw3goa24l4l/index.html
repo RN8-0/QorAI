@@ -147,10 +147,20 @@
   #qor-boot .qb-h1{font-size:clamp(34px,5vw,60px);font-weight:800;letter-spacing:0;line-height:1.02;color:var(--text)}
   #qor-boot .qb-h1 .grad{background:var(--grad-ai);-webkit-background-clip:text;background-clip:text;color:transparent}
   #qor-boot .qb-sub{font-size:18px;color:var(--text-2);line-height:1.55;max-width:520px}
-  html[data-boot-home] #qor-boot .qb-skel{display:none}
-  html[data-boot-home][data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-home][data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-home][data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  /* Rota sayfalarinin hero'su icin: .page-hero h1 (PageHero.css) ve .cat-hero h1
+     (Category.css) kurallarinin BIREBIR kopyasi. Baslik etiketi kullanilamadigi
+     icin (SEO: her sayfanin ilk h1'i kendi basligi kalmali) tipografi burada
+     tekrarlaniyor. O iki kural degisirse burasi da guncellenmeli. */
+  #qor-boot .qb-ph-title{font-size:clamp(30px,4.6vw,46px);font-weight:900;letter-spacing:-0.6px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-ph-title .page-hero-accent{color:var(--accent)}
+  #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
+     seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
+     secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
+     yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
+  html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
+  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
   #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
   [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
   @media (prefers-reduced-motion: no-preference){
@@ -196,12 +206,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><!--/qb-hero-->
-      <div class="qb-skel">
-        <div class="qb-sk" style="height:210px"></div>
-        <div class="qb-sk" style="height:52px;border-radius:999px"></div>
-        <div class="qb-sk" style="height:150px"></div>
-      </div>
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/routers">Router</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TP-Link Deco XE75 1&#39;li Router</h1><p style="color:#475569;margin:0 0 12px">TP-Link · Router · Qor AI teknik skoru 69/100</p><img src="https://resim.epey.com/918287/m_tp-link-deco-xe75-1li-1.jpg" alt="TP-Link Deco XE75 1&#39;li Router" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TP-Link Deco XE75 1&#39;li Router öne çıkan özellikleri: ethernet hızı 1 Gbps, ethernet portu count 2 adet, hüzmeleme Yes. TP-Link Deco XE75 1&#39;li Router 35 teknik özelliğini, Qor AI teknik skorunu ve benzer router modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ethernet Hızı:</span> <strong>1 Gbps</strong></li><li><span style="color:#64748b">Ethernet Portu Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Hüzmeleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Kapsama Alanı:</span> <strong>270 m²</strong></li><li><span style="color:#64748b">MU-MIMO:</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB:</span> <strong>No</strong></li><li><span style="color:#64748b">Uzaktan Yönetim:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Veri Hızı (2.4 GHz):</span> <strong>574 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı (5 GHz):</span> <strong>2402 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı (6 GHz):</span> <strong>2402 Mbps</strong></li><li><span style="color:#64748b">Veri Hızı Sembolü:</span> <strong>AXE5400</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Wi-Fi 6E (802.11ax)</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Router modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/tp-link-deco-xe75-2li-4ypcozu9x1mnpfz" style="color:#2563eb">TP-Link Deco XE75 2&#39;li Router</a></li><li><a href="/tr/product/tp-link-deco-xe75-3lu-ozy7jjjsqagxubw" style="color:#2563eb">TP-Link Deco XE75 3&#39;lü Router</a></li><li><a href="/tr/product/tp-link-archer-nx505-vffewyj27t5iyiu" style="color:#2563eb">TP-Link Archer NX505 Router</a></li><li><a href="/tr/product/asus-rt-be90u-noogie4bn00eo90" style="color:#2563eb">Asus RT-BE90U Router</a></li><li><a href="/tr/product/d-link-m95-nydlql8do1bvjca" style="color:#2563eb">D-Link M95 Router</a></li><li><a href="/tr/product/zte-u60-pro-5g-r9ntmszf0wgne9y" style="color:#2563eb">ZTE U60 Pro 5G Mobil Hotspot</a></li><li><a href="/tr/product/xiaomi-mesh-system-be3600-pro-3lu-zuncfpcg5a1428f" style="color:#2563eb">Xiaomi Mesh System BE3600 Pro Router (3lü)</a></li><li><a href="/tr/product/asus-rt-be82u-589xl0yaudei6ul" style="color:#2563eb">Asus RT-BE82U Router</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/routers" style="color:#2563eb;font-weight:600">Tüm Router modellerini karşılaştır →</a></p></main></div>
