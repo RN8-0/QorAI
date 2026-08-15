@@ -691,8 +691,8 @@ function lastmodAtLeastVersion(value) {
 
 // Renders the <head> SEO block injected between the seo markers.
 // LCP gorseli icin on-yukleme URL'i. SPA'nin GERCEKTEN isteyecegi varyanti
-// uretmek ZORUNDA: og:image ham (oneksiz) URL'i tasiyor ama kart slotu `m_`,
-// urun galerisi `b_` varyantini istiyor. Yanlis varyanti preload etmek iki ayri
+// uretmek ZORUNDA: og:image ham (oneksiz) URL'i tasiyor ama hem kart slotu hem
+// urun hero'su `m_` varyantini istiyor. Yanlis varyanti preload etmek iki ayri
 // indirme demek — yani duzeltmek yerine ISI BOZAR.
 // TEK DOGRULUK KAYNAGI: web/src/lib/imageUrl.js -> epeyVariants().
 // Burada yalnizca oradaki iki kural yansitiliyor; o dosya degisirse burasi da
@@ -700,18 +700,12 @@ function lastmodAtLeastVersion(value) {
 function lcpVariant(url, slot) {
   const clean = String(url || '').trim();
   if (!/^https?:\/\//i.test(clean) || !/resim\.epey\.com|(^|\.)epey\.com/i.test(clean)) return '';
-  if (slot === 'full') {
-    // Son satir 2026-08-15'te EKLENDI (imageUrl.js ile ayni gun, ayni sebep):
-    // onek TASIMAYAN kayitlarda bu fonksiyon MASTER dosyayi preload ediyordu.
-    // Master, Epey'de sikistirilmamis kaynak — olculdu: 905 KB (b_ 77 KB).
-    // Ustelik istemci artik b_ istiyor, yani duzeltilmezse sayfa IKI dosya
-    // birden indirir. Iki dosya da senkron kalmali.
-    return clean
-      .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
-      .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
-      .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
-      .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}b_${file}`));
-  }
+  // 2026-08-15: `full` slotu da ARTIK `m_` istiyor (bkz. imageUrl.js —
+  // basamaklar baytla olculdu: master 1550 KB / b_ 488 KB / m_ 145 KB
+  // ortalama). Onceden burasi `b_`ye, hatta onek tasimayan kayitlarda MASTER'a
+  // cikiyordu; preload ile istemcinin istedigi dosya ayrisirsa sayfa IKI dosya
+  // birden indirir, yani bu fonksiyon imageUrl.js ile HER ZAMAN ayni basamagi
+  // vermek zorunda. Iki slot da ayni kurala dustugu icin dallanma kalkti.
   return clean
     .replace(/\/b_([^/?#]+)([?#].*)?$/i, '/m_$1$2')
     .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/m_$1$2')

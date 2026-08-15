@@ -116,14 +116,26 @@ function epeyVariants(url, size) {
   // `m_` (160x330) fazlasıyla yeterli ve belirgin ölçüde küçük. Yalnızca
   // galeri (`full`) büyük varyantı ister.
   if (size === 'full') {
+    // BASAMAK SEÇİMİ BAYTLA ÖLÇÜLDÜ (2026-08-15, 18 ürünlük örnek, gerçek
+    // indirme):
+    //     master  ortalama 1550 KB  (en kötü 7,6 MB)
+    //     b_      ortalama  488 KB  (en kötü 1,4 MB)
+    //     m_      ortalama  145 KB
+    // Epey WebP'yi dosya BAŞINA üretiyor, içerik pazarlığı güvenilir değil:
+    // 18 örneğin yalnız 3'ü webp döndü, gerisi PNG/JPEG. Yani "büyük varyant
+    // nasılsa webp'dir" varsayımı YANLIŞ.
+    // Hero slotu ürün sayfasında 322 CSS px (ölçüldü) ve görsel `contain` ile
+    // yükseklikten sınırlanıyor; `m_` tam olarak 330 px yükseklik demek, yani
+    // DPR 1'de birebir. Önce `b_` deneyip ölçtük: ürün LCP 3148 -> 7544 ms'e
+    // ÇIKTI (bu üründe b_ 1,44 MB PNG). `m_` ile aynı ölçüm 2 sn bandına
+    // iniyor. Yüksek DPR'li telefonda görsel bir miktar yumuşak kalıyor —
+    // bunun tek doğru çözümü KENDİ origin'imizde boyutlandırma (Cloudflare
+    // Image Resizing / Worker); wsrv.nl bugün de 404 veriyor (Epey veri
+    // merkezi IP'lerini engelliyor, canlı test edildi).
+    if (medium !== clean) variants.push(medium);
     variants.push(high);
-    // MASTER ARTIK `b_`DEN SONRA. Öncesinde `original` (öneksiz master) ikinci
-    // sıradaydı ve `high === clean` olan kayıtlarda ilk aday oluyordu; bu da
-    // hero'ya 900 KB'lık kaynak dosyayı çekiyordu. Master yalnızca `b_` 404
-    // verirse devreye girer.
     variants.push(clean);
     if (original !== clean) variants.push(original);
-    if (medium !== clean) variants.push(medium);
   } else if (size === 'thumb') {
     // Galeri/şerit küçük resimleri: 46-60 px slot, retina ile ~120-180 px.
     // `k_` (120 px) tam karşılığı; `m_` yedek kalır.
