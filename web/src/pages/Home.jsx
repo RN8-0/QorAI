@@ -8,7 +8,7 @@ import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
-import { techColor } from '../components/Gauge.jsx';
+import { techColor, inkColor } from '../components/Gauge.jsx';
 import AdSlot from '../components/AdSlot.jsx';
 import { AD_SLOTS } from '../lib/ads';
 import { useSeo, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
@@ -165,7 +165,7 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
               <b>{p.name}</b>
               <small>{p.brand || catMeta(p.category).label}</small>
             </span>
-            {score > 0 && <span className="hero-suggest-score" style={{ color: techColor(score) }}>{Math.round(score)}</span>}
+            {score > 0 && <span className="hero-suggest-score" style={{ color: inkColor(techColor(score)) }}>{Math.round(score)}</span>}
           </button>
         );
       })}

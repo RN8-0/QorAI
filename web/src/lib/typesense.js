@@ -86,13 +86,20 @@ function toQuery(params) {
     .join('&');
 }
 
+// ANAHTAR BASLIKTA DEGIL SORGUDA. `X-TYPESENSE-API-KEY` ozel bir baslik oldugu
+// icin tarayici her istegin onune bir CORS PREFLIGHT (OPTIONS) koyuyordu; yani
+// her Typesense sorgusu iki gidis-donus ediyordu. Olculdu (2026-08-15, kategori
+// sayfasi): 3 GET'in her birinin onunde bir OPTIONS, yavas 4G'de istek basina
+// ~150 ms. Anahtar sorgu parametresine tasininca istek "basit istek" olur ve
+// preflight tamamen kalkar (canli dogrulandi: 200).
+// Gizlilik notu: bu ZATEN yalnizca-arama kapsamli acik bir anahtar — paketin
+// icinde duz metin olarak duruyor, sorgu dizesine tasimak yeni bir sey acmiyor.
 async function tsGet(path, params = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const qs = toQuery(params);
+    const qs = toQuery({ ...params, 'x-typesense-api-key': TS_KEY });
     const res = await fetch(`${TS_URL}${path}${qs ? `?${qs}` : ''}`, {
-      headers: { 'X-TYPESENSE-API-KEY': TS_KEY },
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`typesense ${res.status}`);
@@ -109,13 +116,19 @@ async function tsGet(path, params = {}) {
 // removes that head-of-line blocking. Returns the `results` array in the same
 // order as `searches`; a sub-search that errors comes back without `hits`, so
 // docs() yields [] for it (graceful per-rail degradation).
+// PREFLIGHT'SIZ POST: `Content-Type: application/json` ve ozel anahtar basligi
+// istegi "basit istek" olmaktan cikariyor, yani bu tek gidis-donus aslinda IKI
+// gidis-donustu. `text/plain` + anahtarin sorguda olmasi preflight'i kaldirir;
+// Typesense govdeyi yine JSON olarak ayristirir (canli dogrulandi: 200, 1 alt
+// arama, dogru sonuc). Content-Type'i application/json'a geri cevirirsen
+// preflight de geri gelir.
 async function multiSearch(searches) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch(`${TS_URL}/multi_search`, {
+    const res = await fetch(`${TS_URL}/multi_search?x-typesense-api-key=${encodeURIComponent(TS_KEY)}`, {
       method: 'POST',
-      headers: { 'X-TYPESENSE-API-KEY': TS_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ searches: searches.map((s) => ({ collection: COLLECTION, ...s })) }),
       signal: controller.signal,
     });

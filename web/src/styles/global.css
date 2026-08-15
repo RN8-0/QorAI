@@ -34,6 +34,12 @@
 
   --accent: var(--brand-blue);
   --accent-2: var(--brand-cyan);
+  /* `--brand` HİÇ TANIMLI DEĞİLDİ: Blog.css ve CategoryGuide.css'te ~12 yerde
+     `var(--brand,#2563eb)` yazıyor, yani hepsi sabit #2563eb'ye düşüyordu ve o
+     ton temadan bağımsız. Karanlık temada siyah üzerinde 3.83:1 ölçüldü
+     (2026-08-15, /blog "Rehberi oku →"). `--accent`e bağlanınca iki tema da AA
+     geçiyor: açıkta #1565C0 (5.60:1), koyuda #2196F3 (6.80:1). */
+  --brand: var(--accent);
   --glow: 1;
   --radius-scale: 1;
 
@@ -99,6 +105,11 @@
   --ink-cyan: #00E5FF;
   --ink-blue: #4FC3F7;
   --ink-amber: #F59E0B;
+  /* Metin olarak kullanılan yeşil/kırmızı. Siyah zeminde --green/--red zaten
+     yüksek kontrast, aynı tonlar geçiyor. Açık temadaki karşılıkları için
+     [data-theme='light'] bloğuna bak. */
+  --ink-green: #10B981;
+  --ink-red: #EF4444;
 }
 
 /* ── LIGHT (slate) ── */
@@ -162,12 +173,39 @@
   /* Puan halkasının RAKAMI. Halka canlı cyan/mavi kalıyor; okunması gereken
      metin koyu karşılığına düşüyor (ölçülen: cyan 1.54:1, mavi 3.12:1). */
   --ink-cyan: #0E7490;  /* 4.86:1 */
-  --ink-blue: #1976D2;  /* 4.60:1 */
+  /* #1976D2 İDİ: --bg (#F8FAFC) üzerinde 4.60:1 ölçülmüştü ama puan halkası
+     ÜRÜN KARTININ yüzeyinde duruyor ve orada 4.20:1'e düşüyordu (2026-08-15,
+     ürün sayfası denetimi). #1565C0 en açık ve en koyu yüzeyin ikisinde de
+     eşiği geçiyor. */
+  --ink-blue: #1565C0;  /* beyazda 5.60:1, --surface-2 üzerinde 4.93:1 */
   --ink-amber: #92400E; /* 7.09:1 — amber-700 (#B45309) 4.11:1 ile kalıyordu */
+  /* Metin yeşili/kırmızısı: --green (#10B981) 2.54:1 ve --red (#EF4444) 3.76:1
+     ile METİN olarak kullanılamaz. Dolgu/rozet renkleri (--green/--red)
+     DEĞİŞMEDİ; yalnızca yazı bu koyu karşılıklara düşer. */
+  --ink-green: #047857; /* 4.83:1 */
+  --ink-red: #B91C1C;   /* 5.94:1 */
 }
 
 /* ── RESET ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── KLAVYE ODAĞI (WCAG 2.4.7) ─────────────────────────────────────────────
+   Sitede TEK BİR odak kuralı vardı (.searchbox:focus-within) ve reset
+   tarayıcının varsayılan outline'ını da götürüyordu. Denetim (2026-08-15):
+   ana sayfa arama input'u, kategori marka araması, link-analizi input+butonu,
+   /compare input'u ve ürün sayfası kargo seçici odaklanınca HİÇBİR görsel
+   değişim üretmiyordu — klavyeyle gezen kullanıcı nerede olduğunu göremiyor.
+   `:focus-visible` kullanılıyor, yani FARE tıklamasında halka çıkmaz; yalnız
+   klavye/AT gezintisinde çıkar. `outline-offset` halkayı kenarlıktan ayırır,
+   `outline` (box-shadow değil) seçilmesinin sebebi Windows yüksek kontrast
+   modunda box-shadow'un çizilmemesi. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm, 8px);
+}
+/* Zaten kendi odak durumunu çizen bileşenler ikinci bir halka almasın. */
+.searchbox:focus-within :where(input):focus-visible { outline: none; }
 /* GENEL `scroll-behavior: smooth` KALDIRILDI (2026-08-06).
    Bu kural yalnız çapa linklerini değil, HER programatik kaydırmayı yumuşatıyordu
    — en önemlisi App.jsx'in rota değişiminde çağırdığı `window.scrollTo(0, 0)`
@@ -642,6 +680,37 @@ input, textarea, select { font-family: inherit; }
 @keyframes blobB { to { transform: translate(-80px, -40px) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) {
   .aurora::before, .aurora::after { animation: none; }
+}
+
+/* ── AURORA'NIN GERÇEK MALİYETİ ────────────────────────────────────────────
+   `transform` animasyonu normalde ucuzdur AMA bu katmanda `filter: blur(90px)`
+   var: tarayıcı her karede 480x480 alanı yeniden bulanıklaştırmak zorunda
+   kalıyor (dpr 3'te ~1440x1440 piksel). Ana sayfada CANLI ÖLÇÜLDÜ (2026-08-15,
+   yavaş 4G + 4x CPU, senaryo başına 2 koşunun en iyisi):
+
+     temel                    TBT 1055 ms · stil 904 ms / 665 kez
+     yalnız bu animasyon off  TBT  447 ms · stil 262 ms / 403 kez   ← -608 ms
+     blur 90 -> 40 px         TBT  716 ms
+     will-change: transform   TBT  611 ms
+     aurora + gradShift off   TBT  592 ms · stil 101 ms / 109 kez
+
+   Yani sitedeki TEK EN BÜYÜK TBT kalemi buydu — paket boyutu değil, bir
+   dekoratif katman. Mobilde animasyon kapanıyor (gradyan DURUYOR, sadece
+   kımıldamıyor); masaüstünde kalıyor ama `will-change` ile kendi katmanına
+   alınıyor, böylece bulanıklık bir kez rasterize edilip sonra yalnız
+   kompozitör çalışıyor. `contain: paint` bulanıklığın hero dışına taşan
+   kısmının yeniden boyanmasını da keser. */
+@media (min-width: 769px) {
+  .aurora::before, .aurora::after { will-change: transform; }
+}
+@media (max-width: 768px) {
+  .aurora::before, .aurora::after {
+    animation: none;
+    filter: blur(60px);
+  }
+  /* Aynı ölçümde gradyan başlığın kendi animasyonu ~160 ms stil hesabı
+     ekliyordu (stil 262 -> 101 ms). Renk geçişi duruyor, yalnız akış duruyor. */
+  .grad-anim, .hero h1 .grad.grad-anim, .page-hero h1.page-hero-anim { animation: none; }
 }
 
 /* Button shine sweep */

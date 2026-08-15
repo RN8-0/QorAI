@@ -23,7 +23,7 @@ import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { IconX, IconChevronLeft, IconChevronRight } from '../components/GlyphIcons.jsx';
-import Gauge, { techColor } from '../components/Gauge.jsx';
+import Gauge, { techColor, inkColor } from '../components/Gauge.jsx';
 import AiAnalysisView, {
   buildFullPrompt,
   buildProductResearchPrompt,
@@ -1173,7 +1173,7 @@ export default function ProductDetail() {
                 <Gauge value={tech} size={56} stroke={6} color={techColor(tech)} fontSize={17} />
                 <span className="pd-score2-t">
                   <small>⚙️ {t('pd.scoreTitle')}</small>
-                  <b style={{ color: techColor(tech) }}>{bandLabel(tech, L)}</b>
+                  <b style={{ color: inkColor(techColor(tech)) }}>{bandLabel(tech, L)}</b>
                 </span>
               </div>
               {/* The personal match score only shows for signed-in users who
@@ -1185,7 +1185,7 @@ export default function ProductDetail() {
                     <Gauge value={match} size={56} stroke={6} color="var(--score-average)" fontSize={17} />
                     <span className="pd-score2-t">
                       <small>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</small>
-                      <b style={{ color: 'var(--score-average)' }}>{bandLabel(match, L)}</b>
+                      <b style={{ color: inkColor('var(--score-average)') }}>{bandLabel(match, L)}</b>
                     </span>
                   </div>
                 </>

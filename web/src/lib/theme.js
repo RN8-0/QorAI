@@ -10,17 +10,20 @@ const KEY = 'qorai-theme';
 // Yani başlıktaki 🌙 düğmesi bir kez çalışıp ilk yenilemede sıfırlanıyordu —
 // CSS'te tam bir karanlık tema hazır dururken.
 //
-// Sıra: KAYITLI tercih → işletim sistemi tercihi → açık. index.html'deki satır
-// içi script AYNI sırayı boyamadan önce uyguluyor; ikisi ayrışırsa karanlık tema
-// kullanıcısı her açılışta beyaz bir flaş görür, o yüzden birlikte değiştirin.
+// Sıra: KAYITLI tercih → AÇIK. index.html'deki satır içi script AYNI sırayı
+// boyamadan önce uyguluyor; ikisi ayrışırsa karanlık tema kullanıcısı her
+// açılışta beyaz bir flaş görür, o yüzden birlikte değiştirin.
+//
+// İŞLETİM SİSTEMİ TERCİHİ BİLEREK OKUNMUYOR (2026-08-15 kararı): sitenin
+// varsayılan yüzü açık tema. Cihazı karanlık modda olan ziyaretçi de siteyi
+// açık görür; karanlık temayı başlıktaki düğmeyle kendisi seçer ve o seçim
+// `qorai-theme` ile kalıcı olur. `prefers-color-scheme` buraya geri eklenirse
+// varsayılan yine cihaza devrolur — eklemeyin.
 export function getTheme() {
   try {
     const saved = localStorage.getItem(KEY);
     if (saved === 'dark' || saved === 'light') return saved;
   } catch { /* storage blocked */ }
-  try {
-    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
-  } catch { /* matchMedia yok */ }
   return 'light';
 }
 

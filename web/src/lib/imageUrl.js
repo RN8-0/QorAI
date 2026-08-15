@@ -78,10 +78,25 @@ function epeyVariants(url, size) {
 
   const variants = [];
   // Upgrade any small stored tier to the big one for large slots.
+  // 2026-08-15 — SON `.replace` EKLENDİ. Öncekiler yalnızca m_/s_/k_ ÖNEKLİ
+  // kayıtları b_'ye çeviriyordu; önek TAŞIMAYAN kayıtlarda `high === clean`
+  // oluyor, yani "büyük varyant" aslında MASTER dosya oluyordu. Epey'de master
+  // sıkıştırılmamış kaynak: ölçüldü (2026-08-15),
+  //   samsung-z-fold8   master 905 KB (853x1842)  ·  b_  77 KB (278x600)
+  //   1stplayer-cryo    master 320 KB (1000x1000) ·  b_ ...(600x600)
+  // Ürün sayfasının hero'su bu yüzden 905 KB'a kadar dosya indiriyordu ve
+  // yavaş 4G'de LCP görseli 4481 ms sürüyordu. Artık öneksiz dosya adına da
+  // `b_` ekleniyor — Epey'in kendi ürün sayfasında kullandığı basamak bu.
   const high = clean
     .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
     .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
-    .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2');
+    .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
+    .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}b_${file}`));
+  // En küçük basamak (yükseklik 120 px). Galeri küçük resimleri ekranda 46x46
+  // gösterilirken `m_` (320x320, 48 KB) iniyordu — 7 kat fazla piksel.
+  const tiny = clean
+    .replace(/\/[bmst]_([^/?#]+)([?#].*)?$/i, '/k_$1$2')
+    .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}k_${file}`));
   // Epey often exposes the master asset without the size prefix as well. When
   // older records stored m_/s_/k_ URLs, try that original candidate before the
   // medium fallback so the gallery is not locked to a low-res copy.
@@ -102,9 +117,20 @@ function epeyVariants(url, size) {
   // galeri (`full`) büyük varyantı ister.
   if (size === 'full') {
     variants.push(high);
-    if (original !== clean) variants.push(original);
+    // MASTER ARTIK `b_`DEN SONRA. Öncesinde `original` (öneksiz master) ikinci
+    // sıradaydı ve `high === clean` olan kayıtlarda ilk aday oluyordu; bu da
+    // hero'ya 900 KB'lık kaynak dosyayı çekiyordu. Master yalnızca `b_` 404
+    // verirse devreye girer.
     variants.push(clean);
+    if (original !== clean) variants.push(original);
     if (medium !== clean) variants.push(medium);
+  } else if (size === 'thumb') {
+    // Galeri/şerit küçük resimleri: 46-60 px slot, retina ile ~120-180 px.
+    // `k_` (120 px) tam karşılığı; `m_` yedek kalır.
+    if (tiny !== clean) variants.push(tiny);
+    if (medium !== clean) variants.push(medium);
+    variants.push(clean);
+    variants.push(high);
   } else {
     if (medium !== clean) variants.push(medium);
     variants.push(clean);

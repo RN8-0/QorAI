@@ -16,7 +16,7 @@
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="LG OLED77B65LA Ultra HD (4K) TV — Specs &amp; Vergleich | Qor AI" />
   <meta property="og:description" content="LG OLED77B65LA Ultra HD (4K) TV (LG) — TVs. Audio Output Gücü (RMS): 20 W, Display Boyutu: 77 İnç, HD Uydu Alıcı (DVB-S2): Yes, HDR: Yes. Qor AI Techscore 10…" />
-  <link rel="preload" as="image" href="https://resim.epey.com/1062021/lg-oled77b65la-4.jpg" fetchpriority="high" />
+  <link rel="preload" as="image" href="https://resim.epey.com/1062021/b_lg-oled77b65la-4.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/1062021/lg-oled77b65la-4.jpg" />
   <meta property="og:image:alt" content="LG OLED77B65LA Ultra HD (4K) TV" />
   <meta property="og:url" content="https://qorai.net/de/product/lg-oled77b65la-snn7fhtxqq00u2z" />
@@ -31,13 +31,17 @@
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=20260605a" />
   <link rel="shortcut icon" type="image/png" href="/assets/favicon.png?v=20260605a" />
   <link rel="apple-touch-icon" href="/assets/favicon.png?v=20260605a" />
-  <!-- Ürün görselleri Epey'in CORP başlığı yüzünden ZORUNLU olarak wsrv.nl
-       proxy'sinden geçiyor. Preconnect olmadan ilk görselde DNS + TLS el
-       sıkışması bekleniyordu; ölçümde wsrv.nl istekleri 1.5-1.9 s sürüyordu.
-       Bağlantıyı peşin kurmak ilk görselin görünme süresini doğrudan düşürür. -->
-  <link rel="preconnect" href="https://wsrv.nl" crossorigin />
-  <link rel="dns-prefetch" href="https://wsrv.nl" />
+  <!-- Ürün görselleri DOĞRUDAN resim.epey.com'dan geliyor; wsrv.nl yalnızca
+       doğrudan istek düşerse devreye giren YEDEK (bkz. lib/imageUrl.js).
+       2026-08-15 ölçümü: preconnect YEDEĞE veriliyordu — neredeyse hiç
+       kullanılmayan bir origin'e boşuna TLS el sıkışması açılıyor, LCP
+       görselinin geldiği asıl origin ise yalnız dns-prefetch alıyordu.
+       Ölçüm: ürün sayfasında LCP görseli 1220 ms'de başlayıp 4481 ms sürüyor,
+       yani bağlantı kurulumu doğrudan LCP'nin önünde. Preconnect artık asıl
+       origin'de; yedek için DNS çözümü yeterli. -->
+  <link rel="preconnect" href="https://resim.epey.com" crossorigin />
   <link rel="dns-prefetch" href="https://resim.epey.com" />
+  <link rel="dns-prefetch" href="https://wsrv.nl" />
   <meta name="impact-site-verification" value="a1c923df-129c-42e0-b547-738a18af30d0" />
   <meta name="verify-admitad" content="a135db33ba" />
   <!-- Google AdSense — hesap doğrulaması için meta KALIYOR, yükleyici script
@@ -52,13 +56,17 @@
        yorumdaki etiket metni seo.mjs/seo-audit desenlerini şaşırtıyor. -->
   <meta name="google-adsense-account" content="ca-pub-1522897791319993" />
   <script>try{var d=document.documentElement;
-    /* Tema: KAYITLI tercih → işletim sistemi tercihi → açık. Eskiden burada
-       sabit 'light' yazıyordu ve lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı
-       karanlık temayı açıyor, ilk yenilemede geri açığa dönüyordu (ölçüldü).
-       Boyamadan ÖNCE burada uygulanmalı, yoksa karanlık tema seçen kullanıcı her
-       açılışta beyaz bir flaş görür. */
+    /* Tema: KAYITLI tercih → AÇIK. Eskiden burada sabit 'light' yazıyordu ve
+       lib/theme.js de kaydı hiç OKUMUYORDU: kullanıcı karanlık temayı açıyor,
+       ilk yenilemede geri açığa dönüyordu (ölçüldü). Kayıt okuması bu yüzden
+       burada, boyamadan ÖNCE — yoksa karanlık tema seçen kullanıcı her açılışta
+       beyaz bir flaş görür.
+       İŞLETİM SİSTEMİ TERCİHİ BİLEREK OKUNMUYOR (2026-08-15): varsayılan yüz
+       AÇIK tema; karanlığı kullanıcı düğmeyle kendisi seçer. Buraya
+       prefers-color-scheme geri eklenirse varsayılan yine cihaza devrolur.
+       lib/theme.js `getTheme()` ile BİREBİR ayni kalmali. */
     var st=null; try{st=localStorage.getItem('qorai-theme')}catch(e){}
-    if(st!=='dark'&&st!=='light'){st=(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}
+    if(st!=='dark'&&st!=='light'){st='light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
     /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
@@ -161,11 +169,36 @@
   /* Kabuk ONCE yedek fontla ciziliyor, Plus Jakarta Sans gelince metin YENIDEN
      SARILIYORDU: /subscriptions basligi 2 satirdan 1 satira dusuyor ve bu
      olculebilir bir kayma uretiyordu (CLS 0.013; izde qb-ph-title 51 -> 29 px).
-     Olculdu: Plus Jakarta Sans ayni metinde sistem fontunun %94,4'u genisliginde.
-     Metrigi eslesen bir yedek yuz tanimlaninca yedek font da ayni yeri kaplar,
+     Metrigi eslesen bir yedek yuz tanimlaninca yedek font ayni yeri kaplar ve
      font gelince satir sayisi DEGISMEZ. Maliyeti sifir bayt — indirilen bir sey
-     yok, yalnizca yerel fontun olcusu duzeltiliyor. */
-  @font-face{font-family:'QB Fallback';src:local('Segoe UI'),local('Roboto'),local('Helvetica Neue'),local('Arial');size-adjust:94.4%}
+     yok, yalnizca yerel fontun olcusu duzeltiliyor.
+
+     2026-08-15 DUZELTME — burada TEK bir size-adjust (%94,4) vardi ve TEK bir
+     yuze uc farkli agirlik bagliydi. Oran agirliga gore degisiyor, olculdu
+     (Jakarta genisligi / yerel font genisligi, ayni metin):
+
+       agirlik   Segoe UI (Windows)   Roboto (Android)
+         400          104,2 %              109,9 %
+         500           91,7 %              100,0 %
+         700          100,5 %              107,9 %
+         800           96,7 %              109,2 %
+
+     Yani 400'luk metin icin yedek %10 DAR ciziliyordu: masaustunde ana sayfa
+     alt yazisi kabukta 2 satir (55,8 px), font gelince 3 satir (83,7 px) —
+     handoff aninda 27,9 px'lik gorunur bir sicrama. Artik her agirlik kendi
+     oranini tasiyor ve her platform kendi AILE adini kullaniyor: 'QB Win'de
+     Segoe UI yoksa (Android) glif bulunamaz ve zincir 'QB Droid'e duser. Tek
+     ailede birden fazla kural yazmak yerine bu yontem secildi — ayni aile+
+     agirlik icin kural onceligi tarayiciya gore degisiyor, aile zinciri ise
+     standart font fallback'i, davranisi kesin. */
+  @font-face{font-family:'QB Win';font-weight:400;src:local('Segoe UI');size-adjust:104.2%}
+  @font-face{font-family:'QB Win';font-weight:500;src:local('Segoe UI Semibold'),local('Segoe UI');size-adjust:91.7%}
+  @font-face{font-family:'QB Win';font-weight:700;src:local('Segoe UI Bold'),local('Segoe UI');size-adjust:100.5%}
+  @font-face{font-family:'QB Win';font-weight:800;src:local('Segoe UI Black'),local('Segoe UI Bold'),local('Segoe UI');size-adjust:96.7%}
+  @font-face{font-family:'QB Droid';font-weight:400;src:local('Roboto');size-adjust:109.9%}
+  @font-face{font-family:'QB Droid';font-weight:500;src:local('Roboto Medium'),local('Roboto');size-adjust:100%}
+  @font-face{font-family:'QB Droid';font-weight:700;src:local('Roboto Bold'),local('Roboto');size-adjust:107.9%}
+  @font-face{font-family:'QB Droid';font-weight:800;src:local('Roboto Black'),local('Roboto Bold'),local('Roboto');size-adjust:109.2%}
   /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
      eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
        Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
@@ -173,20 +206,36 @@
      Kabuk gercek fontu kullanmazsa React'in cizdigi hero AYRI (daha buyuk) bir
      boyama sayilip LCP'yi 1,2 sn geri atiyor. CLS 0.008 zaten "iyi" esigin
      (0.1) on ikide biri; LCP esigi ise 2500 ms ve 3692 onu KAYBEDIYOR.
-     Yedegin size-adjust'i (%94,4) font gelene kadarki sarmayi yaklastirir. */
+     Yedegin agirlik-basina size-adjust'i font gelene kadarki sarmayi eslestirir. */
   #qor-boot .qb-ph-title,#qor-boot .qb-lead,#qor-boot .qb-kicker,
   #qor-boot .qb-cat-title,#qor-boot .qb-cat-sub,
-  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans','QB Fallback',system-ui,-apple-system,'Segoe UI',sans-serif}
-  #qor-boot .qb-ph{position:relative;padding:18px 0 10px;margin-bottom:8px;border-bottom:0}
+  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans','QB Win','QB Droid',system-ui,-apple-system,'Segoe UI',sans-serif}
+  /* .page-hero.has-lead'in BIREBIR kopyasi. 2026-08-15'e kadar burada
+     `18px 0 10px` / `margin-bottom:8px` yaziyordu — bunlar kaynaktaki
+     `@media (max-width:560px)` OVERRIDE degerleri. Masaustunde gercek kural
+     clamp() kullandigi icin kabuk ile gercek hero ayrisiyordu (olculdu,
+     1920x1080 /subscriptions: baslik y 120 -> 129, aciklama y 159,6 -> 171,3).
+     Artik clamp'ler de mobil override de aynen tasiniyor. */
+  #qor-boot .qb-ph{position:relative;padding:clamp(18px,2.4vh,26px) 0 clamp(12px,1.7vh,18px);margin-bottom:clamp(10px,1.4vh,16px);border-bottom:0;
+    background:radial-gradient(680px 200px at 50% -38%, color-mix(in srgb, var(--brand-cyan) 11%, transparent), transparent 64%)}
   #qor-boot .qb-ph-inner{max-width:720px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
   #qor-boot .qb-kicker{display:inline-flex;align-items:center;padding:5px 13px;border-radius:var(--r-pill,999px);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase}
-  #qor-boot .qb-lead{max-width:620px;font-size:12.5px;line-height:1.5;font-weight:500;color:var(--text-2)}
-  /* .page-hero.has-lead h1 olcusu (30-46 px olan .page-hero h1 DEGIL). */
-  #qor-boot .qb-ph-title{font-size:clamp(22px,2.9vw,31px);font-weight:900;letter-spacing:-0.5px;line-height:1.05;color:var(--text)}
+  #qor-boot .qb-lead{max-width:620px;font-size:clamp(13px,1.35vw,14.5px);line-height:1.5;font-weight:500;color:var(--text-2);text-wrap:balance}
+  /* .page-hero.has-lead h1 olcusu (30-46 px olan .page-hero h1 DEGIL).
+     line-height 1.05 YAZILIYDI, kaynaktaki deger 1.14 — her viewport'ta 2 px
+     sapma uretiyordu (olculdu: kabuk 23,1 / gercek 25,1). */
+  #qor-boot .qb-ph-title{font-size:clamp(22px,2.9vw,31px);font-weight:900;letter-spacing:-0.5px;line-height:1.14;color:var(--text);text-wrap:balance}
   #qor-boot .qb-ph-title .qb-accent{color:var(--accent)}
   #qor-boot .qb-cat{padding:26px 0 20px;text-align:left;border-bottom:1px solid var(--border)}
   #qor-boot .qb-cat-sub{color:var(--text-2);margin-top:6px;font-size:14px}
   #qor-boot .qb-cat-title{display:flex;align-items:center;gap:10px;font-size:clamp(24px,4vw,34px);font-weight:900;letter-spacing:0;color:var(--text)}
+  /* PageHero.css'teki `@media (max-width:560px)` override'inin BIREBIR kopyasi.
+     Bu blok olmadan mobilde de 4 px sapma kaliyordu (kabuk 18 px ust dolgu,
+     gercegi 14 px). */
+  @media (max-width:560px){
+    #qor-boot .qb-ph{padding:14px 0 10px;margin-bottom:8px}
+    #qor-boot .qb-lead{font-size:12.5px}
+  }
   /* Kabukta hero VARSA iskelet gizlenir. Hangi sayfanin hero'su gomulecegine
      seo.mjs karar verir (her sayfa KENDI metnini tasir); burada yalnizca DIL
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
@@ -203,12 +252,12 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-B-iinz6T.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cxyu5bCu.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Mg1MKsk6.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-BBM_rcwV.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-C_I-6eh0.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-f8_pbA5d.js" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-DKHQ4LaQ.css" />
+  <link rel="stylesheet" crossorigin href="/spa/index-CckfaZM0.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CyT-kw79.js" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
 </head>
 <body>

@@ -22,6 +22,14 @@ const INK = {
   'var(--score-average)': 'var(--ink-amber)',
 };
 
+// Halka rengini METİN rengine çevirir. `techColor()` bir GRAFİK rengi döndürür;
+// aynı değeri yazıya vermek açık temada AA'yı kaybettiriyordu (2026-08-15
+// denetimi: ürün sayfasında "İyi" etiketi #2196F3 ile 2.85:1). Halka rengini
+// yazıda kullanan HER yer bunu kullanmalı — tanınmayan renkler olduğu gibi geçer.
+export function inkColor(color) {
+  return INK[color] || color;
+}
+
 export default function Gauge({ value, size = 56, stroke = 5, color, track, fontSize, animate = true }) {
   const v = Math.max(0, Math.min(100, Number(value) || 0));
   const r = (size - stroke) / 2;
@@ -44,7 +52,7 @@ export default function Gauge({ value, size = 56, stroke = 5, color, track, font
           style={animate ? { transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)' } : undefined}
         />
       </svg>
-      <span className="gv" style={{ color: INK[color] || color, fontSize: fontSize || size * 0.32 }}>{Math.round(v)}</span>
+      <span className="gv" style={{ color: inkColor(color), fontSize: fontSize || size * 0.32 }}>{Math.round(v)}</span>
     </div>
   );
 }

@@ -191,9 +191,16 @@ export default function Category() {
   // Ziyaretçinin ülkesi — fiyat sıralamasını GÖSTERİLEN yerli fiyata göre yapar.
   const geoCountry = useGeoCountry();
 
+  // ÜLKE YALNIZ FİYAT SIRALAMASINDA sorguyu değiştirir (getCategoryPage sadece
+  // priceUp/priceDown için `price{ÜLKE}` alanına geçer). `geoCountry` koşulsuz
+  // anahtarın içindeyken, mount'tan sonra ülke çözülünce efekt İKİNCİ KEZ
+  // koşuyor ve BİREBİR AYNI sorguyu tekrar atıyordu — ölçüldü (2026-08-15,
+  // /category/smartphones): 1417 ms ve 1489 ms'de aynı `per_page=24` isteği.
+  // Ülkeyi anahtara yalnızca sıralama gerçekten ona bağlıyken koyuyoruz.
+  const sortUsesCountry = sort === 'priceUp' || sort === 'priceDown';
   const filterKey = [
     q, score, sort, brands.join(','), segments.join(','), apiTokens.join(','),
-    JSON.stringify(rangeFilters), geoCountry,
+    JSON.stringify(rangeFilters), sortUsesCountry ? geoCountry : '',
   ].join('|');
 
   // Load the stable facet universe whenever the category changes.

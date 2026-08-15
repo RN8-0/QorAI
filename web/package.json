@@ -6,8 +6,9 @@
   "description": "Qor AI — React SPA for qorai.net",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/i18n_audit.mjs && node scripts/prebuild.mjs",
-    "build": "vite build && node scripts/postbuild.mjs && node scripts/seo.mjs && node scripts/seo-audit.mjs",
+    "clean:site": "node scripts/i18n_audit.mjs && node scripts/prebuild.mjs",
+    "build": "node scripts/build_safe.mjs",
+    "build:raw": "vite build && node scripts/postbuild.mjs && node scripts/seo.mjs && node scripts/seo-audit.mjs",
     "audit:seo": "node scripts/seo-audit.mjs",
     "preview": "vite preview"
   },

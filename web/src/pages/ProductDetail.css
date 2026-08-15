@@ -226,8 +226,11 @@
 .pd-srow:hover { background: var(--accent-soft); }
 .pd-sk { color: var(--text2); font-weight: 600; line-height: 1.4; }
 .pd-sv { color: var(--text); font-weight: 600; line-height: 1.4; word-break: break-word; }
-.pd-sv.yes { color: var(--green); }
-.pd-sv.no { color: var(--red); }
+/* METİN olarak okunuyor, dolgu değil: --green/--red açık temada 2.54:1 ve
+   3.76:1 veriyordu (2026-08-15 denetimi). --ink-* karşılıkları AA geçiyor,
+   karanlık temada aynı canlı tonu koruyor. */
+.pd-sv.yes { color: var(--ink-green); }
+.pd-sv.no { color: var(--ink-red); }
 .pd-sv-line { position: relative; padding-left: 12px; }
 .pd-sv-line::before {
   content: ''; position: absolute; left: 2px; top: 8px;
@@ -676,6 +679,10 @@
   margin-bottom: 18px; font-size: 13px; color: var(--text3); font-weight: 650;
 }
 .pd-crumbs-path { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+/* WCAG 2.2 hedef boyutu (2.5.8): kırıntı linkleri 20 px yüksekti (ölçüldü:
+   63x20 ve 109x20). Satır içi istisnasına dayanmak yerine hedefi 24 px'e
+   çıkarıyoruz — görsel olarak hiçbir şey değişmiyor, yalnız tıklama alanı. */
+.pd-crumbs-path a, .pd-crumbs-path > span { display: inline-flex; align-items: center; min-height: 24px; }
 .pd-crumbs-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .pd-cmp-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -944,7 +951,10 @@
 
 /* info column */
 .pd-info2 { min-width: 0; display: flex; flex-direction: column; }
-.pd-brand2 { color: var(--brand-cyan); font-size: 13px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+/* Marka adı METİN. --brand-cyan (#00E5FF) açık zeminde 1.47:1 veriyordu — bu
+   sitedeki en kötü kontrast ihlaliydi (2026-08-15). --ink-cyan aynı marka
+   ailesinin okunabilir tonu; karanlık temada yine parlak cyan. */
+.pd-brand2 { color: var(--ink-cyan); font-size: 13px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
 .pd-name2 { font-size: clamp(23px, 3vw, 33px); font-weight: 850; line-height: 1.12; margin: 6px 0 18px; }
 
 .pd-scores2 {

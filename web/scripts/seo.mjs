@@ -701,10 +701,16 @@ function lcpVariant(url, slot) {
   const clean = String(url || '').trim();
   if (!/^https?:\/\//i.test(clean) || !/resim\.epey\.com|(^|\.)epey\.com/i.test(clean)) return '';
   if (slot === 'full') {
+    // Son satir 2026-08-15'te EKLENDI (imageUrl.js ile ayni gun, ayni sebep):
+    // onek TASIMAYAN kayitlarda bu fonksiyon MASTER dosyayi preload ediyordu.
+    // Master, Epey'de sikistirilmamis kaynak — olculdu: 905 KB (b_ 77 KB).
+    // Ustelik istemci artik b_ istiyor, yani duzeltilmezse sayfa IKI dosya
+    // birden indirir. Iki dosya da senkron kalmali.
     return clean
       .replace(/\/m_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
       .replace(/\/s_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
-      .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2');
+      .replace(/\/k_([^/?#]+)([?#].*)?$/i, '/b_$1$2')
+      .replace(/(\/\d+\/)([^/?#]+)$/i, (m, folder, file) => (/^[a-z]_/i.test(file) ? m : `${folder}b_${file}`));
   }
   return clean
     .replace(/\/b_([^/?#]+)([?#].*)?$/i, '/m_$1$2')

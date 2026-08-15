@@ -32,6 +32,10 @@
 .cmp-add-input input {
   flex: 1; min-width: 0; background: none; border: none; outline: none;
   color: var(--text); font-size: 14.5px;
+  /* WCAG 2.2 hedef boyutu: alan 18 px yüksekti (ölçüldü 1134x18). Saran kutu
+     42 px ama tıklama hedefi alanın KENDİSİ. Odak göstergesi saran kutunun
+     :focus-within'i olduğu için `outline:none` bilerek duruyor. */
+  min-height: 24px;
 }
 .cmp-clear {
   font-size: 12px; font-weight: 700; color: var(--text3);
