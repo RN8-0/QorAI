@@ -166,16 +166,17 @@
      font gelince satir sayisi DEGISMEZ. Maliyeti sifir bayt — indirilen bir sey
      yok, yalnizca yerel fontun olcusu duzeltiliyor. */
   @font-face{font-family:'QB Fallback';src:local('Segoe UI'),local('Roboto'),local('Helvetica Neue'),local('Arial');size-adjust:94.4%}
-  /* Kabuk metni web fontuna HIC gecmez: yalnizca metrigi eslesen YEREL font
-     kullanilir. Onceki hali 'Plus Jakarta Sans' ile basliyordu ve font inince
-     kabuk yeniden sariliyordu — abonelikte 0.013, ana sayfada 0.008 CLS.
-     Kabuk zaten React mount olunca KALDIRILAN gecici bir katman; gorevi dogru
-     metni DOGRU YERI KAPLAYARAK gostermek. Metrik eslestigi icin gercek hero
-     ayni konumda beliriyor, yalnizca yazi karakteri degisiyor — duzen oynamiyor.
-     Boylece kabugun font kaynakli kaymasi YAPISAL OLARAK imkansiz. */
+  /* Kabuk metni GERCEK fontla (Plus Jakarta Sans) baslar, yedegi metrigi
+     eslesen yerel yuzdur. Bu sira BILEREK boyle — olculdu:
+       Jakarta once + metrik yedek : ana sayfa LCP 2468 / CLS 0.008
+       yalniz yerel font           : ana sayfa LCP 3692 / CLS 0
+     Kabuk gercek fontu kullanmazsa React'in cizdigi hero AYRI (daha buyuk) bir
+     boyama sayilip LCP'yi 1,2 sn geri atiyor. CLS 0.008 zaten "iyi" esigin
+     (0.1) on ikide biri; LCP esigi ise 2500 ms ve 3692 onu KAYBEDIYOR.
+     Yedegin size-adjust'i (%94,4) font gelene kadarki sarmayi yaklastirir. */
   #qor-boot .qb-ph-title,#qor-boot .qb-lead,#qor-boot .qb-kicker,
   #qor-boot .qb-cat-title,#qor-boot .qb-cat-sub,
-  #qor-boot .qb-h1,#qor-boot .qb-sub,#qor-boot .qb-wm{font-family:'QB Fallback',system-ui,-apple-system,'Segoe UI',sans-serif}
+  #qor-boot .qb-h1,#qor-boot .qb-sub{font-family:'Plus Jakarta Sans','QB Fallback',system-ui,-apple-system,'Segoe UI',sans-serif}
   #qor-boot .qb-ph{position:relative;padding:18px 0 10px;margin-bottom:8px;border-bottom:0}
   #qor-boot .qb-ph-inner{max-width:720px;margin:0 auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
   #qor-boot .qb-kicker{display:inline-flex;align-items:center;padding:5px 13px;border-radius:var(--r-pill,999px);background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:900;letter-spacing:0.09em;text-transform:uppercase}
