@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useTheme } from '../lib/theme';
@@ -45,6 +45,21 @@ export default function Header() {
   const [menu, setMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+
+  // MOBIL CEKMECE ACIKKEN ALT BAR GIZLENIR.
+  // Olculdu (2026-08-16, 390x844): alt bar `position: fixed` ve z-index 120,
+  // cekmecenin ortu katmani ise 99 — yani bar cekmecenin USTUNDE kaliyordu ve
+  // dort kategoriyi ortuyordu (UPS, USB Bellek, Islemci Sogutucu, Laptop
+  // Sogutucu); son iki satir da 844 px'lik ekranin disina tasiyordu, yani
+  // seciliemiyordu. z-index'i yukseltmek yetmez: bar yari saydam ortunun
+  // altinda yine gorunur ve kafa karistirir. Cekmece aciklen bar tamamen
+  // kaldiriliyor — zaten ayni gezinme baglantilari cekmecenin icinde var.
+  // Sinif <body> uzerinde cunku bar bu bilesenin AGACINDA degil (App.jsx).
+  useEffect(() => {
+    const k = 'qor-drawer-open';
+    document.body.classList.toggle(k, drawer);
+    return () => document.body.classList.remove(k);
+  }, [drawer]);
 
   // Mega-menu open/close with a small grace delay so moving the cursor from the
   // "Categories" trigger down into the panel doesn't close it.

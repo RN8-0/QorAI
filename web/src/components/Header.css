@@ -293,13 +293,21 @@
 .hd-burger { display: none; flex-direction: column; gap: 4px; }
 .hd-burger span { width: 16px; height: 2px; background: var(--text); border-radius: 2px; }
 
+/* z-index 99 İDİ — alt bar (.botnav) 120'de olduğu için bar çekmecenin ÜSTÜNDE
+   kalıyordu. Bar artık çekmece açıkken gizleniyor (BottomNav.css), bu değer de
+   emniyet payı: ileride başka bir sabit katman eklenirse çekmece yine üstte
+   kalsın. */
 .hd-drawer-wrap {
-  position: fixed; inset: var(--header-h) 0 0; z-index: 99;
+  position: fixed; inset: var(--header-h) 0 0; z-index: 130;
   background: rgba(0, 0, 0, 0.5);
 }
 .hd-drawer {
   background: var(--bg2); border-bottom: 1px solid var(--border);
-  padding: 14px 20px 20px; display: flex; flex-direction: column; gap: 4px;
+  /* Alt dolgu: iPhone ana ekran çubuğu (safe-area) + son kategori satırının
+     ekran kenarına yapışmaması için nefes payı. Ölçümde son iki satır 844 px'lik
+     ekranda 854'e kadar taşıyordu. */
+  padding: 14px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 4px;
 }
 .hd-drawer-link {
   padding: 12px 14px; border-radius: var(--radius-sm);

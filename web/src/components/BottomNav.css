@@ -1,6 +1,17 @@
 /* Mobile-only floating bottom tab bar (Flutter app parity). */
 .botnav { display: none; }
 
+/* HAMBURGER ÇEKMECESİ AÇIKKEN BAR YOK.
+   Ölçüldü (2026-08-16, 390x844): bar `position: fixed` + z-index 120,
+   çekmecenin örtü katmanı ise 99 — bar çekmecenin ÜSTÜNDE kalıyor ve alttaki
+   dört kategoriyi örtüyordu (UPS, USB Bellek, İşlemci Soğutucu, Laptop
+   Soğutucu), son iki satır da ekranın dışına taşıyordu.
+   Sadece z-index yükseltmek yetmez: bar yarı saydam örtünün altında yine
+   görünür kalır. Çekmece açıkken tamamen kaldırılıyor — aynı bağlantılar
+   çekmecenin kendi içinde zaten var. Sınıfı Header.jsx <body>'ye koyar.
+   Medya sorgusunun DIŞINDA duruyor ki özgüllüğü içerideki kuralı ezsin. */
+body.qor-drawer-open .botnav { display: none !important; }
+
 @media (max-width: 860px) {
   .botnav {
     display: grid;
