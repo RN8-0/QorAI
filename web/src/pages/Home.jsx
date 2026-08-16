@@ -3,7 +3,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getHomeFeedCached, peekHomeFeed, homeFeedSignature, searchProducts, enrichThinCards } from '../lib/typesense';
 import { catMeta, categoryLabel } from '../lib/format';
 import { categoryPath } from '../lib/routes';
-import { saveSearchHistory, readSearchHistory } from '../lib/pbHistory';
+// pbHistory 19,6 KB ve PocketBase SDK'sini de yanina cekiyor; ana sayfanin ILK
+// boyamasinda ikisi de gereksiz. Okuma zaten saf (kullanici kaydindaki diziyi
+// dondurur), yazma ise ancak kullanici arama yapinca kosuyor -> dinamik.
+const readSearchHistory = (user) => (Array.isArray(user?.searchHistory) ? user.searchHistory : []);
+const saveSearchHistory = (...a) => import('../lib/pbHistory').then((m) => m.saveSearchHistory(...a));
 import { useAuth } from '../lib/auth';
 import { useI18n } from '../i18n/index.jsx';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';

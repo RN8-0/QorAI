@@ -16,11 +16,18 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
-        // Keep the framework (react, router, pocketbase) in its own chunk so
-        // it caches across deploys and isn't re-downloaded when only app code
-        // changes. App pages are split per-route via React.lazy in App.jsx.
+        // Keep the framework (react, router) in its own chunk so it caches
+        // across deploys and isn't re-downloaded when only app code changes.
+        // App pages are split per-route via React.lazy in App.jsx.
+        // pocketbase BURADAN CIKARILDI (2026-08-16): SDK 34,2 KB ile vendor'in
+        // en buyuk ikinci parcasiydi ve ilk boyamada hicbir ise yaramiyor —
+        // oturum localStorage'dan senkron okunuyor (lib/authSeed.js) ve cikisli
+        // ziyaretcide SDK hic gerekmiyor. Artik lib/pbLazy.js ile ilk GERCEK
+        // API cagrisinda iniyor; burada birakmak onu zorla kritik yolda
+        // tutardi (olculdu: dinamik import'a gecirdikten sonra vendor 198,90 KB
+        // olarak AYNI kalmisti).
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'pocketbase'],
+          vendor: ['react', 'react-dom', 'react-router-dom'],
           // AiText KENDI chunk'ina. Kaynagi 1,1 KB ama rollup onu AI analiz
           // agaciyla AYNI paylasilan chunk'a koyuyordu (109 KB) — cunku ayni
           // rotalar hem AiText'i hem AiAnalysis ailesini import ediyor.

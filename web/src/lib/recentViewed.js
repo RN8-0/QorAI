@@ -4,7 +4,11 @@
 // signed in it also writes to the PocketBase `recently_viewed` collection
 // the mobile app uses, so history syncs across web + app.
 
-import { pb, currentUser } from './pocketbase';
+// Bu modul Home.jsx'ten statik iniyor ama PocketBase'i YALNIZ syncToPb()
+// kullaniyor (oturum acikken, urune tiklandiginda). SDK'yi statik cekmek onu
+// kritik yolda tutuyordu — bkz. lib/pbLazy.js.
+import { pbMod } from './pbLazy';
+import { seedAuth } from './authSeed';
 
 const KEY = 'qor-recent';        // legacy id-only list (kept for migration)
 const ITEMS_KEY = 'qor-recent-items';
@@ -46,6 +50,9 @@ export function getRecentCategories() {
 }
 
 async function syncToPb(productId) {
+  // Once SDK'siz bak: cikisli ziyaretcide 34 KB'yi bosuna indirmeyelim.
+  if (!seedAuth()) return;
+  const { pb, currentUser } = await pbMod();
   const user = currentUser();
   if (!user) return;
   try {

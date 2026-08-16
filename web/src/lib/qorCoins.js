@@ -1,4 +1,8 @@
-import { currentUser, pb } from './pocketbase';
+// PocketBase yalnizca HARCAMA yolunda gerekiyor (spendQorCoins / logQCoinSpend).
+// Bu dosyanin geri kalani saf/localStorage tabanli ama statik import yuzunden
+// 34 KB'lik SDK'yi App.jsx + Header.jsx + Home.jsx uzerinden KRITIK YOLA
+// sokuyordu. Artik SDK ancak gercek bir harcama olunca iniyor.
+import { pbMod } from './pbLazy';
 import { premiumStatus } from './premium';
 import { getRecentProducts } from './recentViewed';
 
@@ -201,6 +205,7 @@ export function spendQorCoins(feature) {
 }
 
 async function _spendQorCoinsLocked(feature) {
+  const { pb, currentUser } = await pbMod();
   const authUser = currentUser();
   if (!authUser?.id) throw err('AUTH_REQUIRED');
 
@@ -236,14 +241,13 @@ async function _spendQorCoinsLocked(feature) {
 // collection's createRule only lets a user append rows for their own id; reads
 // are superuser-only (admin panel), so this is purely an audit trail.
 export function logQCoinSpend(userId, feature, cost, balanceAfter) {
-  try {
-    pb.collection('qcoin_transactions').create({
-      userId,
-      type: 'spend',
-      feature: String(feature || 'ai_usage'),
-      amount: -Math.abs(Number(cost) || 0),
-      balanceAfter: Number(balanceAfter) || 0,
-      source: 'web',
-    }).catch(() => { /* ignore — audit only */ });
-  } catch { /* ignore */ }
+  // Fire-and-forget: SDK zaten harcama yolunda yuklenmis oluyor.
+  pbMod().then(({ pb }) => pb.collection('qcoin_transactions').create({
+    userId,
+    type: 'spend',
+    feature: String(feature || 'ai_usage'),
+    amount: -Math.abs(Number(cost) || 0),
+    balanceAfter: Number(balanceAfter) || 0,
+    source: 'web',
+  })).catch(() => { /* ignore — audit only */ });
 }

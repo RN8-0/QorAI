@@ -8,7 +8,6 @@ import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel, CURRENCY_BY_COUNTRY, countryDisplayName } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { useGeoCountry, setGeoCountry } from '../lib/geo';
-import { updateProfile } from '../lib/pocketbase';
 import PlayBadge from './PlayBadge.jsx';
 import './Header.css';
 

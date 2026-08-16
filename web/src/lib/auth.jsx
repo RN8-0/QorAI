@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { onAuthChange, signOut as pbSignOut, refreshUser, currentUser } from './pocketbase';
+import { seedAuth } from './authSeed';
+import { pbMod, pbYuklendiginde } from './pbLazy';
 
 const AuthCtx = createContext(null);
 
@@ -20,8 +21,11 @@ function mergeUser(prev, rec) {
 // becomes visible. The mobile app writes to the same `users` row when the user
 // spends Qor coins or upgrades to Premium, so without this sync the website
 // would keep showing a stale balance / tier for the duration of the session.
-function useUserSync(setUser) {
+function useUserSync(setUser, oturumVar) {
   useEffect(() => {
+    // Cikis yapmis ziyaretcide senkronlanacak kayit YOK: SDK'yi hic yukleme.
+    // Trafigin buyuk bolumu bu dalda ve 34 KB'lik SDK boyuna iniyordu.
+    if (!oturumVar) return undefined;
     let live = true;
     let inflight = false;
     let lastPull = 0;
@@ -34,6 +38,7 @@ function useUserSync(setUser) {
       lastPull = Date.now();
       inflight = true;
       try {
+        const { refreshUser } = await pbMod();
         const rec = await refreshUser();
         // mergeUser keeps the previous reference when the data is unchanged, so a
         // no-op refresh doesn't churn the user object and re-run dependent effects.
@@ -42,17 +47,23 @@ function useUserSync(setUser) {
         inflight = false;
       }
     }
-    pull();
+    // Ilk cekim BOSTA yapilir: SDK'nin inisi+ayristirilmasi ilk boyamanin ve
+    // LCP'nin ONUNDE durmasin. Zaten 20 sn'lik throttle var, birkac yuz ms
+    // gecikmenin kullaniciya gorunur bir maliyeti yok.
+    const bosta = window.requestIdleCallback || ((f) => setTimeout(f, 1500));
+    const iptal = window.cancelIdleCallback || clearTimeout;
+    const id = bosta(() => pull(), { timeout: 4000 });
     const onVisibility = () => { if (!document.hidden) pull(); };
     const onFocus = () => pull();
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('focus', onFocus);
     return () => {
       live = false;
+      try { iptal(id); } catch { /* tarayici destegi yok */ }
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', onFocus);
     };
-  }, [setUser]);
+  }, [setUser, oturumVar]);
 }
 
 export function AuthProvider({ children }) {
@@ -62,18 +73,34 @@ export function AuthProvider({ children }) {
   // key (feedKey) computed as anon, so its instant-paint cache — written under the
   // signed-in key — missed on refresh and flashed skeletons before the auth effect
   // populated the user. Seeding here makes feedKey correct on frame one.
-  const [user, setUser] = useState(() => currentUser());
+  // Oturum SDK'siz, dogrudan localStorage'dan okunuyor (authSeed.js): SDK 34 KB
+  // ve ilk render icin GEREKSIZ — ama kullanicinin kim oldugu ilk render'da
+  // BILINMEK ZORUNDA (yukaridaki not).
+  const [user, setUser] = useState(() => seedAuth());
   const [modalOpen, setModalOpen] = useState(false);
 
   // Merge auth-store updates over the previous user (clearing only on sign-out)
   // so a partial record never erases a known-good field like the coin balance.
-  useEffect(() => onAuthChange((u) => setUser((prev) => (u ? mergeUser(prev, u) : null))), []);
-  useUserSync(setUser);
+  // Abonelik SDK yuklenir yuklenmez kurulur; cikisli ziyaretcide SDK hic
+  // yuklenmedigi icin bu da hic kosmaz — kullanici giris yapinca (AuthModal
+  // SDK'yi cagirir) pbYuklendiginde tetiklenir ve abonelik o an kurulur.
+  useEffect(() => {
+    let off = null;
+    const birak = pbYuklendiginde((m) => {
+      off = m.onAuthChange((u) => setUser((prev) => (u ? mergeUser(prev, u) : null)));
+    });
+    return () => { birak(); if (off) off(); };
+  }, []);
+  useUserSync(setUser, !!user);
 
   const openAuth = useCallback(() => setModalOpen(true), []);
   const closeAuth = useCallback(() => setModalOpen(false), []);
-  const logout = useCallback(() => pbSignOut(), []);
+  const logout = useCallback(async () => {
+    const { signOut } = await pbMod();
+    return signOut();
+  }, []);
   const refresh = useCallback(async () => {
+    const { refreshUser } = await pbMod();
     const rec = await refreshUser();
     if (rec) setUser((prev) => mergeUser(prev, rec));
     return rec;

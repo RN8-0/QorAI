@@ -771,6 +771,23 @@ function routeCssAll(src, manifestObj, gorulen = new Set()) {
   return [...new Set(out)];
 }
 
+// Ana sayfanin LCP'si kabuk hero'sunun METNI (.qb-sub). Chrome tracing gosterdi
+// ki FCP ile LCP arasindaki ~730 ms'in yalnizca ~50 ms'i ana is parcacigi:
+// metin FCP'den 48 ms sonra ZATEN ekranda (yedek yuzle), ama Chrome onu LCP
+// adayi saymiyor ve LCP tam `jakarta-400-latin-ext` bitis anina dusuyor
+// (olculdu: -5140 ms ↔ -5140 ms). Fontlar satir ici @font-face'te tanimli ama
+// yukleme ancak RENDER-BLOCKING harici CSS inince basliyordu (CSS bitis -6117
+// ↔ font istegi -6107), yani ~430 ms bosuna bekleniyordu.
+// Olculdu (yerel website/ agaci, gzip'li, Yavas 4G + 4x CPU, 8 kosu medyan):
+//   mevcut 2420 ms -> tek preload 1672 ms   (TR)
+//   mevcut 2452 ms -> tek preload 1680 ms   (EN)
+// FCP bedeli +56 ms. Iki/dort font preload etmek DAHA KOTU (bant genisligi
+// yarisi): ext x2 1740 ms, dort 1840 ms. YALNIZ ANA SAYFA: urun sayfasinda
+// LCP bir GORSEL ve ayni preload orada 2972 -> 3052 ms KAYBETTIRIYOR.
+// UYARI: bu olcumu gzip'siz yerel sunucuyla yaparsan sonuc TERSINE doner
+// (preload kaybeder gibi gorunur) — sunucu sikistirmayi kapatma.
+const HOME_FONT_PRELOAD = '<link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />';
+
 function routePreloadTags(routeKey) {
   const src = ROUTE_ENTRY[routeKey];
   if (!src) return [];
@@ -1176,6 +1193,11 @@ function renderPage(template, seo, bodyHtml) {
     // anahtari yok). Yalnizca iskeleti cikar: aksi halde hero'nun ALTINDA bos
     // iskelet cubuklari da cizilir.
     out = out.replace(/<div class="qb-skel">[\s\S]*?<\/div>\s*<!--\/qb-hero-->/, '<!--/qb-hero-->');
+    // LCP fontu, satir ici @font-face blogunun HEMEN ONUNE. Sablon bir onceki
+    // kosunun ciktisi olabildigi icin iki kez eklenmemeli.
+    if (!out.includes(HOME_FONT_PRELOAD)) {
+      out = out.replace('  <style>', () => `  ${HOME_FONT_PRELOAD}\n  <style>`);
+    }
   } else {
     const blok = bootHero(seo.routeKey || '', seo.bootExtra || {}) || bootSkeleton();
     out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, () => `<!--qb-hero-->${blok}<!--/qb-hero-->`);

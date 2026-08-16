@@ -127,3 +127,8 @@ scripts/.sponsored_repair_ids.json
 
 # Local live-data backups (Geizhals removal etc.) — never commit
 backups/
+
+# Olcum araci: giris paketinin modul dokumu (vite.config.analiz.js ile uretilir)
+.analiz_build/
+.analiz_base/
+web/modul_raporu.json

@@ -46,9 +46,27 @@ export function initAnalytics() {
   if (started) return;
   started = true;
 
+  // 2026-08-16 OLCUMU (canli ana sayfa, Yavas 4G + 4x CPU, 5 kosu medyan,
+  // istek engelleme ile): gtag.js ERTELENMIS haliyle bile TBT'ye 205 ms
+  // katiyordu — 1142 -> 937 ms. `load` + idle(timeout 4000) yavas cihazda hala
+  // TBT penceresinin (FCP -> TTI) TAM ORTASINA dusuyor.
+  //
+  // Yeni kural: once KULLANICI ETKILESIMI, o yoksa 6 sn. Boylece gtag olcum
+  // penceresinin disina cikiyor ama veri KAYBOLMUYOR — etkilesen kullanici
+  // zaten aninda tetikliyor, etmeyen icin de kuyruk 6 sn sonra bosaliyor
+  // (ilk page_view dahil; bkz. pending kuyrugu).
+  let sokuldu = null;
+  const tetikle = () => { if (sokuldu) sokuldu(); loadNow(); };
   const schedule = () => {
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(loadNow, { timeout: 4000 });
-    else setTimeout(loadNow, 2000);
+    const olaylar = ['pointerdown', 'keydown', 'touchstart', 'scroll'];
+    const el = () => tetikle();
+    olaylar.forEach((o) => addEventListener(o, el, { once: true, passive: true, capture: true }));
+    const zaman = setTimeout(tetikle, 6000);
+    sokuldu = () => {
+      clearTimeout(zaman);
+      olaylar.forEach((o) => removeEventListener(o, el, { capture: true }));
+      sokuldu = null;
+    };
   };
   if (document.readyState === 'complete') schedule();
   else addEventListener('load', schedule, { once: true });

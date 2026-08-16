@@ -1,4 +1,6 @@
-import { pb } from './pocketbase';
+// PocketBase yalnizca ensureSpecDictionary() icinde (async) kullaniliyor;
+// statik import SDK'yi kritik yola sokuyordu — bkz. lib/pbLazy.js.
+import { pbMod } from './pbLazy';
 
 const MANIFEST_KEY = 'tr_translation_dict_manifest';
 const SHARD_PREFIX = 'tr_translation_dict__part_';
@@ -65,6 +67,7 @@ export async function ensureSpecDictionary() {
   if (loading) return loading;
   loading = (async () => {
     try {
+      const { pb } = await pbMod();
       const manifest = await pb.collection('public_config').getFirstListItem(
         `key="${MANIFEST_KEY}"`,
         { fields: 'value' },
