@@ -238,8 +238,16 @@ const SIMPLE_ICON_SLUGS = {
   'tabii': 'trt',
 };
 
+// Simple Icons'ta KARSILIGI OLMAYAN slug'lar. Olculdu (2026-08-16, canli
+// /subscriptions): cdn.simpleicons.org/blutv ve /exxen her yuklemede 404
+// donuyordu. Zincir zaten wordmark'a dusuyor, yani gorunum bozulmuyor — ama
+// her ziyarette iki bosa istek atiliyor ve konsol 404 ile kirleniyor.
+// Simple Icons bu markalari eklerse buradan cikar.
+const SIMPLEICONS_YOK = new Set(['blutv', 'exxen']);
+
 function simpleIconSlug(name) {
-  return SIMPLE_ICON_SLUGS[String(name || '').toLowerCase().trim()] || '';
+  const s = SIMPLE_ICON_SLUGS[String(name || '').toLowerCase().trim()] || '';
+  return SIMPLEICONS_YOK.has(s) ? '' : s;
 }
 
 function wordmarkFor(name) {
@@ -274,7 +282,7 @@ export default function SubLogo({ name, website = '', logo = '', slug = '', size
     const hiRes = Math.max(160, Math.ceil(size * 4));
     // An explicit slug (passed by the quiz) wins: crisp brand-coloured SVG from
     // Simple Icons, no broken hot-linked logos.
-    if (slug) list.push(`https://cdn.simpleicons.org/${slug}`);
+    if (slug && !SIMPLEICONS_YOK.has(slug)) list.push(`https://cdn.simpleicons.org/${slug}`);
     if (localLogo) list.push(localLogo);
     if (logo && /^https?:/i.test(logo) && !/storage\.googleapis|firebasestorage/.test(logo)) list.push(logo);
     if (iconSlug && iconSlug !== slug) list.push(`https://cdn.simpleicons.org/${iconSlug}`);
