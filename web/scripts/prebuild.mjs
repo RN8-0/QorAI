@@ -3,17 +3,49 @@
 // because clean routes like /privacy must resolve to the generated SPA route
 // shell, not to stale privacy.html files.
 
-import { rmSync, existsSync, readFileSync } from 'fs';
+import { rmSync, existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { execSync } from 'child_process';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const site = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'website');
+// DIKKAT: `spa` BU LISTEDE DEGIL — bkz. pruneSpa(). Buradakiler her derlemede
+// yeniden uretilen HTML agaclari; spa/ ise hash'li JS/CSS tutuyor ve HEMEN
+// silinmesi CANLIDA BEYAZ EKRAN uretiyor (asagidaki not).
 const wipe = [
-  'spa', 'catalog', 'compare', 'ai-chat', 'pc-builder',
+  'catalog', 'compare', 'ai-chat', 'pc-builder',
   'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'product',
   'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
 ];
+
+// ── spa/: ESKI CHUNK'LARI HEMEN SILME ──────────────────────────────────────
+// 2026-08-16'da CANLIDA yasandi: kullanici deploy sonrasi BEYAZ EKRAN gordu.
+// Zincir su: HTML Cloudflare edge'inde 2 SAAT onbellekli; deploy yeni hash'li
+// paketleri yaziyor ve prebuild eski `spa/` agacini komple siliyordu. Edge
+// hala ESKI HTML'i servis ederken o HTML'in istedigi `/spa/index-<eski>.js`
+// artik sunucuda YOK -> 404 -> React hic mount olmuyor -> bos sayfa. Purge
+// edilmezse bu 2 saat suruyor ve ziyaretciye site BOZUK gorunuyor.
+// (main.jsx'teki `__qorBuild` isaretcisi yalnizca yeni HTML'in yeni pakete
+// isaret etmesini garanti eder; ESKI HTML'i tasiyan edge/tarayici icin bir sey
+// yapmaz — asil eksik parca buydu.)
+// Cozum: spa/ altindaki dosyalar YASA gore temizlenir. Yeni derleme kendi
+// dosyalarini uzerine yazar, onceki surumlerin paketleri SPA_KEEP_DAYS boyunca
+// yerinde kalir; boylece elindeki HTML hangi surumden olursa olsun calisir.
+const SPA_KEEP_DAYS = Number(process.env.SPA_KEEP_DAYS || 10);
+function pruneSpa(dir, gun) {
+  if (!existsSync(dir)) return;
+  const sinir = Date.now() - gun * 86400000;
+  let silinen = 0; let kalan = 0;
+  for (const ad of readdirSync(dir)) {
+    const yol = join(dir, ad);
+    try {
+      const st = statSync(yol);
+      if (st.isDirectory()) continue;
+      if (st.mtimeMs < sinir) { rmSync(yol, { force: true }); silinen += 1; } else kalan += 1;
+    } catch { /* yarista kaybolan dosya onemsiz */ }
+  }
+  console.log(`[prebuild] spa/: ${kalan} dosya korundu, ${silinen} adet ${gun} gunden eski dosya silindi`);
+}
 
 // product/ holds 100k+ tiny html files. Node's recursive rmSync is flaky on
 // Windows for trees this large — it throws ENOTEMPTY/EBUSY even with retries
@@ -99,6 +131,7 @@ if (process.env.SEO_ALLOW_EMPTY_CATALOG !== '1' && TS_URL && TS_KEY && TS_COLLEC
 for (const dir of wipe) {
   nukeDir(join(site, dir));
 }
+pruneSpa(join(site, 'spa'), SPA_KEEP_DAYS);
 
 for (const file of ['terms.html', 'privacy.html', 'cookies.html', 'contact.html', 'about.html', 'faq.html']) {
   rmSync(join(site, file), { force: true });
