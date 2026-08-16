@@ -73,8 +73,18 @@ export default function Search() {
         setYukleniyor(false);
         if (!liste.length) return;
         try {
-          const zengin = await enrichThinCards(liste);
-          if (canli) setSonuc(Array.isArray(zengin) ? [...zengin] : liste);
+          // enrichThinCards kartlari YERINDE degistirir ve AYNI dizi/nesne
+          // referanslarini dondurur. `setSonuc([...liste])` yetmez: ProductCard
+          // `memo` ile sarili ve `product` prop'unun referansi degismedigi icin
+          // YENIDEN CIZILMEZ — zenginlesen etiketler ekrana hic basilmazdi.
+          // Olculdu (canli, "samsung"): /search 26/40 karta etiket basiyordu,
+          // ana sayfanin tam `_raw` yolu ise 40/40. Zenginlesen karta TAZE bir
+          // nesne referansi veriliyor (ana sayfa akisi da aynisini yapiyor);
+          // degismeyen kartlar eski referansini korur, yani gereksiz render yok.
+          const zenginMi = (p) => Boolean(p && (p.keySpecs || p.specs || p.specsEn || p.specSections || p.multiLangSpecs));
+          const once = new Map(liste.map((p) => [p.id, zenginMi(p)]));
+          await enrichThinCards(liste);
+          if (canli) setSonuc(liste.map((p) => (!once.get(p.id) && zenginMi(p) ? { ...p } : p)));
         } catch { /* etiketler eksik kalir, sayfa calisir */ }
       })
       .catch(() => { if (canli) { setSonuc([]); setTerim(q); setYukleniyor(false); } });
