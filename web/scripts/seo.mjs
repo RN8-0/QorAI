@@ -652,26 +652,65 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
 // useSeo() hook DOES add a valid Product+offers once the live price loads (and
 // only then), so products that actually have a price still get the rich result.
 // Ürün sayfası SEO metinleri. Kök adres İngilizce olduğu için varsayılan 'en'.
+// BASLIKTA "FIYAT" GECMEK ZORUNDA. 2026-08-16'da olculdu: "Samsung Galaxy S26
+// Ultra fiyat özellikleri karşılaştırma" aramasinda ilk sirada Akakce var ve
+// onun basligi "… 256 GB 12 GB FIYATLARI, Özellikleri ve YORUMLARI | En Ucuzu
+// Akakçe". Bizim basligimizda ("… — Özellikler & Karşılaştırma") sorgunun en
+// guclu kelimesi olan FIYAT hic gecmiyordu; Turkiye'de bu urunler ezici
+// cogunlukla "<urun> fiyat / fiyatlari" kalibiyla araniyor.
+// Ayrica basligin BASINDA urun adi kalir (Google ilk ~60 karakteri gosterir),
+// marka adi sona atilir.
 const PROD_SEO_TEXT = {
   en: {
-    title: (n) => `${n} — Specs & Comparison | Qor AI`,
+    title: (n) => `${n} Price, Specs & Comparison | Qor AI`,
     score: (s) => `Qor AI tech score ${s}/100. `,
     specs: (n) => `${n} technical specs. `,
-    tail: 'Qor AI analysis and comparison with similar models.',
+    tail: 'Compare prices across stores, see the AI tech score and similar models.',
   },
   tr: {
-    title: (n) => `${n} — Özellikler & Karşılaştırma | Qor AI`,
+    title: (n) => `${n} Fiyatı, Özellikleri ve Karşılaştırma | Qor AI`,
     score: (s) => `Qor AI teknik skoru ${s}/100. `,
     specs: (n) => `${n} teknik özellik. `,
-    tail: 'Qor AI yapay zekâ analizi ve benzer modellerle karşılaştırması.',
+    tail: 'Mağaza fiyatlarını karşılaştır, yapay zekâ teknik skorunu ve benzer modelleri gör.',
   },
   de: {
-    title: (n) => `${n} — Specs & Vergleich | Qor AI`,
+    title: (n) => `${n} Preis, Specs & Vergleich | Qor AI`,
     score: (s) => `Qor AI Techscore ${s}/100. `,
     specs: (n) => `${n} technische Merkmale. `,
-    tail: 'Qor AI Analyse und Vergleich mit ähnlichen Modellen.',
+    tail: 'Preise der Shops vergleichen, KI-Techscore und ähnliche Modelle ansehen.',
   },
 };
+
+// Aciklamadaki spec ETIKETLERI Typesense'ten INGILIZCE geliyor, sayfanin dili
+// ne olursa olsun. Olculdu (2026-08-16, /tr/ urun sayfasi):
+//   "… — Akıllı Telefon. 5G: Yes, Battery capacity: 5000 mAh, CPU cores: 8 Core"
+// Turkce sayfada Ingilizce etiket hem kullaniciya kotu gorunuyor hem de arama
+// sonucunda snippet olarak cikiyor. Dile gore key-spec cekmek buyuk bir is
+// (PB multiLangSpecs); en cok gecen etiketler icin kucuk bir sozluk sorunun
+// buyuk kismini ucuza kapatiyor. Karsiligi olmayan etiket oldugu gibi kalir.
+const SPEC_ETIKET = {
+  tr: {
+    '5G': '5G', 'Battery capacity': 'Batarya', 'CPU cores': 'Çekirdek', 'CPU frequency': 'İşlemci hızı',
+    'Screen size': 'Ekran', 'Screen resolution': 'Çözünürlük', 'Refresh rate': 'Yenileme hızı',
+    RAM: 'RAM', Storage: 'Depolama', 'Internal storage': 'Depolama', 'Rear camera': 'Arka kamera',
+    'Front camera': 'Ön kamera', Weight: 'Ağırlık', 'Operating system': 'İşletim sistemi',
+    Processor: 'İşlemci', 'Charging power': 'Şarj gücü', 'Screen type': 'Ekran tipi',
+    Yes: 'Var', No: 'Yok', Color: 'Renk', 'Water resistance': 'Suya dayanıklılık',
+  },
+  de: {
+    '5G': '5G', 'Battery capacity': 'Akku', 'CPU cores': 'CPU-Kerne', 'CPU frequency': 'CPU-Takt',
+    'Screen size': 'Display', 'Screen resolution': 'Auflösung', 'Refresh rate': 'Bildwiederholrate',
+    RAM: 'RAM', Storage: 'Speicher', 'Internal storage': 'Speicher', 'Rear camera': 'Hauptkamera',
+    'Front camera': 'Frontkamera', Weight: 'Gewicht', 'Operating system': 'Betriebssystem',
+    Processor: 'Prozessor', 'Charging power': 'Ladeleistung', 'Screen type': 'Displaytyp',
+    Yes: 'Ja', No: 'Nein', Color: 'Farbe', 'Water resistance': 'Wasserdichtigkeit',
+  },
+};
+function specEtiket(metin, lang) {
+  const s = SPEC_ETIKET[lang];
+  if (!s) return metin;
+  return s[metin] || s[String(metin).trim()] || metin;
+}
 
 function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
   const tx = PROD_SEO_TEXT[lang] || PROD_SEO_TEXT[SEO_DEFAULT_LOCALE];
@@ -688,7 +727,7 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
   // Lead the description with a few REAL spec values so it is unique per product
   // and long enough (Bing flagged descriptions as too short + too templated).
   const rows = keySpecRows(keySpecs, 4);
-  const specHi = rows.map(([k, v]) => `${k}: ${v}`).join(', ');
+  const specHi = rows.map(([k, v]) => `${specEtiket(k, lang)}: ${specEtiket(v, lang)}`).join(', ');
   const description = truncate(
     `${dispName}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
     + `${specHi ? `${specHi}. ` : ''}`
