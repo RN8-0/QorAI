@@ -4,6 +4,23 @@ import react from '@vitejs/plugin-react';
 // The built SPA is written straight into ../website, the directory Coolify
 // serves. emptyOutDir is false so the static privacy.html / terms.html and
 // /assets brand images are never wiped. SPA chunks live under /spa.
+//
+// PREACT DENENDI VE GERI ALINDI (2026-08-16). @preact/preset-vite ile gecis
+// ISLEVSEL OLARAK SORUNSUZDU (13 rota + 11 akis testi temiz:
+// scripts/_preact_regression.mjs) ve pakette buyuk kazanc vardi:
+//   vendor 164,5 -> 47,5 KB ham (gzip 53,7 -> 17,7), kritik yol 348 -> 230 KB
+// AMA ASIL HEDEF OLAN TBT'yi KOTULESTIRDI. Ayni kosulda, serpistirilmis,
+// gzip'li, Yavas 4G + 4x CPU (scripts/_tbt_ab.mjs):
+//   ana sayfa TBT: React 750 ms -> Preact 857 ms (11 kosu medyan; +107 ms.
+//   Ayni yon uc ayri turda: +196, +261, +155, +107)
+//   FCP/LCP: FARK YOK (1648/1668 <-> 1632/1672)
+//   /premium gibi kart YOGUN OLMAYAN rotada Preact hafif ILERIDE (386 -> 342)
+// Kok neden trace'te: uzun gorevlerin ic dagiliminda DUZEN (layout) 215 -> 528
+// ms. Ana sayfa ~69 karti 9 grid'e basiyor; Preact DOM'u parca parca ekledigi
+// icin daha cok layout tetikleniyor. content-visibility SUCLU DEGIL (kapatinca
+// Preact'te TBT 725 -> 1328, yani kural isini yapiyor).
+// Tekrar denenecekse once ana sayfa kart render'i (sanallastirma/batching)
+// ele alinmali; yoksa paket kazanci TBT'de geri veriliyor.
 export default defineConfig({
   plugins: [react()],
   build: {
