@@ -440,6 +440,16 @@ input, textarea, select { font-family: inherit; }
 @media (max-width: 1080px) { .searchbox.hide-md { display: none; } }
 @media (max-width: 860px) { .nav { display: none; } .hd-burger { display: grid; } }
 @media (max-width: 760px) { .desk-only { display: none !important; } }
+/* DAR TELEFONLAR (360 px ve alti — Galaxy A/S serisinin varsayilani).
+   Olculdu: marka 106 + arama 44 + 3x40 yuvarlak buton + 5x16 aralik = 350 px,
+   container'in ic genisligi ise 328 px. Son buton (menu) 6 px ust barin
+   DISINDA kaliyordu. Aralik ve buton capi kuculunce 300 px'e iniyor. */
+@media (max-width: 400px) {
+  .appbar-inner { gap: 9px; }
+  .appbar-inner .iconbtn { width: 36px; height: 36px; }
+  .brand img { width: 30px; height: 30px; }
+  .brand .wm { font-size: 18px; }
+}
 
 /* spec mini grid */
 .spec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -510,17 +520,45 @@ input, textarea, select { font-family: inherit; }
 .stat .l { font-size: 13px; color: var(--text-3); font-weight: 600; }
 
 /* footer */
-/* Sosyal hesap butonlari (Play rozetinin hemen altinda) */
-.ft-social { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
-.ft-social-btn {
+/* Sosyal hesap butonlari (Play rozetinin hemen altinda).
+   DUZ GRI DAIRE DEGIL: her platform KENDI marka renginde. Gri daireler
+   footer'da sonuk kaliyor ve tiklanabilir gorunmuyordu.
+   HIZA: Play rozeti `min-width:178px` ile sol kenardan basliyor; sosyal
+   satir da ayni sol kenarda ve rozetle ayni dikey ritimde (18px) duruyor. */
+/* SECICILER `.ft-social` ILE SARILI: `.footer a { display:block; color:
+   var(--text-2) }` kurali (0,1,1) tek sinifli bir kurali (0,1,0) YENIYOR.
+   Ilk denemede ikonlar renkli daire icinde GRI cizildi — sebep tam olarak
+   buydu (kare: son/footer-d1440.png). Iki sinifli secici (0,2,0) kazanir. */
+.ft-social { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+.ft-social .ft-social-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; border-radius: 50%;
-  border: 1px solid var(--border); background: var(--surface-2);
-  color: var(--text-2); text-decoration: none;
-  transition: color .15s, border-color .15s, transform .08s, background .15s;
+  width: 38px; height: 38px; padding: 0; border-radius: 50%;
+  border: 1px solid transparent;
+  color: #fff; text-decoration: none;
+  box-shadow: 0 4px 14px color-mix(in srgb, #020617 14%, transparent);
+  transition: transform .16s cubic-bezier(.22,.61,.36,1), box-shadow .16s ease, filter .16s ease;
 }
-.ft-social-btn:hover { color: var(--accent); border-color: var(--accent-ring); background: var(--surface); }
-.ft-social-btn:active { transform: translateY(1px); }
+.ft-social .ft-social-btn svg { width: 17px; height: 17px; display: block; fill: currentColor; }
+.ft-social .ft-social-btn:hover { transform: translateY(-2px); filter: saturate(1.12); }
+.ft-social .ft-social-btn:active { transform: translateY(0); }
+.ft-social .ft-social-btn:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 3px; }
+
+/* TikTok resmi kimligi SIYAH zemin + beyaz isaret. Koyu temada siyah daire
+   arka planla birlesiyor, o yuzden orada ince bir kenar veriliyor. */
+.ft-social .ft-social-tiktok { background: #010101; border-color: rgba(255, 255, 255, .18); }
+.ft-social .ft-social-tiktok:hover { box-shadow: 0 6px 20px rgba(37, 244, 238, .40); }
+.ft-social .ft-social-youtube { background: #FF0000; }
+.ft-social .ft-social-youtube:hover { box-shadow: 0 6px 20px rgba(255, 0, 0, .36); }
+.ft-social .ft-social-instagram {
+  background:
+    radial-gradient(circle at 30% 107%, #FDF497 0%, #FDF497 5%, #FD5949 45%, #D6249F 60%, #285AEB 90%);
+}
+.ft-social .ft-social-instagram:hover { box-shadow: 0 6px 20px rgba(214, 36, 159, .38); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-social .ft-social-btn { transition: none; }
+  .ft-social .ft-social-btn:hover { transform: none; }
+}
 
 .footer { border-top: 1px solid var(--border); background: var(--surface); margin-top: 40px; }
 .footer .container { padding-top: 44px; padding-bottom: 36px; }
@@ -646,10 +684,15 @@ input, textarea, select { font-family: inherit; }
    borders, button shine, animated headline gradients.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Scroll reveal (Reveal.jsx). Hidden state only applies when motion is OK. */
-.rv { transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Scroll reveal (Reveal.jsx). Hidden state only applies when motion is OK.
+   SURE 0.65s -> 0.42s, KAYMA 22px -> 12px (2026-08-16). Gozlemci artik bolumu
+   ekrana girmeden 600 px once aciyor (bkz. Reveal.jsx'teki olcum notu), ama
+   hizli bir flikte o marj asilabiliyor; kisa gecis o durumda da bolumun
+   "geriden gelme" hissini birakmiyor. 22 px'lik kayma ayrica alt kenarda
+   gorunur bir bosluk birakiyordu. */
+.rv { transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1); }
 @media (prefers-reduced-motion: no-preference) {
-  .rv:not(.rv-in) { opacity: 0; transform: translateY(22px); }
+  .rv:not(.rv-in) { opacity: 0; transform: translateY(12px); }
 }
 
 /* Animated gradient headline (high-specificity variant overrides .hero h1 .grad) */

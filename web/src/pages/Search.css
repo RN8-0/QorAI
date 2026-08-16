@@ -1,0 +1,77 @@
+/* /search — arama sonuclari. Bkz. Search.jsx basindaki not. */
+
+.sr-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; margin: 8px 0 14px;
+}
+.sr-title {
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  font-size: clamp(22px, 4vw, 30px); font-weight: 850; letter-spacing: 0; margin: 0;
+  min-width: 0;
+}
+.sr-title-lbl { color: var(--text-2); font-weight: 700; }
+/* UZUN SORGU: baslik tasmasin, kirpilsin. */
+.sr-title-q {
+  background: var(--grad-ai); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  max-width: min(100%, 620px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sr-count { font-size: 13px; font-weight: 750; color: var(--text-3); white-space: nowrap; }
+
+.sr-box {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 16px; margin-bottom: 16px;
+  border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-3);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.sr-box:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.sr-box svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.sr-box input {
+  flex: 1 1 auto; min-width: 0; border: 0; outline: none; background: transparent;
+  color: var(--text); font-size: 15px; font-weight: 650; font-family: inherit;
+  padding: 10px 0;
+}
+.sr-box input::-webkit-search-cancel-button { display: none; }
+/* Kutu kendi odak halkasini `:focus-within` ile ciziyor; global kural ikinci
+   bir cerceve eklemesin (bkz. global.css'teki `.searchbox` istisnasi). */
+.sr-box :where(input):focus-visible { outline: none; }
+.sr-box input::placeholder { color: var(--text-3); font-weight: 600; }
+.sr-box .btn { flex: 0 0 auto; padding: 10px 20px; }
+
+.sr-cats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.sr-cats-lbl {
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.sr-cat {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-2); font-size: 12.5px; font-weight: 750; font-family: inherit;
+  cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+}
+.sr-cat b { color: var(--text-3); font-weight: 800; font-size: 11.5px; }
+.sr-cat:hover { color: var(--text); border-color: var(--border-strong); }
+.sr-cat.on {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+.sr-cat.on b { color: var(--accent); }
+
+.sr-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center; color: var(--text-2);
+}
+.sr-empty strong { font-size: 15px; font-weight: 800; color: var(--text); }
+.sr-empty span { font-size: 13.5px; max-width: 420px; line-height: 1.55; }
+
+@media (max-width: 560px) {
+  .sr-box { padding-left: 14px; gap: 8px; }
+  .sr-box .btn { padding: 10px 14px; font-size: 13px; }
+  .sr-head { margin-bottom: 10px; }
+}

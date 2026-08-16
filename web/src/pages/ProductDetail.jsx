@@ -1335,7 +1335,7 @@ export default function ProductDetail() {
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
                   {bricks.length > 0 ? (
                     <div className="pd-bricks">
-                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
+                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} ilk={i === 0} />)}
                     </div>
                   ) : (
                     !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
@@ -1626,12 +1626,36 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
   );
 }
 
-function SpecBrick({ brick, lang, tr }) {
+// MOBILDE OZELLIK BLOKLARI KAPALI BASLAR.
+// Olculdu (2026-08-16, 390x844, canli): urun sayfasi 16.842 px uzunlugundaydi
+// ve bunun 12.566 px'i tek basina bu ozellik duvariydi (`.pd-tab-body`).
+// Masaustunde bloklar iki sutuna akiyor (`column-count: 2`) ve sorun degil;
+// mobilde tek sutuna dusup alt alta diziliyor. Ilk blok ("Öne Çıkanlar")
+// acik kalir, geri kalani dokununca acilir.
+//
+// `<details>` KULLANILIYOR, kendi yazdigimiz bir ac/kapa DEGIL: Google
+// `<details>` icindeki metni normal sekilde indeksler (gizlenmis icerik
+// muamelesi yapmaz) ve klavye/ekran okuyucu destegi bedava gelir. Ozellik
+// tablosu urun sayfasinin ozgun icerigi — DOM'dan cikarilmasi SEO'ya zarar
+// verirdi, o yuzden yalnizca katlaniyor.
+const DAR_EKRAN = () => {
+  try { return window.matchMedia('(max-width: 860px)').matches; } catch { return false; }
+};
+
+function SpecBrick({ brick, lang, tr, ilk = false }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
+  // Tek sefer okunur; ekran dondurulurse mevcut ac/kapa durumu korunur —
+  // kullanicinin actigi blogu kapatmak yeniden olcmekten daha rahatsiz edici.
+  const [dar] = useState(DAR_EKRAN);
   if (!rows.length) return null;
   return (
-    <div className="pd-brick">
-      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}</div>
+    <details className="pd-brick" open={ilk || !dar}>
+      <summary className="pd-brick-head">
+        <span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}
+        <svg className="pd-brick-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </summary>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
           const s = localizedSpecValue(tr(String(v).trim()), lang);
@@ -1652,6 +1676,6 @@ function SpecBrick({ brick, lang, tr }) {
           );
         })}
       </div>
-    </div>
+    </details>
   );
 }

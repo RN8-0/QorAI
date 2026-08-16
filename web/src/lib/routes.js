@@ -53,6 +53,17 @@ export function categoryPath(category) {
   return cat ? `/category/${cat}` : '/category';
 }
 
+// Arama sonuc sayfasi. Sonuclar ONCEDEN yalniz ana sayfada (`/?q=`) render
+// ediliyordu; kullanici bir urun/kategori/blog sayfasindayken arayinca
+// ANA SAYFAYA atiliyordu. Kendi rotasi olunca arama her sayfadan calisir,
+// adres paylasilabilir ve geri tusu dogru calisir. Ana sayfadaki `?q=`
+// destegi geriye donuk uyumluluk icin DURUYOR (JSON-LD SearchAction ve eski
+// linkler oraya isaret ediyordu).
+export function searchPath(query) {
+  const s = String(query || '').trim();
+  return s ? `/search?q=${encodeURIComponent(s)}` : '/search';
+}
+
 // A blog article carries a canonical `slug` plus optional per-language slugs
 // (slug_tr/slug_en/slug_de). Links use the language-appropriate slug so the URL
 // matches the content language, while BlogPost still resolves any of them to the

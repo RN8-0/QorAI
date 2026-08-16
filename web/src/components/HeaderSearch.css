@@ -3,99 +3,248 @@
 /* wrap/form ust bardaki flex akisinda EZILMEMELI: aksi halde input'a verilen
    genislik hicbir ise yaramiyor (olculdu — input flex item oldugu icin
    flex-shrink onu 0 px'e indiriyordu, inline width bile etkisizdi). */
-.hs-wrap { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
+.hs { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
 
 .hs-form {
-  display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
-  border: 1px solid transparent; border-radius: 999px;
+  display: flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  border-radius: 999px;
   background: transparent;
-  transition: background .22s ease, border-color .22s ease, box-shadow .22s ease, padding .22s ease;
   padding: 0;
+  position: relative;
+  transition: background .24s ease, box-shadow .24s ease, padding .24s ease;
+}
+
+/* Acik haldeki gradyan cerceve: 1 px'lik bir halka, marka gradyaniyla.
+   `border` yerine maskeli ::before — boylece kutu genisligi degismiyor ve
+   gradyan kenari dogru kaliyor. */
+.hs-form::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1.5px; background: var(--grad-brand, linear-gradient(135deg, var(--brand-deep), var(--brand-blue), var(--brand-cyan)));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0; transition: opacity .24s ease; pointer-events: none;
 }
 .hs-open .hs-form {
-  background: var(--surface-2);
-  border-color: var(--border);
-  padding: 0 6px 0 0;
-  box-shadow: 0 6px 18px color-mix(in srgb, #020617 8%, transparent);
+  background: var(--surface);
+  padding: 0 5px 0 0;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--brand-blue) 16%, transparent);
 }
+.hs-open .hs-form::before { opacity: 1; }
 
-/* Ikon, alan acilirken onunde birlikte kayar (kullanicinin istedigi hareket):
-   genislemeyi input'un width'i yapar, ikon flex akisinda oldugu icin
-   kendiliginden sola dogru "surulur". */
-.hs-btn { flex: 0 0 auto; }
+/* ── Ikon ────────────────────────────────────────────────────────────────
+   Duz gri DEGIL: marka gradyaninda bir halka + gradyanli cizgi rengi.
+   Alan acilirken ikon flex akisinda oldugu icin kendiliginden sola "surulur"
+   (kullanicinin istedigi birlikte-hareket). */
+.hs-btn {
+  position: relative; flex: 0 0 auto;
+  width: 40px; height: 40px; padding: 0;
+  display: grid; place-items: center; border: 0; border-radius: 50%;
+  background: transparent; color: var(--brand-blue); cursor: pointer;
+  transition: color .18s ease, transform .18s ease;
+}
+.hs-btn svg { width: 19px; height: 19px; display: block; position: relative; z-index: 1; }
+.hs-btn:hover { color: var(--brand-cyan); }
+.hs-btn:active { transform: scale(.93); }
+
+/* Halka: kapaliyken ust bardaki diger yuvarlak butonlarla ayni siluet ama
+   gradyan kenarli; acilinca gradyan DOLGUYA doner ve ikon beyaz olur. */
+.hs-btn-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
+  padding: 1.5px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: .55;
+  transition: opacity .22s ease;
+}
+.hs-btn::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
+  transform: scale(.2); opacity: 0;
+  transition: transform .26s cubic-bezier(.22,.61,.36,1), opacity .2s ease;
+}
+.hs-btn:hover .hs-btn-ring { opacity: 1; }
+.hs-open .hs-btn { color: #fff; }
+.hs-open .hs-btn::after { transform: scale(1); opacity: 1; }
+.hs-open .hs-btn-ring { opacity: 0; }
+.hs-btn:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 2px; }
 
 /* Genisleme flex-basis ile yapilir; sirf `width` vermek flex kabinde ISE
-   YARAMIYOR (bkz. .hs-wrap notu). */
+   YARAMIYOR (bkz. dosya basindaki not). */
 .hs-input {
   flex: 0 0 0px; width: 0; min-width: 0; padding: 0; border: 0; outline: none;
   background: transparent; color: var(--text);
-  font-size: 14px; font-weight: 650; font-family: inherit;
+  font-size: 14.5px; font-weight: 650; font-family: inherit;
   opacity: 0; pointer-events: none;
-  transition: flex-basis .26s cubic-bezier(.22,.61,.36,1), opacity .18s ease, padding .26s ease;
+  transition: flex-basis .3s cubic-bezier(.22,.61,.36,1), opacity .2s ease .06s, padding .3s ease;
 }
 .hs-open .hs-input {
-  flex: 0 0 230px; width: auto; padding: 9px 2px 9px 0;
+  flex: 0 0 260px; width: auto; padding: 10px 2px 10px 2px;
   opacity: 1; pointer-events: auto;
 }
 .hs-input::placeholder { color: var(--text-3); font-weight: 600; }
+/* Tarayicinin kendi "x" dugmesi bizimkiyle ust uste biniyordu. */
+.hs-input::-webkit-search-cancel-button, .hs-input::-webkit-search-decoration { display: none; }
+/* global.css'teki genel `:focus-visible` halkasi burada IKINCI bir cerceve
+   ciziyordu (pill'in icinde ayri bir dikdortgen — 390 px karesinde goruldu).
+   Odak gostergesi KAYBOLMUYOR: asagidaki `:focus-within` kurali gradyan
+   cerceveyi belirginlestiriyor. `.searchbox` icin de ayni istisna var. */
+.hs-form :where(input):focus-visible { outline: none; }
+.hs-form:focus-within { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 22%, transparent); }
 
-.hs-clear {
+.hs-clear, .hs-close {
   flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%;
+  width: 26px; height: 26px; padding: 0; border-radius: 50%;
   border: 0; background: transparent; color: var(--text-3); cursor: pointer;
+  transition: background .14s ease, color .14s ease;
 }
-.hs-clear:hover { background: var(--surface-3, rgba(120,120,120,.14)); color: var(--text); }
+.hs-clear svg, .hs-close svg { width: 14px; height: 14px; display: block; }
+.hs-clear:hover, .hs-close:hover { background: var(--surface-2); color: var(--text); }
+.hs-close { display: none; }
 
 /* ── Oneri paneli ───────────────────────────────────────────────────────── */
 .hs-panel {
   position: absolute; top: calc(100% + 10px); right: 0;
-  width: min(380px, calc(100vw - 32px));
-  z-index: 60;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-  box-shadow: 0 18px 44px color-mix(in srgb, #020617 18%, transparent);
+  width: min(400px, calc(100vw - 24px));
+  z-index: 240;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 22px 54px color-mix(in srgb, #020617 22%, transparent);
   overflow: hidden; padding: 6px;
+  animation: hsPanelIn .18s cubic-bezier(.22,.61,.36,1);
 }
-.hs-state { padding: 14px 12px; font-size: 13px; font-weight: 600; color: var(--text-3); text-align: center; }
+@keyframes hsPanelIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+/* Panelin ust kenarinda ince marka seridi — logo/Premium rozetiyle ayni dil. */
+.hs-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
+}
+
+.hs-rows { display: flex; flex-direction: column; gap: 1px; }
+
+.hs-state { padding: 20px 14px; text-align: center; display: flex; flex-direction: column; gap: 5px; }
+.hs-state strong { font-size: 13.5px; font-weight: 800; color: var(--text); }
+.hs-state span { font-size: 12px; font-weight: 600; color: var(--text-3); }
 
 .hs-row {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 8px; border: 0; border-radius: 10px;
-  background: transparent; cursor: pointer; text-align: left;
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 0 4px 0 0; border-radius: 12px;
+  background: transparent;
 }
-.hs-row:hover { background: var(--surface-2); }
+.hs-row.on { background: var(--surface-2); }
+.hs-row-main {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1 1 auto; min-width: 0;
+  padding: 8px; border: 0; border-radius: 12px;
+  background: transparent; cursor: pointer; text-align: left; font-family: inherit;
+}
 .hs-row-img {
-  flex: 0 0 40px; width: 40px; height: 40px; border-radius: 8px;
+  flex: 0 0 42px; width: 42px; height: 42px; border-radius: 9px;
   background: #fff; display: inline-flex; align-items: center; justify-content: center; overflow: hidden;
+  border: 1px solid var(--border);
 }
 .hs-row-img img { width: 100%; height: 100%; object-fit: contain; }
-.hs-row-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hs-row-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+/* UZUN URUN ADI: tek satirda kirpilir. `min-width:0` olmadan flex ogesi
+   icerigi kadar genisleyip satiri panelden tasiriyordu. */
 .hs-row-name {
-  font-size: 13.5px; font-weight: 750; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 13.5px; font-weight: 750; color: var(--text); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 .hs-row-brand { font-size: 11.5px; font-weight: 650; color: var(--text-3); }
 
+/* Satirdaki "+" — ProductCard'daki `q-product-card-cmp` ile ayni islev. */
+.hs-row-cmp {
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0;
+  display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); cursor: pointer;
+  transition: background .14s ease, color .14s ease, border-color .14s ease, transform .12s ease;
+}
+.hs-row-cmp svg { width: 13px; height: 13px; display: block; }
+.hs-row-cmp:hover { border-color: var(--brand-cyan); color: var(--accent); transform: scale(1.06); }
+.hs-row-cmp.on {
+  background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
+  border-color: transparent; color: #fff;
+}
+
 .hs-all {
-  display: block; width: 100%; margin-top: 4px;
-  padding: 10px; border: 0; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; margin-top: 4px;
+  padding: 11px; border: 0; border-top: 1px solid var(--border);
   background: transparent; color: var(--accent);
   font-size: 12.5px; font-weight: 800; font-family: inherit; cursor: pointer;
 }
+.hs-all svg { width: 14px; height: 14px; }
 .hs-all:hover { background: var(--surface-2); }
 
-/* ── Mobil: saga genisleyecek yer YOK (390 px). Ikon, ust bara oturan tam
-   genislikte bir katman acar. ─────────────────────────────────────────── */
-@media (max-width: 720px) {
-  .hs-open .hs-form {
-    position: absolute; top: 50%; right: 0; transform: translateY(-50%);
-    width: calc(100vw - 28px); max-width: 460px;
-    padding: 0 6px 0 4px; z-index: 61;
-  }
-  .hs-open .hs-input { flex: 1 1 auto; width: auto; padding: 10px 2px 10px 0; }
-  .hs-panel { width: calc(100vw - 28px); max-width: 460px; }
+.hs-uyari {
+  margin: 4px 4px 2px; padding: 8px 10px; border-radius: 10px;
+  background: color-mix(in srgb, var(--red, #ef4444) 12%, transparent);
+  color: var(--red, #ef4444); font-size: 12px; font-weight: 750; text-align: center;
 }
 
-/* Hareketi azalt tercihi: genisleme aninda olur, kayma animasyonu yok. */
+/* Yukleme iskeleti — panel yuksekligi sonuclar gelince zipplamasin. */
+.hs-skel-wrap { display: flex; flex-direction: column; gap: 1px; }
+.hs-skel { pointer-events: none; padding: 8px; gap: 10px; }
+.hs-skel .hs-row-img { border: 0; }
+.hs-skel-line { height: 11px; border-radius: 5px; }
+.hs-skel-line.sm { height: 9px; }
+
+/* ── DAR EKRAN: alan yerinde genisleyemez, TAM GENISLIKTE katman acilir ──
+   v1'de acilan alan `.hs`e gore konumlaniyordu ve `.hs` ust barin SOLUNDA
+   oldugu icin kutu ekranin soluna tasiyordu (olculdu 390 px: input.left =
+   -173 px, yani yazinin yarisi ekran disinda). Artik `.hs` burada
+   `position:static`, yani acilan alan ve panel `.appbar-inner`a (ust barin
+   container'i) gore konumlanir ve tam genisligi kaplar.
+
+   ESIK NEDEN 1180 px: 260 px'lik yerinde genisleme, gezinme baglantilari
+   GORUNURKEN sigmiyor. Olculdu (1000 px): acilinca `nav`, tema/giris
+   butonlari ve Play rozeti container'in SAGINA tasiyordu. Sigma hesabi
+   1180 px'te tutuyor (106 marka + 300 arama + ~430 nav + 126 buton +
+   96 aralik = 1058 ≤ 1148 ic genislik). */
+@media (max-width: 1180px) {
+  .appbar-inner { position: relative; }
+  .hs { position: static; }
+
+  .hs-open .hs-form {
+    position: absolute; left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    width: auto; padding: 0 6px 0 2px;
+    z-index: 61;
+    background: var(--surface);
+    animation: hsFormIn .22s cubic-bezier(.22,.61,.36,1);
+  }
+  .hs-open .hs-input { flex: 1 1 auto; width: auto; padding: 11px 2px; }
+  .hs-panel {
+    left: 0; right: 0; width: auto;
+    top: calc(100% + 8px);
+    max-height: min(62vh, 460px); overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Katman gezinmeyi ortuyor: geri donmenin GORUNUR bir yolu olmali. */
+  .hs-open .hs-close { display: inline-flex; }
+}
+@media (max-width: 860px) {
+  /* Dokunma hedefi mobilde 30 px'ten buyuk olmali. */
+  .hs-row-cmp { width: 34px; height: 34px; }
+  .hs-clear, .hs-close { width: 30px; height: 30px; }
+}
+/* 400 px alti: ust bardaki yuvarlak butonlar 36 px'e dusuyor (global.css),
+   arama ikonu da onlarla ayni capta kalmali. */
+@media (max-width: 400px) {
+  .hs-btn { width: 36px; height: 36px; }
+  .hs-btn svg { width: 17px; height: 17px; }
+}
+@keyframes hsFormIn {
+  from { opacity: .4; transform: translateY(-50%) scaleX(.86); transform-origin: right center; }
+  to { opacity: 1; transform: translateY(-50%) scaleX(1); }
+}
+
+/* Hareketi azalt tercihi: genisleme aninda olur, kayma/parlama yok. */
 @media (prefers-reduced-motion: reduce) {
-  .hs-form, .hs-input { transition: none; }
+  .hs-form, .hs-form::before, .hs-input, .hs-btn, .hs-btn::after, .hs-btn-ring, .hs-row-cmp { transition: none; }
+  .hs-panel, .hs-open .hs-form { animation: none; }
 }

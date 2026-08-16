@@ -18,6 +18,7 @@ import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
 // before anything renders.
 import Home from './pages/Home.jsx';
 
+const Search = lazy(() => import('./pages/Search.jsx'));
 const Category = lazy(() => import('./pages/Category.jsx'));
 const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
 const Compare = lazy(() => import('./pages/Compare.jsx'));
@@ -114,6 +115,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/search" element={<Search />} />
           <Route path="/category" element={<Category />} />
           <Route path="/category/:cat" element={<Category />} />
           <Route path="/product" element={<ProductDetail />} />

@@ -1,151 +1,295 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  Ust bardaki GENISLEYEN arama.
+//  Ust bardaki GENISLEYEN arama (v2).
 //
-//  NEDEN: arama yalnizca ana sayfanin hero'sundaydi; kullanici bir urun ya da
-//  kategori sayfasindayken arama yapamiyordu (rakiplerde — Akakce, Epey —
-//  arama HER sayfada ust barda). Hero'daki kutu kaldirildi, arama buraya
-//  tasindi ve her sayfada erisilebilir oldu.
+//  NEDEN v2 — v1'de CANLIDA olculen iki kirik davranis:
 //
-//  Davranis: ikona basilinca alan saga dogru animasyonla acilir (ikon da
-//  onunde kayar). MOBILDE saga genisleyecek yer yok (390 px) — orada ust bara
-//  oturan tam genislikte bir katman acilir. Yazarken oneriler ANINDA altta
-//  listelenir; Enter ya da "Ara" tam sonuc sayfasina (/?q=…) gider.
+//  1) MOBILDE YARIM GORUNUYORDU. Acilan alan `.hs-wrap`a gore
+//     `position:absolute; right:0` konumlaniyordu; `.hs-wrap` ust barin SOL
+//     tarafinda (logonun hemen sagi) durdugu icin `calc(100vw - 28px)`
+//     genisligindeki kutu SOLA dogru ekran disina tasiyordu. 390 px'te olculen:
+//     input.left = -173 px, yani alanin ve icindeki yazinin yarisi ekran
+//     disindaydi; ikon da tamamen kayboluyordu (scripts/_arama_tani.mjs).
+//     Cozum: mobilde acilan alan ARTIK `.appbar-inner`a gore konumlanir
+//     (`.hs` orada `position:static`), yani ust barin tam genisligini kaplar.
+//
+//  2) ARAMA YAPTIKTAN SONRA IKON ACMIYORDU. Buton `type={acik ? 'submit' :
+//     'button'}` idi. Kapaliyken ikona basilinca React `acik=true` yapip
+//     SENKRON yeniden render ediyor, buton daha click'in VARSAYILAN eylemi
+//     calismadan once `type="submit"`e donusuyor ve tarayici formu
+//     gonderiyordu. gonder() de `q` doluysa `setAcik(false)` yapiyor →
+//     kutu aciliр aninda kapaniyordu. Ilk aramada gorunmuyordu cunku `q`
+//     bosken gonder() erken cikip kapatmiyor. Cozum: buton HER ZAMAN
+//     `type="button"`; gonderme islevi acikken onClick'ten cagriliyor.
+//
+//  Ayrica: sonuclar artik HER SAYFADAN ulasilabilen /search rotasina gidiyor
+//  (once yalniz ana sayfa `?q=` render ediyordu), satirlarda karsilastirma
+//  havuzuna dogrudan ekleyen "+" butonu var ve klavye ile gezinilebiliyor.
 // ═══════════════════════════════════════════════════════════════════════════
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
-import { searchProducts } from '../lib/typesense';
-import { productPath } from '../lib/routes';
+import { searchProductsLean } from '../lib/typesense';
+import { productPath, searchPath } from '../lib/routes';
 import { displayProductName } from '../lib/productNames';
+import { useCompare } from '../lib/compare';
 import './HeaderSearch.css';
+
+const ONERI = 6;
 
 export default function HeaderSearch() {
   const { lang, t } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const nav = useNavigate();
+  const loc = useLocation();
+  const { has, tryAdd, remove } = useCompare();
+
   const [acik, setAcik] = useState(false);
   const [q, setQ] = useState('');
   const [sonuc, setSonuc] = useState([]);
   const [araniyor, setAraniyor] = useState(false);
+  const [imlec, setImlec] = useState(-1);      // klavye ile secili satir
+  const [uyari, setUyari] = useState('');      // "farkli kategori" bildirimi
   const kutu = useRef(null);
   const girdi = useRef(null);
+  const uyariZ = useRef(null);
 
-  // Disari tiklayinca kapat (bos ise). Icinde yazi varken kazayla kapanip
-  // kullanicinin yazdigini kaybetmesi sinir bozucu olurdu.
+  const kapat = useCallback(() => { setAcik(false); setSonuc([]); setImlec(-1); }, []);
+
+  // ── Disari tiklayinca kapan ──────────────────────────────────────────────
+  // `pointerdown` (mousedown degil): mobilde dokunus da yakalanir. Panelin
+  // KENDI icindeki dokunuslar kutu.contains ile eleniyor, dolayisiyla mobil
+  // klavye acilip kapanmasi paneli kapatmaz.
+  // ESC BELGE DUZEYINDE dinlenir, input'un onKeyDown'unda DEGIL: olculdu —
+  // kullanici bir satirin "+" dugmesine bastiktan sonra odak o dugmede
+  // kaliyor ve input'a bagli ESC hic tetiklenmiyordu (panel acik takiliyordu).
   useEffect(() => {
     if (!acik) return undefined;
-    const dis = (e) => {
-      if (kutu.current && !kutu.current.contains(e.target)) {
-        setAcik(false);
-        setSonuc([]);
-      }
-    };
-    const esc = (e) => { if (e.key === 'Escape') { setAcik(false); setSonuc([]); } };
-    document.addEventListener('mousedown', dis);
+    const dis = (e) => { if (kutu.current && !kutu.current.contains(e.target)) kapat(); };
+    const esc = (e) => { if (e.key === 'Escape') kapat(); };
+    document.addEventListener('pointerdown', dis);
     document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', dis); document.removeEventListener('keydown', esc); };
-  }, [acik]);
+    return () => {
+      document.removeEventListener('pointerdown', dis);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [acik, kapat]);
 
-  // Acilinca odagi input'a ver — animasyon bitmeden odaklamak mobilde
-  // klavyeyi acip animasyonu tiksirtiyor, o yuzden kisa gecikme.
+  // Rota degisince kapan — geri/ileri tusu da dahil. Aksi halde bir oneriye
+  // tiklayip urune gidildikten sonra panel acik kaliyordu.
+  useEffect(() => { kapat(); }, [loc.key, kapat]);
+
+  // Acilinca odagi input'a ver. Gecikme: mobilde klavyenin animasyonla ayni
+  // anda acilmasi genisleme animasyonunu tiksirtiyor.
   useEffect(() => {
     if (!acik) return undefined;
-    const z = setTimeout(() => girdi.current?.focus(), 180);
+    const z = setTimeout(() => girdi.current?.focus(), 170);
     return () => clearTimeout(z);
   }, [acik]);
 
-  // Oneriler: yazma durunca ara (debounce). Her tusa istek atmak Typesense'i
-  // gereksiz yoruyor ve sonuclar sirasiz donuyordu.
+  // Panel acikken arka planin kaymasi mobilde ust bari da beraberinde
+  // oynatiyordu; ust bar sticky oldugu icin panel "titriyor" gorunuyordu.
+  useEffect(() => {
+    if (!acik) return undefined;
+    document.body.classList.add('qor-hs-open');
+    return () => document.body.classList.remove('qor-hs-open');
+  }, [acik]);
+
+  // ── Oneriler (debounce) ──────────────────────────────────────────────────
   useEffect(() => {
     const s = q.trim();
+    setImlec(-1);
     if (!s) { setSonuc([]); setAraniyor(false); return undefined; }
     setAraniyor(true);
     let canli = true;
     const z = setTimeout(async () => {
       try {
-        // searchProducts(query, limit) DIZI dondurur — obje degil.
-        const r = await searchProducts(s, 6);
-        if (canli) setSonuc(Array.isArray(r) ? r.slice(0, 6) : []);
+        const r = await searchProductsLean(s, ONERI);
+        if (canli) setSonuc(Array.isArray(r) ? r.slice(0, ONERI) : []);
       } catch { if (canli) setSonuc([]); } finally { if (canli) setAraniyor(false); }
-    }, 280);
+    }, 260);
     return () => { canli = false; clearTimeout(z); };
   }, [q]);
 
-  const gonder = (e) => {
-    e?.preventDefault?.();
-    const s = q.trim();
+  useEffect(() => () => clearTimeout(uyariZ.current), []);
+
+  const gonder = useCallback((terim) => {
+    const s = String(terim ?? q).trim();
     if (!s) { girdi.current?.focus(); return; }
-    setAcik(false);
-    setSonuc([]);
-    nav(`/?q=${encodeURIComponent(s)}`);
+    const hedef = searchPath(s);
+    kapat();
+    // Ayni sorgu tekrar gonderilirse gecmise ayni adresi UST USTE yigmayalim;
+    // yoksa geri tusu bir ise yaramayan adimlara takiliyor.
+    nav(hedef, { replace: `${loc.pathname}${loc.search}` === hedef });
+  }, [kapat, loc.pathname, loc.search, nav, q]);
+
+  const urunAc = useCallback((p) => {
+    kapat();
+    setQ('');
+    nav(productPath(p));
+  }, [kapat, nav]);
+
+  // Satirdaki "+" — karsilastirma havuzuna dogrudan ekler. ProductCard'daki
+  // davranisin birebir ayni: farkli kategori reddedilir ve uyari gosterilir.
+  const karsilastir = (e, p) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (has(p.id)) { remove(p.id); return; }
+    const r = tryAdd(p);
+    if (!r.ok && r.reason === 'category') {
+      setUyari(L('Different category', 'Farklı kategori', 'Andere Kategorie'));
+      clearTimeout(uyariZ.current);
+      uyariZ.current = setTimeout(() => setUyari(''), 2400);
+    }
   };
 
-  const urunAc = (p) => {
-    setAcik(false);
-    setQ('');
-    setSonuc([]);
-    nav(productPath(p));
+  // ── Klavye ───────────────────────────────────────────────────────────────
+  const tus = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); kapat(); return; }
+    if (!sonuc.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setImlec((i) => (i + 1) % sonuc.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setImlec((i) => (i <= 0 ? sonuc.length : i) - 1); }
+    else if (e.key === 'Enter' && imlec >= 0) { e.preventDefault(); urunAc(sonuc[imlec]); }
   };
+
+  const panelAcik = acik && q.trim().length > 0;
 
   return (
-    <div className={'hs-wrap' + (acik ? ' hs-open' : '')} ref={kutu}>
-      <form className="hs-form" onSubmit={gonder} role="search">
+    <div className={'hs' + (acik ? ' hs-open' : '')} ref={kutu}>
+      <form
+        className="hs-form"
+        onSubmit={(e) => { e.preventDefault(); gonder(); }}
+        role="search"
+      >
+        {/* HER ZAMAN type="button" — bkz. dosya basindaki (2) numarali not. */}
         <button
-          type={acik ? 'submit' : 'button'}
-          className="iconbtn hs-btn"
-          onClick={() => { if (!acik) setAcik(true); }}
+          type="button"
+          className="hs-btn"
+          onClick={() => (acik ? gonder() : setAcik(true))}
           aria-label={t('common.search')}
           aria-expanded={acik}
           title={t('common.search')}
         >
-          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <span className="hs-btn-ring" aria-hidden="true" />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7.2" /><line x1="20.6" y1="20.6" x2="16.5" y2="16.5" />
           </svg>
         </button>
+
         <input
           ref={girdi}
           className="hs-input"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')}
+          onKeyDown={tus}
+          placeholder={L('Search products…', 'Ürün ara…', 'Produkte suchen…')}
           aria-label={t('common.search')}
           autoComplete="off"
+          autoCorrect="off"
+          spellCheck="false"
+          enterKeyHint="search"
+          type="search"
+          role="combobox"
+          aria-expanded={panelAcik}
+          aria-controls="hs-panel"
+          aria-autocomplete="list"
+          aria-activedescendant={imlec >= 0 && sonuc[imlec] ? `hs-row-${sonuc[imlec].id}` : undefined}
           tabIndex={acik ? 0 : -1}
         />
+
         {acik && q && (
-          <button type="button" className="hs-clear" onClick={() => { setQ(''); girdi.current?.focus(); }}
+          <button type="button" className="hs-clear"
+            onClick={() => { setQ(''); girdi.current?.focus(); }}
             aria-label={L('Clear', 'Temizle', 'Löschen')}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
+
+        {/* Mobilde acikken kapatma yolu: ikon artik "gonder" oldugu icin
+            geri donmenin gorunur bir yolu olmali. Masaustunde gizli. */}
+        {acik && (
+          <button type="button" className="hs-close" onClick={kapat}
+            aria-label={L('Close search', 'Aramayı kapat', 'Suche schließen')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="11 18 5 12 11 6" />
             </svg>
           </button>
         )}
       </form>
 
-      {acik && q.trim() && (
-        <div className="hs-panel">
+      {panelAcik && (
+        <div className="hs-panel" id="hs-panel" role="listbox" aria-label={t('common.search')}>
           {araniyor && !sonuc.length ? (
-            <div className="hs-state">{L('Searching products…', 'Ürünler aranıyor…', 'Produkte werden gesucht…')}</div>
+            /* Yavas agda "aranıyor…" yazisi yerine gercek satir iskeleti:
+               panel yuksekligi sonuclar gelince zipplamiyor. */
+            <div className="hs-skel-wrap" aria-live="polite" aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div className="hs-row hs-skel" key={i}>
+                  <span className="hs-row-img skel" />
+                  <span className="hs-row-copy">
+                    <span className="skel hs-skel-line" style={{ width: '72%' }} />
+                    <span className="skel hs-skel-line sm" style={{ width: '38%' }} />
+                  </span>
+                </div>
+              ))}
+            </div>
           ) : !sonuc.length ? (
-            <div className="hs-state">{L('No matching products yet.', 'Henüz eşleşen ürün yok.', 'Noch keine passenden Produkte.')}</div>
+            <div className="hs-state">
+              <strong>{L('No products matched.', 'Eşleşen ürün yok.', 'Keine Treffer.')}</strong>
+              <span>{L('Try a shorter or more common term.', 'Daha kısa ya da daha genel bir terim dene.', 'Versuche einen kürzeren Begriff.')}</span>
+            </div>
           ) : (
             <>
-              {sonuc.map((p) => (
-                <button key={p.id} type="button" className="hs-row" onClick={() => urunAc(p)}>
-                  <span className="hs-row-img">
-                    {p.imageUrl ? <img src={p.imageUrl} alt="" loading="lazy" /> : null}
-                  </span>
-                  <span className="hs-row-copy">
-                    <span className="hs-row-name">{displayProductName(p, lang)}</span>
-                    {p.brand ? <span className="hs-row-brand">{p.brand}</span> : null}
-                  </span>
-                </button>
-              ))}
-              <button type="button" className="hs-all" onClick={gonder}>
-                {L(`See all results for "${q.trim()}"`, `"${q.trim()}" için tüm sonuçlar`, `Alle Ergebnisse für "${q.trim()}"`)}
+              <div className="hs-rows">
+                {sonuc.map((p, i) => {
+                  const ekli = has(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      id={`hs-row-${p.id}`}
+                      role="option"
+                      aria-selected={i === imlec}
+                      className={'hs-row' + (i === imlec ? ' on' : '')}
+                      onMouseEnter={() => setImlec(i)}
+                    >
+                      <button type="button" className="hs-row-main" onClick={() => urunAc(p)} tabIndex={-1}>
+                        <span className="hs-row-img">
+                          {p.imageUrl ? <img src={p.imageUrl} alt="" loading="lazy" decoding="async" /> : null}
+                        </span>
+                        <span className="hs-row-copy">
+                          <span className="hs-row-name">{displayProductName(p, lang)}</span>
+                          {p.brand ? <span className="hs-row-brand">{p.brand}</span> : null}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={'hs-row-cmp' + (ekli ? ' on' : '')}
+                        onClick={(e) => karsilastir(e, p)}
+                        title={ekli
+                          ? L('In compare', 'Karşılaştırmada', 'Im Vergleich')
+                          : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
+                        aria-label={ekli
+                          ? L('Remove from compare', 'Karşılaştırmadan çıkar', 'Aus Vergleich entfernen')
+                          : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
+                      >
+                        {ekli ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" className="hs-all" onClick={() => gonder()}>
+                {L('See all results', 'Tüm sonuçları gör', 'Alle Ergebnisse')}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="18" y2="12" /><polyline points="13 6 19 12 13 18" /></svg>
               </button>
             </>
           )}
+          {uyari && <div className="hs-uyari" role="status">{uyari}</div>}
         </div>
       )}
     </div>

@@ -787,7 +787,16 @@ export async function getHomeFeed(prefCats = [], { onEnriched } = {}) {
   }
 }
 
-export async function searchProducts(query, limit = 40) {
+// Ust bar onerileri + /search sonuc izgarasi KART ciziyor, detay sayfasi degil.
+// `_raw` (kayit basina onlarca KB) o yuzden istenmez: 6 oneri icin ~400 KB, 40
+// sonuc icin ~2,7 MB bosuna indiriliyordu. Eksik kalan kart etiketleri
+// enrichThinCards() ile ayri ve kucuk bir istekte tamamlanir — ana sayfa akisi
+// da tam olarak bunu yapiyor.
+export async function searchProductsLean(query, limit = 40) {
+  return searchProducts(query, limit, LIST_FIELDS_LEAN);
+}
+
+export async function searchProducts(query, limit = 40, fields = LIST_FIELDS) {
   const q = (query || '').trim();
   if (!q) return [];
   try {
@@ -801,7 +810,7 @@ export async function searchProducts(query, limit = 40) {
       query_by_weights: '12,5,2,1',
       sort_by: '_text_match:desc,trendScore:desc,techScore:desc',
       per_page: Math.min(limit, 60),
-      include_fields: LIST_FIELDS,
+      include_fields: fields,
       prefix: 'true',
       // Tighter fuzziness: at most one typo, and only on tokens long enough that
       // a typo is plausible — keeps "iphone 15" from matching half the catalog.

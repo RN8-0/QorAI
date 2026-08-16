@@ -835,6 +835,7 @@ function manifest() {
 }
 // Rota dizini -> kaynak dosya. Ana sayfa (dir '') EAGER, on-yukleme gerekmez.
 const ROUTE_ENTRY = {
+  search: 'src/pages/Search.jsx',
   category: 'src/pages/Category.jsx',
   product: 'src/pages/ProductDetail.jsx',
   compare: 'src/pages/Compare.jsx',
@@ -1490,7 +1491,10 @@ const STATIC_ROUTES = [
             publisher: { '@id': `${SITE}/#organization` },
             potentialAction: {
               '@type': 'SearchAction',
-              target: `${SITE}/?q={search_term_string}`,
+              // Arama artik kendi rotasinda (/search). Ana sayfadaki `?q=`
+              // destegi geriye donuk uyumluluk icin duruyor ama kanonik
+              // arama girisi burasi.
+              target: `${SITE}/search?q={search_term_string}`,
               'query-input': 'required name=search_term_string',
             },
           },
@@ -1553,6 +1557,21 @@ const STATIC_ROUTES = [
     seo: {
       title: 'Ürün özellikleri ve karşılaştırma — Qor AI',
       description: 'Qor AI ürün detay sayfası. Ürün özelliklerini, teknik skoru, görselleri ve karşılaştırma seçeneklerini incele.',
+      noindex: true,
+    },
+  },
+  {
+    // `/search` KABUGU SART: rota SPA'da var ama ön-render kabuğu olmadan
+    // adresi doğrudan açmak / sayfayı yenilemek / paylaşılan bir arama
+    // bağlantısına tıklamak 404 verirdi (nginx yalnız var olan dizinleri
+    // servis ediyor — `/compare` ile birebir aynı tuzak).
+    // İç arama sonuçları noindex + sitemap dışı: Google iç arama sonuç
+    // sayfalarını açıkça "düşük değerli" sayar ve AdSense geçmişi
+    // (4 red, "düşük değerli içerik") bunu indexe açmayı doğrudan zarar yapar.
+    dir: 'search', path: '/search', sitemap: false, noindex: true,
+    seo: {
+      title: 'Ürün Ara — Qor AI',
+      description: 'Qor AI kataloğunda yapay zekâ puanlı teknoloji ürünlerini ara; özellikleri, puanları ve güncel fiyatları karşılaştır.',
       noindex: true,
     },
   },
