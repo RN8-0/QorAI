@@ -523,29 +523,13 @@ export default function Home() {
                 )}
               </p>
 
-              {/* product search */}
-              <div className="hero-search-wrap" ref={searchRef}>
-                <form className="searchbox hero-search" onSubmit={search}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input value={q}
-                    onFocus={() => setSuggestOpen(true)}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setQ(value);
-                      setSubmitted('');
-                      setSuggestOpen(true);
-                    }}
-                    placeholder={L('Search products by name…', 'Ürün adıyla ara…', 'Produkt nach Name suchen…')} autoComplete="off" />
-                  <button type="submit" className="btn btn-grad btn-shine">{t('common.search')}</button>
-                </form>
-                {suggestOpen && (
-                  q.trim()
-                    ? <SearchSuggestionList products={searchResults} searching={searching} onOpen={openProduct} L={L} />
-                    : <RecentSearchList items={recentSearches} onPick={runSearch} L={L} />
-                )}
-              </div>
+              {/* ARAMA KUTUSU BURADAN KALDIRILDI (2026-08-16, kullanici karari).
+                  Yerine ust barda her sayfadan erisilebilen genisleyen arama:
+                  components/HeaderSearch.jsx. Hero'daki kutu yalniz ana sayfada
+                  vardi ve kullanici bir urun/kategori sayfasindayken arama
+                  yapamiyordu. Sonuc listesi (asagidaki searchMode blogu) DURUYOR:
+                  ust bardan gelen arama /?q=… adresine gidiyor ve sonuclar yine
+                  burada listeleniyor. */}
             </div>
 
             {/* spotlight — highest-scored product from the live feed.

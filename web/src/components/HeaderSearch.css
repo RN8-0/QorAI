@@ -1,0 +1,101 @@
+/* Ust bardaki genisleyen arama — bkz. HeaderSearch.jsx basindaki not. */
+
+/* wrap/form ust bardaki flex akisinda EZILMEMELI: aksi halde input'a verilen
+   genislik hicbir ise yaramiyor (olculdu — input flex item oldugu icin
+   flex-shrink onu 0 px'e indiriyordu, inline width bile etkisizdi). */
+.hs-wrap { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
+
+.hs-form {
+  display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+  border: 1px solid transparent; border-radius: 999px;
+  background: transparent;
+  transition: background .22s ease, border-color .22s ease, box-shadow .22s ease, padding .22s ease;
+  padding: 0;
+}
+.hs-open .hs-form {
+  background: var(--surface-2);
+  border-color: var(--border);
+  padding: 0 6px 0 0;
+  box-shadow: 0 6px 18px color-mix(in srgb, #020617 8%, transparent);
+}
+
+/* Ikon, alan acilirken onunde birlikte kayar (kullanicinin istedigi hareket):
+   genislemeyi input'un width'i yapar, ikon flex akisinda oldugu icin
+   kendiliginden sola dogru "surulur". */
+.hs-btn { flex: 0 0 auto; }
+
+/* Genisleme flex-basis ile yapilir; sirf `width` vermek flex kabinde ISE
+   YARAMIYOR (bkz. .hs-wrap notu). */
+.hs-input {
+  flex: 0 0 0px; width: 0; min-width: 0; padding: 0; border: 0; outline: none;
+  background: transparent; color: var(--text);
+  font-size: 14px; font-weight: 650; font-family: inherit;
+  opacity: 0; pointer-events: none;
+  transition: flex-basis .26s cubic-bezier(.22,.61,.36,1), opacity .18s ease, padding .26s ease;
+}
+.hs-open .hs-input {
+  flex: 0 0 230px; width: auto; padding: 9px 2px 9px 0;
+  opacity: 1; pointer-events: auto;
+}
+.hs-input::placeholder { color: var(--text-3); font-weight: 600; }
+
+.hs-clear {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--text-3); cursor: pointer;
+}
+.hs-clear:hover { background: var(--surface-3, rgba(120,120,120,.14)); color: var(--text); }
+
+/* ── Oneri paneli ───────────────────────────────────────────────────────── */
+.hs-panel {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  width: min(380px, calc(100vw - 32px));
+  z-index: 60;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 18px 44px color-mix(in srgb, #020617 18%, transparent);
+  overflow: hidden; padding: 6px;
+}
+.hs-state { padding: 14px 12px; font-size: 13px; font-weight: 600; color: var(--text-3); text-align: center; }
+
+.hs-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer; text-align: left;
+}
+.hs-row:hover { background: var(--surface-2); }
+.hs-row-img {
+  flex: 0 0 40px; width: 40px; height: 40px; border-radius: 8px;
+  background: #fff; display: inline-flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.hs-row-img img { width: 100%; height: 100%; object-fit: contain; }
+.hs-row-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hs-row-name {
+  font-size: 13.5px; font-weight: 750; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hs-row-brand { font-size: 11.5px; font-weight: 650; color: var(--text-3); }
+
+.hs-all {
+  display: block; width: 100%; margin-top: 4px;
+  padding: 10px; border: 0; border-top: 1px solid var(--border);
+  background: transparent; color: var(--accent);
+  font-size: 12.5px; font-weight: 800; font-family: inherit; cursor: pointer;
+}
+.hs-all:hover { background: var(--surface-2); }
+
+/* ── Mobil: saga genisleyecek yer YOK (390 px). Ikon, ust bara oturan tam
+   genislikte bir katman acar. ─────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .hs-open .hs-form {
+    position: absolute; top: 50%; right: 0; transform: translateY(-50%);
+    width: calc(100vw - 28px); max-width: 460px;
+    padding: 0 6px 0 4px; z-index: 61;
+  }
+  .hs-open .hs-input { flex: 1 1 auto; width: auto; padding: 10px 2px 10px 0; }
+  .hs-panel { width: calc(100vw - 28px); max-width: 460px; }
+}
+
+/* Hareketi azalt tercihi: genisleme aninda olur, kayma animasyonu yok. */
+@media (prefers-reduced-motion: reduce) {
+  .hs-form, .hs-input { transition: none; }
+}

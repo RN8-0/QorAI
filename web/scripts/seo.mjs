@@ -1474,7 +1474,16 @@ const STATIC_ROUTES = [
           {
             '@type': 'Organization', '@id': `${SITE}/#organization`, name: 'Qor AI', url: `${SITE}/`, logo: DEFAULT_IMG,
             description: 'Yapay zekâ destekli ürün ve dijital abonelik danışmanı.',
-            sameAs: ['https://play.google.com/store/apps/details?id=com.compair.app'],
+            // sameAs = markanin DOGRULANMIS diger profilleri. Google bunlari
+            // ayni varliga baglar (knowledge panel / marka sinyali). Footer'daki
+            // rel="me" baglantilariyla ayni liste olmali — biri degisirse
+            // digerini de guncelle (components/Footer.jsx -> SOSYAL).
+            sameAs: [
+              'https://play.google.com/store/apps/details?id=com.compair.app',
+              'https://www.tiktok.com/@qorai.net',
+              'https://www.youtube.com/@qoraiweb',
+              'https://www.instagram.com/qoraiweb/',
+            ],
           },
           {
             '@type': 'WebSite', '@id': `${SITE}/#website`, name: 'Qor AI', url: `${SITE}/`,

@@ -9,6 +9,7 @@ import { CANONICAL_CATEGORY_GROUPS, categoryLabel, CURRENCY_BY_COUNTRY, countryD
 import { categoryPath } from '../lib/routes';
 import { useGeoCountry, setGeoCountry } from '../lib/geo';
 import PlayBadge from './PlayBadge.jsx';
+import HeaderSearch from './HeaderSearch.jsx';
 import './Header.css';
 
 // Markets the site supports (drives prices/currency + Amazon storefront). Moved
@@ -97,6 +98,10 @@ export default function Header() {
               ? <span className="wm wm-premium">Premium</span>
               : <span className="wm">Qor<b className="grad-text"> AI</b></span>}
           </Link>
+
+          {/* Arama, logo ile "Ana Sayfa" arasinda. Hero'daki kutu kaldirildi:
+              arama artik HER sayfada erisilebilir (rakiplerde de ust barda). */}
+          <HeaderSearch />
 
           <nav className="nav" onMouseLeave={closeCatSoon}>
             <NavLink to="/" end onMouseEnter={closeCatNow}
