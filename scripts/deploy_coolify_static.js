@@ -61,6 +61,22 @@ async function deployApp(target, token, baseUrl) {
   );
 
   console.log(`[coolify] ${target} deployment requested`, deployment);
+
+  // 2026-08-16: qorai.net'in HTML'i artik Cloudflare EDGE'inde onbellekleniyor
+  // (Page Rule: `qorai.net/*` -> Cache Everything, Edge TTL 2 saat). Olculdu:
+  // `cf-cache-status` DYNAMIC -> HIT, yani her sayfa istegi artik origin'e
+  // gitmiyor. Bunun bedeli su: deploy edilen yeni HTML, edge'deki eski kopya
+  // dusene kadar gorunmez.
+  // Otomatik purge icin `Cache Purge` izinli bir Cloudflare API token'i gerekir
+  // (scripts/_cf.mjs `purge` komutu hazir, tek eksik token). O yoksa asagidaki
+  // adres elle tiklanir.
+  if (target === 'website' || target === 'all') {
+    console.log('');
+    console.log('[cloudflare] HTML edge onbellekte (Edge TTL 2 saat).');
+    console.log('[cloudflare] Degisikligi HEMEN gormek icin onbellegi temizle:');
+    console.log('[cloudflare]   https://dash.cloudflare.com/?to=/:account/qorai.net/caching/configuration');
+    console.log('[cloudflare] Temizlemezsen en gec 2 saatte kendiliginden tazelenir.');
+  }
 }
 
 async function main() {
