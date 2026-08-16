@@ -66,6 +66,57 @@ export function sortedOffers(offers, country) {
   });
 }
 
+/**
+ * Satirin ALT SATIRI: kargo + fiyatin ne zaman dogrulandigi (+ stok uyarisi).
+ *
+ * NEDEN: 2026-08-16'da Epey ile yan yana olculdu — Epey her fiyat satirinda
+ * saticiyi, "Ucretsiz Kargo"yu ve "13 dk once"yi gosteriyor; bizim satirimizda
+ * yalnizca logo + fiyat vardi. Bir fiyat karsilastirma sitesinde guven tam da
+ * bu ayrintilardan geliyor.
+ * Veri ZATEN kayitta duruyordu (olculdu: shipping %100 dolu ve %90'i 0,
+ * lastCheckedAt %100 dolu, TR fiyatlarinin yasi medyan 4 saat) — yalnizca
+ * ekrana basilmiyordu. Olmayan tek alan `title` (varyant adi): %0 dolu,
+ * o yuzden burada YOK; scraper onu cekmeye baslarsa eklenir.
+ */
+function taze(iso, L) {
+  const t = Date.parse(iso || '');
+  if (!Number.isFinite(t)) return '';
+  const dk = Math.round((Date.now() - t) / 60000);
+  if (dk < 2) return L('just now', 'az önce', 'gerade eben');
+  if (dk < 60) return L(`${dk} min ago`, `${dk} dk önce`, `vor ${dk} Min.`);
+  const sa = Math.round(dk / 60);
+  if (sa < 24) return L(`${sa} h ago`, `${sa} saat önce`, `vor ${sa} Std.`);
+  const g = Math.round(sa / 24);
+  return L(`${g} d ago`, `${g} gün önce`, `vor ${g} T.`);
+}
+
+function OfferMeta({ offer, lang, L, compact }) {
+  const parca = [];
+  // Kargo: 0 ise ucretsiz, pozitifse tutari yaz (kullanici toplam maliyeti
+  // gormeden karar veremez).
+  if (offer.shipping === 0) {
+    parca.push(<span key="k" className="pd-meta-free">{L('Free shipping', 'Ücretsiz kargo', 'Gratisversand')}</span>);
+  } else if (offer.shipping > 0) {
+    parca.push(<span key="k">{L('+ shipping', '+ kargo', '+ Versand')} {formatOfferPrice({ ...offer, price: offer.shipping }, lang)}</span>);
+  }
+  if (offer.inStock === false) {
+    parca.push(<span key="s" className="pd-meta-out">{L('Out of stock', 'Stokta yok', 'Nicht auf Lager')}</span>);
+  }
+  // Dar kolonda yalniz kargo/stok; tarih satiri tasar.
+  if (!compact) {
+    const t = taze(offer.lastCheckedAt, L);
+    if (t) parca.push(<span key="t">{L('checked', 'kontrol', 'geprüft')} {t}</span>);
+  }
+  if (!parca.length) return null;
+  return (
+    <span className="pd-price-meta">
+      {parca.map((p, i) => (
+        <span key={p.key}>{i > 0 ? <span className="pd-meta-sep">·</span> : null}{p}</span>
+      ))}
+    </span>
+  );
+}
+
 function StoreCell({ offer, storeLabel }) {
   const dom = storeFavDomain(offer);
   return (
@@ -131,7 +182,10 @@ export default function OfferList({
               key={o.id || `${o.store}-${o.price}`}
               className="pd-price-row pd-price-row-static"
             >
-              {cell}
+              <span className="pd-price-left">
+                {cell}
+                <OfferMeta offer={o} lang={lang} L={L} compact={compact} />
+              </span>
               <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
             </div>
           );
@@ -144,7 +198,10 @@ export default function OfferList({
             target="_blank"
             rel="sponsored noopener"
           >
-            {cell}
+            <span className="pd-price-left">
+              {cell}
+              <OfferMeta offer={o} lang={lang} L={L} compact={compact} />
+            </span>
             {o.hasExactPrice ? (
               <span className="pd-price-amt">{formatOfferPrice(o, lang)}</span>
             ) : (

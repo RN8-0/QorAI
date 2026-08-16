@@ -47,6 +47,10 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
   const inCompare = has(p.id);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const cardName = displayProductName(p, lang);
+  // "Apple iPhone 17 Pro (512 GB)" -> ad: "Apple iPhone 17 Pro", varyant: "512 GB"
+  const varyantEs = /^(.*?)\s*[（(]\s*([^)）]{1,28})\s*[)）]\s*$/.exec(cardName);
+  const cardBase = varyantEs ? varyantEs[1].trim() : cardName;
+  const cardVariant = varyantEs ? varyantEs[2].trim() : '';
 
   const onCompareClick = (e) => {
     e.preventDefault();
@@ -92,7 +96,16 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
           {p.brand && <span className="q-product-card-brand">{p.brand}</span>}
           {!p.brand && <span className="q-product-card-brand">{categoryLabel(p.category, lang)}</span>}
         </div>
-        <span className="q-product-card-name">{cardName}</span>
+        {/* Ad + VARYANT ayrildi. Kategori sayfasinda uc "Samsung Galaxy Z Fold8
+            Ultra (…GB)" yan yana geliyordu ve isim 2 satirda kirpildigi icin
+            ucu de "Samsung Galaxy Z Fold…" gorunuyordu: fiyatlari farkli
+            (149.999 / 174.839 / 151.999) ama kullanici HANGISI oldugunu
+            ayirt edemiyordu (2026-08-16, Epey karsilastirmasinda yakalandi —
+            Epey ayni yerde "Xiaomi 17 Ultra · 1 TB" diye varyanti ayri yaziyor).
+            Parantez icindeki varyant kendi satirina alinip kirpilmadan
+            gosteriliyor, boylece isim kisalsa bile kartlar ayirt edilebilir. */}
+        <span className="q-product-card-name">{cardBase}</span>
+        <span className="q-product-card-variant">{cardVariant || ' '}</span>
         {/* Fiyat satırı KOŞULSUZ render edilir. Fiyat, ülke tespiti (useGeoCountry
             -> /cdn-cgi/trace) döndükten SONRA beliriyordu; satır yoktan var olunca
             kart 31 px büyüyordu. Ana sayfada bu, karuselin yüksekliğini

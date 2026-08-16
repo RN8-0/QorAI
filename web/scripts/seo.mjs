@@ -376,7 +376,44 @@ const CAT_BODY_TEXT = {
   de: { cats: 'Kategorien', h1: (l) => `${l} Vergleich`, intro: (l) => `Vergleiche die besten ${l.toLowerCase()}-Modelle mit Qor AI: KI-Techscore, wichtige Merkmale und aktuelle Preise zusammen. Wähle eines der Modelle unten oder filtere, um in Sekunden das passende zu finden.` },
 };
 
-function categoryBody(label, categoryUrl, items, guide, lang = 'tr') {
+// Karsilastirma sayfalarina giden IC LINKLER. 2026-08-16'da Epey ile yan yana
+// olculdu: Epey'in kategori sayfasinda 626 ic link var, bizimkinde 46 (SPA) /
+// 152 (on-render) ve bunlarin HICBIRI karsilastirma sayfasina gitmiyordu —
+// yani 3.864 uretilmis "X vs Y" sayfasi sitede hicbir yerden LINKLENMIYORDU,
+// Google'a yalniz sitemap'ten ulasiyordu. AdSense'in "dusuk degerli icerik"
+// gerekcesi de tam olarak bu: uretilen sayfalar birbirine baglanmayinca site
+// bir icerik agi degil, kopuk sayfalar yigini gorunuyor.
+//
+// Ciftler, karsilastirma sayfalarini URETEN dongunun BIREBIR AYNI algoritmasini
+// kullanir (top-K distinct model, i<j) — aksi halde var olmayan adrese link
+// verip 404 uretirdik.
+function compareLinksFor(items, lang, sinir = 12) {
+  const topK = [];
+  const seen = new Set();
+  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
+  for (const d of items || []) {
+    if (topK.length >= COMPARE_TOP) break;
+    if (!d || !d.name || !d.id) continue;
+    const k = modelKey(d.name);
+    if (k && seen.has(k)) continue;
+    if (k) seen.add(k);
+    topK.push(d);
+  }
+  const pfx = localePrefix(lang);
+  const out = [];
+  for (let i = 0; i < topK.length && out.length < sinir; i += 1) {
+    for (let j = i + 1; j < topK.length && out.length < sinir; j += 1) {
+      const a = topK[i]; const b = topK[j];
+      out.push({
+        href: pfx + comparePath(a, b),
+        text: `${localizedName(a, lang)} vs ${localizedName(b, lang)}`,
+      });
+    }
+  }
+  return out;
+}
+
+function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKategoriler = []) {
   const tx = CAT_BODY_TEXT[lang] || CAT_BODY_TEXT.tr;
   const lbl = esc(label);
   // İç linkler AYNI DİL AĞACINDA kalmalı: /de/category sayfası öneksiz
@@ -396,7 +433,33 @@ function categoryBody(label, categoryUrl, items, guide, lang = 'tr') {
     + `<h1 style="font-size:28px;margin:12px 0 6px">${esc(tx.h1(label))}</h1>`
     + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(tx.intro(label))}</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
+    + karsilastirmaBolumu(items, lang)
+    + digerKategoriBolumu(digerKategoriler, lang)
     + `</main>`;
+}
+
+const IC_LINK_TEXT = {
+  tr: { kars: 'Popüler karşılaştırmalar', diger: 'Diğer kategoriler' },
+  en: { kars: 'Popular comparisons', diger: 'Other categories' },
+  de: { kars: 'Beliebte Vergleiche', diger: 'Weitere Kategorien' },
+};
+
+function karsilastirmaBolumu(items, lang) {
+  const rows = compareLinksFor(items, lang);
+  if (!rows.length) return '';
+  const tx = IC_LINK_TEXT[lang] || IC_LINK_TEXT.tr;
+  const li = rows.map((r) => `<li style="margin:4px 0"><a href="${esc(r.href)}" style="color:#0f172a;text-decoration:none">${esc(r.text)}</a></li>`).join('');
+  return `<h2 style="font-size:20px;margin:26px 0 8px">${esc(tx.kars)}</h2>`
+    + `<ul style="columns:2;column-gap:32px;margin:0 0 8px;padding:0;list-style:none">${li}</ul>`;
+}
+
+function digerKategoriBolumu(kategoriler, lang) {
+  if (!kategoriler || !kategoriler.length) return '';
+  const tx = IC_LINK_TEXT[lang] || IC_LINK_TEXT.tr;
+  const pfx = localePrefix(lang);
+  const li = kategoriler.map((c) => `<li style="display:inline-block;margin:0 10px 8px 0"><a href="${esc(pfx + categoryPath(c))}" style="color:#0f172a;text-decoration:none">${esc(categoryLabel(c, lang))}</a></li>`).join('');
+  return `<h2 style="font-size:20px;margin:26px 0 8px">${esc(tx.diger)}</h2>`
+    + `<ul style="margin:0;padding:0;list-style:none">${li}</ul>`;
 }
 
 // Load all generated buying guides keyed by category.
@@ -1788,6 +1851,11 @@ async function main() {
     de: { title: (l) => `${l} Vergleich — Preis & Specs | Qor AI`, desc: (l) => `Vergleiche ${l}-Modelle mit Qor AI: KI-Techscore, Merkmale und aktuelle Preise zusammen. Entdecke die besten ${l}-Modelle, filtere und wähle in Sekunden das passende.` },
   };
   let categoryShells = 0;
+  // Capraz kategori linkleri: her kategori sayfasi digerlerine baglanir, boylece
+  // kategoriler kopuk ada olmaktan cikar (olculdu: onceki halinde kategori
+  // sayfalarinda BASKA kategoriye giden link sayisi 0'di).
+  const tumKategoriler = [...curatedByCat.keys()];
+  const digerKategoriler = (cat) => tumKategoriler.filter((c) => c !== cat).slice(0, 14);
   for (const [cat, picked] of curatedByCat) {
     const path = categoryPath(cat);
     if (!path) continue;
@@ -1832,7 +1900,7 @@ async function main() {
         type: 'website',
         alternates: hreflangAlts(path),
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
-      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang), lang)));
+      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang, digerKategoriler(cat)), lang)));
       categoryShells += 1;
     }
   }

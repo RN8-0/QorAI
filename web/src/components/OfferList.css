@@ -19,6 +19,18 @@
 }
 .pd-price-row:active { transform: translateY(1px); }
 .pd-price-store { font-weight: 850; font-size: 16px; display: inline-flex; align-items: center; min-width: 0; }
+/* Sol blok: ust satirda magaza, altinda kargo/tazelik. Epey ile yan yana
+   olculdugunde tek eksigimiz bu ayrinti satiriydi (bkz. OfferList.jsx notu). */
+.pd-price-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pd-price-meta {
+  display: flex; flex-wrap: wrap; align-items: center;
+  font-size: 12.5px; font-weight: 650; color: var(--text-3); line-height: 1.35;
+  /* favicon + bosluk kadar iceriden bassin ki magaza adiyla hizali dursun */
+  padding-left: 32px;
+}
+.pd-meta-sep { margin: 0 6px; opacity: .55; }
+.pd-meta-free { color: var(--ok, #16a34a); font-weight: 800; }
+.pd-meta-out { color: var(--danger, #dc2626); font-weight: 800; }
 /* Mağaza favicon'u (Epey vitrin satırları + linkli mağazalar) */
 .pd-store-fav { width: 22px; height: 22px; border-radius: 6px; margin-right: 10px; background: #fff; object-fit: contain; flex: 0 0 22px; }
 /* Linksiz vitrin satırı (epey_store): logo + fiyat, tıklanmaz — hover/basma
@@ -44,6 +56,7 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pd-prices-list-compact .pd-store-fav { width: 18px; height: 18px; margin-right: 7px; flex: 0 0 18px; }
+.pd-prices-list-compact .pd-price-meta { font-size: 11px; padding-left: 25px; }
 .pd-prices-list-compact .pd-price-amt { font-size: 14.5px; }
 .pd-prices-list-compact .pd-price-amt-link { font-size: 12px; }
 

@@ -108,6 +108,21 @@
   overflow: hidden;
 }
 
+/* Varyant (depolama/renk) KIRPILMAZ: kartlari birbirinden ayiran tek ipucu bu.
+   Satir kosulsuz render edilir (bos varyantta nbsp) — yoktan var olursa kart
+   boyu degisir ve kategori izgarasinda CLS uretirdi. */
+.q-product-card-variant {
+  display: block;
+  margin-top: 2px;
+  min-height: 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .q-product-card-price {
   display: inline-block;
   margin-top: 6px;
