@@ -102,11 +102,10 @@ function OfferMeta({ offer, lang, L, compact }) {
   if (offer.inStock === false) {
     parca.push(<span key="s" className="pd-meta-out">{L('Out of stock', 'Stokta yok', 'Nicht auf Lager')}</span>);
   }
-  // Dar kolonda yalniz kargo/stok; tarih satiri tasar.
-  if (!compact) {
-    const t = taze(offer.lastCheckedAt, L);
-    if (t) parca.push(<span key="t">{L('checked', 'kontrol', 'geprüft')} {t}</span>);
-  }
+  // TAZELIK SATIR BASINA YAZILMIYOR. Bir urunun butun teklifleri ayni
+  // tarama kosusundan geliyor, dolayisiyla dort satirin dordu de AYNI degeri
+  // yaziyordu (olculdu, 5 urun: 7/7/7/7 · 8/8/8/8 · 7/1/7/7 · 42) — bilgi
+  // tasimayan tekrar. Tek bir ozet satiri olarak listenin ustunde duruyor.
   if (!parca.length) return null;
   return (
     <span className="pd-price-meta">
@@ -156,6 +155,14 @@ export default function OfferList({
 }) {
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const rows = sortedOffers(offers, country);
+  // Listenin tazeligi: en son kontrol edilen teklifin zamani. Fiyat yasi
+  // ziyaretcinin bilmesi gereken bir sey (katalogda medyan yas gunlerce),
+  // ama satir satir tekrarlamak yerine BIR KEZ soyleniyor.
+  const enTaze = rows
+    .map((o) => Date.parse(o.lastCheckedAt || ''))
+    .filter((t) => Number.isFinite(t))
+    .sort((a, b) => b - a)[0];
+  const tazelikMetni = enTaze ? taze(new Date(enTaze).toISOString(), L) : '';
   const seePrice = L('See price', 'Fiyata bak', 'Preis ansehen');
   const storeLabel = L('Store', 'Mağaza', 'Shop');
   // Gerçek Amazon teklifi listede yoksa, en sona "fiyata bak" arama satırı.
@@ -167,6 +174,11 @@ export default function OfferList({
 
   return (
     <div className={'pd-prices-list' + (compact ? ' pd-prices-list-compact' : '')}>
+      {!compact && tazelikMetni && (
+        <div className="pd-prices-fresh">
+          {L('Prices last checked', 'Fiyatlar en son kontrol edildi:', 'Preise zuletzt geprüft:')} <b>{tazelikMetni}</b>
+        </div>
+      )}
       {rows.map((o) => {
         const cell = isAmazonOffer(o) ? (
           <span className="pd-price-store">

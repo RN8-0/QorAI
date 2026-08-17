@@ -64,3 +64,11 @@
   padding: 14px 12px; text-align: center;
   font-size: 13px; font-weight: 600; color: var(--text-3);
 }
+
+/* Liste tazeligi — TEK satir, listenin ustunde. Satir basina tekrar
+   edilmesinin bilgi degeri yoktu (bkz. OfferList.jsx'teki olcum notu). */
+.pd-prices-fresh {
+  font-size: 12.5px; font-weight: 650; color: var(--text-3);
+  padding: 0 2px 2px;
+}
+.pd-prices-fresh b { color: var(--text-2); font-weight: 800; }

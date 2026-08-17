@@ -104,13 +104,18 @@
   .cmp-picks-head span { font-size: 12.5px; }
 }
 
+/* MASAUSTUNDE HIZA: satir `align-items: stretch` ve arama kutusu ~44 px
+   yuksek; butonun SABIT `height: 38px`i onu kisa ve hizasiz birakiyordu
+   (kullanicinin masaustu ekran goruntusu). Kutuyla ayni yuksekligi alsin. */
+.cmp-addbar-row .qai-btn { height: auto; align-self: stretch; padding: 0 22px 0 18px; }
+
 /* TELEFONDA UST EYLEM SATIRI: arama kutusu + "Analiz Et" + YouTube yan yana
    sigmiyor — kutu 390 px'te "Ka…" kadar kaliyor ve icindeki "Tumunu temizle"
    uzerine biniyor. Kutu tam genislige, dugmeler ALT SATIRA. */
 @media (max-width: 560px) {
   .cmp-addbar-row { flex-wrap: wrap; }
   .cmp-addbar-row .cmp-add-input { flex: 1 1 100%; }
-  .cmp-addbar-row .qai-btn { flex: 1 1 auto; justify-content: center; }
+  .cmp-addbar-row .qai-btn { flex: 1 1 auto; justify-content: center; height: 44px; align-self: auto; }
   .cmp-yt-icon { flex: 0 0 50px; }
 }
 .cmp-picks .card-grid {
@@ -598,15 +603,24 @@ button.cmp-more {
   .cmp-price-name { font-size: 12px; overflow-wrap: anywhere; }
   .cmp-price-card .pd-prices-list { width: 100%; min-width: 0; }
   .cmp-price-card .pd-price-row { padding: 8px; gap: 5px; min-width: 0; }
-  /* Magaza adi 135 px'lik sutunda tek satira sigmiyor ve "Heps…" diye
-     kirpiliyordu (kirpma benim sutunlari daralttigim icin ortaya cikti).
-     Iki satira sarsin — logo + tam ad birlikte okunur. */
+  /* DAR SUTUNDA FIYAT SATIRI DIKEY OLUR.
+     Yatay duzende satir = logo + magaza adi + fiyat. Uc urunle sutun 116 px'e
+     dusuyor; fiyat ("TRY 149.999") tek basina ~70 px istiyor ve magaza adina
+     ~22 px kaliyor — ad HARF HARF sariyordu (kullanicinin ekran goruntusundeki
+     "fiyatlar birbirine girmis" hali; olculdu: 3 urunde 8, 4 urunde 10 magaza
+     adi ucten fazla satira sariyor).
+     Dikey duzende ust satir logo + ad (tam genislik), alt satir fiyat. */
+  .cmp-price-card .pd-price-row { flex-direction: column; align-items: stretch; gap: 4px; }
+  .cmp-price-card .pd-price-left { width: 100%; min-width: 0; }
   .cmp-price-card .pd-price-store {
     font-size: 11px; min-width: 0; line-height: 1.25;
-    white-space: normal; overflow: visible; text-overflow: clip;
-    overflow-wrap: anywhere;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block;
   }
+  /* Fiyat kendi satirinda, sola dayali (yatay duzendeki `margin-left:auto`
+     dikey duzende onu ortalanmis gibi gosteriyordu). */
+  .cmp-price-card .pd-price-amt { margin-left: 0; font-size: 12.5px; }
+  .cmp-price-card .pd-price-meta { padding-left: 19px; }
   .cmp-price-card .pd-price-amt { font-size: 12.5px; white-space: nowrap; }
   .cmp-price-card .pd-price-meta { font-size: 9.5px; padding-left: 0; }
   .cmp-price-card .pd-store-fav { width: 15px; height: 15px; flex: 0 0 15px; margin-right: 4px; }
