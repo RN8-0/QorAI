@@ -103,6 +103,16 @@
   .cmp-picks-head { flex-direction: column; align-items: flex-start; gap: 4px; }
   .cmp-picks-head span { font-size: 12.5px; }
 }
+
+/* TELEFONDA UST EYLEM SATIRI: arama kutusu + "Analiz Et" + YouTube yan yana
+   sigmiyor — kutu 390 px'te "Ka…" kadar kaliyor ve icindeki "Tumunu temizle"
+   uzerine biniyor. Kutu tam genislige, dugmeler ALT SATIRA. */
+@media (max-width: 560px) {
+  .cmp-addbar-row { flex-wrap: wrap; }
+  .cmp-addbar-row .cmp-add-input { flex: 1 1 100%; }
+  .cmp-addbar-row .qai-btn { flex: 1 1 auto; justify-content: center; }
+  .cmp-yt-icon { flex: 0 0 50px; }
+}
 .cmp-picks .card-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
 }

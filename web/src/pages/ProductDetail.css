@@ -209,21 +209,14 @@
   break-inside: avoid;
   margin-bottom: 18px;
 }
-/* Blok artik <details>; baslik <summary>. Ok yalniz KATLANABILIR oldugunda
-   (mobil) gorunur — masaustunde bloklar zaten acik ve ok kafa karistirirdi. */
 .pd-brick-head {
   padding: 13px 16px; font-size: 12.5px; font-weight: 850;
   text-transform: uppercase; letter-spacing: 0.4px; color: var(--text);
   background: var(--bg3);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 8px;
-  list-style: none; cursor: default;
 }
-.pd-brick-head::-webkit-details-marker { display: none; }
 .pd-brick-head span { font-size: 14px; }
-.pd-brick-caret { width: 16px; height: 16px; margin-left: auto; flex: 0 0 auto; display: none; opacity: .7; transition: transform .2s ease; }
-/* Kapali blokta alt cizgi gereksiz — kutu tek satirlik bir baslik olarak durur. */
-.pd-brick:not([open]) .pd-brick-head { border-bottom: 0; }
 .pd-brick-body { display: flex; flex-direction: column; }
 .pd-srow {
   display: grid; grid-template-columns: minmax(170px, 44%) minmax(0, 1fr); gap: 16px;
@@ -261,13 +254,6 @@
   .pd-keybars { grid-template-columns: 1fr; }
   .pd-spec-overview .spec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-bricks { column-count: 1; }
-  /* Bloklar burada KATLANIR (bkz. ProductDetail.jsx'teki SpecBrick notu):
-     tek sutuna dusen ozellik duvari mobilde 12.566 px'ti. */
-  .pd-brick-head { cursor: pointer; }
-  .pd-brick-head:hover { background: var(--accent-soft); }
-  .pd-brick-caret { display: block; }
-  .pd-brick[open] .pd-brick-caret { transform: rotate(180deg); }
-  .pd-brick { margin-bottom: 10px; }
 }
 /* ─── AI Analysis tab ────────────────────────────────────────── */
 .pd-ai-loading {

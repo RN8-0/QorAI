@@ -1,0 +1,80 @@
+/* "Analiz Et" — bkz. AnalyzeButton.jsx basindaki not.
+   Yanindaki "Karsilastir" ve favori/YouTube dugmeleriyle AYNI yukseklikte
+   duruyor ama TEK BIRINCIL eylem oldugu icin dolu gradyan + hareket tasiyor. */
+.qai-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 16px 0 13px;
+  border: 0; border-radius: 999px;
+  background: linear-gradient(120deg, var(--brand-deep), var(--brand-blue) 45%, var(--brand-cyan));
+  color: #fff;
+  font-family: inherit; font-size: 13.5px; font-weight: 800; letter-spacing: .01em;
+  white-space: nowrap; cursor: pointer; overflow: hidden;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--brand-blue) 34%, transparent);
+  transition: transform .16s cubic-bezier(.22,.61,.36,1), box-shadow .16s ease, filter .16s ease;
+}
+.qai-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--brand-blue) 46%, transparent);
+  filter: saturate(1.08);
+}
+.qai-btn:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.qai-btn:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 3px; }
+.qai-btn:disabled { opacity: .62; cursor: default; box-shadow: none; }
+
+/* Nabiz halkasi: dolgunun DISINA tasan, dikkat ceken ama gurultu yapmayan
+   bir dalga. `box-shadow` kullanildi — kutu olcusunu degistirmedigi icin
+   yanindaki dugmeleri oynatmiyor. */
+.qai-btn::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-cyan) 60%, transparent);
+  animation: qaiPulse 2.8s cubic-bezier(.22,.61,.36,1) infinite;
+  pointer-events: none;
+}
+@keyframes qaiPulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-cyan) 55%, transparent); }
+  60%  { box-shadow: 0 0 0 9px color-mix(in srgb, var(--brand-cyan) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand-cyan) 0%, transparent); }
+}
+
+/* Isik seridi soldan saga suzulur. */
+.qai-btn-shine {
+  position: absolute; top: 0; bottom: 0; left: -60%; width: 55%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .38), transparent);
+  transform: skewX(-18deg);
+  animation: qaiShine 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes qaiShine {
+  0%, 55% { left: -60%; }
+  85%, 100% { left: 115%; }
+}
+
+.qai-btn-ic { display: inline-grid; place-items: center; width: 17px; height: 17px; flex: 0 0 17px; }
+.qai-btn-ic svg { width: 17px; height: 17px; display: block; }
+.qai-btn-txt { position: relative; }
+
+/* Kosarken: hareket DURUR (dikkat cekmeye gerek yok, is zaten basladi) ve
+   ikon donen halkaya doner. */
+.qai-btn.busy::before, .qai-btn.busy .qai-btn-shine { animation: none; }
+.qai-btn.busy .qai-btn-shine { opacity: 0; }
+.qai-btn-spin {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .34);
+  border-top-color: #fff;
+  animation: spin .65s linear infinite;
+}
+
+/* Telefonda eylem satiri dar: metin kalir, dolgu kuculur. */
+@media (max-width: 480px) {
+  .qai-btn { height: 36px; padding: 0 13px 0 11px; font-size: 12.5px; gap: 6px; }
+  .qai-btn-ic, .qai-btn-ic svg { width: 15px; height: 15px; flex-basis: 15px; }
+}
+
+/* Hareketi azalt: parilti ve nabiz tamamen kapanir, buton yine belirgin
+   (dolu gradyan + golge) kalir. */
+@media (prefers-reduced-motion: reduce) {
+  .qai-btn, .qai-btn::before, .qai-btn-shine { animation: none; transition: none; }
+  .qai-btn-shine { display: none; }
+  .qai-btn:hover:not(:disabled) { transform: none; }
+}

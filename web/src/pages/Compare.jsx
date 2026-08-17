@@ -10,6 +10,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { catMeta, categoryLabel, priceForCountry, formatPriceAmount, amazonUrlForProduct, amazonGoPath, scoreClass, scoreLabel } from '../lib/format';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
+import AnalyzeButton, { analizeKaydir } from '../components/AnalyzeButton.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo, hreflangAlternates } from '../lib/seo';
 import { canonicalSpecKey } from '../lib/specCanonical';
@@ -669,6 +670,21 @@ export default function Compare() {
     setTerm(''); setResults([]); setPicking(false);
   }
 
+  // "Analiz Et" (ust eylem satiri): sekmeyi AI'ya cevir → oraya kaydir →
+  // analizi baslat. Sira ONEMLI: sekme once degismezse kaydirilacak panel
+  // henuz DOM'da olmaz; kaydirma bir sonraki kareye birakiliyor ki React yeni
+  // sekmeyi basmis olsun ve hedefin konumu DOGRU olcusun.
+  const aiSekmeRef = useRef(null);
+  function analizeBaslat() {
+    setTab('ai');
+    requestAnimationFrame(() => {
+      analizeKaydir(aiSekmeRef.current);
+      // Kosan ya da hazir analiz varsa yeniden baslatma — kullanici yalnizca
+      // sonuca gitmek istiyor olabilir.
+      if (!aiBusy && !aiText && aiPhase === 'idle') startAiCompareQuiz();
+    });
+  }
+
   async function startAiCompareQuiz() {
     setAiNotice('');
     if (products.length < 2) {
@@ -756,6 +772,12 @@ export default function Compare() {
                 <button className="cmp-clear" onClick={clear}>{t('cmp.clearAll')}</button>
               )}
             </div>
+            {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
+                sekmeydi; burada ust eylem satirinda duruyor. En az iki urun
+                gerekiyor — tek urunle karsilastirma analizi anlamsiz. */}
+            {products.length >= 2 && (
+              <AnalyzeButton busy={aiBusy} onClick={analizeBaslat} />
+            )}
             {ytUrl && products.length >= 2 && (
               <a className="cmp-yt-icon" href={ytUrl} target="_blank" rel="noopener"
                 aria-label="YouTube"
@@ -897,7 +919,7 @@ export default function Compare() {
             </section>
 
             {/* tabs — Specs · AI (centered) */}
-            <div className="cmp-tabs2">
+            <div className="cmp-tabs2" ref={aiSekmeRef}>
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
                 {L('Specs', 'Özellikler', 'Eigenschaften')}
               </button>

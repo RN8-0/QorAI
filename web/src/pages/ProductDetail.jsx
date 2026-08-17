@@ -21,6 +21,7 @@ import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath 
 import OfferList, { sortedOffers } from '../components/OfferList.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 import ProductImg from '../components/ProductImg.jsx';
+import AnalyzeButton, { analizeKaydir } from '../components/AnalyzeButton.jsx';
 import AmazonLogo from '../components/AmazonLogo.jsx';
 import { IconX, IconChevronLeft, IconChevronRight } from '../components/GlyphIcons.jsx';
 import Gauge, { techColor, inkColor } from '../components/Gauge.jsx';
@@ -885,6 +886,22 @@ export default function ProductDetail() {
 
   // Deep link from the blog "AI ile analiz et" buttons: /product/...?ai=1 opens
   // the AI tab and kicks off the full analysis as soon as the product loads.
+  // "Analiz Et" (ust eylem satiri): sekmeyi AI'ya cevir → oraya kaydir →
+  // analizi baslat. Sira ONEMLI: sekme once degismezse kaydirilacak panel
+  // henuz DOM'da olmaz; kaydirma da bir sonraki kareye birakiliyor ki React
+  // yeni sekmeyi basmis olsun ve hedefin konumu DOGRU olcusun.
+  const aiSekmeRef = useRef(null);
+  const analizeBaslat = useCallback(() => {
+    setTab('premium');
+    requestAnimationFrame(() => {
+      analizeKaydir(aiSekmeRef.current);
+      // Zaten kosan ya da hazir bir analiz varsa YENIDEN baslatma — kullanici
+      // yalnizca sonuca gitmek istiyor olabilir; startFullAnalysisQuiz zaten
+      // bu durumda erken cikiyor ama niyeti burada da acik tutuyoruz.
+      if (!aiFull.busy && !aiFull.data) startFullAnalysisQuiz();
+    });
+  }, [aiFull.busy, aiFull.data, startFullAnalysisQuiz]);
+
   const aiAutoRef = useRef('');
   useEffect(() => {
     if (!p) return;
@@ -1140,6 +1157,9 @@ export default function ProductDetail() {
               </svg>
               <span>{inCompare ? L('In compare', 'Karşılaştırmada', 'Im Vergleich') : L('Compare', 'Karşılaştır', 'Vergleichen')}</span>
             </button>
+            {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
+                sekmeydi; burada ilk ekranda duruyor. */}
+            <AnalyzeButton busy={aiFull.busy} onClick={analizeBaslat} />
           </div>
         </nav>
 
@@ -1324,7 +1344,7 @@ export default function ProductDetail() {
             );
           })()}
 
-          <section className="pd-block">
+          <section className="pd-block" ref={aiSekmeRef}>
             <div className="pd-tabs2">
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
               {/* Analiz KOSARKEN etiketin sag ustunde donen halka — bkz.
@@ -1343,7 +1363,7 @@ export default function ProductDetail() {
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
                   {bricks.length > 0 ? (
                     <div className="pd-bricks">
-                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} ilk={i === 0} />)}
+                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
                     </div>
                   ) : (
                     !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
@@ -1634,36 +1654,15 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
   );
 }
 
-// MOBILDE OZELLIK BLOKLARI KAPALI BASLAR.
-// Olculdu (2026-08-16, 390x844, canli): urun sayfasi 16.842 px uzunlugundaydi
-// ve bunun 12.566 px'i tek basina bu ozellik duvariydi (`.pd-tab-body`).
-// Masaustunde bloklar iki sutuna akiyor (`column-count: 2`) ve sorun degil;
-// mobilde tek sutuna dusup alt alta diziliyor. Ilk blok ("Öne Çıkanlar")
-// acik kalir, geri kalani dokununca acilir.
-//
-// `<details>` KULLANILIYOR, kendi yazdigimiz bir ac/kapa DEGIL: Google
-// `<details>` icindeki metni normal sekilde indeksler (gizlenmis icerik
-// muamelesi yapmaz) ve klavye/ekran okuyucu destegi bedava gelir. Ozellik
-// tablosu urun sayfasinin ozgun icerigi — DOM'dan cikarilmasi SEO'ya zarar
-// verirdi, o yuzden yalnizca katlaniyor.
-const DAR_EKRAN = () => {
-  try { return window.matchMedia('(max-width: 860px)').matches; } catch { return false; }
-};
-
-function SpecBrick({ brick, lang, tr, ilk = false }) {
+// MOBILDE KATLAMA DENENDI VE GERI ALINDI (2026-08-17, kullanici karari).
+// Bloklar mobilde `<details>` ile kapali basliyordu (sayfa 16.842 -> 6.434 px);
+// kullanici bunu ISTEMEDI, ozellikler acik gorunmeli. Tekrar onerme.
+function SpecBrick({ brick, lang, tr }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
-  // Tek sefer okunur; ekran dondurulurse mevcut ac/kapa durumu korunur —
-  // kullanicinin actigi blogu kapatmak yeniden olcmekten daha rahatsiz edici.
-  const [dar] = useState(DAR_EKRAN);
   if (!rows.length) return null;
   return (
-    <details className="pd-brick" open={ilk || !dar}>
-      <summary className="pd-brick-head">
-        <span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}
-        <svg className="pd-brick-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
-      </summary>
+    <div className="pd-brick">
+      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
           const s = localizedSpecValue(tr(String(v).trim()), lang);
@@ -1684,6 +1683,6 @@ function SpecBrick({ brick, lang, tr, ilk = false }) {
           );
         })}
       </div>
-    </details>
+    </div>
   );
 }
