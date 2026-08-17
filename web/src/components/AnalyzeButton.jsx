@@ -18,12 +18,27 @@ import './AnalyzeButton.css';
 // tam ust bara yaslayip basligi bandin ALTINDA birakiyordu.
 const UST_BOSLUK = 84;
 
+// HEDEF YERINDE DURMUYOR, o yuzden TEK BIR kaydirma yetmiyor: sekme
+// "Ozellikler"den "AI Analizi"ne gecince uzun ozellik tablosu kisa AI paneliyle
+// yer degistiriyor ve sayfa boyu ~14.000 px'ten 4.456 px'e dusuyor; tarayici
+// kaydirmayi kirpiyor. Olculdu (canli, 390x844): tek gecisle sekme seridi
+// +89 px'ten -75 px'e kayiyor, yani basliklar bandin ustunde kaliyordu.
+// Duzeltme: yerlesme oturana kadar kisa araliklarla HEDEFI YENIDEN olcup
+// duzeltmek. Sapma esigin altina dusunce durur (gereksiz kaydirma yok).
 export function analizeKaydir(el) {
   if (!el) return;
-  const y = el.getBoundingClientRect().top + window.scrollY - UST_BOSLUK;
   let azalt = false;
   try { azalt = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { /* yoksay */ }
-  window.scrollTo({ top: Math.max(0, y), behavior: azalt ? 'instant' : 'smooth' });
+  const git = (yumusak) => {
+    const y = Math.max(0, el.getBoundingClientRect().top + window.scrollY - UST_BOSLUK);
+    const sapma = Math.abs(y - window.scrollY);
+    if (sapma < 8) return false;
+    window.scrollTo({ top: y, behavior: yumusak && !azalt ? 'smooth' : 'instant' });
+    return true;
+  };
+  git(true);
+  // Yerlesme adimlari: React sekmeyi basar, panel yuklenir, resimler oturur.
+  [420, 900, 1500].forEach((ms) => setTimeout(() => git(false), ms));
 }
 
 export default function AnalyzeButton({ onClick, busy = false, disabled = false, title }) {
