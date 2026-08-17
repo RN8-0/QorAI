@@ -588,7 +588,15 @@ button.cmp-more {
   .cmp-price-name { font-size: 12px; overflow-wrap: anywhere; }
   .cmp-price-card .pd-prices-list { width: 100%; min-width: 0; }
   .cmp-price-card .pd-price-row { padding: 8px; gap: 5px; min-width: 0; }
-  .cmp-price-card .pd-price-store { font-size: 11px; min-width: 0; }
+  /* Magaza adi 135 px'lik sutunda tek satira sigmiyor ve "Heps…" diye
+     kirpiliyordu (kirpma benim sutunlari daralttigim icin ortaya cikti).
+     Iki satira sarsin — logo + tam ad birlikte okunur. */
+  .cmp-price-card .pd-price-store {
+    font-size: 11px; min-width: 0; line-height: 1.25;
+    white-space: normal; overflow: visible; text-overflow: clip;
+    overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
   .cmp-price-card .pd-price-amt { font-size: 12.5px; white-space: nowrap; }
   .cmp-price-card .pd-price-meta { font-size: 9.5px; padding-left: 0; }
   .cmp-price-card .pd-store-fav { width: 15px; height: 15px; flex: 0 0 15px; margin-right: 4px; }

@@ -90,7 +90,20 @@
    Odak gostergesi KAYBOLMUYOR: asagidaki `:focus-within` kurali gradyan
    cerceveyi belirginlestiriyor. `.searchbox` icin de ayni istisna var. */
 .hs-form :where(input):focus-visible { outline: none; }
-.hs-form:focus-within { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 22%, transparent); }
+/* ODAK PARILTISI YALNIZ ACIKKEN. Kural once `.hs-form:focus-within` idi ve
+   KAPALIYKEN DE uyguluyordu: ikona basip kutuyu kapatinca odak BUTONUN
+   uzerinde kaliyor, buton da form'un icinde oldugu icin `:focus-within`
+   dogru kaliyordu — geriye ikonun cevresinde 4 px'lik yari saydam mavi bir
+   halka "iz" olarak kaliyordu (kullanicinin ekran goruntusu).
+   Ayrica `box-shadow` KUMULATIF DEGIL: bu kural sadece parilti yazarsa
+   `.hs-open .hs-form`un ince cercevesini ve golgesini SILER — o yuzden ucu
+   birden burada tekrarlaniyor. */
+.hs-open .hs-form:focus-within {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-cyan) 60%, transparent),
+    0 8px 24px color-mix(in srgb, var(--brand-blue) 13%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--brand-cyan) 16%, transparent);
+}
 
 .hs-clear {
   flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
