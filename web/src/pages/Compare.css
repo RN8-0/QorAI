@@ -577,7 +577,36 @@ button.cmp-more {
   /* Rozet + kaldirma dugmesi kartin ust seridini paylasiyor; gorsel onlarin
      ALTINDAN baslasin ki hicbiri digerinin uzerine binmesin. */
   .cmp-card-img { margin-top: 8px; }
-  .cmp-price-card { padding: 10px 8px; min-height: 120px; }
+
+  /* FIYAT KARTLARI DA SIGMALI. Baslik kartlari duzeltildikten sonra fiyat
+     SATIRI hala tasiyordu (olculdu 390 px: satir 527, kap 358) — sebep
+     flex ogesinin varsayilan `min-width: auto` degeri: `flex: 0 0 135px`
+     verilse bile oge ICERIGI kadar buyuyebiliyor, magaza satirlari da onu
+     223 px'e cikariyordu. `min-width: 0` temel genisligi baglayici yapar. */
+  .cmp-price-card { padding: 10px 6px; min-height: 120px; min-width: 0; }
+  .cmp-price-card > * { min-width: 0; max-width: 100%; }
+  .cmp-price-name { font-size: 12px; overflow-wrap: anywhere; }
+  .cmp-price-card .pd-prices-list { width: 100%; min-width: 0; }
+  .cmp-price-card .pd-price-row { padding: 8px; gap: 5px; min-width: 0; }
+  .cmp-price-card .pd-price-store { font-size: 11px; min-width: 0; }
+  .cmp-price-card .pd-price-amt { font-size: 12.5px; white-space: nowrap; }
+  .cmp-price-card .pd-price-meta { font-size: 9.5px; padding-left: 0; }
+  .cmp-price-card .pd-store-fav { width: 15px; height: 15px; flex: 0 0 15px; margin-right: 4px; }
+
+  /* OZELLIK TABLOSU da ayni sutun genisligine uymali. `.cmp-th-compact`
+     uzerindeki `min-width: 150px` `--cmp-col`u (135) EZIYOR ve tablo
+     88 + 2x150 = 388 px'e cikip yine kayiyordu. Sifirlaninca tablo,
+     baslik kartlari ve fiyat kartlari yeniden ayni sutun adimini
+     paylasiyor — bu hizalama zaten tasarimin tum amaci. */
+  /* `table-layout: fixed` OLMADAN hucreler ICERIGE gore buyuyor: olculdu,
+     etiket sutunu 88 yerine 98, urun sutunu 135 yerine 139 px cikiyor ve
+     tablo 373 px'e ulasip yine 15 px kayiyordu. Sabit duzende ilan edilen
+     genislikler baglayici olur, uzun degerler alt satira sarar. */
+  .cmp-table { table-layout: fixed; }
+  .cmp-td-spec, .cmp-td-val, .cmp-th-spec { overflow-wrap: anywhere; }
+  .cmp-th-compact { min-width: 0; }
+  .cmp-th-name { font-size: 12px; overflow-wrap: anywhere; }
+  .cmp-table th, .cmp-table td { padding: 8px 6px; }
 }
 
 /* Karşılaştırma tablosu bölüm başlıkları — ürün sayfasındaki gruplamanın aynısı.
