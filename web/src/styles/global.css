@@ -528,32 +528,42 @@ input, textarea, select { font-family: inherit; }
 /* SECICILER `.ft-social` ILE SARILI: `.footer a { display:block; color:
    var(--text-2) }` kurali (0,1,1) tek sinifli bir kurali (0,1,0) YENIYOR.
    Ilk denemede ikonlar renkli daire icinde GRI cizildi — sebep tam olarak
-   buydu (kare: son/footer-d1440.png). Iki sinifli secici (0,2,0) kazanir. */
+   buydu. Iki sinifli secici (0,2,0) kazanir.
+
+   TASARIM: DOLU renkli daire DEGIL — ince, marka renginde bir CEMBER + ayni
+   renkte kucuk bir glif. Dolu daire masaustunde (DPR 1) kaba duruyordu:
+   Instagram'in radyal gradyani dairenin ust-solunda koyu bir alan birakiyor,
+   YouTube'un oynat ucgeni dolu kirmizinin icinde optik olarak kayik
+   gorunuyordu. Cember + glif her iki temada da temiz ve hafif; renk yine
+   platformun kendi rengi, yani taninirlik kaybolmuyor.
+   Uzerine gelince cember DOLAR ve glif beyaza doner. */
 .ft-social { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
 .ft-social .ft-social-btn {
+  --tint: var(--text-2);
   display: inline-flex; align-items: center; justify-content: center;
-  width: 38px; height: 38px; padding: 0; border-radius: 50%;
-  border: 1px solid transparent;
-  color: #fff; text-decoration: none;
-  box-shadow: 0 4px 14px color-mix(in srgb, #020617 14%, transparent);
-  transition: transform .16s cubic-bezier(.22,.61,.36,1), box-shadow .16s ease, filter .16s ease;
+  width: 34px; height: 34px; padding: 0; border-radius: 50%;
+  border: 0; background: transparent;
+  color: var(--tint); text-decoration: none;
+  /* `inset box-shadow`: yuvarlak kenarda `border`dan daha keskin, ayrica kutu
+     olcusunu degistirmedigi icin hover'da dolarken ziplama olmuyor. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tint) 58%, transparent);
+  transition: background .16s ease, color .16s ease, box-shadow .16s ease, transform .16s cubic-bezier(.22,.61,.36,1);
 }
-.ft-social .ft-social-btn svg { width: 17px; height: 17px; display: block; fill: currentColor; }
-.ft-social .ft-social-btn:hover { transform: translateY(-2px); filter: saturate(1.12); }
+.ft-social .ft-social-btn svg { width: 14px; height: 14px; display: block; fill: currentColor; }
+.ft-social .ft-social-btn:hover {
+  background: var(--tint); color: #fff;
+  box-shadow: inset 0 0 0 1px var(--tint), 0 6px 16px color-mix(in srgb, var(--tint) 34%, transparent);
+  transform: translateY(-2px);
+}
 .ft-social .ft-social-btn:active { transform: translateY(0); }
 .ft-social .ft-social-btn:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 3px; }
 
-/* TikTok resmi kimligi SIYAH zemin + beyaz isaret. Koyu temada siyah daire
-   arka planla birlesiyor, o yuzden orada ince bir kenar veriliyor. */
-.ft-social .ft-social-tiktok { background: #010101; border-color: rgba(255, 255, 255, .18); }
-.ft-social .ft-social-tiktok:hover { box-shadow: 0 6px 20px rgba(37, 244, 238, .40); }
-.ft-social .ft-social-youtube { background: #FF0000; }
-.ft-social .ft-social-youtube:hover { box-shadow: 0 6px 20px rgba(255, 0, 0, .36); }
-.ft-social .ft-social-instagram {
-  background:
-    radial-gradient(circle at 30% 107%, #FDF497 0%, #FDF497 5%, #FD5949 45%, #D6249F 60%, #285AEB 90%);
-}
-.ft-social .ft-social-instagram:hover { box-shadow: 0 6px 20px rgba(214, 36, 159, .38); }
+/* TikTok'un imza rengi cyan; SIYAH bir cember iki temada birden calismazdi
+   (karanlik temada zeminle birlesiyor). */
+.ft-social .ft-social-tiktok { --tint: #25F4EE; }
+.ft-social .ft-social-tiktok:hover { color: #010101; }
+.ft-social .ft-social-youtube { --tint: #FF0000; }
+.ft-social .ft-social-instagram { --tint: #E1306C; }
 
 @media (prefers-reduced-motion: reduce) {
   .ft-social .ft-social-btn { transition: none; }
@@ -647,6 +657,24 @@ input, textarea, select { font-family: inherit; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin 0.6s linear infinite; }
+
+/* Sekme etiketinin SAG USTUNDE donen kucuk halka: analiz surerken kullanici
+   baska sekmeye/sayfaya gecse de isin devam ettigi gorunur kalir.
+   `.tab-lbl` konumlandirma capasi; halka etiketin disina tasar, o yuzden
+   sekme butonunun kendi dolgusu yeterli (kirpma yok). */
+.tab-lbl { position: relative; display: inline-block; }
+.tab-spin {
+  position: absolute; top: -5px; right: -15px;
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 26%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 0.65s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Donme yerine nabiz: hareket hassasiyeti olan kullanici da isin surdugunu gorur. */
+  .tab-spin { animation: tabPulse 1.4s ease-in-out infinite; border-top-color: var(--accent); }
+}
+@keyframes tabPulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 /* Tembel yüklenen route chunk'ı beklerken gösterilen yer tutucu.
    60vh İDİ ve MOBİL CLS'İN TEK KAYNAĞI BUYDU (ölçüldü, Slow 4G + 4x CPU):
    60vh = 506 px, üstüne 68 px başlık → footer 844 px'lik ekranın İÇİNDE

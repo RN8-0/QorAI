@@ -560,6 +560,25 @@ button.cmp-more {
   .cmp-table th, .cmp-table td { padding: 10px; }
   .cmp-picks .card-grid { grid-template-columns: 1fr; }
 }
+/* TELEFON: sutun ~135 px'e dustu (bkz. Compare.jsx'teki `dar` hesabi), kart
+   ICERIGI de o genislige sigmali. Eski degerlerle iki halka (2x46 + 18 aralik
+   = 110 px) 135 - 28 dolgu = 107 px'lik alani tasiriyordu. */
+@media (max-width: 480px) {
+  .cmp-card { padding: 12px 7px 10px; gap: 3px; }
+  .cmp-card-img { max-width: 92px; }
+  .cmp-card-name { font-size: 12.5px; }
+  .cmp-card-cat { font-size: 10.5px; }
+  .cmp-card-brand { font-size: 9px; letter-spacing: .04em; }
+  .cmp-rings { gap: 6px; padding-top: 8px; }
+  .cmp-ring small { font-size: 8.5px; letter-spacing: .03em; }
+  .cmp-best-tag { top: 5px; left: 5px; font-size: 10px; padding: 1px 5px; line-height: 1.4; }
+  .cmp-best-tag-txt { display: none; }
+  .cmp-remove { top: 4px; right: 4px; }
+  /* Rozet + kaldirma dugmesi kartin ust seridini paylasiyor; gorsel onlarin
+     ALTINDAN baslasin ki hicbiri digerinin uzerine binmesin. */
+  .cmp-card-img { margin-top: 8px; }
+  .cmp-price-card { padding: 10px 8px; min-height: 120px; }
+}
 
 /* Karşılaştırma tablosu bölüm başlıkları — ürün sayfasındaki gruplamanın aynısı.
    Düz 60 satırlık listede aranan özelliği bulmak zordu. */

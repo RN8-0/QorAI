@@ -1327,7 +1327,15 @@ export default function ProductDetail() {
           <section className="pd-block">
             <div className="pd-tabs2">
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
-              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>{t('pd.tabAi')}</button>
+              {/* Analiz KOSARKEN etiketin sag ustunde donen halka — bkz.
+                  Compare.jsx'teki ayni not. */}
+              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>
+                <span className="tab-lbl">
+                  {t('pd.tabAi')}
+                  {aiFull.busy && <i className="tab-spin" role="status" aria-live="polite"
+                    aria-label={L('Analysis running', 'Analiz sürüyor', 'Analyse läuft')} />}
+                </span>
+              </button>
             </div>
             <div className="pd-tab-body">
               {tab === 'specs' && (

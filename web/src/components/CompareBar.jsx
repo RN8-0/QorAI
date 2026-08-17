@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconX } from './GlyphIcons.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCompare } from '../lib/compare';
@@ -17,7 +17,33 @@ export default function CompareBar() {
   const loc = useLocation();
   const [open, setOpen] = useState(true);
   const [items, setItems] = useState([]);
+  const kutu = useRef(null);
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+
+  // QOR BALONU BU CUBUGU ORTUYORDU. Olculdu (390x844): alt bar 84 px'e kadar,
+  // cubuk `bottom: 64px`ten baslayip ~120'ye kadar cikiyor, balon ise
+  // `bottom: 84px` + 58 px yukseklik ile 84–142 arasinda ve SAG kenarda —
+  // yani tam olarak cubugun "Karsilastir" dugmesinin ustune biniyor
+  // (kullanicinin profil ekran goruntusunde gorunen sey bu).
+  // Cubugun GERCEK yuksekligi bir CSS degiskenine yaziliyor; balon da o kadar
+  // yukari kayiyor. Sabit bir sayi yeterli olmazdi: cubuk mobilde satir
+  // kaydiriyor (kucuk resimler alt satira geciyor) ve yuksekligi urun sayisina
+  // gore degisiyor, ayrica katlanip acilabiliyor.
+  useEffect(() => {
+    const el = kutu.current;
+    const kok = document.documentElement;
+    if (!el) { kok.style.removeProperty('--cmpbar-h'); return undefined; }
+    document.body.classList.add('qor-cmpbar-open');
+    const yaz = () => kok.style.setProperty('--cmpbar-h', `${Math.round(el.getBoundingClientRect().height)}px`);
+    yaz();
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(yaz); ro.observe(el); }
+    return () => {
+      ro?.disconnect();
+      document.body.classList.remove('qor-cmpbar-open');
+      kok.style.removeProperty('--cmpbar-h');
+    };
+  }, [ids.length, open, loc.pathname]);
 
   useEffect(() => {
     let live = true;
@@ -31,7 +57,7 @@ export default function CompareBar() {
   const canCompare = ids.length >= 2;
 
   return (
-    <div className={'cmpbar' + (open ? ' open' : '')}>
+    <div className={'cmpbar' + (open ? ' open' : '')} ref={kutu}>
       <div className="cmpbar-inner">
         <button className="cmpbar-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

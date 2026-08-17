@@ -37,3 +37,16 @@
 @media (max-width: 480px) {
   .aib-fab { right: 16px; }
 }
+
+/* KARSILASTIRMA CUBUGU ACIKKEN BALON YUKARI KAYAR.
+   Cubuk `position: fixed` ve masaustunde `bottom: 0`, mobilde `bottom: 64px`
+   (alt sekme cubugunun ustu). Balon 58 px yuksekliginde ve SAG kenarda
+   duruyordu, yani cubugun "Karsilastir" dugmesinin uzerine biniyordu
+   (390x844 ekran goruntusunde goruldu). `--cmpbar-h` cubugun GERCEK
+   yuksekligi; CompareBar.jsx bir ResizeObserver ile yaziyor. */
+body.qor-cmpbar-open .aib-fab { bottom: calc(var(--cmpbar-h, 64px) + 16px); }
+@media (max-width: 860px) {
+  body.qor-cmpbar-open .aib-fab {
+    bottom: calc(64px + var(--cmpbar-h, 110px) + 12px + env(safe-area-inset-bottom, 0px));
+  }
+}

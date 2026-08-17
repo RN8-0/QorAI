@@ -209,6 +209,15 @@
 }
 .pf-tab.active { background: var(--bg3); color: var(--text); }
 .pf-tab:hover:not(.active) { color: var(--text); }
+/* TELEFONDA DORT SEKME EKRANA SIGMALI. 13 px + 12 px yan dolgu ile
+   "Karsilastirmalar / Yorumlarim / Begendiklerim / Hesap" 390 px'lik ekranda
+   ~375 px tutuyor, kap ise 350: satir yatay kayiyor ve ILK SEKME kirpik
+   basliyordu (kullanicinin ekran goruntusunde "omparisons" diye gorunen sey).
+   Kap `overflow-x: auto` KALIYOR — daha uzun cevirilerde emniyet payi. */
+@media (max-width: 480px) {
+  .pf-tabs { gap: 2px; padding: 3px; }
+  .pf-tab { padding: 8px 4px; font-size: 11.5px; }
+}
 
 /* generic list rows */
 .pf-list { display: flex; flex-direction: column; gap: 10px; }

@@ -464,8 +464,17 @@ export default function Compare() {
       const availW = (scroller ? scroller.clientWidth : root.clientWidth) || 0;
       if (!availW) return;
       const n = products.length;
-      const labelW = availW < 680 ? 116 : 184;
-      const minCol = availW < 680 ? 200 : 230;
+      // TELEFONDA IKI URUN EKRANA SIGMALI. Eski esikler (labelW 116 + minCol
+       // 200) 390 px'lik ekranda 116 + 2x200 = 516 px veriyordu, kap ise 358 px:
+      // satir yatay kaydiriliyor ve SOLDAKI KART EKRANIN DISINDA kaliyordu
+      // (kullanicinin ekran goruntusunde "msung Galaxy S23" diye kesik gorunen
+      // kart tam olarak bu). Iki urun karsilastirmak en sik durum; ikisi de
+      // gorunmeden karsilastirma zaten ise yaramiyor.
+      //   390 px -> kap 358: label 88 + 2x135 = 358  ✓
+      // Uc ve fazlasi hala kayar (kacinilmaz), ama iki urunde kaymaz.
+      const dar = availW < 480;
+      const labelW = dar ? 88 : availW < 680 ? 116 : 184;
+      const minCol = dar ? 116 : availW < 680 ? 200 : 230;
       const col = Math.max(minCol, Math.floor((availW - labelW) / n));
       root.style.setProperty('--cmp-label', `${labelW}px`);
       root.style.setProperty('--cmp-col', `${col}px`);
@@ -819,7 +828,12 @@ export default function Compare() {
                     <div className={'cmp-card' + (isBest && products.length > 1 ? ' best' : '')} key={p.id}>
                       <button className="cmp-remove" onClick={() => remove(p.id)} aria-label="✕"><IconX size={14} width={2.4} /></button>
                       {isBest && products.length > 1 && (
-                        <span className="cmp-best-tag">★ {L('Best', 'En İyi', 'Top')}</span>
+                        /* Metin `.cmp-best-tag-txt` icinde: telefonda sutun
+                           ~135 px'e dustugu icin rozet gorselin ustune binip
+                           kirpiliyordu ("★ Eni…"). Dar ekranda yalniz yildiz
+                           kaliyor — anlam kaybolmuyor, cunku rozet zaten tek
+                           bir kartta ve kartin cercevesi de yesil. */
+                        <span className="cmp-best-tag">★<span className="cmp-best-tag-txt"> {L('Best', 'En İyi', 'Top')}</span></span>
                       )}
                       <Link to={productPath(p)} className="img-tile cmp-card-img">
                         <ProductImg src={p.imageUrl} alt={name} size="card" />
@@ -887,8 +901,17 @@ export default function Compare() {
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
                 {L('Specs', 'Özellikler', 'Eigenschaften')}
               </button>
+              {/* Analiz KOSARKEN sekme etiketinin sag ustunde donen halka.
+                  Kullanici sekmeler arasi gecebiliyor ve baska sayfaya gidip
+                  donebiliyor; isin hala surdugunu gosteren tek isaret panelin
+                  ICINDEYDI, yani "Ozellikler" sekmesindeyken islem bitmis mi
+                  suruyor mu anlasilmiyordu. */}
               <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>
-                {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
+                <span className="tab-lbl">
+                  {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
+                  {aiBusy && <i className="tab-spin" role="status" aria-live="polite"
+                    aria-label={L('Analysis running', 'Analiz sürüyor', 'Analyse läuft')} />}
+                </span>
               </button>
             </div>
 

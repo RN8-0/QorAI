@@ -160,19 +160,29 @@ export default function HeaderSearch() {
         onSubmit={(e) => { e.preventDefault(); gonder(); }}
         role="search"
       >
-        {/* HER ZAMAN type="button" — bkz. dosya basindaki (2) numarali not. */}
+        {/* HER ZAMAN type="button" — bkz. dosya basindaki (2) numarali not.
+            IKON AC/KAPA DUGMESIDIR, gonderme dugmesi DEGIL: acikken tekrar
+            basmak kutuyu kapatir. Gonderme Enter ile (mobilde klavyenin
+            "ara" tusu — enterKeyHint) ya da panelin altindaki "Tum
+            sonuclari gor" ile yapilir. */}
         <button
           type="button"
           className="hs-btn"
-          onClick={() => (acik ? gonder() : setAcik(true))}
-          aria-label={t('common.search')}
+          onClick={() => (acik ? kapat() : setAcik(true))}
+          aria-label={acik ? L('Close search', 'Aramayı kapat', 'Suche schließen') : t('common.search')}
           aria-expanded={acik}
-          title={t('common.search')}
+          title={acik ? L('Close search', 'Aramayı kapat', 'Suche schließen') : t('common.search')}
         >
           <span className="hs-btn-ring" aria-hidden="true" />
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="7.2" /><line x1="20.6" y1="20.6" x2="16.5" y2="16.5" />
-          </svg>
+          {acik ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" /><line x1="20.4" y1="20.4" x2="16.5" y2="16.5" />
+            </svg>
+          )}
         </button>
 
         <input
@@ -206,16 +216,8 @@ export default function HeaderSearch() {
           </button>
         )}
 
-        {/* Mobilde acikken kapatma yolu: ikon artik "gonder" oldugu icin
-            geri donmenin gorunur bir yolu olmali. Masaustunde gizli. */}
-        {acik && (
-          <button type="button" className="hs-close" onClick={kapat}
-            aria-label={L('Close search', 'Aramayı kapat', 'Suche schließen')}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="19" y1="12" x2="5" y2="12" /><polyline points="11 18 5 12 11 6" />
-            </svg>
-          </button>
-        )}
+        {/* Ayri bir "geri" dugmesi KALDIRILDI: ikonun kendisi kapatiyor,
+            ikinci bir kapatma dugmesi yalnizca kalabalik yapiyordu. */}
       </form>
 
       {panelAcik && (

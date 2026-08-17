@@ -14,23 +14,20 @@
   transition: background .24s ease, box-shadow .24s ease, padding .24s ease;
 }
 
-/* Acik haldeki gradyan cerceve: 1 px'lik bir halka, marka gradyaniyla.
-   `border` yerine maskeli ::before — boylece kutu genisligi degismiyor ve
-   gradyan kenari dogru kaliyor. */
-.hs-form::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit;
-  padding: 1.5px; background: var(--grad-brand, linear-gradient(135deg, var(--brand-deep), var(--brand-blue), var(--brand-cyan)));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  opacity: 0; transition: opacity .24s ease; pointer-events: none;
-}
+/* CERCEVE `box-shadow: inset` ILE CIZILIR, MASKELI GRADYAN ILE DEGIL.
+   Ilk surumde `-webkit-mask-composite: xor` ile gradyan bir halka ciziliyordu;
+   yuvarlak kenarda (border-radius: 999px) maske kenar yumusatmasi DPR 1'de
+   tirtikli cikiyor — koyu temada zeminle kontrast yuksek oldugu icin
+   "pikseller belli" gorunumunun kaynagi tam olarak buydu (masaustunde
+   goruldu, mobilde DPR 2-3 oldugu icin gizleniyordu). `inset box-shadow`
+   kutunun kendi kenar yumusatmasini kullanir: her DPR'de keskin. */
 .hs-open .hs-form {
   background: var(--surface);
   padding: 0 5px 0 0;
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--brand-blue) 16%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--brand-blue) 46%, transparent),
+    0 8px 24px color-mix(in srgb, var(--brand-blue) 13%, transparent);
 }
-.hs-open .hs-form::before { opacity: 1; }
 
 /* ── Ikon ────────────────────────────────────────────────────────────────
    Duz gri DEGIL: marka gradyaninda bir halka + gradyanli cizgi rengi.
@@ -43,32 +40,30 @@
   background: transparent; color: var(--brand-blue); cursor: pointer;
   transition: color .18s ease, transform .18s ease;
 }
-.hs-btn svg { width: 19px; height: 19px; display: block; position: relative; z-index: 1; }
+/* Cizgi kalinligi 2.3 -> 1.9 ve cap 19 -> 17: "kalin ve kaba" gorunumun
+   ikinci yarisi ikonun kendisiydi (SVG'de `stroke-width` ile birlikte). */
+.hs-btn svg { width: 17px; height: 17px; display: block; position: relative; z-index: 1; }
 .hs-btn:hover { color: var(--brand-cyan); }
 .hs-btn:active { transform: scale(.93); }
 
-/* Halka: kapaliyken ust bardaki diger yuvarlak butonlarla ayni siluet ama
-   gradyan kenarli; acilinca gradyan DOLGUYA doner ve ikon beyaz olur. */
+/* Halka INCE ve KESKIN: maskeli gradyan yerine `inset box-shadow` (bkz.
+   `.hs-open .hs-form` notu). Kalin/kaba gorunmesin diye 1 px. */
 .hs-btn-ring {
   position: absolute; inset: 0; border-radius: 50%;
-  background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
-  padding: 1.5px;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  opacity: .55;
-  transition: opacity .22s ease;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-blue) 42%, transparent);
+  transition: box-shadow .2s ease;
 }
+/* Acilinca gradyan DOLGU (duz bir daire — maske yok, kenar yumusatmasi temiz). */
 .hs-btn::after {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
   background: var(--grad-ai, linear-gradient(90deg, var(--brand-cyan), var(--brand-blue)));
-  transform: scale(.2); opacity: 0;
-  transition: transform .26s cubic-bezier(.22,.61,.36,1), opacity .2s ease;
+  transform: scale(.25); opacity: 0;
+  transition: transform .24s cubic-bezier(.22,.61,.36,1), opacity .18s ease;
 }
-.hs-btn:hover .hs-btn-ring { opacity: 1; }
+.hs-btn:hover .hs-btn-ring { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-cyan) 80%, transparent); }
 .hs-open .hs-btn { color: #fff; }
 .hs-open .hs-btn::after { transform: scale(1); opacity: 1; }
-.hs-open .hs-btn-ring { opacity: 0; }
+.hs-open .hs-btn-ring { box-shadow: none; }
 .hs-btn:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 2px; }
 
 /* Genisleme flex-basis ile yapilir; sirf `width` vermek flex kabinde ISE
@@ -76,7 +71,10 @@
 .hs-input {
   flex: 0 0 0px; width: 0; min-width: 0; padding: 0; border: 0; outline: none;
   background: transparent; color: var(--text);
-  font-size: 14.5px; font-weight: 650; font-family: inherit;
+  /* 650 -> 560: koyu temada agir yazi tipi "kaba" gorunuyordu (beyaz metin
+     koyu zeminde optik olarak zaten kalinlasir). */
+  font-size: 14.5px; font-weight: 560; font-family: inherit;
+  -webkit-font-smoothing: antialiased;
   opacity: 0; pointer-events: none;
   transition: flex-basis .3s cubic-bezier(.22,.61,.36,1), opacity .2s ease .06s, padding .3s ease;
 }
@@ -84,7 +82,7 @@
   flex: 0 0 260px; width: auto; padding: 10px 2px 10px 2px;
   opacity: 1; pointer-events: auto;
 }
-.hs-input::placeholder { color: var(--text-3); font-weight: 600; }
+.hs-input::placeholder { color: var(--text-3); font-weight: 520; }
 /* Tarayicinin kendi "x" dugmesi bizimkiyle ust uste biniyordu. */
 .hs-input::-webkit-search-cancel-button, .hs-input::-webkit-search-decoration { display: none; }
 /* global.css'teki genel `:focus-visible` halkasi burada IKINCI bir cerceve
@@ -94,15 +92,14 @@
 .hs-form :where(input):focus-visible { outline: none; }
 .hs-form:focus-within { box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-cyan) 22%, transparent); }
 
-.hs-clear, .hs-close {
+.hs-clear {
   flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; padding: 0; border-radius: 50%;
   border: 0; background: transparent; color: var(--text-3); cursor: pointer;
   transition: background .14s ease, color .14s ease;
 }
-.hs-clear svg, .hs-close svg { width: 14px; height: 14px; display: block; }
-.hs-clear:hover, .hs-close:hover { background: var(--surface-2); color: var(--text); }
-.hs-close { display: none; }
+.hs-clear svg { width: 14px; height: 14px; display: block; }
+.hs-clear:hover { background: var(--surface-2); color: var(--text); }
 
 /* ── Oneri paneli ───────────────────────────────────────────────────────── */
 .hs-panel {
@@ -224,13 +221,11 @@
     max-height: min(62vh, 460px); overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
-  /* Katman gezinmeyi ortuyor: geri donmenin GORUNUR bir yolu olmali. */
-  .hs-open .hs-close { display: inline-flex; }
 }
 @media (max-width: 860px) {
   /* Dokunma hedefi mobilde 30 px'ten buyuk olmali. */
   .hs-row-cmp { width: 34px; height: 34px; }
-  .hs-clear, .hs-close { width: 30px; height: 30px; }
+  .hs-clear { width: 30px; height: 30px; }
 }
 /* 400 px alti: ust bardaki yuvarlak butonlar 36 px'e dusuyor (global.css),
    arama ikonu da onlarla ayni capta kalmali. */
@@ -245,6 +240,6 @@
 
 /* Hareketi azalt tercihi: genisleme aninda olur, kayma/parlama yok. */
 @media (prefers-reduced-motion: reduce) {
-  .hs-form, .hs-form::before, .hs-input, .hs-btn, .hs-btn::after, .hs-btn-ring, .hs-row-cmp { transition: none; }
+  .hs-form, .hs-input, .hs-btn, .hs-btn::after, .hs-btn-ring, .hs-row-cmp { transition: none; }
   .hs-panel, .hs-open .hs-form { animation: none; }
 }
