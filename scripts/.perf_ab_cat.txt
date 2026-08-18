@@ -1,0 +1,12 @@
+tur 1/5tur 2/5tur 3/5tur 4/5tur 5/5
+MOBIL (390x844 · 4x CPU · Yavas 4G) · /category/smartphones · 5 tur MEDYAN
+metrik      ONCE      SONRA     fark
+FCP           1572     1652   +5%
+LCP           1572     1652   +5%
+TBT           1134      945   -17%
+ilkKart       3259     3553   +9%
+uzunGorev       10        9   -10%
+CLS              0        0   —
+
+ham TBT · ONCE : 1958, 1734, 988, 908, 1134
+ham TBT · SONRA: 768, 1937, 957, 945, 768

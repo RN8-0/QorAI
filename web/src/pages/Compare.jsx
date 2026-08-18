@@ -108,12 +108,22 @@ function flatSpecs(p, lang, dict) {
     const sig = key.toLowerCase();
     if (seen.has(sig)) return; // same raw label seen already (e.g. a Highlights echo)
     seen.add(sig);
-    // Canonical anahtar SATIRLARI HIZALAR (diller arasi ortak, winner yonunu
-    // de o besler); ekranda gorulen metin ise ortak modulun urettigi
-    // YERELLESTIRILMIS etikettir — bu yuzden ikisini birlikte tasiyoruz.
-    // First writer wins, in priority order keySpecs → sections → flat.
-    const ck = canonicalSpecKey(key, val);
-    if (!(ck in out)) out[ck] = { label: key, value: val };
+    // ── SATIR KIMLIGI = YERELLESTIRILMIS ETIKET (2026-08-18) ──────────────
+    // ONCE `canonicalSpecKey(key, val)` satir kimligiydi. O anahtar FARKLI
+    // etiketleri AYNI kovaya katliyor ("Yenileme Hizi (Gercek)" +
+    // "Yenileme Hizi (Yazilim)" -> "Refresh rate") ve `if (!(ck in out))`
+    // ilk yazani tutup GERISINI ATIYORDU. Sonuc: karsilastirma tablosu urun
+    // sayfasindan AZ satir gosteriyordu — OLCULDU (scripts/_cmp_eksik.mjs):
+    //   akilli telefon admin 125 satir -> tabloda 93  (33 satir kayip)
+    //   dizustu        admin  54 satir -> tabloda 44  (11 satir kayip)
+    //
+    // Kanonik anahtar HIZALAMA icin gerekliydi: iki urunun ayni spec'i farkli
+    // etiketle gelebiliyordu. Artik gelmiyor — iki urun de AYNI sozlukten
+    // (admin/js/spec_i18n.js) geciyor, dolayisiyla ayni spec ayni etiketi
+    // aliyor. Hizalama etikete gore yapilabilir ve HICBIR SATIR KAYBOLMAZ.
+    // Kanonik anahtar hala tasiniyor: KAZANAN YONU (rowWinners) dile bagli
+    // olmayan o anahtardan okunuyor.
+    if (!(sig in out)) out[sig] = { label: key, value: val, ck: canonicalSpecKey(key, val) };
   };
   Object.entries(keySpecs).forEach(([k, v]) => put(k, v));
   Object.values(sections).forEach((body) => {
@@ -617,9 +627,9 @@ export default function Compare() {
       for (const [section, specs] of Object.entries(sections)) {
         if (!specs || typeof specs !== 'object' || Array.isArray(specs)) continue;
         if (!sectionOrder.includes(section)) sectionOrder.push(section);
-        for (const [k, v] of Object.entries(specs)) {
-          const ck = canonicalSpecKey(k, String(v == null ? '' : v));
-          if (ck && !sectionByKey.has(ck)) sectionByKey.set(ck, section);
+        for (const k of Object.keys(specs)) {
+          const sig = String(k || '').trim().toLowerCase();
+          if (sig && !sectionByKey.has(sig)) sectionByKey.set(sig, section);
         }
       }
     }
@@ -634,8 +644,12 @@ export default function Compare() {
     const buckets = new Map();
     for (const k of keys) {
       const values = flats.map((f) => f[k]?.value || '—');
-      const label = (flats.find((f) => f[k]?.label) || {})[k]?.label || k;
-      const row = { key: k, label, values, win: rowWinners(k, values) };
+      const ilk = flats.find((f) => f[k]) || {};
+      const label = ilk[k]?.label || k;
+      // Kazanan yonu (buyuk mu iyi, kucuk mu) DILE BAGLI OLMAYAN kanonik
+      // anahtardan okunur; satir kimligi ise yerellestirilmis etiket.
+      const ck = ilk[k]?.ck || k;
+      const row = { key: k, label, values, win: rowWinners(ck, values) };
       const sec = sectionByKey.get(k) || OTHER;
       if (!buckets.has(sec)) buckets.set(sec, []);
       buckets.get(sec).push(row);

@@ -1,0 +1,32 @@
+
+══════ SPEC PARITESI · ADMIN vs SITE ══════
+urun: 20 · dil: en+tr · acilamayan sayfa: 0
+  bolum basligi UYUSMAYAN : 205/390 (%52.56)
+  etiket        UYUSMAYAN : 1364/2858 (%47.73)
+  deger         UYUSMAYAN : 60/2858 (%2.10)
+  urun adi      UYUSMAYAN : 14/40 (%35.00)
+  hero gorsel   UYUSMAYAN : 0/40 (%0.00)
+
+ORNEKLER:
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "Öne Çıkan Özellikler"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "AB ÜRÜN KAYIT ve ENERJİ ETİKETİ"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "AĞ BAĞLANTILARI"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "BATARYA"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "DİĞER BAĞLANTILAR"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "EKRAN"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "KABLOSUZ BAĞLANTILAR"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "KAMERA"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "TASARIM"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "TEMEL BİLGİLER"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "TEMEL DONANIM"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "ÇOKLU ORTAM"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "ÖZELLİKLER"
+  [en] b7m2e585wz5x4dq · bolum sitede var, adminde yok: "İŞLETİM SİSTEMİ"
+  [en] b7m2e585wz5x4dq · etiket sitede var, adminde yok: "4.5G Desteği"
+  [en] b7m2e585wz5x4dq · 5G
+      site : "Var"
+      admin: "Yes"
+  [en] b7m2e585wz5x4dq · etiket sitede var, adminde yok: "Batarya Kapasitesi (Tipik)"
+  [en] b7m2e585wz5x4dq · etiket sitede var, adminde yok: "Bellek (RAM)"
+  [en] b7m2e585wz5x4dq · etiket sitede var, adminde yok: "CPU Frekansı"
+  [en] b7m2e585wz5x4dq · etiket sitede var, adminde yok: "CPU Çekirdeği"

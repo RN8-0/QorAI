@@ -1,0 +1,64 @@
+
+══════ SPEC PARITESI · ADMIN vs SITE ══════
+urun: 50 · dil: en+tr · acilamayan sayfa: 0
+  bolum basligi UYUSMAYAN : 0/924 (%0.00)
+  etiket        UYUSMAYAN : 0/7434 (%0.00)
+  deger         UYUSMAYAN : 0/7434 (%0.00)
+  urun adi      UYUSMAYAN : 18/100 (%18.00)
+  hero gorsel   UYUSMAYAN : 0/100 (%0.00)
+
+ORNEKLER:
+  [en] um8wu2b66z22hsh · ad
+      site : Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop (MGE64TU/A)
+  [en] rbja4p9stnmweyq · ad
+      site : Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop (MGDU4TU/A)
+  [en] sta4mzyv529810e · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop (MGE74TU/A)
+  [en] 55p8y01e6ibe7o4 · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop (MGE94TU/A)
+  [en] 0kimw20qp442771 · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop (MGED4TU/A)
+  [en] rimunaohs9hic9u · ad
+      site : Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop (MGDQ4TU/A)
+  [en] x6oqfvm9ljf6xdv · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop (MGEE4TU/A)
+  [en] v4iq1vp9uopr6fb · ad
+      site : Apple MacBook Pro 14.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Pro (18CPU/20GPU) Laptop (MGDT4TU/A)
+  [en] l26f68b2kgtjv9c · ad
+      site : Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop (MGEC4TU/A)
+  [tr] um8wu2b66z22hsh · ad
+      site : Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop (MGE64TU/A)
+  [tr] rbja4p9stnmweyq · ad
+      site : Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop (MGDU4TU/A)
+  [tr] sta4mzyv529810e · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop (MGE74TU/A)
+  [tr] 55p8y01e6ibe7o4 · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop (MGE94TU/A)
+  [tr] 0kimw20qp442771 · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/32GPU) Laptop (MGED4TU/A)
+  [tr] rimunaohs9hic9u · ad
+      site : Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Max (18CPU/32GPU) Laptop (MGDQ4TU/A)
+  [tr] x6oqfvm9ljf6xdv · ad
+      site : Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Max (18CPU/40GPU) Laptop (MGEE4TU/A)
+  [tr] v4iq1vp9uopr6fb · ad
+      site : Apple MacBook Pro 14.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 14.2" M5 Pro (18CPU/20GPU) Laptop (MGDT4TU/A)
+  [tr] l26f68b2kgtjv9c · ad
+      site : Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop
+      admin: Apple MacBook Pro 16.2" M5 Pro (18CPU/20GPU) Laptop (MGEC4TU/A)

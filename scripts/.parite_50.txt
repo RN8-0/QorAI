@@ -1,0 +1,6 @@
+
+══════ SPEC PARITESI · ADMIN vs SITE ══════
+urun: 42 · dil: en+tr · acilamayan sayfa: 0
+  bolum basligi UYUSMAYAN : 0/724 (%0.00)
+  etiket        UYUSMAYAN : 0/5698 (%0.00)
+  deger         UYUSMAYAN : 0/5698 (%0.00)

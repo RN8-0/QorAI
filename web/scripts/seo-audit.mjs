@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -168,7 +168,46 @@ function main() {
     console.log(`[seo-audit] not: SEO_CONTENT_VERSION=${contentVersion} bugüne eşit — toplu lastmod bilinçli (churn değil)`);
   }
 
-  console.log(`[seo-audit] ok: ${files.length} sitemap file(s), ${total} urls, ${product} products, ${category} categories, ${checked} unique-body samples`);
+  // ── KIRIK PAKET REFERANSI DENETIMI (2026-08-18) ─────────────────────────
+  // CANLI OLAY: /tr/compare ve /de/compare BEYAZ EKRAN veriyordu. O kabuklar
+  // aylar once elle eklenip bir daha uretilmemisti; icindeki
+  // `spa/index-TkhoIV_k.js` silinmisti -> 404 -> SPA hic boot etmiyor.
+  // Boyle bir kabugun canliya bir daha CIKMAMASI icin derleme burada durur.
+  // (postbuild.mjs artik dil onekli kabuklari her derlemede yeniden yaziyor;
+  // bu denetim o guvencenin BOZULMADIGINI dogrular.)
+  const kirikKabuklar = [];
+  const paketVar = new Map();
+  const paketiKontrolEt = (rel) => {
+    if (!paketVar.has(rel)) paketVar.set(rel, existsSync(join(site, rel)));
+    return paketVar.get(rel);
+  };
+  const kabukGez = (dir, derinlik = 0) => {
+    if (derinlik > 3) return;
+    let girisler = [];
+    try { girisler = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of girisler) {
+      if (e.isDirectory()) {
+        // urun/karsilastirma agaci on yuzlerce dizin — orada da ayni kabuk
+        // kullanildigi icin ilk seviyeler yeterli kanit.
+        if (['spa', 'assets', '.vite', 'guides', 'blog'].includes(e.name)) continue;
+        kabukGez(join(dir, e.name), derinlik + 1);
+      } else if (e.name === 'index.html') {
+        let html = '';
+        try { html = readFileSync(join(dir, e.name), 'utf8'); } catch { continue; }
+        for (const ref of new Set(html.match(/spa\/[A-Za-z0-9_-]+\.js/g) || [])) {
+          if (!paketiKontrolEt(ref)) kirikKabuklar.push(`${relative(site, join(dir, e.name))} -> ${ref}`);
+        }
+      }
+    }
+  };
+  kabukGez(site);
+  assert(
+    kirikKabuklar.length === 0,
+    `${kirikKabuklar.length} kabuk ARTIK VAR OLMAYAN bir pakete isaret ediyor `
+    + `(canlida BEYAZ EKRAN): ${kirikKabuklar.slice(0, 10).join(' | ')}`,
+  );
+
+  console.log(`[seo-audit] ok: ${files.length} sitemap file(s), ${total} urls, ${product} products, ${category} categories, ${checked} unique-body samples, kirik kabuk 0`);
 }
 
 try {
