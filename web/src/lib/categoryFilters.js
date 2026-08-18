@@ -266,11 +266,17 @@ export function prettyTokenValue(value, lang) {
 // Concept for a (canonical, English) rich-spec key so we can align it with the
 // token concepts above. Keeps the fallback from re-adding a spec a token chip
 // already covered.
+// KANONIK havuz — pahali (urunun 130+ spec etiketini kanonik adlara cevirir).
 function richSpecPool(product) {
   const { keySpecs, specs } = canonicalizeSpecMaps(product);
+  return buildPool([keySpecs, specs]);
+}
+
+
+function buildPool(maps) {
   const pool = [];
   const seen = new Set();
-  const take = (map) => {
+  for (const map of maps) {
     for (const [k, v] of Object.entries(map || {})) {
       const key = String(k || '').trim();
       if (!key || seen.has(key.toLowerCase())) continue;
@@ -278,9 +284,7 @@ function richSpecPool(product) {
       seen.add(key.toLowerCase());
       pool.push([key, v]);
     }
-  };
-  take(keySpecs);
-  take(specs);
+  }
   return pool;
 }
 
@@ -476,12 +480,29 @@ function computeCardKeySpecs(product, lang = 'en', max = 4) {
   // 2) Zengin spec (yalnız `_raw` taşıyan yüzeylerde). Artık "boşluğu ne
   //    bulursam onunla doldur" DEĞİL: her slot yalnız KENDİ takma adlarıyla
   //    eşleşen spec'ten dolar, yoksa boş kalır.
-  const pool = (product?.keySpecs || product?.specs || product?.specSections)
-    ? richSpecPool(product) : [];
+  // TEMBEL HAVUZ (2026-08-18). Eskiden `richSpecPool(product)` KOŞULSUZ
+  // çağrılıyordu; o da `canonicalizeSpecMaps` ile ürünün 130+ spec etiketini
+  // kanonik adlara çeviriyordu — sadece 4 çip için. Oysa kartların çoğunda
+  // dört slotun HEPSİ yalın veriden (filterTokens + indekslenmiş alanlar)
+  // doluyor ve havuza HİÇ bakılmıyor. Artık havuz yalnız gerçekten gerekince
+  // kuruluyor (CPU profilinde en pahalı kalem: containsWord 450 ms).
+  //
+  // ÖLÇÜLDÜ (kategori sayfası · 390x844 · 4x CPU · Yavaş 4G · eşleştirilmiş A/B):
+  //   TBT medyan 1134 → 945 ms
+  //
+  // HAM etiketlerde ÖNCE arama da denendi (çok daha ucuz) ama GERİ ALINDI:
+  // ham "Bağlantı Şekli" slot takma adına çarpıp kulaklıklarda "Connection"
+  // çipini "—" yerine "Kablolu" yapıyordu. Performans çalışması ekranda
+  // görünen metni DEĞİŞTİRMEMELİ (kanıt: scripts/_cip_denklik.mjs).
+  const zengin = !!(product?.keySpecs || product?.specs || product?.specSections);
+  let _pool = null;
+  const getPool = () => (_pool || (_pool = zengin ? richSpecPool(product) : []));
   const richValue = (slot) => {
-    if (!pool.length) return '';
+    if (!zengin) return '';
     const aliases = SLOT_RICH_ONLY[slot] || SLOT_TOKEN_RICH_ALIASES[slot] || [];
     if (!aliases.length) return '';
+    const pool = getPool();
+    if (!pool.length) return '';
     for (const alias of aliases) {
       const a = alias.toLowerCase();
       const hit = pool.find(([k]) => k.toLowerCase().includes(a));

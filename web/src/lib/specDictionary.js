@@ -105,6 +105,22 @@ export async function ensureSpecDictionary() {
   return loading;
 }
 
+// Ortak spec i18n modulu (admin/js/spec_i18n.js) sozlugu DUZ NESNE olarak
+// bekliyor — admin panelindeki window.QorAiDict.cache() ile ayni sekil.
+// Map'ten her cagrida nesne uretmek 40k+ terimde pahali, bu yuzden boyut
+// degismedikce ezberlenir.
+let _cacheObj = null;
+let _cacheSize = -1;
+export function specDictCache() {
+  if (!dict.size) return null;
+  if (_cacheSize === dict.size && _cacheObj) return _cacheObj;
+  const out = {};
+  for (const [k, v] of dict) out[k] = v;
+  _cacheObj = out;
+  _cacheSize = dict.size;
+  return out;
+}
+
 function boolLabel(text, lang) {
   const key = norm(text).toLowerCase();
   const yes = ['var', 'evet', 'yes', 'true'].includes(key);

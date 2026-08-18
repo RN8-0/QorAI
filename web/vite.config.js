@@ -23,6 +23,14 @@ import react from '@vitejs/plugin-react';
 // ele alinmali; yoksa paket kazanci TBT'de geri veriliyor.
 export default defineConfig({
   plugins: [react()],
+  server: {
+    fs: {
+      // src/lib/specI18n.js, admin/js/spec_i18n.js'i (spec ceviri TEK KAYNAGI)
+      // web/ kokunun DISINDAN ice aktarir. Derlemede rollup zaten cozuyor;
+      // dev sunucusunun da o dosyayi servis etmesi icin izin gerekiyor.
+      allow: ['..'],
+    },
+  },
   build: {
     // Manifest, seo.mjs'in her rota icin DOGRU chunk dosya adini bulmasi icin
     // gerekli (adlar hash'li). Ontanimli konum ../website/.vite/manifest.json.

@@ -57,22 +57,8 @@ export default function AnalyzeButton({ onClick, busy = false, disabled = false,
       title={title || etiket}
       aria-label={etiket}
     >
-      {/* Parlama seridi: butonun uzerinden gecen isik. `::after` yerine ayri
-          bir katman, cunku `overflow:hidden` + gradyan zeminle birlikte
-          `::before`i cerceve icin kullaniyoruz. */}
-      <span className="qai-btn-shine" aria-hidden="true" />
-      <span className="qai-btn-ic" aria-hidden="true">
-        {busy ? (
-          <i className="qai-btn-spin" />
-        ) : (
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            {/* kivilcim: buyuk + iki kucuk */}
-            <path d="M12 2.6l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1L5 9.6l5.1-1.9z" />
-            <path d="M18.4 14.6l.85 2.25 2.25.85-2.25.85-.85 2.25-.85-2.25-2.25-.85 2.25-.85z" opacity=".85" />
-            <path d="M5.4 15.2l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" opacity=".7" />
-          </svg>
-        )}
-      </span>
+      {/* IKON YOK (kullanici karari 2026-08-18). Kutu "Karsilastir" ile ayni;
+          ayirt edici olan tek sey yazinin ust bardaki "Premium" animasyonu. */}
       <span className="qai-btn-txt">{etiket}</span>
     </button>
   );

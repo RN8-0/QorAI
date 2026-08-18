@@ -151,19 +151,54 @@ function mergeValue(a, b) {
   return lines.join('\n');
 }
 
+// ── ONBELLEK ANAHTARI: DEGER DEGIL, ETIKET ────────────────────────────────
+// ONCEKI HALI onbellegi "<key>NUL<value>" ile anahtarliyordu. Etiket
+// ("Ekran Boyutu") katalogda YUZLERCE urunde AYNI, ama DEGER ("6.7 inc",
+// "6.8 inc"...) her uruende farkli — yani anahtar her seferinde YENI oluyor
+// ve onbellek PRATIKTE HIC TUTMUYORDU. Sonuc: her kart, her spec etiketi icin
+// keyRulesNorm listesini bastan tarayip onlarca regex kosturuyordu.
+//
+// OLCULDU (2026-08-18 · ana sayfa · 390x844 · 4x CPU · Yavas 4G · CPU profili)
+//   containsWord 450 ms · cleanValue 154 ms · wordRe 102 ms · add 68 ms
+//   canonicalSpecKey(Uncached) 117 ms · canonicalSpecSection 48 ms
+//   => specCanonical ~1,13 sn ile ana thread'in EN BUYUK uygulama kalemiydi.
+//
+// Cikti YALNIZCA iki durumda degere bagli (bkz. _valueSensitive):
+//   · "usb type c charging port" + evet/hayir degeri
+//   · etiketin tam olarak "charging" / "charge" olmasi
+// Digerlerinde sonuc SADECE etikete baglidir; normalize edilmis ETIKETLE
+// ezberlenir. Degere duyarli iki durum eski (etiket+deger) anahtarini korur.
+const _keyOnlyCache = new Map();
+function _valueSensitive(k) {
+  return k === 'charging' || k === 'charge' || k.includes('usb type c charging port');
+}
+
 export function canonicalSpecKey(key, value = '') {
-  const ck = typeof key === 'string' && key.length <= 200 && typeof value === 'string' && value.length <= 200
-    ? `${key} ${value}`
-    : null;
-  if (ck !== null) {
-    const hit = _keyCache.get(ck);
-    if (hit !== undefined) return hit;
-    const out = canonicalSpecKeyUncached(key, value);
-    if (_keyCache.size >= _CACHE_MAX) _keyCache.clear();
-    _keyCache.set(ck, out);
-    return out;
+  if (typeof key !== 'string' || key.length > 200) {
+    return canonicalSpecKeyUncached(key, value) ?? _fallbackKey(key);
   }
-  return canonicalSpecKeyUncached(key, value);
+  const k = normSpec(key);
+  if (!_valueSensitive(k)) {
+    let hit = _keyOnlyCache.get(k);
+    if (hit === undefined) {
+      hit = canonicalSpecKeyUncached(key, value);
+      if (_keyOnlyCache.size >= _CACHE_MAX) _keyOnlyCache.clear();
+      _keyOnlyCache.set(k, hit);
+    }
+    // null = kanonik eslesme yok -> yedek HER ZAMAN kendi anahtarindan.
+    return hit ?? _fallbackKey(key);
+  }
+  const ck = typeof value === 'string' && value.length <= 200 ? `${key} ${value}` : null;
+  if (ck !== null) {
+    let hit = _keyCache.get(ck);
+    if (hit === undefined) {
+      hit = canonicalSpecKeyUncached(key, value);
+      if (_keyCache.size >= _CACHE_MAX) _keyCache.clear();
+      _keyCache.set(ck, hit);
+    }
+    return hit ?? _fallbackKey(key);
+  }
+  return canonicalSpecKeyUncached(key, value) ?? _fallbackKey(key);
 }
 
 function canonicalSpecKeyUncached(key, value = '') {
@@ -187,15 +222,41 @@ function canonicalSpecKeyUncached(key, value = '') {
       return canonical;
     }
   }
+  // Kanonik eslesme YOK. Burada ham etiketi DONDURMEK yerine null donuyoruz:
+  // etiket-bazli onbellek bu degeri saklarsa, ayni normalize sonucu veren
+  // FARKLI yazimlar ("Yenileme Hizi" / "Ekran Yenileme Hizi:") birbirinin
+  // metnini gorurdu. Yedek metin cagiranda, HER ZAMAN kendi anahtarindan
+  // uretilir (ucuz string islemi).
+  return null;
+}
+
+function _fallbackKey(key) {
   return String(key || '').replace(/:$/, '').replace(/\s+/g, ' ').trim();
 }
 
+// Bolum adi da saf ve her urunun HER spec'i icin ayni ciftle cagriliyor
+// (profilde 48 ms self-time). Bolum+etiket ciftiyle ezberlenir.
+const _sectionCache = new Map();
 export function canonicalSpecSection(section, key = '') {
-  const hay = `${normSpec(section)} ${normSpec(key)}`;
+  const _ns = normSpec(section);
+  const _nk = normSpec(key);
+  const _ck = _ns + ` ` + _nk;
+
+  let _out = _sectionCache.get(_ck);
+  if (_out === undefined) {
+    _out = _canonicalSpecSectionUncached(_ns, _nk);
+    if (_sectionCache.size >= _CACHE_MAX) _sectionCache.clear();
+    _sectionCache.set(_ck, _out);
+  }
+  return _out ?? (String(section || 'General').replace(/:$/, '').replace(/\s+/g, ' ').trim() || 'General');
+}
+
+function _canonicalSpecSectionUncached(_ns, _nk) {
+  const hay = _ns + ` ` + _nk;
   for (const [canonical, needles] of sectionRules) {
     if (needles.some((needle) => hay.includes(needle))) return canonical;
   }
-  return String(section || 'General').replace(/:$/, '').replace(/\s+/g, ' ').trim() || 'General';
+  return null; // kanonik bolum yok -> yedek cagiranda
 }
 
 // Per-product memo: canonicalising a full spec map is the single most expensive
@@ -212,15 +273,16 @@ export function canonicalizeSpecMaps(product = {}) {
     if (hit) return hit;
   }
   const specs = {};
-  const specSections = {};
+  // `specSections` URETILMIYOR (2026-08-18). Bu fonksiyonun TEK cagirani
+  // categoryFilters.richSpecPool ve o yalnizca { keySpecs, specs } aliyor —
+  // bolum agaci hesaplanip atiliyor, yani her spec icin bir
+  // canonicalSpecSection + bir fazladan mergeValue BEDAVAYA kosuyordu.
+  // `specs` ciktisi bundan ETKILENMEZ (add() ikisine ayni degeri yaziyordu).
   const add = (section, key, value) => {
     const v = cleanValue(value);
     if (!v || v === '?' || v.toLowerCase() === 'null') return;
     const k = canonicalSpecKey(key, v);
-    const s = canonicalSpecSection(section, k);
     specs[k] = mergeValue(specs[k], v);
-    specSections[s] = specSections[s] || {};
-    specSections[s][k] = mergeValue(specSections[s][k], v);
   };
   Object.entries(product.specSections || {}).forEach(([section, body]) => {
     if (body && typeof body === 'object' && !Array.isArray(body)) {
@@ -250,7 +312,7 @@ export function canonicalizeSpecMaps(product = {}) {
     const k = canonicalSpecKey(key, v);
     keySpecs[k] = mergeValue(keySpecs[k], v);
   });
-  const result = { specs, specSections, keySpecs };
+  const result = { specs, keySpecs };
   if (cacheable) canonCache.set(product, result);
   return result;
 }

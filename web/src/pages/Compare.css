@@ -104,10 +104,12 @@
   .cmp-picks-head span { font-size: 12.5px; }
 }
 
-/* MASAUSTUNDE HIZA: satir `align-items: stretch` ve arama kutusu ~44 px
-   yuksek; butonun SABIT `height: 38px`i onu kisa ve hizasiz birakiyordu
-   (kullanicinin masaustu ekran goruntusu). Kutuyla ayni yuksekligi alsin. */
-.cmp-addbar-row .qai-btn { height: auto; align-self: stretch; padding: 0 22px 0 18px; }
+/* SEKIL HER YERDE AYNI (2026-08-18): buton artik urun sayfasindaki
+   "Karsilastir" ile BIREBIR ayni kutuya sahip (40px / radius 12 / padding 16).
+   Eskiden burada `height:auto; align-self:stretch` ile arama kutusuna
+   esitleniyordu; o override kutuyu 49 px'e cikariyor ve iki sayfada FARKLI
+   bir buton uretiyordu. Bunun yerine satirin kendisi dikeyde ortaliyor. */
+.cmp-addbar-row { align-items: center; }
 
 /* TELEFONDA UST EYLEM SATIRI: arama kutusu + "Analiz Et" + YouTube yan yana
    sigmiyor — kutu 390 px'te "Ka…" kadar kaliyor ve icindeki "Tumunu temizle"
@@ -115,7 +117,7 @@
 @media (max-width: 560px) {
   .cmp-addbar-row { flex-wrap: wrap; }
   .cmp-addbar-row .cmp-add-input { flex: 1 1 100%; }
-  .cmp-addbar-row .qai-btn { flex: 1 1 auto; justify-content: center; height: 44px; align-self: auto; }
+  .cmp-addbar-row .qai-btn { flex: 1 1 auto; justify-content: center; }
   .cmp-yt-icon { flex: 0 0 50px; }
 }
 .cmp-picks .card-grid {

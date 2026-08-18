@@ -14,6 +14,9 @@ import AnalyzeButton, { analizeKaydir } from '../components/AnalyzeButton.jsx';
 import Gauge, { techColor } from '../components/Gauge.jsx';
 import { useSeo, hreflangAlternates } from '../lib/seo';
 import { canonicalSpecKey } from '../lib/specCanonical';
+// SPEC CEVIRISININ TEK KAYNAGI (admin paneliyle AYNI dosya) — bkz. lib/specI18n.js
+import { localizeProduct } from '../lib/specI18n';
+import { ensureSpecDictionary, specDictCache } from '../lib/specDictionary';
 import { rowWinners } from '../lib/specDirection';
 import { productPath, parseComparePair } from '../lib/routes';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
@@ -63,31 +66,26 @@ import './LinkAnalysis.css';
 //     lighter localizedSpecLabel would otherwise leak folded Turkish like
 //     "Islemci Modeli", so read the ready-made English directly).
 // Either way a single language source removes the leaked words AND the duplication.
-function pickSpecMaps(p, lang) {
+function pickSpecMaps(p, lang, dict) {
+  // ── TEK KAYNAK ──────────────────────────────────────────────────────────
+  // Eskiden EN gorunumu `specsEn` okuyordu; o alan kayitlarin yalnizca
+  // %19'unda dolu (olculdu: scripts/_spec_alan_kapsam.mjs). Kalan %81 ham
+  // haritaya dusuyor ve localizedSpecLabel Turkce etiketi ASCII'ye katlayip
+  // "Agir Cekim Kayit Secenekleri" basiyordu. Artik admin paneliyle AYNI
+  // fonksiyon (localizeProduct) kullaniliyor: etiket + deger + bolum basligi
+  // panelde ne ise sitede de o.
   const specLang = String(lang || 'en').toLowerCase().startsWith('de')
     ? 'en'
     : String(lang || 'en').slice(0, 2).toLowerCase();
-  const has = (o) => o && typeof o === 'object' && Object.keys(o).length > 0;
-  const empty = {};
-  if (specLang === 'tr') {
-    // 2026-08-08: burada da kapı `p.sourceLang === 'tr'` idi ve Typesense
-    // dokümanında o alan HİÇ olmadığı için hiç açılmıyordu → Türkçe görünüm
-    // yarım çevrilmiş `specSections`'ı basıyordu ("Ekran Resolution").
-    // Kaynak dili çıkarımı + bozulmamış harita seçimi artık ortak yerde.
-    const src = sourceSpecMaps(p, specLang);
-    return {
-      keySpecs: src?.keySpecs || p.keySpecs || empty,
-      sections: src?.sections || p.specSections || empty,
-      flat: src?.flat || p.specs || empty,
-    };
-  }
-  // English (and German, which reads specs in English): iterate the ready-made
-  // English map alone. Fall back to the raw maps (translated per-row) only when a
-  // product predates the English pre-translation.
-  if (has(p.specsEn)) return { keySpecs: empty, sections: empty, flat: p.specsEn };
-  return { keySpecs: p.keySpecs || empty, sections: p.specSections || empty, flat: p.specs || empty };
+  const code = specLang === 'tr' ? 'tr' : 'en';
+  const pm = localizeProduct(p, code, { dict: dict || null });
+  return {
+    keySpecs: pm.keySpecs || {},
+    sections: pm.sections || {},
+    flat: pm.flat || {},
+    isHighlightsTitle: pm.isHighlightsTitle,
+  };
 }
-
 function cleanMultiline(v) {
   return String(v == null ? '' : v)
     .replace(/\r/g, '\n')
@@ -97,8 +95,8 @@ function cleanMultiline(v) {
     .join('\n');
 }
 
-function flatSpecs(p, lang) {
-  const { keySpecs, sections, flat } = pickSpecMaps(p, lang);
+function flatSpecs(p, lang, dict) {
+  const { keySpecs, sections, flat } = pickSpecMaps(p, lang, dict);
   const out = {};
   const seen = new Set();
   const put = (k, v) => {
@@ -110,12 +108,12 @@ function flatSpecs(p, lang) {
     const sig = key.toLowerCase();
     if (seen.has(sig)) return; // same raw label seen already (e.g. a Highlights echo)
     seen.add(sig);
-    // Canonical key aligns the SAME spec across products (and drives the
-    // winner-direction lookup, which is language-agnostic via normKey);
-    // localizedSpecLabel renders it back to the UI language at display time.
+    // Canonical anahtar SATIRLARI HIZALAR (diller arasi ortak, winner yonunu
+    // de o besler); ekranda gorulen metin ise ortak modulun urettigi
+    // YERELLESTIRILMIS etikettir — bu yuzden ikisini birlikte tasiyoruz.
     // First writer wins, in priority order keySpecs → sections → flat.
     const ck = canonicalSpecKey(key, val);
-    if (!(ck in out)) out[ck] = val;
+    if (!(ck in out)) out[ck] = { label: key, value: val };
   };
   Object.entries(keySpecs).forEach(([k, v]) => put(k, v));
   Object.values(sections).forEach((body) => {
@@ -159,7 +157,8 @@ function splitSpecValue(value) {
 }
 
 function SpecValue({ value, lang }) {
-  const lines = splitSpecValue(localizedSpecValue(value, lang));
+  // Deger ortak modulden yerellestirilmis geliyor; ikinci ceviri katmani yok.
+  const lines = splitSpecValue(value);
   if (!lines.length) return <span>—</span>;
   if (lines.length === 1) return <span>{lines[0]}</span>;
   return (
@@ -593,9 +592,19 @@ export default function Compare() {
   // ürün sayfası onu kullanıyordu, karşılaştırma kullanmıyordu. Artık aynı
   // yapıyı burada da kuruyoruz. Aynı kategorideki ürünlerin bölüm başlıkları
   // zaten aynıdır, bu yüzden ilk eşleşen ürünün bölümü satırı sahiplenir.
+  // Ortak spec sozlugu (PocketBase) yalnizca TR DISI gorunumde gerekiyor;
+  // dolunca specGroups yeniden hesaplanir.
+  const [dict, setDict] = useState(null);
+  useEffect(() => {
+    let live = true;
+    if (String(lang || '').slice(0, 2).toLowerCase() === 'tr') { setDict(null); return () => { live = false; }; }
+    ensureSpecDictionary().then(() => { if (live) setDict(specDictCache()); });
+    return () => { live = false; };
+  }, [lang]);
+
   const specGroups = useMemo(() => {
     if (products.length < 1) return [];
-    const flats = products.map((p) => flatSpecs(p, lang));
+    const flats = products.map((p) => flatSpecs(p, lang, dict));
 
     // canonical key -> bölüm adı (ürünlerin KENDİ specSections yapısından)
     const sectionByKey = new Map();
@@ -603,14 +612,13 @@ export default function Compare() {
     for (const p of products) {
       // Bölüm başlıkları da bozulmamış kaynaktan gelmeli (aynı `sourceLang`
       // kapısı burada da hiç açılmıyordu → "General BİLGİLER" gibi başlıklar).
-      const sections = sourceSpecMaps(p, lang)?.sections
-        || (p?.specSections && typeof p.specSections === 'object' ? p.specSections : null);
+      const sections = pickSpecMaps(p, lang, dict).sections;
       if (!sections) continue;
       for (const [section, specs] of Object.entries(sections)) {
         if (!specs || typeof specs !== 'object' || Array.isArray(specs)) continue;
         if (!sectionOrder.includes(section)) sectionOrder.push(section);
         for (const [k, v] of Object.entries(specs)) {
-          const ck = canonicalSpecKey(k, v);
+          const ck = canonicalSpecKey(k, String(v == null ? '' : v));
           if (ck && !sectionByKey.has(ck)) sectionByKey.set(ck, section);
         }
       }
@@ -625,8 +633,9 @@ export default function Compare() {
     const OTHER = '__other__';
     const buckets = new Map();
     for (const k of keys) {
-      const values = flats.map((f) => f[k] || '—');
-      const row = { key: k, values, win: rowWinners(k, values) };
+      const values = flats.map((f) => f[k]?.value || '—');
+      const label = (flats.find((f) => f[k]?.label) || {})[k]?.label || k;
+      const row = { key: k, label, values, win: rowWinners(k, values) };
       const sec = sectionByKey.get(k) || OTHER;
       if (!buckets.has(sec)) buckets.set(sec, []);
       buckets.get(sec).push(row);
@@ -640,7 +649,7 @@ export default function Compare() {
     const rest = buckets.get(OTHER);
     if (rest && rest.length) ordered.push({ section: OTHER, rows: rest });
     return ordered;
-  }, [products, lang]);
+  }, [products, lang, dict]);
 
   // Boş tablo kontrolü için düz satır sayısı.
   const specRowCount = useMemo(
@@ -978,12 +987,12 @@ export default function Compare() {
                             <th className="cmp-section-head" colSpan={1 + slots.length} scope="colgroup">
                               {group.section === '__other__'
                                 ? L('Other', 'Diğer', 'Sonstiges')
-                                : localizedSpecLabel(group.section, lang)}
+                                : group.section}
                             </th>
                           </tr>
                           {group.rows.map((row) => (
                             <tr key={row.key}>
-                              <td className="cmp-td-spec">{localizedSpecLabel(row.key, lang)}</td>
+                              <td className="cmp-td-spec">{row.label}</td>
                               {row.values.map((v, i) => (
                                 <td key={i}
                                   className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>

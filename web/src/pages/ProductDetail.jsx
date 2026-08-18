@@ -40,9 +40,11 @@ const AiAnalysisView = lazy(() => import('../components/AiAnalysis.jsx'));
 const AiWorkboard = lazy(() => import('../components/AiWorkboard.jsx'));
 const QuizFlow = lazy(() => import('../components/QuizFlow.jsx'));
 import AnalysisExitBar from '../components/AnalysisExitBar.jsx';
-import { ensureSpecDictionary, trSpec } from '../lib/specDictionary';
+import { ensureSpecDictionary, trSpec, specDictCache } from '../lib/specDictionary';
+// SPEC CEVIRISININ TEK KAYNAGI (admin paneliyle AYNI dosya) — bkz. lib/specI18n.js
+import { localizeProduct } from '../lib/specI18n';
 import {
-  isHiddenSpec, isHighlightsTitle, localizedSpecLabel, localizedSpecValue,
+  isDisplayableSpec, isHiddenSpec, isHighlightsTitle, localizedSpecLabel, localizedSpecValue,
   sourceLangOf, sourceSpecMaps,
 } from '../lib/specDisplay';
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
@@ -347,71 +349,27 @@ function localizedProductName(product, lang) {
   return code === 'tr' ? named : cleanProductName(trSpec(named, code));
 }
 
-// Per-product spec translator. The product carries a COMPLETE Turkish→target
-// term map in multiLangSpecs[lang] / multiLangSections[lang] (built offline for
-// exactly this product's terms), so prefer it — that guarantees no untranslated
-// word leaks for de/en. Only fall back to the shared runtime dictionary (trSpec,
-// which has gaps and depends on a PocketBase fetch that can fail on cold start)
-// when a term is missing from the per-product map.
-function buildSpecTranslator(product, lang) {
-  // Specs are never shown in German — a German UI reads specs in English.
-  const rawCode = String(lang || 'en').slice(0, 2).toLowerCase();
-  const code = rawCode === 'de' ? 'en' : rawCode;
-  const norm = (s) => String(s ?? '')
-    .replace(/ /g, ' ').replace(/\s+/g, ' ').trim().toLowerCase().replace(/\s*:\s*$/, '');
-  const lookup = new Map();
-  // The product's SOURCE-language entry in multiLangSpecs is the FULL spec
-  // object ({label: value}) — Epey stores .tr that way — and
-  // multiLangSections.<source> is NESTED. Neither is an atom map: feeding
-  // them into the lookup makes a label resolve to its own VALUE ("Pil
-  // kapasitesi" → "3988 mAh", so the row shows "3988 mAh | 3988 mAh") and
-  // section titles render "[object Object]". A same-language view needs no
-  // per-product lookup at all — the content already is that language.
-  const srcLang = sourceLangOf(product);
-  const skipLookup = code === srcLang;
-  if (!skipLookup) {
-    // Half-translated atoms from old MT runs ("Ekran Boyutu (İnç)" →
-    // "Display Boyutu (İnç)") must not win over the curated fallback chain —
-    // an EN "translation" still carrying Turkish/German letters is junk.
-    const junkForEn = /[çğışıİäßÇĞŞ]|\b(?:diger|ozelligi?|kart\s+okuyucu|okuyucu|klavye|pil|batarya|ekran|depolama|dahili|grafik)\b|\bthe(?:\s+the){2,}\b/i;
-    for (const src of [product?.multiLangSections?.[code], product?.multiLangSpecs?.[code]]) {
-      if (src && typeof src === 'object' && !Array.isArray(src)) {
-        for (const [k, v] of Object.entries(src)) {
-          if (typeof v !== 'string') continue; // nested objects are not atoms
-          if (code === 'en' && junkForEn.test(v)) continue;
-          const nk = norm(k);
-          if (nk && v.trim()) lookup.set(nk, v);
-        }
-      }
-    }
-  }
-  return (term) => {
-    const raw = String(term ?? '');
-    let fallback = code === 'tr' ? raw : trSpec(raw, code);
-    if (!raw.trim()) return fallback;
-    const isSectionOrKeySpec = raw.length < 50 && !raw.includes(':') && !raw.includes('\n');
-    if (isSectionOrKeySpec) {
-      fallback = localizedSpecLabel(raw, code) || fallback;
-    }
-    if (raw.includes('\n')) {
-      return raw.split(/\r?\n/).map((line) => {
-        const t = line.trim();
-        if (!t) return line;
-        const hit = lookup.get(norm(t));
-        return hit != null ? line.replace(t, hit) : (code === 'tr' ? line : trSpec(line, code));
-      }).join('\n');
-    }
-    const hit = lookup.get(norm(raw));
-    return hit != null ? hit : fallback;
-  };
-}
+// buildSpecTranslator KALDIRILDI (2026-08-18). Urun-basi ceviri haritasi,
+// trSpec yedegi ve localizedSpecLabel katlamasi ADMIN PANELINDEN AYRI bir
+// ceviri zinciriydi; ayni kayit icin panelde "Slow-motion recording options",
+// sitede "Agir Cekim Kayit Secenekleri" cikiyordu. Tek kaynak:
+// admin/js/spec_i18n.js -> localizeProduct (bkz. lib/specI18n.js).
 
-function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
-  // Specs are never shown in German: a German UI reads them in English, so the
-  // German-source shortcut below is disabled and the German source gets
-  // translated to English instead.
+function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang, dict) {
+  // ── SPEC METNI: TEK KAYNAK ───────────────────────────────────────────────
+  // Etiket / deger / bolum basligi cevirisi artik admin/js/spec_i18n.js
+  // icinde (localizeProduct). Bu sayfa kendi ceviri zincirini KOSTURMAZ;
+  // admin panelinde gorulen metnin AYNISINI alir. Eski yol
+  // (buildSpecTranslator + trSpec + localizedSpecLabel) cevrilemeyen Turkce
+  // etiketi ASCII'ye katlayip sahte Ingilizce uretiyordu:
+  //   site  "Agir Cekim Kayit Secenekleri"
+  //   admin "Slow-motion recording options"
+  //
+  // Specs are never shown in German: a German UI reads them in English.
   const specLang = String(lang || 'en').toLowerCase().startsWith('de') ? 'en' : lang;
-  const tr = buildSpecTranslator(product, specLang);
+  const code = String(specLang || 'en').slice(0, 2).toLowerCase() === 'tr' ? 'tr' : 'en';
+  const pm = localizeProduct(product, code, { dict: dict || null });
+
   const bricks = [];
   const seen = new Set();
   const addRows = (title, icon, entries) => {
@@ -421,62 +379,33 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang) {
       const value = v == null ? '' : String(v).trim();
       if (!key || !value) return;
       if (isHiddenSpec(key, value)) return; // benchmark / TR-only availability rows
+      if (!isDisplayableSpec(key, value)) return;
       const sig = key.toLowerCase();
       if (seen.has(sig)) return;
-      rows.push([key, v]);
+      rows.push([key, value]);
       seen.add(sig);
     });
     if (rows.length) bricks.push({ title, icon, rows });
   };
 
-  // Render the ORIGINAL product.specSections structure intact and translate
-  // section names / keys / values via trSpec(). Earlier we ran the data
-  // through canonicalizeSpecMaps which collapsed many keys into hard-coded
-  // canonical names (Processor, CPU cores, …) and re-bucketed sections via
-  // a small Vv/keyRules list. For CPU products that list has gaps, so whole
-  // sections like TEMEL BİLGİLER (Desteklediği Teknolojiler, Jenerasyon,
-  // PassMark Puanı, Çıkış Dönemi/Yılı, İşlemci Mimarisi / Serisi / Türü /
-  // Üst Modeli) silently disappeared from the EN view because their
-  // canonical key collided with nothing and the canonical section bucket
-  // they landed in got overwritten by other content. Per-row trSpec()
-  // translation already handles localisation; the canonical step was just
-  // throwing data away.
-  // ── KAYNAK DİLİ (2026-08-08 düzeltmesi) ────────────────────────────────
-  // Kayıtlarda `sourceLang` alanı YOK (Typesense dokümanında hiç yazılmıyor),
-  // o yüzden bu kapı Epey ürünlerinde HİÇ açılmıyordu ve Türkçe ziyaretçiye
-  // `specSections` gösteriliyordu — oysa o alan yarım makine çevirisiyle
-  // KİRLİ: "Ekran Çözünürlüğü" → "Display Resolution", "Var" → "Yes".
-  // Ekranda "Ekran Resolution", "Düşük Blue Işık", "Uyku Modunda Charging
-  // desteği" bundan çıkıyordu. buildSpecTranslator zaten epey→tr varsayımını
-  // yapıyordu; burada yapılmıyordu. Aynı kural artık iki yerde de geçerli.
-  // Same-language source wins: a Turkish visitor on an Epey (TR) product gets
-  // the AUTHENTIC source specs — no translation round-trip, zero leak risk.
-  // (Specs render only in Turkish or English; Geizhals/German source removed.)
-  const src = sourceSpecMaps(product, specLang);
-  const sourceSections = src?.sections || null;
-  const sourceFlat = src?.flat || null;
-
-  const keySpecs = src?.keySpecs || product?.keySpecs;
+  const keySpecs = pm.keySpecs;
   if (keySpecs && typeof keySpecs === 'object' && Object.keys(keySpecs).length > 0) {
     addRows(keySpecsTitle, '⭐', Object.entries(keySpecs));
   }
 
-  const sections = sourceSections
-    || (product?.specSections && typeof product.specSections === 'object' ? product.specSections : null);
-  if (sections) {
-    for (const [section, specs] of Object.entries(sections)) {
-      // "Öne Çıkanlar" zaten yıldızlı blokta basıldı; başlığı tekrar etme.
-      if (sourceSections && isHighlightsTitle(section)) continue;
+  if (pm.sections) {
+    for (const [section, specs] of Object.entries(pm.sections)) {
+      // "One Cikanlar" zaten yildizli blokta basildi; basligi tekrar etme.
+      if (pm.isHighlightsTitle(section) || isHighlightsTitle(section)) continue;
       if (specs && typeof specs === 'object' && !Array.isArray(specs)) {
-        addRows(tr(section), sectionIcon(section), Object.entries(specs));
+        addRows(section, sectionIcon(section), Object.entries(specs));
       }
     }
   }
 
-  // Catch-all: any flat spec that didn't make it into a section above.
-  const flat = sourceFlat
-    || (product?.specs && typeof product.specs === 'object' ? product.specs : null);
-  if (flat) {
+  // Catch-all: bolum agacina girmemis duz spec'ler.
+  const flat = pm.flat;
+  if (flat && typeof flat === 'object') {
     const missing = Object.entries(flat).filter(([k, v]) =>
       k && v != null && String(v).trim() !== '' && !seen.has(String(k).toLowerCase()),
     );
@@ -989,8 +918,9 @@ export default function ProductDetail() {
   // The raw techSubscores (Engine/AnchorKey/Tier/…) are internal scoring-engine
   // diagnostics and are intentionally NOT shown to users.
   const chips = keySpecChips(p).slice(0, 6);
-  const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang);
-  const specTr = buildSpecTranslator(p, lang);
+  // dictReady degisince sozluk dolar ve bricks YENIDEN uretilir (render'i
+  // tetikleyen state zaten dictReady).
+  const bricks = mergeSpecBricks(p, t('pd.keySpecs'), t('pd.allSpecs'), lang, dictReady ? specDictCache() : null);
   const displayName = localizedProductName(p, lang);
 
   // Hero key specs: show only real catalog specs, ranked by buyer importance.
@@ -1054,8 +984,10 @@ export default function ProductDetail() {
       label: localizedSpecLabel(t(c.labelKey), lang),
     }, i * 5));
     bricks.flatMap((br) => br.rows || []).forEach(([k, v]) => {
-      const value = localizedSpecValue(specTr(String(v).split(/\r?\n/)[0].trim()), lang);
-      const label = localizedSpecLabel(specTr(k), lang).replace(/\s*:\s*$/, '');
+      // bricks satirlari ortak modulden ZATEN yerellestirilmis geliyor;
+      // ikinci bir ceviri katmani metni bozardi.
+      const value = String(v).split(/\r?\n/)[0].trim();
+      const label = String(k).replace(/\s*:\s*$/, '');
       const compact = value.length <= 34 && label.length <= 34;
       const informative = /\d/.test(value) || !/^(yes|no|var|yok|evet|hayır|hayir|true|false)$/i.test(value) || candidates.length < 8;
       if (compact && informative) {
@@ -1363,7 +1295,7 @@ export default function ProductDetail() {
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
                   {bricks.length > 0 ? (
                     <div className="pd-bricks">
-                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} tr={specTr} dictReady={dictReady} />)}
+                      {bricks.map((b, i) => <SpecBrick key={i} brick={b} lang={lang} />)}
                     </div>
                   ) : (
                     !p.description && <div className="card pad muted">{t('pd.noSpecs')}</div>
@@ -1657,16 +1589,17 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
 // MOBILDE KATLAMA DENENDI VE GERI ALINDI (2026-08-17, kullanici karari).
 // Bloklar mobilde `<details>` ile kapali basliyordu (sayfa 16.842 -> 6.434 px);
 // kullanici bunu ISTEMEDI, ozellikler acik gorunmeli. Tekrar onerme.
-function SpecBrick({ brick, lang, tr }) {
+function SpecBrick({ brick, lang }) {
   const rows = brick.rows.filter(([, v]) => v != null && String(v).trim() !== '');
   if (!rows.length) return null;
   return (
     <div className="pd-brick">
-      <div className="pd-brick-head"><span>{brick.icon}</span> {localizedSpecLabel(brick.title, lang)}</div>
+      {/* Baslik + satirlar ortak modulden yerellestirilmis geliyor. */}
+      <div className="pd-brick-head"><span>{brick.icon}</span> {brick.title}</div>
       <div className="pd-brick-body">
         {rows.map(([k, v]) => {
-          const s = localizedSpecValue(tr(String(v).trim()), lang);
-          const label = localizedSpecLabel(tr(k), lang);
+          const s = String(v).trim();
+          const label = String(k);
           const yes = YES_RE.test(s);
           const no = NO_RE.test(s);
           const lines = s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
