@@ -62,20 +62,37 @@ async function deployApp(target, token, baseUrl) {
 
   console.log(`[coolify] ${target} deployment requested`, deployment);
 
-  // 2026-08-16: qorai.net'in HTML'i artik Cloudflare EDGE'inde onbellekleniyor
-  // (Page Rule: `qorai.net/*` -> Cache Everything, Edge TTL 2 saat). Olculdu:
-  // `cf-cache-status` DYNAMIC -> HIT, yani her sayfa istegi artik origin'e
-  // gitmiyor. Bunun bedeli su: deploy edilen yeni HTML, edge'deki eski kopya
-  // dusene kadar gorunmez.
-  // Otomatik purge icin `Cache Purge` izinli bir Cloudflare API token'i gerekir
-  // (scripts/_cf.mjs `purge` komutu hazir, tek eksik token). O yoksa asagidaki
-  // adres elle tiklanir.
+  // ── HER DEPLOY'DA PURGE ETMEK ZORUNDA DEGILSIN ────────────────────────────
+  // 2026-08-16'da `qorai.net/*` icin bir PAGE RULE eklendi:
+  // Cache Everything + Edge Cache TTL = 2 saat. Bu, HTML'i edge'de tutarak
+  // TTFB'yi dusuruyor AMA origin'in kendi talimatini EZIYOR.
+  //
+  // OLCULDU (2026-08-18, canli):
+  //   origin basligi : Cache-Control: max-age=120   (yani "beni 2 dk tut")
+  //   edge davranisi : Age 220 sn'de hala HIT       (yani 2 saat tutuyor)
+  // Purge zorunlulugunun TEK sebebi bu ezme.
+  //
+  // TEK SEFERLIK COZUM (dashboard, ~30 sn) — bundan sonra purge GEREKMEZ:
+  //   Cloudflare > qorai.net > Rules > Page Rules > `qorai.net/*` > Edit
+  //   "Edge Cache TTL" ayarini KALDIR ya da "Respect existing headers" yap.
+  //   ("Cache Everything" KALSIN — hiz avantaji ondan geliyor.)
+  //   DIKKAT: bu ayar Caching > Cache Rules sayfasinda DEGIL (orasi bos
+  //   gorunuyor); LEGACY Page Rules altinda.
+  // Sonuc: yeni HTML en gec 2 DAKIKADA kendiliginden yayilir.
+  //
+  // Alternatif (tam otomatik purge): `Cache Purge` izinli bir Cloudflare API
+  // token'i uret ve .env'ye CF_API_TOKEN olarak koy — scripts/_cf.mjs `purge`
+  // komutu hazir, tek eksik o.
   if (target === 'website' || target === 'all') {
     console.log('');
-    console.log('[cloudflare] HTML edge onbellekte (Edge TTL 2 saat).');
-    console.log('[cloudflare] Degisikligi HEMEN gormek icin onbellegi temizle:');
+    console.log('[cloudflare] HTML edge onbellekte. Yeni surumun ne kadar surede');
+    console.log('[cloudflare] yayilacagi Page Rule icindeki "Edge Cache TTL"e bagli.');
+    console.log('[cloudflare] Purge zorunlulugunu TEK SEFERDE kaldirmak icin:');
+    console.log('[cloudflare]   Rules > Page Rules > qorai.net/* > Edge Cache TTL');
+    console.log('[cloudflare]   -> "Respect existing headers" (origin zaten max-age=120 diyor)');
+    console.log('[cloudflare]   https://dash.cloudflare.com/?to=/:account/qorai.net/rules');
+    console.log('[cloudflare] Simdilik hemen gormek istersen elle temizle:');
     console.log('[cloudflare]   https://dash.cloudflare.com/?to=/:account/qorai.net/caching/configuration');
-    console.log('[cloudflare] Temizlemezsen en gec 2 saatte kendiliginden tazelenir.');
   }
 }
 
