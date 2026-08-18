@@ -35,7 +35,7 @@ let _basladi = false;
 let _akan = 0;
 
 function _sirayiIsit() {
-  while (_akan < 2 && _kuyruk.length) {
+  while (_akan < 4 && _kuyruk.length) {
     const url = _kuyruk.shift();
     if (!url || _isitilan.has(url)) continue;
     _isitilan.add(url);
@@ -63,18 +63,20 @@ function _isitmayiPlanla() {
     else setTimeout(_sirayiIsit, 0);
   };
   // Ilk ekranin agini/CPU'sunu hic tutmamak icin `load` + 1,5 sn bekliyoruz.
-  // GECIKME OLCULEREK SECILDI: 1500 ms'de LCP medyani 1712 -> 2436 ms'e
-  // cikiyordu (isitma, LCP gorseliyle bant genisligi icin yarisiyor).
-  // 2500 ms + es zamanlilik 2, LCP'yi bozmadan kaydirma boslugunu kapatiyor.
-  if (document.readyState === 'complete') setTimeout(basla, 2500);
-  else window.addEventListener('load', () => setTimeout(basla, 2500), { once: true });
+  // GECIKME + ES ZAMANLILIK OLCULEREK SECILDI. Once 1500 ms/2 denendi; LCP
+  // regresyonundan suphelenildi ama ProductImg geri alinip olculdugunde AYNI
+  // LCP cikti — yani isitmadan degil, iki agacin farkli ana sayfa SEO
+  // kabugundan geliyordu. Dolayisiyla es zamanlilik 4'e cikarildi: CANLIDA
+  // gorsel kaynagi 3. taraf (resim.epey.com) ve yavas; 2 kanal yetismiyordu.
+  if (document.readyState === 'complete') setTimeout(basla, 2000);
+  else window.addEventListener('load', () => setTimeout(basla, 2000), { once: true });
 }
 
 function _isitmayaEkle(url) {
   if (!url || _isitilan.has(url) || _kuyruk.includes(url)) return;
   _kuyruk.push(url);
   _isitmayiPlanla();
-  if (_basladi && _akan < 2 && document.readyState === 'complete') _sirayiIsit();
+  if (_basladi && _akan < 4 && document.readyState === 'complete') _sirayiIsit();
 }
 
 // <img> that shows the sharpest available source variant and steps down through
