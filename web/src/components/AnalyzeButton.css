@@ -1,52 +1,65 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    "Analiz Et" — bkz. AnalyzeButton.jsx basindaki not.
 
-   TASARIM (2026-08-18, kullanici karari): kutu YANINDAKI "Karsilastir"
-   butonuyla BIREBIR ayni; dikkat yalnizca YAZIDAN geliyor. Onceki surumdeki
-   dolu gradyan zemin + kivilcim ikonu + isik seridi + nabiz halkasi KALDIRILDI
-   (istenmiyordu).
+   TASARIM (2026-08-19, kullanici karari: "dolu aksan + ayrac").
+   ONCEKI surum (2026-08-18) kutuyu yanindaki "Karsilastir" ile BIREBIR ayni
+   tutuyor, dikkati yalnizca yazidaki premiumLiquid animasyonundan bekliyordu.
+   Kullanici sonucu "guzel ama DIKKAT CEKMIYOR" diye ozetledi — hakli: eylem
+   satirindaki uc kontrol de ayni notr `--surface-2` kutuydu, yani sayfada
+   birincil eylem YOKTU.
 
-   Kutu referansi  : ProductDetail.css `.pd-cmp-btn`
-   Yazi referansi  : styles/global.css `.brand .wm-premium` (ust bardaki
-                     "Premium" yazisinin AYNI animasyonu, AYNI degiskenler)
+   Simdi hiyerarsi RENK + OLCU + AYRAC ile kuruluyor:
+     • dolu `--accent` zemin, `--on-accent` yazi  (DUZ renk — gradyan DEGIL)
+     • 44 px yukseklik (komsulari 40 px)
+     • oncesinde 1 px hairline: "yardimci eylemler | birincil eylem"
+   Daha once REDDEDILENLERE geri donulmedi: dolu GRADYAN zemin, kivilcim
+   ikonu, isik seridi, nabiz halkasi. Yazidaki premiumLiquid da kaldirildi —
+   dolu zeminin uzerinde gradyanla kirpilmis metin okunmaz olurdu.
+
+   Ayrac neden `::before`: eylem satiri (`.pd-actions`) ProductDetail'de,
+   compare'de ayri bir kapta. Ayri bir <div> eklemek iki sayfayi da
+   degistirmek ve ikisinin ayrismasi demekti; pseudo-eleman butonla birlikte
+   tasiniyor. 480 px altinda GIZLI: dar ekranda satir sarabiliyor ve ayrac
+   yeni satirin basinda ortada kalirdi.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* .pd-cmp-btn ile AYNI olcu/renk. Degistirirsen ikisini birlikte degistir. */
 .qai-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  height: 40px; padding: 0 16px; border-radius: 12px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  color: var(--text); font-family: inherit; font-weight: 700; font-size: 13.5px;
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 44px; padding: 0 18px; border-radius: 12px;
+  background: var(--accent); border: 1px solid var(--accent);
+  color: var(--on-accent); font-family: inherit; font-weight: 700; font-size: 13.5px;
   white-space: nowrap; cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s;
+  /* Butce: 120 ms hover/focus. Baska hareket yok. */
+  transition: box-shadow .12s ease-out, opacity .12s ease-out;
 }
-.qai-btn:hover:not(:disabled) { border-color: var(--accent-ring); }
+
+/* Hover/aktif: zemini DEGISTIRMEK yerine uzerine `--on-accent`in %12'si
+   seriliyor. Acik temada `--on-accent` beyaz (zemin acilir), koyu temada
+   neredeyse siyah (zemin koyulasir) — yani tek kural iki temada da dogru
+   yonde calisiyor. `inset` box-shadow kullaniliyor cunku bu bir GOLGE degil,
+   yuzey katmani; hiyerarsi golgeyle kurulmuyor. */
+.qai-btn:hover:not(:disabled) { box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--on-accent) 12%, transparent); }
+.qai-btn:active:not(:disabled) { box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--on-accent) 20%, transparent); }
 .qai-btn:focus-visible { outline: 2px solid var(--accent-ring); outline-offset: 2px; }
 .qai-btn:disabled { cursor: default; opacity: .62; }
 
-/* Ust bardaki "Premium" yazisinin animasyonu — birebir ayni ozellikler.
-   SIRA ONEMLI: `background` KISAYOLU `background-clip`i sifirlar, bu yuzden
-   clip her zaman SONRA gelir. (Ayni tuzak "Qor AI" yazisini dolu bir renk
-   dikdortgenine cevirmisti.) Kalinlik butonun kendisinden gelir (700),
-   marka yazisindaki 900 buraya TASINMAZ. */
-.qai-btn-txt {
-  background: var(--premium-liquid);
-  background-size: 260% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: var(--accent);
-  animation: premiumLiquid 4.8s ease-in-out infinite;
-  filter: drop-shadow(0 4px 14px var(--premium-glow));
+/* Yazi artik dolu zeminin uzerinde: renk kutudan miras alinir. Gradyan/clip
+   YOK — `background` kisayolunun `background-clip`i sifirlamasi tuzagi da
+   boylece bu dosyada tamamen ortadan kalkti. */
+.qai-btn-txt { color: inherit; }
+
+/* Yardimci eylemlerden ayiran hairline. Ayirma 1 px cizgiyle yapilir,
+   kutu/golge ile degil. */
+@media (min-width: 480px) {
+  .qai-btn { margin-left: 6px; }
+  .qai-btn::before {
+    content: ''; position: absolute; left: -13px; top: 50%;
+    transform: translateY(-50%);
+    width: 1px; height: 24px; background: var(--border-strong);
+  }
 }
 
-/* Kosarken hareket durur: is zaten basladi, dikkat cekmeye gerek yok. */
-.qai-btn.busy .qai-btn-txt { animation: none; }
-
-/* Telefon: "Karsilastir" ile ayni satirda duruyor, olculeri de ayni kalir —
-   ayri bir mobil kucultme YOK (pd-cmp-btn'in da yok). */
-
-/* Hareketi azalt: gradyan kalir, akis durur. */
 @media (prefers-reduced-motion: reduce) {
-  .qai-btn, .qai-btn-txt { transition: none; animation: none; }
+  .qai-btn { transition: none; }
 }

@@ -57,8 +57,9 @@ export default function AnalyzeButton({ onClick, busy = false, disabled = false,
       title={title || etiket}
       aria-label={etiket}
     >
-      {/* IKON YOK (kullanici karari 2026-08-18). Kutu "Karsilastir" ile ayni;
-          ayirt edici olan tek sey yazinin ust bardaki "Premium" animasyonu. */}
+      {/* IKON YOK (kullanici karari 2026-08-18, korunuyor). Buton 2026-08-19'da
+          dolu `--accent` zemine gecti: hiyerarsi renk + olcu + hairline ayrac
+          ile kuruluyor, yazidaki premiumLiquid animasyonu kaldirildi. */}
       <span className="qai-btn-txt">{etiket}</span>
     </button>
   );
