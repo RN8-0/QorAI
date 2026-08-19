@@ -120,7 +120,7 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const IMG_H = { s: 190, m: 290, l: 420 };
   const blocks = products.map((p, i) => {
     const slug = slugifyProduct(p.slug || p.name);
-    const href = slug ? `/product/${slug}-${p.id}` : `/product/${p.id}`;
+    const href = slug ? `/product/${slug}` : `/product/${p.id}`;
     const d1 = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
     const d2 = esc(p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '');
     const imgSrc = p.image || p.imageUrl || '';
@@ -224,11 +224,13 @@ function productPath(product) {
   const id = String(product?.id || '').trim();
   if (!id) return '';
   const slug = slugifyProduct(product.slug || product.name || '');
-  // Clean, path-based URL: /product/<slug>-<id>. Must stay identical to the
-  // SPA's productPath() in web/src/lib/routes.js so the prerendered file path,
-  // its <link rel=canonical>, the runtime canonical and the sitemap <loc> all
-  // agree on one URL per product.
-  return slug ? `/product/${slug}-${id}` : `/product/${id}`;
+  // /product/<slug> — SONDAKI ID KALDIRILDI (2026-08-19). Bicim SPA'daki
+  // productPath() (web/src/lib/routes.js) ile BIREBIR ayni kalmali: on-render
+  // dosya yolu, <link rel=canonical>, calisma zamani canonical'i ve sitemap
+  // <loc> aynı adreste bulusmak zorunda.
+  // On kosul olculdu (scripts/_slug_cakisma.mjs, 107.449 urun): slugifyProduct
+  // + 90 karakter kirpma sonrasi 107.449 BENZERSIZ slug, 0 cakisma.
+  return slug ? `/product/${slug}` : `/product/${id}`;
 }
 
 // Collapses cosmetic SKU variants (colour / strap / storage) down to one
@@ -357,7 +359,7 @@ function guideHtml(guide) {
   const secs = (guide.sections || []).map((s) =>
     `<h3 style="font-size:18px;margin:18px 0 6px">${esc(s.h)}</h3><p style="line-height:1.7;color:#334155">${esc(s.body)}</p>`).join('');
   const picks = (guide.picks || []).filter((p) => p && p.id && p.name).map((p) =>
-    `<li style="margin:6px 0"><a href="/product/${esc(p.slug)}-${esc(p.id)}" style="color:#2563eb;font-weight:600">${esc(p.name)}</a>${p.why ? ` <span style="color:#64748b">— ${esc(p.why)}</span>` : ''}</li>`).join('');
+    `<li style="margin:6px 0"><a href="/product/${esc(slugifyProduct(p.slug || p.name))}" style="color:#2563eb;font-weight:600">${esc(p.name)}</a>${p.why ? ` <span style="color:#64748b">— ${esc(p.why)}</span>` : ''}</li>`).join('');
   const faq = (guide.faq || []).map((f) =>
     `<h4 style="font-size:15px;margin:14px 0 4px">${esc(f.q)}</h4><p style="line-height:1.7;color:#475569">${esc(f.a)}</p>`).join('');
   return `<section style="margin-top:28px;border-top:1px solid #e2e8f0;padding-top:20px">`

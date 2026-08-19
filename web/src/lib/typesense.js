@@ -947,6 +947,58 @@ export async function getProduct(id, { force = false } = {}) {
   return promise;
 }
 
+// ── SLUG ile urun cozumleme ─────────────────────────────────────────────────
+// Adres artik `/product/<slug>` (sondaki id kaldirildi, 2026-08-19). Slug tum
+// katalogda benzersiz — olculdu: 107.449 urun, 107.449 benzersiz slug, 0
+// cakisma (scripts/_slug_cakisma.mjs). Tek bir filtreli arama yeter; tarama
+// YOK, N ile buyuyen hicbir sey yok.
+const _slugCache = new Map();
+const _slugInflight = new Map();
+
+export async function getProductBySlug(slug, { force = false } = {}) {
+  const s = String(slug || '').trim();
+  if (!s) return null;
+  if (!force && _slugCache.has(s)) return _slugCache.get(s);
+  if (!force && _slugInflight.has(s)) return _slugInflight.get(s);
+  const promise = (async () => {
+    try {
+      const data = await searchDocs({
+        q: '*', query_by: 'name', filter_by: `slug:=${lit(s)}`, per_page: 1,
+      });
+      const doc = docs(data)[0];
+      if (!doc) return null;
+      const p = docToProduct(doc);
+      cacheProduct(p);
+      _slugCache.set(s, p);
+      return p;
+    } catch (err) {
+      console.warn('[catalog] product-by-slug failed', err);
+      return null;
+    } finally {
+      _slugInflight.delete(s);
+    }
+  })();
+  _slugInflight.set(s, promise);
+  return promise;
+}
+
+// Adresteki jetonu cozer: once SLUG olarak dener, bulunamazsa 15 karakterlik
+// id'ye duser. Sira ONEMLI — 462 urunun slug'i id kalibina benzeyen bir
+// sonekle bitiyor (`…-l83de002xtrwp25`), yani "sondaki 15 karakter id'dir"
+// varsayimi tek basina o urunleri YANLIS cozerdi.
+export async function resolveProduct({ id = '', slug = '', slugKisa = '' } = {}, opts = {}) {
+  if (slug) {
+    const bySlug = await getProductBySlug(slug, opts);
+    if (bySlug) return bySlug;
+  }
+  if (id) {
+    const byId = await getProduct(id, opts);
+    if (byId) return byId;
+  }
+  if (slugKisa) return getProductBySlug(slugKisa, opts);
+  return null;
+}
+
 // Warm the cache ahead of navigation (called on card hover/touch). Fire-and-
 // forget; never throws, never blocks.
 export function prefetchProduct(id) {

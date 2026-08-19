@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
-import { getProduct, getSimilar, getVariants } from '../lib/typesense';
+import { useHref, useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
+import { getSimilar, getVariants, resolveProduct } from '../lib/typesense';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
 import { generateQuiz } from '../lib/linkAnalysis';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
@@ -50,7 +50,7 @@ import {
 import { useSeo, truncate, SITE_URL, DEFAULT_OG_IMAGE, hreflangAlternates } from '../lib/seo';
 import { pushRecent } from '../lib/recentViewed';
 import { productImageList } from '../lib/imageUrl';
-import { categoryPath, extractProductId, productPath } from '../lib/routes';
+import { categoryPath, parseProductToken, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { cleanProductName, displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
@@ -615,7 +615,14 @@ export default function ProductDetail() {
   const params = useParams();
   const [searchParams] = useSearchParams();
   const loc = useLocation();
-  const id = extractProductId(params.id || searchParams.get('id') || '');
+  // Adres artik `/product/<slug>` (sondaki id kaldirildi, 2026-08-19). Jeton
+  // slug, `slug-id` (eski bicim) ya da duz id olabilir; `id` degiskeni
+  // effect'lerin bagimlilik anahtari olarak KALIYOR — adresteki jetonun
+  // kendisi bu is icin yeterli ve kararli.
+  const kok = useHref('/');
+  const jeton = String(params.id || searchParams.get('id') || '').trim();
+  const adres = parseProductToken(jeton);
+  const id = adres.id || adres.slug;
   const { t, lang } = useI18n();
   const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
   const { ids, has, add, remove } = useCompare();
@@ -670,7 +677,7 @@ export default function ProductDetail() {
     setLoading(true);
     setAiFull({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
     setSimilar([]); setVariants([]);
-    getProduct(id)
+    resolveProduct(adres)
       .then((prod) => {
         if (!live) return;
         setP(prod); setOffers([]); setActiveImg(0); setLightbox(false); setTab('specs');
@@ -691,13 +698,28 @@ export default function ProductDetail() {
     // tıklandığında adres anında değişir ama yeni kayıt gelene kadar `p` önceki
     // üründür. O anda kanonik adresi yazmak, adres çubuğunu ESKİ ürüne geri
     // çeviriyordu (yenileme/geri tuşu yanlış ürüne gidiyordu).
-    if (p.id !== id) return;
-    const canonicalPath = productPath(p);
+    // Adres artik slug tasidigi icin karsilastirma "p.id === id" olamaz:
+    // eslesme ya id ya da kanonik slug uzerinden kurulur. Bu kontrol
+    // kaldirilirsa (ya da hep yanlis donerse) "Benzer urunler"den gecişte
+    // adres cubugu ESKI urune geri doner — daha once tam olarak bu yasandi.
+    const kanonik = productPath(p);
+    const adresJetonu = adres.id || adres.slug;
+    const eslesiyor = (adres.id && p.id === adres.id)
+      || (adres.slug && kanonik === `/product/${adres.slug}`)
+      || (adres.slugKisa && kanonik === `/product/${adres.slugKisa}`);
+    if (!eslesiyor || !adresJetonu) return;
     const currentPath = `${loc.pathname}${loc.search}`;
-    if (canonicalPath !== currentPath && loc.pathname.startsWith('/product')) {
-      window.history.replaceState(window.history.state, '', canonicalPath);
+    // DIL ONEKI: router `basename` ile kuruluyor (main.jsx: /tr, /de), yani
+    // `loc.pathname` ZATEN oneksiz. Ham `history.replaceState`e mutlak bir yol
+    // vermek onegi DUSURUR — olculdu: /tr/product/<slug>-<id> adresi
+    // /product/<slug>'a donuyor ve canonical Ingilizceye kayiyordu.
+    // `useHref('/')` router'in kok yolunu (yani onegi) dondurur; adres cubugu
+    // icin dogru olan bu.
+    const hedef = `${kok.replace(/\/$/, '')}${kanonik}`;
+    if (hedef !== `${kok.replace(/\/$/, '')}${currentPath}` && /^\/product/.test(loc.pathname)) {
+      window.history.replaceState(window.history.state, '', hedef);
     }
-  }, [loc.pathname, loc.search, p, id]);
+  }, [loc.pathname, loc.search, p, adres.id, adres.slug, adres.slugKisa, kok]);
 
   useEffect(() => {
     let live = true;

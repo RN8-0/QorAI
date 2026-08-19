@@ -31,16 +31,44 @@ export function extractProductId(value) {
   return tail ? tail[0] : clean;
 }
 
+// ── /product/<slug> — SONDAKI ID KALDIRILDI (2026-08-19) ───────────────────
+// Onceki bicim `/product/<slug>-<id>` idi. Kaldirmanin on kosulu slug'in TUM
+// KATALOGDA benzersiz olmasi; olculdu (scripts/_slug_cakisma.mjs, PB uzerinden
+// 107.449 urun): 107.449 benzersiz slug, 0 cakisma, slug'i bos kayit 0.
+// URL'de kullanilan bicim (slugifyProduct + 90 karakter kirpma) uzerinden de
+// AYRICA olculdu: 33 ham slug 90 karakteri asiyor ama kirpilmis halleri yine
+// cakismiyor — 107.449 benzersiz.
+//
+// Eski adresler nginx'te 301 ile yeniye gider (bkz. scripts/_nginx_301.mjs).
+// Cozumleyici hem slug'i hem 15 karakterlik id'yi kabul eder: eski link
+// istemci tarafinda da (SPA ici gezinme, paylasilmis link) calisir.
 export function productPath(productOrId) {
   const isProduct = productOrId && typeof productOrId === 'object';
   const id = String(isProduct ? productOrId.id : productOrId || '').trim();
   if (!id) return '/product';
   const slug = isProduct ? productSlug(productOrId) : '';
-  // Clean, path-based URL: /product/<slug>-<id>. The id is the trailing
-  // 15-char token, so extractProductId() recovers it from the path (the '-'
-  // separator stops the id regex from grabbing slug characters). The SPA also
-  // still reads ?id= as a fallback, so old query-string links keep working.
-  return slug ? `/product/${slug}-${id}` : `/product/${id}`;
+  // Slug yoksa (elde yalnizca id varsa) id'ye duseriz — cozumleyici 15
+  // karakterlik jetonu id olarak taniyor.
+  return slug ? `/product/${slug}` : `/product/${id}`;
+}
+
+// Adres cubugundaki jeton NE? Uc bicim de desteklenir:
+//   <slug>            → yeni bicim
+//   <slug>-<id>       → eski bicim (301 gelmediyse, ornegin SPA ici gezinme)
+//   <id>              → slug'i olmayan kayit / eski ?id= linki
+// Donen: { id, slug } — hangisi doluysa cozumleyici onu kullanir.
+//
+// DIKKAT: "sondaki 15 karakterlik jeton id'dir" varsayimi TEK BASINA YANLIS.
+// Olculdu: 462 urunun slug'i ZATEN 15 karakterlik id kalibina benzeyen bir
+// sonekle bitiyor (ornek: `lenovo-legion-pro-7-l83de002xtrwp25`). O yuzden
+// once TAM jeton slug olarak denenir; ancak bulunamazsa sondaki id ayrilir.
+export function parseProductToken(value) {
+  const raw = String(value || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!raw) return { id: '', slug: '' };
+  if (/^[a-z0-9]{15}$/i.test(raw)) return { id: raw, slug: '' };
+  const m = raw.match(/^(.+)-([a-z0-9]{15})$/i);
+  // Hem slug hem id adayi dondurulur; cozumleyici once slug'i dener.
+  return m ? { id: m[2], slug: raw, slugKisa: m[1] } : { id: '', slug: raw };
 }
 
 // Clean, path-based category URL (e.g. /category/smartphones). Category ids are
