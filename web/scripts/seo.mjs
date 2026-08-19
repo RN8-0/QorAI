@@ -2142,7 +2142,10 @@ async function main() {
             `${prefix}${path}`.replace(/^\//, ''),
             renderPage(
               template,
-              { ...compareSeo(a, b, label, lang), alternates },
+              // routeKey ATLANMISTI: 3.864 karsilastirma sayfasi ne rota
+              // on-yuklemesi ne de rota bicimli iskelet aliyordu — urun
+              // sayfasindaki ayni hatanin ikizi.
+              { ...compareSeo(a, b, label, lang), alternates, routeKey: 'compare' },
               localizeBodyLinks(compareBody(a, b, label, categoryUrl, ksA, ksB, lang), lang),
             ),
           );
