@@ -30,6 +30,67 @@ function _escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   CEVIRI DONGUSU TESPITI (2026-08-19)
+
+   Makine cevirisi bazen dongue giriyor ve ayni jetonu yuzlerce kez basiyor.
+   Canli ornek — Samsung Galaxy S23 Ultra, multiLangSpecs.en:
+     "Internet Kullanimi (4G)" -> "Use of the the The The The The …"
+   2792 karakter, 969 kez ard arda "the". Sitede deger satirlara bolununce bu
+   dizi bir ETIKET gibi basiliyor ve ekrani dolduruyordu.
+
+   Tum katalogda olculdu (scripts/_spec_bozuk_tarama.mjs, 107.449 urun):
+   1.354 urun etkilenmis, hepsi epey.com kaynakli.
+
+   Kural sade tutuldu — YANLIS POZITIF pahali: gecerli bir spec satirini
+   yutmak, bozuk bir satiri gostermekten daha kotu.
+     • Jetonlama BOSLUKLA yapilir. Ilk denemede harf/rakam siniflari
+       kullanilmisti ve "Android 4.4.4 (KitKat)" uc ayri "4" jetonuna bolunup
+       BOZUK sayiliyordu (389 urun yanlis isaretlendi).
+     • Olcum SATIR SATIR yapilir. Cok satirli bir ozellik listesini tek
+       dizeye duzlestirmek, komsu olmayan tekrarlari yan yana getirir.
+     • Esik: ayni jeton 4 kez ard arda, ya da ayni 2-4 jetonluk obek 4 kez
+       ard arda. Gercek veride "HDR HDR" ya da "1 1 1" gibi ikili/uclu
+       tekrarlar mevcut; dongu ise onlarca-yuzlerce kez tekrarliyor.
+   ─────────────────────────────────────────────────────────────────────────── */
+var _DEGEN_ESIK = 4;
+function _degenJetonlar(satir) {
+  return String(satir).toLowerCase().split(/\s+/).filter(Boolean);
+}
+function _degenTekrarRunu(j) {
+  var en = 1, ard = 1;
+  for (var i = 1; i < j.length; i++) { ard = (j[i] === j[i - 1]) ? ard + 1 : 1; if (ard > en) en = ard; }
+  return en;
+}
+function _degenNgramRunu(j, n) {
+  var en = 1;
+  for (var i = 0; i + 2 * n <= j.length; i++) {
+    var k = 1;
+    while (i + (k + 1) * n <= j.length) {
+      var ayni = true;
+      for (var q = 0; q < n; q++) { if (j[i + q] !== j[i + k * n + q]) { ayni = false; break; } }
+      if (!ayni) break;
+      k++;
+    }
+    if (k > en) en = k;
+    if (en >= _DEGEN_ESIK) return en;
+  }
+  return en;
+}
+/** Metin bir ceviri dongusu mu? true ise o satir EKRANA BASILMAZ. */
+function _isDegenerateText(text) {
+  var s = String(text == null ? '' : text);
+  if (s.length < 24) return false;             // kisa metin dongu olamaz
+  var satirlar = s.replace(/\r/g, '\n').split('\n');
+  for (var i = 0; i < satirlar.length; i++) {
+    var j = _degenJetonlar(satirlar[i]);
+    if (j.length < _DEGEN_ESIK) continue;
+    if (_degenTekrarRunu(j) >= _DEGEN_ESIK) return true;
+    for (var n = 2; n <= 4; n++) if (_degenNgramRunu(j, n) >= _DEGEN_ESIK) return true;
+  }
+  return false;
+}
+
 function _normalizeDictSourceKey(text) {
   return String(text || '').toLowerCase().trim().replace(/\s+/g, ' ');
 }
@@ -1372,6 +1433,10 @@ function createSpecLocalizer(options) {
     const tx = String(translated || '').trim();
     if (!tx) return false;
     if (isUntranslatedPassThrough(raw, tx)) return true;
+    // Ceviri dongusu: sozlukteki karsilik bozuksa o kayit YOK sayilir ve
+    // asagidaki kural motoru / kaynak metin devreye girer. Reddetmek burada
+    // dogru yer — hem etiket hem deger ayni kapiden geciyor.
+    if (_isDegenerateText(tx)) return true;
     if (lang === 'en' && /[çğıİöşüÇĞİÖŞÜ]/.test(tx)) return true;
     if (lang === 'de' && /[çğıİşÇĞİŞ]/.test(tx)) return true;
     const folded = modalFoldText(tx);
@@ -2127,7 +2192,11 @@ function splitSpecValueLines(value) {
   }
   const lines=[];
   for(let i=0;i<rawLines.length;i++){const line=rawLines[i];if(/^\d+x$/i.test(line)&&rawLines[i+1]){lines.push(`${line} ${rawLines[++i]}`)}else lines.push(line)}
-  return lines;
+  // GOSTERIM ZAMANI KORUMASI: ceviri dongusune girmis satir BASILMAZ.
+  // Sozluk tarafi zaten modalLooksBadTranslation'da reddediliyor; bu ikinci
+  // kat, bozuklugun KAYNAK veride oldugu durumu yakalar (kayit onarilana
+  // kadar ekranda "The The The…" gorunmesin diye).
+  return lines.filter((line) => !_isDegenerateText(line));
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -2269,6 +2338,7 @@ var API = {
   splitSpecValueLines: splitSpecValueLines,
   normalizeSpecSectionsShape: normalizeSpecSectionsShape,
   createSpecLocalizer: createSpecLocalizer,
+  isDegenerateText: _isDegenerateText,
   sanitizeEnglishSpecText: _sanitizeEnglishSpecText,
   normalizeTurkishSourceTranslation: _normalizeTurkishSourceTranslation,
   knownTurkishRuleTranslation: _knownTurkishRuleTranslation,

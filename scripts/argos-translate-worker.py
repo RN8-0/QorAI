@@ -1790,6 +1790,40 @@ def _collapse_repeats(text: str) -> str:
     return cur
 
 
+_DEGEN_ESIK = 4
+
+
+def _is_degenerate(text: str) -> bool:
+    """Ceviri dongusu mu? admin/js/spec_i18n.js:_isDegenerateText ile AYNI kural.
+
+    Olcum SATIR SATIR ve jetonlama BOSLUKLA yapilir: cok satirli bir ozellik
+    listesini duzlestirmek komsu olmayan tekrarlari yan yana getirir, harf/rakam
+    jetonlamasi ise "Android 4.4.4" gibi surum numaralarini uc ayri "4" sanip
+    gecerli veriyi bozuk gosterir (ilk denemede 389 urun boyle yanlis
+    isaretlenmisti).
+    """
+    s = text or ""
+    if len(s) < 24:
+        return False
+    for satir in s.replace("\r", "\n").split("\n"):
+        j = [x for x in satir.lower().split() if x]
+        if len(j) < _DEGEN_ESIK:
+            continue
+        ard = 1
+        for i in range(1, len(j)):
+            ard = ard + 1 if j[i] == j[i - 1] else 1
+            if ard >= _DEGEN_ESIK:
+                return True
+        for n in range(2, 5):
+            for i in range(0, len(j) - 2 * n + 1):
+                k = 1
+                while i + (k + 1) * n <= len(j) and j[i:i + n] == j[i + k * n:i + (k + 1) * n]:
+                    k += 1
+                if k >= _DEGEN_ESIK:
+                    return True
+    return False
+
+
 def _apply_post_fix(text: str, from_code: str, to_code: str) -> str:
     rules = _POST_FIX_COMPILED.get(f"{from_code}->{to_code}")
     if rules and text:
@@ -1870,6 +1904,16 @@ def _translate_one_hop(texts: List[str], from_code: str, to_code: str) -> List[s
             text = text.replace("▁", " ").strip()
         # Post-process: fix known per-language mistranslations.
         text = _apply_post_fix(text, from_code, to_code)
+        # CIKTI TARAFI DONGU KORUMASI (2026-08-19). no_repeat_ngram_size /
+        # repetition_penalty olasiligi dusuruyor ama GARANTI vermiyor: canli
+        # sozlukte (90.310 terim) 11 dongulu kayit bulundu ve katalogdaki
+        # 1.354 urun onlari okuyordu. Dongulu bir ceviri sozluge girdiginde
+        # yeniden calistirmak DUZELTMEZ — onbellek isabet eder. Bu yuzden
+        # dongulu cikti KAYNAK METINLE degistirilir: ceviri eksik kalir ama
+        # asla bozuk metin yayilmaz.
+        if _is_degenerate(text):
+            print(f"[translate] DONGU reddedildi ({from_code}->{to_code}): {text[:60]!r}", flush=True)
+            text = ""
         out.append(text)
     return out
 

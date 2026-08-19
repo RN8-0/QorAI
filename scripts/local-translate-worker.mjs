@@ -145,7 +145,51 @@ function cacheLookup(sourceLang, text, targetLang) {
   return '';
 }
 
+// ── Ceviri dongusu korumasi ─────────────────────────────────────────────────
+// NLLB kimi girdilerde dongue giriyor ve ayni jetonu max_length'e kadar
+// basiyor. Olculdu (2026-08-19): paylasilan sozlukte (90.310 terim) 11 zehirli
+// kayit vardi ve KATALOGDAKI 1.354 URUN o 11 kaydi okuyordu — bozukluk urun
+// basina degil, SOZLUK GIRISI basina uretiliyor ve sonsuza kadar yeniden
+// kullaniliyordu:
+//   "i̇nternet kullanimi (4g)" -> "Use of the the The The The The The …"
+// Uretim tarafinda iki kat: (1) uretimi zorlastiran generate parametreleri,
+// (2) yine de dongulu cikarsa ONBELLEGE YAZMA. Ikincisi sarttir — birincisi
+// olasiligi dusurur, garantiyi vermez.
+const DEGEN_ESIK = 4;
+function bozukCeviri(metin) {
+  const s = String(metin == null ? '' : metin);
+  if (s.length < 24) return false;
+  for (const satir of s.replace(/\r/g, '\n').split('\n')) {
+    const j = satir.toLowerCase().split(/\s+/).filter(Boolean);
+    if (j.length < DEGEN_ESIK) continue;
+    let ard = 1;
+    for (let i = 1; i < j.length; i += 1) {
+      ard = j[i] === j[i - 1] ? ard + 1 : 1;
+      if (ard >= DEGEN_ESIK) return true;
+    }
+    for (let n = 2; n <= 4; n += 1) {
+      for (let i = 0; i + 2 * n <= j.length; i += 1) {
+        let k = 1;
+        while (i + (k + 1) * n <= j.length) {
+          let ayni = true;
+          for (let q = 0; q < n; q += 1) if (j[i + q] !== j[i + k * n + q]) { ayni = false; break; }
+          if (!ayni) break;
+          k += 1;
+        }
+        if (k >= DEGEN_ESIK) return true;
+      }
+    }
+  }
+  return false;
+}
+
 function cacheStore(sourceLang, text, targetLang, translated) {
+  // Dongulu cikti ONBELLEGE GIRMEZ. Girerse tek bir kotu ceviri binlerce
+  // urune yayilir ve yeniden calistirmak DUZELTMEZ (onbellek isabet eder).
+  if (bozukCeviri(translated)) {
+    console.warn(`[local-translate] DONGU reddedildi: "${String(text).slice(0, 48)}" -> "${String(translated).slice(0, 48)}…"`);
+    return;
+  }
   const key = cacheKey(sourceLang, text);
   cache[key] = cache[key] || {};
   cache[key][targetLang] = translated;
@@ -214,6 +258,13 @@ async function translateBatch(texts, targets, sourceLang = 'tr') {
           src_lang: srcCode,
           tgt_lang: tgt,
           max_length: MAX_LEN,
+          // Tekrar dongusunu URETIM tarafinda zorlastir. Ayni degerler
+          // argos-translate-worker.py'de zaten var (2026-05-24); bu worker
+          // ise parametresiz kosuyordu ve sozluge zehirli kayitlar buradan
+          // girdi. Sadece bu yetmez — cikti yine de dongulu gelirse
+          // cacheStore reddediyor.
+          no_repeat_ngram_size: 3,
+          repetition_penalty: 1.15,
         });
         const dt = Date.now() - t0;
         const rows = Array.isArray(result) ? result : [result];
