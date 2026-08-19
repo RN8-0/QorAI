@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/de">Qor AI</a> › <a href="/de/category">Kategorien</a> › <a href="https://qorai.net/de/category/drones">Drohnen</a></nav><h1 style="font-size:26px;margin:12px 0 4px">DJI Mini 2 Fly More Combo Drone</h1><p style="color:#475569;margin:0 0 12px">DJI · Drohnen · Qor AI Techscore 78/100</p><img src="https://resim.epey.com/623843/m_dji-mini-2-fly-more-combo-5.jpg" alt="DJI Mini 2 Fly More Combo Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">DJI Mini 2 Fly More Combo Drone Highlights: battery capacity 2250 mAh, dahili camera Yes, kullanıcı seviyesi Deneyimli. Sieh dir unten 38 technische Merkmale von DJI Mini 2 Fly More Combo Drone, den Qor AI Techscore und den Vergleich mit ähnlichen Drohnen-Modellen an.</p><h2 style="font-size:18px;margin:22px 0 8px">Wichtige technische Daten</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>2250 mAh</strong></li><li><span style="color:#64748b">Dahili Camera:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Deneyimli</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>10 km</strong></li><li><span style="color:#64748b">Sertifika Gereksinimi:</span> <strong>No</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>31 dk</strong></li><li><span style="color:#64748b">Video recording:</span> <strong>4K</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Ähnliche Drohnen-Modelle</h2><ul style="line-height:1.8"><li><a href="/de/product/dji-mini-2-se-fly-more-combo-q7yj3h35pywaxnn" style="color:#2563eb">DJI Mini 2 SE Fly More Combo Drone</a></li><li><a href="/de/product/dji-mini-2-se-r6k3hka88w0y13g" style="color:#2563eb">DJI Mini 2 SE Drone</a></li><li><a href="/de/product/dji-mini-4k-zae7u6dku7zftq8" style="color:#2563eb">DJI Mini 4K Drone (Standart) (CP.MA.00000787.02)</a></li><li><a href="/de/product/corby-cx201-orion-exqibzo99warqy0" style="color:#2563eb">Corby CX201 Orion Drone</a></li><li><a href="/de/product/corby-volarix-cx034-p3px74e8ok7e2oc" style="color:#2563eb">Corby Volarix CX034 Drone</a></li><li><a href="/de/product/lyzrc-l109-pro-q7hqm27yca3xbnj" style="color:#2563eb">LYZRC L109 Pro Drone</a></li><li><a href="/de/product/hjhrc-hj66-crh0cyq0gg2vckr" style="color:#2563eb">HJHRC HJ66 Drone</a></li><li><a href="/de/product/fimi-x8-mini-v2-xuelyfkfryfnhim" style="color:#2563eb">Fimi X8 Mini V2 Drone (FMWRJ04A7)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/de/category/drones" style="color:#2563eb;font-weight:600">Alle Drohnen-Modelle vergleichen →</a></p></main></div>

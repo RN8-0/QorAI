@@ -651,7 +651,18 @@ input, textarea, select { font-family: inherit; }
 .pd-rail-prev { left: -8px; }
 .pd-rail-next { right: -8px; }
 @media (max-width: 560px) { .pd-rail-arr { display: none; } }
-.skel { background: linear-gradient(100deg, var(--surface-2) 30%, var(--surface-3) 50%, var(--surface-2) 70%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; border-radius: var(--r-sm); }
+/* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki taban
+   `--surface-2` idi: acik temada #F1F5F9, sayfa zemini #F8FAFC — parlaklik
+   farki 7/255, yani iskelet EKRANDA AMA GORUNMUYOR. Olculdu
+   (scripts/_mobil_bosluk.mjs, canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G):
+   ProductDetail kendi iskeletini 4319-4615 ms arasi ciziyor ve o karelerin
+   "icerikli blok" orani %0,5 — kullanicinin "arka plan var ama icerik yok"
+   dedigi karelerden biri de buydu.
+   Taban artik `--surface-3` (acik #E9EEF5 → zeminden 15/255, karttan 22/255;
+   koyu #181818 → siyah zeminden 24/255). Parildama bandi `color-mix` ile
+   metin renginden %7 alir, boylece HER IKI temada da bant tabanla arasinda
+   fark uretir (tek bir sabit ton koyu temada kayboluyordu). */
+.skel { background: linear-gradient(100deg, var(--surface-3) 30%, color-mix(in srgb, var(--text) 7%, var(--surface-3)) 50%, var(--surface-3) 70%); background-size: 200% 100%; animation: shimmer 1.3s infinite linear; border-radius: var(--r-sm); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }

@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/ip_cameras">IP Kamera</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hikvision DS-2CD1T47G2H-LIUF</h1><p style="color:#475569;margin:0 0 12px">Hikvision · IP Kamera · Qor AI teknik skoru 75/100</p><img src="https://resim.epey.com/991092/m_hikvision-ds-2cd1t47g2h-liuf-1.png" alt="Hikvision DS-2CD1T47G2H-LIUF" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Hikvision DS-2CD1T47G2H-LIUF öne çıkan özellikleri: gece görüşü Yes, görüş açısı (geniş) 115 °, hafıza kartı support Yes. Hikvision DS-2CD1T47G2H-LIUF 30 teknik özelliğini, Qor AI teknik skorunu ve benzer ip kamera modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Gece Görüşü:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Görüş Açısı (Geniş):</span> <strong>115 °</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Hafıza Kartı Tipi:</span> <strong>microSD</strong></li><li><span style="color:#64748b">Panoramik Çekim:</span> <strong>No</strong></li><li><span style="color:#64748b">Piksel Count:</span> <strong>1440 p</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>QHD</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer IP Kamera modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sjcam-s1-j6g9f13rxr62axk" style="color:#2563eb">SJCAM S1</a></li><li><a href="/tr/product/foscam-g4p-0hz2uzxxrye35f1" style="color:#2563eb">Foscam G4P</a></li><li><a href="/tr/product/vguard-vg-400-dm-81631h3d4sume32" style="color:#2563eb">VGuard VG-400-DM</a></li><li><a href="/tr/product/imou-bullet-2c-4mp-3-6-mm-r9asy8d64zmdl1k" style="color:#2563eb">Imou Bullet 2C 4MP (QHD / 3.6 mm) (IPC-F42P)</a></li><li><a href="/tr/product/imou-cube-4mp-fcm343ug3kdxp2h" style="color:#2563eb">Imou Cube 4MP (QHD) (IPC-K42P)</a></li><li><a href="/tr/product/imou-cube-poe-4mp-bho5v0j12oyo3x4" style="color:#2563eb">Imou Cube PoE 4MP (QHD) (IPC-K42AP)</a></li><li><a href="/tr/product/imou-rex-4mp-dvfnebq2la3lnbl" style="color:#2563eb">Imou Rex 4MP (QHD) (IPC-A46LP-D)</a></li><li><a href="/tr/product/xiaomi-solar-outdoor-camera-bw400-pro-set-p80dx7bhnqsnnuk" style="color:#2563eb">Xiaomi Solar Outdoor Camera BW400 Pro Set (MJSXJ03BY)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/ip_cameras" style="color:#2563eb;font-weight:600">Tüm IP Kamera modellerini karşılaştır →</a></p></main></div>

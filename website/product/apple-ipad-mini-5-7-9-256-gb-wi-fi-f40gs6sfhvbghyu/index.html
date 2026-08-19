@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tablets">Tablets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Apple iPad Mini 5 Tablet (256 GB)</h1><p style="color:#475569;margin:0 0 12px">Apple · Tablets · Qor AI tech score 73/100</p><img src="https://resim.epey.com/155424/m_apple-ipad-mini-5-7-9-wi-fi-muqx2tu-a-1.png" alt="Apple iPad Mini 5 Tablet (256 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Apple iPad Mini 5 Tablet (256 GB) key features: battery capacity 5000 mAh, cpu frequency 2.5 GHz, display boyutu 7.9 İnç. Review Apple iPad Mini 5 Tablet (256 GB)'s 42 technical specs, its Qor AI tech score and how it compares with similar models in tablets below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>5000 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>2.5 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>7.9 İnç</strong></li><li><span style="color:#64748b">Hafıza Kartı Support:</span> <strong>No</strong></li><li><span style="color:#64748b">RAM:</span> <strong>3 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>8.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>256 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>iOS 12</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Tablets</h2><ul style="line-height:1.8"><li><a href="/product/apple-ipad-7-10-2-128-gb-wi-fi-uekuuk3x8bmflfx" style="color:#2563eb">Apple Ipad 7 Tablet (128 GB)</a></li><li><a href="/product/huawei-matepad-12-x-papermatte-edition-2025-e06tc9t5twwg2f8" style="color:#2563eb">Huawei matepad 12 x 2025 papermatte edition + keyboard tablet</a></li><li><a href="/product/huawei-matepad-11-5-papermatte-edition-plusklavye-347bm9a9ozn9fvd" style="color:#2563eb">Huawei matepad 11.5 papermatte edition + keyboard tablet (8 GB / 256 GB)</a></li><li><a href="/product/onda-oliver-book-8gb-256gb-g3fwfalrsr5tj7p" style="color:#2563eb">Onda Oliver Book A1 Tablet (256 GB)</a></li><li><a href="/product/sprange-l10-7bvcxld8qbkfdcc" style="color:#2563eb">Sprange L10TB Tablet</a></li><li><a href="/product/poco-pad-x1-8-gb-512-gb-3nrlbfsv9z1bz6y" style="color:#2563eb">Poco Pad X1 Tablet (8 GB / 512 GB)</a></li><li><a href="/product/chuwi-ubook-xpro-k06pwbk6ookpgop" style="color:#2563eb">Chuwi UBook XPro Tablet</a></li><li><a href="/product/chuwi-hi-10-max-viyu0px4k80cxpo" style="color:#2563eb">Chuwi Hi10 Max Tablet</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tablets" style="color:#2563eb;font-weight:600">Compare all Tablets →</a></p></main></div>

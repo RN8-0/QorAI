@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/cpu_coolers">İşlemci Soğutucu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Gametech Freezer HD 3.0 İşlemci Soğutucu</h1><p style="color:#475569;margin:0 0 12px">Gametech · İşlemci Soğutucu · Qor AI teknik skoru 88/100</p><img src="https://resim.epey.com/752845/m_gametech-freezer-hd-3-0-1.jpg" alt="Gametech Freezer HD 3.0 İşlemci Soğutucu" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Gametech Freezer HD 3.0 İşlemci Soğutucu öne çıkan özellikleri: aydınlatma Yes, fan audio seviyesi 20 dBA, fan bağlantısı 4 pin. Gametech Freezer HD 3.0 İşlemci Soğutucu 18 teknik özelliğini, Qor AI teknik skorunu ve benzer i̇şlemci soğutucu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fan Audio Seviyesi:</span> <strong>20 dBA</strong></li><li><span style="color:#64748b">Fan Bağlantısı:</span> <strong>4 pin</strong></li><li><span style="color:#64748b">Fan Boyutu (Büyük):</span> <strong>90 mm</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>3 fanlı</strong></li><li><span style="color:#64748b">Fan Dönüş Hızı:</span> <strong>2000 RPM</strong></li><li><span style="color:#64748b">Isı Borusu Count:</span> <strong>6 adet</strong></li><li><span style="color:#64748b">Isı Yayma Kapasitesi (TDP):</span> <strong>160 W</strong></li><li><span style="color:#64748b">Soğutma Türü:</span> <strong>Fan Soğutmalı</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer İşlemci Soğutucu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/darkflash-darkrock-px4-14qr6tsiyrlzfg5" style="color:#2563eb">DarkFlash DarkRock PX4 İşlemci Soğutucu (NB-CPU-DK4-BK)</a></li><li><a href="/tr/product/dragos-digital-tvd70r57mwsvt86" style="color:#2563eb">Dragos Digital İşlemci Soğutucu</a></li><li><a href="/tr/product/dragos-frostbite-v2-240-ptbsrfg2gpk5l65" style="color:#2563eb">Dragos FrostBite V2 240 İşlemci Soğutucu</a></li><li><a href="/tr/product/dragos-vortex-v-240-argb-ku3qnl8ttc2q9ku" style="color:#2563eb">Dragos Vortex V-240 ARGB İşlemci Soğutucu (2 adet)</a></li><li><a href="/tr/product/darkflash-twister-dx240-v2-6-argb-u2tkosgdj4yjtvf" style="color:#2563eb">DarkFlash Twister DX240 V2.6 ARGB İşlemci Soğutucu (2 adet)</a></li><li><a href="/tr/product/dragos-aquaforge-360-argb-aih2s32tt0j5y1w" style="color:#2563eb">Dragos AquaForge 360 ARGB İşlemci Soğutucu</a></li><li><a href="/tr/product/dragos-frostbite-v2-360-o7n5rftegvlikwp" style="color:#2563eb">Dragos FrostBite V2 360 İşlemci Soğutucu</a></li><li><a href="/tr/product/dragos-frostbite-360-argb-xtsmbq3dbhl97h7" style="color:#2563eb">Dragos FrostBite 360 ARGB İşlemci Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/cpu_coolers" style="color:#2563eb;font-weight:600">Tüm İşlemci Soğutucu modellerini karşılaştır →</a></p></main></div>

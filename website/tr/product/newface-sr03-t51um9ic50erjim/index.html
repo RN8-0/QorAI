@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/laptop_coolers">Laptop Soğutucu</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Newface SR03 Laptop Soğutucu</h1><p style="color:#475569;margin:0 0 12px">Newface · Laptop Soğutucu · Qor AI teknik skoru 50/100</p><img src="https://resim.epey.com/896783/m_newface-sr03-2.png" alt="Newface SR03 Laptop Soğutucu" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Newface SR03 Laptop Soğutucu öne çıkan özellikleri: ana fan dönüş hızı 4000 RPM, aydınlatma No, bağlantı count 1 adet. Newface SR03 Laptop Soğutucu 12 teknik özelliğini, Qor AI teknik skorunu ve benzer laptop soğutucu modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ana Fan Dönüş Hızı:</span> <strong>4000 RPM</strong></li><li><span style="color:#64748b">Aydınlatma:</span> <strong>No</strong></li><li><span style="color:#64748b">Bağlantı Count:</span> <strong>1 adet</strong></li><li><span style="color:#64748b">Fan Count:</span> <strong>2 adet</strong></li><li><span style="color:#64748b">Yükseklik Ayarı:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Laptop Soğutucu modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/powergate-pg-nc01-3bhse9aoujax53o" style="color:#2563eb">Powergate PG-NC01 Laptop Soğutucu</a></li><li><a href="/tr/product/hobimtek-lt-01-njjir0ror7pcwe1" style="color:#2563eb">Hobimtek LT-01 Laptop Soğutucu</a></li><li><a href="/tr/product/trilogic-fs08-6eqodtpja56vd2o" style="color:#2563eb">Trilogic FS08 Laptop Soğutucu</a></li><li><a href="/tr/product/claws-throne-arctic-pro-39wdxxq9z8wew28" style="color:#2563eb">Claw&#39;s Throne Arctic Pro Laptop Soğutucu</a></li><li><a href="/tr/product/concord-c-882-8544ggttpm7yx3f" style="color:#2563eb">Concord C-882 Laptop Soğutucu</a></li><li><a href="/tr/product/powergate-pg-nc02-u7w1adadsgd0ijn" style="color:#2563eb">Powergate PG-NC02 Laptop Soğutucu</a></li><li><a href="/tr/product/claws-vortex-3768es3v7au8xpa" style="color:#2563eb">Claw&#39;s Vortex Laptop Soğutucu</a></li><li><a href="/tr/product/torima-cf-02-zuorsl8ra31aimk" style="color:#2563eb">Torima CF-02 Laptop Soğutucu</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/laptop_coolers" style="color:#2563eb;font-weight:600">Tüm Laptop Soğutucu modellerini karşılaştır →</a></p></main></div>

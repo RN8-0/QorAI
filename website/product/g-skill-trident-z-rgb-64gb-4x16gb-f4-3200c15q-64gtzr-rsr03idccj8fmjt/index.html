@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">G.Skill Trident Z RGB 64 GB 3200 MT (F4-3200C15Q-64GTZR)</h1><p style="color:#475569;margin:0 0 12px">G.Skill · RAM · Qor AI tech score 82/100</p><img src="https://resim.epey.com/369672/m_g-skill-trident-z-rgb-32gb-4x8gb-f4-3200c14q-32gtzrx-1.jpg" alt="G.Skill Trident Z RGB 64 GB 3200 MT (F4-3200C15Q-64GTZR)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">G.Skill Trident Z RGB 64 GB 3200 MT (F4-3200C15Q-64GTZR) key features: bellek hızı (oc) 3200 MT/s, bellek kapasitesi 64 GB, bellek teknolojisi DDR4. Review G.Skill Trident Z RGB 64 GB 3200 MT (F4-3200C15Q-64GTZR)'s 20 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bellek Hızı (OC):</span> <strong>3200 MT/s</strong></li><li><span style="color:#64748b">Bellek Kapasitesi:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Bellek Teknolojisi:</span> <strong>DDR4</strong></li><li><span style="color:#64748b">CL (Tepkime Süresi):</span> <strong>15</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/g-skill-trident-z-neo-f4-3600c16q-64gtznc-m3zkznf8kctbb20" style="color:#2563eb">G.Skill Trident Z Neo 64 GB 3600 MT (F4-3600C16Q-64GTZNC)</a></li><li><a href="/product/g-skill-ripjaws-v-f4-3600c16q2-256gvk-466gz9jmyyqa4dl" style="color:#2563eb">G.Skill Ripjaws V 256 GB 3600 MT (F4-3600C16Q2-256GVK)</a></li><li><a href="/product/kingston-fury-beast-kf426c16bb1k4-64-s7vgepk16h8zxia" style="color:#2563eb">Kingston Fury Beast 64 GB 2666 MT (KF426C16BB1K4/64)</a></li><li><a href="/product/kingston-fury-beast-rgb-kf432c16bbak2-64-db2sxqhocnpmfj8" style="color:#2563eb">Kingston Fury Beast RGB 64 GB 3200 MT (KF432C16BBAK2/64)</a></li><li><a href="/product/gigabyte-designare-heky98e9lg8cgmh" style="color:#2563eb">Gigabyte Designare 64 GB 3200 MT (GP-DSG64G32)</a></li><li><a href="/product/owc-owc1866d3r9m64-tudk8ur0ggc3z64" style="color:#2563eb">OWC OWC1866D3R9M64 64 GB 1866 MT</a></li><li><a href="/product/goodram-irdm-pro-irp-k3600d4v64l18-64gdc-o0shk6y51ob07uv" style="color:#2563eb">Goodram IRDM Pro 64 GB 3600 MT (IRP-K3600D4V64L18/64GDC)</a></li><li><a href="/product/patriot-viper-4-blackout-pvb464g320c6k-au6kvepnzu2r05v" style="color:#2563eb">Patriot Viper 4 Blackout 64 GB 3200 MT (PVB464G320C6K)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>

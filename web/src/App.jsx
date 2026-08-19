@@ -46,6 +46,25 @@ const CompareBar = lazy(() => import('./components/CompareBar.jsx'));
 const AuthModal = lazy(() => import('./components/AuthModal.jsx'));
 const AiBubble = lazy(() => import('./components/AiBubble.jsx'));
 
+// Açılış kabuğunu (index.html'deki #qor-boot) kaldırır. SUSPENSE SINIRININ
+// İÇİNDE render edilmesi ŞART — bu yüzden App'in kendi effect'i değil, ayrı
+// bir düğüm. ÖNCEDEN App mount olur olmaz çağrılıyordu; tembel rota chunk'ı
+// hâlâ inerken kabuk kalkıyor ve arkasında `.route-fallback` spinner'ından
+// başka bir şey kalmıyordu. Ölçüldü (2026-08-19, canlı ürün sayfası,
+// 390x844 + 4x CPU + Yavaş 4G, scripts/_urun_gecikme.mjs):
+//   kabuk kaldırıldı        3428 ms
+//   .route-fallback ekranda 3292 → 4128 ms   ← arka plan var, içerik yok
+//   gerçek içerik           5722 ms
+// Kullanıcının gönderdiği "üst bar + boş gövde" karesi tam olarak bu aralık.
+// Sınırın İÇİNDE olduğu için ancak rota chunk'ı çözülüp DOM'a bağlandığında
+// koşar. Ana sayfa eager import olduğundan davranışı değişmez.
+// Chunk hiç gelmezse index.html'deki 12 sn'lik kurtarma zamanlayıcısı yine
+// kabuğu kaldırıp ön-render metnini görünür yapar — o yol bozulmadı.
+function BootDone() {
+  useEffect(() => { window.__qorBootDone?.(); }, []);
+  return null;
+}
+
 export default function App() {
   const loc = useLocation();
   const nav = useNavigate();
@@ -66,11 +85,6 @@ export default function App() {
     if (hasActiveAnalysis()) setAiOn(true);
   }, [loc.pathname]);
 
-  // Açılış kabuğunu (index.html'deki #qor-boot) kaldır. Effect COMMIT sonrası
-  // koşar, yani gerçek arayüz zaten boyanmıştır — kabuk kalkarken arkasında boş
-  // ekran kalmaz. Kabuk `position: fixed` olduğu için kaldırılması hiçbir şeyi
-  // kaydırmaz (CLS 0).
-  useEffect(() => { window.__qorBootDone?.(); }, []);
 
   // Scroll to top + report page view on every route change.
   // `behavior: 'instant'` ŞART: iki argümanlı `scrollTo(0, 0)` biçimi CSS'teki
@@ -140,6 +154,7 @@ export default function App() {
           <Route path="/faq" element={<LegalPage kind="faq" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <BootDone />
       </main>
       <Footer />
       </Suspense>

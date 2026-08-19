@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tablets">Tablets</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Huawei MatePad Pro 11 (2022) Tablet (GOT-W29)</h1><p style="color:#475569;margin:0 0 12px">Huawei · Tablets · Qor AI tech score 76/100</p><img src="https://resim.epey.com/797760/m_huawei-matepad-pro-11-2022-1.jpg" alt="Huawei MatePad Pro 11 (2022) Tablet (GOT-W29)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Huawei MatePad Pro 11 (2022) Tablet (GOT-W29) key features: battery capacity 8300 mAh, cpu frequency 3.20 GHz, display boyutu 11.0 İnç. Review Huawei MatePad Pro 11 (2022) Tablet (GOT-W29)'s 46 technical specs, its Qor AI tech score and how it compares with similar models in tablets below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>8300 mAh</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>3.20 GHz</strong></li><li><span style="color:#64748b">Display Boyutu:</span> <strong>11.0 İnç</strong></li><li><span style="color:#64748b">RAM:</span> <strong>8 GB</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>13.0 MP</strong></li><li><span style="color:#64748b">Storage:</span> <strong>128 GB</strong></li><li><span style="color:#64748b">İşletim Sistemi Versiyonu:</span> <strong>HarmonyOS 3</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Tablets</h2><ul style="line-height:1.8"><li><a href="/product/microsoft-surface-pro-10-zea-00007-iu0v0cxc7253w5i" style="color:#2563eb">Microsoft Surface Pro 10 Tablet (Intel Core Ultra 7 165U) (ZEA-00007)</a></li><li><a href="/product/nubia-pad-pro-2cwrzh73e10hgvg" style="color:#2563eb">Nubia Pad Pro Tablet (16 GB / 512 GB)</a></li><li><a href="/product/techstorm-winpad-p09-z6ctjrc2jx1f723" style="color:#2563eb">Techstorm Winpad P09 Tablet</a></li><li><a href="/product/vivo-pad5-pro-2-ut6txtrwtdfdk5z" style="color:#2563eb">Vivo Pad5 Pro Tablet (12 GB / 256 GB)</a></li><li><a href="/product/oppo-pad-mini-512gb-dp2eq07ljnl40mz" style="color:#2563eb">Oppo Pad Mini Tablet (12 GB / 512 GB)</a></li><li><a href="/product/wenntab-ultra-xeon-h8j1fh1uuu8r1zw" style="color:#2563eb">WennTab Ultra Xeon Tablet (16 GB / 512 GB)</a></li><li><a href="/product/honor-magicpad-3-1024gb-whoyfh035pe6f9k" style="color:#2563eb">Honor MagicPad 3 Tablet (16 GB / 1024 GB)</a></li><li><a href="/product/samsung-galaxy-tab-s10-plus-wi-fi-2-ggwtcb8txn59lne" style="color:#2563eb">Samsung Galaxy Tab S10+ Wi-Fi Tablet (512 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tablets" style="color:#2563eb;font-weight:600">Compare all Tablets →</a></p></main></div>

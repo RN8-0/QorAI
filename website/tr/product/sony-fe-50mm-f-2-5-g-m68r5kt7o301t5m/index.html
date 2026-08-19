@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/camera_lenses">Lens</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Sony FE 50mm F2.5 G (SEL50F25G)</h1><p style="color:#475569;margin:0 0 12px">Sony · Lens · Qor AI teknik skoru 57/100</p><img src="https://resim.epey.com/874530/m_sony-fe-50mm-f-2-5-g-1.jpg" alt="Sony FE 50mm F2.5 G (SEL50F25G)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Sony FE 50mm F2.5 G (SEL50F25G) öne çıkan özellikleri: audiosiz odaklama Yes, camera aperture f/2.5, diyafram bıçağı 7 adet. Sony FE 50mm F2.5 G (SEL50F25G) 38 teknik özelliğini, Qor AI teknik skorunu ve benzer lens modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Audiosiz Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera aperture:</span> <strong>f/2.5</strong></li><li><span style="color:#64748b">Diyafram Bıçağı:</span> <strong>7 adet</strong></li><li><span style="color:#64748b">Fast Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Filtre Çapı:</span> <strong>49 mm</strong></li><li><span style="color:#64748b">Görüntü Sabitleyici:</span> <strong>No</strong></li><li><span style="color:#64748b">Görüş Açısı:</span> <strong>47 °</strong></li><li><span style="color:#64748b">Lens Tipi:</span> <strong>Normal Açılı</strong></li><li><span style="color:#64748b">Lens Türü:</span> <strong>Prime (Sabit Odaklı)</strong></li><li><span style="color:#64748b">Odak Uzaklığı:</span> <strong>50 mm</strong></li><li><span style="color:#64748b">Odaklama Mesafesi:</span> <strong>35 cm</strong></li><li><span style="color:#64748b">Otomatik Odaklama:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Output Yılı:</span> <strong>2021</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Lens modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sony-fe-70-200mm-f4-macro-g-oss-ii-l6ak51vz23zon9e" style="color:#2563eb">Sony FE 70-200mm F4 Macro G OSS II (SEL70200G2)</a></li><li><a href="/tr/product/nikon-nikkor-z-70-200mm-f-2-8-vr-s-y99f4hb7q55xe7r" style="color:#2563eb">Nikon Nikkor Z 70-200mm F2.8 VR S (JMA709DA)</a></li><li><a href="/tr/product/nikon-nikkor-z-28-75mm-f-2-8-grwkx1ykpmx1x0p" style="color:#2563eb">Nikon Nikkor Z 28-75mm F2.8 (JMA717DA)</a></li><li><a href="/tr/product/canon-rf-7-14mm-f2-8-3-5-l-fisheye-stm-canon-rf-0cwyb2jbpaziukv" style="color:#2563eb">Canon RF 7-14mm F2.8-3.5 L Fisheye STM (7343C002)</a></li><li><a href="/tr/product/tokina-opera-50mm-f1-4-ef-szqd5unr09zr0hd" style="color:#2563eb">Tokina Opera 50mm F1.4 EF</a></li><li><a href="/tr/product/tokina-opera-50mm-f1-4-fx-bz4uxqf2ek2c46v" style="color:#2563eb">Tokina Opera 50mm F1.4 FX</a></li><li><a href="/tr/product/tamron-sp-70-200mm-f2-8-di-vc-usd-g2-fx-j7xsz1b73juy7wd" style="color:#2563eb">Tamron SP 70-200mm F2.8 Di VC USD G2 FX (Nikon FX) (A025N)</a></li><li><a href="/tr/product/tamron-sp-70-200mm-f-2-8-di-vc-usd-g2-ef-5ys78ditsuqvs10" style="color:#2563eb">Tamron SP 70-200mm F/2.8 Di VC USD G2 EF (Canon EF) (A025E)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/camera_lenses" style="color:#2563eb;font-weight:600">Tüm Lens modellerini karşılaştır →</a></p></main></div>

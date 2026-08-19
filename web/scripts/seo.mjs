@@ -874,6 +874,33 @@ function routeCssAll(src, manifestObj, gorulen = new Set()) {
   return [...new Set(out)];
 }
 
+// Rota chunk'inin STATIK import grafigi (transitif). Girisin (index.html)
+// kendi grafigi HARIC: vite onlari zaten index.html'e modulepreload olarak
+// yaziyor, ikinci kez yazmak yalnizca gurultu olur.
+function routeJsAll(src, manifestObj) {
+  const girisSet = new Set();
+  const yuruGiris = (anahtar) => {
+    if (!anahtar || girisSet.has(anahtar)) return;
+    girisSet.add(anahtar);
+    for (const imp of manifestObj[anahtar]?.imports || []) yuruGiris(imp);
+  };
+  const giris = Object.keys(manifestObj).find((k) => manifestObj[k].isEntry);
+  yuruGiris(giris);
+
+  const out = [];
+  const gorulen = new Set([src]);
+  const yuru = (anahtar) => {
+    if (!anahtar || gorulen.has(anahtar) || girisSet.has(anahtar)) return;
+    gorulen.add(anahtar);
+    const e = manifestObj[anahtar];
+    if (!e) return;
+    if (e.file) out.push(e.file);
+    for (const imp of e.imports || []) yuru(imp);
+  };
+  for (const imp of manifestObj[src]?.imports || []) yuru(imp);
+  return [...new Set(out)];
+}
+
 // Ana sayfanin LCP'si kabuk hero'sunun METNI (.qb-sub). Chrome tracing gosterdi
 // ki FCP ile LCP arasindaki ~730 ms'in yalnizca ~50 ms'i ana is parcacigi:
 // metin FCP'den 48 ms sonra ZATEN ekranda (yedek yuzle), ama Chrome onu LCP
@@ -898,6 +925,19 @@ function routePreloadTags(routeKey) {
   const e = m[src];
   if (!e || !e.file) return [];
   const tags = [`<link rel="modulepreload" crossorigin fetchpriority="low" href="/${e.file}" />`];
+  // Rota chunk'inin STATIK bagimliliklari da ilk dalgaya alinir. Chunk'in
+  // KENDISI on-yuklense bile bagimliliklari ancak o chunk AYRISTIKTAN sonra
+  // kesfediliyordu — yani ikinci bir seri dalga. Olculdu (2026-08-19, canli
+  // urun sayfasi, 390x844 + 4x CPU + Yavas 4G, scripts/_urun_gecikme.mjs):
+  //   ilk dalga     1367 → 2058 ms  (ProductDetail chunk'i)
+  //   IKINCI dalga  3021 → 4091 ms  (pocketbase 11 KB, useAiAccess 31 KB,
+  //                                  profileMatch 34 KB, offers, pbHistory …)
+  //   urun verisi istegi ancak 4145 ms'de cikiyor, icerik 5722 ms'de boyaniyor.
+  // Yani 1,1 sn'lik bu dalga, VERI istegini de kendisi kadar geciktiriyor.
+  // YALNIZ `imports` yuruinur, `dynamicImports` DEGIL: ikincisi tembel yuklenen
+  // (AiAnalysis, Reviews, AiCharts …) kod ve ilk boyamanin yolunda degil —
+  // onlari da cekmek ilk dalganin bant genisligini bosuna boler.
+  for (const f of routeJsAll(src, m)) tags.push(`<link rel="modulepreload" crossorigin fetchpriority="low" href="/${f}" />`);
   // Rota CSS'i: `as="style"` ile onden cekilir. Stylesheet olarak eklemek
   // render-blocking yapardi — amac tam tersi.
   for (const c of routeCssAll(src, m)) tags.push(`<link rel="preload" as="style" fetchpriority="low" href="/${c}" />`);
@@ -1227,11 +1267,38 @@ function landingBody(kind, guides, lang = 'tr') {
 const T = (lang, key) => (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || '';
 const BOOT_LANGS = ['en', 'tr', 'de'];
 
-function bootSkeleton() {
+// Iskelet ROTA BICIMLI. Onceden her rota ayni uc kutuyu goruyordu (210 / 52 /
+// 150 px) ve o uc kutu ekranin yalnizca ust yarisini kapliyordu; gerisi bos
+// zemindi. Olculdu (2026-08-19, scripts/_mobil_bosluk.mjs, canli, 390x844 +
+// 4x CPU + Yavas 4G, YUKLENIRKEN kaydirma): urun sayfasinda 517 karenin 38'i,
+// compare'de 417 karenin 25'i "icerikli blok orani < %1,5", yani EKRAN BOS.
+// Iskeletin gercek yerlesimi taklit etmesi hem beklemeyi okunur kilar hem de
+// icerik gelince gozun aradigi seyi ayni yerde bulmasini saglar.
+// Kabuk `position:fixed` — bu dugumler yerlesime girmez, CLS uretmez.
+function bootSkeleton(routeKey = '') {
+  const sk = (h, w, r) => `<div class="qb-sk" style="height:${h}px${w ? `;width:${w}` : ''}${r ? `;border-radius:${r}` : ''}"></div>`;
+  if (routeKey === 'product') {
+    return '<div class="qb-skel">'
+      + sk(12, '46%')                                   // kirinti yolu
+      + sk(300)                                         // hero gorseli
+      + sk(24, '88%') + sk(24, '54%')                   // urun adi (iki satir)
+      + `<div class="qb-row">${sk(30, '', '999px')}${sk(30, '', '999px')}${sk(30, '', '999px')}</div>`
+      + `<div class="qb-row">${sk(40, '', '12px')}${sk(40, '', '12px')}</div>`   // Karsilastir / Analiz Et
+      + sk(16, '72%') + sk(16, '90%') + sk(16, '64%') + sk(16, '82%')            // spec satirlari
+      + '</div>';
+  }
+  if (routeKey === 'compare') {
+    return '<div class="qb-skel">'
+      + sk(26, '58%')
+      + `<div class="qb-row">${sk(190)}${sk(190)}</div>`
+      + sk(18, '40%')
+      + sk(22, '94%') + sk(22, '94%') + sk(22, '94%') + sk(22, '94%') + sk(22, '94%')
+      + '</div>';
+  }
   return '<div class="qb-skel">'
-    + '<div class="qb-sk" style="height:210px"></div>'
-    + '<div class="qb-sk" style="height:52px;border-radius:999px"></div>'
-    + '<div class="qb-sk" style="height:150px"></div></div>';
+    + sk(210)
+    + sk(52, '', '999px')
+    + sk(150) + '</div>';
 }
 
 // PageHero'nun (subscriptions / link-analysis / premium) kabuk karsiligi.
@@ -1302,7 +1369,7 @@ function renderPage(template, seo, bodyHtml) {
       out = out.replace('  <style>', () => `  ${HOME_FONT_PRELOAD}\n  <style>`);
     }
   } else {
-    const blok = bootHero(seo.routeKey || '', seo.bootExtra || {}) || bootSkeleton();
+    const blok = bootHero(seo.routeKey || '', seo.bootExtra || {}) || bootSkeleton(seo.routeKey || '');
     out = out.replace(/<!--qb-hero-->[\s\S]*?<!--\/qb-hero-->/, () => `<!--qb-hero-->${blok}<!--/qb-hero-->`);
   }
   // Rota on-yuklemesi head'in EN SONUNA, yani vite'in giris modulunden SONRA.

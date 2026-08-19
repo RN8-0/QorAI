@@ -258,23 +258,47 @@
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
   html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
   html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
-  #qor-boot .qb-sk{border-radius:16px;background:rgba(15,23,42,.055)}
-  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.06)}
+  /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
+     `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
+     yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
+     canli urun sayfasi, 390x844 + 4x CPU + Yavas 4G): kabuk ekrandayken karenin
+     "icerikli blok" orani %5,2 — nabiz cukurunda %0,1. Kullanicinin
+     "arka plan var ama icerik yok" dedigi karelerin bir kismi TAM OLARAK
+     buydu: kabuk oradaydi ama gorunmuyordu.
+     Yeni deger .085 → fark ~19/255. Nabiz cukuru da .55'ten .72'ye alindi:
+     .55'te iskelet her 1,4 sn'de bir tamamen kayboluyordu. */
+  #qor-boot .qb-sk{border-radius:var(--r-md,14px);background:rgba(15,23,42,.085)}
+  [data-theme='dark'] #qor-boot .qb-sk{background:rgba(255,255,255,.085)}
+  /* Rota bicimli iskeletin satirlari (urun/compare). Kabuk `position:fixed`
+     oldugu icin bu dugumlerin YERLESIME etkisi yok — CLS uretmezler. */
+  #qor-boot .qb-row{display:flex;gap:10px;align-items:stretch}
+  #qor-boot .qb-row>.qb-sk{flex:1 1 0;min-width:0}
   @media (prefers-reduced-motion: no-preference){
     #qor-boot .qb-sk{animation:qbPulse 1.4s ease-in-out infinite}
-    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.55}}
+    @keyframes qbPulse{0%,100%{opacity:1}50%{opacity:.72}}
   }
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DqZxADPY.js"></script>
+  <script type="module" crossorigin src="/spa/index-BU9PsnYg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-Bi2ZEaFz.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-B7h9CdjF.js">
-  <link rel="stylesheet" crossorigin href="/spa/index-DHrgwvkU.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO0i58DZ.js" />
+  <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DvMod5J_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-MwLOe_DG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DMb0Xyfw.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-COrPNPgf.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-D3uDYOq2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-BwrS7V3P.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-B49BDlTD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-KAempai3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-CHvd9Eb5.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-OLqSUrHk.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-B59fIS0E.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-BQq8Vdna.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-DHrgwvkU.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-7vrfksLV.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
 </head>
@@ -306,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:210px"></div><div class="qb-sk" style="height:52px;border-radius:999px"></div><div class="qb-sk" style="height:150px"></div></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/graphics_cards">Graphics Cards</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Msi geforce RTX 5080 gaming trio screen card (G5080-16GT)</h1><p style="color:#475569;margin:0 0 12px">MSI · Graphics Cards · Qor AI tech score 90/100</p><img src="https://resim.epey.com/1009179/m_msi-geforce-rtx-5080-gaming-trio-1.jpg" alt="Msi geforce RTX 5080 gaming trio screen card (G5080-16GT)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Msi geforce RTX 5080 gaming trio screen card (G5080-16GT) key features: aydınlatma tipi ARGB LED, bellek boyutu 16 GB, bellek türü GDDR7. Review Msi geforce RTX 5080 gaming trio screen card (G5080-16GT)'s 55 technical specs, its Qor AI tech score and how it compares with similar models in graphics cards below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Aydınlatma Tipi:</span> <strong>ARGB LED</strong></li><li><span style="color:#64748b">Bellek Boyutu:</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Bellek Türü:</span> <strong>GDDR7</strong></li><li><span style="color:#64748b">GPU Mimarisi:</span> <strong>Blackwell</strong></li><li><span style="color:#64748b">Grafik Kartı Gücü:</span> <strong>360 W</strong></li><li><span style="color:#64748b">Gölgeleme Ünitesi:</span> <strong>10752 birim</strong></li><li><span style="color:#64748b">Işın İzleme:</span> <strong>Yes</strong></li><li><span style="color:#64748b">PCIe Arayüzü:</span> <strong>5.0</strong></li><li><span style="color:#64748b">Resolution:</span> <strong>4K</strong></li><li><span style="color:#64748b">Soğutma Tipi:</span> <strong>Fan Soğutmalı</strong></li><li><span style="color:#64748b">Transistör Mesafesi:</span> <strong>4 nm</strong></li><li><span style="color:#64748b">Yapay Zeka Hızlandırıcı:</span> <strong>Yes</strong></li><li><span style="color:#64748b">İşlemci Üreticisi:</span> <strong>NVIDIA</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Graphics Cards</h2><ul style="line-height:1.8"><li><a href="/product/msi-geforce-rtx-5080-suprim-soc-suaczq72ncwriku" style="color:#2563eb">Msi geforce RTX 5080 suprim SOC screen card (G5080-16SPS)</a></li><li><a href="/product/msi-geforce-rtx-5080-suprim-liquid-soc-ogi51ijgnc2q1yy" style="color:#2563eb">Msi geforce RTX 5080 suprim liquid SOC screen card (G5080-16SLS)</a></li><li><a href="/product/msi-geforce-rtx-5080-ventus-3x-oc-plus-jii1rml2przgmgx" style="color:#2563eb">Msi geforce RTX 5080 ventus 3X oc plus screen card (G5080-16V3CP)</a></li><li><a href="/product/msi-geforce-rtx-5080-inspire-3x-oc-vjs4n277q3wbu5j" style="color:#2563eb">Msi geforce RTX 5080 inspire 3X oc screen card (G5080-16I3C)</a></li><li><a href="/product/msi-geforce-rtx-5080-shadow-3x-3c8bl0xwv0dhh8c" style="color:#2563eb">Msi geforce RTX 5080 shadow 3X screen card (G5080-16S3)</a></li><li><a href="/product/asus-rog-astral-geforce-rtx-5080-16gb-gddr7-oc-white-edition-vy41jw9piqygv65" style="color:#2563eb">Asus rog astral geforce RTX 5080 16GB GDDR7 oc white edition screen card (ROG-ASTRAL-RTX5080-O16G-WHITE)</a></li><li><a href="/product/asus-proart-geforce-rtx-5080-oc-180c6lup22cr9hy" style="color:#2563eb">Asus proart geforce RTX 5080 oc screen card (PROART-RTX5080-O16G)</a></li><li><a href="/product/asus-prime-geforce-rtx-5080-16gb-gddr7-fp1i7htoz48tjet" style="color:#2563eb">Asus prime geforce RTX 5080 16GB GDDR7 screen card (PRIME-RTX5080-16G)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/graphics_cards" style="color:#2563eb;font-weight:600">Compare all Graphics Cards →</a></p></main></div>
