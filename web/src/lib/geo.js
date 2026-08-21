@@ -8,7 +8,7 @@ const KEY = 'qor-geo-cc';
 // Short TTL: the cached value is only an instant-paint seed. We ALWAYS revalidate
 // against Cloudflare in the background, so a VPN / real location change is
 // reflected within one render instead of being frozen for a day (the bug that
-// pinned a German-VPN visitor to a stale TR ship-to default).
+// pinned a foreign-VPN visitor to a stale TR ship-to default).
 const TTL = 60 * 60 * 1000;
 let memo = '';
 let inflight = null;

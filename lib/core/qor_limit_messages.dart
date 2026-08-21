@@ -6,7 +6,6 @@ import 'package:qor_ai/l10n/app_localizations.dart';
 
 const Set<String> _supportedQorLanguageCodes = {
   'ar',
-  'de',
   'en',
   'es',
   'fr',
@@ -25,7 +24,6 @@ const Set<String> _supportedQorLanguageCodes = {
 // BALANCE, never about a "daily limit" or a "tomorrow reset".
 const Map<String, String> _insufficientTitles = {
   'ar': 'رصيد Q غير كافٍ',
-  'de': 'Nicht genug Q-Guthaben',
   'en': 'Not enough Q balance',
   'es': 'Saldo Q insuficiente',
   'fr': 'Solde Q insuffisant',
@@ -43,7 +41,6 @@ const Map<String, String> _insufficientTitles = {
 // string-sniffing the whole sentence.
 const Map<String, String> _insufficientHeadlines = {
   'ar': 'رصيد Q غير كافٍ.',
-  'de': 'Dein Q-Guthaben reicht nicht aus.',
   'en': 'Your Q balance is not enough.',
   'es': 'Tu saldo Q no es suficiente.',
   'fr': 'Votre solde Q est insuffisant.',
@@ -59,8 +56,6 @@ const Map<String, String> _insufficientHeadlines = {
 String _detailSentence(String lang, String cost, String balance) {
   return switch (lang) {
     'ar' => 'تكلفة هذه العملية $cost Q ورصيدك $balance Q. للاستخدام غير المحدود انتقل إلى بريميوم.',
-    'de' =>
-      'Diese Aktion kostet $cost Q, dein Guthaben betragt $balance Q. Fur unbegrenzte AI-Nutzung hol dir Premium.',
     'en' =>
       'This action costs $cost Q and your balance is $balance Q. Go Premium for unlimited AI.',
     'es' =>
@@ -87,7 +82,6 @@ String _detailSentence(String lang, String cost, String balance) {
 
 const Map<String, String> _balanceUnavailableMessages = {
   'ar': 'تعذر التحقق من رصيد Q. تحقق من اتصالك وحاول مرة أخرى.',
-  'de': 'Q-Guthaben konnte nicht gepruft werden. Prufe deine Verbindung und versuche es erneut.',
   'en': 'Could not verify your Q balance. Check your connection and try again.',
   'es': 'No se pudo verificar tu saldo Q. Revisa tu conexion e intentalo de nuevo.',
   'fr': 'Impossible de verifier votre solde Q. Verifiez votre connexion et reessayez.',
@@ -102,7 +96,6 @@ const Map<String, String> _balanceUnavailableMessages = {
 
 const Map<String, String> _signInRequiredMessages = {
   'ar': 'سجّل الدخول لاستخدام ميزات الذكاء الاصطناعي.',
-  'de': 'Melde dich an, um AI-Funktionen zu nutzen.',
   'en': 'Sign in to use AI features.',
   'es': 'Inicia sesion para usar las funciones de IA.',
   'fr': 'Connectez-vous pour utiliser les fonctions IA.',
@@ -117,7 +110,6 @@ const Map<String, String> _signInRequiredMessages = {
 
 const Map<String, String> _analysisFailedMessages = {
   'ar': 'تعذر إكمال التحليل. حاول مرة أخرى.',
-  'de': 'Die Analyse konnte nicht abgeschlossen werden. Bitte erneut versuchen.',
   'en': 'The analysis could not be completed. Please try again.',
   'es': 'No se pudo completar el analisis. Intentalo de nuevo.',
   'fr': 'L analyse n a pas pu etre terminee. Veuillez reessayer.',
@@ -132,7 +124,6 @@ const Map<String, String> _analysisFailedMessages = {
 
 const Map<String, String> _closeLabels = {
   'ar': 'إغلاق',
-  'de': 'Schliessen',
   'en': 'Close',
   'es': 'Cerrar',
   'fr': 'Fermer',

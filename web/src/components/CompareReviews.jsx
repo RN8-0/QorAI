@@ -25,7 +25,7 @@ function StarPicker({ value, onChange }) {
 // the compare page, independent of the Specs / AI tabs.
 export default function CompareReviews({ productIds, productNames }) {
   const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const { user, openAuth } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [rating, setRating] = useState(0);
@@ -72,7 +72,7 @@ export default function CompareReviews({ productIds, productNames }) {
   return (
     <section className="cmp-reviews">
       <div className="cmp-reviews-head">
-        <h2>💬 {L('Comparison reviews', 'Karşılaştırma yorumları', 'Vergleichsbewertungen')}</h2>
+        <h2>💬 {L('Comparison reviews', 'Karşılaştırma yorumları')}</h2>
         <span className="cmp-reviews-sub">{productNames || ''}</span>
         {reviews.length > 0 && (
           <span className="pd-rev-avg"><Stars value={Math.round(avg)} /> {avg.toFixed(1)} · {reviews.length}</span>
@@ -80,34 +80,33 @@ export default function CompareReviews({ productIds, productNames }) {
       </div>
       <p className="cmp-reviews-note">
         {L('Reviews are shared for this exact comparison — across web and the app.',
-           'Yorumlar tam olarak bu karşılaştırma için ortak — web ve uygulamada görünür.',
-           'Bewertungen gelten für genau diesen Vergleich — web- und app-übergreifend.')}
+           'Yorumlar tam olarak bu karşılaştırma için ortak — web ve uygulamada görünür.')}
       </p>
 
       <form className="pd-rev-form" onSubmit={submit}>
         {user ? (
           <>
             <div className="pd-rev-form-top">
-              <span className="pd-rev-label">{L('Your rating', 'Puanın', 'Deine Bewertung')}</span>
+              <span className="pd-rev-label">{L('Your rating', 'Puanın')}</span>
               <StarPicker value={rating} onChange={setRating} />
             </div>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000}
-              placeholder={L('Share which one you would pick and why…', 'Hangisini seçerdin ve neden, paylaş…', 'Teile, welches du wählen würdest und warum…')} />
-            {msg === 'ok' && <div className="pd-rev-ok">{L('Thanks for your review!', 'Yorumun için teşekkürler!', 'Danke für deine Bewertung!')}</div>}
-            {msg === 'err' && <div className="pd-rev-er">{L('Could not submit. Try again.', 'Gönderilemedi. Tekrar dene.', 'Konnte nicht gesendet werden.')}</div>}
+              placeholder={L('Share which one you would pick and why…', 'Hangisini seçerdin ve neden, paylaş…')} />
+            {msg === 'ok' && <div className="pd-rev-ok">{L('Thanks for your review!', 'Yorumun için teşekkürler!')}</div>}
+            {msg === 'err' && <div className="pd-rev-er">{L('Could not submit. Try again.', 'Gönderilemedi. Tekrar dene.')}</div>}
             <button type="submit" className="btn btn-primary" disabled={busy || !rating || !text.trim()}>
-              {L('Submit review', 'Yorumu gönder', 'Bewertung senden')}
+              {L('Submit review', 'Yorumu gönder')}
             </button>
           </>
         ) : (
           <button type="button" className="btn btn-ghost" onClick={openAuth}>
-            {L('Sign in to review this comparison', 'Bu karşılaştırmayı yorumlamak için giriş yap', 'Anmelden zum Bewerten')}
+            {L('Sign in to review this comparison', 'Bu karşılaştırmayı yorumlamak için giriş yap')}
           </button>
         )}
       </form>
 
       {reviews.length === 0 ? (
-        <div className="pd-note">{L('No reviews yet — be the first to review this comparison.', 'Henüz yorum yok — bu karşılaştırmayı ilk değerlendiren sen ol.', 'Noch keine Bewertungen — sei der Erste.')}</div>
+        <div className="pd-note">{L('No reviews yet — be the first to review this comparison.', 'Henüz yorum yok — bu karşılaştırmayı ilk değerlendiren sen ol.')}</div>
       ) : (
         <div className="pd-rev-list">
           {reviews.map((r) => {
@@ -122,7 +121,7 @@ export default function CompareReviews({ productIds, productNames }) {
                   </div>
                   <span className="pd-rev-date">{r.created ? new Date(r.created).toLocaleDateString() : ''}</span>
                   {user && r.userId === user.id && (
-                    <button className="rv-del" onClick={() => remove(r.id)} title={L('Delete', 'Sil', 'Löschen')}>🗑</button>
+                    <button className="rv-del" onClick={() => remove(r.id)} title={L('Delete', 'Sil')}>🗑</button>
                   )}
                 </div>
                 {r.text && <p className="pd-rev-text">{r.text}</p>}

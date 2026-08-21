@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/tr/product/epson-eh-ls800" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/epson-eh-ls800" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/epson-eh-ls800" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/epson-eh-ls800" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/epson-eh-ls800" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Epson EH-LS800 LCD Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">Epson · Projeksiyon · Qor AI teknik skoru 100/100</p><img src="https://resim.epey.com/844436/m_epson-eh-ls800-2.jpg" alt="Epson EH-LS800 LCD Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺198.999</p><p style="line-height:1.7;color:#334155">Epson EH-LS800 LCD Projeksiyon öne çıkan özellikleri: ağ bağlantısı Var, ağırlık 12.3 kg, dinamik kontrast 2500000 :1. Epson EH-LS800 LCD Projeksiyon 38 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Var</strong></li><li><span style="color:#64748b">Ağırlık:</span> <strong>12.3 kg</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>2500000 :1</strong></li><li><span style="color:#64748b">Enerji Tüketimi (Güçlü):</span> <strong>350 W</strong></li><li><span style="color:#64748b">Gürültü Seviyesi (Güçlü):</span> <strong>32 dB</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>20000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>LCD</strong></li><li><span style="color:#64748b">Renk Sayısı:</span> <strong>1.07 Milyar</strong></li><li><span style="color:#64748b">Çözünürlük:</span> <strong>3840x2160</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/hisense-l9q" style="color:#2563eb">Hisense L9Q DLP Projeksiyon</a></li><li><a href="/tr/product/canon-lx-mh502z" style="color:#2563eb">Canon LX-MH502Z DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk700sti" style="color:#2563eb">BenQ TK700STi DLP Projeksiyon</a></li><li><a href="/tr/product/benq-x3000i" style="color:#2563eb">BenQ X3000i DLP Projeksiyon</a></li><li><a href="/tr/product/acer-h6800bda" style="color:#2563eb">Acer H6800BDA DLP Projeksiyon</a></li><li><a href="/tr/product/optoma-cinemax-p1" style="color:#2563eb">Optoma CinemaX P1 DLP Projeksiyon</a></li><li><a href="/tr/product/optoma-cinemax-p2" style="color:#2563eb">Optoma CinemaX P2 DLP Projeksiyon</a></li><li><a href="/tr/product/optoma-uhz65ust" style="color:#2563eb">Optoma UHZ65UST DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Epson EH-LS800 LCD Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">Epson · Projeksiyon · Qor AI teknik skoru 100/100</p><img src="https://resim.epey.com/844436/m_epson-eh-ls800-2.jpg" alt="Epson EH-LS800 LCD Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺198.999</p><p style="line-height:1.7;color:#334155">Epson EH-LS800 LCD Projeksiyon öne çıkan özellikleri: ağ bağlantısı Var, ağırlık 12.3 kg, dinamik kontrast 2500000 :1. Epson EH-LS800 LCD Projeksiyon 38 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Var</strong></li><li><span style="color:#64748b">Ağırlık:</span> <strong>12.3 kg</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>2500000 :1</strong></li><li><span style="color:#64748b">Enerji Tüketimi (Güçlü):</span> <strong>350 W</strong></li><li><span style="color:#64748b">Gürültü Seviyesi (Güçlü):</span> <strong>32 dB</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>20000 saat</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>LCD</strong></li><li><span style="color:#64748b">Renk Sayısı:</span> <strong>1.07 Milyar</strong></li><li><span style="color:#64748b">Çözünürlük:</span> <strong>3840x2160</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/epson-eh-ls670" style="color:#2563eb">Epson EH-LS670 LCD Projeksiyon</a></li><li><a href="/tr/product/benq-w2720i" style="color:#2563eb">BenQ W2720i DLP Projeksiyon</a></li><li><a href="/tr/product/epson-eh-tw6250" style="color:#2563eb">Epson EH-TW6250 LCD Projeksiyon (V11HA73040)</a></li><li><a href="/tr/product/samsung-the-premiere-130" style="color:#2563eb">Samsung The Premiere 130 DLP Projeksiyon (LSP9T)</a></li><li><a href="/tr/product/benq-tk705sti" style="color:#2563eb">BenQ TK705STi DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk705i" style="color:#2563eb">BenQ TK705i DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk710sti" style="color:#2563eb">BenQ TK710STi DLP Projeksiyon</a></li><li><a href="/tr/product/benq-x3100i" style="color:#2563eb">BenQ X3100i DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

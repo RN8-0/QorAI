@@ -111,7 +111,7 @@ function ScoreChart({ services, L }) {
   const max = Math.max(100, ...rows.map((s) => Math.round(s.score || 0)));
   return (
     <div className="subs-chart">
-      <div className="subs-chart-head">📊 {L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
+      <div className="subs-chart-head">📊 {L('Compatibility scores', 'Uyum puanları')}</div>
       <div className="subs-chart-rows">
         {rows.map((s, i) => {
           const v = Math.round(s.score || 0);
@@ -163,16 +163,16 @@ function serviceSections(s, L) {
       <ProConList
         pros={pros} cons={cons} L={L}
         titles={{
-          pro: L('Strengths', 'Güçlü yanlar', 'Stärken'),
-          con: L('Trade-offs', 'Eksiler', 'Nachteile'),
+          pro: L('Strengths', 'Güçlü yanlar'),
+          con: L('Trade-offs', 'Eksiler'),
         }}
       />
     ) : null,
     critical: critical.length ? <CriticalPoints items={critical} L={L} /> : null,
     forwho: (s.bestFor || s.notFor) ? (
       <div className="subs-forwho">
-        {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun', 'Ideal für')}:</b> {s.bestFor}</p>}
-        {s.notFor && <p className="subs-forwho-bad">🚫 <b>{L('Skip if', 'Şu durumda geç', 'Überspringen wenn')}:</b> {s.notFor}</p>}
+        {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun')}:</b> {s.bestFor}</p>}
+        {s.notFor && <p className="subs-forwho-bad">🚫 <b>{L('Skip if', 'Şu durumda geç')}:</b> {s.notFor}</p>}
       </div>
     ) : null,
     themes: themes.length ? (
@@ -182,18 +182,18 @@ function serviceSections(s, L) {
       </>
     ) : null,
     community: s.community ? (
-      <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor', 'Was Abonnenten sagen')}>
+      <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor')}>
         <div className="la-prose"><AiText text={s.community} /></div>
       </Sec>
     ) : null,
     cancel: cancelReasons.length ? (
       <div className="subs-svc-risks">
-        <h4>🚪 {L('Why people cancel', 'İnsanlar neden iptal ediyor', 'Warum gekündigt wird')}</h4>
+        <h4>🚪 {L('Why people cancel', 'İnsanlar neden iptal ediyor')}</h4>
         <ul>{cancelReasons.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
       </div>
     ) : null,
     extras: (features.length || risks.length) ? (
-      <Collapsible label={`📖 ${L('Features and risk notes', 'Özellikler ve risk notları', 'Funktionen und Risiken')}`}>
+      <Collapsible label={`📖 ${L('Features and risk notes', 'Özellikler ve risk notları')}`}>
         {features.length > 0 && (
           <div className="subs-svc-features">
             {features.slice(0, 6).map((x, i) => (<span key={i}><b>{x.label}</b>{x.value}</span>))}
@@ -201,7 +201,7 @@ function serviceSections(s, L) {
         )}
         {risks.length > 0 && (
           <div className="subs-svc-risks">
-            <h4>🛡 {L('Risk notes', 'Risk notları', 'Risikohinweise')}</h4>
+            <h4>🛡 {L('Risk notes', 'Risk notları')}</h4>
             <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
           </div>
         )}
@@ -219,7 +219,7 @@ function ServiceHeader({ s, isWinner, L }) {
   const score = Math.round(s.score || 0);
   return (
     <div className="subs-svc-top">
-      {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun', 'Beste Wahl')}</span>}
+      {isWinner && <span className="subs-svc-win">★ {L('Best fit', 'En uygun')}</span>}
       <SubLogo name={s.name} size={50} radius={14} />
       <Gauge value={score} size={62} stroke={6} color={scoreColor(score)} fontSize={18} />
       <div className="subs-svc-id">
@@ -247,7 +247,7 @@ export default function Subscriptions() {
   const nav = useNavigate();
   const requireAiAccess = useAiAccess(lang);
   const [errCode, setErrCode] = useState('');
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   useSeo({ title: `${t('subs.title')} — Qor AI`, description: t('subs.subtitle'), path: '/subscriptions' });
 
   const [selected, setSelected] = useState([]);
@@ -288,8 +288,7 @@ export default function Subscriptions() {
   }
   function mixedCatMsg() {
     return L('Only services of the same type can be compared (e.g. Netflix vs Disney+).',
-      'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).',
-      'Nur Dienste desselben Typs können verglichen werden (z. B. Netflix vs Disney+).');
+      'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).');
   }
   // The category currently locked in by the selection (first known category).
   function activeCategory() {
@@ -367,8 +366,7 @@ export default function Subscriptions() {
   async function _startAnalysis(items) {
     if (subscriptionsMixCategories(items)) {
       setErr(L('Only services of the same type can be compared (e.g. Netflix vs Disney+).',
-        'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).',
-        'Nur Dienste desselben Typs können verglichen werden (z. B. Netflix vs Disney+).'));
+        'Yalnızca aynı tür servisler karşılaştırılabilir (ör. Netflix ile Disney+).'));
       return;
     }
     if (!user) {
@@ -379,8 +377,7 @@ export default function Subscriptions() {
     if (!hasCompletedQuiz(user)) {
       savePending(items);
       setErr(L('Complete the profile quiz first. Your subscriptions are saved.',
-        'Önce profil quizini tamamla. Abonelik seçimlerin kaydedildi.',
-        'Schließe zuerst das Profil-Quiz ab. Deine Auswahl bleibt gespeichert.'));
+        'Önce profil quizini tamamla. Abonelik seçimlerin kaydedildi.'));
       nav(`/quiz?required=1&next=${encodeURIComponent('/subscriptions')}`);
       return;
     }
@@ -453,20 +450,17 @@ export default function Subscriptions() {
 
   const howItWorks = [
     { icon: '💬', grad: 'linear-gradient(135deg, var(--brand-cyan), var(--brand-blue))',
-      title: L('Community Voice', 'İnternet Yorumları', 'Community-Stimmen'),
+      title: L('Community Voice', 'İnternet Yorumları'),
       desc: L('Real user feedback from Reddit, forums, and social media with a positive/negative summary.',
-        'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet.',
-        'Echtes Feedback aus Reddit, Foren und Social Media mit Positiv-/Negativ-Zusammenfassung.') },
+        'Reddit, forum ve sosyal medyadan gerçek kullanıcı yorumları — olumlu/olumsuz özet.') },
     { icon: '🎯', grad: 'linear-gradient(135deg, var(--brand-sky), var(--brand-cyan))',
-      title: L('Personal Quiz', 'Kişisel Quiz', 'Persönliches Quiz'),
+      title: L('Personal Quiz', 'Kişisel Quiz'),
       desc: L('AI tailors questions to your habits so every answer sharpens the match.',
-        'AI alışkanlıklarına göre sorular hazırlar — her cevap eşleşmeyi keskinleştirir.',
-        'Die KI passt Fragen an deine Gewohnheiten an und personalisiert so das Ergebnis.') },
+        'AI alışkanlıklarına göre sorular hazırlar — her cevap eşleşmeyi keskinleştirir.') },
     { icon: '✨', grad: 'linear-gradient(135deg, var(--brand-cyan), #10B981)',
-      title: L('Smart Match', 'Akıllı Eşleşme', 'Smart Match'),
+      title: L('Smart Match', 'Akıllı Eşleşme'),
       desc: L('Compatibility score and a detailed recommendation tuned to your profile.',
-        'Profiline göre uyum puanı ve sana özel detaylı öneri.',
-        'Kompatibilitätsscore und detaillierte Empfehlung passend zu deinem Profil.') },
+        'Profiline göre uyum puanı ve sana özel detaylı öneri.') },
   ];
 
   return (
@@ -486,15 +480,15 @@ export default function Subscriptions() {
           <Reveal as="section" className="subs-picker-panel">
             <div className="subs-picker-head">
               <div className="subs-picker-title">
-                <strong>{L('Pick your subscriptions', 'Aboneliklerini seç', 'Wähle deine Abos')}</strong>
+                <strong>{L('Pick your subscriptions', 'Aboneliklerini seç')}</strong>
                 <span>{selected.length > 1
-                  ? L('Comparison mode — same category only', 'Karşılaştırma modu — yalnız aynı tür', 'Vergleichsmodus — nur gleiche Kategorie')
-                  : L('Add a second one to compare them side by side', 'Yan yana karşılaştırmak için ikinci bir tane ekle', 'Füge ein zweites hinzu, um zu vergleichen')}</span>
+                  ? L('Comparison mode — same category only', 'Karşılaştırma modu — yalnız aynı tür')
+                  : L('Add a second one to compare them side by side', 'Yan yana karşılaştırmak için ikinci bir tane ekle')}</span>
               </div>
               <span className={'subs-mode-pill' + (selected.length > 1 ? ' compare' : '')}>
                 {selected.length > 1
-                  ? `⚖️ ${L('Compare', 'Karşılaştır', 'Vergleich')} · ${selected.length}`
-                  : `🔎 ${L('Deep analysis', 'Derin analiz', 'Tiefenanalyse')}`}
+                  ? `⚖️ ${L('Compare', 'Karşılaştır')} · ${selected.length}`
+                  : `🔎 ${L('Deep analysis', 'Derin analiz')}`}
               </span>
             </div>
 
@@ -520,13 +514,13 @@ export default function Subscriptions() {
               <input ref={customRef} value={custom} onChange={(e) => setCustom(e.target.value)}
                 placeholder={t('subs.customPlaceholder')} />
               <button type="submit" className="btn btn-ghost" disabled={adding || !custom.trim()}>
-                {adding ? L('Checking…', 'Kontrol ediliyor…', 'Wird geprüft…') : t('subs.add')}
+                {adding ? L('Checking…', 'Kontrol ediliyor…') : t('subs.add')}
               </button>
             </form>
 
             {selected.length > 0 && (
               <div className="subs-selected">
-                <span className="subs-selected-label">{L('Selected', 'Seçilenler', 'Ausgewählt')} · {selected.length}</span>
+                <span className="subs-selected-label">{L('Selected', 'Seçilenler')} · {selected.length}</span>
                 {selected.map((s) => (
                   <span key={s} className="subs-chip">
                     <SubLogo name={s} size={22} radius={6} />
@@ -539,26 +533,26 @@ export default function Subscriptions() {
               </div>
             )}
 
-            {err && <div className="subs-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
+            {err && <div className="subs-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak')}</a></>}</div>}
 
             <button className="btn btn-grad btn-lg btn-shine subs-go"
               onClick={() => startAnalysis()} disabled={selected.length < 1 || starting}>
               {selected.length < 1
                 ? t('subs.goMin')
                 : selected.length > 1
-                  ? `${L('Compare', 'Karşılaştır', 'Vergleichen')} · ${selected.length}`
-                  : L('Start Analysis', 'Analizi Başlat', 'Analyse starten')}
+                  ? `${L('Compare', 'Karşılaştır')} · ${selected.length}`
+                  : L('Start Analysis', 'Analizi Başlat')}
             </button>
 
             <ul className="subs-promise">
-              <li>🌐 {L('Real subscriber reviews from Reddit, forums and app stores', 'Reddit, forum ve uygulama mağazalarından gerçek abone yorumları', 'Echte Abonnentenbewertungen aus Reddit, Foren und App-Stores')}</li>
-              <li>🧠 {L('A short quiz makes the verdict personally yours', 'Kısa bir quiz kararı sana özel yapar', 'Ein kurzes Quiz macht das Urteil persönlich')}</li>
-              <li>🚪 {L('Why people cancel, what to watch for, and a usage plan', 'İnsanlar neden iptal ediyor, nelere dikkat etmeli ve kullanım planı', 'Warum gekündigt wird, worauf zu achten ist, plus Nutzungsplan')}</li>
+              <li>🌐 {L('Real subscriber reviews from Reddit, forums and app stores', 'Reddit, forum ve uygulama mağazalarından gerçek abone yorumları')}</li>
+              <li>🧠 {L('A short quiz makes the verdict personally yours', 'Kısa bir quiz kararı sana özel yapar')}</li>
+              <li>🚪 {L('Why people cancel, what to watch for, and a usage plan', 'İnsanlar neden iptal ediyor, nelere dikkat etmeli ve kullanım planı')}</li>
             </ul>
           </Reveal>
 
           <Reveal delay={90}>
-            <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+            <HowItWorks title={L('How it works', 'Nasıl çalışır')} steps={howItWorks} />
           </Reveal>
 
           {user && (
@@ -613,10 +607,9 @@ export default function Subscriptions() {
           <QuizFlow
             questions={questions}
             busy={false}
-            title={L('Tune your match', 'Eşleşmeni kişiselleştir', 'Match anpassen')}
+            title={L('Tune your match', 'Eşleşmeni kişiselleştir')}
             subtitle={L('A few quick questions so Qor AI weighs the services for how you actually use them.',
-              'Birkaç kısa soru — Qor AI servisleri senin gerçek kullanımına göre tartsın.',
-              'Ein paar kurze Fragen, damit Qor AI die Dienste nach deiner Nutzung gewichtet.')}
+              'Birkaç kısa soru — Qor AI servisleri senin gerçek kullanımına göre tartsın.')}
             onSubmit={(answers) => submitSubscriptionAnalysisJobAnswers(activeJobId, answers, profile())}
             onSkip={() => submitSubscriptionAnalysisJobAnswers(activeJobId, [], profile())}
           />
@@ -652,7 +645,7 @@ export default function Subscriptions() {
           )}
           <div className="subs-again">
             <button type="button" className="btn btn-ghost" onClick={resetAnalysis}>
-              ← {L('Back', 'Geri', 'Zurück')}
+              ← {L('Back', 'Geri')}
             </button>
           </div>
         </div>
@@ -672,14 +665,14 @@ export default function Subscriptions() {
         return (
           <div className="subs-result fade-up">
             {result.researched && (
-              <div className="subs-researched">🌐 {L('Subscriber reviews and forums were scanned live', 'Abone yorumları ve forumlar canlı tarandı', 'Abonnentenbewertungen und Foren wurden live gescannt')}</div>
+              <div className="subs-researched">🌐 {L('Subscriber reviews and forums were scanned live', 'Abone yorumları ve forumlar canlı tarandı')}</div>
             )}
 
             {best && (
               <section className="subs-result-hero">
                 <div className="subs-hero-logo"><SubLogo name={best.name} size={56} radius={14} /></div>
                 <div className="subs-hero-copy">
-                  <span>{services.length > 1 ? L('Best match', 'En iyi eşleşme', 'Beste Wahl') : L('Your match', 'Senin eşleşmen', 'Dein Match')}</span>
+                  <span>{services.length > 1 ? L('Best match', 'En iyi eşleşme') : L('Your match', 'Senin eşleşmen')}</span>
                   <strong>{best.name}</strong>
                   {(result?.winner?.reason || result?.winner?.recommendation || result?.recommendation) && (
                     <div className="subs-hero-text">
@@ -695,17 +688,17 @@ export default function Subscriptions() {
             )}
 
             <StatTiles items={[
-              best ? { icon: '🎯', label: L('Match', 'Uyum', 'Match'), value: Math.round(best.score), color: scoreColor(best.score) } : null,
-              gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı', 'Punktedifferenz'), value: gap } : null,
-              { icon: '📺', label: L('Services', 'Servis', 'Dienste'), value: services.length },
-              result.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(result.confidence)}%` } : null,
+              best ? { icon: '🎯', label: L('Match', 'Uyum'), value: Math.round(best.score), color: scoreColor(best.score) } : null,
+              gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı'), value: gap } : null,
+              { icon: '📺', label: L('Services', 'Servis'), value: services.length },
+              result.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(result.confidence)}%` } : null,
             ].filter(Boolean)} />
 
             {services.length > 1 && <ScoreChart services={services} L={L} />}
             <HeatMatrix products={services} L={L} />
 
             {diffs.length > 0 && (
-              <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar', 'Was wirklich entscheidet')}>
+              <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar')}>
                 <div className="subs-diffs">
                   {diffs.map((d, i) => (
                     <div className="subs-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
@@ -729,31 +722,31 @@ export default function Subscriptions() {
               <div className="subs-detailed">
                 {result.detailed.fit && (
                   <section>
-                    <h4>🎯 {L('Overall fit', 'Genel uyum', 'Gesamtpassung')}</h4>
+                    <h4>🎯 {L('Overall fit', 'Genel uyum')}</h4>
                     <AiText text={result.detailed.fit} />
                   </section>
                 )}
                 {result.detailed.features && (
                   <section>
-                    <h4>🧩 {L('Features and content', 'Özellikler ve içerik', 'Funktionen und Inhalte')}</h4>
+                    <h4>🧩 {L('Features and content', 'Özellikler ve içerik')}</h4>
                     <AiText text={result.detailed.features} />
                   </section>
                 )}
                 {result.detailed.ux && (
                   <section>
-                    <h4>✨ {L('Experience', 'Deneyim', 'Erlebnis')}</h4>
+                    <h4>✨ {L('Experience', 'Deneyim')}</h4>
                     <AiText text={result.detailed.ux} />
                   </section>
                 )}
                 {result.detailed.community && (
                   <section>
-                    <h4>🌐 {L('Community and risk', 'Topluluk ve risk', 'Community und Risiko')}</h4>
+                    <h4>🌐 {L('Community and risk', 'Topluluk ve risk')}</h4>
                     <AiText text={result.detailed.community} />
                   </section>
                 )}
                 {result.detailed.plan && (
                   <section className="subs-plan">
-                    <h4>🗺 {L('Your usage plan', 'Kullanım planın', 'Dein Nutzungsplan')}</h4>
+                    <h4>🗺 {L('Your usage plan', 'Kullanım planın')}</h4>
                     <AiText text={result.detailed.plan} />
                   </section>
                 )}
@@ -769,7 +762,7 @@ export default function Subscriptions() {
 
             <div className="subs-again">
               <button type="button" className="btn btn-ghost" onClick={resetAnalysis}>
-                {L('New analysis', 'Yeni analiz', 'Neue Analyse')}
+                {L('New analysis', 'Yeni analiz')}
               </button>
             </div>
           </div>

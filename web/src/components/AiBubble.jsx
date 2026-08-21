@@ -28,8 +28,7 @@ const PHONE_BUDGET_BY_CURRENCY = {
 
 // Chat strings live HERE (not the site i18n table) so the assistant can pick its
 // OWN language from the visitor's country — a Turkish visitor gets Turkish even
-// with an English browser — and so German is always covered (the shared STRINGS
-// table has no `ai.*` German entries).
+// with an English browser.
 const CHAT_STRINGS = {
   en: {
     subtitle: 'AI advisor',
@@ -51,30 +50,19 @@ const CHAT_STRINGS = {
     signIn: 'Giriş yap', signInText: 'Qor AI ile sohbet etmek ve sana özel yanıtlar almak için giriş yap.',
     now: 'az önce', minute: 'dk', hour: 'sa', day: 'g',
   },
-  de: {
-    subtitle: 'KI-Berater',
-    greeting: 'Hallo! Ich bin Qor AI 👋 Handy, Laptop, Kopfhörer oder ein Abo — frag einfach, ich finde das Beste für dich.',
-    placeholder: 'Frag etwas…',
-    errReply: 'Ich konnte gerade nicht antworten 😕 Versuchst du es gleich noch einmal?',
-    s1: 'Bestes Handy unter {price}', s2: 'Laptop-Empfehlung fürs Gaming', s3: 'iPhone 15 oder Samsung S24?',
-    newChat: 'Neuer Chat', history: 'Chatverlauf', historyEmpty: 'Noch keine früheren Chats.',
-    signIn: 'Anmelden', signInText: 'Melde dich an, um mit Qor AI zu chatten und persönliche Antworten zu erhalten.',
-    now: 'gerade eben', minute: 'Min', hour: 'Std', day: 'T',
-  },
 };
 
 // Chat language = the visitor's OWN language: their explicit Settings choice wins,
-// then their country (TR→Turkish, DACH→German, anywhere else→English), then the
+// then their country (TR→Turkish, anywhere else→English), then the
 // browser-detected site language. This is why a US visitor never sees a Turkish
 // "under ₺30.000" prompt and a Turkey visitor is answered in Turkish.
 function resolveChatLang(country, siteLang) {
   // Sohbet dili SİTE diline (artık tarayıcıya göre) uyar. Eski `qor.lang`
   // localStorage override'ı KALDIRILDI — aksi halde tarayıcı İngilizce olsa
   // bile eski 'tr' takılıp chat Türkçe cevaplıyordu (bkz. i18n/index.jsx).
-  if (['tr', 'en', 'de'].includes(siteLang)) return siteLang;
+  if (['tr', 'en'].includes(siteLang)) return siteLang;
   const cc = String(country || '').toUpperCase();
   if (cc === 'TR') return 'tr';
-  if (['DE', 'AT', 'CH', 'LI'].includes(cc)) return 'de';
   return 'en';
 }
 
@@ -307,7 +295,7 @@ function webResearchPrompt(q, lang, country, currency, wantsSub) {
 // Page-aware opening line: reads the current route + page metadata so the chat
 // greets the visitor with what they're actually looking at and what to ask.
 function pageGreeting(lang, pathname, meta, defaultGreeting) {
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const bare = String(pathname || '').replace(/^\/(en|de|tr)(?=\/|$)/, '') || '/';
   const kind = meta?.kind || (
     bare.startsWith('/product/') ? 'product'
@@ -322,39 +310,31 @@ function pageGreeting(lang, pathname, meta, defaultGreeting) {
     case 'product':
       return title
         ? L(`You're viewing **${title}**. Ask me about its specs, price, who it's for, or how it stacks up against rivals — I'll use Qor's data.`,
-          `**${title}** sayfasındasın. Özelliklerini, fiyatını, kime uygun olduğunu ya da rakipleriyle farkını sorabilirsin — Qor verisini kullanırım.`,
-          `Du siehst **${title}**. Frag mich zu Specs, Preis, Zielgruppe oder Vergleich — ich nutze Qor-Daten.`)
+          `**${title}** sayfasındasın. Özelliklerini, fiyatını, kime uygun olduğunu ya da rakipleriyle farkını sorabilirsin — Qor verisini kullanırım.`)
         : defaultGreeting;
     case 'compare':
       return title
         ? L(`Comparing **${title}**. Ask which one fits you best and why — I'll weigh the specs and prices.`,
-          `**${title}** karşılaştırmasındasın. Hangisi sana daha uygun ve neden — sorabilirsin, özellik ve fiyatları tartarım.`,
-          `Vergleich: **${title}**. Frag, welches besser zu dir passt — ich wäge Specs und Preise ab.`)
+          `**${title}** karşılaştırmasındasın. Hangisi sana daha uygun ve neden — sorabilirsin, özellik ve fiyatları tartarım.`)
         : L("You're comparing products. Ask me which one fits you best.",
-          'Ürünleri karşılaştırıyorsun. Hangisi sana uygun, sorabilirsin.',
-          'Du vergleichst Produkte. Frag, welches am besten passt.');
+          'Ürünleri karşılaştırıyorsun. Hangisi sana uygun, sorabilirsin.');
     case 'category':
       return title
         ? L(`You're browsing **${title}**. Tell me your budget or how you'll use it and I'll pick the best ${title} for you.`,
-          `**${title}** kategorisindesin. Bütçeni ya da kullanım amacını söyle, sana en uygun **${title}** modelini seçeyim.`,
-          `Du stöberst in **${title}**. Nenn mir Budget oder Einsatz und ich finde das beste Modell.`)
+          `**${title}** kategorisindesin. Bütçeni ya da kullanım amacını söyle, sana en uygun **${title}** modelini seçeyim.`)
         : L('Browse any category and ask me for a recommendation.',
-          'Bir kategoriye göz at, sana öneri sunayım.',
-          'Stöbere in einer Kategorie und frag mich nach einer Empfehlung.');
+          'Bir kategoriye göz at, sana öneri sunayım.');
     case 'blog':
       return title
         ? L(`You're reading **${title}**. Ask me anything about the products in it or a better pick for you.`,
-          `**${title}** yazısını okuyorsun. İçindeki ürünler ya da sana daha uygun bir seçim hakkında sorabilirsin.`,
-          `Du liest **${title}**. Frag mich zu den Produkten darin oder einer besseren Wahl.`)
+          `**${title}** yazısını okuyorsun. İçindeki ürünler ya da sana daha uygun bir seçim hakkında sorabilirsin.`)
         : defaultGreeting;
     case 'subscriptions':
       return L("You're on Subscriptions. Ask me to compare plans (Netflix, Spotify, ChatGPT…) for what you need.",
-        'Abonelikler sayfasındasın. İhtiyacına göre planları (Netflix, Spotify, ChatGPT…) karşılaştırmamı isteyebilirsin.',
-        'Du bist bei Abos. Lass mich Pläne (Netflix, Spotify, ChatGPT…) für dich vergleichen.');
+        'Abonelikler sayfasındasın. İhtiyacına göre planları (Netflix, Spotify, ChatGPT…) karşılaştırmamı isteyebilirsin.');
     case 'link':
       return L('You can paste any product link above for a full analysis — or just ask me anything here.',
-        'Yukarıya herhangi bir ürün linki yapıştırıp tam analiz alabilirsin — ya da buradan bana sorabilirsin.',
-        'Füge oben einen Produktlink für eine Analyse ein — oder frag mich einfach hier.');
+        'Yukarıya herhangi bir ürün linki yapıştırıp tam analiz alabilirsin — ya da buradan bana sorabilirsin.');
     default:
       return defaultGreeting;
   }
@@ -606,7 +586,7 @@ export default function AiBubble({ autoOpen = false }) {
   const alerts = useAnalysisAlerts();
   const alertReady = alerts.ready[0] || null;
   const alertBusy = alerts.busy[0] || null;
-  const alertLabel = (a) => (a ? (chatLang === 'tr' ? a.labels[1] : chatLang === 'de' ? a.labels[2] : a.labels[0]) : '');
+  const alertLabel = (a) => (a ? (chatLang === 'tr' ? a.labels[1] : a.labels[0]) : '');
 
   function goToAnalysis(a) {
     if (!a) return;
@@ -634,11 +614,11 @@ export default function AiBubble({ autoOpen = false }) {
         className={'aib-fab' + (open ? ' open' : '') + (alertReady ? ' has-alert' : '') + (alertBusy ? ' is-busy' : '')}
         onClick={() => { if (alertReady) goToAnalysis(alertReady); else setOpen((o) => !o); }}
         aria-label={alertReady
-          ? `${alertLabel(alertReady)} — ${chatLang === 'tr' ? 'hazır' : chatLang === 'de' ? 'bereit' : 'ready'}`
+          ? `${alertLabel(alertReady)} — ${chatLang === 'tr' ? 'hazır' : 'ready'}`
           : 'Qor AI'}
         title={alertReady
-          ? `${alertLabel(alertReady)} ${chatLang === 'tr' ? 'hazır — görmek için tıkla' : chatLang === 'de' ? 'bereit — zum Ansehen klicken' : 'ready — click to view'}`
-          : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : chatLang === 'de' ? 'läuft im Hintergrund…' : 'is running in the background…'}` : 'Qor AI')}
+          ? `${alertLabel(alertReady)} ${chatLang === 'tr' ? 'hazır — görmek için tıkla' : 'ready — click to view'}`
+          : (alertBusy ? `${alertLabel(alertBusy)} ${chatLang === 'tr' ? 'arka planda çalışıyor…' : 'is running in the background…'}` : 'Qor AI')}
       >
         {open ? '✕' : <img src="/assets/qor_logo_144.png?v=20260814a" alt="" />}
         {!open && !alertBusy && !alertReady && <span className="aib-fab-pulse" />}
@@ -652,8 +632,8 @@ export default function AiBubble({ autoOpen = false }) {
         <button type="button" className="aib-alert-toast" onClick={() => goToAnalysis(alertReady)}>
           <b>{alertLabel(alertReady)}</b>
           <span>{alertReady.phase === 'quiz'
-            ? (chatLang === 'tr' ? 'Sorular hazır — cevapla' : chatLang === 'de' ? 'Fragen bereit — beantworten' : 'Questions ready — answer them')
-            : (chatLang === 'tr' ? 'Analiz hazır — görüntüle' : chatLang === 'de' ? 'Analyse bereit — ansehen' : 'Analysis ready — view')}</span>
+            ? (chatLang === 'tr' ? 'Sorular hazır — cevapla' : 'Questions ready — answer them')
+            : (chatLang === 'tr' ? 'Analiz hazır — görüntüle' : 'Analysis ready — view')}</span>
         </button>
       )}
 

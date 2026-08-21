@@ -104,21 +104,22 @@ BEAM_SIZE = int(os.environ.get("QORAI_TRANSLATE_BEAM", "4"))
 TRANSLATE_THREADS = int(os.environ.get("QORAI_TRANSLATE_THREADS", "8"))
 MODEL_LABEL = f"argos-translate/{DEVICE}/{COMPUTE_TYPE}"
 
-# Supported language codes (must match the admin pipeline). All TR/DE
-# sources pivot through EN at runtime.
-LANGS = {"tr", "en", "de", "es", "fr", "pt", "ru"}
+# Supported language codes (must match the admin pipeline). Non-EN sources
+# pivot through EN at runtime. German was removed as a TARGET on 2026-08-21;
+# the legacy German-keyed glossary rows below are source-side only and are now
+# unreachable, kept so old Geizhals-era payloads still degrade cleanly.
+LANGS = {"tr", "en", "es", "fr", "pt", "ru"}
 
 # Tiny deterministic glossary for short technical atoms where MT models are
 # weakest. This stays in-process and costs ~0 ms; it prevents broken outputs
 # like "5088 mAh (?? eSIM)" or "C02-carbone" from entering the shared dict.
 _EXACT_GLOSSARY: Dict[Tuple[str, str], Dict[str, str]] = {
     ("tr", "yalnızca esim"): {
-        "en": "Only eSIM", "de": "Nur eSIM", "es": "Solo eSIM",
+        "en": "Only eSIM", "es": "Solo eSIM",
         "fr": "eSIM uniquement", "pt": "Apenas eSIM", "ru": "Только eSIM",
     },
     ("tr", "silikon-karbon"): {
-        "en": "Silicon-carbon", "de": "Silizium-Kohlenstoff",
-        "es": "Silicio-carbono", "fr": "Silicium-carbone",
+        "en": "Silicon-carbon", "es": "Silicio-carbono", "fr": "Silicium-carbone",
         "pt": "Silício-carbono", "ru": "Кремний-углерод",
     },
     ("de", "akkukapazität"): {
@@ -395,13 +396,11 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
 
         tr_exact = {
             "usb 3.x adedi": {
-                "en": "USB 3.x count", "de": "USB 3.x Anzahl",
-                "es": "Cantidad USB 3.x", "fr": "Nombre USB 3.x",
+                "en": "USB 3.x count", "es": "Cantidad USB 3.x", "fr": "Nombre USB 3.x",
                 "pt": "Quantidade USB 3.x", "ru": "Количество USB 3.x",
             },
             "kart okuyucu specifications": {
                 "en": "Card reader specifications",
-                "de": "Kartenleser-Spezifikationen",
                 "es": "Especificaciones del lector de tarjetas",
                 "fr": "Spécifications du lecteur de carte",
                 "pt": "Especificações do leitor de cartão",
@@ -409,7 +408,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "klavye specifications": {
                 "en": "Keyboard specifications",
-                "de": "Tastatur-Spezifikationen",
                 "es": "Especificaciones del teclado",
                 "fr": "Spécifications du clavier",
                 "pt": "Especificações do teclado",
@@ -417,7 +415,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "minirsel processing (npu)": {
                 "en": "Neural processing (NPU)",
-                "de": "Neuronale Verarbeitung (NPU)",
                 "es": "Procesamiento neuronal (NPU)",
                 "fr": "Traitement neuronal (NPU)",
                 "pt": "Processamento neural (NPU)",
@@ -425,7 +422,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "npu (sinirsel trading unit) name": {
                 "en": "NPU (neural processing unit) name",
-                "de": "NPU-Name (neuronale Verarbeitungseinheit)",
                 "es": "Nombre de NPU (unidad de procesamiento neuronal)",
                 "fr": "Nom du NPU (unité de traitement neuronal)",
                 "pt": "Nome da NPU (unidade de processamento neural)",
@@ -433,7 +429,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "pil specifications": {
                 "en": "Battery specifications",
-                "de": "Akku-Spezifikationen",
                 "es": "Especificaciones de la batería",
                 "fr": "Spécifications de la batterie",
                 "pt": "Especificações da bateria",
@@ -441,7 +436,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "pil özellikleri": {
                 "en": "Battery specifications",
-                "de": "Akku-Spezifikationen",
                 "es": "Especificaciones de la batería",
                 "fr": "Spécifications de la batterie",
                 "pt": "Especificações da bateria",
@@ -449,7 +443,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "li-po (lityum-polymer)": {
                 "en": "Li-Po (lithium polymer)",
-                "de": "Li-Po (Lithium-Polymer)",
                 "es": "Li-Po (polímero de litio)",
                 "fr": "Li-Po (lithium-polymère)",
                 "pt": "Li-Po (polímero de lítio)",
@@ -457,7 +450,6 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "eyesafe (göz health certification)": {
                 "en": "Eyesafe (eye health certification)",
-                "de": "Eyesafe (Augengesundheitszertifizierung)",
                 "es": "Eyesafe (certificación de salud ocular)",
                 "fr": "Eyesafe (certification de santé oculaire)",
                 "pt": "Eyesafe (certificação de saúde ocular)",
@@ -465,20 +457,17 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
             },
             "eyesafe (göz sağlığı sertifikası)": {
                 "en": "Eyesafe (eye health certification)",
-                "de": "Eyesafe (Augengesundheitszertifizierung)",
                 "es": "Eyesafe (certificación de salud ocular)",
                 "fr": "Eyesafe (certification de santé oculaire)",
                 "pt": "Eyesafe (certificação de saúde ocular)",
                 "ru": "Eyesafe (сертификация защиты зрения)",
             },
             "hızlı": {
-                "en": "Fast charging", "de": "Schnellladen",
-                "es": "Carga rápida", "fr": "Charge rapide",
+                "en": "Fast charging", "es": "Carga rápida", "fr": "Charge rapide",
                 "pt": "Carregamento rápido", "ru": "Быстрая зарядка",
             },
             "non-flammable mat display": {
                 "en": "Anti-glare matte display",
-                "de": "Entspiegeltes mattes Display",
                 "es": "Pantalla mate antirreflejo",
                 "fr": "Écran mat antireflet",
                 "pt": "Tela fosca antirreflexo",
@@ -565,7 +554,7 @@ def _glossary_lookup(src_lang: str, text: str, tgt_lang: str) -> Optional[str]:
         if m:
             prefix = m.group(1).strip()
             suffix = {
-                "en": "Only eSIM", "de": "Nur eSIM", "es": "Solo eSIM",
+                "en": "Only eSIM", "es": "Solo eSIM",
                 "fr": "eSIM uniquement", "pt": "Apenas eSIM",
                 "ru": "Только eSIM",
             }.get(tgt_lang)

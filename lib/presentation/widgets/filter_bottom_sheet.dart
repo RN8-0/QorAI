@@ -117,7 +117,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'selectedFilters': {
       'en': 'Selected filters',
       'tr': 'Seçili filtreler',
-      'de': 'Ausgewählte Filter',
       'es': 'Filtros seleccionados',
       'fr': 'Filtres sélectionnés',
       'it': 'Filtri selezionati',
@@ -131,7 +130,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'refine': {
       'en': 'Refine by brand and specs',
       'tr': 'Marka ve özelliklere göre daralt',
-      'de': 'Nach Marke und Daten verfeinern',
       'es': 'Refinar por marca y especificaciones',
       'fr': 'Affiner par marque et caractéristiques',
       'it': 'Filtra per marca e specifiche',
@@ -145,7 +143,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'refinePrice': {
       'en': 'Refine by brand, specs and price',
       'tr': 'Marka, özellik ve fiyata göre daralt',
-      'de': 'Nach Marke, Daten und Preis verfeinern',
       'es': 'Refinar por marca, especificaciones y precio',
       'fr': 'Affiner par marque, caractéristiques et prix',
       'it': 'Filtra per marca, specifiche e prezzo',
@@ -159,7 +156,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'noOptions': {
       'en': 'No matching options found',
       'tr': 'Eşleşen seçenek bulunamadı',
-      'de': 'Keine passenden Optionen gefunden',
       'es': 'No se encontraron opciones coincidentes',
       'fr': 'Aucune option correspondante',
       'it': 'Nessuna opzione corrispondente',
@@ -173,7 +169,6 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     'showMore': {
       'en': 'Show more ({count})',
       'tr': 'Daha fazla göster ({count})',
-      'de': 'Mehr anzeigen ({count})',
       'es': 'Mostrar más ({count})',
       'fr': 'Afficher plus ({count})',
       'it': 'Mostra altro ({count})',
@@ -964,11 +959,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
       children: [
         if (showSearch) ...[
           _SectionSearchField(
-            hintText: _isTurkish
-                ? 'Marka ara…'
-                : _localeCode == 'de'
-                ? 'Marke suchen…'
-                : 'Search brand…',
+            hintText: _isTurkish ? 'Marka ara…' : 'Search brand…',
             initial: _sectionQuery[def.id] ?? '',
             onChanged: (v) => setState(() => _sectionQuery[def.id] = v),
           ),

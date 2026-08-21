@@ -118,7 +118,7 @@ DE_SETS = {
     ],
 }
 
-TARGET = ['en','de','es','fr','pt','ru']
+TARGET = ['en','es','fr','pt','ru']
 
 def call(payload):
     req = urllib.request.Request(

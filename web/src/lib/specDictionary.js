@@ -9,7 +9,7 @@ let loaded = false;
 let loading = null;
 const dict = new Map();
 
-// Specs are TR + EN only (German and other langs removed 2026-07-01). trSpec
+// Specs are TR + EN only. trSpec
 // returns early for 'tr'; every other locale falls back to the English pair.
 const BOOL_LABELS = {
   en: ['Yes', 'No'],

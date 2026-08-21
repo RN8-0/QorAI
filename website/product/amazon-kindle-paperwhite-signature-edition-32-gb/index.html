@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/product/amazon-kindle-paperwhite-signature-edition-32-gb" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/amazon-kindle-paperwhite-signature-edition-32-gb" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/amazon-kindle-paperwhite-signature-edition-32-gb" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/amazon-kindle-paperwhite-signature-edition-32-gb" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/amazon-kindle-paperwhite-signature-edition-32-gb" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/e_readers">E-Readers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Amazon Kindle Paperwhite Signature Edition (32 GB)</h1><p style="color:#475569;margin:0 0 12px">Amazon · E-Readers · Qor AI tech score 63/100</p><img src="https://resim.epey.com/862645/m_amazon-kindle-paperwhite-signature-edition-32-gb-1.jpg" alt="Amazon Kindle Paperwhite Signature Edition (32 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Amazon Kindle Paperwhite Signature Edition (32 GB) key features: weight 208 gr, internal storage 32 GB, screen size 6.8 inches. Review Amazon Kindle Paperwhite Signature Edition (32 GB)'s 15 technical specs, its Qor AI tech score and how it compares with similar models in e-readers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Weight:</span> <strong>208 gr</strong></li><li><span style="color:#64748b">Internal storage:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>6.8 inches</strong></li><li><span style="color:#64748b">Display Pixel Density:</span> <strong>300 PPI</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in E-Readers</h2><ul style="line-height:1.8"><li><a href="/product/kobo-elipsa" style="color:#2563eb">Kobo Elipsa</a></li><li><a href="/product/amazon-kindle-fire-1-nesil" style="color:#2563eb">Amazon Kindle Fire (1.Nesil)</a></li><li><a href="/product/amazon-kindle-basic-2024" style="color:#2563eb">Amazon Kindle Basic 2024</a></li><li><a href="/product/amazon-kindle-paperwhite-kids-16-gb" style="color:#2563eb">Amazon Kindle Paperwhite Kids (16 GB)</a></li><li><a href="/product/sony-dpt-cp1-16gb" style="color:#2563eb">Sony DPT-CP1</a></li><li><a href="/product/kobo-aura-one-limited-edition" style="color:#2563eb">Kobo Aura ONE Limited Edition</a></li><li><a href="/product/amazon-kindle-oasis-32" style="color:#2563eb">Amazon Kindle Oasis 2 (9.Nesil) (32 GB)</a></li><li><a href="/product/amazon-kindle-paperwhite-5-6-8-32gb" style="color:#2563eb">Amazon Kindle Paperwhite 5 6.8&quot; (32GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/e_readers" style="color:#2563eb;font-weight:600">Compare all E-Readers →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/e_readers">E-Readers</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Amazon Kindle Paperwhite Signature Edition (32 GB)</h1><p style="color:#475569;margin:0 0 12px">Amazon · E-Readers · Qor AI tech score 63/100</p><img src="https://resim.epey.com/862645/m_amazon-kindle-paperwhite-signature-edition-32-gb-1.jpg" alt="Amazon Kindle Paperwhite Signature Edition (32 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Amazon Kindle Paperwhite Signature Edition (32 GB) key features: weight 208 gr, internal storage 32 GB, screen size 6.8 inches. Review Amazon Kindle Paperwhite Signature Edition (32 GB)'s 15 technical specs, its Qor AI tech score and how it compares with similar models in e-readers below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Weight:</span> <strong>208 gr</strong></li><li><span style="color:#64748b">Internal storage:</span> <strong>32 GB</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>6.8 inches</strong></li><li><span style="color:#64748b">Display Pixel Density:</span> <strong>300 PPI</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in E-Readers</h2><ul style="line-height:1.8"><li><a href="/product/kobo-elipsa" style="color:#2563eb">Kobo Elipsa</a></li><li><a href="/product/amazon-kindle-basic-2024" style="color:#2563eb">Amazon Kindle Basic 2024</a></li><li><a href="/product/boyue-likebook-p10" style="color:#2563eb">Boyue Likebook P10</a></li><li><a href="/product/pocketbook-inkpad" style="color:#2563eb">PocketBook InkPad</a></li><li><a href="/product/pocketbook-inkpad-x" style="color:#2563eb">PocketBook InkPad X</a></li><li><a href="/product/pocketbook-inkpad-one" style="color:#2563eb">PocketBook InkPad One</a></li><li><a href="/product/pocketbook-era-64-gb" style="color:#2563eb">PocketBook Era (64 GB)</a></li><li><a href="/product/kobo-forma-8" style="color:#2563eb">Kobo Forma 8</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/e_readers" style="color:#2563eb;font-weight:600">Compare all E-Readers →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

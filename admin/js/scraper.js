@@ -16,8 +16,8 @@ const LOCAL_DEEPSEEK_URL = `${PROXY_URL}/ai/deepseek`;
 const LOCAL_TRANSLATE_URL = 'http://127.0.0.1:8797/translate';
 const DEEPSEEK_MODEL = 'deepseek-chat'; // Official compatibility alias for DeepSeek's non-thinking chat model.
 // Scope cut (2026-06-30): German spec translation removed — most atoms were
-// mistranslated, broken or dropped. Specs are stored in TR + EN only; a German
-// UI reads specs in English. (UI text and product names stay German.)
+// mistranslated, broken or dropped. Specs are stored in TR + EN only.
+// Scope cut (2026-08-21): German removed from the product entirely.
 // Epey (Turkish source) → translate to EN.
 const SUPPORTED_LANGS = ['tr','en'];
 // Languages to translate Turkish specs into (skip TR — that's the source).
@@ -1821,7 +1821,7 @@ if (typeof window !== 'undefined' && _staticQorAiDict && !window.QorAiStaticDict
 }
 
 // In-memory TR→target dictionary cache (lazy-loaded from PB)
-const _deDictCache = {}; // { 'some turkish text': { en: '...', de: '...', ... } }
+const _deDictCache = {}; // { 'some turkish text': { en: '...' } }
 const _deDictFailedThisRun = new Set();
 const _deDictInflight = new Map(); // normalized source atom -> shared DeepSeek promise
 let _deDictLoaded = false;
@@ -2883,7 +2883,8 @@ function _deDictStore(turkishText, targetLang, translation) {
   }
 }
 
-const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en','de']);
+// Almanca 2026-08-21'de kaldirildi: yerel ceviri hedefi TR + EN.
+const _LOCAL_TRANSLATE_LANGS = new Set(['tr','en']);
 let _localTranslateDisabledUntil = 0;
 
 function _localTranslationLooksUseful(sourceText, targetLang, translation) {
@@ -3256,10 +3257,10 @@ Rules:
 - Keep numbers, units, sizes and technical abbreviations unchanged (e.g. "5G", "Wi-Fi 6E", "120 Hz", "GB", "mm").
 - In product names, preserve brand/model/series/codes exactly, but translate generic Turkish category, color, and descriptor words. Example: "GameBooster Elya G75 Klavye (GB-G75)" -> "GameBooster Elya G75 Keyboard (GB-G75)" in English.
 - If the requested target language is the same as the input language, return the clean original text for that language.
-- Translate Turkish warranty/support phrases such as "6 Yıl Güvenlik Güncellemesi Garantisi" into natural English/German/etc.; do not leave them in Turkish.
+- Translate Turkish warranty/support phrases such as "6 Yıl Güvenlik Güncellemesi Garantisi" into natural English; do not leave them in Turkish.
 - Preserve newlines (\\n) inside multi-line values.
 - Return ONLY a single JSON object of the form:
-  {"<source text>": {"en":"...", "de":"...", "es":"...", ...}, ...}
+  {"<source text>": {"en":"..."}, ...}
 - The inner object MUST contain exactly these language codes: ${langCodes}.`
                 },
                 {

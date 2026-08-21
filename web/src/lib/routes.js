@@ -22,14 +22,10 @@ export function productSlug(product) {
   return slugifyProduct(product.slug || product.name || '');
 }
 
-export function extractProductId(value) {
-  const clean = String(value || '').trim();
-  if (!clean) return '';
-  const exact = clean.match(/^[a-z0-9]{15}$/i);
-  if (exact) return clean;
-  const tail = clean.match(ID_RE);
-  return tail ? tail[0] : clean;
-}
+// NOT: burada `extractProductId()` vardi — "sondaki 15 karakteri id say".
+// Kaldirildi (2026-08-22): tek kullanicisi parseComparePair() idi, o da artik
+// parseProductToken() kullaniyor. Varsayim zaten TEK BASINA YANLISTI — 462
+// urunun slug'i o kalipla biten bir sonek tasiyor.
 
 // ── /product/<slug> — SONDAKI ID KALDIRILDI (2026-08-19) ───────────────────
 // Onceki bicim `/product/<slug>-<id>` idi. Kaldirmanin on kosulu slug'in TUM
@@ -93,7 +89,7 @@ export function searchPath(query) {
 }
 
 // A blog article carries a canonical `slug` plus optional per-language slugs
-// (slug_tr/slug_en/slug_de). Links use the language-appropriate slug so the URL
+// (slug_tr/slug_en). Links use the language-appropriate slug so the URL
 // matches the content language, while BlogPost still resolves any of them to the
 // same article. Falls back to the canonical slug when a language slug is empty.
 export function articleSlug(article, lang) {
@@ -105,27 +101,43 @@ export function articlePath(article, lang) {
   return s ? `/blog/${s}` : '/blog';
 }
 
-// Clean comparison URL: /compare/<slugA>-<idA>-vs-<slugB>-<idB>. Mirrors
-// comparePath() in web/scripts/seo.mjs so the prerendered file, its canonical
-// and the runtime canonical all agree. parseComparePair() recovers both 15-char
-// ids (split on the first "-vs-", take the trailing id of each side).
-export function comparePath(a, b) {
-  const tok = (p) => {
-    if (!p) return '';
-    if (typeof p === 'string') return p;
-    // Cap slug to 40 — must match compareToken() in web/scripts/seo.mjs so the
-    // runtime canonical equals the prerendered file path / sitemap loc.
-    const slug = productSlug(p).slice(0, 40).replace(/-+$/, '');
-    return slug ? `${slug}-${p.id}` : String(p.id || '');
-  };
-  return `/compare/${tok(a)}-vs-${tok(b)}`;
+// Karsilastirma adresi: /compare/<slugA>-vs-<slugB>.
+//
+// 2026-08-22: kayit ID'leri adresten CIKARILDI. Urun adresinde ayni temizlik
+// `e64350a` ile yapilmisti, compare unutulmustu ve sitemap boyle goruniyordu:
+//   /compare/ecovacs-deebot-t50s-pro-omni-qw4jn21yemj0wez
+//            -vs-mamibot-ultra-m10-6fnbz3dy8fzjesx
+// Kimse bunu yazmaz, kimse boyle bir linki paylasmaz ve arama sonucunda
+// okunmaz. Slug 40 karakterle SINIRLI kalir: build `website/compare/<token>/`
+// dizinini yaziyor ve iki tam slug Windows'un 260 karakter yol sinirini asiyor.
+//
+// compareToken() (web/scripts/seo.mjs) ile BIREBIR ayni olmak zorunda; aksi
+// halde runtime canonical ile on-render dosya yolu/sitemap ayrisir.
+export function compareToken(p) {
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  const slug = productSlug(p).slice(0, 40).replace(/-+$/, '');
+  return slug || String(p.id || '');
 }
 
+export function comparePath(a, b) {
+  return `/compare/${compareToken(a)}-vs-${compareToken(b)}`;
+}
+
+// Cifti ADRESTEN cozer. Iki bicim de kabul edilir:
+//   yeni: <slugA>-vs-<slugB>              (id yok)
+//   eski: <slugA>-<idA>-vs-<slugB>-<idB>  (indekste/paylasimlarda duruyor)
+// Donen sey ID DEGIL, parseProductToken() jetonu: `{id, slug, slugKisa}`.
+// Cagiran taraf resolveProduct() ile cozer — "sondaki 15 karakter id'dir"
+// varsayimi TEK BASINA YANLIS (462 urunun slug'i zaten o kalipla bitiyor),
+// bu yuzden once tam slug denenir.
 export function parseComparePair(pair) {
   const s = String(pair || '');
   const i = s.indexOf('-vs-');
   if (i < 0) return [];
-  const a = extractProductId(s.slice(0, i));
-  const b = extractProductId(s.slice(i + 4));
-  return a && b && a !== b ? [a, b] : [];
+  const a = parseProductToken(s.slice(0, i));
+  const b = parseProductToken(s.slice(i + 4));
+  const bos = (t) => !t || (!t.id && !t.slug);
+  if (bos(a) || bos(b)) return [];
+  return [a, b];
 }

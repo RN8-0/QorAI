@@ -60,7 +60,7 @@ function HeroSpotlightPlaceholder({ L }) {
   return (
     <div className="hero-carousel" aria-hidden="true">
       <div className="hero-carousel-head">
-        <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
+        <span>{L('Top categories', 'Popüler kategoriler')}</span>
         <b className="skel" style={{ height: 12, width: 76, display: 'inline-block' }} />
       </div>
       <div className="hero-carousel-viewport">
@@ -100,14 +100,14 @@ function HeroSpotlight({ products, lang, L }) {
   if (!safe.length) return null;
   const active = index % safe.length;
   return (
-    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi', 'Top-Kategorie-Auswahl')}
+    <div className="hero-carousel" aria-label={L('Top category picks', 'Popüler kategori seçkisi')}
       onPointerEnter={() => setPaused(true)}
       onPointerLeave={() => setPaused(false)}
       onPointerDown={() => setPaused(true)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}>
       <div className="hero-carousel-head">
-        <span>{L('Top categories', 'Popüler kategoriler', 'Top-Kategorien')}</span>
+        <span>{L('Top categories', 'Popüler kategoriler')}</span>
         <b>{categoryLabel(safe[active]?.category, lang)}</b>
       </div>
       <div className="hero-carousel-viewport">
@@ -123,7 +123,7 @@ function HeroSpotlight({ products, lang, L }) {
           aracı klavye ve ekran okuyucu için tamamen erişilemezdi. */}
       {safe.length > 1 && (
         <div className="hero-carousel-dots" role="tablist"
-          aria-label={L('Choose a pick', 'Seçkiyi değiştir', 'Auswahl wechseln')}>
+          aria-label={L('Choose a pick', 'Seçkiyi değiştir')}>
           {safe.map((p, i) => (
             <button key={p.id} type="button" role="tab"
               className={i === active ? 'on' : ''}
@@ -142,14 +142,14 @@ function SearchSuggestionList({ products, searching, onOpen, L }) {
   if (searching) {
     return (
       <div className="hero-suggest-panel">
-        <div className="hero-suggest-state">{L('Searching products…', 'Ürünler aranıyor…', 'Produkte werden gesucht…')}</div>
+        <div className="hero-suggest-state">{L('Searching products…', 'Ürünler aranıyor…')}</div>
       </div>
     );
   }
   if (!products.length) {
     return (
       <div className="hero-suggest-panel">
-        <div className="hero-suggest-state">{L('No matching products yet.', 'Henüz eşleşen ürün yok.', 'Noch keine passenden Produkte.')}</div>
+        <div className="hero-suggest-state">{L('No matching products yet.', 'Henüz eşleşen ürün yok.')}</div>
       </div>
     );
   }
@@ -183,7 +183,7 @@ function RecentSearchList({ items, onPick, L }) {
   if (!items.length) return null;
   return (
     <div className="hero-suggest-panel">
-      <div className="hero-recent-head">{L('Recent searches', 'Son aramalar', 'Letzte Suchen')}</div>
+      <div className="hero-recent-head">{L('Recent searches', 'Son aramalar')}</div>
       {items.map((s, i) => (
         <button key={`${s.query}-${i}`} type="button" className="hero-suggest-row hero-recent-row"
           onMouseDown={(e) => { e.preventDefault(); onPick(s.query); }}>
@@ -259,15 +259,15 @@ export default function Home() {
   const [params] = useSearchParams();
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const searchRef = useRef(null);
 
   // Time-of-day greeting for signed-in users (app parity).
   const hour = new Date().getHours();
-  const greetWord = hour < 6 ? L('Good night', 'İyi geceler', 'Gute Nacht')
-    : hour < 12 ? L('Good morning', 'Günaydın', 'Guten Morgen')
-      : hour < 18 ? L('Good afternoon', 'İyi günler', 'Guten Tag')
-        : L('Good evening', 'İyi akşamlar', 'Guten Abend');
+  const greetWord = hour < 6 ? L('Good night', 'İyi geceler')
+    : hour < 12 ? L('Good morning', 'Günaydın')
+      : hour < 18 ? L('Good afternoon', 'İyi günler')
+        : L('Good evening', 'İyi akşamlar');
   const displayName = user ? (user.name || user.email?.split('@')[0] || '') : '';
 
   // "For You" must reflect THIS account, not just this browser. Recent categories
@@ -512,14 +512,13 @@ export default function Home() {
                 </div>
               )}
               <h1>
-                {L('Compare anything.', 'Her şeyi karşılaştır.', 'Vergleiche alles.')}<br />
-                <span className="grad grad-anim">{L('Buy with confidence.', 'Güvenle satın al.', 'Kaufe mit Vertrauen.')}</span>
+                {L('Compare anything.', 'Her şeyi karşılaştır.')}<br />
+                <span className="grad grad-anim">{L('Buy with confidence.', 'Güvenle satın al.')}</span>
               </h1>
               <p className="sub" style={{ marginTop: 16 }}>
                 {L(
                   'Real products scored by AI. Compare specs side by side, paste any link, and find the product that fits you.',
                   'Gerçek ürünler yapay zekâ ile puanlandı. Özellikleri yan yana karşılaştır, herhangi bir linki yapıştır ve ihtiyacına en uygun ürünü bul.',
-                  'Echte Produkte mit KI bewertet. Vergleiche Specs, füge einen Link ein und finde das passende Produkt.',
                 )}
               </p>
 

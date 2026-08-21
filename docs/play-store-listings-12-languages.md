@@ -1,5 +1,8 @@
 # Qor AI Play Store Metin Paketi
 
+> Almanca (de-DE / de-AT / de-CH) 2026-08-21'de KALDIRILDI — uygulama ve site
+> Almanca desteklemiyor. Play Console'daki mevcut Almanca listeleme de silinmeli.
+
 Bu belge, uygulamanın güncel marka adı olan Qor AI için SEO/ASO optimizasyonu yapılarak yeniden hazırlandı.
 
 Temel kurallar:
@@ -99,47 +102,6 @@ Qor AI; teknik özellikleri, kullanım senaryolarını, artıları, eksileri ve 
 Yeni telefon karşılaştırma yaparken, iş için laptop seçerken, oyun bilgisayarı toplarken ya da bir ürün linkinin gerçekten mantıklı olup olmadığını anlamak istediğinde Qor AI süreci sadeleştirir.
 
 Akıllı alışveriş asistanını hemen indir.
-
-## de-DE / de-AT / de-CH
-
-ASO odağı:
-Produktvergleich App, KI Kaufberatung, Handy Vergleich, Laptop Kaufberatung, GPU Vergleich, Preis-Leistung, KI Einkaufsassistent, Technik Vergleich
-
-Application name:
-Qor AI - Produktvergleich KI
-
-> Karakter sayısı: 28/30 ✓
-
-Short description:
-KI-Produktvergleich: Handy, Laptop, GPU & Abos smarter vergleichen und kaufen.
-
-> Karakter sayısı: 78/80 ✓
-
-Long description:
-Qor AI ist dein KI-gestützter Produktvergleich und Einkaufsassistent für alle, die vor dem Kauf wirklich recherchieren wollen. Handy Vergleich, Laptop Kaufberatung, GPU Auswahl, Kopfhörer-Check, Abo-Analyse — alles in einer App. 🤖
-
-Statt mühsam Datenblätter, Shopseiten und Erfahrungsberichte zusammenzusuchen, bekommst du mit Qor AI eine KI-gestützte Übersicht über Unterschiede, Stärken, Schwächen und echtes Preis-Leistungs-Verhältnis.
-
-Mit Qor AI kannst du:
-⚖️ Produkte direkt nebeneinander vergleichen (KI-Analyse)
-🔗 Produktlinks aus Online-Shops analysieren lassen
-🖥️ PCs mit Kompatibilitätsprüfung planen (PC Builder)
-📦 digitale Abonnements strukturierter bewerten
-📷 Produkte per Kamera erfassen und analysieren
-💬 konkrete Kauffragen im AI-Chat stellen
-
-Besonders stark bei Suchanfragen wie:
-- bestes Handy Preis-Leistung
-- Handy Vergleich
-- Laptop Vergleich
-- welche GPU ist besser
-- lohnt sich dieses Angebot
-- welches Abo ist sinnvoll
-- PC zusammenstellen
-
-Qor AI hilft dir, technische Daten nicht nur zu sehen, sondern richtig einzuordnen. So entsteht aus reiner Produktsuche eine fundierte Kaufentscheidung — weniger Zeit, mehr Klarheit.
-
-Jetzt herunterladen und smarter kaufen.
 
 ## fr-FR / fr-BE / fr-CA
 
@@ -513,7 +475,6 @@ Qor AI يساعدك على فهم المواصفات، الفروقات الحق
 
 - English: `en-US`
 - Türkçe: `tr-TR`
-- Deutsch: `de-DE`
 - Français: `fr-FR`
 - Español: `es-ES`
 - Italiano: `it-IT`

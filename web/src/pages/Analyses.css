@@ -1,0 +1,123 @@
+/* Analiz bölümü — /analiz ve /analiz/<slug>
+ *
+ * Tamamı global.css token'larından. Sabit hex YOK: bu projede her renk bir
+ * kontrast denetiminden sonra en az bir kez taşındı, doğrudan hex yazmak o
+ * denetimi atlamak demek. Metin taşıyan marka/semantik renkler --ink-* .
+ *
+ * Ayrım kutu ve gölgeyle değil, 1px hairline + boşlukla kuruluyor. */
+
+.an-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+}
+
+.an-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.an-head h1 { font-size: clamp(26px, 4.6vw, 38px); line-height: 1.12; font-weight: 800; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.an-head p { margin: 0; color: var(--text-2); line-height: 1.6; max-width: 62ch; }
+
+.an-empty { color: var(--text-3); padding: 28px 0; }
+
+/* ── liste ───────────────────────────────────────────────── */
+.an-list { display: flex; flex-direction: column; }
+
+.an-item {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 20px 0;
+  border-top: 1px solid var(--divider);
+  text-decoration: none;
+  color: inherit;
+}
+.an-item:last-child { border-bottom: 1px solid var(--divider); }
+.an-item img {
+  width: 84px; height: 84px; object-fit: contain;
+  background: var(--surface-2); border-radius: var(--r-sm, 10px);
+}
+.an-item h2 {
+  font-size: 18px; line-height: 1.3; font-weight: 700; margin: 0 0 5px;
+  letter-spacing: -.01em; text-wrap: balance;
+}
+.an-item p {
+  margin: 0 0 7px; color: var(--text-2); line-height: 1.55; font-size: 14.5px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.an-item:hover h2 { color: var(--accent); }
+
+/* Sayılar (Tech Score) tabular — hizalansın diye. */
+.an-meta {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--text-3);
+}
+.an-score { font-variant-numeric: tabular-nums; color: var(--ink-blue); font-weight: 600; }
+
+/* ── tek analiz ──────────────────────────────────────────── */
+.an-crumbs { font-size: 13px; color: var(--text-3); margin-bottom: 14px; }
+.an-crumbs a { color: var(--text-2); text-decoration: none; }
+.an-crumbs a:hover { color: var(--accent); }
+
+.an-post h1 {
+  font-size: clamp(27px, 5vw, 40px); line-height: 1.1; font-weight: 800;
+  letter-spacing: -.022em; margin: 0 0 12px; text-wrap: balance;
+}
+.an-lead {
+  font-size: 18px; line-height: 1.6; color: var(--text-2);
+  margin: 0 0 22px; max-width: 62ch;
+}
+
+/* Analiz edilen ürün — sayfanın neyi anlattığını tek bakışta veren şerit. */
+.an-strip {
+  display: flex; gap: 14px; align-items: center;
+  border: 1px solid var(--border); border-radius: var(--r-md, 14px);
+  background: var(--surface); padding: 14px; margin: 0 0 28px;
+}
+.an-strip img { width: 64px; height: 64px; object-fit: contain; background: var(--surface-2); border-radius: var(--r-sm, 10px); }
+.an-strip strong { display: block; font-size: 15px; margin-bottom: 3px; }
+.an-strip a { font-size: 13.5px; color: var(--accent); text-decoration: none; }
+.an-strip a:hover { text-decoration: underline; }
+
+.an-body { color: var(--text); }
+.an-body h2 {
+  font-size: 22px; line-height: 1.25; font-weight: 700; letter-spacing: -.012em;
+  margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--divider);
+  text-wrap: balance;
+}
+.an-body h3 { font-size: 17px; font-weight: 700; margin: 22px 0 7px; }
+.an-body p { line-height: 1.72; margin: 0 0 15px; color: var(--text-soft); max-width: 68ch; }
+.an-body ul { margin: 0 0 16px; padding-left: 20px; }
+.an-body li { line-height: 1.7; margin: 6px 0; color: var(--text-soft); }
+.an-body li::marker { color: var(--text-3); }
+.an-body strong { color: var(--text); font-weight: 700; }
+
+/* Hüküm — sayfanın cevabı. Tek vurgulu blok, sayfanın geri kalanı sakin. */
+.an-verdict {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm, 10px);
+  background: var(--surface);
+  padding: 18px 20px;
+  margin: 32px 0;
+}
+.an-verdict h2 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: .11em;
+  color: var(--accent); margin: 0 0 8px; font-weight: 700;
+}
+.an-verdict p { margin: 0; line-height: 1.7; color: var(--text-soft); }
+
+.an-faq { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--divider); }
+.an-faq > h2 { font-size: 22px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.012em; }
+.an-faq h3 { font-size: 16px; font-weight: 700; margin: 20px 0 6px; }
+.an-faq p { margin: 0; line-height: 1.7; color: var(--text-soft); max-width: 68ch; }
+
+.an-back { margin-top: 32px; }
+.an-back a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.an-back a:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .an-wrap { padding: 22px 16px 64px; }
+  .an-item { grid-template-columns: 64px 1fr; gap: 12px; }
+  .an-item img { width: 64px; height: 64px; }
+  .an-strip { flex-direction: column; align-items: flex-start; }
+}

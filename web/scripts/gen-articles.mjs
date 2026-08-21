@@ -23,8 +23,8 @@ const TS_KEY = 'BFc7h2MZhq5yct2GxzkClzQtzzCglKIb';
 const FORCE = process.argv.includes('--force');
 const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').replace('--only=', '').split(',').filter(Boolean);
 const MAX_AGE_DAYS = 30;
-const LANGS = ['tr', 'en', 'de'];
-const LANG_NAME = { tr: 'Türkçe', en: 'English', de: 'Deutsch' };
+const LANGS = ['tr', 'en'];
+const LANG_NAME = { tr: 'Türkçe', en: 'English' };
 
 function pbCreds() {
   const e = { ...process.env };
@@ -127,8 +127,8 @@ async function tsTop(cat, n = 8, opts = {}) {
 const TOPICS = {
   'en-iyi-oyuncu-telefonlari': {
     cat: 'smartphones', n: 8,
-    slug_tr: 'en-iyi-oyuncu-telefonlari', slug_en: 'best-gaming-phones', slug_de: 'beste-gaming-smartphones',
-    label: { tr: 'oyuncu telefonları', en: 'gaming phones', de: 'Gaming-Smartphones' },
+    slug_tr: 'en-iyi-oyuncu-telefonlari', slug_en: 'best-gaming-phones',
+    label: { tr: 'oyuncu telefonları', en: 'gaming phones' },
     brands: ['Apple', 'Samsung', 'Xiaomi', 'Asus', 'OnePlus', 'Google', 'Poco', 'Realme', 'Honor', 'Nubia', 'ZTE', 'Vivo', 'RedMagic', 'iQOO'],
     // Safkan oyuncu telefonları (ROG/RedMagic/iQOO…) techScore'da amiral
     // gemilerinin altında kalsa da listeye ÖNCE girer — konunun asıl ürünleri.
@@ -137,8 +137,8 @@ const TOPICS = {
   },
   'en-iyi-gaming-laptoplar': {
     cat: 'laptops', n: 8,
-    slug_tr: 'en-iyi-gaming-laptoplar', slug_en: 'best-gaming-laptops', slug_de: 'beste-gaming-laptops',
-    label: { tr: 'gaming laptoplar', en: 'gaming laptops', de: 'Gaming-Laptops' },
+    slug_tr: 'en-iyi-gaming-laptoplar', slug_en: 'best-gaming-laptops',
+    label: { tr: 'gaming laptoplar', en: 'gaming laptops' },
     brands: ['Asus', 'MSI', 'Lenovo', 'HP', 'Acer', 'Monster', 'Casper', 'Dell', 'Gigabyte'],
     nameRe: /rog|tuf|legion|loq|omen|victus|nitro|predator|katana|raider|vector|abra|tulpar|strix|scar|cyborg|g1[4568]|gaming/i,
     angle: 'Audience: PC gamers. Judge by GPU tier and wattage, cooling and fan noise, display (Hz, response), upgrade room and price/performance within its segment. Say concretely what class of gaming each machine is for (1080p high, 1440p ultra…). No office-laptop generalities.',
@@ -224,7 +224,7 @@ async function genOne(cat, existing, topic = null) {
   const prod = picks.map((p) => ({ id: p.id, slug: p.slug, name: p.name, brand: p.brand, techScore: p.techScore, imageUrl: p.imageUrl, ...(p.price ? { price: p.price } : {}) }));
   const byName = new Map(picks.map((p, i) => [p.name.toLowerCase().trim(), i]));
   const rec = topic
-    ? { slug: topic.slug_tr, slug_tr: topic.slug_tr, slug_en: topic.slug_en, slug_de: topic.slug_de, status: 'published', category: topic.cat, cover: picks[0].imageUrl }
+    ? { slug: topic.slug_tr, slug_tr: topic.slug_tr, slug_en: topic.slug_en, status: 'published', category: topic.cat, cover: picks[0].imageUrl }
     : { slug: cat, status: 'published', category: cat, cover: picks[0].imageUrl };
   for (const lang of LANGS) {
     const label = topic ? (topic.label[lang] || topic.label.tr) : categoryLabel(cat, lang);

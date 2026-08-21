@@ -47,7 +47,7 @@ function facetCounts(facets, field) {
 
 export default function Category() {
   const { t, lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [params] = useSearchParams();
   const routeParams = useParams();
   // Accept both the clean path URL (/category/smartphones) and the legacy query
@@ -59,13 +59,12 @@ export default function Category() {
   const categoryDescription = cat
     ? t('category.seo', { cat: catTitle })
     : L('Browse every product category on Qor AI.',
-        'Qor AI üzerindeki tüm ürün kategorilerine göz at.',
-        'Durchstöbere alle Produktkategorien auf Qor AI.');
+        'Qor AI üzerindeki tüm ürün kategorilerine göz at.');
 
   usePageContext(
     cat
-      ? `${lang === 'tr' ? 'Kategori sayfası' : lang === 'de' ? 'Kategorieseite' : 'Category page'}: ${catTitle}`
-      : `${lang === 'tr' ? 'Tüm kategoriler sayfası' : lang === 'de' ? 'Alle Kategorien' : 'All categories page'}`,
+      ? `${lang === 'tr' ? 'Kategori sayfası' : 'Category page'}: ${catTitle}`
+      : `${lang === 'tr' ? 'Tüm kategoriler sayfası' : 'All categories page'}`,
     cat
       ? { kind: 'category', title: catTitle, category: cat }
       : { kind: 'categories', title: '' },
@@ -76,9 +75,8 @@ export default function Category() {
       ? L(
           `Best ${catTitle} — Compare Specs & Prices | Qor AI`,
           `${catTitle} Karşılaştırma — Fiyat & Özellik | Qor AI`,
-          `${catTitle} Vergleich — Preise & Specs | Qor AI`,
         )
-      : `${L('All Categories', 'Tüm Kategoriler', 'Alle Kategorien')} — Qor AI`,
+      : `${L('All Categories', 'Tüm Kategoriler')} — Qor AI`,
     description: categoryDescription,
     path: catPath,
     htmlLang: lang,
@@ -406,7 +404,7 @@ export default function Category() {
 
       {availableFeatures.length > 0 && (
         <div className="cat-fgroup">
-          <h4>{L('Features', 'Özellikler', 'Funktionen')}</h4>
+          <h4>{L('Features', 'Özellikler')}</h4>
           {availableFeatures.map((f) => (
             <label key={f.token} className={'cat-check' + (tokens.includes(f.token) ? ' on' : '')}>
               <input type="checkbox" checked={tokens.includes(f.token)}

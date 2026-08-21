@@ -1110,7 +1110,6 @@ Return valid JSON (all text in $langName):
     const map = {
       'en': 'English',
       'tr': 'Turkish',
-      'de': 'German',
       'fr': 'French',
       'es': 'Spanish',
       'pt': 'Portuguese',

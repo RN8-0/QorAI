@@ -25,7 +25,6 @@ const _kPremiumGradient = AppTheme.premiumGradient;
 
 const Map<String, Map<String, String>> _paywallExactTranslations = {
   'You are a yearly subscriber': {
-    'de': 'Sie haben ein Jahresabo',
     'es': 'Tienes una suscripcion anual',
     'fr': 'Vous avez un abonnement annuel',
     'it': 'Hai un abbonamento annuale',
@@ -37,7 +36,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'لديك اشتراك سنوي',
   },
   'You are a monthly subscriber': {
-    'de': 'Sie haben ein Monatsabo',
     'es': 'Tienes una suscripcion mensual',
     'fr': 'Vous avez un abonnement mensuel',
     'it': 'Hai un abbonamento mensile',
@@ -49,7 +47,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'لديك اشتراك شهري',
   },
   'You are a premium subscriber': {
-    'de': 'Sie sind Premium-Abonnent',
     'es': 'Eres suscriptor premium',
     'fr': 'Vous etes abonne premium',
     'it': 'Sei un abbonato premium',
@@ -61,7 +58,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'أنت مشترك بريميوم',
   },
   'Unknown': {
-    'de': 'Unbekannt',
     'es': 'Desconocido',
     'fr': 'Inconnu',
     'it': 'Sconosciuto',
@@ -73,8 +69,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'غير معروف',
   },
   'Your premium benefits are active and all limits are unlocked.': {
-    'de':
-        'Deine Premium-Vorteile sind aktiv und alle Limits wurden freigeschaltet.',
     'es':
         'Tus ventajas premium estan activas y todos los limites se han desbloqueado.',
     'fr':
@@ -91,7 +85,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'مزايا بريميوم الخاصة بك مفعلة وتم فتح جميع الحدود.',
   },
   'Started on': {
-    'de': 'Begonnen am',
     'es': 'Inicio',
     'fr': 'Commence le',
     'it': 'Iniziato il',
@@ -103,7 +96,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'تاريخ البدء',
   },
   'Estimated renewal / end': {
-    'de': 'Geschatzte Verlangerung / Ende',
     'es': 'Renovacion / fin estimado',
     'fr': 'Renouvellement / fin estime',
     'it': 'Rinnovo / fine stimata',
@@ -115,7 +107,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'التجديد / الانتهاء المتوقع',
   },
   'Active plan': {
-    'de': 'Aktiver Plan',
     'es': 'Plan activo',
     'fr': 'Forfait actif',
     'it': 'Piano attivo',
@@ -127,7 +118,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'الخطة النشطة',
   },
   'Yearly': {
-    'de': 'Jahrlich',
     'es': 'Anual',
     'fr': 'Annuel',
     'it': 'Annuale',
@@ -139,7 +129,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'سنوي',
   },
   'Monthly': {
-    'de': 'Monatlich',
     'es': 'Mensual',
     'fr': 'Mensuel',
     'it': 'Mensile',
@@ -151,7 +140,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'شهري',
   },
   'Free': {
-    'de': 'Kostenlos',
     'es': 'Gratis',
     'fr': 'Gratuit',
     'it': 'Gratis',
@@ -163,8 +151,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'مجاني',
   },
   'Your subscription is active. You can manage it from Google Play anytime.': {
-    'de':
-        'Dein Abo ist aktiv. Du kannst es jederzeit uber Google Play verwalten.',
     'es':
         'Tu suscripcion esta activa. Puedes gestionarla cuando quieras desde Google Play.',
     'fr':
@@ -183,7 +169,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'اشتراكك نشط. يمكنك إدارته في أي وقت من خلال Google Play.',
   },
   'Smart Link Analysis': {
-    'de': 'Intelligente Link-Analyse',
     'es': 'Analisis inteligente de enlaces',
     'fr': 'Analyse intelligente des liens',
     'it': 'Analisi intelligente dei link',
@@ -195,8 +180,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'تحليل الروابط الذكي',
   },
   'Paste any product URL for instant AI product analysis.': {
-    'de':
-        'Fuge eine beliebige Produkt-URL ein, um sofort eine KI-Analyse zu erhalten.',
     'es':
         'Pega cualquier URL de producto para obtener un analisis instantaneo con IA.',
     'fr':
@@ -212,7 +195,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'الصق اي رابط منتج للحصول على تحليل فوري بالذكاء الاصطناعي.',
   },
   'Side-by-Side Compare': {
-    'de': 'Direkter Vergleich',
     'es': 'Comparacion lado a lado',
     'fr': 'Comparaison cote a cote',
     'it': 'Confronto affiancato',
@@ -224,8 +206,6 @@ const Map<String, Map<String, String>> _paywallExactTranslations = {
     'ar': 'مقارنة جنبا الى جنب',
   },
   'Compare more products with AI summaries and better context.': {
-    'de':
-        'Vergleiche mehr Produkte mit KI-Zusammenfassungen und besserem Kontext.',
     'es': 'Compara mas productos con resúmenes de IA y mejor contexto.',
     'fr':
         'Comparez plus de produits avec des resumes IA et un meilleur contexte.',
@@ -542,8 +522,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     return switch (_languageCode) {
       'ar' =>
         'مقارنات غير محدودة ودردشة AI وتحليل الروابط وتجربة بريميوم انظف.',
-      'de' =>
-        'Unbegrenzte Vergleiche, AI-Chat, Link-Analyse und ein klareres Premium-Erlebnis.',
       'es' =>
         'Comparaciones ilimitadas, chat con AI, analisis de enlaces y una experiencia premium mas limpia.',
       'fr' =>
@@ -570,8 +548,6 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     return switch (_languageCode) {
       'ar' =>
         '${AppConstants.trialDays} ايام بدون رسوم، ثم تبدأ الخطة التي اخترتها.',
-      'de' =>
-        '${AppConstants.trialDays} Tage kostenlos, danach startet dein gewahlter Plan.',
       'es' =>
         'Sin cargo durante ${AppConstants.trialDays} dias; luego comienza el plan que elijas.',
       'fr' =>

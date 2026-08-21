@@ -9,7 +9,6 @@ String _scoreLevelLabel(BuildContext context, int score) {
       Localizations.localeOf(context).languageCode.toLowerCase();
   const labels = <String, List<String>>{
     'ar': ['ممتاز', 'جيد', 'متوسط', 'منخفض'],
-    'de': ['Ausgezeichnet', 'Gut', 'Mittel', 'Niedrig'],
     'en': ['Excellent', 'Good', 'Fair', 'Low'],
     'es': ['Excelente', 'Bueno', 'Regular', 'Bajo'],
     'fr': ['Excellent', 'Bon', 'Moyen', 'Faible'],
@@ -33,7 +32,6 @@ String _localizedMatchLoadingText(BuildContext context) {
       Localizations.localeOf(context).languageCode.toLowerCase();
   const labels = <String, String>{
     'ar': 'جارٍ التحليل...',
-    'de': 'Wird analysiert...',
     'en': 'Analyzing...',
     'es': 'Analizando...',
     'fr': 'Analyse...',

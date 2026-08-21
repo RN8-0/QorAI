@@ -12,48 +12,48 @@ import { useSeo } from '../lib/seo';
 import './Quiz.css';
 
 const CATEGORY_LABELS = {
-  smartphones: ['Smartphones', 'Akıllı Telefonlar', 'Smartphones'],
-  tablets: ['Tablets', 'Tabletler', 'Tablets'],
-  laptops: ['Laptops', 'Dizüstü Bilgisayarlar', 'Laptops'],
-  desktops: ['Desktops', 'Masaüstü Bilgisayarlar', 'Desktops'],
-  cpus: ['Processors', 'İşlemciler', 'Prozessoren'],
-  gpus: ['Graphics Cards', 'Ekran Kartları', 'Grafikkarten'],
-  ram: ['RAM', 'RAM', 'RAM'],
-  ssd: ['SSD & Storage', 'SSD ve Depolama', 'SSD & Speicher'],
-  motherboards: ['Motherboards', 'Anakartlar', 'Mainboards'],
-  psu: ['Power Supplies', 'Güç Kaynakları', 'Netzteile'],
-  cases: ['PC Cases', 'Kasalar', 'PC-Gehäuse'],
-  coolers: ['Coolers', 'Soğutucular', 'Kühler'],
-  monitors: ['Monitors', 'Monitörler', 'Monitore'],
-  keyboards: ['Keyboards', 'Klavyeler', 'Tastaturen'],
-  mice: ['Mice', 'Fareler', 'Mäuse'],
-  webcams: ['Webcams', 'Web Kameraları', 'Webcams'],
-  printers: ['Printers', 'Yazıcılar', 'Drucker'],
-  tvs: ['TVs', 'TV ve Ekranlar', 'TVs'],
-  projectors: ['Projectors', 'Projektörler', 'Projektoren'],
-  'media-players': ['Media Players', 'Medya Oynatıcılar', 'Media Player'],
-  headphones: ['Headphones', 'Kulaklıklar', 'Kopfhörer'],
-  speakers: ['Speakers', 'Hoparlörler', 'Lautsprecher'],
-  soundbars: ['Soundbars', 'Soundbarlar', 'Soundbars'],
-  microphones: ['Microphones', 'Mikrofonlar', 'Mikrofone'],
-  smartwatches: ['Smartwatches', 'Akıllı Saatler', 'Smartwatches'],
-  'smart-rings': ['Smart Rings', 'Akıllı Yüzükler', 'Smart Rings'],
-  cameras: ['Cameras', 'Kameralar', 'Kameras'],
-  'action-cameras': ['Action Cameras', 'Aksiyon Kameraları', 'Action-Kameras'],
-  'security-cameras': ['Security Cameras', 'Güvenlik Kameraları', 'Sicherheitskameras'],
-  'ip-cameras': ['IP Cameras', 'IP Kameralar', 'IP-Kameras'],
-  dashcams: ['Dashcams', 'Araç Kameraları', 'Dashcams'],
-  gimbals: ['Gimbals', 'Gimballer', 'Gimbals'],
-  tripods: ['Tripods', 'Tripodlar', 'Stative'],
-  lenses: ['Lenses', 'Lensler', 'Objektive'],
-  consoles: ['Gaming Consoles', 'Oyun Konsolları', 'Spielkonsolen'],
-  gamepads: ['Gamepads', 'Oyun Kolları', 'Gamepads'],
-  'vr-headsets': ['VR Headsets', 'VR Başlıklar', 'VR-Headsets'],
-  routers: ['Routers & Modems', 'Router ve Modemler', 'Router & Modems'],
-  'robot-vacuums': ['Robot Vacuums', 'Robot Süpürgeler', 'Saugroboter'],
-  powerbanks: ['Power Banks', 'Taşınabilir Şarj Cihazları', 'Powerbanks'],
-  'e-readers': ['E-Readers', 'E-Okuyucular', 'E-Reader'],
-  drones: ['Drones', 'Dronelar', 'Drohnen'],
+  smartphones: ['Smartphones', 'Akıllı Telefonlar'],
+  tablets: ['Tablets', 'Tabletler'],
+  laptops: ['Laptops', 'Dizüstü Bilgisayarlar'],
+  desktops: ['Desktops', 'Masaüstü Bilgisayarlar'],
+  cpus: ['Processors', 'İşlemciler'],
+  gpus: ['Graphics Cards', 'Ekran Kartları'],
+  ram: ['RAM', 'RAM'],
+  ssd: ['SSD & Storage', 'SSD ve Depolama'],
+  motherboards: ['Motherboards', 'Anakartlar'],
+  psu: ['Power Supplies', 'Güç Kaynakları'],
+  cases: ['PC Cases', 'Kasalar'],
+  coolers: ['Coolers', 'Soğutucular'],
+  monitors: ['Monitors', 'Monitörler'],
+  keyboards: ['Keyboards', 'Klavyeler'],
+  mice: ['Mice', 'Fareler'],
+  webcams: ['Webcams', 'Web Kameraları'],
+  printers: ['Printers', 'Yazıcılar'],
+  tvs: ['TVs', 'TV ve Ekranlar'],
+  projectors: ['Projectors', 'Projektörler'],
+  'media-players': ['Media Players', 'Medya Oynatıcılar'],
+  headphones: ['Headphones', 'Kulaklıklar'],
+  speakers: ['Speakers', 'Hoparlörler'],
+  soundbars: ['Soundbars', 'Soundbarlar'],
+  microphones: ['Microphones', 'Mikrofonlar'],
+  smartwatches: ['Smartwatches', 'Akıllı Saatler'],
+  'smart-rings': ['Smart Rings', 'Akıllı Yüzükler'],
+  cameras: ['Cameras', 'Kameralar'],
+  'action-cameras': ['Action Cameras', 'Aksiyon Kameraları'],
+  'security-cameras': ['Security Cameras', 'Güvenlik Kameraları'],
+  'ip-cameras': ['IP Cameras', 'IP Kameralar'],
+  dashcams: ['Dashcams', 'Araç Kameraları'],
+  gimbals: ['Gimbals', 'Gimballer'],
+  tripods: ['Tripods', 'Tripodlar'],
+  lenses: ['Lenses', 'Lensler'],
+  consoles: ['Gaming Consoles', 'Oyun Konsolları'],
+  gamepads: ['Gamepads', 'Oyun Kolları'],
+  'vr-headsets': ['VR Headsets', 'VR Başlıklar'],
+  routers: ['Routers & Modems', 'Router ve Modemler'],
+  'robot-vacuums': ['Robot Vacuums', 'Robot Süpürgeler'],
+  powerbanks: ['Power Banks', 'Taşınabilir Şarj Cihazları'],
+  'e-readers': ['E-Readers', 'E-Okuyucular'],
+  drones: ['Drones', 'Dronelar'],
 };
 
 const QUIZ_CATEGORY_UNIVERSE = [
@@ -77,8 +77,8 @@ const DEVICE_CATEGORY_UNIVERSE = [
 
 function categoryOptions(list) {
   return list.map((id) => {
-    const label = CATEGORY_LABELS[id] || [id, id, id];
-    return [id, label[0], label[1], label[2]];
+    const label = CATEGORY_LABELS[id] || [id, id];
+    return [id, label[0], label[1]];
   });
 }
 
@@ -108,7 +108,7 @@ function visualCategory(value) {
 }
 
 function optionText(option, lang) {
-  return lang === 'tr' ? option[2] : lang === 'de' ? option[3] : option[1];
+  return lang === 'tr' ? option[2] : option[1];
 }
 
 const USES_PRODUCT_COVERS = new Set(['interestCategories', 'currentDevices']);
@@ -162,167 +162,167 @@ export const STEPS = [
     field: 'interestCategories',
     multiple: true,
     min: 3,
-    title: { en: 'What do you want to discover most?', tr: 'En çok hangi ürünleri keşfetmek istiyorsun?', de: 'Was möchtest du am meisten entdecken?' },
-    subtitle: { en: 'Pick at least 3 categories.', tr: 'En az 3 kategori seç.', de: 'Wähle mindestens 3 Kategorien.' },
+    title: { en: 'What do you want to discover most?', tr: 'En çok hangi ürünleri keşfetmek istiyorsun?', },
+    subtitle: { en: 'Pick at least 3 categories.', tr: 'En az 3 kategori seç.', },
     options: categoryOptions(QUIZ_CATEGORY_UNIVERSE),
   },
   {
     field: 'ecosystem',
-    title: { en: 'Which ecosystem do you use?', tr: 'Hangi ekosistemi kullanıyorsun?', de: 'Welches Ökosystem nutzt du?' },
-    subtitle: { en: 'Choose the one closest to your setup.', tr: 'Kurulumuna en yakın olanı seç.', de: 'Wähle das passendste.' },
+    title: { en: 'Which ecosystem do you use?', tr: 'Hangi ekosistemi kullanıyorsun?', },
+    subtitle: { en: 'Choose the one closest to your setup.', tr: 'Kurulumuna en yakın olanı seç.', },
     options: [
-      ['apple', 'Apple', 'Apple', 'Apple'],
-      ['android', 'Android', 'Android', 'Android'],
-      ['windows', 'Windows', 'Windows', 'Windows'],
-      ['samsung', 'Samsung', 'Samsung', 'Samsung'],
-      ['google', 'Google', 'Google', 'Google'],
-      ['xiaomi', 'Xiaomi', 'Xiaomi', 'Xiaomi'],
-      ['huawei', 'Huawei', 'Huawei', 'Huawei'],
-      ['mixed', 'Mixed', 'Karışık', 'Gemischt'],
+      ['apple', 'Apple', 'Apple'],
+      ['android', 'Android', 'Android'],
+      ['windows', 'Windows', 'Windows'],
+      ['samsung', 'Samsung', 'Samsung'],
+      ['google', 'Google', 'Google'],
+      ['xiaomi', 'Xiaomi', 'Xiaomi'],
+      ['huawei', 'Huawei', 'Huawei'],
+      ['mixed', 'Mixed', 'Karışık'],
     ],
   },
   {
     field: 'budgetRange',
-    title: { en: 'What budget band fits you?', tr: 'Bütçen hangi bantta?', de: 'Welches Budget passt zu dir?' },
-    subtitle: { en: 'Pick your usual spending level.', tr: 'Genel harcama seviyeni seç.', de: 'Wähle dein Ausgabenniveau.' },
+    title: { en: 'What budget band fits you?', tr: 'Bütçen hangi bantta?', },
+    subtitle: { en: 'Pick your usual spending level.', tr: 'Genel harcama seviyeni seç.', },
     options: [
-      ['low', 'Budget', 'Bütçe Dostu', 'Budget'],
-      ['mid', 'Balanced', 'Dengeli', 'Ausgewogen'],
-      ['high', 'Upper Mid', 'Üst-Orta', 'Obere Mittelklasse'],
-      ['premium', 'Premium', 'Premium', 'Premium'],
-      ['any', 'Any', 'Farketmez', 'Egal'],
+      ['low', 'Budget', 'Bütçe Dostu'],
+      ['mid', 'Balanced', 'Dengeli'],
+      ['high', 'Upper Mid', 'Üst-Orta'],
+      ['premium', 'Premium', 'Premium'],
+      ['any', 'Any', 'Farketmez'],
     ],
   },
   {
     field: 'priorities',
     multiple: true,
     min: 1,
-    title: { en: 'What matters most when you compare?', tr: 'Karşılaştırmada senin için en önemli şey ne?', de: 'Was zählt beim Vergleichen am meisten?' },
-    subtitle: { en: 'You can choose more than one.', tr: 'Birden fazla seçim yapabilirsin.', de: 'Du kannst mehrere auswählen.' },
+    title: { en: 'What matters most when you compare?', tr: 'Karşılaştırmada senin için en önemli şey ne?', },
+    subtitle: { en: 'You can choose more than one.', tr: 'Birden fazla seçim yapabilirsin.', },
     options: [
-      ['price', 'Price', 'Fiyat', 'Preis'],
-      ['quality', 'Quality', 'Kalite', 'Qualität'],
-      ['design', 'Design', 'Tasarım', 'Design'],
-      ['ecosystem', 'Ecosystem', 'Uyum', 'Ökosystem'],
-      ['performance', 'Performance', 'Performans', 'Leistung'],
-      ['durability', 'Durability', 'Dayanıklılık', 'Haltbarkeit'],
-      ['battery', 'Battery life', 'Pil ömrü', 'Akkulaufzeit'],
-      ['camera', 'Camera quality', 'Kamera kalitesi', 'Kameraqualität'],
-      ['portability', 'Portability', 'Taşınabilirlik', 'Mobilität'],
-      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
-      ['creator', 'Creator workflow', 'Üretici iş akışı', 'Creator-Workflow'],
-      ['productivity', 'Productivity', 'Üretkenlik', 'Produktivität'],
+      ['price', 'Price', 'Fiyat'],
+      ['quality', 'Quality', 'Kalite'],
+      ['design', 'Design', 'Tasarım'],
+      ['ecosystem', 'Ecosystem', 'Uyum'],
+      ['performance', 'Performance', 'Performans'],
+      ['durability', 'Durability', 'Dayanıklılık'],
+      ['battery', 'Battery life', 'Pil ömrü'],
+      ['camera', 'Camera quality', 'Kamera kalitesi'],
+      ['portability', 'Portability', 'Taşınabilirlik'],
+      ['gaming', 'Gaming', 'Oyun'],
+      ['creator', 'Creator workflow', 'Üretici iş akışı'],
+      ['productivity', 'Productivity', 'Üretkenlik'],
     ],
   },
   {
     field: 'currentDevices',
     multiple: true,
     min: 1,
-    title: { en: 'Which devices do you actively use today?', tr: 'Şu an hangi cihazları aktif kullanıyorsun?', de: 'Welche Geräte nutzt du aktuell aktiv?' },
-    subtitle: { en: 'Pick everything in your current setup.', tr: 'Mevcut kurulumundakileri seç.', de: 'Wähle alles aus deinem Setup.' },
+    title: { en: 'Which devices do you actively use today?', tr: 'Şu an hangi cihazları aktif kullanıyorsun?', },
+    subtitle: { en: 'Pick everything in your current setup.', tr: 'Mevcut kurulumundakileri seç.', },
     options: categoryOptions(DEVICE_CATEGORY_UNIVERSE),
   },
   {
     field: 'usageIntent',
-    title: { en: 'What are you mainly buying for?', tr: 'En çok hangi amaç için satın alıyorsun?', de: 'Wofür kaufst du hauptsächlich?' },
-    subtitle: { en: 'This shapes your home feed and AI picks.', tr: 'Bu, ana sayfanı ve AI seçimlerini şekillendirir.', de: 'Das prägt deinen Feed und die KI-Auswahl.' },
+    title: { en: 'What are you mainly buying for?', tr: 'En çok hangi amaç için satın alıyorsun?', },
+    subtitle: { en: 'This shapes your home feed and AI picks.', tr: 'Bu, ana sayfanı ve AI seçimlerini şekillendirir.', },
     options: [
-      ['gaming_setup', 'Gaming & esports', 'Oyun / Gaming', 'Gaming & E-Sport'],
-      ['creator_setup', 'Creator workflow', 'İçerik üretimi', 'Creator-Workflow'],
-      ['productivity_setup', 'School / work / productivity', 'Okul / iş / verimlilik', 'Schule / Arbeit / Produktivität'],
-      ['entertainment_setup', 'Movies / music / entertainment', 'Film / müzik / eğlence', 'Filme / Musik / Unterhaltung'],
-      ['price_tracking', 'Price tracking', 'En iyi fiyatı yakalamak', 'Preisverfolgung'],
-      ['all', 'Mixed usage', 'Karışık kullanım', 'Gemischte Nutzung'],
+      ['gaming_setup', 'Gaming & esports', 'Oyun / Gaming'],
+      ['creator_setup', 'Creator workflow', 'İçerik üretimi'],
+      ['productivity_setup', 'School / work / productivity', 'Okul / iş / verimlilik'],
+      ['entertainment_setup', 'Movies / music / entertainment', 'Film / müzik / eğlence'],
+      ['price_tracking', 'Price tracking', 'En iyi fiyatı yakalamak'],
+      ['all', 'Mixed usage', 'Karışık kullanım'],
     ],
   },
   {
     field: 'ageRange',
-    title: { en: 'Which age range fits you?', tr: 'Hangi yaş aralığındasın?', de: 'Welche Altersgruppe passt zu dir?' },
-    subtitle: { en: 'Helps tune recommendation tone and pace.', tr: 'Öneri tonu ve keşif hızını ayarlar.', de: 'Stimmt Ton und Tempo der Empfehlungen ab.' },
+    title: { en: 'Which age range fits you?', tr: 'Hangi yaş aralığındasın?', },
+    subtitle: { en: 'Helps tune recommendation tone and pace.', tr: 'Öneri tonu ve keşif hızını ayarlar.', },
     options: [
-      ['13-17', '13-17', '13-17', '13-17'],
-      ['18-24', '18-24', '18-24', '18-24'],
-      ['25-34', '25-34', '25-34', '25-34'],
-      ['35-44', '35-44', '35-44', '35-44'],
-      ['45-54', '45-54', '45-54', '45-54'],
-      ['55+', '55+', '55+', '55+'],
+      ['13-17', '13-17', '13-17'],
+      ['18-24', '18-24', '18-24'],
+      ['25-34', '25-34', '25-34'],
+      ['35-44', '35-44', '35-44'],
+      ['45-54', '45-54', '45-54'],
+      ['55+', '55+', '55+'],
     ],
   },
   {
     field: 'profession',
-    title: { en: 'Which profile is closest to you?', tr: 'Hangi profil sana daha yakın?', de: 'Welches Profil passt am besten?' },
-    subtitle: { en: 'Fine-tunes which categories rank higher.', tr: 'Hangi kategorilerin öne çıkacağını ayarlar.', de: 'Stimmt die Kategorie-Priorität ab.' },
+    title: { en: 'Which profile is closest to you?', tr: 'Hangi profil sana daha yakın?', },
+    subtitle: { en: 'Fine-tunes which categories rank higher.', tr: 'Hangi kategorilerin öne çıkacağını ayarlar.', },
     options: [
-      ['student', 'Student', 'Öğrenci', 'Student/in'],
-      ['engineer', 'Engineer', 'Mühendis', 'Ingenieur/in'],
-      ['designer', 'Designer', 'Tasarımcı', 'Designer/in'],
-      ['developer', 'Developer', 'Yazılımcı', 'Entwickler/in'],
-      ['content_creator', 'Content creator', 'İçerik üreticisi', 'Content Creator'],
-      ['video_editor', 'Video editor', 'Video editörü', 'Video Editor'],
-      ['photographer', 'Photographer', 'Fotoğrafçı', 'Fotograf/in'],
-      ['gamer', 'Gamer', 'Oyuncu', 'Gamer/in'],
-      ['manager', 'Manager', 'Yönetici', 'Manager/in'],
-      ['product_manager', 'Product manager', 'Ürün yöneticisi', 'Produktmanager/in'],
-      ['entrepreneur', 'Entrepreneur', 'Girişimci', 'Unternehmer/in'],
-      ['healthcare', 'Healthcare', 'Sağlık', 'Gesundheit'],
-      ['teacher', 'Teacher', 'Öğretmen', 'Lehrkraft'],
-      ['finance', 'Finance', 'Finans', 'Finanzen'],
-      ['data_scientist', 'Data scientist', 'Veri bilimci', 'Data Scientist'],
-      ['it_admin', 'IT / sysadmin', 'IT / Sistem', 'IT / Admin'],
-      ['marketer', 'Marketing', 'Pazarlama', 'Marketing'],
-      ['sales', 'Sales', 'Satış', 'Vertrieb'],
-      ['consultant', 'Consultant', 'Danışman', 'Berater/in'],
-      ['architect', 'Architect', 'Mimar', 'Architekt/in'],
-      ['scientist', 'Scientist', 'Bilim insanı', 'Wissenschaftler/in'],
-      ['lawyer', 'Lawyer', 'Avukat', 'Jurist/in'],
-      ['writer', 'Writer', 'Yazar', 'Autor/in'],
-      ['artist', 'Artist', 'Sanatçı', 'Künstler/in'],
-      ['musician', 'Musician', 'Müzisyen', 'Musiker/in'],
-      ['streamer', 'Streamer', 'Yayıncı', 'Streamer/in'],
-      ['other', 'Other', 'Diğer', 'Andere'],
+      ['student', 'Student', 'Öğrenci'],
+      ['engineer', 'Engineer', 'Mühendis'],
+      ['designer', 'Designer', 'Tasarımcı'],
+      ['developer', 'Developer', 'Yazılımcı'],
+      ['content_creator', 'Content creator', 'İçerik üreticisi'],
+      ['video_editor', 'Video editor', 'Video editörü'],
+      ['photographer', 'Photographer', 'Fotoğrafçı'],
+      ['gamer', 'Gamer', 'Oyuncu'],
+      ['manager', 'Manager', 'Yönetici'],
+      ['product_manager', 'Product manager', 'Ürün yöneticisi'],
+      ['entrepreneur', 'Entrepreneur', 'Girişimci'],
+      ['healthcare', 'Healthcare', 'Sağlık'],
+      ['teacher', 'Teacher', 'Öğretmen'],
+      ['finance', 'Finance', 'Finans'],
+      ['data_scientist', 'Data scientist', 'Veri bilimci'],
+      ['it_admin', 'IT / sysadmin', 'IT / Sistem'],
+      ['marketer', 'Marketing', 'Pazarlama'],
+      ['sales', 'Sales', 'Satış'],
+      ['consultant', 'Consultant', 'Danışman'],
+      ['architect', 'Architect', 'Mimar'],
+      ['scientist', 'Scientist', 'Bilim insanı'],
+      ['lawyer', 'Lawyer', 'Avukat'],
+      ['writer', 'Writer', 'Yazar'],
+      ['artist', 'Artist', 'Sanatçı'],
+      ['musician', 'Musician', 'Müzisyen'],
+      ['streamer', 'Streamer', 'Yayıncı'],
+      ['other', 'Other', 'Diğer'],
     ],
   },
   {
     field: 'hobbies',
     multiple: true,
     min: 1,
-    title: { en: 'What are you into outside of work?', tr: 'İş dışında nelerle ilgilenirsin?', de: 'Was machst du in deiner Freizeit?' },
-    subtitle: { en: 'Your hobbies sharpen which questions and picks Qor AI gives you.', tr: 'Hobilerin, Qor AI’ın sana soracağı soruları ve önerileri keskinleştirir.', de: 'Deine Hobbys schärfen die Fragen und Empfehlungen von Qor AI.' },
+    title: { en: 'What are you into outside of work?', tr: 'İş dışında nelerle ilgilenirsin?', },
+    subtitle: { en: 'Your hobbies sharpen which questions and picks Qor AI gives you.', tr: 'Hobilerin, Qor AI’ın sana soracağı soruları ve önerileri keskinleştirir.', },
     options: [
-      ['gaming', 'Gaming', 'Oyun', 'Gaming'],
-      ['photography', 'Photography', 'Fotoğrafçılık', 'Fotografie'],
-      ['video', 'Video & filmmaking', 'Video & film', 'Video & Film'],
-      ['music', 'Music & audio', 'Müzik & ses', 'Musik & Audio'],
-      ['coding', 'Coding', 'Kodlama', 'Programmieren'],
-      ['pc_building', 'PC building', 'PC toplama', 'PC-Bau'],
-      ['design', 'Design & art', 'Tasarım & sanat', 'Design & Kunst'],
-      ['streaming', 'Movies & series', 'Film & dizi', 'Filme & Serien'],
-      ['fitness', 'Fitness & sports', 'Fitness & spor', 'Fitness & Sport'],
-      ['travel', 'Travel', 'Seyahat', 'Reisen'],
-      ['reading', 'Reading', 'Okuma', 'Lesen'],
-      ['smart_home', 'Smart home', 'Akıllı ev', 'Smart Home'],
-      ['drones', 'Drones & RC', 'Drone & RC', 'Drohnen & RC'],
-      ['diy', 'DIY & making', 'DIY & üretim', 'DIY & Basteln'],
-      ['cooking', 'Cooking', 'Yemek', 'Kochen'],
-      ['esports', 'Esports', 'E-spor', 'E-Sport'],
-      ['cars', 'Cars & autos', 'Araba & oto', 'Autos'],
-      ['outdoors', 'Outdoors & hiking', 'Doğa & yürüyüş', 'Outdoor & Wandern'],
-      ['cycling', 'Cycling', 'Bisiklet', 'Radfahren'],
-      ['investing', 'Investing', 'Yatırım', 'Investieren'],
-      ['anime', 'Anime & manga', 'Anime & manga', 'Anime & Manga'],
-      ['board_games', 'Board games', 'Kutu oyunları', 'Brettspiele'],
-      ['podcasting', 'Podcasting', 'Podcast', 'Podcasting'],
-      ['gardening', 'Gardening', 'Bahçe', 'Gärtnern'],
-      ['fashion', 'Fashion', 'Moda', 'Mode'],
-      ['other', 'Other', 'Diğer', 'Andere'],
+      ['gaming', 'Gaming', 'Oyun'],
+      ['photography', 'Photography', 'Fotoğrafçılık'],
+      ['video', 'Video & filmmaking', 'Video & film'],
+      ['music', 'Music & audio', 'Müzik & ses'],
+      ['coding', 'Coding', 'Kodlama'],
+      ['pc_building', 'PC building', 'PC toplama'],
+      ['design', 'Design & art', 'Tasarım & sanat'],
+      ['streaming', 'Movies & series', 'Film & dizi'],
+      ['fitness', 'Fitness & sports', 'Fitness & spor'],
+      ['travel', 'Travel', 'Seyahat'],
+      ['reading', 'Reading', 'Okuma'],
+      ['smart_home', 'Smart home', 'Akıllı ev'],
+      ['drones', 'Drones & RC', 'Drone & RC'],
+      ['diy', 'DIY & making', 'DIY & üretim'],
+      ['cooking', 'Cooking', 'Yemek'],
+      ['esports', 'Esports', 'E-spor'],
+      ['cars', 'Cars & autos', 'Araba & oto'],
+      ['outdoors', 'Outdoors & hiking', 'Doğa & yürüyüş'],
+      ['cycling', 'Cycling', 'Bisiklet'],
+      ['investing', 'Investing', 'Yatırım'],
+      ['anime', 'Anime & manga', 'Anime & manga'],
+      ['board_games', 'Board games', 'Kutu oyunları'],
+      ['podcasting', 'Podcasting', 'Podcast'],
+      ['gardening', 'Gardening', 'Bahçe'],
+      ['fashion', 'Fashion', 'Moda'],
+      ['other', 'Other', 'Diğer'],
     ],
   },
   {
     field: 'subscriptions',
     multiple: true,
     min: 1,
-    title: { en: 'Which subscriptions are part of your life?', tr: 'Hangi abonelikler hayatında var?', de: 'Welche Abos nutzt du?' },
-    subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "Yok" seç.', de: 'Wähle "keine", wenn du keine nutzt.' },
+    title: { en: 'Which subscriptions are part of your life?', tr: 'Hangi abonelikler hayatında var?', },
+    subtitle: { en: 'Pick "none" if you do not use any.', tr: 'Kullanmıyorsan "Yok" seç.', },
     // [value, en, tr, de, simpleicons-slug] — slug guarantees a crisp,
     // brand-coloured SVG logo (no broken hot-links). Values mirror the app.
     options: [
@@ -400,7 +400,7 @@ function tx(lang, value) {
 export function optionLabel(step, value, lang) {
   const match = step.options.find((o) => o[0] === value);
   if (!match) return String(value).replace(/[_-]+/g, ' ');
-  return lang === 'tr' ? match[2] : lang === 'de' ? match[3] : match[1];
+  return lang === 'tr' ? match[2] : match[1];
 }
 
 function emptyAnswers(user) {
@@ -530,7 +530,7 @@ export default function Quiz() {
   const POST_QUIZ_BLOCKED = ['/quiz', '/terms', '/privacy', '/refund', '/cookies', '/contact', '/about', '/faq'];
   const rawNext = params.get('next') || '/';
   const nextPath = POST_QUIZ_BLOCKED.some((p) => rawNext === p || rawNext.startsWith(`${p}?`) || rawNext.startsWith(`${p}/`)) ? '/' : rawNext;
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
 
   useSeo({ title: `${t('quiz.title')} — Qor AI`, description: t('quiz.subtitle'), path: '/quiz' });
 
@@ -595,7 +595,7 @@ export default function Quiz() {
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" fill="currentColor" /></svg>
           </div>
           <h1>{t('quiz.title')}</h1>
-          <p>{L('Sign in to build your Qor AI profile.', 'Qor AI profilini oluşturmak için giriş yap.', 'Melde dich an, um dein Qor AI Profil zu erstellen.')}</p>
+          <p>{L('Sign in to build your Qor AI profile.', 'Qor AI profilini oluşturmak için giriş yap.')}</p>
           <button className="oq-btn oq-btn-primary" onClick={openAuth}>{t('nav.signIn')}</button>
         </div>
       </div>
@@ -633,8 +633,8 @@ export default function Quiz() {
   function goNext() {
     if (!canContinue) {
       setErr(current.field === 'interestCategories'
-        ? L('Select at least 3 categories to continue.', 'Devam etmek için en az 3 kategori seç.', 'Wähle mindestens 3 Kategorien.')
-        : L('Complete this step to continue.', 'Devam etmek için bu adımı tamamla.', 'Schließe diesen Schritt ab.'));
+        ? L('Select at least 3 categories to continue.', 'Devam etmek için en az 3 kategori seç.')
+        : L('Complete this step to continue.', 'Devam etmek için bu adımı tamamla.'));
       return;
     }
     if (step + 1 >= total) submit();
@@ -698,7 +698,6 @@ export default function Quiz() {
     const recommendation = L(
       'Your profile is saved. Qor AI will now use your ecosystem, budget, priorities, devices and subscriptions across product AI, link analysis and subscription analysis.',
       'Profilin kaydedildi. Qor AI artık ürün AI analizi, link analizi ve abonelik analizinde ekosistemini, bütçeni, önceliklerini, cihazlarını ve aboneliklerini kullanacak.',
-      'Dein Profil ist gespeichert. Qor AI nutzt jetzt Ökosystem, Budget, Prioritäten, Geräte und Abos für Produkt-KI, Link-Analyse und Abo-Analyse.',
     );
     const entry = {
       type: 'onboarding',
@@ -712,8 +711,8 @@ export default function Quiz() {
       result: recommendation,
       recommendation,
     };
-    const country = user.country || (lang === 'tr' ? 'TR' : lang === 'de' ? 'DE' : 'GB');
-    const currency = user.currency || (lang === 'tr' ? 'TRY' : lang === 'de' ? 'EUR' : 'GBP');
+    const country = user.country || (lang === 'tr' ? 'TR' : 'GB');
+    const currency = user.currency || (lang === 'tr' ? 'TRY' : 'GBP');
     try {
       await updateProfile({
         ageRange: answers.ageRange,
@@ -739,7 +738,7 @@ export default function Quiz() {
       trackEvent('quiz_complete');
       setDone(true);
     } catch {
-      setErr(L('Profile could not be saved. Try again.', 'Profil kaydedilemedi. Tekrar dene.', 'Profil konnte nicht gespeichert werden.'));
+      setErr(L('Profile could not be saved. Try again.', 'Profil kaydedilemedi. Tekrar dene.'));
     } finally {
       setBusy(false);
     }
@@ -766,16 +765,16 @@ export default function Quiz() {
     const chips = [eco, budget, prof, usage, ...catLabels.slice(0, 3)].filter(Boolean);
     const headline = catLabels.slice(0, 2).join(' · ') || t('quiz.title');
     const cards = [
-      { tone: 'c', icon: 'all', title: L('Discovery profile', 'Keşif profili', 'Entdeckungsprofil'), body: dash(catLabels) },
-      { tone: 'v', icon: 'mixed', title: L('Current setup', 'Mevcut kurulum', 'Aktuelles Setup'), body: dash([eco, ...devLabels]) },
-      { tone: 'g', icon: 'quality', title: L('Decision priorities', 'Karar öncelikleri', 'Prioritäten'), body: dash(prioLabels) },
-      { tone: 'a', icon: 'productivity', title: L('Usage & profile', 'Kullanım & profil', 'Nutzung & Profil'), body: dash([prof, usage, age]) },
-      { tone: 'g', icon: 'gaming', title: L('Hobbies & interests', 'Hobiler & ilgi alanları', 'Hobbys & Interessen'), body: dash(hobbyLabels) },
+      { tone: 'c', icon: 'all', title: L('Discovery profile', 'Keşif profili'), body: dash(catLabels) },
+      { tone: 'v', icon: 'mixed', title: L('Current setup', 'Mevcut kurulum'), body: dash([eco, ...devLabels]) },
+      { tone: 'g', icon: 'quality', title: L('Decision priorities', 'Karar öncelikleri'), body: dash(prioLabels) },
+      { tone: 'a', icon: 'productivity', title: L('Usage & profile', 'Kullanım & profil'), body: dash([prof, usage, age]) },
+      { tone: 'g', icon: 'gaming', title: L('Hobbies & interests', 'Hobiler & ilgi alanları'), body: dash(hobbyLabels) },
       {
-        tone: 'b', icon: 'ecosystem', title: L('Services', 'Servisler', 'Dienste'),
+        tone: 'b', icon: 'ecosystem', title: L('Services', 'Servisler'),
         body: subs.length
-          ? `${subs.length} ${L('services', 'servis', 'Dienste')} · ${subs.slice(0, 4).map((s) => optionLabel(STEPS[9], s, lang)).join(', ')}`
-          : L('No subscriptions', 'Abonelik yok', 'Keine Abos'),
+          ? `${subs.length} ${L('services', 'servis')} · ${subs.slice(0, 4).map((s) => optionLabel(STEPS[9], s, lang)).join(', ')}`
+          : L('No subscriptions', 'Abonelik yok'),
       },
     ];
     return (
@@ -790,9 +789,9 @@ export default function Quiz() {
                 </span>
               </div>
               <div className="oq-sum-hero-text">
-                <span className="oq-sum-eyebrow">{L('PROFILE READY', 'PROFİLİN HAZIR', 'PROFIL BEREIT')}</span>
+                <span className="oq-sum-eyebrow">{L('PROFILE READY', 'PROFİLİN HAZIR')}</span>
                 <h1>{headline}</h1>
-                <p>{L('Qor AI now personalises every recommendation, link analysis and chat to this profile.', 'Qor AI artık tüm önerileri, link analizini ve sohbeti bu profile göre kişiselleştiriyor.', 'Qor AI personalisiert ab jetzt alles nach diesem Profil.')}</p>
+                <p>{L('Qor AI now personalises every recommendation, link analysis and chat to this profile.', 'Qor AI artık tüm önerileri, link analizini ve sohbeti bu profile göre kişiselleştiriyor.')}</p>
               </div>
             </div>
             {chips.length > 0 && (
@@ -814,7 +813,7 @@ export default function Quiz() {
         <footer className="oq-foot">
           <div className="oq-foot-row">
             <button className="oq-btn oq-btn-primary oq-btn-grow" onClick={() => nav(nextPath, { replace: true })}>
-              {L('Start exploring', 'Keşfe başla', 'Loslegen')}
+              {L('Start exploring', 'Keşfe başla')}
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </button>
           </div>
@@ -852,8 +851,8 @@ export default function Quiz() {
                   : <span>{selectedCount}</span>}
               </span>
               {current.min > 1
-                ? L(`Select at least ${current.min}`, `En az ${current.min} seç`, `Mindestens ${current.min} wählen`)
-                : L('Multiple choices allowed', 'Birden fazla seçebilirsin', 'Mehrfachauswahl möglich')}
+                ? L(`Select at least ${current.min}`, `En az ${current.min} seç`)
+                : L('Multiple choices allowed', 'Birden fazla seçebilirsin')}
               <b>{selectedCount}{current.min > 1 ? `/${current.min}` : ''}</b>
             </div>
           )}
@@ -891,7 +890,7 @@ export default function Quiz() {
 
           {hasMoreOptions && (
             <button type="button" className="oq-more" onClick={revealMore}>
-              {L('Show more options', 'Daha fazla seçenek', 'Mehr Optionen')}
+              {L('Show more options', 'Daha fazla seçenek')}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
             </button>
           )}
@@ -910,8 +909,8 @@ export default function Quiz() {
             {busy
               ? t('common.loading')
               : isLast
-                ? L('Create my profile', 'Profilimi oluştur', 'Profil erstellen')
-                : L('Continue', 'Devam et', 'Weiter')}
+                ? L('Create my profile', 'Profilimi oluştur')
+                : L('Continue', 'Devam et')}
             {!busy && (
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 {isLast ? <path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z" /> : <path d="M5 12h14M13 6l6 6-6 6" />}
@@ -920,7 +919,7 @@ export default function Quiz() {
           </button>
         </div>
         <button type="button" className="oq-skip-link" onClick={skip} disabled={busy}>
-          {L('Skip for now — you can do this later', 'Şimdilik geç — sonra tamamlayabilirsin', 'Später — du kannst das später machen')}
+          {L('Skip for now — you can do this later', 'Şimdilik geç — sonra tamamlayabilirsin')}
         </button>
       </footer>
     </div>

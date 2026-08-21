@@ -3,93 +3,93 @@
 // Icon + display label per category. Labels are intentionally English
 // here (category names are universal-ish); the icon is the main signal.
 export const CATEGORY_META = {
-  smartphones: { icon: '📱', label: 'Smartphones', tr: 'Akıllı Telefon', de: 'Smartphones', color: '#3B82F6' },
-  feature_phones: { icon: '☎️', label: 'Feature Phones', tr: 'Tuşlu Telefon', de: 'Feature Phones', color: '#3B82F6' },
-  smartwatches: { icon: '⌚', label: 'Smartwatches', tr: 'Akıllı Saat', de: 'Smartwatches', color: '#14B8A6' },
-  smart_rings: { icon: '💍', label: 'Smart Rings', tr: 'Akıllı Yüzük', de: 'Smart Rings', color: '#14B8A6' },
-  headphones: { icon: '🎧', label: 'Headphones', tr: 'Kulaklık', de: 'Kopfhörer', color: '#EC4899' },
-  earbuds: { icon: '🎧', label: 'Earbuds', tr: 'Kulaklık', de: 'Earbuds', color: '#EC4899' },
-  earphones: { icon: '🎧', label: 'Earphones', tr: 'Kulaklık', de: 'Kopfhörer', color: '#EC4899' },
-  powerbanks: { icon: '🔋', label: 'Power Banks', tr: 'Powerbank', de: 'Powerbanks', color: '#22C55E' },
-  chargers: { icon: '🔌', label: 'Chargers', tr: 'Şarj Aleti', de: 'Ladegeräte', color: '#22C55E' },
+  smartphones: { icon: '📱', label: 'Smartphones', tr: 'Akıllı Telefon', color: '#3B82F6' },
+  feature_phones: { icon: '☎️', label: 'Feature Phones', tr: 'Tuşlu Telefon', color: '#3B82F6' },
+  smartwatches: { icon: '⌚', label: 'Smartwatches', tr: 'Akıllı Saat', color: '#14B8A6' },
+  smart_rings: { icon: '💍', label: 'Smart Rings', tr: 'Akıllı Yüzük', color: '#14B8A6' },
+  headphones: { icon: '🎧', label: 'Headphones', tr: 'Kulaklık', color: '#EC4899' },
+  earbuds: { icon: '🎧', label: 'Earbuds', tr: 'Kulaklık', color: '#EC4899' },
+  earphones: { icon: '🎧', label: 'Earphones', tr: 'Kulaklık', color: '#EC4899' },
+  powerbanks: { icon: '🔋', label: 'Power Banks', tr: 'Powerbank', color: '#22C55E' },
+  chargers: { icon: '🔌', label: 'Chargers', tr: 'Şarj Aleti', color: '#22C55E' },
 
-  laptops: { icon: '💻', label: 'Laptops', tr: 'Laptop', de: 'Laptops', color: '#6366F1' },
-  desktops: { icon: '🖥️', label: 'Desktop PCs', tr: 'Masaüstü PC', de: 'Desktop-PCs', color: '#6366F1' },
-  tablets: { icon: '📱', label: 'Tablets', tr: 'Tablet', de: 'Tablets', color: '#3B82F6' },
-  e_readers: { icon: '📖', label: 'E-Readers', tr: 'E-Kitap Okuyucu', de: 'E-Reader', color: '#22C55E' },
-  vr_headsets: { icon: '🥽', label: 'VR Headsets', tr: 'Sanal Gerçeklik', de: 'VR-Headsets', color: '#8B5CF6' },
+  laptops: { icon: '💻', label: 'Laptops', tr: 'Laptop', color: '#6366F1' },
+  desktops: { icon: '🖥️', label: 'Desktop PCs', tr: 'Masaüstü PC', color: '#6366F1' },
+  tablets: { icon: '📱', label: 'Tablets', tr: 'Tablet', color: '#3B82F6' },
+  e_readers: { icon: '📖', label: 'E-Readers', tr: 'E-Kitap Okuyucu', color: '#22C55E' },
+  vr_headsets: { icon: '🥽', label: 'VR Headsets', tr: 'Sanal Gerçeklik', color: '#8B5CF6' },
 
-  gpus: { icon: '🎮', label: 'Graphics Cards', tr: 'Ekran Kartı', de: 'Grafikkarten', color: '#8B5CF6' },
-  graphics_cards: { icon: '🎮', label: 'Graphics Cards', tr: 'Ekran Kartı', de: 'Grafikkarten', color: '#8B5CF6' },
-  cpus: { icon: '🧠', label: 'Processors', tr: 'İşlemci', de: 'Prozessoren', color: '#06B6D4' },
-  motherboards: { icon: '🔲', label: 'Motherboards', tr: 'Anakart', de: 'Mainboards', color: '#06B6D4' },
-  ram: { icon: '💾', label: 'RAM', tr: 'RAM', de: 'RAM', color: '#06B6D4' },
-  storage: { icon: '💿', label: 'Storage', tr: 'Depolama', de: 'Speicher', color: '#06B6D4' },
-  ssd: { icon: '💿', label: 'SSDs', tr: 'SSD', de: 'SSDs', color: '#06B6D4' },
-  ssds: { icon: '💿', label: 'SSDs', tr: 'SSD', de: 'SSDs', color: '#06B6D4' },
-  psu: { icon: '⚡', label: 'Power Supplies', tr: 'PSU', de: 'Netzteile', color: '#06B6D4' },
-  psus: { icon: '⚡', label: 'Power Supplies', tr: 'PSU', de: 'Netzteile', color: '#06B6D4' },
-  cases: { icon: '📦', label: 'PC Cases', tr: 'Kasa', de: 'PC-Gehäuse', color: '#06B6D4' },
-  pc_cases: { icon: '📦', label: 'PC Cases', tr: 'Kasa', de: 'PC-Gehäuse', color: '#06B6D4' },
-  ups: { icon: '🔋', label: 'UPS', tr: 'UPS', de: 'USV', color: '#22C55E' },
-  flash_drives: { icon: '💾', label: 'USB Flash Drives', tr: 'USB Bellek', de: 'USB-Sticks', color: '#06B6D4' },
+  gpus: { icon: '🎮', label: 'Graphics Cards', tr: 'Ekran Kartı', color: '#8B5CF6' },
+  graphics_cards: { icon: '🎮', label: 'Graphics Cards', tr: 'Ekran Kartı', color: '#8B5CF6' },
+  cpus: { icon: '🧠', label: 'Processors', tr: 'İşlemci', color: '#06B6D4' },
+  motherboards: { icon: '🔲', label: 'Motherboards', tr: 'Anakart', color: '#06B6D4' },
+  ram: { icon: '💾', label: 'RAM', tr: 'RAM', color: '#06B6D4' },
+  storage: { icon: '💿', label: 'Storage', tr: 'Depolama', color: '#06B6D4' },
+  ssd: { icon: '💿', label: 'SSDs', tr: 'SSD', color: '#06B6D4' },
+  ssds: { icon: '💿', label: 'SSDs', tr: 'SSD', color: '#06B6D4' },
+  psu: { icon: '⚡', label: 'Power Supplies', tr: 'PSU', color: '#06B6D4' },
+  psus: { icon: '⚡', label: 'Power Supplies', tr: 'PSU', color: '#06B6D4' },
+  cases: { icon: '📦', label: 'PC Cases', tr: 'Kasa', color: '#06B6D4' },
+  pc_cases: { icon: '📦', label: 'PC Cases', tr: 'Kasa', color: '#06B6D4' },
+  ups: { icon: '🔋', label: 'UPS', tr: 'UPS', color: '#22C55E' },
+  flash_drives: { icon: '💾', label: 'USB Flash Drives', tr: 'USB Bellek', color: '#06B6D4' },
 
-  cpu_coolers: { icon: '❄️', label: 'CPU Coolers', tr: 'İşlemci Soğutucu', de: 'CPU-Kühler', color: '#06B6D4' },
-  laptop_coolers: { icon: '❄️', label: 'Laptop Coolers', tr: 'Laptop Soğutucu', de: 'Laptop-Kühler', color: '#06B6D4' },
-  case_fans: { icon: '🌀', label: 'Case Fans', tr: 'Kasa Fanı', de: 'Gehäuselüfter', color: '#06B6D4' },
-  coolers: { icon: '❄️', label: 'Coolers', tr: 'Soğutucular', de: 'Kühler', color: '#06B6D4' },
+  cpu_coolers: { icon: '❄️', label: 'CPU Coolers', tr: 'İşlemci Soğutucu', color: '#06B6D4' },
+  laptop_coolers: { icon: '❄️', label: 'Laptop Coolers', tr: 'Laptop Soğutucu', color: '#06B6D4' },
+  case_fans: { icon: '🌀', label: 'Case Fans', tr: 'Kasa Fanı', color: '#06B6D4' },
+  coolers: { icon: '❄️', label: 'Coolers', tr: 'Soğutucular', color: '#06B6D4' },
 
-  keyboards: { icon: '⌨️', label: 'Keyboards', tr: 'Klavye', de: 'Tastaturen', color: '#0EA5E9' },
-  mice: { icon: '🖱️', label: 'Mice', tr: 'Mouse', de: 'Mäuse', color: '#0EA5E9' },
-  gamepads: { icon: '🎮', label: 'Gamepads', tr: 'Oyun Kolu', de: 'Gamepads', color: '#8B5CF6' },
-  consoles: { icon: '🕹️', label: 'Consoles', tr: 'Oyun Konsolu', de: 'Konsolen', color: '#8B5CF6' },
-  gaming_consoles: { icon: '🕹️', label: 'Game Consoles', tr: 'Oyun Konsolu', de: 'Spielkonsolen', color: '#8B5CF6' },
-  webcams: { icon: '📹', label: 'Webcams', tr: 'Webcam', de: 'Webcams', color: '#0EA5E9' },
-  microphones: { icon: '🎙️', label: 'Microphones', tr: 'Mikrofon', de: 'Mikrofone', color: '#EC4899' },
-  printers: { icon: '🖨️', label: 'Printers', tr: 'Yazıcı', de: 'Drucker', color: '#0EA5E9' },
-  '3d_printers': { icon: '🏭', label: '3D Printers', tr: '3D Yazıcı', de: '3D-Drucker', color: '#0EA5E9' },
+  keyboards: { icon: '⌨️', label: 'Keyboards', tr: 'Klavye', color: '#0EA5E9' },
+  mice: { icon: '🖱️', label: 'Mice', tr: 'Mouse', color: '#0EA5E9' },
+  gamepads: { icon: '🎮', label: 'Gamepads', tr: 'Oyun Kolu', color: '#8B5CF6' },
+  consoles: { icon: '🕹️', label: 'Consoles', tr: 'Oyun Konsolu', color: '#8B5CF6' },
+  gaming_consoles: { icon: '🕹️', label: 'Game Consoles', tr: 'Oyun Konsolu', color: '#8B5CF6' },
+  webcams: { icon: '📹', label: 'Webcams', tr: 'Webcam', color: '#0EA5E9' },
+  microphones: { icon: '🎙️', label: 'Microphones', tr: 'Mikrofon', color: '#EC4899' },
+  printers: { icon: '🖨️', label: 'Printers', tr: 'Yazıcı', color: '#0EA5E9' },
+  '3d_printers': { icon: '🏭', label: '3D Printers', tr: '3D Yazıcı', color: '#0EA5E9' },
 
-  monitors: { icon: '🖥️', label: 'Monitors', tr: 'Monitör', de: 'Monitore', color: '#10B981' },
-  tvs: { icon: '📺', label: 'TVs', tr: 'Televizyon', de: 'TVs', color: '#10B981' },
-  projectors: { icon: '📽️', label: 'Projectors', tr: 'Projeksiyon', de: 'Projektoren', color: '#10B981' },
-  speakers: { icon: '🔊', label: 'Speakers', tr: 'Hoparlör', de: 'Lautsprecher', color: '#EC4899' },
-  audio_systems: { icon: '🎚️', label: 'Audio Systems', tr: 'Ses Sistemi', de: 'Audiosysteme', color: '#EC4899' },
-  av_receivers: { icon: '🔌', label: 'AV Receivers', tr: 'AV Receiver', de: 'AV-Receiver', color: '#EC4899' },
-  media_players: { icon: '▶️', label: 'Media Players', tr: 'Medya Oynatıcı', de: 'Mediaplayer', color: '#10B981' },
-  soundbars: { icon: '🔊', label: 'Soundbars', tr: 'Soundbar', de: 'Soundbars', color: '#EC4899' },
+  monitors: { icon: '🖥️', label: 'Monitors', tr: 'Monitör', color: '#10B981' },
+  tvs: { icon: '📺', label: 'TVs', tr: 'Televizyon', color: '#10B981' },
+  projectors: { icon: '📽️', label: 'Projectors', tr: 'Projeksiyon', color: '#10B981' },
+  speakers: { icon: '🔊', label: 'Speakers', tr: 'Hoparlör', color: '#EC4899' },
+  audio_systems: { icon: '🎚️', label: 'Audio Systems', tr: 'Ses Sistemi', color: '#EC4899' },
+  av_receivers: { icon: '🔌', label: 'AV Receivers', tr: 'AV Receiver', color: '#EC4899' },
+  media_players: { icon: '▶️', label: 'Media Players', tr: 'Medya Oynatıcı', color: '#10B981' },
+  soundbars: { icon: '🔊', label: 'Soundbars', tr: 'Soundbar', color: '#EC4899' },
 
-  cameras: { icon: '📷', label: 'Cameras', tr: 'Kamera', de: 'Kameras', color: '#F97316' },
-  camera_lenses: { icon: '📷', label: 'Camera Lenses', tr: 'Lens', de: 'Kameraobjektive', color: '#F97316' },
-  action_cameras: { icon: '🎥', label: 'Action Cameras', tr: 'Aksiyon Kamera', de: 'Action-Kameras', color: '#F97316' },
-  security_cameras: { icon: '🛡️', label: 'Security Cameras', tr: 'Güvenlik Kamerası', de: 'Sicherheitskameras', color: '#F97316' },
-  ip_cameras: { icon: '📹', label: 'IP Cameras', tr: 'IP Kamera', de: 'IP-Kameras', color: '#F97316' },
-  dashcams: { icon: '🚗', label: 'Dash Cameras', tr: 'Araç İçi Kamera', de: 'Dashcams', color: '#F97316' },
-  gimbals: { icon: '🎥', label: 'Gimbals', tr: 'Gimbal', de: 'Gimbals', color: '#F97316' },
-  drones: { icon: '🚁', label: 'Drones', tr: 'Drone', de: 'Drohnen', color: '#06B6D4' },
+  cameras: { icon: '📷', label: 'Cameras', tr: 'Kamera', color: '#F97316' },
+  camera_lenses: { icon: '📷', label: 'Camera Lenses', tr: 'Lens', color: '#F97316' },
+  action_cameras: { icon: '🎥', label: 'Action Cameras', tr: 'Aksiyon Kamera', color: '#F97316' },
+  security_cameras: { icon: '🛡️', label: 'Security Cameras', tr: 'Güvenlik Kamerası', color: '#F97316' },
+  ip_cameras: { icon: '📹', label: 'IP Cameras', tr: 'IP Kamera', color: '#F97316' },
+  dashcams: { icon: '🚗', label: 'Dash Cameras', tr: 'Araç İçi Kamera', color: '#F97316' },
+  gimbals: { icon: '🎥', label: 'Gimbals', tr: 'Gimbal', color: '#F97316' },
+  drones: { icon: '🚁', label: 'Drones', tr: 'Drone', color: '#06B6D4' },
 
-  routers: { icon: '📡', label: 'Routers', tr: 'Router', de: 'Router', color: '#3B82F6' },
-  wifi_routers: { icon: '📡', label: 'WiFi Routers', tr: 'WiFi Router', de: 'WLAN-Router', color: '#3B82F6' },
-  modem_routers: { icon: '🛰️', label: 'Modems', tr: 'Modem', de: 'Modems', color: '#3B82F6' },
-  robot_vacuums: { icon: '🧹', label: 'Robot Vacuums', tr: 'Robot Süpürge', de: 'Saugroboter', color: '#F59E0B' },
-  hardware_wallets: { icon: '🔐', label: 'Hardware Wallets', tr: 'Soğuk Cüzdan', de: 'Hardware-Wallets', color: '#22C55E' },
+  routers: { icon: '📡', label: 'Routers', tr: 'Router', color: '#3B82F6' },
+  wifi_routers: { icon: '📡', label: 'WiFi Routers', tr: 'WiFi Router', color: '#3B82F6' },
+  modem_routers: { icon: '🛰️', label: 'Modems', tr: 'Modem', color: '#3B82F6' },
+  robot_vacuums: { icon: '🧹', label: 'Robot Vacuums', tr: 'Robot Süpürge', color: '#F59E0B' },
+  hardware_wallets: { icon: '🔐', label: 'Hardware Wallets', tr: 'Soğuk Cüzdan', color: '#22C55E' },
 };
 
 export const CANONICAL_CATEGORY_GROUPS = [
-  { key: 'mobile', title: { en: 'Mobile', tr: 'Mobil', de: 'Mobil' }, cats: ['smartphones', 'smartwatches', 'smart_rings', 'headphones', 'powerbanks', 'chargers'] },
-  { key: 'computing', title: { en: 'Computing', tr: 'Bilgisayar', de: 'Computer' }, cats: ['laptops', 'desktops', 'tablets', 'e_readers', 'vr_headsets'] },
-  { key: 'components', title: { en: 'Components', tr: 'Bileşenler', de: 'Komponenten' }, cats: ['graphics_cards', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'ups', 'flash_drives'] },
-  { key: 'cooling', title: { en: 'Cooling', tr: 'Soğutma', de: 'Kühlung' }, cats: ['cpu_coolers', 'laptop_coolers', 'case_fans'] },
-  { key: 'peripherals', title: { en: 'Peripherals', tr: 'Çevre Birimleri', de: 'Peripherie' }, cats: ['keyboards', 'mice', 'gamepads', 'gaming_consoles', 'webcams', 'microphones', 'printers', '3d_printers'] },
-  { key: 'display_audio', title: { en: 'Display & Audio', tr: 'Ekran ve Ses', de: 'Display & Audio' }, cats: ['monitors', 'tvs', 'projectors', 'speakers', 'audio_systems', 'av_receivers', 'media_players'] },
-  { key: 'photo_video', title: { en: 'Photo & Video', tr: 'Fotoğraf ve Video', de: 'Foto & Video' }, cats: ['camera_lenses', 'ip_cameras', 'dashcams', 'gimbals', 'drones'] },
-  { key: 'network_home', title: { en: 'Network & Smart Home', tr: 'Ağ ve Akıllı Ev', de: 'Netzwerk & Smart Home' }, cats: ['routers', 'modem_routers', 'robot_vacuums', 'hardware_wallets'] },
+  { key: 'mobile', title: { en: 'Mobile', tr: 'Mobil', }, cats: ['smartphones', 'smartwatches', 'smart_rings', 'headphones', 'powerbanks', 'chargers'] },
+  { key: 'computing', title: { en: 'Computing', tr: 'Bilgisayar', }, cats: ['laptops', 'desktops', 'tablets', 'e_readers', 'vr_headsets'] },
+  { key: 'components', title: { en: 'Components', tr: 'Bileşenler', }, cats: ['graphics_cards', 'cpus', 'motherboards', 'ram', 'ssd', 'psu', 'pc_cases', 'ups', 'flash_drives'] },
+  { key: 'cooling', title: { en: 'Cooling', tr: 'Soğutma', }, cats: ['cpu_coolers', 'laptop_coolers', 'case_fans'] },
+  { key: 'peripherals', title: { en: 'Peripherals', tr: 'Çevre Birimleri', }, cats: ['keyboards', 'mice', 'gamepads', 'gaming_consoles', 'webcams', 'microphones', 'printers', '3d_printers'] },
+  { key: 'display_audio', title: { en: 'Display & Audio', tr: 'Ekran ve Ses', }, cats: ['monitors', 'tvs', 'projectors', 'speakers', 'audio_systems', 'av_receivers', 'media_players'] },
+  { key: 'photo_video', title: { en: 'Photo & Video', tr: 'Fotoğraf ve Video', }, cats: ['camera_lenses', 'ip_cameras', 'dashcams', 'gimbals', 'drones'] },
+  { key: 'network_home', title: { en: 'Network & Smart Home', tr: 'Ağ ve Akıllı Ev', }, cats: ['routers', 'modem_routers', 'robot_vacuums', 'hardware_wallets'] },
 ];
 
 export const CANONICAL_CATEGORY_ORDER = CANONICAL_CATEGORY_GROUPS.flatMap((g) => g.cats);
 
 export function categoryLabel(category, lang = 'en') {
   const meta = catMeta(category);
-  return lang === 'tr' ? (meta.tr || meta.label) : lang === 'de' ? (meta.de || meta.label) : meta.label;
+  return lang === 'tr' ? (meta.tr || meta.label) : meta.label;
 }
 
 // Turns an unknown slug like "cpu_coolers" into "Cpu Coolers".
@@ -134,7 +134,6 @@ export function formatPrice(usd) {
 export const PRICE_COUNTRIES_BY_LANG = {
   tr: ['TR', 'DE', 'GB'],
   en: ['US', 'GB', 'CA', 'AU'],
-  de: ['DE', 'AT', 'CH'],
   es: ['ES', 'MX', 'US'],
   fr: ['FR', 'BE', 'CA'],
   pt: ['PT', 'BR', 'ES', 'GB'],
@@ -184,7 +183,7 @@ const AMAZON_FLAG = {
 export const AMAZON_ONELINK_COUNTRIES = ['TR', 'DE', 'GB', 'US', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE', 'CA'];
 export function countryDisplayName(code, lang = 'en') {
   try {
-    const dn = new Intl.DisplayNames([lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en'], { type: 'region' });
+    const dn = new Intl.DisplayNames([lang === 'tr' ? 'tr' : 'en'], { type: 'region' });
     return dn.of(String(code || '').toUpperCase()) || code;
   } catch {
     return code;
@@ -209,7 +208,7 @@ const AMAZON_DEFAULT_TAG = 'qorai-20';
 // her çapraz-geo tıklama tag'siz gider — seçilen mağazaya iniş deterministik.
 // Single-storefront redirect target per language (used by /go).
 const AMAZON_MARKET_BY_LANG = {
-  tr: 'DE', en: 'US', de: 'DE', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
+  tr: 'DE', en: 'US', fr: 'FR', it: 'IT', es: 'ES', pt: 'ES', ru: 'DE',
 };
 // Languages that surface MULTIPLE storefront buttons on the product page.
 // Turkish gets both the local TR store (TL, domestic shipping) and DE (wider

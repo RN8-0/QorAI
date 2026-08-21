@@ -11,8 +11,8 @@ export default function AnalysisExitBar({
   lang = 'en', onExit, context = '', busy = false, label = null, hint = '',
 }) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
-  const L = (a) => (code === 'tr' ? a[1] : code === 'de' ? a[2] : a[0]);
-  const text = label || L(['New analysis', 'Yeni analiz', 'Neue Analyse']);
+  const L = (a) => (code === 'tr' ? a[1] : a[0]);
+  const text = label || L(['New analysis', 'Yeni analiz']);
   return (
     <div className="axbar">
       <button type="button" className="axbar-back" onClick={onExit}>
@@ -26,7 +26,7 @@ export default function AnalysisExitBar({
       {busy ? (
         <span className="axbar-busy">
           <i aria-hidden="true" />
-          {hint || L(['Running in the background', 'Arka planda sürüyor', 'Läuft im Hintergrund'])}
+          {hint || L(['Running in the background', 'Arka planda sürüyor'])}
         </span>
       ) : null}
     </div>

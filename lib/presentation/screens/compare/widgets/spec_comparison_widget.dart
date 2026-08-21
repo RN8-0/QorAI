@@ -9,8 +9,6 @@ String _previewTabLabel(BuildContext context) {
   switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
     case 'tr':
       return 'Önizleme';
-    case 'de':
-      return 'Vorschau';
     case 'fr':
       return 'Aperçu';
     case 'es':
@@ -235,7 +233,6 @@ class _SpecComparisonViewState extends ConsumerState<_SpecComparisonView> {
     const map = {
       'en': 'English',
       'tr': 'Turkish',
-      'de': 'German',
       'fr': 'French',
       'es': 'Spanish',
       'pt': 'Portuguese',
@@ -5441,11 +5438,7 @@ Rules:
         _cachedKeySpecs; // pre-computed in didChangeDependencies, not per build
     if (specs.isEmpty) return const SizedBox.shrink();
 
-    final title = _isTr
-        ? 'Öne Çıkanlar'
-        : _appLang == 'de'
-        ? 'Highlights'
-        : 'Highlights';
+    final title = _isTr ? 'Öne Çıkanlar' : 'Highlights';
     return _buildCompareSpecBrick(
       title: title,
       rows: {for (final spec in specs) spec.label: spec.values},
@@ -6041,8 +6034,6 @@ Rules:
     switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
       case 'tr':
         return 'Fiyatlar';
-      case 'de':
-        return 'Preise';
       case 'fr':
         return 'Prix';
       case 'es':
@@ -6070,8 +6061,6 @@ Rules:
     switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
       case 'tr':
         return 'AI Analizleri';
-      case 'de':
-        return 'KI-Analysen';
       case 'fr':
         return 'Analyses IA';
       case 'es':
@@ -6212,9 +6201,7 @@ Rules:
     final rows = SharedKeySpecsGrid.comparisonRows(widget.products, _appLang);
     if (rows.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final title = _isTr
-        ? 'Ana Özellikler'
-        : (_appLang == 'de' ? 'Wichtige Daten' : 'Key Specs');
+    final title = _isTr ? 'Ana Özellikler' : 'Key Specs';
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       padding: const EdgeInsets.all(14),

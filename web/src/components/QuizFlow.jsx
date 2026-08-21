@@ -18,7 +18,7 @@ function scrollIntoViewBelowNav(el) {
 // [{ question, answer }] so they can be fed straight into the analysis prompts.
 export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = false, title, subtitle }) {
   const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [answers, setAnswers] = useState({});
   const rootRef = useRef(null);
 
@@ -52,10 +52,9 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
     <div className="quiz fade-up" ref={rootRef}>
       <div className="quiz-head">
         <div className="quiz-head-text">
-          <strong>{title || L('Quick quiz', 'Hızlı quiz', 'Kurzes Quiz')}</strong>
+          <strong>{title || L('Quick quiz', 'Hızlı quiz')}</strong>
           <span>{subtitle || L('Answer a few questions for a personalized analysis.',
-            'Kişiselleştirilmiş analiz için birkaç soruyu yanıtla.',
-            'Beantworte ein paar Fragen für eine personalisierte Analyse.')}</span>
+            'Kişiselleştirilmiş analiz için birkaç soruyu yanıtla.')}</span>
         </div>
         <span className="quiz-progress-pill">{answeredCount}/{questions.length}</span>
       </div>
@@ -91,16 +90,16 @@ export default function QuizFlow({ questions = [], onSubmit, onSkip, busy = fals
       <div className="quiz-actions">
         {onSkip && (
           <button type="button" className="btn btn-ghost" onClick={onSkip} disabled={busy}>
-            {L('Skip quiz', 'Quizi atla', 'Quiz überspringen')}
+            {L('Skip quiz', 'Quizi atla')}
           </button>
         )}
         <button type="button" className="btn btn-primary quiz-submit" onClick={submit}
           disabled={!allAnswered || busy}>
           {busy
-            ? L('Analyzing…', 'Analiz ediliyor…', 'Wird analysiert…')
+            ? L('Analyzing…', 'Analiz ediliyor…')
             : allAnswered
-              ? L('Analyze', 'Analiz Et', 'Analysieren')
-              : L(`Answer all ${questions.length} questions`, `${questions.length} sorunun hepsini yanıtla`, `Beantworte alle ${questions.length} Fragen`)}
+              ? L('Analyze', 'Analiz Et')
+              : L(`Answer all ${questions.length} questions`, `${questions.length} sorunun hepsini yanıtla`)}
         </button>
       </div>
     </div>

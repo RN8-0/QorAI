@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { STRINGS } from './strings';
 
-// Scope cut (2026-05-29): app focuses on DE/UK/TR markets only.
+// Scope cut (2026-08-21): German was dropped entirely — site and app are TR/EN
+// only. There is no `de` string table, no /de URL prefix and no German AI copy.
 export const LANGS = [
   { code: 'tr', label: 'Türkçe', flag: '🇹🇷' },
   { code: 'en', label: 'English', flag: '🇬🇧' },
-  { code: 'de', label: 'Deutsch', flag: '🇩🇪' },
 ];
 
 // Only languages that actually have a string table are enabled. There is no
@@ -16,7 +16,7 @@ const RTL = new Set(['ar']);
 const LANG_KEY = 'qor.lang';
 
 function detectLang() {
-  // Site dili YALNIZCA tarayıcı diline göre (kullanıcı isteği): TR→tr, DE→de,
+  // Site dili YALNIZCA tarayıcı diline göre (kullanıcı isteği): TR→tr,
   // desteklenmeyen her dil → EN. Sitede dil seçici YOK (setLang çağrılmıyor);
   // eski sürümden kalan `qor.lang` localStorage değeri artık DİKKATE ALINMAZ —
   // aksi halde tarayıcı İngilizce olsa bile eski 'tr' takılıp kalıyordu.
@@ -25,7 +25,6 @@ function detectLang() {
 
   for (const l of nav) {
     if (l === 'tr') return 'tr';
-    if (l === 'de' || l === 'ge') return 'de';
     if (l === 'en') return 'en';
   }
   return 'en';
@@ -39,7 +38,7 @@ function applyDocLang(code) {
 const LangCtx = createContext(null);
 
 export function LangProvider({ children, initialLang }) {
-  // A URL language prefix (/en, /de) wins for THIS page load but is NOT persisted,
+  // A URL language prefix (/en, /tr) wins for THIS page load but is NOT persisted,
   // so it never overwrites the user's saved Settings choice. Falls back to normal
   // detection (saved pref → browser) when there is no prefix.
   const [lang, setLangState] = useState(

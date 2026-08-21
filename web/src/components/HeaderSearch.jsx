@@ -38,7 +38,7 @@ const ONERI = 6;
 
 export default function HeaderSearch() {
   const { lang, t } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const nav = useNavigate();
   const loc = useLocation();
   const { has, tryAdd, remove } = useCompare();
@@ -136,7 +136,7 @@ export default function HeaderSearch() {
     if (has(p.id)) { remove(p.id); return; }
     const r = tryAdd(p);
     if (!r.ok && r.reason === 'category') {
-      setUyari(L('Different category', 'Farklı kategori', 'Andere Kategorie'));
+      setUyari(L('Different category', 'Farklı kategori'));
       clearTimeout(uyariZ.current);
       uyariZ.current = setTimeout(() => setUyari(''), 2400);
     }
@@ -169,9 +169,9 @@ export default function HeaderSearch() {
           type="button"
           className="hs-btn"
           onClick={() => (acik ? kapat() : setAcik(true))}
-          aria-label={acik ? L('Close search', 'Aramayı kapat', 'Suche schließen') : t('common.search')}
+          aria-label={acik ? L('Close search', 'Aramayı kapat') : t('common.search')}
           aria-expanded={acik}
-          title={acik ? L('Close search', 'Aramayı kapat', 'Suche schließen') : t('common.search')}
+          title={acik ? L('Close search', 'Aramayı kapat') : t('common.search')}
         >
           <span className="hs-btn-ring" aria-hidden="true" />
           {acik ? (
@@ -191,7 +191,7 @@ export default function HeaderSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={tus}
-          placeholder={L('Search products…', 'Ürün ara…', 'Produkte suchen…')}
+          placeholder={L('Search products…', 'Ürün ara…')}
           aria-label={t('common.search')}
           autoComplete="off"
           autoCorrect="off"
@@ -209,7 +209,7 @@ export default function HeaderSearch() {
         {acik && q && (
           <button type="button" className="hs-clear"
             onClick={() => { setQ(''); girdi.current?.focus(); }}
-            aria-label={L('Clear', 'Temizle', 'Löschen')}>
+            aria-label={L('Clear', 'Temizle')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -238,8 +238,8 @@ export default function HeaderSearch() {
             </div>
           ) : !sonuc.length ? (
             <div className="hs-state">
-              <strong>{L('No products matched.', 'Eşleşen ürün yok.', 'Keine Treffer.')}</strong>
-              <span>{L('Try a shorter or more common term.', 'Daha kısa ya da daha genel bir terim dene.', 'Versuche einen kürzeren Begriff.')}</span>
+              <strong>{L('No products matched.', 'Eşleşen ürün yok.')}</strong>
+              <span>{L('Try a shorter or more common term.', 'Daha kısa ya da daha genel bir terim dene.')}</span>
             </div>
           ) : (
             <>
@@ -269,11 +269,11 @@ export default function HeaderSearch() {
                         className={'hs-row-cmp' + (ekli ? ' on' : '')}
                         onClick={(e) => karsilastir(e, p)}
                         title={ekli
-                          ? L('In compare', 'Karşılaştırmada', 'Im Vergleich')
-                          : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
+                          ? L('In compare', 'Karşılaştırmada')
+                          : L('Add to compare', 'Karşılaştırmaya ekle')}
                         aria-label={ekli
-                          ? L('Remove from compare', 'Karşılaştırmadan çıkar', 'Aus Vergleich entfernen')
-                          : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
+                          ? L('Remove from compare', 'Karşılaştırmadan çıkar')
+                          : L('Add to compare', 'Karşılaştırmaya ekle')}
                       >
                         {ekli ? (
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
@@ -286,7 +286,7 @@ export default function HeaderSearch() {
                 })}
               </div>
               <button type="button" className="hs-all" onClick={() => gonder()}>
-                {L('See all results', 'Tüm sonuçları gör', 'Alle Ergebnisse')}
+                {L('See all results', 'Tüm sonuçları gör')}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="18" y2="12" /><polyline points="13 6 19 12 13 18" /></svg>
               </button>
             </>

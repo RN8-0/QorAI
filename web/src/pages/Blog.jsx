@@ -17,11 +17,11 @@ export default function Blog() {
   const { lang } = useI18n();
   const [sp] = useSearchParams();
   const tag = (sp.get('tag') || '').trim().toLowerCase();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
-  const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
+  const nf = (n) => Number(n || 0).toLocaleString(lang === 'tr' ? 'tr-TR' : 'en-US');
 
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const firstProdImg = (a) => { const p = (Array.isArray(a.products) ? a.products : [])[0] || {}; return p.image || p.imageUrl || ''; };
@@ -31,11 +31,10 @@ export default function Blog() {
   const likesOf = (a) => seedCount(a.slug + '·l', 5, 22) + (stats[a.slug]?.like || 0);
 
   useSeo({
-    title: L('Buying Guides & Blog — Qor AI', 'Alım Rehberleri & Blog — Qor AI', 'Kaufratgeber & Blog — Qor AI'),
+    title: L('Buying Guides & Blog — Qor AI', 'Alım Rehberleri & Blog — Qor AI'),
     description: L(
       'In-depth buying guides for phones, laptops, headphones, TVs and more — the best models of 2026, scored and compared by Qor AI.',
       'Telefon, laptop, kulaklık, TV ve daha fazlası için derinlemesine alım rehberleri — 2026\'nın en iyi modelleri, Qor AI ile puanlandı ve karşılaştırıldı.',
-      'Ausführliche Kaufratgeber für Handys, Laptops, Kopfhörer, TVs und mehr — die besten Modelle 2026, von Qor AI bewertet und verglichen.',
     ),
     path: '/blog',
     htmlLang: lang,
@@ -54,7 +53,7 @@ export default function Blog() {
     pb.collection('articles').getList(1, 60, {
       filter: 'status="published"',
       sort: '-publishedAt',
-      fields: 'slug,slug_tr,slug_en,slug_de,category,tags,tags_tr,tags_en,tags_de,cover,coverFile,products,collectionId,collectionName,publishedAt,created,title_tr,title_en,title_de,lead_tr,lead_en,lead_de',
+      fields: 'slug,slug_tr,slug_en,category,tags,tags_tr,tags_en,cover,coverFile,products,collectionId,collectionName,publishedAt,created,title_tr,title_en,lead_tr,lead_en',
     }).then((res) => { if (live) setPosts(res.items || []); })
       .catch(() => {})
       .finally(() => { if (live) setLoading(false); });
@@ -72,11 +71,10 @@ export default function Blog() {
   return (
     <div className="container blog-page">
       <div className="blog-hero">
-        <h1>{L('Buying Guides', 'Alım Rehberleri', 'Kaufratgeber')}</h1>
+        <h1>{L('Buying Guides', 'Alım Rehberleri')}</h1>
         <p>{L(
           'The best models of 2026 — scored, compared and explained.',
           '2026\'nın en iyi modelleri — puanlandı, karşılaştırıldı ve anlatıldı.',
-          'Die besten Modelle 2026 — bewertet, verglichen und erklärt.',
         )}</p>
       </div>
 
@@ -88,7 +86,7 @@ export default function Blog() {
         <div className="blog-list">
           {tag ? (
             <div className="blog-tagfilter">
-              {L('Tag', 'Etiket', 'Tag')}: <b>#{tag}</b> · <Link to="/blog">{L('clear', 'temizle', 'zurücksetzen')}</Link>
+              {L('Tag', 'Etiket')}: <b>#{tag}</b> · <Link to="/blog">{L('clear', 'temizle')}</Link>
             </div>
           ) : null}
           {posts
@@ -99,12 +97,12 @@ export default function Blog() {
               <div className="blog-row-body">
                 <h2>{pick(a, 'title')}</h2>
                 <div className="blog-row-meta">
-                  {(a.publishedAt || a.created) ? <span>📅 {new Date(a.publishedAt || a.created).toLocaleDateString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> : null}
+                  {(a.publishedAt || a.created) ? <span>📅 {new Date(a.publishedAt || a.created).toLocaleDateString(lang === 'tr' ? 'tr-TR' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span> : null}
                   <span>👁 {nf(viewsOf(a))}</span>
                   <span>❤ {nf(likesOf(a))}</span>
                 </div>
                 <p>{pick(a, 'lead')}</p>
-                <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →', 'Ratgeber lesen →')}</span>
+                <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →')}</span>
               </div>
             </Link>
           ))}

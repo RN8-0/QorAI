@@ -71,7 +71,7 @@ export function StoreCta({ url, lang, L, compact = false, source = 'link_analysi
   const geoCountry = useGeoCountry();
   const cta = amazonCtaForUrl(url, lang, geoCountry);
   if (!cta?.primary?.url) return null;
-  const label = L('View on Amazon', 'Amazon’da gör', 'Bei Amazon ansehen');
+  const label = L('View on Amazon', 'Amazon’da gör');
   const click = (market) => trackEvent('affiliate_click', {
     source,
     store: 'amazon',
@@ -96,10 +96,10 @@ export function StoreCta({ url, lang, L, compact = false, source = 'link_analysi
 }
 
 export function bandLabel(s, L) {
-  return s >= 85 ? L('Excellent match', 'Mükemmel uyum', 'Exzellent')
-    : s >= 70 ? L('Strong match', 'Güçlü uyum', 'Starke Übereinstimmung')
-      : s >= 50 ? L('Fair match', 'Orta uyum', 'Mäßig')
-        : L('Weak match', 'Zayıf uyum', 'Schwach');
+  return s >= 85 ? L('Excellent match', 'Mükemmel uyum')
+    : s >= 70 ? L('Strong match', 'Güçlü uyum')
+      : s >= 50 ? L('Fair match', 'Orta uyum')
+        : L('Weak match', 'Zayıf uyum');
 }
 
 // Eski kayıtlarda düz string, yeni kayıtlarda {title, detail} — tek şekle indir.
@@ -135,7 +135,7 @@ export function CatalogMatchCard({ match, L, lang }) {
   const to = productPath({ id: match.id, slug: match.slug, name: match.name });
   return (
     <Link className="la-catalog" to={to}>
-      <span className="la-catalog-tag">✅ {L('This product is in the Qor catalog', 'Bu ürün Qor kataloğunda var', 'Dieses Produkt ist im Qor-Katalog')}</span>
+      <span className="la-catalog-tag">✅ {L('This product is in the Qor catalog', 'Bu ürün Qor kataloğunda var')}</span>
       <div className="la-catalog-body">
         <ProductImg product={match} size="thumb" className="la-catalog-img" alt="" />
         <div className="la-catalog-copy">
@@ -154,7 +154,7 @@ export function CatalogMatchCard({ match, L, lang }) {
           </div>
         </div>
         <span className="la-catalog-cta">
-          {L('Open product page', 'Ürün sayfasını aç', 'Produktseite öffnen')}
+          {L('Open product page', 'Ürün sayfasını aç')}
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
         </span>
       </div>
@@ -174,8 +174,8 @@ export function FeatureMatchTable({ rows = [], L }) {
           </div>
           <div className="la-fm-track"><BarFill pct={Math.max(4, Math.min(100, f.score || 0))} color={scoreColor(f.score)} delay={i * 50} /></div>
           <div className="la-fm-cols">
-            {f.productValue && <span><i>{L('Product', 'Üründe', 'Produkt')}</i>{f.productValue}</span>}
-            {f.userNeed && <span><i>{L('You need', 'Senin ihtiyacın', 'Dein Bedarf')}</i>{f.userNeed}</span>}
+            {f.productValue && <span><i>{L('Product', 'Üründe')}</i>{f.productValue}</span>}
+            {f.userNeed && <span><i>{L('You need', 'Senin ihtiyacın')}</i>{f.userNeed}</span>}
           </div>
           {f.comment && <small>{f.comment}</small>}
         </div>
@@ -223,9 +223,9 @@ export default function AiReportView({
   const dist = factorDistribution(factors);
   const headline = data.headline || firstSentencesOf(data.overallVerdict || data.verdict, 1);
   const trendLabel = {
-    up: L('Rising', 'Yükselişte', 'Steigend'),
-    down: L('Falling', 'Düşüşte', 'Fallend'),
-    stable: L('Stable', 'Sabit', 'Stabil'),
+    up: L('Rising', 'Yükselişte'),
+    down: L('Falling', 'Düşüşte'),
+    stable: L('Stable', 'Sabit'),
   };
   const outlook = data.priceOutlook || {};
   const drivers = bullets(outlook.drivers);
@@ -233,11 +233,11 @@ export default function AiReportView({
     <div className="la-result fade-up">
       {showHead && (
         <div className="la-result-head">
-          <span>{L('Qor AI Analysis', 'Qor AI Analizi', 'Qor AI Analyse')}</span>
+          <span>{L('Qor AI Analysis', 'Qor AI Analizi')}</span>
           <span className="la-result-title">{base.title}</span>
           {data.researched && (
-            <span className="la-researched" title={L('Live web + community research was used', 'Canlı web + topluluk araştırması kullanıldı', 'Live-Web- und Community-Recherche verwendet')}>
-              🌐 {L('Reviews scanned', 'Yorumlar tarandı', 'Bewertungen gescannt')}
+            <span className="la-researched" title={L('Live web + community research was used', 'Canlı web + topluluk araştırması kullanıldı')}>
+              🌐 {L('Reviews scanned', 'Yorumlar tarandı')}
             </span>
           )}
         </div>
@@ -250,7 +250,7 @@ export default function AiReportView({
           <Gauge value={score} size={104} stroke={9} color={scoreColor(score)} fontSize={30} />
           <div className="la-hero-main">
             <div className="la-hero-band" style={{ color: scoreColor(score) }}>{bandLabel(score, L)}</div>
-            <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru', 'Personalisierter Match-Score')}</div>
+            <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru')}</div>
             {headline && <p className="la-hero-line">{headline}</p>}
             <div className="la-hero-badges">
               <DecisionBadge score={data.decision === 'buy' ? 80 : data.decision === 'skip' ? 30 : data.decision === 'consider' ? 60 : score} L={L} />
@@ -263,10 +263,10 @@ export default function AiReportView({
         <CatalogMatchCard match={data.catalogMatch} L={L} lang={lang} />
 
         <StatTiles items={[
-          { icon: '🎯', label: L('Match', 'Uyum', 'Match'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
-          data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum', 'Lebensfit'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
-          data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti', 'Zufriedenheit'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
-          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı', 'web-recherchiert') : L('model knowledge', 'model bilgisi', 'Modellwissen') } : null,
+          { icon: '🎯', label: L('Match', 'Uyum'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
+          data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
+          data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
+          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı') : L('model knowledge', 'model bilgisi') } : null,
         ].filter(Boolean)} />
 
         {/* ── Grafikler ── */}
@@ -279,7 +279,7 @@ export default function AiReportView({
         </div>
 
         {factors.length > 0 && (
-          <Sec icon="📊" title={L('Factor by factor', 'Faktör faktör', 'Faktor für Faktor')}>
+          <Sec icon="📊" title={L('Factor by factor', 'Faktör faktör')}>
             <FactorList factors={factors} />
           </Sec>
         )}
@@ -298,19 +298,19 @@ export default function AiReportView({
               <ProConList
                 pros={praise} cons={complaints} L={L}
                 titles={{
-                  pro: L('What owners love', 'Kullanıcıların sevdiği', 'Was Nutzer lieben'),
-                  con: L('What owners complain about', 'Kullanıcıların şikâyeti', 'Worüber Nutzer klagen'),
+                  pro: L('What owners love', 'Kullanıcıların sevdiği'),
+                  con: L('What owners complain about', 'Kullanıcıların şikâyeti'),
                 }}
               />
             )}
             {data.communityAnalysis && (
-              <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu', 'Community-Echo')}
+              <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu')}
                 meta={data.communityScore ? `${Math.round(data.communityScore)}/100` : ''}>
                 <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
               </Sec>
             )}
             {reliability.length > 0 && (
-              <Sec icon="🛠" title={L('Reliability and support', 'Güvenilirlik ve destek', 'Zuverlässigkeit und Support')}>
+              <Sec icon="🛠" title={L('Reliability and support', 'Güvenilirlik ve destek')}>
                 <ul className="la-notes">{reliability.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
               </Sec>
             )}
@@ -318,13 +318,13 @@ export default function AiReportView({
         )}
 
         {data.verdict && (
-          <Sec icon="📋" title={L('The full picture', 'Tam değerlendirme', 'Das ganze Bild')}>
+          <Sec icon="📋" title={L('The full picture', 'Tam değerlendirme')}>
             <div className="la-prose"><AiText text={data.verdict} /></div>
           </Sec>
         )}
 
         {data.personaAnalysis && (
-          <Sec icon="👤" title={L('How it fits you', 'Sana uyumu', 'Wie es zu dir passt')}
+          <Sec icon="👤" title={L('How it fits you', 'Sana uyumu')}
             meta={data.personaScore ? `${Math.round(data.personaScore)}/100` : ''}>
             <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
           </Sec>
@@ -334,13 +334,13 @@ export default function AiReportView({
           <div className="la-forwho">
             {data.bestFor && (
               <div className="la-forwho-card good">
-                <h5>👍 {L('Perfect for', 'Tam uygun', 'Perfekt für')}</h5>
+                <h5>👍 {L('Perfect for', 'Tam uygun')}</h5>
                 <p>{data.bestFor}</p>
               </div>
             )}
             {data.notFor && (
               <div className="la-forwho-card bad">
-                <h5>👎 {L('Not for', 'Uygun değil', 'Nicht für')}</h5>
+                <h5>👎 {L('Not for', 'Uygun değil')}</h5>
                 <p>{data.notFor}</p>
               </div>
             )}
@@ -348,13 +348,13 @@ export default function AiReportView({
         )}
 
         {features.length > 0 && (
-          <Collapsible label={`🧩 ${L('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi', 'Funktion-Bedarf-Abgleich')}`}>
+          <Collapsible label={`🧩 ${L('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi')}`}>
             <FeatureMatchTable rows={features} L={L} />
           </Collapsible>
         )}
 
         {altNode || (alts.length > 0 && (
-          <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler', 'Alternativen')}>
+          <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler')}>
             <div className="la-alt-grid">
               {alts.map((a, i) => (
                 <div className="la-alt-card" key={i}>
@@ -367,7 +367,7 @@ export default function AiReportView({
         ))}
 
         {(outlook.note || outlook.bestTime || drivers.length > 0) && (
-          <Sec icon="⏱" title={L('Timing and value', 'Zamanlama ve değer', 'Timing und Wert')}
+          <Sec icon="⏱" title={L('Timing and value', 'Zamanlama ve değer')}
             meta={trendLabel[outlook.trend] || ''}>
             {outlook.bestTime && <p className="la-timing">🗓 {outlook.bestTime}</p>}
             {outlook.expectedChange && <p className="la-timing">📉 {outlook.expectedChange}</p>}
@@ -379,14 +379,14 @@ export default function AiReportView({
         )}
 
         {data.overallVerdict && (
-          <Sec icon="🏁" title={L('Final verdict', 'Son karar', 'Endgültiges Fazit')} tone="la-sec-final">
+          <Sec icon="🏁" title={L('Final verdict', 'Son karar')} tone="la-sec-final">
             <div className="la-prose"><AiText text={data.overallVerdict} /></div>
           </Sec>
         )}
 
         {verification.length > 0 && (
           <div className="la-verify">
-            <strong>🔍 {L('What is verified, what is not', 'Neyi doğruladık, neyi doğrulamadık', 'Was belegt ist')}</strong>
+            <strong>🔍 {L('What is verified, what is not', 'Neyi doğruladık, neyi doğrulamadık')}</strong>
             <ul>{verification.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
           </div>
         )}

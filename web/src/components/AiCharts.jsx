@@ -104,10 +104,10 @@ export function decisionFromScore(score) {
 export function DecisionBadge({ score, L = (en) => en }) {
   const kind = decisionFromScore(score);
   const label = kind === 'buy'
-    ? L('Buy', 'Al', 'Kaufen')
+    ? L('Buy', 'Al')
     : kind === 'consider'
-      ? L('Consider', 'Düşün', 'Überlegen')
-      : L('Skip', 'Geç', 'Überspringen');
+      ? L('Consider', 'Düşün')
+      : L('Skip', 'Geç');
   const icon = kind === 'buy' ? '✓' : kind === 'consider' ? '~' : '✕';
   return <span className={`aic-badge ${kind}`}><i aria-hidden="true">{icon}</i>{label}</span>;
 }
@@ -189,18 +189,18 @@ export function SentimentDonut({ breakdown, L = (en) => en, size = 124, compact 
   const bd = breakdown && typeof breakdown === 'object' ? breakdown : null;
   if (!bd) return null;
   const rows = [
-    { label: L('Positive', 'Olumlu', 'Positiv'), value: bd.positive, color: CHART_COLORS.strong },
-    { label: L('Neutral', 'Nötr', 'Neutral'), value: bd.neutral, color: CHART_COLORS.balanced },
-    { label: L('Negative', 'Olumsuz', 'Negativ'), value: bd.negative, color: CHART_COLORS.weak },
+    { label: L('Positive', 'Olumlu'), value: bd.positive, color: CHART_COLORS.strong },
+    { label: L('Neutral', 'Nötr'), value: bd.neutral, color: CHART_COLORS.balanced },
+    { label: L('Negative', 'Olumsuz'), value: bd.negative, color: CHART_COLORS.weak },
   ];
   return (
     <div className="aic-card aic-sentiment">
-      <div className="aic-card-title">💬 {L('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}</div>
+      <div className="aic-card-title">💬 {L('Community satisfaction', 'Topluluk memnuniyeti')}</div>
       <div className="aic-donut">
         <DonutChart
           segments={rows}
           centerValue={`${Math.round(bd.positive)}%`}
-          centerLabel={L('positive', 'olumlu', 'positiv')}
+          centerLabel={L('positive', 'olumlu')}
           size={compact ? 96 : size}
           thickness={compact ? 12 : 15}
         />
@@ -244,16 +244,16 @@ export function DistributionBar({ strong = 0, balanced = 0, weak = 0, L = (en) =
   ) : null);
   return (
     <div className="aic-card aic-dist">
-      <div className="aic-card-title">⚖️ {L('Factor balance', 'Faktör dengesi', 'Faktor-Balance')}</div>
-      <div className="aic-dist-track" role="img" aria-label={L('Factor balance', 'Faktör dengesi', 'Faktor-Balance')}>
+      <div className="aic-card-title">⚖️ {L('Factor balance', 'Faktör dengesi')}</div>
+      <div className="aic-dist-track" role="img" aria-label={L('Factor balance', 'Faktör dengesi')}>
         {seg(strong, CHART_COLORS.strong, 0)}
         {seg(balanced, CHART_COLORS.balanced, 120)}
         {seg(weak, CHART_COLORS.weak, 240)}
       </div>
       <div className="aic-dist-legend">
-        <span><i style={{ background: CHART_COLORS.strong }} />{strong} {L('strong', 'güçlü', 'stark')}</span>
-        <span><i style={{ background: CHART_COLORS.balanced }} />{balanced} {L('balanced', 'dengeli', 'ausgewogen')}</span>
-        <span><i style={{ background: CHART_COLORS.weak }} />{weak} {L('weak', 'zayıf', 'schwach')}</span>
+        <span><i style={{ background: CHART_COLORS.strong }} />{strong} {L('strong', 'güçlü')}</span>
+        <span><i style={{ background: CHART_COLORS.balanced }} />{balanced} {L('balanced', 'dengeli')}</span>
+        <span><i style={{ background: CHART_COLORS.weak }} />{weak} {L('weak', 'zayıf')}</span>
       </div>
     </div>
   );
@@ -345,10 +345,10 @@ export function RadarChart({ factors = [], size = 260, color = CHART_COLORS.bran
   const rings = [25, 50, 75, 100];
   return (
     <div className="aic-card aic-radar-card">
-      <div className="aic-card-title">🕸 {L('Factor profile', 'Faktör profili', 'Faktorprofil')}</div>
+      <div className="aic-card-title">🕸 {L('Factor profile', 'Faktör profili')}</div>
       <div className="aic-radar-wrap">
         <svg viewBox={`0 0 ${size} ${size}`} className="aic-radar" role="img"
-          aria-label={L('Factor profile', 'Faktör profili', 'Faktorprofil')}>
+          aria-label={L('Factor profile', 'Faktör profili')}>
           {rings.map((r) => (
             <polygon key={r} className="aic-radar-ring"
               points={rows.map((_, i) => {
@@ -424,11 +424,11 @@ export function CriticalPoints({ items = [], L = (en) => en }) {
   if (!rows.length) return null;
   const tone = (s) => (s === 'high' ? 'high' : s === 'low' ? 'low' : 'mid');
   const label = (s) => (s === 'high'
-    ? L('Critical', 'Kritik', 'Kritisch')
-    : s === 'low' ? L('Note', 'Not', 'Hinweis') : L('Important', 'Önemli', 'Wichtig'));
+    ? L('Critical', 'Kritik')
+    : s === 'low' ? L('Note', 'Not') : L('Important', 'Önemli'));
   return (
     <section className="aic-crit">
-      <div className="aic-card-title">🚨 {L('Critical points before you decide', 'Karar öncesi kritik noktalar', 'Kritische Punkte vor der Entscheidung')}</div>
+      <div className="aic-card-title">🚨 {L('Critical points before you decide', 'Karar öncesi kritik noktalar')}</div>
       <div className="aic-crit-grid">
         {rows.map((x, i) => (
           <article className={`aic-crit-item ${tone(x.severity)}`} key={i} style={{ animationDelay: `${i * 70}ms` }}>
@@ -451,7 +451,7 @@ export function QuizImpact({ items = [], L = (en) => en }) {
   if (!rows.length) return null;
   return (
     <section className="aic-qi">
-      <div className="aic-card-title">🧠 {L('How your answers shaped this', 'Cevapların sonucu nasıl değiştirdi', 'Wie deine Antworten gewirkt haben')}</div>
+      <div className="aic-card-title">🧠 {L('How your answers shaped this', 'Cevapların sonucu nasıl değiştirdi')}</div>
       <div className="aic-qi-rows">
         {rows.map((x, i) => {
           const v = Math.max(-100, Math.min(100, Number(x.impact) || 0));
@@ -494,7 +494,7 @@ export function CommunityThemes({ themes = [], L = (en) => en }) {
   const face = (s) => (s === 'positive' ? '👍' : s === 'negative' ? '👎' : '🤔');
   return (
     <section className="aic-themes">
-      <div className="aic-card-title">🗣 {L('What people keep talking about', 'İnsanlar en çok neyi konuşuyor', 'Worüber am meisten gesprochen wird')}</div>
+      <div className="aic-card-title">🗣 {L('What people keep talking about', 'İnsanlar en çok neyi konuşuyor')}</div>
       <div className="aic-theme-rows">
         {rows.map((x, i) => (
           <div className="aic-theme" key={`${x.label}-${i}`}>
@@ -522,7 +522,7 @@ export function SourceChips({ sources = [], L = (en) => en }) {
   if (!rows.length) return null;
   return (
     <div className="aic-sources">
-      <span className="aic-sources-label">🔎 {L('Scanned sources', 'Taranan kaynaklar', 'Gescannte Quellen')}</span>
+      <span className="aic-sources-label">🔎 {L('Scanned sources', 'Taranan kaynaklar')}</span>
       {rows.map((s, i) => (
         <span className="aic-source" key={`${s.name}-${i}`} title={s.note || ''}>{s.name}</span>
       ))}
@@ -558,7 +558,7 @@ export function HeatMatrix({ products = [], L = (en) => en, labelOf = (p) => p.n
   // dolgu uzunluğu = puan, renk = güç bandı, kazanan işaretli.
   return (
     <section className="aic-heat">
-      <div className="aic-card-title">🧭 {L('Factor by factor', 'Faktör faktör karşılaştırma', 'Faktor für Faktor')}</div>
+      <div className="aic-card-title">🧭 {L('Factor by factor', 'Faktör faktör karşılaştırma')}</div>
       <div className="aic-heat-scroll">
         <table className="aic-heat-table" style={{ '--cols': rows.length }}>
           <thead>
@@ -608,10 +608,10 @@ export function VerdictBanner({ score, decision, headline, confidence, L = (en) 
     ? decision
     : decisionFromScore(score);
   const title = kind === 'buy'
-    ? L('Worth buying for you', 'Sana göre almaya değer', 'Für dich kaufenswert')
+    ? L('Worth buying for you', 'Sana göre almaya değer')
     : kind === 'consider'
-      ? L('Think it over', 'İki kere düşün', 'Gut überlegen')
-      : L('Better to skip', 'Geçmen daha iyi', 'Besser überspringen');
+      ? L('Think it over', 'İki kere düşün')
+      : L('Better to skip', 'Geçmen daha iyi');
   const val = useCountUp(Number(score) || 0, { duration: 900 });
   return (
     <div className={`aic-verdict ${kind}`}>
@@ -624,8 +624,8 @@ export function VerdictBanner({ score, decision, headline, confidence, L = (en) 
         {headline && <p>{headline}</p>}
       </div>
       {Number(confidence) > 0 && (
-        <div className="aic-verdict-conf" title={L('Analysis confidence', 'Analiz güveni', 'Analysevertrauen')}>
-          <span>{L('Confidence', 'Güven', 'Vertrauen')}</span>
+        <div className="aic-verdict-conf" title={L('Analysis confidence', 'Analiz güveni')}>
+          <span>{L('Confidence', 'Güven')}</span>
           <div className="aic-conf-track"><BarFill pct={Math.max(6, Math.min(100, Number(confidence)))} color="currentColor" /></div>
           <b>{Math.round(Number(confidence))}%</b>
         </div>
@@ -642,8 +642,8 @@ export function ProConList({ pros = [], cons = [], L = (en) => en, titles = null
   const p = norm(pros);
   const c = norm(cons);
   if (!p.length && !c.length) return null;
-  const proTitle = titles?.pro || L('Good for you', 'Senin için iyi', 'Gut für dich');
-  const conTitle = titles?.con || L('Watch outs', 'Dikkat edilmesi gerekenler', 'Nachteile');
+  const proTitle = titles?.pro || L('Good for you', 'Senin için iyi');
+  const conTitle = titles?.con || L('Watch outs', 'Dikkat edilmesi gerekenler');
   return (
     <div className="aic-pc-grid">
       {p.length > 0 && (

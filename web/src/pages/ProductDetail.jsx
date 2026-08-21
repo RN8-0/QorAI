@@ -66,15 +66,15 @@ const YES_RE = /^(yes|var|evet|true|ja|oui|sí|si|sim|tak|有り|نعم)$/i;
 const NO_RE = /^(no|yok|hayır|hayir|nein|non|não|nao|nie|false|無し|لا)$/i;
 
 function bandLabel(s, L) {
-  return s >= 90 ? L('Excellent', 'Mükemmel', 'Exzellent')
-    : s >= 75 ? L('Good', 'İyi', 'Gut')
-    : s >= 55 ? L('Average', 'Orta', 'Durchschnitt')
-    : L('Weak', 'Zayıf', 'Schwach');
+  return s >= 90 ? L('Excellent', 'Mükemmel')
+    : s >= 75 ? L('Good', 'İyi')
+    : s >= 55 ? L('Average', 'Orta')
+    : L('Weak', 'Zayıf');
 }
 function savedAtLabel(at, lang) {
   const d = new Date(at);
   if (Number.isNaN(d.getTime())) return '';
-  const loc = lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en';
+  const loc = lang === 'tr' ? 'tr' : 'en';
   try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' }); }
   catch { return d.toISOString().slice(0, 10); }
 }
@@ -315,18 +315,7 @@ function fallbackProductQuiz(lang, productName) {
         ['Satın alma zamanlamanda ne kadar esneksin?', ['Hemen almam gerekiyor', 'İndirim bekleyebilirim', 'Yeni model bekleyebilirim', 'Fiyat sabitse alırım']],
         ['Bu ürün beklentini karşılamazsa en büyük problem ne olur?', ['Para boşa gitmiş gibi hissetmek', 'Sisteme/cihaza uymaması', 'Performansın düşük kalması', 'İade/değişimle uğraşmak']],
       ]
-    : code === 'de'
-      ? [
-          ['What will you mainly use this product for?', ['Everyday use and longevity', 'Heavy work/productivity', 'Gaming or high performance', 'Upgrade or spare-part focused']],
-          ['Which performance aspect matters most?', ['Snappy response', 'Stability under load', 'Quiet/cool operation', 'My usage is light']],
-          ['How much compatibility risk is acceptable?', ['Only proven compatibility', 'I can do some research', 'I can update settings/BIOS', 'Compatibility is not critical']],
-          ['What would bother you most long term?', ['Performance aging quickly', 'Warranty/service uncertainty', 'Price dropping soon', 'Community issue reports']],
-          ['How much should user reviews affect the decision?', ['Very much', 'Balanced', 'Specs matter more', 'Only a little']],
-          ['What alternative would convince you?', ['Better performance', 'Better reliability/service', 'Better value', 'Newer technology']],
-          ['How flexible is your timing?', ['I need it now', 'I can wait for discounts', 'I can wait for a successor', 'I buy if price is stable']],
-          ['If it disappoints, what is the biggest problem?', ['Feeling money was wasted', 'Not fitting my system/device', 'Underwhelming performance', 'Return hassle']],
-        ]
-      : [
+    : [
           ['What will you mainly use this product for?', ['Everyday use and longevity', 'Heavy work/productivity', 'Gaming or high performance', 'Upgrade or spare-part focused']],
           ['Which performance aspect matters most?', ['Snappy response', 'Stability under load', 'Quiet/cool operation', 'My usage is light']],
           ['How much compatibility risk is acceptable?', ['Only proven compatibility', 'I can do some research', 'I can update settings/BIOS', 'Compatibility is not critical']],
@@ -365,9 +354,7 @@ function mergeSpecBricks(product, keySpecsTitle, allSpecsTitle, lang, dict) {
   //   site  "Agir Cekim Kayit Secenekleri"
   //   admin "Slow-motion recording options"
   //
-  // Specs are never shown in German: a German UI reads them in English.
-  const specLang = String(lang || 'en').toLowerCase().startsWith('de') ? 'en' : lang;
-  const code = String(specLang || 'en').slice(0, 2).toLowerCase() === 'tr' ? 'tr' : 'en';
+  const code = String(lang || 'en').slice(0, 2).toLowerCase() === 'tr' ? 'tr' : 'en';
   const pm = localizeProduct(product, code, { dict: dict || null });
 
   const bricks = [];
@@ -533,11 +520,6 @@ function buildProductSeo(p, t, lang) {
       score: (s) => `Qor AI teknik skoru ${s}/100. `,
       tail: 'Özellikleri incele, karşılaştır ve karar ver.',
     },
-    de: {
-      title: (n) => `${n} — Specs & Vergleich | Qor AI`,
-      score: (s) => `Qor AI Techscore ${s}/100. `,
-      tail: 'Specs ansehen, vergleichen und entscheiden.',
-    },
   };
   const tx = SEO_TX[lang] || SEO_TX.en;
   const title = truncate(tx.title(name), 68);
@@ -599,7 +581,7 @@ function buildProductSeo(p, t, lang) {
   };
   return {
     title, description, image, imageAlt: name, path, type: 'product',
-    // Ürün sayfası üç dilde ön-render ediliyor (kök=en, /tr/…, /de/…). Bu küme
+    // Ürün sayfası iki dilde ön-render ediliyor (kök=en, /tr/…). Bu küme
     // olmadan useSeo, ön-render'ın bastığı hreflang etiketlerini render sırasında
     // SİLİYORDU — Googlebot JS'i çalıştırdığında dil varyantları yok oluyordu.
     htmlLang: lang,
@@ -624,7 +606,7 @@ export default function ProductDetail() {
   const adres = parseProductToken(jeton);
   const id = adres.id || adres.slug;
   const { t, lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const { ids, has, add, remove } = useCompare();
   const { has: isFavorite, toggle: toggleFavorite } = useFavorites();
   const geoCountry = useGeoCountry();
@@ -889,8 +871,8 @@ export default function ProductDetail() {
   // answers on THIS product (its Qor specs/price) before anything else.
   usePageContext(
     p ? [
-      `${lang === 'tr' ? 'Ürün' : lang === 'de' ? 'Produkt' : 'Product'}: ${displayProductName(p, lang) || cleanProductName(p.name)}`,
-      p.brand ? `${lang === 'tr' ? 'Marka' : lang === 'de' ? 'Marke' : 'Brand'}: ${p.brand}` : '',
+      `${lang === 'tr' ? 'Ürün' : 'Product'}: ${displayProductName(p, lang) || cleanProductName(p.name)}`,
+      p.brand ? `${lang === 'tr' ? 'Marka' : 'Brand'}: ${p.brand}` : '',
       p.category ? `${lang === 'tr' ? 'Kategori' : 'Category'}: ${p.category}` : '',
       Number(p.techScore) ? `Qor AI techScore: ${Math.round(p.techScore)}/100` : '',
       p.keySpecsText || '',
@@ -1077,7 +1059,7 @@ export default function ProductDetail() {
               onClick={() => (window.history.length > 1 ? window.history.back() : null)}>
               <IconChevronLeft size={16} />
             </button>
-            <Link to="/">{L('Home', 'Ana Sayfa', 'Start')}</Link>
+            <Link to="/">{L('Home', 'Ana Sayfa')}</Link>
             <span aria-hidden="true">›</span>
             <Link to={categoryPath(p.category)}>{categoryLabel(p.category, lang)}</Link>
             <span aria-hidden="true">›</span>
@@ -1086,9 +1068,9 @@ export default function ProductDetail() {
           <div className="pd-crumbs-actions">
             <a
               className="pd-act-btn pd-act-yt"
-              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${displayName} ${lang === 'tr' ? 'inceleme' : lang === 'de' ? 'test' : 'review'}`)}`}
+              href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${displayName} ${lang === 'tr' ? 'inceleme' : 'review'}`)}`}
               target="_blank" rel="noopener"
-              title={L('Watch video reviews', 'Video incelemeleri izle', 'Video-Reviews ansehen')}
+              title={L('Watch video reviews', 'Video incelemeleri izle')}
               aria-label="YouTube">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
@@ -1097,8 +1079,8 @@ export default function ProductDetail() {
             <button type="button"
               className={'pd-act-btn pd-act-fav' + (isFavorite(p.id) ? ' on' : '')}
               onClick={() => toggleFavorite(p.id)}
-              title={isFavorite(p.id) ? L('In favorites', 'Favorilerde', 'In Favoriten') : L('Add to favorites', 'Favorilere ekle', 'Zu Favoriten hinzufügen')}
-              aria-label={L('Favorite', 'Favori', 'Favorit')}>
+              title={isFavorite(p.id) ? L('In favorites', 'Favorilerde') : L('Add to favorites', 'Favorilere ekle')}
+              aria-label={L('Favorite', 'Favori')}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(p.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z" />
               </svg>
@@ -1109,7 +1091,7 @@ export default function ProductDetail() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
               </svg>
-              <span>{inCompare ? L('In compare', 'Karşılaştırmada', 'Im Vergleich') : L('Compare', 'Karşılaştır', 'Vergleichen')}</span>
+              <span>{inCompare ? L('In compare', 'Karşılaştırmada') : L('Compare', 'Karşılaştır')}</span>
             </button>
             {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
                 sekmeydi; burada ilk ekranda duruyor. */}
@@ -1123,7 +1105,7 @@ export default function ProductDetail() {
             <div className="card pd-gallery-card">
               <button className="pd-photo" type="button"
                 onClick={() => setLightbox(true)}
-                aria-label={L('Open product image', 'Ürün görselini büyüt', 'Produktbild vergrößern')}>
+                aria-label={L('Open product image', 'Ürün görselini büyüt')}>
                 <ProductImg src={images[activeImg]} alt={displayName} size="full" eager />
                 <span className="pd-photo-zoom" aria-hidden="true">⤢</span>
               </button>
@@ -1167,7 +1149,7 @@ export default function ProductDetail() {
                   <div className="pd-score2">
                     <Gauge value={match} size={56} stroke={6} color="var(--score-average)" fontSize={17} />
                     <span className="pd-score2-t">
-                      <small>👤 {L('Your Match', 'Uyum Skorun', 'Dein Match')}</small>
+                      <small>👤 {L('Your Match', 'Uyum Skorun')}</small>
                       <b style={{ color: inkColor('var(--score-average)') }}>{bandLabel(match, L)}</b>
                     </span>
                   </div>
@@ -1230,10 +1212,10 @@ export default function ProductDetail() {
                 {/* Title + ship-to selector on one aligned row (selector right,
                     not floating alone in the centre). */}
                 <div className="pd-prices-head">
-                  <h2 className="pd-block-title pd-block-title-inline">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+                  <h2 className="pd-block-title pd-block-title-inline">{L('Prices', 'Fiyatlar')}</h2>
                   {countryOptions.length > 0 && (
                     <label className="pd-ship-to">
-                      <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat', 'Lieferland')}</span>
+                      <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat')}</span>
                       <select
                         className="pd-ship-to-sel"
                         value={sel}
@@ -1261,7 +1243,7 @@ export default function ProductDetail() {
             const diffKinds = pickVariantDiffKinds([p, ...variants]);
             return (
               <section className="pd-block">
-                <h2 className="pd-block-title">{L('Variants', 'Varyantlar', 'Varianten')}</h2>
+                <h2 className="pd-block-title">{L('Variants', 'Varyantlar')}</h2>
                 <div className="pd-variants-list">
                   {variants.map((v) => {
                     const variantName = variantModelLabel(v, lang);
@@ -1307,7 +1289,7 @@ export default function ProductDetail() {
                 <span className="tab-lbl">
                   {t('pd.tabAi')}
                   {aiFull.busy && <i className="tab-spin" role="status" aria-live="polite"
-                    aria-label={L('Analysis running', 'Analiz sürüyor', 'Analyse läuft')} />}
+                    aria-label={L('Analysis running', 'Analiz sürüyor')} />}
                 </span>
               </button>
             </div>
@@ -1339,8 +1321,8 @@ export default function ProductDetail() {
                       busy={aiFull.busy}
                       context={displayName}
                       label={aiFull.data
-                        ? L('New analysis', 'Yeni analiz', 'Neue Analyse')
-                        : L('Cancel analysis', 'Analizden çık', 'Analyse abbrechen')}
+                        ? L('New analysis', 'Yeni analiz')
+                        : L('Cancel analysis', 'Analizden çık')}
                     />
                   )}
                   {aiFull.data ? (
@@ -1348,11 +1330,11 @@ export default function ProductDetail() {
                       {aiFull.savedAt && (
                         <div className="pd-ai-cached">
                           <span>
-                            {L('Saved analysis', 'Kayıtlı analiz', 'Gespeicherte Analyse')}
+                            {L('Saved analysis', 'Kayıtlı analiz')}
                             {savedAtLabel(aiFull.savedAt, lang) ? ` · ${savedAtLabel(aiFull.savedAt, lang)}` : ''}
                           </span>
                           <button type="button" className="btn btn-ghost" onClick={() => startFullAnalysisQuiz(true)} disabled={aiFull.busy}>
-                            {L('Re-analyze', 'Yeniden analiz et', 'Neu analysieren')}
+                            {L('Re-analyze', 'Yeniden analiz et')}
                           </button>
                         </div>
                       )}
@@ -1362,11 +1344,10 @@ export default function ProductDetail() {
                     <QuizFlow
                       questions={aiFull.questions}
                       busy={aiFull.busy}
-                      title={L('Tune the analysis', 'Analizi kişiselleştir', 'Analyse anpassen')}
+                      title={L('Tune the analysis', 'Analizi kişiselleştir')}
                       subtitle={L(
                         'Answer these before the report so the match score reflects your real use.',
                         'Rapor öncesi cevapla; uyum puanı gerçek kullanımına göre hesaplansın.',
-                        'Beantworte dies vor dem Bericht, damit der Match-Score zu deiner Nutzung passt.',
                       )}
                       onSubmit={runFullAnalysis}
                     />
@@ -1374,7 +1355,7 @@ export default function ProductDetail() {
                     <div className="pd-ai-intro">
                       <button type="button" className="btn btn-grad btn-shine pd-ai-run"
                         onClick={() => runFullAnalysis(aiFull.answers || [])} disabled={aiFull.busy}>
-                        {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
+                        {L('Retry analysis', 'Analizi tekrar dene')}
                       </button>
                       {aiFull.notice && <div className="pd-ai-notice">{aiFull.notice}</div>}
                     </div>
@@ -1388,8 +1369,8 @@ export default function ProductDetail() {
                         <button type="button" className="btn btn-grad btn-shine pd-ai-run"
                           onClick={() => startFullAnalysisQuiz()} disabled={aiFull.checking}>
                           {aiFull.checking
-                            ? L('Checking balance…', 'Bakiye kontrol ediliyor…', 'Guthaben wird geprüft…')
-                            : L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                            ? L('Checking balance…', 'Bakiye kontrol ediliyor…')
+                            : L('Start analysis', 'Analizi başlat')}
                         </button>
                       )}
                       {aiFull.notice && (
@@ -1399,7 +1380,7 @@ export default function ProductDetail() {
                             <>
                               {' '}
                               <Link to="/premium" className="pd-ai-notice-link">
-                                {L('See Premium', 'Premium’a bak', 'Premium ansehen')}
+                                {L('See Premium', 'Premium’a bak')}
                               </Link>
                             </>
                           )}
@@ -1436,10 +1417,10 @@ export default function ProductDetail() {
             <header className="pd-lightbox-head">
               <div>
                 <strong>{displayName}</strong>
-                <span>{L('Product images', 'Ürün görselleri', 'Produktbilder')} · {activeImg + 1}/{images.length}</span>
+                <span>{L('Product images', 'Ürün görselleri')} · {activeImg + 1}/{images.length}</span>
               </div>
               <button className="pd-lightbox-close" type="button"
-                aria-label={L('Close image', 'Görseli kapat', 'Bild schließen')}
+                aria-label={L('Close image', 'Görseli kapat')}
                 onClick={() => setLightbox(false)}>
                 <IconX size={16} width={2.4} />
               </button>
@@ -1447,7 +1428,7 @@ export default function ProductDetail() {
             <div className="pd-lightbox-body">
               {images.length > 1 && (
                 <button className="pd-lightbox-nav pd-lightbox-prev" type="button"
-                  aria-label={L('Previous image', 'Önceki görsel', 'Vorheriges Bild')}
+                  aria-label={L('Previous image', 'Önceki görsel')}
                   onClick={() => stepImage(-1)}>
                   <IconChevronLeft size={22} width={2.4} />
                 </button>
@@ -1457,7 +1438,7 @@ export default function ProductDetail() {
               </div>
               {images.length > 1 && (
                 <button className="pd-lightbox-nav pd-lightbox-next" type="button"
-                  aria-label={L('Next image', 'Sonraki görsel', 'Nächstes Bild')}
+                  aria-label={L('Next image', 'Sonraki görsel')}
                   onClick={() => stepImage(1)}>
                   <IconChevronRight size={22} width={2.4} />
                 </button>
@@ -1528,7 +1509,7 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
     return (
       <div className="pd-price-history pd-price-history-loading">
         <div className="spinner" />
-        <span>{L('Loading price history...', 'Fiyat geçmişi yükleniyor...', 'Preisverlauf wird geladen...')}</span>
+        <span>{L('Loading price history...', 'Fiyat geçmişi yükleniyor...')}</span>
       </div>
     );
   }
@@ -1536,11 +1517,10 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
   if (daily.length < 2) {
     return (
       <div className="pd-price-history pd-price-history-empty">
-        <b>{L('Price history', 'Fiyat geçmişi', 'Preisverlauf')}</b>
+        <b>{L('Price history', 'Fiyat geçmişi')}</b>
         <span>{L(
           'Not enough fresh snapshots yet for this delivery market. The chart appears automatically as tracked offers update.',
           'Bu teslimat pazarı için henüz yeterli güncel snapshot yok. Takip edilen teklifler güncellendikçe grafik otomatik oluşur.',
-          'Für diesen Liefermarkt gibt es noch nicht genug aktuelle Snapshots. Der Verlauf erscheint automatisch, sobald Angebote aktualisiert werden.',
         )}</span>
       </div>
     );
@@ -1572,8 +1552,8 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
     <div className="pd-price-history">
       <div className="pd-price-history-head">
         <div>
-          <b>{L('Price history', 'Fiyat geçmişi', 'Preisverlauf')}</b>
-          <span>{country ? country.toUpperCase() : L('Selected market', 'Seçili pazar', 'Ausgewählter Markt')}</span>
+          <b>{L('Price history', 'Fiyat geçmişi')}</b>
+          <span>{country ? country.toUpperCase() : L('Selected market', 'Seçili pazar')}</span>
         </div>
         <div className="pd-price-history-now">
           <strong>{fmt(last.price, last.currency)}</strong>
@@ -1582,7 +1562,7 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
           </small>
         </div>
       </div>
-      <svg className="pd-price-history-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={L('Price history chart', 'Fiyat geçmişi grafiği', 'Preisverlaufsdiagramm')}>
+      <svg className="pd-price-history-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={L('Price history chart', 'Fiyat geçmişi grafiği')}>
         <defs>
           <linearGradient id="pdPriceFill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.22" />
@@ -1601,8 +1581,8 @@ function PriceHistoryChart({ points = [], loading = false, lang, country, L }) {
       </svg>
       <div className="pd-price-history-foot">
         <span>{fmtDate(first.date)} · {fmt(first.price, first.currency)}</span>
-        <span>{daily.length} {L('snapshots', 'snapshot', 'Snapshots')}</span>
-        <span>{fmtDate(last.date)} · {last.store || L('latest', 'son', 'neueste')}</span>
+        <span>{daily.length} {L('snapshots', 'snapshot')}</span>
+        <span>{fmtDate(last.date)} · {last.store || L('latest', 'son')}</span>
       </div>
     </div>
   );

@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/product/xpg-spectrix-d35g" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/xpg-spectrix-d35g" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/xpg-spectrix-d35g" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/xpg-spectrix-d35g" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/xpg-spectrix-d35g" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)</h1><p style="color:#475569;margin:0 0 12px">XPG · RAM · Qor AI tech score 81/100</p><img src="https://resim.epey.com/891991/m_xpg-spectrix-d35g-ax4u360032g18i-dtbkd35g-3.jpg" alt="XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G) key features: memory speed (oc) 3600 MT/s, memory capacity 64 GB, memory technology DDR4. Review XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)'s 22 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory Speed (OC):</span> <strong>3600 MT/s</strong></li><li><span style="color:#64748b">Memory Capacity:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Memory Technology:</span> <strong>DDR4</strong></li><li><span style="color:#64748b">CL (Latency):</span> <strong>18</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/crucial-ballistix-bl2k32g32c16s4b" style="color:#2563eb">Crucial Ballistix 64 GB 3200 MT (BL2K32G32C16S4B)</a></li><li><a href="/product/crucial-ballistix-rgb-bl2k32g32c16u4bl" style="color:#2563eb">Crucial Ballistix RGB 64 GB 3200 MT (BL2K32G32C16U4BL)</a></li><li><a href="/product/kingston-hyperx-impact-ddr4-hx421s14ibk4-64" style="color:#2563eb">HyperX Impact DDR4 64 GB 2133 MT (4x16 GB) (HX421S14IBK4/64)</a></li><li><a href="/product/kingston-hyperx-impact-ddr4-hx424s15ibk4-64" style="color:#2563eb">HyperX Impact DDR4 64 GB 2400 MT (4x16 GB) (HX424S15IBK4/64)</a></li><li><a href="/product/kingston-hyperx-fury-hx424c15fbk4-64" style="color:#2563eb">HyperX Fury DDR4 64 GB 2400 MT (4x16 GB) (HX424C15FBK4/64)</a></li><li><a href="/product/kingston-hyperx-fury-hx421c14fbk4-64" style="color:#2563eb">HyperX Fury DDR4 64 GB 2133 MT (4x16 GB) (HX421C14FBK4/64)</a></li><li><a href="/product/hyperx-predator-ddr4-hx432c16pb3k2-64" style="color:#2563eb">HyperX Predator DDR4 64 GB 3200 MT (HX432C16PB3K2/64)</a></li><li><a href="/product/hyperx-fury-ddr4-hx432c16fb3k2-64" style="color:#2563eb">HyperX Fury DDR4 64 GB 3200 MT (HX432C16FB3K2/64)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ram">RAM</a></nav><h1 style="font-size:26px;margin:12px 0 4px">XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)</h1><p style="color:#475569;margin:0 0 12px">XPG · RAM · Qor AI tech score 81/100</p><img src="https://resim.epey.com/891991/m_xpg-spectrix-d35g-ax4u360032g18i-dtbkd35g-3.jpg" alt="XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G) key features: memory speed (oc) 3600 MT/s, memory capacity 64 GB, memory technology DDR4. Review XPG Spectrix D35G 64 GB 3600 MT (AX4U360032G18I-DTBKD35G)'s 22 technical specs, its Qor AI tech score and how it compares with similar models in ram below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory Speed (OC):</span> <strong>3600 MT/s</strong></li><li><span style="color:#64748b">Memory Capacity:</span> <strong>64 GB</strong></li><li><span style="color:#64748b">Memory Technology:</span> <strong>DDR4</strong></li><li><span style="color:#64748b">CL (Latency):</span> <strong>18</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in RAM</h2><ul style="line-height:1.8"><li><a href="/product/g-skill-ripjaws-v-f4-3200c16d-64gvk" style="color:#2563eb">G.Skill Ripjaws V 64 GB 3200 MT (F4-3200C16D-64GVK)</a></li><li><a href="/product/g-skill-ripjaws-v-f4-3600c18d-64gvk" style="color:#2563eb">G.Skill Ripjaws V 64 GB 3600 MT (F4-3600C18D-64GVK)</a></li><li><a href="/product/g-skill-trident-z-neo-f4-3200c16d-64gtzn" style="color:#2563eb">G.Skill Trident Z Neo 64 GB 3200 MT (F4-3200C16D-64GTZN)</a></li><li><a href="/product/g-skill-ripjaws-v-f4-4000c18d-64gvk" style="color:#2563eb">G.Skill Ripjaws V 64 GB 4000 MT (F4-4000C18D-64GVK)</a></li><li><a href="/product/g-skill-trident-z-neo-f4-3600c18d-64gtzn" style="color:#2563eb">G.Skill Trident Z Neo 64 GB 3600 MT (F4-3600C18D-64GTZN)</a></li><li><a href="/product/corsair-vengeance-lpx-64gb-2x32gb-cmk64gx4m2e3200c16" style="color:#2563eb">Corsair Vengeance LPX 64 GB 3200 MT (CMK64GX4M2E3200C16)</a></li><li><a href="/product/corsair-vengeance-rgb-rt-cmn64gx4m2z3600c18" style="color:#2563eb">Corsair Vengeance RGB RT 64 GB 3600 MT (CMN64GX4M2Z3600C18)</a></li><li><a href="/product/kingston-fury-beast-kf432c16bbk2-64" style="color:#2563eb">Kingston Fury Beast 64 GB 3200 MT (KF432C16BBK2/64)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ram" style="color:#2563eb;font-weight:600">Compare all RAM →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -592,11 +592,7 @@ class SharedKeySpecsGrid extends StatelessWidget {
     final theme = Theme.of(context);
     const columns = 2;
     final rows = (specs.length / columns).ceil();
-    final title = lc == 'tr'
-        ? 'Ana Özellikler'
-        : lc == 'de'
-        ? 'Wichtige Daten'
-        : 'Key Specs';
+    final title = lc == 'tr' ? 'Ana Özellikler' : 'Key Specs';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),

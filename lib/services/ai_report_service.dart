@@ -19,7 +19,6 @@ import 'package:qor_ai/presentation/providers/providers.dart';
 const _langNames = <String, String>{
   'tr': 'Turkish',
   'en': 'English',
-  'de': 'German',
   'es': 'Spanish',
   'fr': 'French',
   'it': 'Italian',
@@ -562,7 +561,7 @@ class AiReportService {
         'The previous answer was rejected because it contained stale release/availability claims. Rewrite the JSON from scratch.\n'
         '${names.isNotEmpty ? 'Products that must keep exact names: $names\n' : ''}'
         '${_freshnessRules()}'
-        '\nForbidden stale wording includes: unannounced, not on the market, not released, not yet available, based on M4 Max estimates, or equivalent Turkish/German wording unless current web research explicitly proves it.';
+        '\nForbidden stale wording includes: unannounced, not on the market, not released, not yet available, based on M4 Max estimates, or equivalent Turkish wording unless current web research explicitly proves it.';
   }
 
   // ── JSON parsing (mirrors web parseAiJson) ────────────────────────────────

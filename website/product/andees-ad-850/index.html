@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/product/andees-ad-850" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/andees-ad-850" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/andees-ad-850" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/andees-ad-850" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/andees-ad-850" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ups">UPS</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Andees AD-850 UPS (850 VA)</h1><p style="color:#475569;margin:0 0 12px">Andees · UPS · Qor AI tech score 10/100</p><img src="https://resim.epey.com/557546/m_andees-ad-850-1.jpg" alt="Andees AD-850 UPS (850 VA)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Andees AD-850 UPS (850 VA) key features: battery capacity 9 Ah, wave shape Simulated, capacity (va) 850 VA. Review Andees AD-850 UPS (850 VA)'s 23 technical specs, its Qor AI tech score and how it compares with similar models in ups below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>9 Ah</strong></li><li><span style="color:#64748b">Wave shape:</span> <strong>Simulated</strong></li><li><span style="color:#64748b">Capacity (VA):</span> <strong>850 VA</strong></li><li><span style="color:#64748b">Sound level (highest):</span> <strong>40 dB</strong></li><li><span style="color:#64748b">Charging Time (%90):</span> <strong>8 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in UPS</h2><ul style="line-height:1.8"><li><a href="/product/powercom-rpt-1000va" style="color:#2563eb">Powercom RPT 1000 VA UPS (1000 VA)</a></li><li><a href="/product/andees-ad-650" style="color:#2563eb">Andees AD-650 UPS (650 VA)</a></li><li><a href="/product/enel-l1-650va" style="color:#2563eb">Enel L1 650VA UPS (650 VA)</a></li><li><a href="/product/enel-l1-1000va" style="color:#2563eb">Enel L1 1000VA UPS (1000 VA)</a></li><li><a href="/product/cuppon-sm-1100" style="color:#2563eb">Cuppon SM-1100 UPS</a></li><li><a href="/product/master-mgs-6" style="color:#2563eb">Master MGS-6 UPS</a></li><li><a href="/product/digitus-all-in-one-800-va" style="color:#2563eb">Digitus All in One 800 VA UPS (DN-170111)</a></li><li><a href="/product/dotvolt-ln-850va" style="color:#2563eb">Dotvolt LN 850VA UPS (850 VA)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ups" style="color:#2563eb;font-weight:600">Compare all UPS →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ups">UPS</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Andees AD-850 UPS (850 VA)</h1><p style="color:#475569;margin:0 0 12px">Andees · UPS · Qor AI tech score 10/100</p><img src="https://resim.epey.com/557546/m_andees-ad-850-1.jpg" alt="Andees AD-850 UPS (850 VA)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Andees AD-850 UPS (850 VA) key features: battery capacity 9 Ah, wave shape Simulated, capacity (va) 850 VA. Review Andees AD-850 UPS (850 VA)'s 23 technical specs, its Qor AI tech score and how it compares with similar models in ups below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Battery capacity:</span> <strong>9 Ah</strong></li><li><span style="color:#64748b">Wave shape:</span> <strong>Simulated</strong></li><li><span style="color:#64748b">Capacity (VA):</span> <strong>850 VA</strong></li><li><span style="color:#64748b">Sound level (highest):</span> <strong>40 dB</strong></li><li><span style="color:#64748b">Charging Time (%90):</span> <strong>8 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in UPS</h2><ul style="line-height:1.8"><li><a href="/product/andees-ad-650" style="color:#2563eb">Andees AD-650 UPS (650 VA)</a></li><li><a href="/product/dotvolt-ln-850va" style="color:#2563eb">Dotvolt LN 850VA UPS (850 VA)</a></li><li><a href="/product/siberguard-sg-11-01-dsg-1-kva" style="color:#2563eb">Siberguard SG 11-01 DSG 1 kVA UPS (1000 VA)</a></li><li><a href="/product/dotvolt-ln-1200va" style="color:#2563eb">Dotvolt LN 1200VA UPS (1200 VA)</a></li><li><a href="/product/andespower-ups1200va-1200va" style="color:#2563eb">Andespower UPS1200VA 1200VA UPS (1200 VA)</a></li><li><a href="/product/power-boost-b-650va" style="color:#2563eb">PowerBoost B-650VA UPS (650 VA) (UPS-B0650VA-01)</a></li><li><a href="/product/andespower-ups1500va-1500va" style="color:#2563eb">Andespower UPS1500VA 1500VA UPS (1500 VA)</a></li><li><a href="/product/andespower-ups650va-650va" style="color:#2563eb">Andespower UPS650VA 650VA UPS (650 VA)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ups" style="color:#2563eb;font-weight:600">Compare all UPS →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

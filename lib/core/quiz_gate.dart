@@ -73,14 +73,6 @@ const _gateStringsByLang = <String, _QuizGateStrings>{
     complete: 'Şimdi Tamamla',
     later: 'Daha Sonra',
   ),
-  'de': _QuizGateStrings(
-    title: 'Vervollständige zuerst dein kurzes Profil',
-    body:
-        'Damit die Qor-AI-Analysen auf dich zugeschnitten sind, fülle zuerst das kurze Profil-Quiz aus. '
-        'Nur ein paar Fragen — danach kannst du alle KI-Funktionen nutzen, soweit dein Q-Coin-Guthaben reicht.',
-    complete: 'Jetzt abschließen',
-    later: 'Später',
-  ),
   'es': _QuizGateStrings(
     title: 'Primero completa tu perfil rápido',
     body:

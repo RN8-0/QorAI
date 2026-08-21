@@ -38,7 +38,6 @@ const _kDeep = AppTheme.brandDeepBlue;
 const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   'maxSubscriptionsComparable': {
     'ar': 'يمكنك مقارنة ما يصل إلى {count} اشتراكات.',
-    'de': 'Du kannst bis zu {count} Abonnements vergleichen.',
     'en': 'You can compare up to {count} subscriptions.',
     'es': 'Puedes comparar hasta {count} suscripciones.',
     'fr': 'Vous pouvez comparer jusqu\'à {count} abonnements.',
@@ -52,7 +51,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'enterAtLeastOneSubscription': {
     'ar': 'يرجى إدخال اشتراك واحد على الأقل.',
-    'de': 'Bitte gib mindestens ein Abonnement ein.',
     'en': 'Please enter at least one subscription.',
     'es': 'Introduce al menos una suscripción.',
     'fr': 'Veuillez saisir au moins un abonnement.',
@@ -66,7 +64,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'identifyingServices': {
     'ar': 'جارٍ التعرّف على الخدمات',
-    'de': 'Dienste werden erkannt',
     'en': 'Identifying Services',
     'es': 'Identificando servicios',
     'fr': 'Identification des services',
@@ -80,7 +77,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'identifyingServicesDetail': {
     'ar': 'نؤكد أسماء الاشتراكات التي أدخلتها ونطابقها مع الفئات المناسبة.',
-    'de': 'Wir prüfen deine Abonnementnamen und ordnen sie den richtigen Kategorien zu.',
     'en': 'Validating subscription names and mapping them to the right categories.',
     'es': 'Validamos los nombres de las suscripciones y las vinculamos con la categoría correcta.',
     'fr': 'Nous validons les noms des abonnements et les associons aux bonnes catégories.',
@@ -94,7 +90,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'craftingPersonalQuiz': {
     'ar': 'جارٍ إعداد الاختبار الشخصي',
-    'de': 'Persönliches Quiz wird erstellt',
     'en': 'Crafting Personal Quiz',
     'es': 'Preparando quiz personal',
     'fr': 'Création du quiz personnel',
@@ -108,7 +103,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'craftingPersonalQuizDetail': {
     'ar': 'ينشئ الذكاء الاصطناعي أسئلة لفهم عاداتك وتوقعاتك.',
-    'de': 'Die KI erstellt Fragen, um deine Gewohnheiten und Erwartungen zu verstehen.',
     'en': 'AI is generating questions based on your habits and expectations.',
     'es': 'La IA genera preguntas según tus hábitos y expectativas.',
     'fr': 'L’IA génère des questions selon vos habitudes et vos attentes.',
@@ -122,7 +116,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'scanningCommunityVoice': {
     'ar': 'جارٍ فحص آراء المجتمع',
-    'de': 'Community-Stimmen werden analysiert',
     'en': 'Scanning Community Voice',
     'es': 'Analizando la voz de la comunidad',
     'fr': 'Analyse des avis de la communauté',
@@ -136,7 +129,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'scanningCommunityVoiceDetail': {
     'ar': 'نجمع مراجعات حقيقية من Reddit والمنتديات ووسائل التواصل الاجتماعي.',
-    'de': 'Wir sammeln echte Bewertungen von Reddit, Foren und sozialen Medien.',
     'en': 'Collecting real reviews from Reddit, forums, and social media.',
     'es': 'Recopilamos opiniones reales de Reddit, foros y redes sociales.',
     'fr': 'Nous recueillons de vrais avis depuis Reddit, les forums et les réseaux sociaux.',
@@ -150,7 +142,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'positiveNegativeDigest': {
     'ar': 'ملخص الإيجابيات والسلبيات',
-    'de': 'Positiv-/Negativ-Zusammenfassung',
     'en': 'Positive / Negative Digest',
     'es': 'Resumen positivo / negativo',
     'fr': 'Résumé positif / négatif',
@@ -164,7 +155,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'positiveNegativeDigestDetail': {
     'ar': 'نفصل الجوانب الإيجابية والسلبية في ملاحظات المستخدمين.',
-    'de': 'Wir trennen positive und negative Signale im Nutzerfeedback.',
     'en': 'Extracting pros and cons from community feedback.',
     'es': 'Extraemos pros y contras de los comentarios de la comunidad.',
     'fr': 'Nous extrayons les points forts et les limites des retours de la communauté.',
@@ -178,7 +168,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'computingCompatibility': {
     'ar': 'جارٍ حساب التوافق',
-    'de': 'Kompatibilität wird berechnet',
     'en': 'Computing Compatibility',
     'es': 'Calculando compatibilidad',
     'fr': 'Calcul de compatibilité',
@@ -192,7 +181,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'computingCompatibilityDetail': {
     'ar': 'نمزج ملفك الشخصي وإجابات الاختبار وذكاء الويب للوصول إلى أفضل تطابق.',
-    'de': 'Wir kombinieren dein Profil, deine Quizantworten und Web-Signale zum besten Match.',
     'en': 'Blending your profile, quiz answers, and web intelligence into the best match.',
     'es': 'Combinamos tu perfil, las respuestas del quiz y la inteligencia web para hallar el mejor ajuste.',
     'fr': 'Nous combinons votre profil, vos réponses et les signaux du web pour trouver le meilleur match.',
@@ -206,7 +194,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'subscriptionAnalysis': {
     'ar': 'تحليل الاشتراك',
-    'de': 'Abo-Analyse',
     'en': 'Subscription Analysis',
     'es': 'Análisis de suscripción',
     'fr': 'Analyse d\'abonnement',
@@ -220,7 +207,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'unlockUnlimitedQWithPremium': {
     'ar': 'افتح Q غير محدود مع Premium',
-    'de': 'Schalte unbegrenztes Q mit Premium frei',
     'en': 'Unlock unlimited Q with Premium',
     'es': 'Desbloquea Q ilimitado con Premium',
     'fr': 'Débloquez un Q illimité avec Premium',
@@ -234,7 +220,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'communityVoice': {
     'ar': 'آراء المجتمع',
-    'de': 'Community-Stimmen',
     'en': 'Community Voice',
     'es': 'Voz de la comunidad',
     'fr': 'Voix de la communauté',
@@ -248,7 +233,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'communityVoiceSubtitle': {
     'ar': 'آراء حقيقية من Reddit والمنتديات ووسائل التواصل مع ملخص إيجابي/سلبي.',
-    'de': 'Echtes Feedback aus Reddit, Foren und Social Media mit Positiv-/Negativ-Zusammenfassung.',
     'en': 'Real user feedback from Reddit, forums, and social media with a positive/negative summary.',
     'es': 'Opiniones reales de Reddit, foros y redes sociales con resumen positivo/negativo.',
     'fr': 'Retours réels depuis Reddit, les forums et les réseaux sociaux avec résumé positif/négatif.',
@@ -262,7 +246,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'personalQuiz': {
     'ar': 'اختبار شخصي',
-    'de': 'Persönliches Quiz',
     'en': 'Personal Quiz',
     'es': 'Quiz personal',
     'fr': 'Quiz personnel',
@@ -276,7 +259,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'personalQuizSubtitle': {
     'ar': 'تُفصِّل الذكاء الاصطناعي الأسئلة وفق عاداتك لتخصيص النتيجة.',
-    'de': 'Die KI passt Fragen an deine Gewohnheiten an und personalisiert so das Ergebnis.',
     'en': 'AI tailors questions to your habits so every answer sharpens the match.',
     'es': 'La IA adapta las preguntas a tus hábitos para afinar cada resultado.',
     'fr': 'L’IA adapte les questions à vos habitudes pour affiner chaque résultat.',
@@ -290,7 +272,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'smartMatch': {
     'ar': 'مطابقة ذكية',
-    'de': 'Smart Match',
     'en': 'Smart Match',
     'es': 'Emparejamiento inteligente',
     'fr': 'Match intelligent',
@@ -304,7 +285,6 @@ const Map<String, Map<String, String>> _kSubscriptionScreenTranslations = {
   },
   'smartMatchSubtitle': {
     'ar': 'درجة توافق وتوصية مفصلة وفق ملفك الشخصي للعثور على أفضل اشتراك.',
-    'de': 'Kompatibilitätsscore und detaillierte Empfehlung passend zu deinem Profil.',
     'en': 'Compatibility score and a detailed recommendation tuned to your profile.',
     'es': 'Puntuación de compatibilidad y recomendación detallada según tu perfil.',
     'fr': 'Score de compatibilité et recommandation détaillée selon votre profil.',

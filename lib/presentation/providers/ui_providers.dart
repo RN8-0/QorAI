@@ -139,12 +139,9 @@ final localeProvider = StateNotifierProvider<LocaleNotifier, Locale?>((ref) {
 class LocaleNotifier extends StateNotifier<Locale?> {
   final CacheService _cacheService;
 
-  /// Supported UI language codes: German, English, Turkish. Any other device /
-  /// saved locale falls back to English. NOTE: specs are only ever rendered in
-  /// English or Turkish — a German UI reads specs in English (the German spec
-  /// translation was removed); see [ProductEntity.specDisplayLang].
+  /// Supported UI language codes: English, Turkish. Any other device / saved
+  /// locale falls back to English. German was removed entirely on 2026-08-21.
   static const _supported = {
-    'de',
     'en',
     'tr',
   };
@@ -421,7 +418,7 @@ String normalizeProductName(String name) {
         ),
         '',
       )
-      // Bağlantı + Almanca/İngilizce/Türkçe bağlaçlar (Icecat/Geizhals
+      // Bağlantı + İngilizce/Türkçe bağlaçlar (Icecat
       // kayıtları "schwarz mit Ozean Armband" gibi kozmetik kuyruk taşıyor).
       .replaceAll(
         RegExp(r'\b(?:wi-?fi|cellular|gps|lte|esim|[45]g|mit|with|ile)\b'),

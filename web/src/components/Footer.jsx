@@ -35,7 +35,7 @@ const SOSYAL = [
 
 function SocialLinks({ L }) {
   return (
-    <div className="ft-social" aria-label={L('Social media', 'Sosyal medya', 'Soziale Medien')}>
+    <div className="ft-social" aria-label={L('Social media', 'Sosyal medya')}>
       {SOSYAL.map((s) => (
         <a key={s.ad} href={s.href} target="_blank" rel="me noopener noreferrer"
           className={`ft-social-btn ft-social-${s.anahtar}`} title={s.ad} aria-label={`Qor AI ${s.ad}`}>
@@ -55,7 +55,7 @@ function SocialLinks({ L }) {
 export default function Footer() {
   const { t, lang } = useI18n();
   const loc = useLocation();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const year = new Date().getFullYear();
   const isPremiumRoute = loc.pathname === '/premium';
 
@@ -74,7 +74,7 @@ export default function Footer() {
             <p className="muted" style={{ marginTop: 14, fontSize: 14, lineHeight: 1.6 }}>{t('footer.tagline')}</p>
             {!isPremiumRoute && (
               <div style={{ marginTop: 16 }}>
-                <PlayBadge size="sm" getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
+                <PlayBadge size="sm" getItOn={L('GET IT ON', 'İNDİR')} label={t('header.googlePlay')} />
               </div>
             )}
             <SocialLinks L={L} />
@@ -89,17 +89,17 @@ export default function Footer() {
               <Link to="/subscriptions">{t('nav.subscriptions')}</Link>
             </div>
             <div>
-              <h5>{L('Company', 'Şirket', 'Unternehmen')}</h5>
-              <Link to="/about">{L('About us', 'Hakkımızda', 'Über uns')}</Link>
-              <Link to="/faq">{L('FAQ', 'SSS', 'FAQ')}</Link>
-              <Link to="/contact">{L('Contact us', 'Bize ulaşın', 'Kontaktieren')}</Link>
+              <h5>{L('Company', 'Şirket')}</h5>
+              <Link to="/about">{L('About us', 'Hakkımızda')}</Link>
+              <Link to="/faq">{L('FAQ', 'SSS')}</Link>
+              <Link to="/contact">{L('Contact us', 'Bize ulaşın')}</Link>
             </div>
             <div>
               <h5>{t('footer.legal')}</h5>
               <Link to="/privacy">{t('footer.privacy')}</Link>
               <Link to="/terms">{t('footer.terms')}</Link>
-              <Link to="/refund">{L('Refund Policy', 'İade Politikası', 'Rückerstattung')}</Link>
-              <Link to="/cookies">{L('Cookies', 'Çerezler', 'Cookies')}</Link>
+              <Link to="/refund">{L('Refund Policy', 'İade Politikası')}</Link>
+              <Link to="/cookies">{L('Cookies', 'Çerezler')}</Link>
             </div>
           </div>
         </div>

@@ -26,20 +26,21 @@ const ROUTES = [
 ];
 
 // ── DIL ONEKLI KABUKLAR (2026-08-18) ──────────────────────────────────────
-// CANLI OLAY: /tr/compare ve /de/compare BEYAZ EKRAN veriyordu. O kabuklar
+// CANLI OLAY: /tr/compare BEYAZ EKRAN veriyordu. O kabuklar
 // aylar once ELLE eklenmis (commit 6aaba95 "eksik dizin kabuklari") ve BIR
 // DAHA HIC URETILMEMISTI; icindeki `spa/index-TkhoIV_k.js` artik yok ->
 // 404 -> SPA hic boot etmiyor. Ustelik 404 edge'de negatif cache'lenir.
-// Ayni durum /tr/product, /de/product icin de gecerliydi (on-render edilmemis
+// Ayni durum /tr/product icin de gecerliydi (on-render edilmemis
 // bir urunun derin linki bu kabuga dusuyor).
 //
 // Cozum: kabuklari ELLE tutma — HER derlemede, HER dil oneki icin YENIDEN
 // yaz. seo.mjs sonrasinda kendi meta'siyla uzerine yazdiklarini yazar; onun
 // dokunmadiklari (compare/product/search/profile/go) burada taze kalir.
-const LANG_PREFIXES = ['', 'tr', 'de'];
+// Almanca 2026-08-21'de kaldirildi: artik yalnizca kok (en) + /tr.
+const LANG_PREFIXES = ['', 'tr'];
 
 for (const prefix of LANG_PREFIXES) {
-  // Dil kokunun kendisi de bir kabuk olmali: /tr/ ve /de/ (seo.mjs uzerine yazar)
+  // Dil kokunun kendisi de bir kabuk olmali: /tr/ (seo.mjs uzerine yazar)
   if (prefix) {
     const kok = join(site, prefix);
     mkdirSync(kok, { recursive: true });

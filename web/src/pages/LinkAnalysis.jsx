@@ -58,7 +58,7 @@ function CompareScoreChart({ products = [], L }) {
   const max = Math.max(100, ...products.map((p) => Math.round(p.score || 0)));
   return (
     <section className="la-cmp-chart">
-      <div className="la-cmp-section-title">📊 {L('Compatibility scores', 'Uyum puanları', 'Kompatibilitätswerte')}</div>
+      <div className="la-cmp-section-title">📊 {L('Compatibility scores', 'Uyum puanları')}</div>
       <div className="la-cmp-chart-rows">
         {products.map((p, i) => {
           const score = Math.round(p.score || 0);
@@ -91,17 +91,17 @@ function CompareProductCard({ product, isWinner, L, lang }) {
   const sentiment = normalizeSentiment(product.sentiment, score);
   return (
     <article className={'la-cmp-card' + (isWinner ? ' winner' : '')}>
-      {isWinner && <span className="la-cmp-win-pill">★ {L('Best fit', 'En iyi eşleşme', 'Beste Wahl')}</span>}
+      {isWinner && <span className="la-cmp-win-pill">★ {L('Best fit', 'En iyi eşleşme')}</span>}
       <div className="la-cmp-card-top">
         <Gauge value={score} size={72} stroke={7} color={scoreColor(score)} fontSize={21} />
         <div className="la-cmp-card-id">
           <strong>{product.name}</strong>
-          <span>{product.siteName || L('Product link', 'Ürün linki', 'Produktlink')}</span>
+          <span>{product.siteName || L('Product link', 'Ürün linki')}</span>
           <DecisionBadge score={score} L={L} />
         </div>
       </div>
       <StoreCta url={product.url || product.link} lang={lang} L={L} compact />
-      {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun', 'Ideal für')}:</b> {product.bestFor}</p>}
+      {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun')}:</b> {product.bestFor}</p>}
       {product.summary && <div className="la-prose la-cmp-summary"><AiText text={product.summary} /></div>}
 
       {factors.length >= 3 && (
@@ -124,8 +124,8 @@ function CompareProductCard({ product, isWinner, L, lang }) {
       <ProConList
         pros={pros} cons={cons} L={L}
         titles={{
-          pro: L('Strengths', 'Güçlü yanlar', 'Stärken'),
-          con: L('Trade-offs', 'Eksiler', 'Nachteile'),
+          pro: L('Strengths', 'Güçlü yanlar'),
+          con: L('Trade-offs', 'Eksiler'),
         }}
       />
 
@@ -133,7 +133,7 @@ function CompareProductCard({ product, isWinner, L, lang }) {
 
       {risks.length > 0 && (
         <div className="la-cmp-risks">
-          <h4>🛠 {L('Ownership risks', 'Sahiplik riskleri', 'Besitzrisiken')}</h4>
+          <h4>🛠 {L('Ownership risks', 'Sahiplik riskleri')}</h4>
           <ul>{risks.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
         </div>
       )}
@@ -141,7 +141,7 @@ function CompareProductCard({ product, isWinner, L, lang }) {
       <CommunityThemes themes={themes} L={L} />
 
       {product.community && (
-        <Sec icon="🌐" title={L('Community signal', 'Topluluk sinyali', 'Community-Signal')}>
+        <Sec icon="🌐" title={L('Community signal', 'Topluluk sinyali')}>
           <div className="la-prose"><AiText text={product.community} /></div>
         </Sec>
       )}
@@ -163,9 +163,9 @@ function CompareResult({ data, L, lang }) {
   return (
     <div className="la-result la-cmp-result fade-up">
       <div className="la-result-head la-result-head-cmp">
-        <span>{L('Qor AI Comparison', 'Qor AI Karşılaştırması', 'Qor AI Vergleich')}</span>
+        <span>{L('Qor AI Comparison', 'Qor AI Karşılaştırması')}</span>
         {data.researched && (
-          <span className="la-researched">🌐 {L('Reviews scanned', 'Yorumlar tarandı', 'Bewertungen gescannt')}</span>
+          <span className="la-researched">🌐 {L('Reviews scanned', 'Yorumlar tarandı')}</span>
         )}
         {/* Ürün adları TEK SATIRDA birbirine giriyordu; artık numaralı,
             kırpılmış ve tıklanabilir satırlar. */}
@@ -185,7 +185,7 @@ function CompareResult({ data, L, lang }) {
         <section className="la-cmp-hero">
           <div className="la-cmp-trophy">🏆</div>
           <div className="la-cmp-hero-copy">
-            <span>{L('Best match', 'En iyi eşleşme', 'Beste Wahl')}</span>
+            <span>{L('Best match', 'En iyi eşleşme')}</span>
             {/* Kazananın adı ürünün kendi linkine gider. */}
             {safeExternalUrl(best.url) ? (
               <a className="la-cmp-winner-link" href={safeExternalUrl(best.url)} target="_blank" rel="noopener">
@@ -204,17 +204,17 @@ function CompareResult({ data, L, lang }) {
         </section>
 
         <StatTiles items={[
-          { icon: '🏆', label: L('Winner score', 'Kazanan puanı', 'Siegerwert'), value: Math.round(best.score), color: scoreColor(best.score) },
-          gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı', 'Punktedifferenz'), value: gap } : null,
-          { icon: '🔗', label: L('Products', 'Ürün', 'Produkte'), value: products.length },
-          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü', 'Beleglage'), value: `${Math.round(data.confidence)}%` } : null,
+          { icon: '🏆', label: L('Winner score', 'Kazanan puanı'), value: Math.round(best.score), color: scoreColor(best.score) },
+          gap > 0 ? { icon: '📐', label: L('Score gap', 'Puan farkı'), value: gap } : null,
+          { icon: '🔗', label: L('Products', 'Ürün'), value: products.length },
+          data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(data.confidence)}%` } : null,
         ].filter(Boolean)} />
 
         <CompareScoreChart products={products} L={L} />
         <HeatMatrix products={products} L={L} />
 
         {diffs.length > 0 && (
-          <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar', 'Was wirklich entscheidet')}>
+          <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar')}>
             <div className="la-diffs">
               {diffs.map((d, i) => (
                 <div className="la-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
@@ -233,27 +233,27 @@ function CompareResult({ data, L, lang }) {
         </div>
 
         {detailed.fit && (
-          <Sec icon="🎯" title={L('Quiz-based fit', 'Quiz bazlı uyum', 'Quizbasierte Passung')}>
+          <Sec icon="🎯" title={L('Quiz-based fit', 'Quiz bazlı uyum')}>
             <div className="la-prose"><AiText text={detailed.fit} /></div>
           </Sec>
         )}
         {detailed.performance && (
-          <Sec icon="⚡" title={L('Performance and specs', 'Performans ve özellikler', 'Leistung und Ausstattung')}>
+          <Sec icon="⚡" title={L('Performance and specs', 'Performans ve özellikler')}>
             <div className="la-prose"><AiText text={detailed.performance} /></div>
           </Sec>
         )}
         {detailed.ownership && (
-          <Sec icon="🛡" title={L('Long-term ownership', 'Uzun vadeli kullanım', 'Langzeitnutzung')}>
+          <Sec icon="🛡" title={L('Long-term ownership', 'Uzun vadeli kullanım')}>
             <div className="la-prose"><AiText text={detailed.ownership} /></div>
           </Sec>
         )}
         {detailed.community && (
-          <Sec icon="🌐" title={L('What owners of each report', 'Kullanıcılar ne diyor', 'Was Besitzer berichten')}>
+          <Sec icon="🌐" title={L('What owners of each report', 'Kullanıcılar ne diyor')}>
             <div className="la-prose"><AiText text={detailed.community} /></div>
           </Sec>
         )}
         {(detailed.recommendation || data?.recommendation) && (
-          <Sec icon="🏁" title={L('Final recommendation', 'Nihai öneri', 'Abschließende Empfehlung')} tone="la-sec-final">
+          <Sec icon="🏁" title={L('Final recommendation', 'Nihai öneri')} tone="la-sec-final">
             <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
           </Sec>
         )}
@@ -269,7 +269,7 @@ export default function LinkAnalysis() {
   // Yetersiz bakiye mesajinin yanina Premium baglantisi cizebilmek icin
   // hata KODUNU da tutuyoruz (mesajin kendisi zaten aciklamayi tasiyor).
   const [errCode, setErrCode] = useState('');
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   useSeo({ title: `${t('la.title')} — Qor AI`, description: t('la.subtitle'), path: '/link-analysis' });
 
   const [urls, setUrls] = useState(['']);
@@ -406,7 +406,7 @@ export default function LinkAnalysis() {
     if (list.some((u) => !/^https?:\/\//i.test(u))) { setErr(t('la.errUrl')); return; }
     if (!user) {
       savePending(list);
-      setErr(L('Sign in to continue. Your links are saved.', 'Devam etmek için giriş yap. Linklerin kaybolmayacak.', 'Melde dich an, um fortzufahren. Deine Links bleiben erhalten.'));
+      setErr(L('Sign in to continue. Your links are saved.', 'Devam etmek için giriş yap. Linklerin kaybolmayacak.'));
       openAuth();
       return;
     }
@@ -433,25 +433,21 @@ export default function LinkAnalysis() {
 
   const howItWorks = [
     { icon: '🔗', grad: 'linear-gradient(135deg, var(--brand-blue), var(--brand-deep))',
-      title: L('Paste Link', 'Bağlantıyı Yapıştır', 'Link einfügen'),
+      title: L('Paste Link', 'Bağlantıyı Yapıştır'),
       desc: L('Paste any product link from 100+ stores — Qor AI identifies it.',
-        '100+ mağazadan herhangi bir ürün linkini yapıştır — Qor AI ürünü tanır.',
-        'Füge einen Produktlink aus 100+ Shops ein — Qor AI erkennt ihn.') },
+        '100+ mağazadan herhangi bir ürün linkini yapıştır — Qor AI ürünü tanır.') },
     { icon: '💬', grad: 'linear-gradient(135deg, var(--brand-cyan), var(--brand-blue))',
-      title: L('Community Voice', 'İnternet Yorumları', 'Community-Stimmen'),
+      title: L('Community Voice', 'İnternet Yorumları'),
       desc: L('Real user opinions gathered from Reddit, YouTube and forums.',
-        'Reddit, YouTube ve forumlardan gerçek kullanıcı görüşlerini toplar.',
-        'Echte Nutzermeinungen von Reddit, YouTube und Foren.') },
+        'Reddit, YouTube ve forumlardan gerçek kullanıcı görüşlerini toplar.') },
     { icon: '🎯', grad: 'linear-gradient(135deg, var(--brand-sky), var(--brand-cyan))',
-      title: L('Personal Quiz', 'Kişisel Quiz', 'Persönliches Quiz'),
+      title: L('Personal Quiz', 'Kişisel Quiz'),
       desc: L('A few quick questions — each answer sharpens your match.',
-        'Birkaç kısa soru; her yanıt sana özel eşleşmeyi keskinleştirir.',
-        'Ein paar kurze Fragen — jede Antwort schärft deinen Match.') },
+        'Birkaç kısa soru; her yanıt sana özel eşleşmeyi keskinleştirir.') },
     { icon: '✨', grad: 'linear-gradient(135deg, var(--brand-cyan), #10B981)',
-      title: L('Match Score', 'Eşleşme Skoru', 'Match-Score'),
+      title: L('Match Score', 'Eşleşme Skoru'),
       desc: L('A compatibility score and detailed recommendation for your profile.',
-        'Profiline göre kişisel uyum puanı ve detaylı öneri sunar.',
-        'Ein Kompatibilitätsscore und eine detaillierte Empfehlung für dein Profil.') },
+        'Profiline göre kişisel uyum puanı ve detaylı öneri sunar.') },
   ];
 
   return (
@@ -473,15 +469,15 @@ export default function LinkAnalysis() {
             <form className="la-form" onSubmit={analyze}>
               <div className="la-form-head">
                 <div className="la-form-title">
-                  <strong>{L('Paste product links', 'Ürün linklerini yapıştır', 'Produktlinks einfügen')}</strong>
+                  <strong>{L('Paste product links', 'Ürün linklerini yapıştır')}</strong>
                   <span>{filled > 1
-                    ? L('Comparison mode — analyzing side by side', 'Karşılaştırma modu — yan yana analiz', 'Vergleichsmodus — Seite an Seite')
-                    : L('Add a second link to compare', 'Karşılaştırmak için ikinci link ekle', 'Zweiten Link zum Vergleichen hinzufügen')}</span>
+                    ? L('Comparison mode — analyzing side by side', 'Karşılaştırma modu — yan yana analiz')
+                    : L('Add a second link to compare', 'Karşılaştırmak için ikinci link ekle')}</span>
                 </div>
                 <span className={'la-mode-pill' + (filled > 1 ? ' compare' : '')}>
                   {filled > 1
-                    ? `⚖️ ${L('Compare', 'Karşılaştır', 'Vergleich')} · ${filled}`
-                    : `🔎 ${L('Deep analysis', 'Derin analiz', 'Tiefenanalyse')}`}
+                    ? `⚖️ ${L('Compare', 'Karşılaştır')} · ${filled}`
+                    : `🔎 ${L('Deep analysis', 'Derin analiz')}`}
                 </span>
               </div>
               <div className="la-rows">
@@ -492,7 +488,7 @@ export default function LinkAnalysis() {
                       placeholder={t('la.placeholder')} />
                     {!url.trim() && (
                       <button type="button" className="la-row-paste" onClick={() => pasteInto(i)}
-                        aria-label={L('Paste', 'Yapıştır', 'Einfügen')} title={L('Paste from clipboard', 'Panodan yapıştır', 'Aus Zwischenablage einfügen')}>
+                        aria-label={L('Paste', 'Yapıştır')} title={L('Paste from clipboard', 'Panodan yapıştır')}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <rect x="8" y="2" width="8" height="4" rx="1" />
                           <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
@@ -508,24 +504,24 @@ export default function LinkAnalysis() {
 
               <div className="la-actions">
                 <button type="submit" className="btn btn-grad btn-lg btn-shine la-go" disabled={!filled || starting}>
-                  {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et', 'Mit KI analysieren')}
+                  {filled > 1 ? t('la.analyzeMany', { n: filled }) : L('Analyze with AI', 'AI ile Analiz Et')}
                 </button>
               </div>
 
               {/* Ne yapılacağının sözü — analizin gerçekten NE içerdiği. */}
               <ul className="la-promise">
-                <li>🌐 {L('Real reviews from Reddit, YouTube, forums and stores', 'Reddit, YouTube, forum ve mağazalardan gerçek yorumlar', 'Echte Bewertungen aus Reddit, YouTube, Foren und Shops')}</li>
-                <li>🧠 {L('A short quiz makes the score personally yours', 'Kısa bir quiz skoru sana özel yapar', 'Ein kurzes Quiz macht den Score persönlich')}</li>
-                <li>🚨 {L('Critical points, risks and honest trade-offs', 'Kritik noktalar, riskler ve dürüst eksiler', 'Kritische Punkte, Risiken und ehrliche Nachteile')}</li>
+                <li>🌐 {L('Real reviews from Reddit, YouTube, forums and stores', 'Reddit, YouTube, forum ve mağazalardan gerçek yorumlar')}</li>
+                <li>🧠 {L('A short quiz makes the score personally yours', 'Kısa bir quiz skoru sana özel yapar')}</li>
+                <li>🚨 {L('Critical points, risks and honest trade-offs', 'Kritik noktalar, riskler ve dürüst eksiler')}</li>
               </ul>
             </form>
           </Reveal>
 
           {/* Warning shows right under the input form, where the user is looking. */}
-          {err && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
+          {err && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak')}</a></>}</div>}
 
           <Reveal delay={90}>
-            <HowItWorks title={L('How it works', 'Nasıl çalışır', 'So funktioniert’s')} steps={howItWorks} />
+            <HowItWorks title={L('How it works', 'Nasıl çalışır')} steps={howItWorks} />
           </Reveal>
 
           {user && (
@@ -573,7 +569,7 @@ export default function LinkAnalysis() {
             if (base?.title) return base.title;
             const names = compareBases.map((p) => p.title).filter(Boolean);
             if (names.length > 1) {
-              return `${names.length} ${L('products', 'ürün', 'Produkte')} · ${names[0]}${names.length > 1 ? ` +${names.length - 1}` : ''}`;
+              return `${names.length} ${L('products', 'ürün')} · ${names[0]}${names.length > 1 ? ` +${names.length - 1}` : ''}`;
             }
             return names[0] || urls.filter(Boolean).join(', ');
           })()}
@@ -581,7 +577,7 @@ export default function LinkAnalysis() {
       )}
 
       {/* Fallback for non-input phases (the in-form one above covers input). */}
-      {err && !showForm && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</a></>}</div>}
+      {err && !showForm && <div className="la-err">{err}{errCode === 'INSUFFICIENT_QOR_COINS' && <> <a href="/premium">{L('See Premium', 'Premium’a bak')}</a></>}</div>}
 
       {(phase === 'identifying' || phase === 'quizLoading' || phase === 'analyzing') && (
         <AiWorkboard
@@ -601,17 +597,15 @@ export default function LinkAnalysis() {
         <div className="la-failed fade-up">
           <span className="la-failed-icon" aria-hidden="true">!</span>
           <strong>{L('The report could not be generated',
-            'Rapor oluşturulamadı',
-            'Der Bericht konnte nicht erstellt werden')}</strong>
+            'Rapor oluşturulamadı')}</strong>
           <p>{L('Qor AI could not reach a complete result this time. Your answers are saved — try again without paying twice.',
-            'Qor AI bu sefer eksiksiz bir sonuca ulaşamadı. Cevapların duruyor; ikinci kez ücret ödemeden tekrar deneyebilirsin.',
-            'Qor AI konnte diesmal kein vollständiges Ergebnis erzielen. Deine Antworten sind gespeichert — versuche es erneut.')}</p>
+            'Qor AI bu sefer eksiksiz bir sonuca ulaşamadı. Cevapların duruyor; ikinci kez ücret ödemeden tekrar deneyebilirsin.')}</p>
           <div className="la-failed-actions">
             <button type="button" className="btn btn-grad btn-shine" onClick={() => retryLinkAnalysisJob()}>
-              {L('Try again', 'Tekrar dene', 'Erneut versuchen')}
+              {L('Try again', 'Tekrar dene')}
             </button>
             <button type="button" className="btn btn-ghost" onClick={resetFlow}>
-              {L('New analysis', 'Yeni analiz', 'Neue Analyse')}
+              {L('New analysis', 'Yeni analiz')}
             </button>
           </div>
         </div>
@@ -620,17 +614,16 @@ export default function LinkAnalysis() {
       {phase === 'quiz' && base && questions.length > 0 && (
         <>
           <div className="la-identified">
-            <span className="la-identified-tag">{L('Product', 'Ürün', 'Produkt')}</span>
+            <span className="la-identified-tag">{L('Product', 'Ürün')}</span>
             <strong>{base.title}</strong>
             {base.category && <span className="la-identified-cat">{base.category}</span>}
           </div>
           <QuizFlow
             questions={questions}
             busy={false}
-            title={L('Tune the analysis', 'Analizi kişiselleştir', 'Analyse anpassen')}
+            title={L('Tune the analysis', 'Analizi kişiselleştir')}
             subtitle={L('Tell Qor AI how you would use it for a match score made for you.',
-              'Qor AI’ya nasıl kullanacağını söyle, sana özel uyum skoru çıksın.',
-              'Sag Qor AI, wie du es nutzt — für einen Score, der zu dir passt.')}
+              'Qor AI’ya nasıl kullanacağını söyle, sana özel uyum skoru çıksın.')}
             onSubmit={(answers) => submitLinkAnalysisJobAnswers(activeJobId, answers, aiUserProfile(user))}
             onSkip={() => submitLinkAnalysisJobAnswers(activeJobId, [], aiUserProfile(user))}
           />
@@ -640,16 +633,15 @@ export default function LinkAnalysis() {
       {phase === 'quiz' && activeJobType === 'compare' && compareBases.length > 0 && questions.length > 0 && (
         <>
           <div className="la-identified la-identified-compare">
-            <span className="la-identified-tag">{L('Compare', 'Karşılaştırma', 'Vergleich')}</span>
-            <strong>{compareBases.map((p) => p.title || p.siteName || L('Product', 'Ürün', 'Produkt')).join(' vs ')}</strong>
+            <span className="la-identified-tag">{L('Compare', 'Karşılaştırma')}</span>
+            <strong>{compareBases.map((p) => p.title || p.siteName || L('Product', 'Ürün')).join(' vs ')}</strong>
           </div>
           <QuizFlow
             questions={questions}
             busy={false}
-            title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir', 'Vergleich anpassen')}
+            title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir')}
             subtitle={L('Answer a few questions so Qor AI weighs these products like the app flow.',
-              'Birkaç soruyu yanıtla; Qor AI bu ürünleri uygulamadaki akış gibi detaylı tartacak.',
-              'Beantworte ein paar Fragen, damit Qor AI diese Produkte wie in der App detailliert gewichtet.')}
+              'Birkaç soruyu yanıtla; Qor AI bu ürünleri uygulamadaki akış gibi detaylı tartacak.')}
             onSubmit={(answers) => submitLinkAnalysisJobAnswers(activeJobId, answers, aiUserProfile(user))}
             onSkip={() => submitLinkAnalysisJobAnswers(activeJobId, [], aiUserProfile(user))}
           />
@@ -670,7 +662,7 @@ export default function LinkAnalysis() {
       {phase === 'result' && (
         <div className="la-again">
           <button type="button" className="btn btn-ghost" onClick={resetFlow}>
-            {L('Analyze another link', 'Başka bir link analiz et', 'Weiteren Link analysieren')}
+            {L('Analyze another link', 'Başka bir link analiz et')}
           </button>
         </div>
       )}

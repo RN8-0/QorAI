@@ -30,6 +30,9 @@ const Quiz = lazy(() => import('./pages/Quiz.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Go = lazy(() => import('./pages/Go.jsx'));
 const Blog = lazy(() => import('./pages/Blog.jsx'));
+// Analizler — sitenin tek OZGUN icerigi (spec/fiyat Epey'den, analiz bize ait).
+const Analyses = lazy(() => import('./pages/Analyses.jsx'));
+const AnalysisPost = lazy(() => import('./pages/AnalysisPost.jsx'));
 const BlogPost = lazy(() => import('./pages/BlogPost.jsx'));
 const LegalPage = lazy(() => import('./pages/Legal.jsx'));
 const NotFound = lazy(() => import('./pages/NotFound.jsx'));
@@ -143,6 +146,8 @@ export default function App() {
           <Route path="/quiz" element={<Quiz />} />
           <Route path="/go" element={<Go />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/analiz" element={<Analyses />} />
+          <Route path="/analiz/:slug" element={<AnalysisPost />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/terms" element={<LegalPage kind="terms" />} />

@@ -210,7 +210,6 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen>
     final appLocale = ref.read(localeProvider);
     const localeMap = {
       'tr': 'tr-TR',
-      'de': 'de-DE',
       'fr': 'fr-FR',
       'es': 'es-ES',
       'pt': 'pt-BR',

@@ -72,6 +72,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7M9 11h7"/></svg>
           <span>Blog</span>
         </a>
+        <a class="nav-link" data-view="analyses" onclick="showView('analyses')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg>
+          <span>Analizler</span>
+        </a>
         <a class="nav-link" data-view="users" onclick="showView('users')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
           <span>Users</span>
@@ -223,6 +227,18 @@
           </div>
         </div>
         <div id="blogAdminRoot"></div>
+      </section>
+
+      <!-- ===== ANALIZLER ===== -->
+      <section id="analysesView" class="view">
+        <div class="view-header">
+          <h1>Analizler <span class="count-badge" id="analysesCount">0</span></h1>
+          <div class="view-actions">
+            <button class="btn btn-ghost" onclick="loadAnalysesAdmin()">Yenile</button>
+            <button class="btn btn-primary" onclick="analysesNew()">+ Yeni analiz</button>
+          </div>
+        </div>
+        <div id="analysesAdminRoot"></div>
       </section>
 
       <section id="usersView" class="view">
@@ -1294,6 +1310,9 @@
         'js/notifications.js',
         'js/support.js',
         'js/blog.js',
+        'js/analysis_prompt.js',
+        'js/analyses.js',
+
         'js/app.js',
         // Başsız gece koşusu (scripts/auto_discover.js bunu çağırır) — en sonda
         // olmalı: app.js'teki showView/startCategoryTranslation'a bağımlı.

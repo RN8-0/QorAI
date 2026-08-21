@@ -146,7 +146,6 @@ class ChatSessionNotifier extends StateNotifier<ChatSessionState> {
     final langCode = _activeLanguageCode();
     const greetings = <String, String>{
       'tr': '🚀 Ben Qor AI, ürün asistanınız.',
-      'de': '🚀 Hallo, ich bin Qor AI, dein Produktassistent.',
       'fr': '🚀 Bonjour, je suis Qor AI, votre assistant produit.',
       'es': '🚀 Hola, soy Qor AI, tu asistente de productos.',
       'ar': '🚀 مرحباً، أنا Qor AI، مساعدك للمنتجات.',

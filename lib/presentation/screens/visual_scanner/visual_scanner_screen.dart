@@ -50,7 +50,6 @@ class _VisualScannerScreenState extends ConsumerState<VisualScannerScreen>
     const names = <String, String>{
       'tr': 'Turkish',
       'en': 'English',
-      'de': 'German',
       'fr': 'French',
       'es': 'Spanish',
       'it': 'Italian',

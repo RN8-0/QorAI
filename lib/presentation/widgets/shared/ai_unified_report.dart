@@ -17,7 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qor_ai/core/theme.dart';
 import 'package:qor_ai/presentation/widgets/shared/ai_charts.dart';
 
-typedef UrL = String Function(String en, String tr, String de);
+typedef UrL = String Function(String en, String tr);
 
 int urInt(dynamic v) {
   if (v is num) return v.round();
@@ -52,12 +52,12 @@ List<({String title, String detail})> urBullets(dynamic v) {
 }
 
 String urBandLabel(int s, UrL l) => s >= 85
-    ? l('Excellent match', 'Mükemmel uyum', 'Exzellent')
+    ? l('Excellent match', 'Mükemmel uyum')
     : s >= 70
-    ? l('Strong match', 'Güçlü uyum', 'Starke Übereinstimmung')
+    ? l('Strong match', 'Güçlü uyum')
     : s >= 50
-    ? l('Fair match', 'Orta uyum', 'Mäßig')
-    : l('Weak match', 'Zayıf uyum', 'Schwach');
+    ? l('Fair match', 'Orta uyum')
+    : l('Weak match', 'Zayıf uyum');
 
 /// Rapor bölümü başlığı — web `Sec` bileşeninin karşılığı.
 class UrSection extends StatelessWidget {
@@ -176,9 +176,9 @@ class UrForWho extends StatelessWidget {
         );
     final cards = <Widget>[
       if (bestFor.isNotEmpty)
-        card('👍', l('Perfect for', 'Tam uygun', 'Perfekt für'), bestFor, aicStrong),
+        card('👍', l('Perfect for', 'Tam uygun'), bestFor, aicStrong),
       if (notFor.isNotEmpty)
-        card('👎', l('Not for', 'Uygun değil', 'Nicht für'), notFor, aicWeak),
+        card('👎', l('Not for', 'Uygun değil'), notFor, aicWeak),
     ];
     return IntrinsicHeight(
       child: Row(

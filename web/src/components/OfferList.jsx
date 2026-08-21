@@ -82,12 +82,12 @@ function taze(iso, L) {
   const t = Date.parse(iso || '');
   if (!Number.isFinite(t)) return '';
   const dk = Math.round((Date.now() - t) / 60000);
-  if (dk < 2) return L('just now', 'az önce', 'gerade eben');
-  if (dk < 60) return L(`${dk} min ago`, `${dk} dk önce`, `vor ${dk} Min.`);
+  if (dk < 2) return L('just now', 'az önce');
+  if (dk < 60) return L(`${dk} min ago`, `${dk} dk önce`);
   const sa = Math.round(dk / 60);
-  if (sa < 24) return L(`${sa} h ago`, `${sa} saat önce`, `vor ${sa} Std.`);
+  if (sa < 24) return L(`${sa} h ago`, `${sa} saat önce`);
   const g = Math.round(sa / 24);
-  return L(`${g} d ago`, `${g} gün önce`, `vor ${g} T.`);
+  return L(`${g} d ago`, `${g} gün önce`);
 }
 
 function OfferMeta({ offer, lang, L, compact }) {
@@ -95,12 +95,12 @@ function OfferMeta({ offer, lang, L, compact }) {
   // Kargo: 0 ise ucretsiz, pozitifse tutari yaz (kullanici toplam maliyeti
   // gormeden karar veremez).
   if (offer.shipping === 0) {
-    parca.push(<span key="k" className="pd-meta-free">{L('Free shipping', 'Ücretsiz kargo', 'Gratisversand')}</span>);
+    parca.push(<span key="k" className="pd-meta-free">{L('Free shipping', 'Ücretsiz kargo')}</span>);
   } else if (offer.shipping > 0) {
-    parca.push(<span key="k">{L('+ shipping', '+ kargo', '+ Versand')} {formatOfferPrice({ ...offer, price: offer.shipping }, lang)}</span>);
+    parca.push(<span key="k">{L('+ shipping', '+ kargo')} {formatOfferPrice({ ...offer, price: offer.shipping }, lang)}</span>);
   }
   if (offer.inStock === false) {
-    parca.push(<span key="s" className="pd-meta-out">{L('Out of stock', 'Stokta yok', 'Nicht auf Lager')}</span>);
+    parca.push(<span key="s" className="pd-meta-out">{L('Out of stock', 'Stokta yok')}</span>);
   }
   // TAZELIK SATIR BASINA YAZILMIYOR. Bir urunun butun teklifleri ayni
   // tarama kosusundan geliyor, dolayisiyla dort satirin dordu de AYNI degeri
@@ -153,7 +153,7 @@ export default function OfferList({
   compact = false,
   emptyText = '',
 }) {
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const rows = sortedOffers(offers, country);
   // Listenin tazeligi: en son kontrol edilen teklifin zamani. Fiyat yasi
   // ziyaretcinin bilmesi gereken bir sey (katalogda medyan yas gunlerce),
@@ -163,8 +163,8 @@ export default function OfferList({
     .filter((t) => Number.isFinite(t))
     .sort((a, b) => b - a)[0];
   const tazelikMetni = enTaze ? taze(new Date(enTaze).toISOString(), L) : '';
-  const seePrice = L('See price', 'Fiyata bak', 'Preis ansehen');
-  const storeLabel = L('Store', 'Mağaza', 'Shop');
+  const seePrice = L('See price', 'Fiyata bak');
+  const storeLabel = L('Store', 'Mağaza');
   // Gerçek Amazon teklifi listede yoksa, en sona "fiyata bak" arama satırı.
   const showAmazonSearch = amazonHref && !rows.some(isAmazonOffer);
 
@@ -176,7 +176,7 @@ export default function OfferList({
     <div className={'pd-prices-list' + (compact ? ' pd-prices-list-compact' : '')}>
       {!compact && tazelikMetni && (
         <div className="pd-prices-fresh">
-          {L('Prices last checked', 'Fiyatlar en son kontrol edildi:', 'Preise zuletzt geprüft:')} <b>{tazelikMetni}</b>
+          {L('Prices last checked', 'Fiyatlar en son kontrol edildi:')} <b>{tazelikMetni}</b>
         </div>
       )}
       {rows.map((o) => {

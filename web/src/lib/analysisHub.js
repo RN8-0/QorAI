@@ -43,12 +43,12 @@ function saveSeen(set) {
 }
 
 const META = {
-  link: { path: '/link-analysis', labels: ['Link analysis', 'Link analizi', 'Link-Analyse'] },
-  subscription: { path: '/subscriptions', labels: ['Subscription analysis', 'Abonelik analizi', 'Abo-Analyse'] },
+  link: { path: '/link-analysis', labels: ['Link analysis', 'Link analizi'] },
+  subscription: { path: '/subscriptions', labels: ['Subscription analysis', 'Abonelik analizi'] },
   // Bu ikisinin adresi işe göre değişir (hangi ürün / hangi karşılaştırma),
   // bu yüzden yol iş kaydından okunur; META yalnızca etiketi ve yedek yolu verir.
-  compare: { path: '/compare', labels: ['Comparison analysis', 'Karşılaştırma analizi', 'Vergleichsanalyse'] },
-  product: { path: '/product', labels: ['Product analysis', 'Ürün analizi', 'Produktanalyse'] },
+  compare: { path: '/compare', labels: ['Comparison analysis', 'Karşılaştırma analizi'] },
+  product: { path: '/product', labels: ['Product analysis', 'Ürün analizi'] },
 };
 
 // İşin kullanıcıyı götüreceği adres. Ürün analizi kendi ürün sayfasına,

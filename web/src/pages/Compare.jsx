@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IconX } from '../components/GlyphIcons.jsx';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { getProduct, popularProducts, productMatchesRequestedCategory, searchProducts } from '../lib/typesense';
+import { getProduct, popularProducts, productMatchesRequestedCategory, resolveProduct, searchProducts } from '../lib/typesense';
 import { useCompare, COMPARE_MAX, setCompareList } from '../lib/compare';
 import OfferList from '../components/OfferList.jsx';
 import { fetchProductOffers } from '../lib/offers';
@@ -74,10 +74,7 @@ function pickSpecMaps(p, lang, dict) {
   // "Agir Cekim Kayit Secenekleri" basiyordu. Artik admin paneliyle AYNI
   // fonksiyon (localizeProduct) kullaniliyor: etiket + deger + bolum basligi
   // panelde ne ise sitede de o.
-  const specLang = String(lang || 'en').toLowerCase().startsWith('de')
-    ? 'en'
-    : String(lang || 'en').slice(0, 2).toLowerCase();
-  const code = specLang === 'tr' ? 'tr' : 'en';
+  const code = String(lang || 'en').slice(0, 2).toLowerCase() === 'tr' ? 'tr' : 'en';
   const pm = localizeProduct(p, code, { dict: dict || null });
   return {
     keySpecs: pm.keySpecs || {},
@@ -216,7 +213,7 @@ function fallbackCompareQuiz(lang) {
 function formatSavedAt(at, lang) {
   const d = new Date(at);
   if (Number.isNaN(d.getTime())) return '';
-  const loc = lang === 'tr' ? 'tr' : lang === 'de' ? 'de' : 'en';
+  const loc = lang === 'tr' ? 'tr' : 'en';
   try { return d.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' }); }
   catch { return d.toISOString().slice(0, 10); }
 }
@@ -240,7 +237,7 @@ async function mapWithConcurrency(items, limit, fn) {
 
 export default function Compare() {
   const { t, lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [tab, setTab] = useState('specs');
   // Qor balonundaki bildirim `?view=analysis` ile gelir: karşılaştırma sayfası
   // açılır açılmaz ANALİZ sekmesi seçilir (kullanıcı sekme aramaz).
@@ -254,7 +251,30 @@ export default function Compare() {
   // from the URL and seed the (otherwise localStorage-driven) compare pool so the
   // comparison renders for a fresh visitor instead of bouncing to home.
   const routeParams = useParams();
-  const pairIds = useMemo(() => parseComparePair(routeParams.pair), [routeParams.pair]);
+  // parseComparePair artik ID degil JETON dondurur ({id, slug, slugKisa}) —
+  // adresten id'ler kaldirildigi icin (2026-08-22) slug'i urune cozmek gerekiyor.
+  // Cozum resolveProduct ile yapilir: once tam slug denenir, sonra id, sonra
+  // kisa slug. "Sondaki 15 karakter id'dir" varsayimi TEK BASINA YANLIS.
+  const pairTokens = useMemo(() => parseComparePair(routeParams.pair), [routeParams.pair]);
+  const [resolvedPairIds, setResolvedPairIds] = useState([]);
+  const pairKey = routeParams.pair || '';
+  useEffect(() => {
+    let live = true;
+    if (pairTokens.length !== 2) { setResolvedPairIds([]); return undefined; }
+    // Jeton zaten id tasiyorsa (eski bicimli adres) ag istegi YOK.
+    if (pairTokens.every((t) => t.id && !t.slug)) {
+      setResolvedPairIds(pairTokens.map((t) => t.id));
+      return undefined;
+    }
+    Promise.all(pairTokens.map((t) => resolveProduct(t).catch(() => null)))
+      .then((list) => {
+        if (!live) return;
+        const ids = list.map((p, i) => (p && p.id) || pairTokens[i].id || '').filter(Boolean);
+        setResolvedPairIds(ids.length === 2 && ids[0] !== ids[1] ? ids : []);
+      });
+    return () => { live = false; };
+  }, [pairKey]); // eslint-disable-line
+  const pairIds = resolvedPairIds;
   // Qor balonundaki "analiz hazır" bildirimi `/compare?ids=a,b&view=analysis`
   // ile gelir. Havuz o sırada boşaltılmış olabilir — id'ler adreste taşındığı
   // için sayfa yine de AÇILIR (eskiden ana sayfaya atıyordu, ölçüldü).
@@ -269,7 +289,7 @@ export default function Compare() {
   const comparePathname = routeParams.pair ? `/compare/${routeParams.pair}` : '/compare';
   useSeo({
     title: `${t('cmp.title')} — Qor AI`,
-    description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.'),
+    description: L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.'),
     path: comparePathname,
     htmlLang: lang,
     alternates: hreflangAlternates(comparePathname),
@@ -311,14 +331,14 @@ export default function Compare() {
   const showMatchScore = hasProfileMatch(user);
   const ytQuery = products.map((p) => displayProductName(p, lang)).filter(Boolean).join(' vs ');
   const ytUrl = ytQuery
-    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ytQuery} ${lang === 'tr' ? 'karşılaştırma' : lang === 'de' ? 'Vergleich' : 'comparison'}`)}`
+    ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${ytQuery} ${lang === 'tr' ? 'karşılaştırma' : 'comparison'}`)}`
     : '';
 
   // Let the chat bubble read & comment on the comparison.
   usePageContext(
     ytQuery
-      ? `${lang === 'tr' ? 'Karşılaştırma' : lang === 'de' ? 'Vergleich' : 'Comparison'}: ${products.map((p) => `${displayProductName(p, lang) || p.name}${Number(p.techScore) ? ` (${Math.round(p.techScore)}/100)` : ''}`).join(' vs ')}`
-      : (lang === 'tr' ? 'Karşılaştırma sayfası' : lang === 'de' ? 'Vergleichsseite' : 'Compare page'),
+      ? `${lang === 'tr' ? 'Karşılaştırma' : 'Comparison'}: ${products.map((p) => `${displayProductName(p, lang) || p.name}${Number(p.techScore) ? ` (${Math.round(p.techScore)}/100)` : ''}`).join(' vs ')}`
+      : (lang === 'tr' ? 'Karşılaştırma sayfası' : 'Compare page'),
     products.length
       ? { kind: 'compare', title: ytQuery, productIds: products.map((p) => p.id).filter(Boolean) }
       : { kind: 'compare', title: '' },
@@ -541,9 +561,8 @@ export default function Compare() {
         const interrupted = job.error === 'ANALYSIS_INTERRUPTED' || job.error === 'ANALYSIS_TIMEOUT';
         setAiNotice(interrupted
           ? L('The analysis was interrupted. Start it again — this run is free.',
-            'Analiz yarıda kaldı. Tekrar başlat — bu deneme ücretsiz.',
-            'Die Analyse wurde unterbrochen. Starte sie erneut — dieser Versuch ist kostenlos.')
-          : L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.', 'KI-Analyse fehlgeschlagen. Bitte erneut versuchen.'));
+            'Analiz yarıda kaldı. Tekrar başlat — bu deneme ücretsiz.')
+          : L('AI analysis failed. Please try again.', 'AI analizi başarısız oldu. Tekrar dene.'));
       }
       return;
     }
@@ -711,7 +730,7 @@ export default function Compare() {
   async function startAiCompareQuiz() {
     setAiNotice('');
     if (products.length < 2) {
-      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
+      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.'));
       return;
     }
     // ÖNCE KONTROL, SONRA ANIMASYON (2026-08-07): `setAiBusy(true)` kontrolden
@@ -745,7 +764,7 @@ export default function Compare() {
   function runAiCompare(answers = []) {
     setAiNotice('');
     if (products.length < 2) {
-      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.', 'Füge zuerst mindestens zwei Produkte hinzu.'));
+      setAiNotice(L('Add at least two products first.', 'Önce en az iki ürün ekle.'));
       return;
     }
     // Ucret quiz adiminda alindi — burada TEKRAR ALINMAZ.
@@ -773,7 +792,7 @@ export default function Compare() {
       <div className="cmp-hero">
         <div className="container">
           <h1>{t('cmp.title')}</h1>
-          <p>{L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.', 'Produkte nebeneinander vergleichen — füge beliebig viele hinzu.')}</p>
+          <p>{L('Compare products side by side — add as many as you like.', 'Ürünleri yan yana karşılaştır — istediğin kadar ekle.')}</p>
         </div>
       </div>
 
@@ -804,7 +823,7 @@ export default function Compare() {
             {ytUrl && products.length >= 2 && (
               <a className="cmp-yt-icon" href={ytUrl} target="_blank" rel="noopener"
                 aria-label="YouTube"
-                title={L('Watch this comparison on YouTube', 'Bu karşılaştırmayı YouTube\'da izle', 'Diesen Vergleich auf YouTube ansehen')}>
+                title={L('Watch this comparison on YouTube', 'Bu karşılaştırmayı YouTube\'da izle')}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M21.6 7.2a2.6 2.6 0 0 0-1.8-1.8C18.1 5 12 5 12 5s-6.1 0-7.8.4A2.6 2.6 0 0 0 2.4 7.2 27 27 0 0 0 2 12a27 27 0 0 0 .4 4.8 2.6 2.6 0 0 0 1.8 1.8C5.9 19 12 19 12 19s6.1 0 7.8-.4a2.6 2.6 0 0 0 1.8-1.8A27 27 0 0 0 22 12a27 27 0 0 0-.4-4.8ZM10 15V9l5.2 3Z" />
                 </svg>
@@ -878,7 +897,7 @@ export default function Compare() {
                            kirpiliyordu ("★ Eni…"). Dar ekranda yalniz yildiz
                            kaliyor — anlam kaybolmuyor, cunku rozet zaten tek
                            bir kartta ve kartin cercevesi de yesil. */
-                        <span className="cmp-best-tag">★<span className="cmp-best-tag-txt"> {L('Best', 'En İyi', 'Top')}</span></span>
+                        <span className="cmp-best-tag">★<span className="cmp-best-tag-txt"> {L('Best', 'En İyi')}</span></span>
                       )}
                       <Link to={productPath(p)} className="img-tile cmp-card-img">
                         <ProductImg src={p.imageUrl} alt={name} size="card" />
@@ -890,13 +909,13 @@ export default function Compare() {
                         {showMatchScore && match > 0 && (
                           <span className="cmp-ring">
                             <Gauge value={match} size={46} stroke={4} color="var(--score-average)" fontSize={14} />
-                            <small>{L('Match', 'Uyum', 'Match')}</small>
+                            <small>{L('Match', 'Uyum')}</small>
                           </span>
                         )}
                         {tech > 0 && (
                           <span className="cmp-ring">
                             <Gauge value={tech} size={46} stroke={4} color={techColor(tech)} fontSize={14} />
-                            <small>{L('Tech', 'Tech', 'Tech')}</small>
+                            <small>{L('Tech', 'Tech')}</small>
                           </span>
                         )}
                       </div>
@@ -910,7 +929,7 @@ export default function Compare() {
             {/* Prices — independent block ABOVE the tabs, one card per product
                 column, country-aware (visitor's detected market). */}
             <section className="cmp-prices-block">
-              <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar', 'Preise')}</h2>
+              <h2 className="cmp-block-title">{L('Prices', 'Fiyatlar')}</h2>
               <div className="cmp-product-scroll cmp-hscroll">
                 <div className="cmp-product-row">
                 <div className="cmp-scroll-spacer" aria-hidden="true" />
@@ -931,7 +950,7 @@ export default function Compare() {
                           geoCountry={geoCountry}
                           amazonHref={amz ? amazonGoPath(p, (geoCountry || 'US')) : ''}
                           compact
-                          emptyText={L('No price in your region', 'Bölgende fiyat yok', 'Kein Preis in deiner Region')}
+                          emptyText={L('No price in your region', 'Bölgende fiyat yok')}
                         />
                       </div>
                     );
@@ -944,7 +963,7 @@ export default function Compare() {
             {/* tabs — Specs · AI (centered) */}
             <div className="cmp-tabs2" ref={aiSekmeRef}>
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
-                {L('Specs', 'Özellikler', 'Eigenschaften')}
+                {L('Specs', 'Özellikler')}
               </button>
               {/* Analiz KOSARKEN sekme etiketinin sag ustunde donen halka.
                   Kullanici sekmeler arasi gecebiliyor ve baska sayfaya gidip
@@ -953,9 +972,9 @@ export default function Compare() {
                   suruyor mu anlasilmiyordu. */}
               <button className={tab === 'ai' ? 'on' : ''} onClick={() => setTab('ai')}>
                 <span className="tab-lbl">
-                  {L('AI Analysis', 'AI Analizi', 'KI-Analyse')}
+                  {L('AI Analysis', 'AI Analizi')}
                   {aiBusy && <i className="tab-spin" role="status" aria-live="polite"
-                    aria-label={L('Analysis running', 'Analiz sürüyor', 'Analyse läuft')} />}
+                    aria-label={L('Analysis running', 'Analiz sürüyor')} />}
                 </span>
               </button>
             </div>
@@ -1000,7 +1019,7 @@ export default function Compare() {
                           <tr className="cmp-section-row">
                             <th className="cmp-section-head" colSpan={1 + slots.length} scope="colgroup">
                               {group.section === '__other__'
-                                ? L('Other', 'Diğer', 'Sonstiges')
+                                ? L('Other', 'Diğer')
                                 : group.section}
                             </th>
                           </tr>
@@ -1011,7 +1030,7 @@ export default function Compare() {
                                 <td key={i}
                                   className={v === '—' ? 'cmp-td-empty' : row.win[i] ? 'cmp-td-win' : ''}>
                                   {v === '—' ? (
-                                    <span className="cmp-na" title={L('No data', 'Veri yok', 'Keine Daten')}>?</span>
+                                    <span className="cmp-na" title={L('No data', 'Veri yok')}>?</span>
                                   ) : (
                                     <>
                                       {row.win[i] && <span className="cmp-win-dot" aria-hidden="true">✓</span>}
@@ -1048,14 +1067,14 @@ export default function Compare() {
                       busy={aiBusy}
                       context={products.map((x) => displayProductName(x, lang)).join(' vs ')}
                       label={aiText
-                        ? L('New analysis', 'Yeni analiz', 'Neue Analyse')
-                        : L('Cancel analysis', 'Analizden çık', 'Analyse abbrechen')}
+                        ? L('New analysis', 'Yeni analiz')
+                        : L('Cancel analysis', 'Analizden çık')}
                     />
                   )}
                   <div className="card pad-lg cmp-ai">
                     {!aiText && aiPhase === 'idle' && (
                       <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
-                        {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                        {L('Start analysis', 'Analizi başlat')}
                       </button>
                     )}
                     {!aiText && aiPhase === 'quizLoading' && (
@@ -1065,11 +1084,10 @@ export default function Compare() {
                       <QuizFlow
                         questions={aiQuestions}
                         busy={aiBusy}
-                        title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir', 'Vergleich anpassen')}
+                        title={L('Tune the comparison', 'Karşılaştırmayı kişiselleştir')}
                         subtitle={L(
                           'Answer these before the report so each product is scored for your real use.',
                           'Rapor öncesi cevapla; her ürün gerçek kullanımına göre puanlansın.',
-                          'Beantworte dies vor dem Bericht, damit jedes Produkt passend bewertet wird.',
                         )}
                         onSubmit={runAiCompare}
                       />
@@ -1084,11 +1102,11 @@ export default function Compare() {
                     {!aiText && aiPhase === 'error' && (
                       aiAnswers.length ? (
                         <button className="btn btn-grad btn-lg" onClick={() => runAiCompare(aiAnswers)} disabled={aiBusy}>
-                          {L('Retry analysis', 'Analizi tekrar dene', 'Analyse erneut versuchen')}
+                          {L('Retry analysis', 'Analizi tekrar dene')}
                         </button>
                       ) : (
                         <button className="btn btn-grad btn-lg" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
-                          {L('Start analysis', 'Analizi başlat', 'Analyse starten')}
+                          {L('Start analysis', 'Analizi başlat')}
                         </button>
                       )
                     )}
@@ -1096,18 +1114,18 @@ export default function Compare() {
                       <div className="cmp-ai-notice">
                         {aiNotice}
                         {aiNoticeCode === 'INSUFFICIENT_QOR_COINS' && (
-                          <> <Link to="/premium">{L('See Premium', 'Premium’a bak', 'Premium ansehen')}</Link></>
+                          <> <Link to="/premium">{L('See Premium', 'Premium’a bak')}</Link></>
                         )}
                       </div>
                     )}
                     {aiText && aiSavedAt && (
                       <div className="cmp-ai-cached">
                         <span>
-                          {L('Saved analysis', 'Kayıtlı analiz', 'Gespeicherte Analyse')}
+                          {L('Saved analysis', 'Kayıtlı analiz')}
                           {formatSavedAt(aiSavedAt, lang) ? ` · ${formatSavedAt(aiSavedAt, lang)}` : ''}
                         </span>
                         <button type="button" className="btn btn-ghost" onClick={startAiCompareQuiz} disabled={aiBusy || aiChecking}>
-                          {L('Re-analyze', 'Yeniden analiz et', 'Neu analysieren')}
+                          {L('Re-analyze', 'Yeniden analiz et')}
                         </button>
                       </div>
                     )}

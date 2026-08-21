@@ -16,6 +16,14 @@ const wipe = [
   'catalog', 'compare', 'ai-chat', 'pc-builder',
   'link-analysis', 'subscriptions', 'premium', 'quiz', 'profile', 'product',
   'terms', 'privacy', 'refund', 'cookies', 'contact', 'about', 'faq',
+  // `de`: Almanca kaldirildi (2026-08-21) ve ARTIK URETILMIYOR. Listede
+  // olmasinin sebebi tam da bu: uretilmeyen bir agac kendiliginden silinmez,
+  // eski 7.728 kabuk yerinde kalir ve deploy'a gider. Buraya yazilinca her
+  // derlemede temizlenir — elle silmeye guvenmek yerine kural.
+  'de',
+  // NOT: `category` BU LISTEDE DEGIL — dil onekli karsiligi (`website/tr/category`)
+  // burada temizlenemezdi. Kategori kabuklari seo.mjs icinde DIL DIL siliniyor
+  // (compare ile ayni yerde ve ayni gerekceyle).
 ];
 
 // ── spa/: ESKI CHUNK'LARI HEMEN SILME ──────────────────────────────────────

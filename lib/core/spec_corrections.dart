@@ -6,7 +6,7 @@
 /// "It 's a costly graphic.", "DEPOLAMA & OPTİK SÜRÜCÜ" → "Storage & optic
 /// surrucer"). The Turkish source key is always clean, so we re-derive the
 /// correct localized header from a curated glossary instead of trusting the
-/// baked English/German.
+/// baked English.
 ///
 /// This module is the single source of truth for those corrections on the app
 /// side; [scripts/spec_corrections.mjs] mirrors it for the PocketBase data fix
@@ -189,15 +189,15 @@ String? correctedSectionHeader(String turkishSource, String lang) {
 /// Trailing Turkish category phrases that leak into product names when a name
 /// has no baked translation (keyed by [foldTr]).
 const Map<String, Map<String, String>> _nameSuffixGlossary = {
-  'oyun kolu': {'en': 'Gamepad', 'de': 'Gamepad'},
-  'kablosuz kulaklik': {'en': 'Wireless Headphones', 'de': 'Kabellose Kopfhörer'},
-  'kulaklik': {'en': 'Headphones', 'de': 'Kopfhörer'},
-  'klavye': {'en': 'Keyboard', 'de': 'Tastatur'},
-  'mouse': {'en': 'Mouse', 'de': 'Maus'},
-  'soguk cuzdan': {'en': 'Hardware Wallet', 'de': 'Hardware-Wallet'},
-  'ekran karti': {'en': 'Graphics Card', 'de': 'Grafikkarte'},
-  'anakart': {'en': 'Motherboard', 'de': 'Mainboard'},
-  'islemci': {'en': 'Processor', 'de': 'Prozessor'},
+  'oyun kolu': {'en': 'Gamepad'},
+  'kablosuz kulaklik': {'en': 'Wireless Headphones'},
+  'kulaklik': {'en': 'Headphones'},
+  'klavye': {'en': 'Keyboard'},
+  'mouse': {'en': 'Mouse'},
+  'soguk cuzdan': {'en': 'Hardware Wallet'},
+  'ekran karti': {'en': 'Graphics Card'},
+  'anakart': {'en': 'Motherboard'},
+  'islemci': {'en': 'Processor'},
 };
 
 /// Best-effort name localization fallback for products whose `nameTranslated`

@@ -34,44 +34,44 @@ function plans(L, cur) {
       name: 'Free',
       key: 'free',
       price: money('0'),
-      cadence: L('forever', 'sürekli', 'dauerhaft'),
-      cta: L('Start free', 'Ücretsiz başla', 'Kostenlos starten'),
+      cadence: L('forever', 'sürekli'),
+      cta: L('Start free', 'Ücretsiz başla'),
       features: [
-        L('20 welcome Qor Coins', '20 hoş geldin Qor Coin', '20 Willkommens-Qor-Coins'),
-        L('Qor AI Chat (runs on Qor Coins)', 'Qor AI Chat (Qor Coin ile)', 'Qor AI Chat (mit Qor Coins)'),
-        L('Visual scanner & smart link analysis (Qor Coins)', 'Görsel tarayıcı ve akıllı link analizi (Qor Coin ile)', 'Visueller Scanner & smarte Link-Analyse (mit Qor Coins)'),
-        L('Standard recommendations', 'Standart öneriler', 'Standard-Empfehlungen'),
-        L('Product comparisons, search and categories', 'Ürün karşılaştırma, arama ve kategoriler', 'Produktvergleiche, Suche und Kategorien'),
+        L('20 welcome Qor Coins', '20 hoş geldin Qor Coin'),
+        L('Qor AI Chat (runs on Qor Coins)', 'Qor AI Chat (Qor Coin ile)'),
+        L('Visual scanner & smart link analysis (Qor Coins)', 'Görsel tarayıcı ve akıllı link analizi (Qor Coin ile)'),
+        L('Standard recommendations', 'Standart öneriler'),
+        L('Product comparisons, search and categories', 'Ürün karşılaştırma, arama ve kategoriler'),
       ],
     },
     {
       name: 'Pro',
       key: 'monthly',
       price: money(p.monthly),
-      cadence: L('monthly', 'aylık', 'monatlich'),
-      cta: L('Get Pro', 'Pro’ya geç', 'Pro aktivieren'),
+      cadence: L('monthly', 'aylık'),
+      cta: L('Get Pro', 'Pro’ya geç'),
       featured: true,
       features: [
-        L('3-day free trial', '3 gün ücretsiz deneme', '3 Tage kostenlos testen'),
-        L('Unlimited Qor AI Chat', 'Sınırsız Qor AI Chat', 'Unbegrenzter Qor AI Chat'),
-        L('Unlimited visual scanner', 'Sınırsız görsel tarayıcı', 'Unbegrenzter visueller Scanner'),
-        L('Unlimited smart link analysis', 'Sınırsız akıllı link analizi', 'Unbegrenzte smarte Link-Analyse'),
-        L('Deeper personalized recommendations', 'Daha derin kişiselleştirilmiş öneriler', 'Tiefere personalisierte Empfehlungen'),
-        L('Priority support', 'Öncelikli destek', 'Priorisierter Support'),
+        L('3-day free trial', '3 gün ücretsiz deneme'),
+        L('Unlimited Qor AI Chat', 'Sınırsız Qor AI Chat'),
+        L('Unlimited visual scanner', 'Sınırsız görsel tarayıcı'),
+        L('Unlimited smart link analysis', 'Sınırsız akıllı link analizi'),
+        L('Deeper personalized recommendations', 'Daha derin kişiselleştirilmiş öneriler'),
+        L('Priority support', 'Öncelikli destek'),
       ],
     },
     {
       name: 'Pro Yearly',
       key: 'yearly',
       price: money(p.yearly),
-      cadence: L('yearly', 'yıllık', 'jährlich'),
-      cta: L('Save yearly', 'Yıllık al', 'Jährlich sparen'),
-      badge: L('Best value', 'En avantajlı', 'Bester Wert'),
+      cadence: L('yearly', 'yıllık'),
+      cta: L('Save yearly', 'Yıllık al'),
+      badge: L('Best value', 'En avantajlı'),
       features: [
-        L('3-day free trial', '3 gün ücretsiz deneme', '3 Tage kostenlos testen'),
-        L('Everything in Pro monthly', 'Aylık Pro’daki her şey', 'Alles aus Pro monatlich'),
-        L('Lowest yearly cost for heavy AI use', 'Yoğun AI kullanımında en düşük yıllık maliyet', 'Niedrigste Jahreskosten für intensive KI-Nutzung'),
-        L('Priority access to new premium tools', 'Yeni premium araçlara öncelikli erişim', 'Priorität bei neuen Premium-Tools'),
+        L('3-day free trial', '3 gün ücretsiz deneme'),
+        L('Everything in Pro monthly', 'Aylık Pro’daki her şey'),
+        L('Lowest yearly cost for heavy AI use', 'Yoğun AI kullanımında en düşük yıllık maliyet'),
+        L('Priority access to new premium tools', 'Yeni premium araçlara öncelikli erişim'),
       ],
     },
   ];
@@ -82,13 +82,12 @@ export default function Premium() {
   const { user, openAuth } = useAuth();
   const geoCountry = useGeoCountry();
   const cur = currencyForCountry(geoCountry);
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   useSeo({
-    title: `${L('Premium', 'Premium', 'Premium')} — Qor AI`,
+    title: `${L('Premium', 'Premium')} — Qor AI`,
     description: L(
       'Qor AI Premium plans for deeper AI product, link and subscription analysis.',
       'Daha derin ürün, link ve abonelik analizi için Qor AI Premium planları.',
-      'Qor AI Premium-Pläne für tiefere Produkt-, Link- und Abo-Analysen.',
     ),
     path: '/premium',
   });
@@ -119,7 +118,6 @@ export default function Premium() {
       setPayErr(L(
         'Could not start checkout. Please try again in a moment.',
         'Ödeme başlatılamadı. Lütfen biraz sonra tekrar dene.',
-        'Zahlung konnte nicht gestartet werden. Bitte versuche es gleich erneut.',
       ));
       console.warn('[polar] checkout failed', err);
     }
@@ -130,12 +128,11 @@ export default function Premium() {
       <section className="premium-hero aurora">
         <div className="container premium-hero-inner fade-up">
           <span className="premium-kicker">Premium</span>
-          <h1>{L('Unlock deeper ', 'Daha derin ', 'Schalte tiefere ')}<span className="grad-anim">Qor AI</span>{L(' analysis', ' analizini aç', ' Analysen frei')}</h1>
+          <h1>{L('Unlock deeper ', 'Daha derin ')}<span className="grad-anim">Qor AI</span>{L(' analysis', ' analizini aç')}</h1>
           <p>
             {L(
               'Use the same Premium plan across product analysis, link analysis and subscription decisions.',
               'Aynı Premium planı ürün analizi, link analizi ve abonelik kararlarında kullan.',
-              'Nutze denselben Premium-Plan für Produkt-, Link- und Abo-Analysen.',
             )}
           </p>
           <p className="premium-paynote" style={{
@@ -149,7 +146,6 @@ export default function Premium() {
             {L(
               'Start with a 3-day free trial. Cancel any time before it ends and you are not charged.',
               '3 gün ücretsiz denemeyle başla. Deneme bitmeden iptal edersen ücret alınmaz.',
-              'Starte mit 3 Tagen kostenlos. Kündige vor Ablauf und es wird nichts berechnet.',
             )}
           </p>
         </div>
@@ -167,7 +163,7 @@ export default function Premium() {
           <Reveal key={plan.name} delay={i * 90}>
             <article className={'premium-card lift' + (plan.featured ? ' featured grad-ring' : '')}>
               {plan.badge && <span className="premium-badge">{plan.badge}</span>}
-              {plan.featured && <span className="premium-badge">{L('Most popular', 'En popüler', 'Am beliebtesten')}</span>}
+              {plan.featured && <span className="premium-badge">{L('Most popular', 'En popüler')}</span>}
               <h2>{plan.name}</h2>
               <div className="premium-price"><b>{plan.price}</b><span>{plan.cadence}</span></div>
               {/* Buradaki rakam ABD fiyatı; Play Store her ülke için ayrı fiyat
@@ -179,7 +175,6 @@ export default function Premium() {
                   {L(
                     'Billed in this currency. Local tax may be added at checkout. Renews automatically; cancel any time.',
                     'Ödeme bu para biriminde alınır. Ülkene göre vergi eklenebilir. Otomatik yenilenir, istediğin an iptal edebilirsin.',
-                    'Abrechnung in dieser Währung. Lokale Steuern können hinzukommen. Verlängert sich automatisch, jederzeit kündbar.',
                   )}
                 </p>
               )}
@@ -190,7 +185,7 @@ export default function Premium() {
                 onClick={() => choose(plan.key)}
                 disabled={busyPlan === plan.key}>
                 {busyPlan === plan.key
-                  ? L('Redirecting…', 'Yönlendiriliyor…', 'Weiterleitung…')
+                  ? L('Redirecting…', 'Yönlendiriliyor…')
                   : plan.cta}
               </button>
             </article>

@@ -15,11 +15,12 @@ initAnalytics();
 // white-screens after a deploy.
 if (typeof window !== 'undefined') window.__qorBuild = '20260706-a';
 
-// Language URL-prefix for SEO: tr is the canonical root (no prefix); en/de live
-// under /en and /de so each language has a distinct, hreflang-linked URL Google
-// can index. This ONLY activates when the path starts with /en, /de or /tr.
+// Language URL-prefix for SEO: en is the canonical root (no prefix); /tr lives
+// under /tr so each language has a distinct, hreflang-linked URL Google can
+// index. This ONLY activates when the path starts with /en or /tr. German was
+// removed 2026-08-21 — /de is no longer a language prefix.
 // KÖK (öneksiz) ADRES ARTIK İNGİLİZCE ön-render edilir (2026-08-05): Google'da
-// aratan bir İngiliz/Alman kullanıcıya Türkçe sayfa çıkıyordu. Öneksiz adreste
+// aratan bir İngiliz kullanıcıya Türkçe sayfa çıkıyordu. Öneksiz adreste
 // GERÇEK ziyaretçinin dili yine TARAYICIDAN belirlenir — bu kural değişmedi;
 // önek yalnız o sayfa yüklemesi için dili sabitler (arama motorları içindir).
 // `basename` keeps the SPA's internal links inside the language; `initialLang`
@@ -27,7 +28,7 @@ if (typeof window !== 'undefined') window.__qorBuild = '20260706-a';
 // Settings preference.
 const PATH_LANG = (() => {
   try {
-    const m = window.location.pathname.match(/^\/(en|de|tr)(?:\/|$)/);
+    const m = window.location.pathname.match(/^\/(en|tr)(?:\/|$)/);
     return m ? m[1] : null;
   } catch { return null; }
 })();

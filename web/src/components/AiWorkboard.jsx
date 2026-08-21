@@ -22,129 +22,129 @@ function scrollIntoViewBelowNav(el) {
 const SETS = {
   // Quiz preparation
   quizProduct: {
-    title: ['Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'],
-    detail: ['Questions are tuned to this product, not a generic profile form.', 'Sorular genel profil formu değil, bu ürüne göre hazırlanıyor.', 'Die Fragen werden auf dieses Produkt zugeschnitten.'],
+    title: ['Preparing your quiz', 'Quiz hazırlanıyor'],
+    detail: ['Questions are tuned to this product, not a generic profile form.', 'Sorular genel profil formu değil, bu ürüne göre hazırlanıyor.'],
     steps: [
-      ['Locking the product context', 'Ürün bağlamı sabitleniyor', 'Produktkontext wird fixiert'],
-      ['Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'],
-      ['Writing category-specific questions', 'Kategoriye özel sorular yazılıyor', 'Kategoriespezifische Fragen werden erstellt'],
-      ['Balancing the answer choices', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'],
+      ['Locking the product context', 'Ürün bağlamı sabitleniyor'],
+      ['Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor'],
+      ['Writing category-specific questions', 'Kategoriye özel sorular yazılıyor'],
+      ['Balancing the answer choices', 'Cevap seçenekleri dengeleniyor'],
     ],
   },
   quizCompare: {
-    title: ['Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'],
-    detail: ['Questions are built from the products in your comparison, not a generic form.', 'Sorular karşılaştırmandaki ürünlerden üretiliyor, genel form değil.', 'Die Fragen entstehen aus den verglichenen Produkten.'],
+    title: ['Preparing your quiz', 'Quiz hazırlanıyor'],
+    detail: ['Questions are built from the products in your comparison, not a generic form.', 'Sorular karşılaştırmandaki ürünlerden üretiliyor, genel form değil.'],
     steps: [
-      ['Reading the selected products', 'Seçili ürünler okunuyor', 'Ausgewählte Produkte werden gelesen'],
-      ['Finding the real differences', 'Gerçek farklar bulunuyor', 'Reale Unterschiede werden gesucht'],
-      ['Writing comparison scenarios', 'Karşılaştırma senaryoları yazılıyor', 'Vergleichsszenarien werden erstellt'],
-      ['Balancing the answer choices', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'],
+      ['Reading the selected products', 'Seçili ürünler okunuyor'],
+      ['Finding the real differences', 'Gerçek farklar bulunuyor'],
+      ['Writing comparison scenarios', 'Karşılaştırma senaryoları yazılıyor'],
+      ['Balancing the answer choices', 'Cevap seçenekleri dengeleniyor'],
     ],
   },
   // Report analysis (single product) — driven by a real stage: prep / research / report
   product: {
-    title: ['Building your report', 'Raporun hazırlanıyor', 'Bericht wird erstellt'],
-    detail: ['Qor AI turns your answers into a personal match report.', 'Qor AI cevaplarını kişisel eşleşme raporuna çeviriyor.', 'Qor AI macht aus deinen Antworten einen persönlichen Match-Bericht.'],
+    title: ['Building your report', 'Raporun hazırlanıyor'],
+    detail: ['Qor AI turns your answers into a personal match report.', 'Qor AI cevaplarını kişisel eşleşme raporuna çeviriyor.'],
     steps: [
-      ['Reading catalog specs', 'Katalog özellikleri okunuyor', 'Katalogdaten werden gelesen'],
-      ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
-      ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
-      ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
-      ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor', 'Alternativen und Preis-Timing werden geprüft'],
-      ['Composing the final report', 'Son rapor hazırlanıyor', 'Der Bericht wird zusammengestellt'],
+      ['Reading catalog specs', 'Katalog özellikleri okunuyor'],
+      ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor'],
+      ['Running current web research', 'Güncel web araştırması yapılıyor'],
+      ['Scoring match factors', 'Uyum faktörleri puanlanıyor'],
+      ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor'],
+      ['Composing the final report', 'Son rapor hazırlanıyor'],
     ],
   },
   // Report analysis (compare) — same real stage mapping
   compare: {
-    title: ['Building the comparison', 'Karşılaştırma hazırlanıyor', 'Vergleich wird erstellt'],
-    detail: ['Qor AI scores every product for your real use, then picks a winner.', 'Qor AI her ürünü gerçek kullanımına göre puanlayıp bir kazanan seçiyor.', 'Qor AI bewertet jedes Produkt und wählt einen Sieger.'],
+    title: ['Building the comparison', 'Karşılaştırma hazırlanıyor'],
+    detail: ['Qor AI scores every product for your real use, then picks a winner.', 'Qor AI her ürünü gerçek kullanımına göre puanlayıp bir kazanan seçiyor.'],
     steps: [
-      ['Reading the selected products', 'Seçili ürünler okunuyor', 'Ausgewählte Produkte werden gelesen'],
-      ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
-      ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
-      ['Comparing specs head-to-head', 'Özellikler karşılıklı karşılaştırılıyor', 'Specs werden direkt verglichen'],
-      ['Scoring the best fit for you', 'Sana en uygunu puanlanıyor', 'Beste Wahl wird bewertet'],
-      ['Composing the verdict', 'Sonuç hazırlanıyor', 'Fazit wird erstellt'],
+      ['Reading the selected products', 'Seçili ürünler okunuyor'],
+      ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor'],
+      ['Running current web research', 'Güncel web araştırması yapılıyor'],
+      ['Comparing specs head-to-head', 'Özellikler karşılıklı karşılaştırılıyor'],
+      ['Scoring the best fit for you', 'Sana en uygunu puanlanıyor'],
+      ['Composing the verdict', 'Sonuç hazırlanıyor'],
     ],
   },
   // Link analysis phases (no fine stage — steps step up and hold on the last)
   linkIdentify: {
-    title: ['Identifying the product', 'Ürün tanımlanıyor', 'Produkt wird erkannt'],
-    detail: ['Qor AI reads the URL, store signal, and product slug first.', 'Qor AI önce URL, mağaza ve ürün adı sinyallerini okuyor.', 'Qor AI liest zuerst URL, Shop-Signal und Produktslug.'],
+    title: ['Identifying the product', 'Ürün tanımlanıyor'],
+    detail: ['Qor AI reads the URL, store signal, and product slug first.', 'Qor AI önce URL, mağaza ve ürün adı sinyallerini okuyor.'],
     steps: [
-      ['Checking the link format', 'Bağlantı formatı kontrol ediliyor', 'Linkformat wird geprüft'],
-      ['Reading store and product signals', 'Mağaza ve ürün sinyalleri okunuyor', 'Shop- und Produktsignale werden gelesen'],
-      ['Detecting the category', 'Kategori algılanıyor', 'Kategorie wird erkannt'],
-      ['Preparing the base analysis', 'Baz analiz hazırlanıyor', 'Basisanalyse wird vorbereitet'],
+      ['Checking the link format', 'Bağlantı formatı kontrol ediliyor'],
+      ['Reading store and product signals', 'Mağaza ve ürün sinyalleri okunuyor'],
+      ['Detecting the category', 'Kategori algılanıyor'],
+      ['Preparing the base analysis', 'Baz analiz hazırlanıyor'],
     ],
   },
   linkQuiz: {
-    title: ['Preparing your quiz', 'Quiz hazırlanıyor', 'Quiz wird vorbereitet'],
-    detail: ['Questions are tuned to this product — and the review scan is already running in the background.', 'Sorular bu ürüne göre hazırlanıyor — yorum taraması da arka planda çoktan başladı.', 'Die Fragen werden zugeschnitten — der Bewertungs-Scan läuft schon im Hintergrund.'],
+    title: ['Preparing your quiz', 'Quiz hazırlanıyor'],
+    detail: ['Questions are tuned to this product — and the review scan is already running in the background.', 'Sorular bu ürüne göre hazırlanıyor — yorum taraması da arka planda çoktan başladı.'],
     steps: [
-      ['Product context is locked', 'Ürün bağlamı sabitlendi', 'Produktkontext ist fixiert'],
-      ['Usage scenarios are mapped', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'],
-      ['Category-specific questions are written', 'Kategoriye özel sorular yazılıyor', 'Kategoriespezifische Fragen werden erstellt'],
-      ['Answer choices are balanced', 'Cevap seçenekleri dengeleniyor', 'Antwortoptionen werden ausbalanciert'],
+      ['Product context is locked', 'Ürün bağlamı sabitlendi'],
+      ['Usage scenarios are mapped', 'Kullanım senaryoları çıkarılıyor'],
+      ['Category-specific questions are written', 'Kategoriye özel sorular yazılıyor'],
+      ['Answer choices are balanced', 'Cevap seçenekleri dengeleniyor'],
     ],
   },
   linkAnalyze: {
-    title: ['Building your report', 'Raporun hazırlanıyor', 'Bericht wird erstellt'],
-    detail: ['Qor AI reads real owner reviews, then turns your answers into a personal match report.', 'Qor AI gerçek kullanıcı yorumlarını okuyup cevaplarını kişisel eşleşme raporuna çeviriyor.', 'Qor AI liest echte Nutzerbewertungen und macht daraus deinen Match-Bericht.'],
+    title: ['Building your report', 'Raporun hazırlanıyor'],
+    detail: ['Qor AI reads real owner reviews, then turns your answers into a personal match report.', 'Qor AI gerçek kullanıcı yorumlarını okuyup cevaplarını kişisel eşleşme raporuna çeviriyor.'],
     steps: [
-      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
-      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
-      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor', 'Bewertungen und Foren werden gescannt'],
-      ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
-      ['Extracting critical points and risks', 'Kritik noktalar ve riskler çıkarılıyor', 'Kritische Punkte und Risiken werden extrahiert'],
-      ['Composing your personal report', 'Kişisel raporun yazılıyor', 'Dein persönlicher Bericht wird geschrieben'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor'],
+      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor'],
+      ['Scoring match factors', 'Uyum faktörleri puanlanıyor'],
+      ['Extracting critical points and risks', 'Kritik noktalar ve riskler çıkarılıyor'],
+      ['Composing your personal report', 'Kişisel raporun yazılıyor'],
     ],
   },
   linkCompare: {
-    title: ['Comparing links', 'Linkler karşılaştırılıyor', 'Links werden verglichen'],
-    detail: ['Qor AI weighs each product side by side against real owner feedback.', 'Qor AI her ürünü gerçek kullanıcı geri bildirimiyle yan yana tartıyor.', 'Qor AI gewichtet jedes Produkt anhand echter Rückmeldungen.'],
+    title: ['Comparing links', 'Linkler karşılaştırılıyor'],
+    detail: ['Qor AI weighs each product side by side against real owner feedback.', 'Qor AI her ürünü gerçek kullanıcı geri bildirimiyle yan yana tartıyor.'],
     steps: [
-      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
-      ['Locking each exact product', 'Her ürün tek tek sabitleniyor', 'Jedes Produkt wird fixiert'],
-      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor', 'Bewertungen und Foren werden gescannt'],
-      ['Weighing strengths and trade-offs', 'Artılar, eksiler ve farklar tartılıyor', 'Stärken und Kompromisse werden abgewogen'],
-      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor', 'Entscheidende Unterschiede werden gesucht'],
-      ['Writing the final recommendation', 'Nihai öneri yazılıyor', 'Empfehlung wird geschrieben'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor'],
+      ['Locking each exact product', 'Her ürün tek tek sabitleniyor'],
+      ['Scanning internet reviews and forums', 'İnternet yorumları ve forumlar taranıyor'],
+      ['Weighing strengths and trade-offs', 'Artılar, eksiler ve farklar tartılıyor'],
+      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor'],
+      ['Writing the final recommendation', 'Nihai öneri yazılıyor'],
     ],
   },
   // Subscription analysis flow
   subQuiz: {
-    title: ['Preparing your subscription quiz', 'Abonelik quizin hazırlanıyor', 'Abo-Quiz wird vorbereitet'],
-    detail: ['Questions adapt to the selected service type — the review scan already started.', 'Sorular seçilen abonelik türüne göre uyarlanıyor — yorum taraması çoktan başladı.', 'Die Fragen passen sich dem Diensttyp an — der Bewertungs-Scan läuft bereits.'],
+    title: ['Preparing your subscription quiz', 'Abonelik quizin hazırlanıyor'],
+    detail: ['Questions adapt to the selected service type — the review scan already started.', 'Sorular seçilen abonelik türüne göre uyarlanıyor — yorum taraması çoktan başladı.'],
     steps: [
-      ['Reading the selected services', 'Seçilen abonelikler okunuyor', 'Ausgewählte Dienste werden gelesen'],
-      ['Detecting the service category', 'Servis kategorisi algılanıyor', 'Dienstkategorie wird erkannt'],
-      ['Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor', 'Nutzungsszenarien werden abgebildet'],
-      ['Writing targeted questions', 'Hedefli sorular yazılıyor', 'Gezielte Fragen werden erstellt'],
+      ['Reading the selected services', 'Seçilen abonelikler okunuyor'],
+      ['Detecting the service category', 'Servis kategorisi algılanıyor'],
+      ['Mapping usage scenarios', 'Kullanım senaryoları çıkarılıyor'],
+      ['Writing targeted questions', 'Hedefli sorular yazılıyor'],
     ],
   },
   subAnalyze: {
-    title: ['Analyzing subscription', 'Abonelik analiz ediliyor', 'Abo wird analysiert'],
-    detail: ['Qor AI reads what real subscribers say, then matches it to your habits.', 'Qor AI gerçek abonelerin ne dediğini okuyup alışkanlıklarınla eşleştiriyor.', 'Qor AI liest echte Abonnentenstimmen und gleicht sie mit deinen Gewohnheiten ab.'],
+    title: ['Analyzing subscription', 'Abonelik analiz ediliyor'],
+    detail: ['Qor AI reads what real subscribers say, then matches it to your habits.', 'Qor AI gerçek abonelerin ne dediğini okuyup alışkanlıklarınla eşleştiriyor.'],
     steps: [
-      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
-      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
-      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor', 'Abonnentenbewertungen werden gescannt'],
-      ['Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor', 'Inhalts- und Funktionsfit wird bewertet'],
-      ['Scoring retention and cancel risk', 'Tutma değeri ve iptal riski puanlanıyor', 'Bindung und Kündigungsrisiko werden bewertet'],
-      ['Building your usage plan', 'Kullanım planın hazırlanıyor', 'Dein Nutzungsplan wird erstellt'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor'],
+      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor'],
+      ['Evaluating content and feature fit', 'İçerik ve özellik uyumu değerlendiriliyor'],
+      ['Scoring retention and cancel risk', 'Tutma değeri ve iptal riski puanlanıyor'],
+      ['Building your usage plan', 'Kullanım planın hazırlanıyor'],
     ],
   },
   subCompare: {
-    title: ['Comparing subscriptions', 'Abonelikler karşılaştırılıyor', 'Abos werden verglichen'],
-    detail: ['Qor AI reads what real subscribers say about each one, then picks your winner.', 'Qor AI her servis için gerçek abone yorumlarını okuyup sana uygun olanı seçiyor.', 'Qor AI liest echte Abonnentenstimmen und wählt deinen Gewinner.'],
+    title: ['Comparing subscriptions', 'Abonelikler karşılaştırılıyor'],
+    detail: ['Qor AI reads what real subscribers say about each one, then picks your winner.', 'Qor AI her servis için gerçek abone yorumlarını okuyup sana uygun olanı seçiyor.'],
     steps: [
-      ['Reading your quiz answers', 'Quiz cevapların okunuyor', 'Deine Quizantworten werden gelesen'],
-      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor', 'Deine Profilsignale werden angewendet'],
-      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor', 'Abonnentenbewertungen werden gescannt'],
-      ['Comparing catalogues and features', 'İçerik ve özellikler karşılaştırılıyor', 'Kataloge und Funktionen werden verglichen'],
-      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor', 'Entscheidende Unterschiede werden gesucht'],
-      ['Building the final recommendation', 'Nihai öneri hazırlanıyor', 'Empfehlung wird erstellt'],
+      ['Reading your quiz answers', 'Quiz cevapların okunuyor'],
+      ['Applying your profile signals', 'Profil sinyallerin uygulanıyor'],
+      ['Scanning subscriber reviews and forums', 'Abone yorumları ve forumlar taranıyor'],
+      ['Comparing catalogues and features', 'İçerik ve özellikler karşılaştırılıyor'],
+      ['Finding the decisive differences', 'Belirleyici farklar bulunuyor'],
+      ['Building the final recommendation', 'Nihai öneri hazırlanıyor'],
     ],
   },
 };
@@ -159,7 +159,7 @@ export default function AiWorkboard({
   lang = 'en', mode = 'product', stage = null, startedAt = null, note = '',
 }) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
-  const L = (a) => (code === 'tr' ? a[1] : code === 'de' ? a[2] : a[0]);
+  const L = (a) => (code === 'tr' ? a[1] : a[0]);
   const set = SETS[mode] || SETS.product;
   const steps = set.steps;
   const lastIdx = steps.length - 1;
@@ -224,13 +224,13 @@ export default function AiWorkboard({
         <div className="aiwb-copy">
           <span className="aiwb-kicker">
             <i aria-hidden="true" />
-            {L(['Qor AI is working', 'Qor AI çalışıyor', 'Qor AI arbeitet'])}
+            {L(['Qor AI is working', 'Qor AI çalışıyor'])}
           </span>
           <strong>{L(set.title)}</strong>
           {/* ŞU AN NE YAPILIYOR — sabit tanıtım cümlesi yerine canlı iş adı.
               Kullanıcı "o an hangi işlemin yapıldığı yazmıyor" dedi. */}
           <span className="aiwb-detail">
-            <b>{L(['Now', 'Şu an', 'Jetzt'])}:</b> {L(steps[Math.min(active, lastIdx)])}
+            <b>{L(['Now', 'Şu an'])}:</b> {L(steps[Math.min(active, lastIdx)])}
           </span>
           {note ? <span className="aiwb-subnote">{note}</span> : null}
         </div>
@@ -254,9 +254,9 @@ export default function AiWorkboard({
         <i style={{ width: `${pct}%` }} />
       </div>
       <div className="aiwb-status">
-        <span>{L(['Step', 'Adım', 'Schritt'])} {active + 1}/{steps.length}</span>
+        <span>{L(['Step', 'Adım'])} {active + 1}/{steps.length}</span>
         <span className="aiwb-elapsed">
-          {elapsed < 60 ? `${elapsed} ${L(['s', 'sn', 's'])}`
+          {elapsed < 60 ? `${elapsed} ${L(['s', 'sn'])}`
             : `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`}
         </span>
       </div>
@@ -297,7 +297,6 @@ export default function AiWorkboard({
         {L([
           'You can keep browsing — this keeps running in the background and Qor AI will ping you when it is ready.',
           'Gezinmeye devam edebilirsin — analiz arka planda sürer, hazır olunca Qor AI seni uyarır.',
-          'Du kannst weiter browsen — die Analyse läuft im Hintergrund weiter und Qor AI meldet sich.',
         ])}
       </p>
     </div>

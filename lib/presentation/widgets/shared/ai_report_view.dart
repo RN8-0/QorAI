@@ -48,15 +48,11 @@ List<String> _strs(dynamic v) => _arr(v).map((x) => x.toString()).toList();
 
 String _str(dynamic v) => (v ?? '').toString().trim();
 
-typedef _L = String Function(String en, String tr, String de);
+typedef _L = String Function(String en, String tr);
 
 _L _localizer(String lang) {
   final code = lang.toLowerCase();
-  return (en, tr, de) => code.startsWith('tr')
-      ? tr
-      : code.startsWith('de')
-      ? de
-      : en;
+  return (en, tr) => code.startsWith('tr') ? tr : en;
 }
 
 // ─── Public dispatcher ───────────────────────────────────────────────────────
@@ -275,7 +271,7 @@ class _ProConRow extends StatelessWidget {
           Expanded(
             child: _ProCon(
               icon: '✓',
-              title: prosTitle ?? l('Pros', 'Artılar', 'Pro'),
+              title: prosTitle ?? l('Pros', 'Artılar'),
               items: pros,
               color: _green,
             ),
@@ -284,7 +280,7 @@ class _ProConRow extends StatelessWidget {
           Expanded(
             child: _ProCon(
               icon: '✕',
-              title: consTitle ?? l('Cons', 'Eksiler', 'Contra'),
+              title: consTitle ?? l('Cons', 'Eksiler'),
               items: cons,
               color: _red,
             ),
@@ -491,7 +487,7 @@ class _FeatureMatches extends StatelessWidget {
                     Expanded(
                       child: Text(
                         x.label.isEmpty
-                            ? l('Feature match', 'Özellik eşleşmesi', 'Merkmalsfit')
+                            ? l('Feature match', 'Özellik eşleşmesi')
                             : x.label,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
@@ -512,9 +508,9 @@ class _FeatureMatches extends StatelessWidget {
                   ],
                 ),
                 if (x.productValue.isNotEmpty)
-                  _kv(context, l('Product', 'Ürün', 'Produkt'), x.productValue),
+                  _kv(context, l('Product', 'Ürün'), x.productValue),
                 if (x.userNeed.isNotEmpty)
-                  _kv(context, l('Need', 'İhtiyaç', 'Bedarf'), x.userNeed),
+                  _kv(context, l('Need', 'İhtiyaç'), x.userNeed),
                 if (x.comment.isNotEmpty) ...[
                   const SizedBox(height: 5),
                   Text(
@@ -661,8 +657,8 @@ class _AlternativeCards extends ConsumerWidget {
                               ),
                               Text(
                                 _str(a['source']) == 'qor_catalog'
-                                    ? l('Qor catalog', 'Qor kataloğu', 'Qor-Katalog')
-                                    : l('External', 'Harici', 'Extern'),
+                                    ? l('Qor catalog', 'Qor kataloğu')
+                                    : l('External', 'Harici'),
                                 style: GoogleFonts.inter(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -763,10 +759,10 @@ class _PriceForecastBlock extends StatelessWidget {
     final trend = _str(data['trend']).toLowerCase();
     final color = trend == 'down' ? _green : (trend == 'up' ? _red : _amber);
     final label = trend == 'down'
-        ? l('Likely to fall', 'Düşme eğiliminde', 'Fällt wahrscheinlich')
+        ? l('Likely to fall', 'Düşme eğiliminde')
         : trend == 'up'
-        ? l('Likely to rise', 'Yükselme eğiliminde', 'Steigt wahrscheinlich')
-        : l('Likely stable', 'Sabit kalabilir', 'Bleibt eher stabil');
+        ? l('Likely to rise', 'Yükselme eğiliminde')
+        : l('Likely stable', 'Sabit kalabilir');
     final confidence = _toInt(data['confidence']);
     final buyOrWait = _str(data['buyOrWait']);
     return Column(
@@ -788,7 +784,7 @@ class _PriceForecastBlock extends StatelessWidget {
                   ),
                   if (confidence > 0)
                     Text(
-                      '${l('Confidence', 'Güven', 'Sicherheit')}: $confidence%',
+                      '${l('Confidence', 'Güven')}: $confidence%',
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         color: context.textTertiaryColor,
@@ -823,7 +819,7 @@ class _PriceForecastBlock extends StatelessWidget {
               Expanded(
                 child: _miniCell(
                   context,
-                  l('Expected change', 'Beklenen değişim', 'Erwartete Änderung'),
+                  l('Expected change', 'Beklenen değişim'),
                   _str(data['expectedChange']),
                 ),
               ),
@@ -834,7 +830,7 @@ class _PriceForecastBlock extends StatelessWidget {
               Expanded(
                 child: _miniCell(
                   context,
-                  l('Best time', 'En iyi zaman', 'Beste Zeit'),
+                  l('Best time', 'En iyi zaman'),
                   _str(data['bestTimeToBuy']),
                 ),
               ),
@@ -986,8 +982,7 @@ class _UnifiedBody extends StatelessWidget {
             Text(
               l(
                 'Personalized match score',
-                'Kişiselleştirilmiş uyum skoru',
-                'Personalisierter Match-Score',
+                'Kişiselleştirilmiş uyum skoru'
               ),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
@@ -1031,7 +1026,7 @@ class _UnifiedBody extends StatelessWidget {
         items: [
           (
             icon: '🎯',
-            label: l('Match', 'Uyum', 'Match'),
+            label: l('Match', 'Uyum'),
             value: score > 0 ? '$score' : '',
             color: _scoreColor(score),
             hint: urBandLabel(score, l),
@@ -1040,8 +1035,7 @@ class _UnifiedBody extends StatelessWidget {
             icon: '🌐',
             label: l(
               'Owner satisfaction',
-              'Kullanıcı memnuniyeti',
-              'Zufriedenheit',
+              'Kullanıcı memnuniyeti'
             ),
             value: communityScore > 0 ? '$communityScore' : '',
             color: _scoreColor(communityScore),
@@ -1049,7 +1043,7 @@ class _UnifiedBody extends StatelessWidget {
           ),
           (
             icon: '🔬',
-            label: l('Evidence', 'Kanıt gücü', 'Beleglage'),
+            label: l('Evidence', 'Kanıt gücü'),
             value: confidence > 0 ? '$confidence%' : '',
             color: null,
             hint: '',
@@ -1075,7 +1069,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         UrSection(
           icon: '📊',
-          title: l('Factor by factor', 'Faktör faktör', 'Faktor für Faktor'),
+          title: l('Factor by factor', 'Faktör faktör'),
           child: AicFactorList(factors: factors),
         ),
       );
@@ -1091,8 +1085,8 @@ class _UnifiedBody extends StatelessWidget {
           pros: pros,
           cons: cons,
           l: l,
-          prosTitle: l('Strengths', 'Güçlü yönler', 'Stärken'),
-          consTitle: l('Weaknesses', 'Zayıf yönler', 'Schwächen'),
+          prosTitle: l('Strengths', 'Güçlü yönler'),
+          consTitle: l('Weaknesses', 'Zayıf yönler'),
         ),
       );
     }
@@ -1111,13 +1105,11 @@ class _UnifiedBody extends StatelessWidget {
           l: l,
           prosTitle: l(
             'What owners love',
-            'Kullanıcıların sevdiği',
-            'Was Nutzer lieben',
+            'Kullanıcıların sevdiği'
           ),
           consTitle: l(
             'What owners complain about',
-            'Kullanıcıların şikâyeti',
-            'Worüber Nutzer klagen',
+            'Kullanıcıların şikâyeti'
           ),
         ),
       );
@@ -1126,7 +1118,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         UrSection(
           icon: '🌐',
-          title: l('Community reception', 'Topluluk yorumu', 'Community-Echo'),
+          title: l('Community reception', 'Topluluk yorumu'),
           meta: communityScore > 0 ? '$communityScore/100' : '',
           child: _Paragraphs(communityAnalysis),
         ),
@@ -1139,8 +1131,7 @@ class _UnifiedBody extends StatelessWidget {
           icon: '🛠',
           title: l(
             'Reliability and support',
-            'Güvenilirlik ve destek',
-            'Zuverlässigkeit und Support',
+            'Güvenilirlik ve destek'
           ),
         ),
       );
@@ -1151,7 +1142,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         UrSection(
           icon: '📋',
-          title: l('The full picture', 'Tam değerlendirme', 'Das ganze Bild'),
+          title: l('The full picture', 'Tam değerlendirme'),
           child: _Paragraphs(analysis),
         ),
       );
@@ -1160,7 +1151,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         UrSection(
           icon: '👤',
-          title: l('How it fits you', 'Sana uyumu', 'Wie es zu dir passt'),
+          title: l('How it fits you', 'Sana uyumu'),
           meta: score > 0 ? '$score/100' : '',
           child: _Paragraphs(personaAnalysis),
         ),
@@ -1175,7 +1166,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         AiCollapsible(
           label:
-              '🧩 ${l('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi', 'Funktion-Bedarf-Abgleich')}',
+              '🧩 ${l('Feature-by-need breakdown', 'Özellik–ihtiyaç eşleşmesi')}',
           builder: (context) => _FeatureMatches(items: featureMatches, l: l),
         ),
       );
@@ -1190,7 +1181,7 @@ class _UnifiedBody extends StatelessWidget {
       add(
         UrSection(
           icon: '🏁',
-          title: l('Final verdict', 'Son karar', 'Endgültiges Fazit'),
+          title: l('Final verdict', 'Son karar'),
           child: _Paragraphs(overallVerdict),
         ),
       );
@@ -1203,8 +1194,7 @@ class _UnifiedBody extends StatelessWidget {
           items: verification,
           title: l(
             'What is verified, what is not',
-            'Neyi doğruladık, neyi doğrulamadık',
-            'Was belegt ist',
+            'Neyi doğruladık, neyi doğrulamadık'
           ),
         ),
       );
@@ -1278,8 +1268,7 @@ class _ProductFullReport extends StatelessWidget {
               icon: '🔀',
               title: l(
                 'Smart alternatives',
-                'Akıllı alternatifler',
-                'Intelligente Alternativen',
+                'Akıllı alternatifler'
               ),
               child: _AlternativeCards(
                 alternatives: data['alternatives'],
@@ -1292,8 +1281,7 @@ class _ProductFullReport extends StatelessWidget {
               icon: '⏱',
               title: l(
                 'Timing and value',
-                'Zamanlama ve değer',
-                'Timing und Wert',
+                'Zamanlama ve değer'
               ),
               child: _PriceForecastBlock(data: price, l: l),
             ),
@@ -1372,8 +1360,7 @@ class _CompareScoreChart extends StatelessWidget {
         Text(
           l(
             'Final scores are personalized to the comparison quiz.',
-            'Final puanlar karşılaştırma quizine göre kişiselleştirildi.',
-            'Endwerte sind auf das Vergleichsquiz personalisiert.',
+            'Final puanlar karşılaştırma quizine göre kişiselleştirildi.'
           ),
           style: GoogleFonts.inter(
             fontSize: 11,
@@ -1516,8 +1503,7 @@ class _CompareProductDetail extends StatelessWidget {
               icon: '⏱',
               title: l(
                 'Timing and value',
-                'Zamanlama ve değer',
-                'Timing und Wert',
+                'Zamanlama ve değer'
               ),
               child: _PriceForecastBlock(data: price, l: l),
             ),
@@ -1569,7 +1555,7 @@ class _CompareMiniDonuts extends StatelessWidget {
     if (donuts.length < 2) return const SizedBox.shrink();
     return _ReportSection(
       eyebrow: '💬',
-      title: l('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit'),
+      title: l('Community satisfaction', 'Topluluk memnuniyeti'),
       // SIMETRI: donutlar yatay scroll + Row icinde SOLA DAYALI duruyordu
       // (kullanici: "yatay olarak ortalanmiyor hala kenarda"). Wrap ile hem
       // ORTALANIR hem de cok servis oldugunda alt satira gecer — yatay kaydirma
@@ -1691,16 +1677,14 @@ class _CompareFullReport extends StatelessWidget {
         _CompareMiniDonuts(columns: columns, l: l),
         if (columns.isNotEmpty)
           _ReportSection(
-            eyebrow: l('AI', 'AI', 'KI'),
-            title: l('Open each detailed review', 'Her ürünün detaylı incelemesini aç',
-                'Jede Detailanalyse öffnen'),
+            eyebrow: l('AI', 'AI'),
+            title: l('Open each detailed review', 'Her ürünün detaylı incelemesini aç'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
                   l('Tap a product to open its full AI review in detail.',
-                      'Tam AI incelemesini görmek için bir ürüne dokun.',
-                      'Tippe ein Produkt für die vollständige KI-Analyse.'),
+                      'Tam AI incelemesini görmek için bir ürüne dokun.'),
                   style: GoogleFonts.inter(
                     fontSize: 11.5,
                     color: context.textTertiaryColor,
@@ -1798,7 +1782,7 @@ class _CompareColumnCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        l('AI pick', 'AI seçimi', 'KI-Wahl'),
+                        l('AI pick', 'AI seçimi'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -1821,7 +1805,7 @@ class _CompareColumnCard extends StatelessWidget {
                   ],
                   const SizedBox(height: 6),
                   Text(
-                    '${l('View full review', 'Detaylı incele', 'Vollständige Analyse')} →',
+                    '${l('View full review', 'Detaylı incele')} →',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w800,
@@ -1874,7 +1858,7 @@ void _openModal(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l('Full AI review', 'Detaylı AI incelemesi', 'Vollständige KI-Analyse'),
+                              l('Full AI review', 'Detaylı AI incelemesi'),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: ctx.textTertiaryColor,
@@ -1944,8 +1928,8 @@ class _ComparisonOverview extends StatelessWidget {
     if (!hasContent) return const SizedBox.shrink();
     final winnerScore = _toInt(cmp['winnerScore']);
     return _ReportSection(
-      eyebrow: l('AI overall comparison', 'AI genel karşılaştırma', 'KI-Gesamtvergleich'),
-      title: l('Which one wins for you', 'Senin için hangisi kazanıyor', 'Was für dich gewinnt'),
+      eyebrow: l('AI overall comparison', 'AI genel karşılaştırma'),
+      title: l('Which one wins for you', 'Senin için hangisi kazanıyor'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1967,7 +1951,7 @@ class _ComparisonOverview extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          l('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl'),
+                          l('Recommended pick', 'Önerilen seçim'),
                           style: GoogleFonts.inter(
                             fontSize: 10.5,
                             color: context.textTertiaryColor,
@@ -2003,7 +1987,7 @@ class _ComparisonOverview extends StatelessWidget {
               _str(cmp['headToHead']).isNotEmpty ||
               _str(cmp['recommendation']).isNotEmpty)
             AiCollapsible(
-              label: '📖 ${l('Detailed comparison', 'Detaylı karşılaştırma', 'Detaillierter Vergleich')}',
+              label: '📖 ${l('Detailed comparison', 'Detaylı karşılaştırma')}',
               builder: (context) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2145,36 +2129,36 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
 
   static const _sets = <String, Map<String, dynamic>>{
     'product': {
-      'title': ['Building your report', 'Raporun hazırlanıyor', 'Bericht wird erstellt'],
+      'title': ['Building your report', 'Raporun hazırlanıyor'],
       'steps': [
-        ['Reading catalog specs', 'Katalog özellikleri okunuyor', 'Katalogdaten werden gelesen'],
-        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
-        ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
-        ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
-        ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor', 'Alternativen und Preis-Timing werden geprüft'],
-        ['Composing the final report', 'Son rapor hazırlanıyor', 'Der Bericht wird zusammengestellt'],
+        ['Reading catalog specs', 'Katalog özellikleri okunuyor'],
+        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor'],
+        ['Running current web research', 'Güncel web araştırması yapılıyor'],
+        ['Scoring match factors', 'Uyum faktörleri puanlanıyor'],
+        ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor'],
+        ['Composing the final report', 'Son rapor hazırlanıyor'],
       ],
     },
     'compare': {
-      'title': ['Building the comparison', 'Karşılaştırma hazırlanıyor', 'Vergleich wird erstellt'],
+      'title': ['Building the comparison', 'Karşılaştırma hazırlanıyor'],
       'steps': [
-        ['Reading the selected products', 'Seçili ürünler okunuyor', 'Ausgewählte Produkte werden gelesen'],
-        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
-        ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
-        ['Comparing specs head-to-head', 'Özellikler karşılıklı karşılaştırılıyor', 'Specs werden direkt verglichen'],
-        ['Scoring the best fit for you', 'Sana en uygunu puanlanıyor', 'Beste Wahl wird bewertet'],
-        ['Composing the verdict', 'Sonuç hazırlanıyor', 'Fazit wird erstellt'],
+        ['Reading the selected products', 'Seçili ürünler okunuyor'],
+        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor'],
+        ['Running current web research', 'Güncel web araştırması yapılıyor'],
+        ['Comparing specs head-to-head', 'Özellikler karşılıklı karşılaştırılıyor'],
+        ['Scoring the best fit for you', 'Sana en uygunu puanlanıyor'],
+        ['Composing the verdict', 'Sonuç hazırlanıyor'],
       ],
     },
     'link': {
-      'title': ['Analyzing the link', 'Bağlantı analiz ediliyor', 'Link wird analysiert'],
+      'title': ['Analyzing the link', 'Bağlantı analiz ediliyor'],
       'steps': [
-        ['Reading the product page', 'Ürün sayfası okunuyor', 'Produktseite wird gelesen'],
-        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor', 'Profil & Antworten werden angewendet'],
-        ['Running current web research', 'Güncel web araştırması yapılıyor', 'Aktuelle Webrecherche läuft'],
-        ['Scoring match factors', 'Uyum faktörleri puanlanıyor', 'Match-Faktoren werden bewertet'],
-        ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor', 'Alternativen und Preis-Timing werden geprüft'],
-        ['Composing the final report', 'Son rapor hazırlanıyor', 'Der Bericht wird zusammengestellt'],
+        ['Reading the product page', 'Ürün sayfası okunuyor'],
+        ['Applying your profile & answers', 'Profilin ve cevapların uygulanıyor'],
+        ['Running current web research', 'Güncel web araştırması yapılıyor'],
+        ['Scoring match factors', 'Uyum faktörleri puanlanıyor'],
+        ['Checking alternatives and price timing', 'Alternatifler ve fiyat zamanlaması kontrol ediliyor'],
+        ['Composing the final report', 'Son rapor hazırlanıyor'],
       ],
     },
   };
@@ -2260,12 +2244,7 @@ class _AiReportWorkboardState extends State<AiReportWorkboard>
 
   String _t(List<dynamic> a) {
     final code = widget.lang.toLowerCase();
-    return (code.startsWith('tr')
-            ? a[1]
-            : code.startsWith('de')
-            ? a[2]
-            : a[0])
-        .toString();
+    return (code.startsWith('tr') ? a[1] : a[0]).toString();
   }
 
   @override

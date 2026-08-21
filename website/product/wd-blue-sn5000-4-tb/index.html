@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/product/wd-blue-sn5000-4-tb" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/wd-blue-sn5000-4-tb" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/wd-blue-sn5000-4-tb" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/wd-blue-sn5000-4-tb" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/wd-blue-sn5000-4-tb" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)</h1><p style="color:#475569;margin:0 0 12px">WD · SSDs · Qor AI tech score 82/100</p><img src="https://resim.epey.com/999208/m_wd-blue-sn5000-1.jpg" alt="WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">WD Blue SN5000 SSD (4 TB) (WDS400T4B0E) key features: connection interface M.2, storage technology NAND, capacity 4 TB. Review WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)'s 25 technical specs, its Qor AI tech score and how it compares with similar models in ssds below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Connection interface:</span> <strong>M.2</strong></li><li><span style="color:#64748b">Storage Technology:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Capacity:</span> <strong>4 TB</strong></li><li><span style="color:#64748b">Random reading (QD32):</span> <strong>690 K IOPS</strong></li><li><span style="color:#64748b">Random writing (QD32):</span> <strong>900 K IOPS</strong></li><li><span style="color:#64748b">Sequential Read:</span> <strong>5500 MB/s</strong></li><li><span style="color:#64748b">Sequential Write:</span> <strong>5000 MB/s</strong></li><li><span style="color:#64748b">Guarantee of data entry:</span> <strong>1.200 TBW</strong></li><li><span style="color:#64748b">The data path:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Frame size:</span> <strong>M.2 2280</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in SSDs</h2><ul style="line-height:1.8"><li><a href="/product/sabrent-rocket-nvme-4-0" style="color:#2563eb">Sabrent Rocket NVMe 4.0 SSD (SB-ROCKET-NVME4-1TB)</a></li><li><a href="/product/sk-hynix-bc901-512-gb" style="color:#2563eb">SK Hynix BC901 SSD</a></li><li><a href="/product/verbatim-vi5000-31826" style="color:#2563eb">Verbatim Vi5000 SSD (1 TB) (31826)</a></li><li><a href="/product/klevv-cras-910-1-tb" style="color:#2563eb">Klevv Cras 910 SSD (1 TB) (K01TBM2SP0-C91)</a></li><li><a href="/product/klevv-cras-c910g-1-tb" style="color:#2563eb">Klevv Cras C910G SSD (1 TB) (K01TBM2SP0-10G)</a></li><li><a href="/product/addlink-s90" style="color:#2563eb">addlink S90 SSD (1 TB) (AD1TBS90M2P)</a></li><li><a href="/product/addlink-s90-lite" style="color:#2563eb">addlink S90 Lite SSD (AD1TBS90LTM2P)</a></li><li><a href="/product/mushkin-vortex-lx-mknssdvl2tb-d8" style="color:#2563eb">Mushkin Vortex LX SSD (2 TB) (MKNSSDVL2TB-D8)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ssd" style="color:#2563eb;font-weight:600">Compare all SSDs →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ssd">SSDs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)</h1><p style="color:#475569;margin:0 0 12px">WD · SSDs · Qor AI tech score 82/100</p><img src="https://resim.epey.com/999208/m_wd-blue-sn5000-1.jpg" alt="WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">WD Blue SN5000 SSD (4 TB) (WDS400T4B0E) key features: connection interface M.2, storage technology NAND, capacity 4 TB. Review WD Blue SN5000 SSD (4 TB) (WDS400T4B0E)'s 25 technical specs, its Qor AI tech score and how it compares with similar models in ssds below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Connection interface:</span> <strong>M.2</strong></li><li><span style="color:#64748b">Storage Technology:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Capacity:</span> <strong>4 TB</strong></li><li><span style="color:#64748b">Random reading (QD32):</span> <strong>690 K IOPS</strong></li><li><span style="color:#64748b">Random writing (QD32):</span> <strong>900 K IOPS</strong></li><li><span style="color:#64748b">Sequential Read:</span> <strong>5500 MB/s</strong></li><li><span style="color:#64748b">Sequential Write:</span> <strong>5000 MB/s</strong></li><li><span style="color:#64748b">Guarantee of data entry:</span> <strong>1.200 TBW</strong></li><li><span style="color:#64748b">The data path:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Frame size:</span> <strong>M.2 2280</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in SSDs</h2><ul style="line-height:1.8"><li><a href="/product/sandisk-extreme-m-2-nvme-pcie-gen-4-0-internal" style="color:#2563eb">Sandisk Extreme M.2 NVMe PCIe Gen 4.0 Internal SSD (2 TB) (SDSSDX3N-2T00-G26)</a></li><li><a href="/product/lexar-nm710-lnm710x002t" style="color:#2563eb">Lexar NM710 SSD (2 TB) (LNM710X002T)</a></li><li><a href="/product/msi-spatium-m461-4tb" style="color:#2563eb">MSI Spatium M461 SSD (4 TB)</a></li><li><a href="/product/msi-spatium-m470-2tb" style="color:#2563eb">MSI Spatium M470 SSD (2 TB)</a></li><li><a href="/product/msi-spatium-m460-1tb" style="color:#2563eb">MSI Spatium M460 SSD (1 TB)</a></li><li><a href="/product/corsair-force-mp600" style="color:#2563eb">Corsair Force MP600 SSD (1 TB) (CSSD-F1000GBMP600R2)</a></li><li><a href="/product/corsair-mp600-core-cssd-f4000gbmp600cor" style="color:#2563eb">Corsair MP600 Core SSD (4 TB) (CSSD-F4000GBMP600COR)</a></li><li><a href="/product/corsair-mp600-core-xt-cssd-f2000gbmp600cxt" style="color:#2563eb">Corsair MP600 Core XT SSD (2 TB) (CSSD-F2000GBMP600CXT)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ssd" style="color:#2563eb;font-weight:600">Compare all SSDs →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

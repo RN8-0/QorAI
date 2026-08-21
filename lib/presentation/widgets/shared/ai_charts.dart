@@ -32,7 +32,7 @@ const Color aicWeak = Color(0xFFF43F5E); // zayıf / negatif
 const Color aicBrand = Color(0xFF3B82F6); // marka mavi
 
 /// Localizer signature shared with `ai_report_view.dart` — `(en, tr, de)`.
-typedef AicL = String Function(String en, String tr, String de);
+typedef AicL = String Function(String en, String tr);
 
 bool _reducedMotion(BuildContext c) =>
     MediaQuery.maybeOf(c)?.disableAnimations ?? false;
@@ -61,9 +61,9 @@ class DecisionBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final kind = decisionFromScore(score);
     final (String label, String icon, Color color) = switch (kind) {
-      AicDecision.buy => (l('Buy', 'Al', 'Kaufen'), '✓', aicStrong),
-      AicDecision.consider => (l('Consider', 'Düşün', 'Überlegen'), '~', aicBalanced),
-      AicDecision.skip => (l('Skip', 'Geç', 'Überspringen'), '✕', aicWeak),
+      AicDecision.buy => (l('Buy', 'Al'), '✓', aicStrong),
+      AicDecision.consider => (l('Consider', 'Düşün'), '~', aicBalanced),
+      AicDecision.skip => (l('Skip', 'Geç'), '✕', aicWeak),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -367,9 +367,9 @@ class SentimentDonut extends StatelessWidget {
     final neg = (breakdown['negative'] ?? 0).toDouble();
     if (pos + neu + neg <= 0) return const SizedBox.shrink();
     final rows = <({String label, double value, Color color})>[
-      (label: l('Positive', 'Olumlu', 'Positiv'), value: pos, color: aicStrong),
-      (label: l('Neutral', 'Nötr', 'Neutral'), value: neu, color: aicBalanced),
-      (label: l('Negative', 'Olumsuz', 'Negativ'), value: neg, color: aicWeak),
+      (label: l('Positive', 'Olumlu'), value: pos, color: aicStrong),
+      (label: l('Neutral', 'Nötr'), value: neu, color: aicBalanced),
+      (label: l('Negative', 'Olumsuz'), value: neg, color: aicWeak),
     ];
     return Container(
       padding: const EdgeInsets.all(12),
@@ -382,7 +382,7 @@ class SentimentDonut extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '💬 ${l('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}',
+            '💬 ${l('Community satisfaction', 'Topluluk memnuniyeti')}',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
@@ -395,7 +395,7 @@ class SentimentDonut extends StatelessWidget {
               AicDonut(
                 segments: rows.map((r) => (value: r.value, color: r.color)).toList(),
                 centerValue: '${pos.round()}%',
-                centerLabel: l('positive', 'olumlu', 'positiv'),
+                centerLabel: l('positive', 'olumlu'),
                 size: compact ? 96 : 118,
                 thickness: compact ? 12 : 15,
               ),
@@ -490,7 +490,7 @@ class DistributionBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '⚖️ ${l('Factor balance', 'Faktör dengesi', 'Faktor-Balance')}',
+            '⚖️ ${l('Factor balance', 'Faktör dengesi')}',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
@@ -526,9 +526,9 @@ class DistributionBar extends StatelessWidget {
             spacing: 12,
             runSpacing: 4,
             children: [
-              _legend(context, aicStrong, '$strong ${l('strong', 'güçlü', 'stark')}'),
-              _legend(context, aicBalanced, '$balanced ${l('balanced', 'dengeli', 'ausgewogen')}'),
-              _legend(context, aicWeak, '$weak ${l('weak', 'zayıf', 'schwach')}'),
+              _legend(context, aicStrong, '$strong ${l('strong', 'güçlü')}'),
+              _legend(context, aicBalanced, '$balanced ${l('balanced', 'dengeli')}'),
+              _legend(context, aicWeak, '$weak ${l('weak', 'zayıf')}'),
             ],
           ),
         ],

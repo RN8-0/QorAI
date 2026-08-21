@@ -207,7 +207,7 @@ class AicRadarChart extends StatelessWidget {
         children: [
           _title(
             context,
-            '🕸 ${l('Factor profile', 'Faktör profili', 'Faktorprofil')}',
+            '🕸 ${l('Factor profile', 'Faktör profili')}',
           ),
           Center(
             child: TweenAnimationBuilder<double>(
@@ -319,10 +319,10 @@ class AicCriticalPoints extends StatelessWidget {
     Color tone(String s) =>
         s == 'high' ? aicWeak : (s == 'low' ? aicBrand : aicBalanced);
     String label(String s) => s == 'high'
-        ? l('Critical', 'Kritik', 'Kritisch')
+        ? l('Critical', 'Kritik')
         : s == 'low'
-        ? l('Note', 'Not', 'Hinweis')
-        : l('Important', 'Önemli', 'Wichtig');
+        ? l('Note', 'Not')
+        : l('Important', 'Önemli');
     return _card(
       context,
       child: Column(
@@ -330,7 +330,7 @@ class AicCriticalPoints extends StatelessWidget {
         children: [
           _title(
             context,
-            '🚨 ${l('Critical points before you decide', 'Karar öncesi kritik noktalar', 'Kritische Punkte vor der Entscheidung')}',
+            '🚨 ${l('Critical points before you decide', 'Karar öncesi kritik noktalar')}',
           ),
           for (var i = 0; i < rows.length; i++)
             Padding(
@@ -434,7 +434,7 @@ class AicQuizImpact extends StatelessWidget {
         children: [
           _title(
             context,
-            '🧠 ${l('How your answers shaped this', 'Cevapların sonucu nasıl değiştirdi', 'Wie deine Antworten gewirkt haben')}',
+            '🧠 ${l('How your answers shaped this', 'Cevapların sonucu nasıl değiştirdi')}',
           ),
           for (var i = 0; i < rows.length; i++)
             Padding(
@@ -579,7 +579,7 @@ class AicCommunityThemes extends StatelessWidget {
         children: [
           _title(
             context,
-            '🗣 ${l('What people keep talking about', 'İnsanlar en çok neyi konuşuyor', 'Worüber am meisten gesprochen wird')}',
+            '🗣 ${l('What people keep talking about', 'İnsanlar en çok neyi konuşuyor')}',
           ),
           for (var i = 0; i < rows.length; i++)
             Padding(
@@ -659,7 +659,7 @@ class AicSourceChips extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
-          '🔎 ${l('Scanned', 'Tarandı', 'Gescannt')}:',
+          '🔎 ${l('Scanned', 'Tarandı')}:',
           style: GoogleFonts.inter(
             fontSize: 11,
             fontWeight: FontWeight.w800,

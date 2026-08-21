@@ -461,7 +461,6 @@ class SpecTranslationService {
     if (!yes && !no) return null;
     const labels = <String, List<String>>{
       'en': ['Yes', 'No'],
-      'de': ['Ja', 'Nein'],
       'es': ['Sí', 'No'],
       'fr': ['Oui', 'Non'],
       'it': ['Sì', 'No'],

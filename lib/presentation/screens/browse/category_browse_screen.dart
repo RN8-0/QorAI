@@ -192,7 +192,7 @@ class _CategoryBrowseScreenState extends ConsumerState<CategoryBrowseScreen> {
     final defs = <FilterDefinition>[];
     final cat = _activeCategoryId;
     String tr(String en, String trv, String de) =>
-        lang == 'tr' ? trv : lang == 'de' ? de : en;
+        lang == 'tr' ? trv : en;
 
     // 1) Qor AI Score (single-select), always present — mirrors web.
     defs.add(

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/tr/product/crucial-p510-pcie-gen5-1-tb" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/crucial-p510-pcie-gen5-1-tb" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/crucial-p510-pcie-gen5-1-tb" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/product/crucial-p510-pcie-gen5-1-tb" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/product/crucial-p510-pcie-gen5-1-tb" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="product" />
@@ -75,23 +74,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -257,8 +255,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -281,20 +278,20 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLWgnVEz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CefyqS0R.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-DPfCZula.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C6sEsqC8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D3iDGym2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-CtIL0OFW.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C4xZwr9H.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-CvkyqV7X.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-DH6eaddz.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ScrollRail-B-7U0L-q.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/ProductDetail-CmDIg2ut.css" />
@@ -334,7 +331,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/ssd">SSD</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)</h1><p style="color:#475569;margin:0 0 12px">Crucial · SSD · Qor AI teknik skoru 87/100</p><img src="https://resim.epey.com/1056014/m_crucial-p510-pcie-gen5-1.jpg" alt="Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺10.615</p><p style="line-height:1.7;color:#334155">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8) öne çıkan özellikleri: bağlantı arayüzü m.2, depolama teknolojisi NAND, kapasite 1 TB. Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8) 22 teknik özelliğini, Qor AI teknik skorunu ve benzer ssd modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Depolama Teknolojisi:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Kapasite:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>11000 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>9500 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>600 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li><li><span style="color:#64748b">Ön Bellek Kapasitesi:</span> <strong>64 MB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer SSD modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/seagate-firecuda-540-zp2000gm3a004" style="color:#2563eb">Seagate FireCuda 540 SSD (2 TB) (ZP2000GM3A004)</a></li><li><a href="/tr/product/mld-m800-2-tb" style="color:#2563eb">MLD M800 SSD (2 TB) (MLD22M800E31-2000)</a></li><li><a href="/tr/product/goodram-core-4-tb" style="color:#2563eb">Goodram Core SSD (4 TB) (SSDR-GRC01-4K0-80)</a></li><li><a href="/tr/product/pny-cs2150-2-tb" style="color:#2563eb">PNY CS2150 SSD (2 TB) (M280CS2150-2TB-TB)</a></li><li><a href="/tr/product/msi-spatium-m560-2-tb" style="color:#2563eb">MSI Spatium M560 SSD (2 TB) (SM560N2TB)</a></li><li><a href="/tr/product/kioxia-exceria-plus-g4-2-tb" style="color:#2563eb">Kioxia Exceria Plus G4 SSD (2 TB) (LVD10Z002TG8)</a></li><li><a href="/tr/product/team-group-t-force-ga-pro-2-tb" style="color:#2563eb">Team Group T-Force GA Pro SSD (2 TB) (TM8FFJ002T0C129)</a></li><li><a href="/tr/product/mld-m600-1-tb" style="color:#2563eb">MLD M600 SSD (MLD22M600E27-1000)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/ssd" style="color:#2563eb;font-weight:600">Tüm SSD modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/ssd">SSD</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)</h1><p style="color:#475569;margin:0 0 12px">Crucial · SSD · Qor AI teknik skoru 87/100</p><img src="https://resim.epey.com/1056014/m_crucial-p510-pcie-gen5-1.jpg" alt="Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺10.615</p><p style="line-height:1.7;color:#334155">Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8) öne çıkan özellikleri: bağlantı arayüzü m.2, depolama teknolojisi NAND, kapasite 1 TB. Crucial P510 PCIe Gen5 SSD (1 TB) (CT1000P510SSD8) 22 teknik özelliğini, Qor AI teknik skorunu ve benzer ssd modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Bağlantı Arayüzü:</span> <strong>m.2</strong></li><li><span style="color:#64748b">Depolama Teknolojisi:</span> <strong>NAND</strong></li><li><span style="color:#64748b">Kapasite:</span> <strong>1 TB</strong></li><li><span style="color:#64748b">Sıralı Okuma:</span> <strong>11000 MB/s</strong></li><li><span style="color:#64748b">Sıralı Yazma:</span> <strong>9500 MB/s</strong></li><li><span style="color:#64748b">Veri Yazma Garantisi:</span> <strong>600 TBW</strong></li><li><span style="color:#64748b">Veri Yolu:</span> <strong>PCIe</strong></li><li><span style="color:#64748b">Çerçeve Boyutu:</span> <strong>M.2 2280</strong></li><li><span style="color:#64748b">Ön Bellek Kapasitesi:</span> <strong>64 MB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer SSD modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/msi-spatium-m560-2-tb" style="color:#2563eb">MSI Spatium M560 SSD (2 TB) (SM560N2TB)</a></li><li><a href="/tr/product/corsair-mp700" style="color:#2563eb">Corsair MP700 SSD (1 TB) (CSSD-F1000GBMP700R2)</a></li><li><a href="/tr/product/huawei-ekitstor-xtreme-200e" style="color:#2563eb">Huawei eKitStor Xtreme 200E SSD (1 TB)</a></li><li><a href="/tr/product/gigabyte-aorus-gen4-7300" style="color:#2563eb">Gigabyte Aorus Gen4 7300 SSD (1 TB) (AG4731TB)</a></li><li><a href="/tr/product/hp-fx700" style="color:#2563eb">HP FX700 SSD (2 TB) (8U2N5AA)</a></li><li><a href="/tr/product/hp-fx900-plus-4-tb" style="color:#2563eb">HP FX900 Plus SSD (4 TB) (7F619AA)</a></li><li><a href="/tr/product/lexar-nm790-lnm790x004t" style="color:#2563eb">Lexar NM790 SSD (4 TB) (LNM790X004T)</a></li><li><a href="/tr/product/xpg-gammix-s70-blade-agammixs70b-2t-cs" style="color:#2563eb">XPG Gammix S70 Blade SSD (AGAMMIXS70B-2T-CS)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/ssd" style="color:#2563eb;font-weight:600">Tüm SSD modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

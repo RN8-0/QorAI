@@ -168,6 +168,7 @@ function showView(name){
     stopProductsLivePoll();
   }
   if(name==='blog'&&typeof loadBlogAdmin==='function')loadBlogAdmin();
+  if(name==='analyses'&&typeof loadAnalysesAdmin==='function')loadAnalysesAdmin();
   if(name==='users')loadUsers();
   if(name==='userinsights'){loadUsers();loadStoredSegmentAnalysis();}
   if(name==='algorithm')loadAlgorithmConfig();
@@ -2053,7 +2054,7 @@ function toggleViewMode(){viewMode=viewMode==='grid'?'list':'grid';const g=docum
 // PocketBase `public_config.tr_translation_dict`. Add new Turkish terms,
 // override DeepSeek output, or fix wrong translations — the next scrape
 // run automatically uses these values via _deDictLookup.
-const DICT_VIEW_LANGS = ['en']; // German spec translation removed (2026-06-30)
+const DICT_VIEW_LANGS = ['en']; // Specs are TR + EN only; German removed entirely (2026-08-21)
 let _dictSource = 'tr';
 
 function _currentDictApi(){
@@ -2941,8 +2942,8 @@ const SEC_ICONS={'Display':'🖥️','Battery':'🔋','Battery / Power':'🔋','
 // Map of UI language → display label (used by the in-modal language picker).
 // Plain-text labels — Windows doesn't render flag emojis correctly inside
 // <select> elements, which previously made every option look identical.
-// German spec views were removed (2026-07-01): specs are TR + EN only. The
-// modal no longer offers a Deutsch option, so the runtime tr→de fallback
+// German was removed entirely (2026-08-21): specs are TR + EN only. The
+// modal no longer offers a German option, so the runtime tr→de fallback
 // translator (lookupLocalizedText over the de dictionary) is never reached.
 const MODAL_LANGS = [
   ['tr','Türkçe (source)'], ['en','English'],
@@ -2968,7 +2969,6 @@ function _adminProductDisplayName(p, lang = _adminActiveProductLang()) {
 const ADMIN_PRICE_COUNTRIES_BY_LANG = {
   tr: ['TR','DE','GB'],
   en: ['US','GB','CA','AU'],
-  de: ['DE','AT','CH'],
   es: ['ES','MX','US'],
   fr: ['FR','BE','CA'],
   pt: ['PT','BR','ES','GB'],
@@ -3288,7 +3288,7 @@ function _adminLocalizeAmazon(url,lang){
     const DOMAIN={US:'www.amazon.com',GB:'www.amazon.co.uk',DE:'www.amazon.de',FR:'www.amazon.fr',IT:'www.amazon.it',ES:'www.amazon.es',CA:'www.amazon.ca',TR:'www.amazon.com.tr'};
     // Store ID'ler pazara ozel (paneller 2026-07-05): .de/.co.uk'da qorai-20 yanlis program.
     const TAG={TR:'qorai-21',DE:'qorai0d-21',GB:'qorai0e-21'};
-    const BY_LANG={tr:'TR',en:'US',de:'DE',fr:'FR',it:'IT',es:'ES',pt:'ES',ru:'DE'};
+    const BY_LANG={tr:'TR',en:'US',fr:'FR',it:'IT',es:'ES',pt:'ES',ru:'DE'};
     const m=BY_LANG[String(lang||'tr').slice(0,2).toLowerCase()]||'US';
     if(DOMAIN[m])u.hostname=DOMAIN[m];
     u.searchParams.delete('linkCode');u.searchParams.delete('linkId');
@@ -3302,7 +3302,7 @@ function _renderProductModal(p,variants=[]){
   // Pick the localized payload based on chosen language. If translation
   // missing for that language we silently fall back to the Turkish source.
   const lang = _modalLang || 'tr';
-  // All products are Epey (Turkish source); Geizhals/German removed 2026-07-10.
+  // All products are Epey (Turkish source); Geizhals removed 2026-07-10.
   // ── SPEC YERELLESTIRME: admin/js/spec_i18n.js (TEK KAYNAK) ─────────────
   // Kaynak alan secimi, multiLangSpecs dogrulamasi, bolum yerellestirmesi ve
   // deger satirlarina bolme BURADAN TASINDI. qorai.net AYNI fonksiyonu
@@ -3336,7 +3336,7 @@ function _renderProductModal(p,variants=[]){
   let bricks='';
   // Localised affirmative/negative labels — boolean specs must render in the
   // language the modal is showing, not hard-coded English.
-  const _ynPair=({tr:['Evet','Hayır'],en:['Yes','No'],de:['Ja','Nein'],es:['Sí','No'],fr:['Oui','Non'],pt:['Sim','Não'],ru:['Да','Нет']})[lang]||['Yes','No'];
+  const _ynPair=({tr:['Evet','Hayır'],en:['Yes','No'],es:['Sí','No'],fr:['Oui','Non'],pt:['Sim','Não'],ru:['Да','Нет']})[lang]||['Yes','No'];
   const _isYesV=v=>/^(yes|var|evet|true|ja|oui|sí|si|sim|tak)$/i.test(String(v).trim());
   const _isNoV=v=>/^(no|yok|hayır|hayir|nein|non|não|nao|nie|false)$/i.test(String(v).trim());
   function fmtSpecVal(s){

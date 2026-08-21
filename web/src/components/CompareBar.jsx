@@ -18,7 +18,7 @@ export default function CompareBar() {
   const [open, setOpen] = useState(true);
   const [items, setItems] = useState([]);
   const kutu = useRef(null);
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
 
   // QOR BALONU BU CUBUGU ORTUYORDU. Olculdu (390x844): alt bar 84 px'e kadar,
   // cubuk `bottom: 64px`ten baslayip ~120'ye kadar cikiyor, balon ise
@@ -63,7 +63,7 @@ export default function CompareBar() {
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="7" height="16" rx="1.4" /><rect x="14" y="4" width="7" height="16" rx="1.4" />
           </svg>
-          <span className="cmpbar-title">{L('Compare', 'Karşılaştır', 'Vergleich')}</span>
+          <span className="cmpbar-title">{L('Compare', 'Karşılaştır')}</span>
           <span className="cmpbar-count">{ids.length}</span>
           <svg className={'cmpbar-caret' + (open ? ' up' : '')} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><polyline points="6 9 12 15 18 9" /></svg>
         </button>
@@ -73,7 +73,7 @@ export default function CompareBar() {
             {items.map((p) => (
               <div className="cmpbar-thumb" key={p.id} title={p.name}>
                 <ProductImg src={p.imageUrl || (p.images && p.images[0])} alt={p.name} size="card" />
-                <button className="cmpbar-x" onClick={() => remove(p.id)} aria-label={L('Remove', 'Kaldır', 'Entfernen')}><IconX size={13} width={2.6} /></button>
+                <button className="cmpbar-x" onClick={() => remove(p.id)} aria-label={L('Remove', 'Kaldır')}><IconX size={13} width={2.6} /></button>
               </div>
             ))}
             {items.length < ids.length && <div className="cmpbar-thumb cmpbar-thumb-load"><span className="skel" /></div>}
@@ -81,9 +81,9 @@ export default function CompareBar() {
         )}
 
         <div className="cmpbar-actions">
-          <button className="cmpbar-clear" onClick={clear}>{L('Clear', 'Temizle', 'Leeren')}</button>
+          <button className="cmpbar-clear" onClick={clear}>{L('Clear', 'Temizle')}</button>
           <button className="cmpbar-go" disabled={!canCompare} onClick={() => nav('/compare')}>
-            {L('Compare', 'Karşılaştır', 'Vergleichen')}{canCompare ? ` (${ids.length})` : ''}
+            {L('Compare', 'Karşılaştır')}{canCompare ? ` (${ids.length})` : ''}
           </button>
         </div>
       </div>

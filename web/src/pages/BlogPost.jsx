@@ -193,7 +193,7 @@ export default function BlogPost() {
   // <html lang> değerini, canonical'ını ve hreflang alternatiflerini yazar;
   // arama motoru böylece her dil için doğru adresi indeksler.
   const postLang = lang;
-  const L = (en, tr, de) => (postLang === 'tr' ? tr : postLang === 'de' ? de : en);
+  const L = (en, tr) => (postLang === 'tr' ? tr : en);
   const navigate = useNavigate();
   const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
@@ -206,7 +206,7 @@ export default function BlogPost() {
     const fetchArticle = previewId
       ? pb.collection('articles').getOne(previewId, { $autoCancel: false })
       : pb.collection('articles').getFirstListItem(
-        `(slug="${esc(slug)}" || slug_tr="${esc(slug)}" || slug_en="${esc(slug)}" || slug_de="${esc(slug)}") && status="published"`,
+        `(slug="${esc(slug)}" || slug_tr="${esc(slug)}" || slug_en="${esc(slug)}") && status="published"`,
       );
     fetchArticle
       .then((rec) => {
@@ -229,7 +229,7 @@ export default function BlogPost() {
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="like"`, $autoCancel: false }).then((r) => { if (live) setLikeCount(lBase + r.totalItems); }).catch(() => {});
         pb.collection('article_events').getList(1, 1, { filter: `slug="${esc(key)}" && type="view"`, $autoCancel: false }).then((r) => { if (live) setViewCount(vBase + r.totalItems + 1); }).catch(() => {});
         // similar articles
-        pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${esc(rec.slug)}"`, sort: '-updated', fields: 'slug,slug_tr,slug_en,slug_de,cover,coverFile,products,collectionId,collectionName,title_tr,title_en,title_de,lead_tr,lead_en,lead_de' })
+        pb.collection('articles').getList(1, 4, { filter: `status="published" && slug!="${esc(rec.slug)}"`, sort: '-updated', fields: 'slug,slug_tr,slug_en,cover,coverFile,products,collectionId,collectionName,title_tr,title_en,lead_tr,lead_en' })
           .then((r) => { if (live) setMore(r.items || []); }).catch(() => {});
         // similar products — same getSimilar() the product page uses, then ranked
         // by closeness to the article's average tech score ("yaklaşık teknik puan").
@@ -276,7 +276,7 @@ export default function BlogPost() {
     // navigate(eski slug) çalışıyordu → adres eski yazıya geri dönüyor, sayfa
     // değişmiyor ve sadece en başa kayıyordu (bildirilen hata).
     // Bu yüzden dil eşitlemesi YALNIZCA post gerçekten bu adrese aitse yapılır.
-    const ownSlugs = [post.slug, post.slug_tr, post.slug_en, post.slug_de].filter(Boolean);
+    const ownSlugs = [post.slug, post.slug_tr, post.slug_en].filter(Boolean);
     if (!ownSlugs.includes(slug)) return;
     const want = articleSlug(post, lang);
     if (want && want !== slug) navigate(`/blog/${want}`, { replace: true });
@@ -307,7 +307,7 @@ export default function BlogPost() {
   const conclusion = pick(post, 'conclusion');
   // Custom items have a per-language name (name_tr/en/de); products/subscriptions
   // use their single catalog name. Resolve to the active language with fallbacks.
-  const itemName = (p) => p[`name_${postLang}`] || p.name_tr || p.name_en || p.name_de || p.name || '';
+  const itemName = (p) => p[`name_${postLang}`] || p.name_tr || p.name_en || p.name || '';
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && itemName(p)) : [];
   const cover = post?.cover || (post?.coverFile ? fileUrl(post, post.coverFile) : (products[0]?.image || products[0]?.imageUrl || ''));
   const url = `${SITE_URL}/blog/${slug}`;
@@ -340,7 +340,7 @@ export default function BlogPost() {
   // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(
     post ? [
-      `${L('Blog article', 'Blog makalesi', 'Blog-Artikel')}: ${title}`, lead,
+      `${L('Blog article', 'Blog makalesi')}: ${title}`, lead,
       ...products.map((p, i) => `${i + 1}. ${itemName(p)}${p.brand ? ` (${p.brand})` : ''}: ${blockText(p)}`.trim()),
       conclusion ? conclusion.replace(/<[^>]+>/g, ' ') : '',
     ].filter(Boolean).join('\n') : '',
@@ -357,11 +357,10 @@ export default function BlogPost() {
   const langSlugs = post ? {
     tr: post.slug_tr || post.slug,
     en: post.slug_en || post.slug,
-    de: post.slug_de || post.slug,
   } : null;
   const seoAlternates = useMemo(() => {
     if (!langSlugs || previewId) return null;
-    const out = ['tr', 'en', 'de']
+    const out = ['tr', 'en']
       .filter((c) => langSlugs[c])
       .map((c) => ({ hreflang: c, href: `${SITE_URL}/blog/${langSlugs[c]}` }));
     if (langSlugs.tr) out.push({ hreflang: 'x-default', href: `${SITE_URL}/blog/${langSlugs.tr}` });
@@ -428,8 +427,8 @@ export default function BlogPost() {
   if (status === 'notfound') {
     return (
       <div className="container blog-page">
-        <div className="blog-hero"><h1>{L('Article not found', 'Yazı bulunamadı', 'Artikel nicht gefunden')}</h1></div>
-        <Link to="/blog" className="btn btn-primary">{L('All guides', 'Tüm rehberler', 'Alle Ratgeber')}</Link>
+        <div className="blog-hero"><h1>{L('Article not found', 'Yazı bulunamadı')}</h1></div>
+        <Link to="/blog" className="btn btn-primary">{L('All guides', 'Tüm rehberler')}</Link>
       </div>
     );
   }
@@ -437,8 +436,8 @@ export default function BlogPost() {
     return <div className="container blog-page"><div className="blog-article"><div className="blog-card-skel" style={{ minHeight: 360, borderRadius: 18 }} /></div></div>;
   }
 
-  const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(postLang === 'tr' ? 'tr-TR' : postLang === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-  const nf = (n) => Number(n || 0).toLocaleString(postLang === 'tr' ? 'tr-TR' : postLang === 'de' ? 'de-DE' : 'en-US');
+  const dateStr = publishedAt ? new Date(publishedAt).toLocaleDateString(postLang === 'tr' ? 'tr-TR' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+  const nf = (n) => Number(n || 0).toLocaleString(postLang === 'tr' ? 'tr-TR' : 'en-US');
 
   // One content block (product / subscription / custom), per its layout template.
   const renderProd = (p, i) => {
@@ -457,25 +456,25 @@ export default function BlogPost() {
     if (kind === 'product') {
       btns = (
         <div className="post-prod-btns">
-          <Link to={`${productTo}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi', 'KI-Analyse')}</Link>
+          <Link to={`${productTo}?ai=1`} className="ppbtn">✨ {L('AI analysis', 'AI Analizi')}</Link>
           <a href={amazonGoPath(p, geoCountry || 'TR')} target="_blank" rel="sponsored noopener nofollow" className="ppbtn ppbtn-amz" title="Amazon">
             <img src="/assets/amazon.svg" alt="Amazon" className="amz-logo" />
             {(() => { const lp = blogLivePrice(livePrices[p.id], geoCountry || 'TR') || p.price; return lp ? <span className="ppbtn-price">{lp}</span> : null; })()}
           </a>
-          <Link to={productTo} className="ppbtn">→ {L('Product', 'Ürüne Git', 'Produkt')}</Link>
+          <Link to={productTo} className="ppbtn">→ {L('Product', 'Ürüne Git')}</Link>
         </div>
       );
     } else if (kind === 'subscription') {
       btns = (
         <div className="post-prod-btns">
-          <Link to={subTo} className="ppbtn">→ {L('Subscriptions', 'Abonelikler', 'Abos')}</Link>
-          {extHref ? <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">🌐 {L('Official site', 'Resmi site', 'Offizielle Seite')}</a> : null}
+          <Link to={subTo} className="ppbtn">→ {L('Subscriptions', 'Abonelikler')}</Link>
+          {extHref ? <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">🌐 {L('Official site', 'Resmi site')}</a> : null}
         </div>
       );
     } else {
       btns = extHref ? (
         <div className="post-prod-btns">
-          <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">→ {L('View', 'İncele', 'Ansehen')}</a>
+          <a href={extHref} target="_blank" rel="sponsored noopener nofollow" className="ppbtn">→ {L('View', 'İncele')}</a>
         </div>
       ) : null;
     }
@@ -511,7 +510,7 @@ export default function BlogPost() {
               // Yeni editör kontrolleri: manuel genişlik (%) + dil-farkında altyazı.
               const w = Number(b.w) || 0;
               const st = w >= 15 && w <= 100 ? { width: `${w}%` } : undefined;
-              const cap = b[`cap_${postLang}`] || b.cap_tr || b.cap_en || b.cap_de || b.cap || '';
+              const cap = b[`cap_${postLang}`] || b.cap_tr || b.cap_en || b.cap || '';
               return (
                 <figure key={bi} className={`post-prod-fig fig-${pos} pp-${bsize}`} style={st}>
                   {linkFig(<img src={nu} data-orig={nu} alt={cap || name} loading="lazy" onError={imageOnError} />)}
@@ -551,7 +550,7 @@ export default function BlogPost() {
   return (
     <div className="container blog-page">
       <div className="blog-progress" style={{ width: `${progress}%` }} />
-      {previewId ? <div className="blog-preview-banner">👁 {L('Preview — not public', 'Önizleme — yayında değil', 'Vorschau — nicht öffentlich')}{post?.status !== 'published' ? ` · ${L('draft', 'taslak', 'Entwurf')}` : ''}</div> : null}
+      {previewId ? <div className="blog-preview-banner">👁 {L('Preview — not public', 'Önizleme — yayında değil')}{post?.status !== 'published' ? ` · ${L('draft', 'taslak')}` : ''}</div> : null}
       <article className="blog-article">
         <nav className="blog-crumb"><Link to="/">Qor AI</Link> › <Link to="/blog">Blog</Link></nav>
 
@@ -562,7 +561,7 @@ export default function BlogPost() {
           <span className="blog-stat">👁 {nf(viewCount)}</span>
           <div className="blog-stats-actions">
             <button className={`blog-act blog-like ${liked ? 'on' : ''}`} onClick={onLike} aria-label="like">❤ {nf(likeCount)}</button>
-            <button className="blog-act" onClick={onShare} aria-label="share">↗ {L('Share', 'Paylaş', 'Teilen')}</button>
+            <button className="blog-act" onClick={onShare} aria-label="share">↗ {L('Share', 'Paylaş')}</button>
           </div>
         </div>
 
@@ -571,7 +570,7 @@ export default function BlogPost() {
 
         {toc.length >= 2 && (
           <nav className="blog-toc">
-            <div className="blog-toc-h">{L('Contents', 'İçindekiler', 'Inhalt')}</div>
+            <div className="blog-toc-h">{L('Contents', 'İçindekiler')}</div>
             <ul>
               {toc.map((h) => (
                 <li key={h.id} className={h.level === 3 ? 'lvl3' : ''}>
@@ -596,7 +595,7 @@ export default function BlogPost() {
           productId={`blog:${canonKey}`} productName={title} lang={lang}
           headerSlot={(
             <button type="button" className="blog-ai-btn" onClick={askAi}>
-              ✨ {L('Ask Qor AI about this article', 'Bu makale hakkında Qor AI’ya sor', 'Frag Qor AI zu diesem Artikel')}
+              ✨ {L('Ask Qor AI about this article', 'Bu makale hakkında Qor AI’ya sor')}
             </button>
           )}
         />
@@ -604,7 +603,7 @@ export default function BlogPost() {
         {/* similar articles — horizontal rows: cover left, title + excerpt right */}
         {more.length > 0 && (
           <section className="blog-similar">
-            <div className="sec-head"><h2><span className="bar" /> {L('Related guides', 'Benzer rehberler', 'Ähnliche Ratgeber')}</h2></div>
+            <div className="sec-head"><h2><span className="bar" /> {L('Related guides', 'Benzer rehberler')}</h2></div>
             <div className="blog-simrows">
               {more.map((m) => {
                 const mp = Array.isArray(m.products) ? m.products : [];

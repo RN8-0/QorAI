@@ -529,9 +529,9 @@ export async function getMyLikedArticles(limit = 60) {
       .getFirstListItem(`slug="${String(s).replace(/"/g, '\\"')}" && status="published"`, { $autoCancel: false })
       .catch(() => null)));
     return arts.filter(Boolean).map((a) => ({
-      id: a.id, slug: a.slug, slug_tr: a.slug_tr, slug_en: a.slug_en, slug_de: a.slug_de,
+      id: a.id, slug: a.slug, slug_tr: a.slug_tr, slug_en: a.slug_en,
       cover: a.cover, coverFile: a.coverFile, products: a.products, collectionId: a.collectionId, collectionName: a.collectionName,
-      title_tr: a.title_tr, title_en: a.title_en, title_de: a.title_de,
+      title_tr: a.title_tr, title_en: a.title_en,
     }));
   } catch {
     return [];

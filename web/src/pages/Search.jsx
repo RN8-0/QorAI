@@ -28,7 +28,7 @@ const LIMIT = 40;
 
 export default function Search() {
   const { lang, t } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [params] = useSearchParams();
   const nav = useNavigate();
   const q = (params.get('q') || '').trim();
@@ -44,12 +44,11 @@ export default function Search() {
   // dusunulunce bunu indexe acmak dogrudan zarar olurdu.
   useSeo({
     title: q
-      ? L(`"${q}" search results — Qor AI`, `"${q}" arama sonuçları — Qor AI`, `"${q}" Suchergebnisse — Qor AI`)
-      : L('Search — Qor AI', 'Arama — Qor AI', 'Suche — Qor AI'),
+      ? L(`"${q}" search results — Qor AI`, `"${q}" arama sonuçları — Qor AI`)
+      : L('Search — Qor AI', 'Arama — Qor AI'),
     description: L(
       'Search AI-scored tech products on Qor AI: compare specs, scores and live prices.',
       'Qor AI’da yapay zekâ puanlı teknoloji ürünlerini ara: özellikleri, puanları ve güncel fiyatları karşılaştır.',
-      'Suche KI-bewertete Technikprodukte bei Qor AI: Specs, Scores und aktuelle Preise vergleichen.',
     ),
     path: '/search',
     htmlLang: lang,
@@ -120,15 +119,15 @@ export default function Search() {
           <h1 className="sr-title">
             {q ? (
               <>
-                <span className="sr-title-lbl">{L('Results for', 'Sonuçlar', 'Ergebnisse für')}</span>
+                <span className="sr-title-lbl">{L('Results for', 'Sonuçlar')}</span>
                 <span className="sr-title-q">{q}</span>
               </>
-            ) : L('Search', 'Arama', 'Suche')}
+            ) : L('Search', 'Arama')}
           </h1>
           {q && !yukleniyor && (
             <span className="sr-count">
               {!katFiltre && sonuc.length >= LIMIT ? `${LIMIT}+` : gosterilen.length}{' '}
-              {L('products', 'ürün', 'Produkte')}
+              {L('products', 'ürün')}
             </span>
           )}
         </div>
@@ -140,7 +139,7 @@ export default function Search() {
             <circle cx="11" cy="11" r="7.2" /><line x1="20.6" y1="20.6" x2="16.5" y2="16.5" />
           </svg>
           <input ref={girdi} defaultValue={q} key={q}
-            placeholder={L('Search products…', 'Ürün ara…', 'Produkte suchen…')}
+            placeholder={L('Search products…', 'Ürün ara…')}
             aria-label={t('common.search')} type="search" enterKeyHint="search"
             autoComplete="off" spellCheck="false" />
           <button type="submit" className="btn btn-grad">{t('common.search')}</button>
@@ -151,10 +150,10 @@ export default function Search() {
             metin sorgusu okumuyor, yani ayni sorgu orada kaybolurdu. */}
         {kategoriler.length > 1 && (
           <div className="sr-cats">
-            <span className="sr-cats-lbl">{L('Narrow down', 'Daralt', 'Eingrenzen')}</span>
+            <span className="sr-cats-lbl">{L('Narrow down', 'Daralt')}</span>
             <button type="button" className={'sr-cat' + (!katFiltre ? ' on' : '')}
               onClick={() => setKatFiltre('')}>
-              {L('All', 'Tümü', 'Alle')} <b>{sonuc.length}</b>
+              {L('All', 'Tümü')} <b>{sonuc.length}</b>
             </button>
             {kategoriler.map(([c, n]) => (
               <button key={c} type="button"
@@ -168,7 +167,7 @@ export default function Search() {
 
         {!q ? (
           <div className="card pad sr-empty">
-            {L('Type a product name to search.', 'Aramak için bir ürün adı yaz.', 'Gib einen Produktnamen ein.')}
+            {L('Type a product name to search.', 'Aramak için bir ürün adı yaz.')}
           </div>
         ) : yukleniyor ? (
           <div className="card-grid">
@@ -184,10 +183,9 @@ export default function Search() {
             <span>{L(
               'Check the spelling, try a shorter term, or browse by category.',
               'Yazımı kontrol et, daha kısa bir terim dene ya da kategorilere göz at.',
-              'Prüfe die Schreibweise, versuche einen kürzeren Begriff oder stöbere in den Kategorien.',
             )}</span>
             <Link to="/category" className="btn btn-grad" style={{ marginTop: 6 }}>
-              {L('All categories', 'Tüm kategoriler', 'Alle Kategorien')}
+              {L('All categories', 'Tüm kategoriler')}
             </Link>
           </div>
         )}

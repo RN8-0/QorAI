@@ -89,7 +89,7 @@ function main() {
   assert(homeRoot.length > 500, 'homepage #root prerender body is missing or too small');
   assert(homeH1, 'homepage prerender must carry an <h1>');
 
-  const staticPages = ['about', 'privacy', 'terms', 'refund', 'cookies', 'contact', 'faq', 'premium', 'subscriptions', 'link-analysis', 'quiz', 'ai-chat', 'tr', 'de'];
+  const staticPages = ['about', 'privacy', 'terms', 'refund', 'cookies', 'contact', 'faq', 'premium', 'subscriptions', 'link-analysis', 'quiz', 'ai-chat', 'tr'];
   const samples = [
     ...staticPages,
     ...sampleDirs('product', 25),
@@ -107,7 +107,7 @@ function main() {
     assert(body !== homeRoot, `${rel}: #root body is a clone of the homepage — template sanitisation regression`);
     const h1 = h1Text(html);
     assert(h1, `${rel}: prerender body has no <h1>`);
-    if (rel !== 'en' && rel !== 'de') {
+    if (rel !== 'en') {
       assert(h1 !== homeH1, `${rel}: <h1> equals the homepage h1 — page lost its own body`);
     }
     // Product/compare pages: <h1> (product name) must lead the <title>, so the
@@ -156,9 +156,7 @@ function main() {
   for (const dir of qaSamples) {
     const html = read(`${dir}/index.html`);
     const title = (html.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
-    // Sayfanin dili yol onekinden: /tr/... = tr, /de/... = de, digeri en.
-    // (de sayfalari spec'leri INGILIZCE gosterir — sitenin kurali, bkz.
-    //  web/src/pages/ProductDetail.jsx:369 — bu yuzden de icin de TR izi aranir.)
+    // Sayfanin dili yol onekinden: /tr/... = tr, digeri en.
     const lang = dir.startsWith('tr/') ? 'tr' : 'en';
 
     if (title.includes('…')) {
@@ -262,7 +260,7 @@ function main() {
   }
 
   // ── KIRIK PAKET REFERANSI DENETIMI (2026-08-18) ─────────────────────────
-  // CANLI OLAY: /tr/compare ve /de/compare BEYAZ EKRAN veriyordu. O kabuklar
+  // CANLI OLAY: /tr/compare BEYAZ EKRAN veriyordu. O kabuklar
   // aylar once elle eklenip bir daha uretilmemisti; icindeki
   // `spa/index-TkhoIV_k.js` silinmisti -> 404 -> SPA hic boot etmiyor.
   // Boyle bir kabugun canliya bir daha CIKMAMASI icin derleme burada durur.

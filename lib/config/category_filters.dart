@@ -12,12 +12,11 @@ library;
 /// A `[en, tr, de]` label triple.
 typedef Label = List<String>;
 
-Label _label(String en, String tr, String de) => [en, tr, de];
+Label _label(String en, String tr) => [en, tr];
 
-/// Pick the right language out of a `[en, tr, de]` label.
+/// Pick the right language out of an `[en, tr]` label.
 String lbl(Label arr, String lang) {
   if (lang == 'tr') return arr[1];
-  if (lang == 'de') return arr[2];
   return arr[0];
 }
 
@@ -67,39 +66,39 @@ class TokenGroup {
 final List<TokenGroup> kTokenGroups = [
   // Smart vs feature phones live in one `smartphones` category — this toggle
   // splits them back apart (every phone is tagged phone_type:smart|feature).
-  TokenGroup(prefix: 'phone_type', label: _label('Phone type', 'Telefon tipi', 'Telefontyp'), categories: const ['smartphones']),
-  TokenGroup(prefix: 'storage', kind: 'range', unit: 'capacity', label: _label('Storage', 'Depolama', 'Speicher'), categories: [..._computingCats, 'ssd', 'ssds', 'storage', 'flash_drives']),
-  TokenGroup(prefix: 'ram', kind: 'range', unit: 'capacity', label: _label('RAM', 'RAM', 'RAM'), categories: [..._computingCats, 'ram']),
-  TokenGroup(prefix: 'ram_speed', kind: 'range', unit: 'mt', label: _label('Memory speed', 'Bellek hızı', 'Speichertakt'), categories: const ['ram']),
-  TokenGroup(prefix: 'ram_latency', kind: 'range', unit: 'cl', label: _label('CL latency', 'CL gecikme', 'CL-Latenz'), categories: const ['ram']),
-  TokenGroup(prefix: 'screen_size', kind: 'range', unit: 'inch', label: _label('Screen size', 'Ekran boyutu', 'Bildschirmgröße'), categories: _displayCats),
-  TokenGroup(prefix: 'refresh_rate', kind: 'range', unit: 'hz', label: _label('Refresh rate', 'Yenileme hızı', 'Bildrate'), categories: _displayCats),
-  TokenGroup(prefix: 'screen_tech', label: _label('Panel type', 'Panel tipi', 'Panel'), categories: _displayCats),
-  TokenGroup(prefix: 'resolution', label: _label('Resolution', 'Çözünürlük', 'Auflösung'), categories: const ['monitors', 'tvs', 'projectors', 'laptops', 'tablets', 'smartphones']),
-  TokenGroup(prefix: 'display_input', label: _label('Inputs', 'Girişler', 'Anschlüsse'), categories: const ['monitors', 'tvs', 'projectors']),
-  TokenGroup(prefix: 'os', label: _label('Operating system', 'İşletim sistemi', 'Betriebssystem'), categories: [..._computingCats, 'smartwatches', 'tvs']),
-  TokenGroup(prefix: 'processor_brand', label: _label('Processor', 'İşlemci', 'Prozessor'), categories: const ['smartphones', 'tablets', 'laptops', 'desktops', 'smartwatches', 'cpus']),
-  TokenGroup(prefix: 'gpu_type', label: _label('Graphics', 'Ekran kartı', 'Grafik'), categories: const ['laptops', 'desktops']),
-  TokenGroup(prefix: 'gpu_brand', label: _label('GPU brand', 'GPU markası', 'GPU-Marke'), categories: _gpuCats),
-  TokenGroup(prefix: 'vram', kind: 'range', unit: 'capacity', label: _label('Video memory', 'Ekran kartı belleği', 'Grafikspeicher'), categories: _gpuCats),
-  TokenGroup(prefix: 'vram_type', label: _label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: const ['graphics_cards']),
-  TokenGroup(prefix: 'ram_type', label: _label('Memory type', 'Bellek tipi', 'Speichertyp'), categories: const ['ram', 'laptops', 'desktops', 'motherboards']),
-  TokenGroup(prefix: 'ram_module', label: _label('Module type', 'Modül tipi', 'Modultyp'), categories: const ['ram']),
-  TokenGroup(prefix: 'ram_kit', label: _label('Kit', 'Kit', 'Kit'), categories: const ['ram']),
-  TokenGroup(prefix: 'ram_platform', label: _label('Platform', 'Platform', 'Plattform'), categories: const ['ram']),
-  TokenGroup(prefix: 'storage_type', label: _label('Storage type', 'Depolama tipi', 'Speicherart'), categories: const ['ssd', 'ssds', 'storage', 'laptops', 'desktops']),
-  TokenGroup(prefix: 'socket', label: _label('Socket', 'Soket', 'Sockel'), categories: const ['cpus', 'motherboards', 'cpu_coolers']),
-  TokenGroup(prefix: 'connectivity', label: _label('Connectivity', 'Bağlantı', 'Konnektivität'), categories: [..._mobileCats, 'laptops', 'routers', 'wifi_routers', 'modem_routers']),
+  TokenGroup(prefix: 'phone_type', label: _label('Phone type', 'Telefon tipi'), categories: const ['smartphones']),
+  TokenGroup(prefix: 'storage', kind: 'range', unit: 'capacity', label: _label('Storage', 'Depolama'), categories: [..._computingCats, 'ssd', 'ssds', 'storage', 'flash_drives']),
+  TokenGroup(prefix: 'ram', kind: 'range', unit: 'capacity', label: _label('RAM', 'RAM'), categories: [..._computingCats, 'ram']),
+  TokenGroup(prefix: 'ram_speed', kind: 'range', unit: 'mt', label: _label('Memory speed', 'Bellek hızı'), categories: const ['ram']),
+  TokenGroup(prefix: 'ram_latency', kind: 'range', unit: 'cl', label: _label('CL latency', 'CL gecikme'), categories: const ['ram']),
+  TokenGroup(prefix: 'screen_size', kind: 'range', unit: 'inch', label: _label('Screen size', 'Ekran boyutu'), categories: _displayCats),
+  TokenGroup(prefix: 'refresh_rate', kind: 'range', unit: 'hz', label: _label('Refresh rate', 'Yenileme hızı'), categories: _displayCats),
+  TokenGroup(prefix: 'screen_tech', label: _label('Panel type', 'Panel tipi'), categories: _displayCats),
+  TokenGroup(prefix: 'resolution', label: _label('Resolution', 'Çözünürlük'), categories: const ['monitors', 'tvs', 'projectors', 'laptops', 'tablets', 'smartphones']),
+  TokenGroup(prefix: 'display_input', label: _label('Inputs', 'Girişler'), categories: const ['monitors', 'tvs', 'projectors']),
+  TokenGroup(prefix: 'os', label: _label('Operating system', 'İşletim sistemi'), categories: [..._computingCats, 'smartwatches', 'tvs']),
+  TokenGroup(prefix: 'processor_brand', label: _label('Processor', 'İşlemci'), categories: const ['smartphones', 'tablets', 'laptops', 'desktops', 'smartwatches', 'cpus']),
+  TokenGroup(prefix: 'gpu_type', label: _label('Graphics', 'Ekran kartı'), categories: const ['laptops', 'desktops']),
+  TokenGroup(prefix: 'gpu_brand', label: _label('GPU brand', 'GPU markası'), categories: _gpuCats),
+  TokenGroup(prefix: 'vram', kind: 'range', unit: 'capacity', label: _label('Video memory', 'Ekran kartı belleği'), categories: _gpuCats),
+  TokenGroup(prefix: 'vram_type', label: _label('Memory type', 'Bellek tipi'), categories: const ['graphics_cards']),
+  TokenGroup(prefix: 'ram_type', label: _label('Memory type', 'Bellek tipi'), categories: const ['ram', 'laptops', 'desktops', 'motherboards']),
+  TokenGroup(prefix: 'ram_module', label: _label('Module type', 'Modül tipi'), categories: const ['ram']),
+  TokenGroup(prefix: 'ram_kit', label: _label('Kit', 'Kit'), categories: const ['ram']),
+  TokenGroup(prefix: 'ram_platform', label: _label('Platform', 'Platform'), categories: const ['ram']),
+  TokenGroup(prefix: 'storage_type', label: _label('Storage type', 'Depolama tipi'), categories: const ['ssd', 'ssds', 'storage', 'laptops', 'desktops']),
+  TokenGroup(prefix: 'socket', label: _label('Socket', 'Soket'), categories: const ['cpus', 'motherboards', 'cpu_coolers']),
+  TokenGroup(prefix: 'connectivity', label: _label('Connectivity', 'Bağlantı'), categories: [..._mobileCats, 'laptops', 'routers', 'wifi_routers', 'modem_routers']),
   // Input peripherals & audio.
-  TokenGroup(prefix: 'connection', label: _label('Connection', 'Bağlantı', 'Anschluss'), categories: _peripheralConnCats),
-  TokenGroup(prefix: 'dpi', kind: 'range', unit: 'dpi', label: _label('Sensitivity (DPI)', 'Hassasiyet (DPI)', 'Empfindlichkeit (DPI)'), categories: const ['mice']),
-  TokenGroup(prefix: 'key_type', label: _label('Key type', 'Tuş tipi', 'Tastentyp'), categories: const ['keyboards']),
-  TokenGroup(prefix: 'headphone_type', label: _label('Type', 'Kulaklık tipi', 'Bauform'), categories: const ['headphones']),
+  TokenGroup(prefix: 'connection', label: _label('Connection', 'Bağlantı'), categories: _peripheralConnCats),
+  TokenGroup(prefix: 'dpi', kind: 'range', unit: 'dpi', label: _label('Sensitivity (DPI)', 'Hassasiyet (DPI)'), categories: const ['mice']),
+  TokenGroup(prefix: 'key_type', label: _label('Key type', 'Tuş tipi'), categories: const ['keyboards']),
+  TokenGroup(prefix: 'headphone_type', label: _label('Type', 'Kulaklık tipi'), categories: const ['headphones']),
   // Power.
-  TokenGroup(prefix: 'psu_wattage', kind: 'range', unit: 'w', label: _label('Wattage', 'Güç', 'Leistung'), categories: const ['psu']),
-  TokenGroup(prefix: 'psu_efficiency', label: _label('Efficiency', 'Verimlilik', 'Effizienz'), categories: const ['psu']),
-  TokenGroup(prefix: 'psu_modular', label: _label('Cabling', 'Kablo tipi', 'Kabelmanagement'), categories: const ['psu']),
-  TokenGroup(prefix: 'pb_capacity', kind: 'range', unit: 'mah', label: _label('Capacity', 'Kapasite', 'Kapazität'), categories: const ['powerbanks']),
+  TokenGroup(prefix: 'psu_wattage', kind: 'range', unit: 'w', label: _label('Wattage', 'Güç'), categories: const ['psu']),
+  TokenGroup(prefix: 'psu_efficiency', label: _label('Efficiency', 'Verimlilik'), categories: const ['psu']),
+  TokenGroup(prefix: 'psu_modular', label: _label('Cabling', 'Kablo tipi'), categories: const ['psu']),
+  TokenGroup(prefix: 'pb_capacity', kind: 'range', unit: 'mah', label: _label('Capacity', 'Kapasite'), categories: const ['powerbanks']),
 ];
 
 /// One boolean feature toggle (a `prefix:true` token).
@@ -114,18 +113,18 @@ class FeatureToken {
 
 /// Ordered feature toggles (mirrors web `FEATURE_TOKENS`).
 final List<FeatureToken> kFeatureTokens = [
-  FeatureToken(token: 'five_g:true', label: _label('5G', '5G', '5G'), categories: _mobileCats),
-  FeatureToken(token: 'nfc:true', label: _label('NFC', 'NFC', 'NFC'), categories: _mobileCats),
-  FeatureToken(token: 'wireless_charging:true', label: _label('Wireless charging', 'Kablosuz şarj', 'Kabelloses Laden'), categories: const ['smartphones', 'smartwatches', 'earbuds', 'headphones', 'powerbanks']),
-  FeatureToken(token: 'fast_charging:true', label: _label('Fast charging', 'Hızlı şarj', 'Schnellladen'), categories: const ['smartphones', 'tablets', 'laptops', 'smartwatches', 'headphones', 'earbuds', 'powerbanks']),
-  FeatureToken(token: 'fingerprint:true', label: _label('Fingerprint', 'Parmak izi', 'Fingerabdruck'), categories: const ['smartphones', 'tablets', 'laptops']),
-  FeatureToken(token: 'water_resistance:true', label: _label('Water resistant', 'Suya dayanıklı', 'Wasserfest'), categories: const ['smartphones', 'smartwatches', 'headphones', 'earbuds', 'speakers']),
-  FeatureToken(token: 'anc:true', label: _label('Noise cancelling (ANC)', 'Gürültü engelleme (ANC)', 'Geräuschunterdrückung (ANC)'), categories: const ['headphones', 'earbuds']),
-  FeatureToken(token: 'ecc:true', label: _label('ECC', 'ECC', 'ECC'), categories: const ['ram']),
-  FeatureToken(token: 'lighting:true', label: _label('Lighting', 'Aydınlatma', 'Beleuchtung'), categories: _peripheralLightCats),
-  FeatureToken(token: 'rgb:true', label: _label('RGB', 'RGB', 'RGB'), categories: _peripheralLightCats),
-  FeatureToken(token: 'xmp:true', label: _label('Intel XMP', 'Intel XMP', 'Intel XMP'), categories: const ['ram']),
-  FeatureToken(token: 'expo:true', label: _label('AMD EXPO', 'AMD EXPO', 'AMD EXPO'), categories: const ['ram']),
+  FeatureToken(token: 'five_g:true', label: _label('5G', '5G'), categories: _mobileCats),
+  FeatureToken(token: 'nfc:true', label: _label('NFC', 'NFC'), categories: _mobileCats),
+  FeatureToken(token: 'wireless_charging:true', label: _label('Wireless charging', 'Kablosuz şarj'), categories: const ['smartphones', 'smartwatches', 'earbuds', 'headphones', 'powerbanks']),
+  FeatureToken(token: 'fast_charging:true', label: _label('Fast charging', 'Hızlı şarj'), categories: const ['smartphones', 'tablets', 'laptops', 'smartwatches', 'headphones', 'earbuds', 'powerbanks']),
+  FeatureToken(token: 'fingerprint:true', label: _label('Fingerprint', 'Parmak izi'), categories: const ['smartphones', 'tablets', 'laptops']),
+  FeatureToken(token: 'water_resistance:true', label: _label('Water resistant', 'Suya dayanıklı'), categories: const ['smartphones', 'smartwatches', 'headphones', 'earbuds', 'speakers']),
+  FeatureToken(token: 'anc:true', label: _label('Noise cancelling (ANC)', 'Gürültü engelleme (ANC)'), categories: const ['headphones', 'earbuds']),
+  FeatureToken(token: 'ecc:true', label: _label('ECC', 'ECC'), categories: const ['ram']),
+  FeatureToken(token: 'lighting:true', label: _label('Lighting', 'Aydınlatma'), categories: _peripheralLightCats),
+  FeatureToken(token: 'rgb:true', label: _label('RGB', 'RGB'), categories: _peripheralLightCats),
+  FeatureToken(token: 'xmp:true', label: _label('Intel XMP', 'Intel XMP'), categories: const ['ram']),
+  FeatureToken(token: 'expo:true', label: _label('AMD EXPO', 'AMD EXPO'), categories: const ['ram']),
 ];
 
 /// Display labels for known token values. Value is either a plain `String`

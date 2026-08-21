@@ -45,7 +45,7 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
   // Price for the visitor's detected country only (never a non-shippable market).
   const cardPrice = priceForCountry(p, geoCountry);
   const inCompare = has(p.id);
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const cardName = displayProductName(p, lang);
   // "Apple iPhone 17 Pro (512 GB)" -> ad: "Apple iPhone 17 Pro", varyant: "512 GB"
   const varyantEs = /^(.*?)\s*[（(]\s*([^)）]{1,28})\s*[)）]\s*$/.exec(cardName);
@@ -58,7 +58,7 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
     if (inCompare) { remove(p.id); return; }
     const r = tryAdd(p);
     if (!r.ok && r.reason === 'category') {
-      setCmpMsg(L('Different category', 'Farklı kategori', 'Andere Kategorie'));
+      setCmpMsg(L('Different category', 'Farklı kategori'));
       setTimeout(() => setCmpMsg(''), 2200);
     }
   };
@@ -74,8 +74,8 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
       <button type="button"
         className={'q-product-card-cmp' + (inCompare ? ' on' : '')}
         onClick={onCompareClick}
-        title={inCompare ? L('In compare', 'Karşılaştırmada', 'Im Vergleich') : L('Add to compare', 'Karşılaştırmaya ekle', 'Zum Vergleich')}
-        aria-label={L('Compare', 'Karşılaştır', 'Vergleichen')}>
+        title={inCompare ? L('In compare', 'Karşılaştırmada') : L('Add to compare', 'Karşılaştırmaya ekle')}
+        aria-label={L('Compare', 'Karşılaştır')}>
         {inCompare ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
         ) : (

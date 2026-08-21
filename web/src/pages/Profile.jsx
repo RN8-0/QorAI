@@ -238,7 +238,7 @@ function flagEmoji(cc) {
 function RegionSetting({ user }) {
   const { lang } = useI18n();
   const geoCountry = useGeoCountry();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const currentCC = (user?.country || geoCountry || '').toUpperCase();
   const onRegion = async (e) => {
     const cc = e.target.value;
@@ -248,15 +248,14 @@ function RegionSetting({ user }) {
   };
   return (
     <div className="pf-card">
-      <h3>{L('Region', 'Bölge', 'Region')}</h3>
+      <h3>{L('Region', 'Bölge')}</h3>
       <p style={{ margin: '0 0 12px', color: 'var(--text-2)', fontSize: 14, lineHeight: 1.5 }}>
         {L('Prices and stores are shown for this country. The site language follows your browser automatically.',
-          'Fiyatlar ve mağazalar bu ülkeye göre gösterilir. Site dili tarayıcınıza göre otomatik ayarlanır.',
-          'Preise und Shops werden für dieses Land angezeigt. Die Sprache folgt automatisch deinem Browser.')}
+          'Fiyatlar ve mağazalar bu ülkeye göre gösterilir. Site dili tarayıcınıza göre otomatik ayarlanır.')}
       </p>
       <label>
         <span style={{ display: 'block', fontSize: 13, marginBottom: 6, color: 'var(--text-3)' }}>
-          {L('Region · prices in', 'Bölge · fiyatlar', 'Region · Preise in')} {CURRENCY_BY_COUNTRY[currentCC] || 'USD'}
+          {L('Region · prices in', 'Bölge · fiyatlar')} {CURRENCY_BY_COUNTRY[currentCC] || 'USD'}
         </span>
         <select value={currentCC || ''} onChange={onRegion}
           style={{
@@ -264,7 +263,7 @@ function RegionSetting({ user }) {
             border: '1px solid var(--border)', background: 'var(--surface-2)',
             color: 'var(--text)', fontSize: 15, cursor: 'pointer',
           }}>
-          {!currentCC && <option value="">{L('Select…', 'Seç…', 'Wählen…')}</option>}
+          {!currentCC && <option value="">{L('Select…', 'Seç…')}</option>}
           {MARKET_COUNTRIES.map((cc) => (
             <option key={cc} value={cc}>{flagEmoji(cc)} {countryDisplayName(cc, lang)} ({CURRENCY_BY_COUNTRY[cc]})</option>
           ))}
@@ -295,7 +294,7 @@ const PLAY_SUBS_URL = 'https://play.google.com/store/account/subscriptions';
 
 function SubscriptionSetting({ user }) {
   const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const { isPremium, source, expiresAt } = premiumStatus(user);
   const [state, setState] = useState('');
   const [err, setErr] = useState('');
@@ -325,12 +324,10 @@ function SubscriptionSetting({ user }) {
       if (code === 'no_web_subscription') {
         setErr(L(
           'No website subscription found for this account — it looks like you subscribed in the mobile app. Cancel it in Google Play.',
-          'Bu hesapta web aboneliği bulunamadı — görünüşe göre mobil uygulamadan abone olmuşsunuz. İptali Google Play üzerinden yapın.',
-          'Für dieses Konto wurde kein Web-Abo gefunden — offenbar haben Sie in der App abonniert. Bitte in Google Play kündigen.'));
+          'Bu hesapta web aboneliği bulunamadı — görünüşe göre mobil uygulamadan abone olmuşsunuz. İptali Google Play üzerinden yapın.'));
       } else {
         setErr(L('Could not open the billing portal. Please try again.',
-          'Ödeme portalı açılamadı. Lütfen tekrar deneyin.',
-          'Das Zahlungsportal konnte nicht geöffnet werden. Bitte erneut versuchen.'));
+          'Ödeme portalı açılamadı. Lütfen tekrar deneyin.'));
       }
       setState('');
     }
@@ -338,14 +335,13 @@ function SubscriptionSetting({ user }) {
 
   return (
     <div className="pf-card">
-      <h3>{L('Subscription', 'Abonelik', 'Abo')}</h3>
+      <h3>{L('Subscription', 'Abonelik')}</h3>
       <p style={{ color: 'var(--text-3)', fontSize: 14, margin: '0 0 12px' }}>
-        {L('Qor AI Premium is active.', 'Qor AI Premium aktif.', 'Qor AI Premium ist aktiv.')}
-        {expiresAt ? ` ${L('Renews', 'Yenilenme', 'Verlängerung')}: ${fmtDate(expiresAt)}.` : ''}
+        {L('Qor AI Premium is active.', 'Qor AI Premium aktif.')}
+        {expiresAt ? ` ${L('Renews', 'Yenilenme')}: ${fmtDate(expiresAt)}.` : ''}
         {' '}
         {L('Cancel where you subscribed — cancelling one does not cancel the other.',
-          'Nereden abone olduysanız oradan iptal edin — birini iptal etmek diğerini iptal etmez.',
-          'Kündigen Sie dort, wo Sie abgeschlossen haben — eine Kündigung storniert nicht die andere.')}
+          'Nereden abone olduysanız oradan iptal edin — birini iptal etmek diğerini iptal etmez.')}
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -354,21 +350,20 @@ function SubscriptionSetting({ user }) {
         {showWeb && (
           <button className="btn pf-danger-btn" disabled={state === 'loading'} onClick={openPortal}>
             {state === 'loading'
-              ? L('Opening…', 'Açılıyor…', 'Wird geöffnet…')
-              : L('Cancel website subscription', 'Web aboneliğini iptal et', 'Web-Abo kündigen')}
+              ? L('Opening…', 'Açılıyor…')
+              : L('Cancel website subscription', 'Web aboneliğini iptal et')}
           </button>
         )}
         {showPlay && (
           <a className="btn pf-danger-btn" href={PLAY_SUBS_URL} target="_blank" rel="noopener noreferrer">
-            {L('Cancel in Google Play', 'Google Play’den iptal et', 'In Google Play kündigen')}
+            {L('Cancel in Google Play', 'Google Play’den iptal et')}
           </a>
         )}
       </div>
 
       <p style={{ color: 'var(--text-3)', fontSize: 13, margin: '12px 0 0' }}>
         {L('Cancelling during the 3-day free trial means you are never charged. After the trial, cancelling stops the next renewal and Premium stays active until the end of the period you already paid for.',
-          '3 günlük ücretsiz deneme içinde iptal ederseniz hiç ücret alınmaz. Denemeden sonra iptal, bir sonraki yenilemeyi durdurur; ödemesini yaptığınız dönemin sonuna kadar Premium sizde kalır.',
-          'Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts abgebucht. Danach stoppt die Kündigung die nächste Verlängerung; Premium bleibt bis zum Ende des bezahlten Zeitraums aktiv.')}
+          '3 günlük ücretsiz deneme içinde iptal ederseniz hiç ücret alınmaz. Denemeden sonra iptal, bir sonraki yenilemeyi durdurur; ödemesini yaptığınız dönemin sonuna kadar Premium sizde kalır.')}
       </p>
       {err && <p style={{ color: 'var(--danger, #ef4444)', fontSize: 13, marginTop: 10 }}>{err}</p>}
     </div>
@@ -490,7 +485,7 @@ function ReviewsTab({ t }) {
           try {
             const s = bid.slice(5);
             const a = await pb.collection('articles').getFirstListItem(`slug="${s.replace(/"/g, '\\"')}"`, { $autoCancel: false });
-            if (a) map[bid] = a[`title_${lang}`] || a.title_tr || a.title_en || a.title_de || s;
+            if (a) map[bid] = a[`title_${lang}`] || a.title_tr || a.title_en || s;
           } catch { /* noop */ }
         }),
       ]);
@@ -563,7 +558,7 @@ function ReviewsTab({ t }) {
 // liked — previously only articles appeared.
 function LikedTab({ t }) {
   const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [products, setProducts] = useState(null);
   const [articles, setArticles] = useState(null);
   const pick = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
@@ -581,7 +576,7 @@ function LikedTab({ t }) {
     <div className="fade-up">
       {products.length > 0 && (
         <div className="pf-liked-section">
-          <h3 className="pf-liked-head">❤ {L('Products', 'Ürünler', 'Produkte')}</h3>
+          <h3 className="pf-liked-head">❤ {L('Products', 'Ürünler')}</h3>
           <div className="pf-list">
             {products.map((p) => (
               <Link key={p.id} to={productPath(p)} className="pf-liked">
@@ -595,7 +590,7 @@ function LikedTab({ t }) {
       )}
       {articles.length > 0 && (
         <div className="pf-liked-section">
-          <h3 className="pf-liked-head">📝 {L('Articles', 'Yazılar', 'Artikel')}</h3>
+          <h3 className="pf-liked-head">📝 {L('Articles', 'Yazılar')}</h3>
           <div className="pf-list">
             {articles.map((a) => (
               <Link key={a.id} to={articlePath(a, lang)} className="pf-liked">

@@ -157,14 +157,14 @@ function RatingBreakdown({ reviews }) {
 function YouTubeSearchCard({ productName, lang }) {
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const keyword = {
-    tr: 'detaylı inceleme', de: 'ausführlicher Test', fr: 'test complet avis',
+    tr: 'detaylı inceleme', fr: 'test complet avis',
     es: 'análisis completo review', it: 'recensione completa', pt: 'análise completa',
     ru: 'подробный обзор', ar: 'مراجعة شاملة', ja: 'レビュー 詳細',
     ko: '리뷰 상세', zh: '详细评测',
   }[code] || 'detailed review';
   const query = encodeURIComponent(`${productName} ${keyword}`);
   const url = `https://www.youtube.com/results?search_query=${query}`;
-  const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);
+  const L = (en, tr) => (code === 'tr' ? tr : en);
   return (
     <a className="pd-yt-card" href={url} target="_blank" rel="noopener">
       <span className="pd-yt-ic" aria-hidden="true">
@@ -173,8 +173,8 @@ function YouTubeSearchCard({ productName, lang }) {
         </svg>
       </span>
       <span className="pd-yt-t">
-        <b>{L('Watch YouTube reviews', 'YouTube incelemelerini izle', 'YouTube-Reviews ansehen')}</b>
-        <small>{L('Curated video reviews from creators', 'YouTube\'da detaylı inceleme videolarını aç', 'Kuratierte Video-Reviews öffnen')}</small>
+        <b>{L('Watch YouTube reviews', 'YouTube incelemelerini izle')}</b>
+        <small>{L('Curated video reviews from creators', 'YouTube\'da detaylı inceleme videolarını aç')}</small>
       </span>
       <span className="pd-yt-arr" aria-hidden="true">↗</span>
     </a>

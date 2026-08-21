@@ -20,49 +20,42 @@ export const META = {
     icon: '§',
     en: ['Terms of Service', 'Rules for using Qor AI, Premium subscriptions, AI outputs, acceptable use, cancellation, account deletion and service limits.'],
     tr: ['Kullanım Koşulları', 'Qor AI kullanımı, Premium abonelikler, AI çıktıları, kabul edilebilir kullanım, iptal, hesap silme ve hizmet sınırları.'],
-    de: ['Nutzungsbedingungen', 'Regeln für Qor AI, Premium-Abos, KI-Ausgaben, zulässige Nutzung, Kündigung, Kontolöschung und Servicegrenzen.'],
   },
   privacy: {
     path: '/privacy',
     icon: '◎',
     en: ['Privacy Policy', 'How Qor AI collects, uses, protects, deletes and shares data for accounts, AI analysis, subscriptions, analytics and support.'],
     tr: ['Gizlilik Politikası', 'Qor AI hesaplar, AI analizi, abonelikler, analizler, destek ve hesap silme için verileri nasıl toplar, kullanır, korur ve siler.'],
-    de: ['Datenschutzerklärung', 'Wie Qor AI Daten für Konten, KI-Analysen, Abos, Analytik, Support und Kontolöschung erhebt, nutzt, schützt und löscht.'],
   },
   refund: {
     path: '/refund',
     icon: '$',
     en: ['Refund Policy', 'Refund eligibility, refund windows, subscriptions, renewals, app-store purchases and how to request help.'],
     tr: ['İade Politikası', 'İade uygunluğu, iade süreleri, abonelikler, yenilemeler, uygulama mağazası satın alımları ve yardım talebi.'],
-    de: ['Rückerstattungsrichtlinie', 'Erstattungsfähigkeit, Fristen, Abonnements, Verlängerungen, App-Store-Käufe und Supportanfragen.'],
   },
   cookies: {
     path: '/cookies',
     icon: '●',
     en: ['Cookie Policy', 'How Qor AI uses essential storage, analytics, affiliate attribution and third-party cookies.'],
     tr: ['Çerez Politikası', 'Qor AI zorunlu depolama, analiz, affiliate atıf ve üçüncü taraf çerezlerini nasıl kullanır.'],
-    de: ['Cookie-Richtlinie', 'Wie Qor AI notwendige Speicherung, Analytik, Affiliate-Zuordnung und Drittanbieter-Cookies nutzt.'],
   },
   contact: {
     path: '/contact',
     icon: '@',
     en: ['Contact Qor AI', 'The only official contact address for Qor AI support, billing, refunds, privacy, account deletion, product data and partnerships.'],
     tr: ['Qor AI ile İletişim', 'Qor AI destek, ödeme, iade, gizlilik, hesap silme, ürün verisi ve iş birliği için tek resmi iletişim adresi.'],
-    de: ['Qor AI kontaktieren', 'Die einzige offizielle Kontaktadresse für Qor AI Support, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten und Partnerschaften.'],
   },
   about: {
     path: '/about',
     icon: 'Q',
     en: ['About Qor AI', 'What Qor AI is, what it sells, who it is for, how Premium works, account deletion and independent recommendations.'],
     tr: ['Qor AI Hakkında', 'Qor AI nedir, ne satar, kimler içindir, Premium nasıl çalışır, hesap silme ve bağımsız öneriler.'],
-    de: ['Über Qor AI', 'Was Qor AI ist, was verkauft wird, für wen es gedacht ist, wie Premium funktioniert, Kontolöschung und unabhängige Empfehlungen.'],
   },
   faq: {
     path: '/faq',
     icon: '?',
     en: ['FAQ', 'Common questions about Qor AI, Premium, billing, refunds, privacy, AI accuracy and product data.'],
     tr: ['SSS', 'Qor AI, Premium, ödeme, iade, gizlilik, AI doğruluğu ve ürün verileri hakkında sık sorulan sorular.'],
-    de: ['FAQ', 'Häufige Fragen zu Qor AI, Premium, Abrechnung, Erstattungen, Datenschutz, KI-Genauigkeit und Produktdaten.'],
   },
 };
 
@@ -617,277 +610,6 @@ COPY.tr = {
     ]],
     ['Site dili nasıl seçiliyor?', [
       'Web sitesi tarayıcı dilinizi takip eder. Sitede manuel dil seçici yoktur.',
-    ]],
-  ],
-};
-
-COPY.de = {
-  common: {
-    updated: `Zuletzt aktualisiert: 7. August 2026`,
-    onThisPage: 'Auf dieser Seite',
-    quickLinks: 'Verwandte Richtlinien',
-    contact: 'Kontakt',
-    email: CONTACT_EMAIL,
-    home: 'Startseite',
-    premium: 'Premium-Preise',
-    legalBrand: `Qor AI ist der KI-gestützte Shopping-Assistent auf qorai.net und in der Qor AI Mobile-App. Der Dienst hilft beim Vergleichen von Produkten, Analysieren von Links, Prüfen von Abonnements und bei Produktfragen vor dem Kauf. Die einzige offizielle öffentliche Kontaktadresse für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist ${CONTACT_EMAIL}.`,
-  },
-  terms: [
-    ['Wer wir sind', [
-      'Qor AI ist ein KI-gestützter Produktberater über qorai.net und die Qor AI Mobil-App. Der Dienst hilft bei Produktsuche, Spezifikationsvergleich, KI-Linkanalyse, visueller Produktsuche, Abo-Bewertung und produktbezogenen Fragen.',
-      `Diese Bedingungen gelten für Website, App, Premium-Abonnement, Kontofunktionen, KI-Chat, Linkanalyse, Produktvergleiche und Support. Für Support, Recht, Datenschutz, Kontolöschung und Abrechnung ist die einzige offizielle öffentliche Kontaktadresse ${CONTACT_EMAIL}.`,
-    ]],
-    ['Annahme der Bedingungen', [
-      'Durch Zugriff, Kontoerstellung, Start einer Testphase, Kauf von Premium oder weitere Nutzung akzeptieren Sie diese Bedingungen und unsere Datenschutzerklärung. Wenn Sie nicht zustimmen, dürfen Sie den Dienst nicht nutzen.',
-      'Sie müssen mindestens 13 Jahre alt sein oder das in Ihrem Land geltende Mindestalter erreicht haben. Wenn Sie Qor AI für eine andere Person oder Organisation nutzen, bestätigen Sie Ihre Berechtigung dazu.',
-    ]],
-    ['Leistungsbeschreibung', [
-      'Qor AI bietet Katalogsuche, Produktseiten, KI-Produktanalyse, Vergleichstools, Linkanalyse, Abo-Vergleich, Produktscores, persönliche Fit-Signale und Premium-Empfehlungen. Der Dienst unterstützt Kaufrecherche und ersetzt nicht Ihr eigenes Urteil.',
-      'Produktdaten können aus öffentlichen Websites, Partnerfeeds, Marktplätzen, Herstellerinformationen, Nutzeraktivität und KI-Anreicherung stammen. Preise, Verfügbarkeit, Spezifikationen und Bewertungen können sich ohne Hinweis ändern.',
-    ]],
-    ['Konten und Sicherheit', [
-      'Einige Funktionen erfordern ein Konto. Sie müssen korrekte Angaben machen, Zugangsdaten schützen und uns bei Verdacht auf unbefugten Zugriff informieren.',
-      'Mehrfachkonten zur Umgehung von Qor-Coin-Limits, Testlimits, Missbrauchsprüfungen oder Premium-Beschränkungen sind untersagt.',
-    ]],
-    ['Kontolöschung und Datenanfragen', [
-      'Sie können Ihr Qor AI Konto jederzeit im Profilbereich über Mein Konto löschen anstoßen. Zur Sicherheit kann Qor AI einen Bestätigungslink an die mit dem Konto verbundene E-Mail-Adresse senden.',
-      `Wenn Sie nicht auf Ihr Profil zugreifen können, senden Sie eine Anfrage zur Kontolöschung an ${CONTACT_EMAIL}. Nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos und senden Sie keine Passwörter, Kartendaten oder sensiblen Dokumente per E-Mail.`,
-      'Nach bestätigter Löschung werden Kontodaten, Favoriten, Vergleiche, gespeicherte Analysen, Benachrichtigungen und nutzerbezogene Supportnachrichten gelöscht, soweit technisch und rechtlich möglich. Öffentliche Community-Inhalte wie Bewertungen können anonymisiert werden; begrenzte Zahlungs-, Steuer-, Sicherheits- und Compliance-Daten können befristet aufbewahrt werden.',
-    ]],
-    ['Premium, Testphasen und Abrechnung', [
-      'Qor AI Premium schaltet umfangreichere KI-Nutzung für Chat, visuellen Scanner, Produktanalyse, Linkanalyse, Linkvergleich, Abo-Analyse, Premium-Empfehlungen und erweiterten Preisverlauf frei. Die öffentliche Preisseite ist /premium.',
-      'Der Web-Checkout wird von Polar Software, Inc. (polar.sh) als Merchant of Record verarbeitet; Polar ist damit der Verkäufer für Webkäufe und übernimmt Zahlung, Steuern und Rechnungen. Mobile Käufe laufen über Google Play. Endpreis, Währung, Steuern, Testende, Verlängerungsdatum und Zahlungsmethode werden vor der Bestätigung angezeigt.',
-      'Kostenlose Testphasen werden nach Ablauf kostenpflichtig, sofern sie nicht rechtzeitig gekündigt werden. Abonnements verlängern sich automatisch bis zur Kündigung.',
-    ]],
-    ['Erstattungen und Kündigung', [
-      'Kündigung stoppt zukünftige Verlängerungen, erstattet aber nicht automatisch bereits erfolgte Zahlungen. Die Erstattungsfähigkeit steht in unserer Rückerstattungsrichtlinie.',
-      'Für Polar-Webkäufe senden Sie Erstattungsanfragen an Qor AI Support. Für Google Play Käufe kann eine Anfrage direkt beim Store erforderlich sein.',
-    ]],
-    ['KI-Ausgaben und Produktberatung', [
-      'Qor AI nutzt KI-Modelle, um Produktinformationen zusammenzufassen, Spezifikationen zu interpretieren und Empfehlungen zu erzeugen. KI-Ausgaben können unvollständig, veraltet oder falsch sein.',
-      'Qor AI bietet keine Finanz-, Rechts-, Medizin- oder Berufsberatung. Prüfen Sie wichtige Produktdetails, Preise und Kompatibilität vor dem Kauf beim Händler oder Hersteller.',
-    ]],
-    ['Affiliate- und Drittanbieterlinks', [
-      'Einige Händlerlinks können Affiliate-Links sein. Qor AI kann eine Provision erhalten; der Preis für Sie ändert sich nicht und Scores oder Empfehlungen werden dadurch nicht gesteuert.',
-      'Qor AI ist nicht Verkäufer der gezeigten physischen Drittprodukte. Händler und Marktplätze verantworten Preise, Versand, Rückgaben, Garantien und Produktangaben.',
-    ]],
-    ['Zulässige Nutzung', [
-      'Großflächiges Scraping, Reverse Engineering privater APIs, Angriffe, Umgehung von Limits, Testmissbrauch, rechtswidrige Inhalte, Identitätstäuschung und irreführende Nutzung von Qor AI Ausgaben sind untersagt.',
-    ]],
-    ['Geistiges Eigentum', [
-      'Name, Logo, Interface, Code, Rankingmethoden, Prompts, Datenbanken, Design und Originalinhalte gehören Qor AI oder Lizenzgebern. Ihre eigenen Eingaben bleiben Ihre Daten; wir verarbeiten sie zur Bereitstellung und Verbesserung des Dienstes.',
-    ]],
-    ['Verfügbarkeit und Beendigung', [
-      'Wir können Teile von Qor AI verbessern, ändern, pausieren oder einstellen. Wir garantieren nicht, dass jede Funktion, Datenquelle, jeder KI-Anbieter oder jede Kategorie dauerhaft verfügbar bleibt.',
-      'Bei Verstoß gegen diese Bedingungen, Sicherheitsrisiken, Betrug oder Missbrauch können wir den Zugang aussetzen oder beenden.',
-    ]],
-    ['Haftungsausschluss', [
-      'Qor AI wird "wie besehen" und "wie verfügbar" bereitgestellt. Soweit gesetzlich zulässig, haften wir nicht für indirekte Schäden, entgangene Gewinne, Datenverlust, Kaufentscheidungen oder Probleme mit Drittanbietern.',
-    ]],
-    ['Kontakt', [
-      `Fragen zu diesen Bedingungen senden Sie bitte an ${CONTACT_EMAIL}. Bitte geben Sie die E-Mail Ihres Qor AI Kontos und eine klare Beschreibung an.`,
-    ]],
-  ],
-  privacy: [
-    ['Erhobene Informationen', [
-      'Wir erheben Kontodaten wie E-Mail-Adresse, Anzeigename, Authentifizierungsanbieter, Kontostatus, Verifizierungsstatus und Profileinstellungen. Bei Empfehlungsprofilen können Budget, Interessen, Geräte, Abonnements, Prioritäten und Quizantworten gespeichert werden.',
-      'Zur Bereitstellung erfassen wir Suchanfragen, Produktaufrufe, Vergleichslisten, Linkanalysen, KI-Chat-Prompts, Produktscans, Abo-Analyse-Eingaben, Qor-Coin-Nutzung, Premium-Status und Supportinteraktionen.',
-    ]],
-    ['Zahlungs- und Abodaten', [
-      'Webzahlungen werden von Polar verarbeitet; Polar handelt als Merchant of Record und verarbeitet Kartendaten, Steuern, Rechnungen, Belege, Betrugsprüfungen und Zahlungs-Compliance. Qor AI sieht und speichert keine vollständigen Kartennummern oder CVV.',
-      'Wir können begrenzte Abodaten von Polar oder App-Stores erhalten, etwa Produkt-ID, Plan, Kunden-ID, Abo-ID, Verlängerungsstatus, Kündigungsstatus, Land, Währung, Kaufdatum und Berechtigungsstatus.',
-    ]],
-    ['KI-Eingaben und Produktlinks', [
-      'Bei Fragen, Produktlinks, Produktanalysen oder Abo-Vergleichen können relevante Texte, URLs, Produktkontext und Profilsignale an KI-Anbieter gesendet werden, um eine Antwort zu erzeugen.',
-      'Senden Sie keine sensiblen personenbezogenen Daten, Passwörter, Ausweisdaten, Gesundheitsakten oder Kartendaten in KI-Prompts.',
-    ]],
-    ['Nutzung der Daten', [
-      'Wir nutzen Daten für Authentifizierung, Qor-Coin-Balance, Premium-Freischaltung, KI-Antworten, Personalisierung, Missbrauchsprävention, Support, Fehlerbehebung und aggregierte Produktperformance.',
-      'Wir verkaufen keine personenbezogenen Daten und nutzen private Profile oder Chatverläufe nicht zum Verkauf von Werbeprofilen.',
-    ]],
-    ['Dienstleister', [
-      'Qor AI kann vertrauenswürdige Anbieter für Hosting, Authentifizierung, Datenbank, KI, Analytik, E-Mail, Zahlungen, Affiliate-Zuordnung und Fehlermonitoring nutzen.',
-      'Beispiele sind PocketBase-Infrastruktur, KI-Modellanbieter, Analytiktools, Polar für Webabrechnung, App-Stores für mobile Abrechnung und Affiliate- oder Händlernetzwerke nach Klick auf externe Links.',
-    ]],
-    ['Cookies, lokaler Speicher und Analytik', [
-      'Die Website nutzt notwendigen lokalen Speicher und Cookies für Sitzungen, Theme, Sicherheit und Betrieb. Die Sprache folgt der Browsersprache; es gibt keinen manuellen Sprachschalter.',
-      'Analytik kann Seitenbesuche, Feature-Nutzung und technische Performance messen. Affiliate-Partner oder Händler können nach externen Klicks Cookies zur Zuordnung setzen.',
-    ]],
-    ['Aufbewahrung', [
-      'Kontodaten bleiben während aktiver Konten gespeichert. Abo- und Transaktionsdaten bleiben so lange gespeichert, wie es für Buchhaltung, Steuern, Betrugsprävention, Chargebacks und Compliance nötig ist.',
-      'Nach Kontolöschung entfernen wir aktive Kontodaten nach Möglichkeit innerhalb von 30 Tagen. Backups, Logs und Zahlungsdaten können begrenzt weiterbestehen.',
-    ]],
-    ['Ablauf der Kontolöschung', [
-      'Die Kontolöschung kann im Profilbereich der App oder Website über Mein Konto löschen gestartet werden. Der Ablauf kann eine E-Mail-Bestätigung verlangen, bevor das Konto endgültig entfernt wird.',
-      `Wenn Sie sich nicht anmelden können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos. Qor AI nutzt keine andere öffentliche Kontaktadresse für Kontolöschung oder Datenschutzanfragen.`,
-      'Nach Abschluss werden aktives Profil, Empfehlungssignale, Favoriten, Vergleiche, gespeicherte Analysen, Supportnachrichten und Benachrichtigungen soweit möglich entfernt. Erforderliche Zahlungs-, Steuer-, Sicherheits- oder Missbrauchspräventionsdaten können begrenzt aufbewahrt werden.',
-    ]],
-    ['Sicherheit', [
-      'Wir nutzen HTTPS, Zugriffskontrollen, tokenbasierte Authentifizierung, serverseitige Berechtigungen und Monitoring. Kein Onlinedienst ist perfekt sicher, aber wir reduzieren Risiken mit angemessenen Maßnahmen.',
-    ]],
-    ['Ihre Rechte', [
-      'Je nach Standort können Sie Auskunft, Berichtigung, Löschung, Einschränkung, Übertragbarkeit oder Widerspruch verlangen.',
-      `Zur Ausübung dieser Rechte kontaktieren Sie ${CONTACT_EMAIL}. Wir müssen Ihr Konto möglicherweise verifizieren.`,
-    ]],
-    ['Kinder', [
-      'Qor AI richtet sich nicht an Kinder unter 13 Jahren. Wenn Sie glauben, dass ein Kind Daten ohne Zustimmung bereitgestellt hat, kontaktieren Sie uns.',
-    ]],
-    ['Änderungen', [
-      'Wir können diese Datenschutzerklärung aktualisieren, wenn sich Dienst, Anbieter, Gesetze oder Zahlungsflüsse ändern. Das Datum auf dieser Seite zeigt die aktuelle Version.',
-    ]],
-  ],
-  refund: [
-    ['Zusammenfassung', [
-      'Diese Richtlinie erklärt, wann Qor AI Premium Käufe erstattet werden können, wie Sie eine Erstattung anfordern und welcher Zahlungsanbieter den Ablauf steuert.',
-    ]],
-    ['Webkäufe über Polar', [
-      'Qor AI Premium beginnt mit 3 Tagen kostenlos. Wenn Sie vor Ablauf kündigen, wird nichts abgebucht und es gibt nichts zu erstatten. Für neue Qor AI Premium Zahlungen über den Polar-Webcheckout können Sie innerhalb von 30 Tagen nach der ersten Abbuchung eine Erstattung anfordern.',
-      'Genehmigte Erstattungen werden nach Möglichkeit über Polar auf die ursprüngliche Zahlungsmethode ausgeführt.',
-    ]],
-    ['So kündigen Sie Ihr Abo', [
-      'Web-Abo — der schnellste Weg: Melden Sie sich auf qorai.net an und öffnen Sie Profil → Konto → Abo → „Web-Abo kündigen“. Diese Schaltfläche öffnet Ihr Abrechnungsportal bereits angemeldet — Sie kündigen in einem Schritt, ohne E-Mail oder Beleg suchen zu müssen. Falls Sie sich nicht anmelden können, öffnen Sie https://polar.sh/qorai/portal und fordern Sie mit Ihrer Checkout-E-Mail einen Anmeldelink an.',
-      'App-Abo: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI → Abo kündigen. Ein in der App gekauftes Abo kann NUR in Google Play gekündigt werden — weder wir noch die Website können das für Sie tun.',
-      'Das Web-Abo und das Google-Play-Abo sind ZWEI getrennte Abos in zwei getrennten Abrechnungssystemen. Eine Kündigung storniert NICHT automatisch das andere. Wenn Sie an beiden Stellen abgeschlossen haben, müssen Sie an beiden Stellen kündigen.',
-      'Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts abgebucht. Nach der Testphase stoppt die Kündigung die nächste Verlängerung; Premium bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv und wird nicht automatisch erstattet.',
-      'Das Löschen Ihres Qor AI Kontos kündigt kein aktives Abo. Kündigen Sie zuerst das Abo und löschen Sie danach ggf. das Konto.',
-    ]],
-    ['Verlängerungen und Änderungen', [
-      'Verlängerungen können erstattungsfähig sein, wenn Sie uns innerhalb von 14 Tagen kontaktieren und nach der Verlängerung keine intensive Nutzung stattfand.',
-      'Teilweise Erstattungen, Upgrades, Downgrades und anteilige Credits können je nach Abostatus von Polar verarbeitet werden.',
-    ]],
-    ['Mobile App-Käufe', [
-      'Käufe über Google Play oder Apple App Store werden vom jeweiligen Store kontrolliert. In manchen Fällen muss die Erstattung direkt dort beantragt werden.',
-      'Bitte senden Sie Store-Bestell-ID, Qor AI Konto-E-Mail und Grund der Anfrage, damit wir den richtigen nächsten Schritt nennen können.',
-    ]],
-    ['Löschung, Kündigung und Erstattung sind getrennt', [
-      'Kontolöschung, Abo-Kündigung und Erstattung sind getrennte Vorgänge. Kontolöschung entfernt Kontodaten; App-Store-Abos müssen je nach Plattform weiterhin in Google Play oder Apple App Store gekündigt werden.',
-      `Für Erstattungsprüfung, Premium-Probleme oder Hilfe bei Kontolöschung kontaktieren Sie ${CONTACT_EMAIL}. Die Erstattungsfähigkeit hängt von Kaufkanal, Zeitpunkt, Nutzung und Zahlungsanbieter ab.`,
-    ]],
-    ['Wann Erstattungen abgelehnt werden können', [
-      'Erstattungen können bei Missbrauch, Betrug, wiederholten Anfragen, Account-Sharing, Limitumgehung, Chargeback-Missbrauch, Verstoß gegen Bedingungen oder verspäteten Anfragen abgelehnt werden.',
-      'Diese Richtlinie gilt nicht für physische Drittprodukte, Händlerkäufe, Marktplatzbestellungen, Versand, Garantien oder Rückgaben externer Shops.',
-    ]],
-    ['Erstattung anfordern', [
-      `Senden Sie eine E-Mail an ${CONTACT_EMAIL} mit dem Betreff "Refund request". Nennen Sie Konto-E-Mail, Zahlungsanbieter, Transaktions- oder Bestell-ID, Kaufdatum und kurze Erklärung.`,
-      'Wir bemühen uns, innerhalb von 5 Werktagen zu antworten. Bei Genehmigung kann Premium-Zugang je nach Transaktion sofort oder am Ende der erstatteten Periode enden.',
-    ]],
-    ['Chargebacks', [
-      'Bitte kontaktieren Sie uns vor einem Chargeback, damit wir den Fall prüfen können. Chargebacks können die Lösung verzögern und vorübergehende Kontobeschränkungen auslösen.',
-    ]],
-  ],
-  cookies: [
-    ['Notwendige Speicherung', [
-      'Qor AI nutzt notwendige Cookies oder lokalen Speicher für Sitzungen, Sicherheitstoken, Theme-Einstellungen und Betrieb. Ohne diese Speicherung funktionieren Kontofunktionen möglicherweise nicht.',
-    ]],
-    ['Browsersprache', [
-      'Qor AI benötigt keine manuelle Sprachauswahl. Die Website liest Ihre Browsersprache und nutzt eine passende unterstützte Sprache.',
-    ]],
-    ['Analytik und Performance', [
-      'Wir können Analytik verwenden, um Traffic, Feature-Nutzung und Seitenperformance zu verstehen und technische Probleme zu diagnostizieren.',
-    ]],
-    ['Affiliate-Zuordnung', [
-      'Nach Klicks auf externe Shop- oder Händlerlinks können Affiliate-Partner oder Händler Cookies zur Kaufzuordnung setzen. Dies ändert weder Scores noch Preis.',
-    ]],
-    ['Checkout und Zahlungsanbieter', [
-      'Wenn Sie einen Web-Checkout starten, kann Polar Cookies oder ähnliche Technologien für Checkout-Betrieb, Steuerberechnung, Betrugsprävention, Checkout-Status und Belege nutzen. Qor AI kontrolliert Polar-Checkout-Cookies nicht und nutzt Polar ausschließlich für Zahlungs- und Abonnementverarbeitung.',
-      'Bei Käufen über Google Play oder Apple App Store können diese Stores eigene Konto-, Sicherheits- und Abrechnungscookies nach ihren eigenen Richtlinien verwenden.',
-    ]],
-    ['Cookies verwalten', [
-      'Sie können Cookies im Browser blockieren oder löschen. Einige Funktionen wie Login und Checkout funktionieren dann möglicherweise nicht.',
-    ]],
-    ['Änderungen der Cookie-Nutzung', [
-      'Wir können diese Cookie-Richtlinie aktualisieren, wenn Analyse-, Zahlungs-, Affiliate-, Sicherheits- oder Supportanbieter hinzukommen oder entfernt werden. Das Datum auf dieser Seite zeigt die aktuelle Version.',
-    ]],
-  ],
-  contact: [
-    ['Einzige offizielle Kontaktadresse', [
-      `Die einzige offizielle öffentliche Kontaktadresse für Qor AI Support, Konto, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten, Sicherheit, Presse und Partnerschaften ist ${CONTACT_EMAIL}. Qor AI betreibt keine andere allgemeine Support-E-Mail-Adresse.`,
-      'Nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos, den Betreff Ihrer Anfrage und hilfreichen Kontext wie Produktlink, Screenshot, Zahlungsanbieter oder Transaktionsreferenz. Senden Sie keine Passwörter, vollständigen Kartennummern, CVV-Codes, Ausweise oder unnötigen sensiblen Dateien.',
-    ]],
-    ['Anfragen zur Kontolöschung', [
-      'Am schnellsten löschen Sie Ihr Konto im Profilbereich der App oder Website über Mein Konto löschen. Der Ablauf kann einen E-Mail-Bestätigungslink senden, um die Kontoinhaberschaft zu prüfen.',
-      `Wenn Sie nicht auf Ihr Profil zugreifen können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die E-Mail-Adresse Ihres Qor AI Kontos. Nicht verifizierbare Anfragen können aus Sicherheitsgründen verzögert oder abgelehnt werden.`,
-    ]],
-    ['Abrechnung, Premium und Erstattung', [
-      'Bei Premium-Problemen, unerwarteten Abbuchungen oder Erstattungsanfragen nennen Sie Zahlungsanbieter, Kaufdatum, Plan, Transaktions-ID oder App-Store-Bestellnummer. Webzahlungen und mobile App-Store-Käufe können unterschiedlichen Regeln folgen.',
-      'Kündigung stoppt zukünftige Verlängerungen; Erstattung wird separat nach der Rückerstattungsrichtlinie und den Regeln des Zahlungsanbieters geprüft.',
-    ]],
-    ['Produktdaten, Linkanalyse und KI-Ergebnisse', [
-      'Wenn Preis, Lagerbestand, Spezifikation, Bild oder Vergleichsergebnis eines Produkts falsch wirkt, senden Sie den Produktlink und das betroffene Feld. Meldungen helfen, Katalogqualität, Linkanalyse und KI-Vergleiche zu verbessern.',
-      'KI-Ausgaben können veraltet oder unvollständig sein. Prüfen Sie wichtige Informationen vor dem Kauf immer beim Händler oder Hersteller.',
-    ]],
-    ['Antwortzeiten und Priorität', [
-      'Wir bemühen uns, die meisten Nachrichten innerhalb weniger Werktage zu beantworten. Konto, Sicherheit, Abrechnung, Erstattung und Datenschutz haben Priorität; Produktdatenkorrekturen können vom Katalogzyklus abhängen.',
-    ]],
-    ['Sicherheit und Missbrauch', [
-      `Wenn Sie unbefugten Zugriff, eine Sicherheitslücke, verdächtige Abrechnung oder Missbrauch bemerken, kontaktieren Sie ${CONTACT_EMAIL} mit klarer Beschreibung und sicheren Screenshots, falls hilfreich.`,
-    ]],
-  ],
-  about: [
-    ['Was Qor AI macht', [
-      'Qor AI ist ein KI-gestützter Recherche- und Entscheidungsassistent für Menschen, die vor dem Kauf vergleichen. Der Dienst hilft bei Telefonen, Laptops, GPUs, Kopfhörern, Kameras, Tablets, Fernsehern, Smartwatches, PC-Komponenten und digitalen Abonnements.',
-      'Qor AI bündelt Katalogsuche, Produktvergleiche, KI-Produktanalyse, Linkanalyse, visuellen Scanner, Abo-Bewertung und KI-Chat in einem Arbeitsablauf.',
-    ]],
-    ['Was Qor AI verkauft', [
-      'Qor AI ist nicht Verkäufer der im Katalog gezeigten Drittprodukte. Händler, Marktplätze und Hersteller bleiben verantwortlich für Verkauf, Versand, Rückgaben, Garantie, Bestand und Endpreise.',
-      'Qor AI verkauft Premium-Zugang zu Softwarefunktionen: umfangreichere KI-Nutzung, Produktanalyse, Linkanalyse, Linkvergleich, visueller Scanner, Abo-Analyse, Premium-Empfehlungen, tiefere Vergleichsausgaben und erweiterter Preisverlauf.',
-    ]],
-    ['Für wen Qor AI gedacht ist', [
-      'Qor AI ist für Nutzer gedacht, die wissen möchten, ob ein Produkt den Kauf wert ist, welcher Laptop zum Budget passt, welches Telefon sinnvoller ist oder welches Abo mehr Wert bietet.',
-      'Es hilft Studierenden, Kreativen, Gamern, Berufsnutzern, Preis-Leistungs-Käufern, Menschen mit vielen Abos und allen, die mehrere Produktlinks vor einer Entscheidung vergleichen möchten.',
-    ]],
-    ['Unabhängigkeit und Affiliate', [
-      'Qor AI kann Affiliate-Provisionen aus externen Shoplinks erhalten. Provisionen bestimmen jedoch keine Scores, Premium-Empfehlungen oder KI-Ergebnisse. Produktfit, technischer Kontext, Wert und Nutzerbedarf sind wichtiger als kommerzielle Beziehungen.',
-      'Eine Weiterleitung zu einem Shop bedeutet nicht, dass Qor AI Verkäufer ist. Der Händler oder Marktplatz verantwortet Checkout, Lieferung, Garantie, Rückgabe, Bestand und Preisänderungen.',
-    ]],
-    ['Datenquellen und KI-Grenzen', [
-      'Produktinformationen können aus öffentlichen Händlerseiten, Marktplätzen, Herstellerinformationen, Partnerfeeds, Nutzerinteraktionen und KI-Anreicherung stammen. Das beschleunigt Recherche, bedeutet aber auch, dass Preise, Verfügbarkeit oder Spezifikationen sich vor der nächsten Aktualisierung ändern können.',
-      'KI-Analyse soll Abwägungen erklären und nützliche Fragen sichtbar machen. Sie ist keine Garantie, kein Händler-Versprechen, keine Rechtsberatung und keine endgültige Kompatibilitätszusage.',
-    ]],
-    ['Konten, Profil und Löschung', [
-      'Einige Qor AI Funktionen nutzen ein Konto, damit Favoriten, Vergleiche, persönliche Empfehlungssignale, Premium-Status, Qor-Coin-Nutzung und gespeicherte Analysen konsistent bleiben.',
-      `Nutzer können ihr Konto im Profilbereich über Mein Konto löschen entfernen. Wer keinen Profilzugriff hat, kann eine Anfrage zur Kontolöschung an ${CONTACT_EMAIL} senden. Qor AI nutzt keine andere öffentliche E-Mail-Adresse für Kontolöschung oder Datenschutzanfragen.`,
-    ]],
-    ['Kontakt', [
-      `Für Support, Datenschutz, Kontolöschung, Erstattung, Abrechnung, Produktdaten, Presse oder Partnerschaften kontaktieren Sie Qor AI ausschließlich unter ${CONTACT_EMAIL}. Nennen Sie Ihre Qor AI Konto-E-Mail und einen klaren Betreff.`,
-    ]],
-  ],
-  faq: [
-    ['Was ist Qor AI Premium?', [
-      'Premium ist der kostenpflichtige Plan für intensivere KI-Nutzung. Er erweitert Chat, visuellen Scanner, Produktanalyse, Linkanalyse, Abo-Analyse, Premium-Empfehlungen und Preisverlauf.',
-    ]],
-    ['Wo ist die Preisseite?', [
-      'Die Preisseite ist /premium. Dort stehen aktuelle Preise, Testphase und Hauptfunktionen.',
-    ]],
-    ['Kann ich eine Erstattung erhalten?', [
-      'Premium beginnt mit 3 Tagen kostenlos — bei Kündigung vor Ablauf entstehen keine Kosten. Für Webkäufe über Polar können neue Premium-Zahlungen innerhalb von 30 Tagen erstattungsfähig sein. Details stehen in der Rückerstattungsrichtlinie.',
-    ]],
-    ['Wie kündige ich Premium?', [
-      'Kündigen Sie dort, wo Sie abgeschlossen haben. Web: auf qorai.net anmelden → Profil → Konto → Abo → „Web-Abo kündigen“ (oder https://polar.sh/qorai/portal). App: Play Store → Profil → Zahlungen und Abos → Abos → Qor AI.',
-      'Das sind zwei getrennte Abos — die Kündigung des Web-Abos storniert NICHT das Google-Play-Abo und umgekehrt. Bei Kündigung innerhalb der 3-tägigen Testphase wird nichts berechnet.',
-    ]],
-    ['Wie lösche ich mein Konto?', [
-      'Öffnen Sie in der Qor AI App oder Website den Profilbereich und wählen Sie Mein Konto löschen. Der Löschablauf kann einen Bestätigungslink an Ihre Konto-E-Mail senden.',
-      `Wenn Sie nicht auf Ihr Profil zugreifen können, schreiben Sie an ${CONTACT_EMAIL} mit dem Betreff "Account deletion request" und nennen Sie die mit Qor AI verbundene E-Mail-Adresse. Es gibt keine andere offizielle öffentliche E-Mail-Adresse für Kontolöschung oder Datenschutzanfragen.`,
-    ]],
-    ['Wie kontaktiere ich Qor AI?', [
-      `Die einzige offizielle öffentliche Kontaktadresse für Support, Abrechnung, Erstattung, Datenschutz, Kontolöschung, Produktdaten und Partnerschaften ist ${CONTACT_EMAIL}.`,
-      'Nennen Sie je nach Thema Konto-E-Mail, Produktlink, Transaktionsreferenz oder kurze Problembeschreibung. Senden Sie keine Passwörter oder Kartendaten.',
-    ]],
-    ['Speichert Qor AI Kartendaten?', [
-      'Nein. Web-Kartendaten verarbeitet Polar, App-Store-Zahlungen verarbeitet der jeweilige Store. Qor AI speichert nur begrenzte Statusdaten zur Premium-Freischaltung.',
-    ]],
-    ['Warum können Web- und Mobilabrechnung unterschiedlich sein?', [
-      'Webkäufe laufen über Polar, mobile Käufe über Google Play. Steuern, Belege, Erstattungsschritte und vor allem der ORT DER KÜNDIGUNG unterscheiden sich, weil jeder Anbieter seinen Checkout selbst kontrolliert.',
-    ]],
-    ['Sind KI-Ausgaben immer korrekt?', [
-      'Nein. KI kann falsch oder veraltet sein. Prüfen Sie wichtige Spezifikationen, Preise und Kompatibilität bei offiziellen Quellen.',
-    ]],
-    ['Was tun, wenn Produktdaten falsch sind?', [
-      `Senden Sie den Produktlink und das falsche Feld an ${CONTACT_EMAIL}. Wir nutzen Meldungen zur Verbesserung der Katalogqualität, aber Händlerpreise und Lagerbestände können sich schneller ändern als unser Aktualisierungszyklus.`,
-    ]],
-    ['Wie wird die Sprache gewählt?', [
-      'Die Website folgt Ihrer Browsersprache. Es gibt keinen manuellen Sprachschalter.',
     ]],
   ],
 };

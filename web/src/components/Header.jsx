@@ -26,6 +26,7 @@ const NAV_REST = [
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
   { to: '/blog', key: 'nav.blog' },
+  { to: '/analiz', key: 'nav.analyses' },
   { to: '/premium', key: 'nav.premium' },
 ];
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
@@ -44,7 +45,7 @@ export default function Header() {
   const [drawer, setDrawer] = useState(false);
   const [menu, setMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
 
   // MOBIL CEKMECE ACIKKEN ALT BAR GIZLENIR.
   // Olculdu (2026-08-16, 390x844): alt bar `position: fixed` ve z-index 120,
@@ -73,7 +74,7 @@ export default function Header() {
   // Premium = no coin cap; mirror the app and show ∞ / "Sınırsız" so it's clear
   // AI features are unlimited rather than a depleting number.
   const coinDisplay = isPremium ? '∞' : coins;
-  const coinWord = isPremium ? L('Unlimited', 'Sınırsız', 'Unbegrenzt') : 'Qor Coin';
+  const coinWord = isPremium ? L('Unlimited', 'Sınırsız') : 'Qor Coin';
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
   const quizMissing = !!user
     && !hasCompletedQuiz(user)
@@ -82,11 +83,9 @@ export default function Header() {
   const isPremiumRoute = loc.pathname === '/premium';
   const coinTip = isPremium
     ? L('Premium is active. AI features do not spend Qor Coins.',
-      'Premium aktif. AI özellikleri Qor Coin harcamaz.',
-      'Premium ist aktiv. KI-Funktionen verbrauchen keine Qor Coins.')
+      'Premium aktif. AI özellikleri Qor Coin harcamaz.')
     : L('Qor Coins are used for AI actions such as chat, link analysis and subscription analysis.',
-      'Qor Coin; chat, link analizi ve abonelik analizi gibi AI işlemlerinde kullanılır.',
-      'Qor Coins werden für KI-Aktionen wie Chat, Link-Analyse und Abo-Analyse genutzt.');
+      'Qor Coin; chat, link analizi ve abonelik analizi gibi AI işlemlerinde kullanılır.');
 
   return (
     <>
@@ -114,7 +113,7 @@ export default function Header() {
               onClick={() => (catMenu ? closeCatNow() : openCat())}
               onMouseEnter={openCat}
             >
-              {L('Categories', 'Kategoriler', 'Kategorien')}
+              {L('Categories', 'Kategoriler')}
               <svg className="hd-caret" width="13" height="13" viewBox="0 0 24 24"
                 fill="none" stroke="currentColor" strokeWidth="2.6">
                 <polyline points="6 9 12 15 18 9" />
@@ -136,8 +135,8 @@ export default function Header() {
                 <div className="container hd-mega-inner">
                   <div className="hd-mega-head">
                     <div>
-                      <strong>{L('All categories', 'Tüm kategoriler', 'Alle Kategorien')}</strong>
-                      <span>{L('Browse every approved Qor AI category.', 'Qor AI’daki tüm onaylı kategorilere göz at.', 'Alle freigegebenen Qor AI Kategorien durchsuchen.')}</span>
+                      <strong>{L('All categories', 'Tüm kategoriler')}</strong>
+                      <span>{L('Browse every approved Qor AI category.', 'Qor AI’daki tüm onaylı kategorilere göz at.')}</span>
                     </div>
                   </div>
                   <div className="hd-mega-groups">
@@ -170,7 +169,7 @@ export default function Header() {
 
           {!isPremiumRoute && (
             <PlayBadge size="sm" className="desk-only" iconOnly
-              getItOn={L('GET IT ON', 'İNDİR', 'LADE BEI')} label={t('header.googlePlay')} />
+              getItOn={L('GET IT ON', 'İNDİR')} label={t('header.googlePlay')} />
           )}
 
           {user ? (
@@ -179,8 +178,8 @@ export default function Header() {
                 <Link
                   className="hd-quiz-alert"
                   to={`/quiz?required=1&next=${encodeURIComponent(quizNext)}`}
-                  title={L('Complete your profile quiz', 'Profil quizini tamamla', 'Profil-Quiz abschließen')}
-                  aria-label={L('Complete your profile quiz', 'Profil quizini tamamla', 'Profil-Quiz abschließen')}
+                  title={L('Complete your profile quiz', 'Profil quizini tamamla')}
+                  aria-label={L('Complete your profile quiz', 'Profil quizini tamamla')}
                 >
                   !
                 </Link>
@@ -234,7 +233,7 @@ export default function Header() {
               </NavLink>
             ))}
             <div className="hd-drawer-cats">
-              <span className="hd-drawer-h">{L('Categories', 'Kategoriler', 'Kategorien')}</span>
+              <span className="hd-drawer-h">{L('Categories', 'Kategoriler')}</span>
               {ALL_CATEGORIES.map(({ id }) => (
                 <Link key={id} to={categoryPath(id)}
                   className="hd-drawer-cat" onClick={() => setDrawer(false)}>

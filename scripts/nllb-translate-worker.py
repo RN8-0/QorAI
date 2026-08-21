@@ -97,11 +97,11 @@ TRANSLATE_THREADS = int(os.environ.get("QORAI_TRANSLATE_THREADS", "6"))
 MODEL_LABEL = f"nllb-200-distilled-600M/{DEVICE}/{COMPUTE_TYPE}"
 
 # NLLB language codes (Flores-200 codes).
-# Scope cut (2026-05-29): TR / EN / DE only — DE/UK/TR markets.
+# Scope cut (2026-08-21): TR / EN only — German was removed from the product.
+# Requesting "de" now fails the LANGS gate instead of producing German output.
 LANG_CODE = {
     "tr": "tur_Latn",
     "en": "eng_Latn",
-    "de": "deu_Latn",
 }
 LANGS = set(LANG_CODE)
 

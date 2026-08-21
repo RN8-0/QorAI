@@ -43,10 +43,10 @@ export function analizeKaydir(el) {
 
 export default function AnalyzeButton({ onClick, busy = false, disabled = false, title }) {
   const { lang } = useI18n();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const etiket = busy
-    ? L('Analyzing…', 'Analiz ediliyor…', 'Analysiere…')
-    : L('Analyze', 'Analiz Et', 'Analysieren');
+    ? L('Analyzing…', 'Analiz ediliyor…')
+    : L('Analyze', 'Analiz Et');
 
   return (
     <button

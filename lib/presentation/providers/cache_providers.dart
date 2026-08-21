@@ -321,8 +321,6 @@ class _AIReviewNotifier extends StateNotifier<AsyncValue<AIReviewResult?>> {
     switch (code) {
       case 'tr':
         return 'Turkish';
-      case 'de':
-        return 'German';
       case 'fr':
         return 'French';
       case 'es':
@@ -2683,7 +2681,6 @@ class _GeminiMatchScoreNotifier
   String _languageDisplayName(String code) {
     const map = <String, String>{
       'ar': 'Arabic',
-      'de': 'German',
       'en': 'English',
       'es': 'Spanish',
       'fr': 'French',

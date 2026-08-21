@@ -202,7 +202,7 @@ class SupportedCountries {
       code: 'DE',
       name: 'Germany',
       currency: 'EUR',
-      language: 'de',
+      language: 'en',
     ),
     'FR': CountryInfo(
       code: 'FR',
@@ -390,13 +390,13 @@ class SupportedCountries {
       code: 'CH',
       name: 'Switzerland',
       currency: 'CHF',
-      language: 'de',
+      language: 'en',
     ),
     'AT': CountryInfo(
       code: 'AT',
       name: 'Austria',
       currency: 'EUR',
-      language: 'de',
+      language: 'en',
     ),
     'BE': CountryInfo(
       code: 'BE',

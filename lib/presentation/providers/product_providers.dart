@@ -3152,7 +3152,7 @@ final recentlyViewedProductsProvider = FutureProvider<List<ProductEntity>>((
   // Fetch missing from the LIVE catalog (bulk). We must NOT prefer cache here:
   // a product deleted from the catalog still has its stale detail sitting in the
   // local cache, so preferCache would resurrect it (e.g. old Geizhals records
-  // with German names). getProductsByIds hits Typesense with `id:[...]` and
+  // with foreign-language names). getProductsByIds hits Typesense with `id:[...]` and
   // returns ONLY ids that still exist — anything requested but not returned is
   // gone, so we drop it from history.
   if (missingIds.isNotEmpty) {

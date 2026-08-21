@@ -149,18 +149,16 @@ class ProductEntity extends Equatable {
     if (code != 'tr') {
       final en = nameTranslated['en'];
       if (en != null && en.trim().isNotEmpty) return en;
-      return correctedName(name, code == 'de' ? 'de' : 'en');
+      return correctedName(name, 'en');
     }
     return name;
   }
 
-  /// Specs are never rendered in German. The German spec translation was
-  /// removed (most atoms were mistranslated, broken or dropped), so a German
+  /// German was removed entirely on 2026-08-21, so a non-Turkish
   /// UI locale reads specs in English instead. UI text and product names are
-  /// unaffected and stay German.
   static String specDisplayLang(String languageCode) {
     final c = languageCode.toLowerCase().trim();
-    return c == 'de' ? 'en' : c;
+    return c;
   }
 
   Map<String, dynamic> specsForLanguage(String languageCode) {
@@ -212,10 +210,9 @@ class ProductEntity extends Equatable {
 
     final srcLang = () {
       final s = sourceLang.toLowerCase().trim();
-      return (s == 'tr' || s == 'de') ? s : 'tr';
+      return s == 'tr' ? s : 'tr';
     }();
 
-    // German is never used for specs (de → en); see [specDisplayLang].
     final code = specDisplayLang(locale);
     final String lang;
     if (multiLangSpecs[code]?.isNotEmpty ?? false) {
@@ -269,7 +266,7 @@ class ProductEntity extends Equatable {
 
     final out = <String, Map<String, String>>{};
 
-    // German-sourced products may bake a FULL grouped object per language
+    // Some products bake a FULL grouped object per language
     // (not just a {sectionName: translation} map). Render it verbatim.
     if (secNames != null && !secNameIsMap && lang != srcLang) {
       for (final entry in secNames.entries) {

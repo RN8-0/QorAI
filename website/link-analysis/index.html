@@ -9,7 +9,6 @@
   <link rel="canonical" href="https://qorai.net/link-analysis" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/link-analysis" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/link-analysis" />
-  <link rel="alternate" hreflang="de" href="https://qorai.net/de/link-analysis" />
   <link rel="alternate" hreflang="x-default" href="https://qorai.net/link-analysis" />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta property="og:type" content="website" />
@@ -73,23 +72,22 @@
        her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
        digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
        icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|de|tr)(?:\/|$)/)||[])[1]||'';
+    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
     var bl=pl;
     if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
       for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='de'||c==='ge'){bl='de';break}if(c==='en'){bl='en';break}}
+        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
       if(!bl)bl='en';}
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
-    if(/^\/(en|de|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
+    if(/^\/(en|tr)?\/?$/.test(location.pathname))d.setAttribute('data-boot-home','1');
     d.classList.add('js-ready')}catch(e){}</script>
   <!-- Hide the crawlable SEO prerender block so it never flashes before the SPA
        mounts — but ONLY once JS has run (the head script above adds `js-ready`).
        A crawler that doesn't execute JS (e.g. an AdSense CSS-only snapshot) never
        gets `js-ready`, so the prerender text stays visible for review/indexing.
        seo.mjs preserves head content across the build. -->
-  <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/jakarta-400-latin-ext.woff2" crossorigin />
   <style>
   /* ── Plus Jakarta Sans — KENDI ORIJINIMIZDEN ────────────────────────────
      ONCEDEN: fonts.googleapis.com'a render-blocking bir <link rel=stylesheet>.
@@ -255,8 +253,7 @@
      secilir. `:has()` yerine bu yontem: hero blogu varsa seo.mjs iskeleti hic
      yazmaz, yoksa yalnizca iskeleti yazar — yani ikisi asla birlikte olmaz. */
   html[data-boot-lang='en'] #qor-boot .qb-hero[data-l='en'],
-  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr'],
-  html[data-boot-lang='de'] #qor-boot .qb-hero[data-l='de']{display:block}
+  html[data-boot-lang='tr'] #qor-boot .qb-hero[data-l='tr']{display:block}
   /* Iskeletin KONTRASTI olculerek yukseltildi (2026-08-19). Onceki deger
      `rgba(15,23,42,.055)` idi: #F8FAFC zemin uzerinde parlaklik farki ~12/255,
      yani gozle bakildiginda BOS BEYAZ ekran. Olculdu (scripts/_mobil_bosluk.mjs,
@@ -279,23 +276,23 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-D1wYTj2-.js"></script>
+  <script type="module" crossorigin src="/spa/index-1B4XMqlU.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-D2xFRrlB.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-Ba2tSqUt.js">
   <link rel="stylesheet" crossorigin href="/spa/index-rRVZxt48.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/LinkAnalysis-CFtwQcoR.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/LinkAnalysis-DQaf9Ndv.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-C5ZH_VGg.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-z-sBdfyV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CyyfbeXH.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/PageHero-BdIP2Jup.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DqHoneVq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-8Vj7PPw8.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-DL5Txvs4.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/PageHero-B2ioV8ce.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-DBQQXD3G.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/SubLogo-Bl43dt1U.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/linkAnalysisJobs-_h9mBGQ5.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiCharts-B1ZOgv_h.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/QuizFlow-DOAx8az-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiWorkboard-DFo56oFL.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-BZPChbgn.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiReportView-DOJa2oxT.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/linkAnalysisJobs-BfAYdb1z.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiCharts-Bzt07HyC.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/QuizFlow-B3VaihLF.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiWorkboard-D6zBrHZM.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-aYgjThvi.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiReportView-CZ0q-Dc-.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DwJMDcXt.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-CnVB5ZW6.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/index-rRVZxt48.css" />
@@ -333,7 +330,7 @@
          Turk kullanici once Ingilizce baslik gorurdu.
          Metinler Home.jsx'teki hero ile BIREBIR ayni olmali. -->
     <div class="qb-body">
-      <!--qb-hero--><div class="qb-hero" data-l="en"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Link analysis</span><div class="qb-ph-title">Analyze any product link with <span class="qb-accent">Qor AI</span></div><p class="qb-lead">Paste a link from Amazon, eBay or 100+ stores — real reviews become your personal match score.</p></div></section></div><div class="qb-hero" data-l="tr"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Link analizi</span><div class="qb-ph-title">Ürün linkini <span class="qb-accent">Qor AI</span> ile analiz et</div><p class="qb-lead">Amazon, Hepsiburada ve 100+ mağazadan link yapıştır — gerçek yorumlar sana özel uyum puanına dönüşsün.</p></div></section></div><div class="qb-hero" data-l="de"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Link-Analyse</span><div class="qb-ph-title">Produktlink mit <span class="qb-accent">Qor AI</span> analysieren</div><p class="qb-lead">Link von Amazon, eBay oder 100+ Shops einfügen — echte Bewertungen werden zu deinem Match-Score.</p></div></section></div><!--/qb-hero-->
+      <!--qb-hero--><div class="qb-hero" data-l="en"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Link analysis</span><div class="qb-ph-title">Analyze any product link with <span class="qb-accent">Qor AI</span></div><p class="qb-lead">Paste a link from Amazon, eBay or 100+ stores — real reviews become your personal match score.</p></div></section></div><div class="qb-hero" data-l="tr"><section class="qb-ph"><div class="container qb-ph-inner"><span class="qb-kicker">Link analizi</span><div class="qb-ph-title">Ürün linkini <span class="qb-accent">Qor AI</span> ile analiz et</div><p class="qb-lead">Amazon, Hepsiburada ve 100+ mağazadan link yapıştır — gerçek yorumlar sana özel uyum puanına dönüşsün.</p></div></section></div><!--/qb-hero-->
     </div>
   </div>
   <div id="root"><main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><h1 style="font-size:28px;margin:0 0 10px">Link Analysis</h1><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Paste any product link — Qor AI identifies the product, extracts its specs and summarizes its pros and cons. Paste several links at once to compare products.</p><p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">Without getting lost across store pages, see in seconds whether a product is really worth it with AI-powered analysis.</p><p style="margin:18px 0;font-size:14px"><a href="/link-analysis" style="color:#2563eb;margin-right:14px">Start link analysis</a><a href="/category" style="color:#2563eb;margin-right:14px">Categories</a><a href="/ai-chat" style="color:#2563eb;margin-right:14px">Qor AI Chat</a></p></main></div>

@@ -17,7 +17,6 @@ import argostranslate.translate
 # via the EN pivot at translate() time.
 WANTED = [
     ("tr", "en"), ("en", "tr"),
-    ("de", "en"), ("en", "de"),
     ("en", "es"), ("en", "fr"),
     ("en", "pt"), ("en", "ru"),
     ("es", "en"), ("fr", "en"),

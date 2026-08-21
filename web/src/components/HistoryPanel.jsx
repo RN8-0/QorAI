@@ -13,7 +13,7 @@ function fmtDate(iso, lang) {
   const n = Date.parse(iso || '');
   if (!Number.isFinite(n)) return '';
   try {
-    return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-GB', {
+    return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-GB', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     }).format(new Date(n));
   } catch { return iso.slice(0, 10); }
@@ -21,7 +21,7 @@ function fmtDate(iso, lang) {
 
 export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
   const { user } = useAuth();
-  const L = (en, tr, de) => (lang === 'tr' ? tr : lang === 'de' ? de : en);
+  const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [items, setItems] = useState(null); // null = loading
   const [open, setOpen] = useState(true);
 
@@ -52,7 +52,7 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
             <path d="M3 4v5h5" />
             <path d="M12 7v5l3 2" />
           </svg>
-          {L('History', 'Geçmiş', 'Verlauf')}
+          {L('History', 'Geçmiş')}
           <small>{items.length}</small>
         </span>
         <span className={'hist-caret' + (open ? ' open' : '')}>▾</span>
@@ -67,11 +67,11 @@ export default function HistoryPanel({ kind, lang, onOpen, refreshToken = 0 }) {
                   {names.slice(0, 3).map((n) => <SubLogo key={n} name={n} size={28} radius={8} />)}
                 </span>
                 <span className="hist-meta">
-                  <b>{it.title || names.join(' vs ') || L('Analysis', 'Analiz', 'Analyse')}</b>
+                  <b>{it.title || names.join(' vs ') || L('Analysis', 'Analiz')}</b>
                   <small>{fmtDate(it.at, lang)}</small>
                 </span>
                 <span className="hist-del" role="button" tabIndex={-1}
-                  title={L('Delete', 'Sil', 'Löschen')}
+                  title={L('Delete', 'Sil')}
                   onClick={(e) => remove(e, it)}>×</span>
               </button>
             );

@@ -258,8 +258,6 @@ String _detailPricesTabLabel(BuildContext context) {
   switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
     case 'tr':
       return 'Fiyatlar';
-    case 'de':
-      return 'Preise';
     case 'fr':
       return 'Prix';
     case 'es':
@@ -287,8 +285,6 @@ String _detailAiAnalysesTabLabel(BuildContext context) {
   switch (Localizations.localeOf(context).languageCode.toLowerCase()) {
     case 'tr':
       return 'AI Analizleri';
-    case 'de':
-      return 'KI-Analysen';
     case 'fr':
       return 'Analyses IA';
     case 'es':

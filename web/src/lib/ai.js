@@ -55,7 +55,7 @@ const DEEPSEEK_MAX_OUTPUT = 8192; // deepseek-chat (V3) output cap
 // silently collapsed to English — so es/fr/it/pt/ru/… web users got English
 // chat + grounded research even though the report honored their language.
 const LANG_NAMES = {
-  tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French',
+  tr: 'Turkish', en: 'English', es: 'Spanish', fr: 'French',
   it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish',
   sv: 'Swedish', ja: 'Japanese', ar: 'Arabic',
 };

@@ -19,7 +19,8 @@
 //  yapısı websitenin BlogPost.jsx'inin beklediğiyle aynı.
 // ══════════════════════════════════════════════════════════════
 (function () {
-  const LANGS = [['tr', '🇹🇷 Türkçe'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch']];
+  // Almanca 2026-08-21'de kaldirildi: blog yalnizca TR + EN.
+  const LANGS = [['tr', '🇹🇷 Türkçe'], ['en', '🇬🇧 English']];
   const SITE = 'https://qorai.net';
   let _editing = null;
   let _products = [];
@@ -427,7 +428,7 @@
     let text = [];
     const flush = () => {
       const t = text.join('\n').replace(/^\n+|\n+$/g, '');
-      if (t.trim()) { const b = { t: 'text', tr: '', en: '', de: '' }; b[lang] = t; blocks.push(b); }
+      if (t.trim()) { const b = { t: 'text', tr: '', en: '' }; b[lang] = t; blocks.push(b); }
       text = [];
     };
     let imgCount = 0;
@@ -438,7 +439,7 @@
       text.push(raw.replace(/^###\s+/, '## '));
     }
     flush();
-    if (!blocks.some(b => b.t === 'text')) blocks.push({ t: 'text', tr: '', en: '', de: '' });
+    if (!blocks.some(b => b.t === 'text')) blocks.push({ t: 'text', tr: '', en: '' });
     return blocks;
   }
 
@@ -579,7 +580,7 @@
       if (_listStatus !== 'all' && a.status !== _listStatus) return false;
       if (_listQ) {
         const q = _listQ.toLowerCase();
-        return ['title_tr', 'title_en', 'title_de', 'slug', 'category'].some((f) => String(a[f] || '').toLowerCase().includes(q));
+        return ['title_tr', 'title_en', 'slug', 'category'].some((f) => String(a[f] || '').toLowerCase().includes(q));
       }
       return true;
     });
@@ -785,7 +786,7 @@
             <div class="ba-tabs">
               ${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')" data-lang="${c}"><span class="dot ${langDone(a, c) ? 'on' : ''}"></span>${n}</div>`).join('')}
               <button type="button" class="ba-mini" id="be_qa_btn" style="margin-left:auto" onclick="blogAiQa()" title="Yapay zekâ makaleyi okur: her görselin nereye/ne boyutta geleceğine metne göre karar verir ve yayın öncesi sorunları listeler">🤖 AI düzen &amp; kontrol</button>
-              <button type="button" class="ba-mini" id="be_tr_btn" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizce ve Almancaya çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN + DE çevir</button>
+              <button type="button" class="ba-mini" id="be_tr_btn" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizceye çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN çevir</button>
               <span class="ba-wc" id="be_wc" style="margin-left:10px"></span>
             </div>
             <div class="ba-pane" id="b_pane"></div>
@@ -905,7 +906,7 @@
     const a = _editing; const c = _lang; const pane = document.getElementById('b_pane'); if (!pane) return;
     pane.innerHTML = `
       <div class="ba-field"><input class="ba-input ba-title-input" id="p_title" value="${esc(a['title_' + c] || '')}" placeholder="Makale başlığı (${c.toUpperCase()})" oninput="blogTitleInput(this.value)" /></div>
-      <div class="ba-field"><label>Slug · ${c.toUpperCase()} <span style="opacity:.5">(URL — boşsa başlıktan üretilir)</span></label><input class="ba-input" id="p_slug" value="${esc(a['slug_' + c] || '')}" placeholder="${c === 'en' ? 'best-phones-2026' : c === 'de' ? 'beste-handys-2026' : 'en-iyi-telefonlar-2026'}" oninput="this.dataset.touched='1';blogMarkDirty();blogRenderSerp()" /></div>
+      <div class="ba-field"><label>Slug · ${c.toUpperCase()} <span style="opacity:.5">(URL — boşsa başlıktan üretilir)</span></label><input class="ba-input" id="p_slug" value="${esc(a['slug_' + c] || '')}" placeholder="${c === 'en' ? 'best-phones-2026' : 'en-iyi-telefonlar-2026'}" oninput="this.dataset.touched='1';blogMarkDirty();blogRenderSerp()" /></div>
       <div class="ba-field"><label>Kısa özet (lead) <span class="ba-count" id="cnt_lead"></span></label><textarea class="ba-input" id="p_lead" rows="2" oninput="blogLeadInput(this.value)">${esc(a['lead_' + c] || '')}</textarea></div>
       <div class="ba-field"><div id="p_body_head">${rteHead('body', 'Giriş / genel yazı')}</div><div id="p_body_wrap" class="ba-rte"></div></div>`;
     updateCounters();
@@ -968,7 +969,6 @@
       [_products.length > 0, 'En az 1 içerik öğesi'],
       [Boolean((a['metaDescription_tr'] || a.lead_tr || '').trim()), 'Meta description'],
       [Boolean(a.title_en), 'EN çeviri'],
-      [Boolean(a.title_de), 'DE çeviri'],
       [Boolean(a.category), 'Kategori'],
     ];
     el.innerHTML = rows.map(([ok, label]) => `<li><span class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '○'}</span> ${label}</li>`).join('');
@@ -1174,31 +1174,31 @@
   // ── içerik öğeleri (blok modeli websiteyle aynı) ──────────────
   function ensureBlocks(p) {
     if (Array.isArray(p.blocks)) {
-      if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '', de: '' });
+      if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '' });
       return;
     }
     const blocks = [];
-    const hasD1 = ['tr', 'en', 'de'].some((c) => p['desc_' + c]);
-    const hasD2 = ['tr', 'en', 'de'].some((c) => p['desc2_' + c]);
+    const hasD1 = ['tr', 'en'].some((c) => p['desc_' + c]);
+    const hasD2 = ['tr', 'en'].some((c) => p['desc2_' + c]);
     const img = p.image || p.imageUrl || p.logo || '';
-    const txt = (k) => ({ t: 'text', tr: p[k + '_tr'] || '', en: p[k + '_en'] || '', de: p[k + '_de'] || '' });
+    const txt = (k) => ({ t: 'text', tr: p[k + '_tr'] || '', en: p[k + '_en'] || '' });
     const imgBlock = () => ({ t: 'image', url: img, pos: p.layout === 'left' ? 'left' : p.layout === 'right' ? 'right' : 'full', size: p.imgSize || 'm' });
     const layout = p.layout || 'split';
     if (layout === 'top') { if (img) blocks.push(imgBlock()); if (hasD1) blocks.push(txt('desc')); if (hasD2) blocks.push(txt('desc2')); }
     else if (layout === 'text') { if (hasD1) blocks.push(txt('desc')); if (hasD2) blocks.push(txt('desc2')); }
     else { if (hasD1) blocks.push(txt('desc')); if (img) blocks.push(imgBlock()); if (hasD2) blocks.push(txt('desc2')); }
-    if (!blocks.some((b) => b.t === 'text')) blocks.push({ t: 'text', tr: '', en: '', de: '' });
+    if (!blocks.some((b) => b.t === 'text')) blocks.push({ t: 'text', tr: '', en: '' });
     p.blocks = blocks;
   }
   function blogBlockAdd(i, type) {
     const p = _products[i]; if (!p) return; ensureBlocks(p);
-    p.blocks.push(type === 'image' ? { t: 'image', url: '', pos: 'right', size: 'm' } : { t: 'text', tr: '', en: '', de: '' });
+    p.blocks.push(type === 'image' ? { t: 'image', url: '', pos: 'right', size: 'm' } : { t: 'text', tr: '', en: '' });
     renderProducts(); blogMarkDirty();
   }
   function blogBlockRemove(i, j) {
     const p = _products[i]; if (!p || !p.blocks) return;
     p.blocks.splice(j, 1);
-    if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '', de: '' });
+    if (!p.blocks.length) p.blocks.push({ t: 'text', tr: '', en: '' });
     renderProducts(); blogMarkDirty();
   }
   function blogBlockMove(i, j, d) {
@@ -1306,7 +1306,7 @@
     const inp = document.getElementById('b_prodsearch'); if (inp) inp.value = '';
   }
   const _CUR = { TR: 'TRY', DE: 'EUR', GB: 'GBP', US: 'USD' };
-  const _LOC = { TR: 'tr-TR', DE: 'de-DE', GB: 'en-GB', US: 'en-US' };
+  const _LOC = { TR: 'tr-TR', GB: 'en-GB', US: 'en-US' };
   async function blogProdFetchPrice(id) {
     try {
       const pb = getPb();
@@ -1359,7 +1359,7 @@
     const inp = document.getElementById('b_subsearch'); if (inp) inp.value = '';
   }
   function blogCustomAdd(name) {
-    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: '', name: name || '', name_tr: name || '', name_en: name || '', name_de: name || '', link: '', image: '', imageUrl: '', blocks: [{ t: 'text', tr: '', en: '', de: '' }] });
+    _products.push({ kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), slug: '', name: name || '', name_tr: name || '', name_en: name || '', link: '', image: '', imageUrl: '', blocks: [{ t: 'text', tr: '', en: '' }] });
     renderProducts(); blogMarkDirty();
     if (!name) setTimeout(() => {
       const list = document.getElementById('b_prodlist');
@@ -1425,7 +1425,7 @@
     } else if (t === 'json') {
       box.innerHTML = `
         <p style="font-size:13px;opacity:.7;margin:0 0 10px">“Claude prompt'u” sekmesindeki şablonla üretilen JSON'u yapıştır — <b>3 dilin tamamı + ürün öğeleri</b> tek seferde dolar. Ürünler katalogdan otomatik eşleştirilir; bulunamayanlar özel öğe olarak eklenir.</p>
-        <textarea id="be_imp_json" class="be-imp-ta" placeholder='{"category":"smartphones","langs":{"tr":{"title":"…"},"en":{…},"de":{…}},"items":[…]}'></textarea>
+        <textarea id="be_imp_json" class="be-imp-ta" placeholder='{"category":"smartphones","langs":{"tr":{"title":"…"},"en":{…}},"items":[…]}'></textarea>
         <div class="be-imp-opt">
           <label><input type="checkbox" id="be_opt_jreplace" checked> Mevcut içeriğin üzerine yaz</label>
         </div>
@@ -1443,7 +1443,7 @@
     const cats = _cats.length ? _cats.join(', ') : 'smartphones, laptops, tablets, headphones, monitors, tvs, smartwatches…';
     return `Sen Qor AI (qorai.net) için blog makalesi yazan bir editörsün. Konu: [KONU]
 
-GÖREV: Bu konuda 3 dilde (Türkçe, İngilizce, Almanca) eksiksiz bir makale yaz ve SADECE aşağıdaki şemaya uyan geçerli bir JSON döndür. JSON dışında hiçbir şey yazma (açıklama, markdown çiti, selamlama yok).
+GÖREV: Bu konuda 2 dilde (Türkçe, İngilizce) eksiksiz bir makale yaz ve SADECE aşağıdaki şemaya uyan geçerli bir JSON döndür. JSON dışında hiçbir şey yazma (açıklama, markdown çiti, selamlama yok).
 
 ŞEMA:
 {
@@ -1460,7 +1460,6 @@ GÖREV: Bu konuda 3 dilde (Türkçe, İngilizce, Almanca) eksiksiz bir makale ya
       "tags": "<virgülle 4-6 etiket>"
     },
     "en": { <aynı alanlar İngilizce> },
-    "de": { <aynı alanlar Almanca> }
   },
   "items": [
     {
@@ -1468,7 +1467,7 @@ GÖREV: Bu konuda 3 dilde (Türkçe, İngilizce, Almanca) eksiksiz bir makale ya
       "search": "<katalog araması için sade model adı, örn: iPhone 15 | Samsung Galaxy S24 | MacBook Air M3>",
       "name": "<görünen ad>",
       "blocks": [
-        { "type": "text", "style": "paragraph", "tr": "<ürün anlatımı TR — 80-150 kelime. **kalın** vurgu, '- ' ile artı/eksi maddeleri, '## ' ile ara başlık kullanabilirsin>", "en": "<aynısı EN>", "de": "<aynısı DE>" }
+        { "type": "text", "style": "paragraph", "tr": "<ürün anlatımı TR — 80-150 kelime. **kalın** vurgu, '- ' ile artı/eksi maddeleri, '## ' ile ara başlık kullanabilirsin>", "en": "<aynısı EN>" }
       ]
     }
   ]
@@ -1735,7 +1734,7 @@ KURALLAR:
       const nm = stripLeadingNumber(String(it.name || q || 'Öğe'));
       _products.push({
         kind: 'custom', id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm, name_de: it.name_de || nm,
+        slug: slugify(nm), name: nm, name_tr: it.name_tr || nm, name_en: it.name_en || nm,
         link: it.link || '', image: it.image || '', imageUrl: '',
         // Görsel çözümleyici (resolveItemImages) önce bunlara bakar; AI zaten
         // resmî alan adını verdiyse ikinci bir Gemini çağrısı yapılmaz.
@@ -1779,7 +1778,7 @@ GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli J
   "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
   "langs": {
     "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
-    "en": { ... }, "de": { ... }
+    "en": { ... }
   },
   "items": [
     { "kind": "product|subscription|service",
@@ -1787,7 +1786,7 @@ GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli J
       "name": "<yazarın yazdığı görünen başlık, aynen>",
       "brand": "<marka/hizmet adı, sade: Midjourney, OpenAI, Adobe>",
       "site": "<markanın RESMÎ alan adı: midjourney.com — emin değilsen BOŞ>",
-      "blocks": [ { "type": "text", "style": "paragraph", "tr": "", "en": "", "de": "" } ] }
+      "blocks": [ { "type": "text", "style": "paragraph", "tr": "", "en": "" } ] }
   ]
 }
 
@@ -1838,7 +1837,7 @@ HAM METİN:
       return;
     }
     const langs = data.langs || {};
-    const filled = ['tr', 'en', 'de'].filter((c) => langs[c] && String(langs[c].title || '').trim());
+    const filled = ['tr', 'en'].filter((c) => langs[c] && String(langs[c].title || '').trim());
     if (!filled.length) {
       if (btn) { btn.disabled = false; btn.textContent = '🪄 Oku ve makaleye dönüştür'; }
       say('');
@@ -1874,9 +1873,9 @@ HAM METİN:
         brand: it.brand || '',
         site: it.site || '',
         link: it.link || '',
-        blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
-          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '', cap_de: b.cap_de || '' };
-          return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '', de: b.de || '' };
+        blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '' }]).map((b) => {
+          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '' };
+          return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '' };
         }),
       }));
       await importItems(norm, replace);
@@ -1964,14 +1963,14 @@ HAM METİN:
         kind: it.kind || 'product',
         search: it.search || it.name || '',
         name: it.name || it.search || '',
-        name_tr: it.name_tr, name_en: it.name_en, name_de: it.name_de,
+        name_tr: it.name_tr, name_en: it.name_en,
         brand: it.brand || '',
         site: it.site || '',
         link: it.link || '',
         image: it.image || '',
-        blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '', de: '' }]).map((b) => {
-          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || b.cap || '', cap_en: b.cap_en || '', cap_de: b.cap_de || '' };
-          return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '', de: b.de || '' };
+        blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '' }]).map((b) => {
+          if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || b.cap || '', cap_en: b.cap_en || '' };
+          return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '' };
         }),
       }));
       await importItems(norm, replace);
@@ -2010,7 +2009,7 @@ HAM METİN:
     const add = (level, text) => out.push({ level, text });
     const plain = (h) => stripHtml(h).replace(/\s+/g, ' ').trim();
     const prods = Array.isArray(products) ? products : (Array.isArray(a.products) ? a.products : []);
-    const langName = { tr: 'TR', en: 'EN', de: 'DE' };
+    const langName = { tr: 'TR', en: 'EN' };
 
     // 1) Dil bütünlüğü + slug'lar (URL ile içerik dilinin eşleşmesi buna bağlı)
     const slugs = {};
@@ -2332,7 +2331,7 @@ ${JSON.stringify(outline)}`;
       throw new Error('AI yanıtı çözülemedi');
     }
   }
-  const LANG_NAME = { en: 'İngilizce (English)', de: 'Almanca (Deutsch)' };
+  const LANG_NAME = { en: 'İngilizce (English)' };
   // Kaynak dildeki tüm metinleri toplayıp tek JSON'da çevirtir, sonra aynı
   // yapıya geri yazar. HTML etiketleri korunur (gövde/sonuç zengin metin).
   function collectTranslatable(src) {
@@ -2379,7 +2378,7 @@ ${JSON.stringify(outline)}`;
     flushEditors(); syncPane();
     const src = srcArg || 'tr';
     if (!(_editing['title_' + src] || '').trim()) { toast(src.toUpperCase() + ' başlık boşken çeviri yapılamaz', 'w'); return; }
-    const list = (targets || ['en', 'de']).filter((c) => c !== src);
+    const list = (targets || ['en']).filter((c) => c !== src);
     const btn = document.getElementById('be_tr_btn');
     const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = !!dis; } };
     const payload = collectTranslatable(src);
@@ -2405,7 +2404,7 @@ ${JSON.stringify(payload)}`;
         applyTranslation(out, dst);
         toast(`${dst.toUpperCase()} çevirisi tamam`, 's');
       } catch (e) {
-        setBtn('🌍 TR → EN + DE çevir', false);
+        setBtn('🌍 TR → EN çevir', false);
         toast(`${dst.toUpperCase()} çevirisi başarısız: ${e.message}`, 'e');
         return;
       }
@@ -2417,8 +2416,8 @@ ${JSON.stringify(payload)}`;
     toast('Çeviri bitti — sekmelerden kontrol et ve kaydet', 's');
   }
   function blogTranslateMenu() {
-    if (!confirm('TR içerik EN ve DE dillerine çevrilecek.\n\nHedef dillerdeki MEVCUT metinlerin üzerine yazılır. Devam edilsin mi?')) return;
-    blogTranslate(['en', 'de'], 'tr');
+    if (!confirm('TR içerik EN diline çevrilecek.\n\nHedef dillerdeki MEVCUT metinlerin üzerine yazılır. Devam edilsin mi?')) return;
+    blogTranslate(['en'], 'tr');
   }
 
   // ── kaydet / önizle ───────────────────────────────────────────
@@ -2483,7 +2482,7 @@ ${JSON.stringify(payload)}`;
           .map((p) => {
             const q = { ...p }; delete q._livePrice;
             if ((q.kind || 'product') !== 'custom') return q;
-            const nm = (q.name_tr || q.name_en || q.name_de || q.name || '').trim();
+            const nm = (q.name_tr || q.name_en || q.name || '').trim();
             return { ...q, name: nm, slug: slugify(nm) };
           })
           .filter((p) => (p.kind || 'product') !== 'custom' || String(p.name || '').trim()),

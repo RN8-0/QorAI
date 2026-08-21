@@ -56,8 +56,6 @@ class YouTubeService {
     switch (lang) {
       case 'tr':
         return 'detaylı inceleme';
-      case 'de':
-        return 'ausführlicher Test';
       case 'fr':
         return 'test complet avis';
       case 'es':
@@ -233,7 +231,6 @@ class YouTubeService {
     final normalized = lang.toLowerCase();
     const region = {
       'tr': 'tr-TR,tr;q=0.95,en;q=0.55',
-      'de': 'de-DE,de;q=0.95,en;q=0.55',
       'fr': 'fr-FR,fr;q=0.95,en;q=0.55',
       'es': 'es-ES,es;q=0.95,en;q=0.55',
       'it': 'it-IT,it;q=0.95,en;q=0.55',

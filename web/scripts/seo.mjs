@@ -63,6 +63,24 @@ const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 
 // Published blog articles (public read — listRule is status="published"). Drives
 // the prerendered /blog listing + /blog/<slug> article pages.
+// Yayinlanmis URUN ANALIZLERI (public read — listRule status="published").
+// /analiz listesi + /analiz/<slug> sayfalarini besler.
+//
+// NEDEN AYRI BIR BOLUM: spec tablosu ve fiyat Epey'den geliyor ve onlarca Turk
+// sitesinde birebir ayni duruyor; Google'in spec icin bizi tercih etmesi icin
+// sebep yok. Analiz BASKA HICBIR YERDE YOK — sitenin siralamada yaslanabilecegi
+// tek ozgun varlik bu.
+//
+// TASLAKLAR GELMEZ: listRule yalniz yayinda olanlari donduruyor, yani admin
+// panelinden onaylanmamis hicbir metin ne sitemap'e ne de dizine girer.
+async function fetchAnalyses() {
+  try {
+    const r = await fetch(`${PB_URL}/api/collections/analyses/records?filter=${encodeURIComponent('status="published"')}&sort=-publishedAt&perPage=200`);
+    if (!r.ok) return [];
+    return ((await r.json()).items) || [];
+  } catch (_) { return []; }
+}
+
 async function fetchArticles() {
   try {
     const r = await fetch(`${PB_URL}/api/collections/articles/records?filter=${encodeURIComponent('status="published"')}&sort=-updated&perPage=200`);
@@ -125,7 +143,7 @@ function livePriceFor(rec, country = 'TR') {
 // Kapsam ölçüldü (2026-08-21, Typesense): priceTR 32.264 · priceDE 1.105 ·
 // priceUS 242. Yani fiyat pratikte TR'ye ait; EN/DE sayfalarının çoğu fiyatsız
 // kalacak ve BAŞLIKLARINDA da fiyat vaadi olmayacak (bkz. productSeo).
-const LANG_COUNTRY = { tr: 'TR', de: 'DE', en: 'US' };
+const LANG_COUNTRY = { tr: 'TR', en: 'US' };
 function priceForLang(prices, lang) {
   if (!prices || typeof prices !== 'object') return null;
   const cc = LANG_COUNTRY[lang] || 'US';
@@ -139,6 +157,80 @@ function priceForLang(prices, lang) {
   const amount = Math.round(ham);
   if (amount <= 0) return null;
   return { amount, currency: PRICE_CURRENCY[cc] || 'USD', text: fmtMoney(amount, cc), country: cc };
+}
+
+// ── ANALIZ SAYFALARI (/analiz) ────────────────────────────────────────────
+const ANALIZ_LISTE_TEXT = {
+  en: {
+    h1: 'AI Product Analyses',
+    title: 'AI Product Analyses — Qor AI',
+    desc: 'In-depth AI analyses of popular tech products: what the specs mean in daily use, strengths, weaknesses and who each product is actually for.',
+    intro: 'Every analysis is written from the product\'s real catalogue specs and reviewed before publishing.',
+    all: '← All analyses',
+    prod: 'View product page',
+    verdict: 'Verdict',
+    faq: 'Frequently asked questions',
+  },
+  tr: {
+    h1: 'Yapay Zekâ Ürün Analizleri',
+    title: 'Yapay Zekâ Ürün Analizleri — Qor AI',
+    desc: 'Popüler teknoloji ürünlerinin derinlemesine yapay zekâ analizleri: özellikler günlük kullanımda ne anlama geliyor, güçlü ve zayıf yanları, kime uygun.',
+    intro: 'Her analiz ürünün gerçek katalog özelliklerinden yazılır ve yayınlanmadan önce gözden geçirilir.',
+    all: '← Tüm analizler',
+    prod: 'Ürün sayfasına git',
+    verdict: 'Sonuç',
+    faq: 'Sık sorulan sorular',
+  },
+};
+
+function analizListeBody(analyses, lang) {
+  const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
+  const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const items = analyses.filter((a) => a.slug).map((a) => {
+    const baslik = esc(t(a, 'title') || a.productName || '');
+    const lead = esc(truncate(t(a, 'lead'), 180));
+    return `<li style="margin:0;padding:18px 0;border-top:1px solid #e2e8f0">`
+      + `<a href="/analiz/${esc(a.slug)}" style="color:#0f172a;text-decoration:none;font-size:18px;font-weight:700">${baslik}</a>`
+      + (lead ? `<p style="margin:6px 0 0;color:#475569;line-height:1.55">${lead}</p>` : '')
+      + `<div style="margin-top:6px;font-size:12.5px;color:#64748b">${esc(a.productBrand || '')}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
+      + `</li>`;
+  }).join('');
+  return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<h1 style="font-size:28px;margin:0 0 8px">${esc(tx.h1)}</h1>`
+    + `<p style="line-height:1.7;color:#475569;max-width:62ch">${esc(tx.intro)}</p>`
+    + (items ? `<ul style="list-style:none;padding:0;margin:20px 0">${items}</ul>` : '')
+    + `</main>`;
+}
+
+// Analiz gövdesi. `body_*` admin panelinde üretilir/düzenlenir; safeBodyHtml
+// ile aynı etiket kümesine kısıtlanır (h2/h3/p/ul/li/strong/em).
+function analizBody(a, lang) {
+  const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
+  const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const baslik = esc(t('title') || a.productName || '');
+  const img = /^https?:\/\//i.test(a.productImage || '') ? esc(a.productImage) : '';
+  const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
+    .filter((f) => f && f.q && f.a).slice(0, 8);
+  return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
+    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/analiz">${esc(tx.h1)}</a></nav>`
+    + `<h1 style="font-size:27px;margin:12px 0 8px">${baslik}</h1>`
+    + (t('lead') ? `<p style="font-size:17px;line-height:1.6;color:#475569;max-width:62ch">${esc(t('lead'))}</p>` : '')
+    // Analiz edilen ürüne İÇ LİNK: analiz sayfası otorite taşır, ürün sayfası
+    // ince — bağ ince sayfaya değer akıtır ve okuyucuyu satın almaya yaklaştırır.
+    + `<div style="display:flex;gap:14px;align-items:center;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:20px 0">`
+    + (img ? `<img src="${img}" alt="${esc(a.productName || '')}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
+    + `<div><strong>${esc(a.productName || '')}</strong>`
+    + `<div style="font-size:12.5px;color:#64748b">${esc(a.productBrand || '')}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
+    + (a.productSlug ? `<a href="/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
+    + `</div></div>`
+    + `<div style="line-height:1.72">${safeBodyHtml(t('body'))}</div>`
+    + (t('verdict') ? `<h2 style="font-size:20px;margin:26px 0 6px">${esc(tx.verdict)}</h2><div style="line-height:1.7;color:#334155">${safeBodyHtml(t('verdict'))}</div>` : '')
+    + (faq.length
+      ? `<h2 style="font-size:20px;margin:28px 0 6px">${esc(tx.faq)}</h2>`
+        + faq.map((f) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(f.q)}</h3><p style="line-height:1.7;color:#475569;margin:0">${esc(f.a)}</p>`).join('')
+      : '')
+    + `<p style="margin-top:24px"><a href="/analiz" style="color:#2563eb;font-weight:600">${esc(tx.all)}</a></p>`
+    + `</main>`;
 }
 
 // Sanitise stored article HTML for the static shell: allow only the tags the
@@ -157,7 +249,6 @@ function articleCoverUrl(a) {
 const BLOG_LBL = {
   tr: { ai: 'AI Analizi', amz: "Amazon'da Gör", prod: 'Ürüne Git', verdict: 'Sonuç', all: '← Tüm rehberler' },
   en: { ai: 'AI analysis', amz: 'View on Amazon', prod: 'Product', verdict: 'Verdict', all: '← All guides' },
-  de: { ai: 'KI-Analyse', amz: 'Bei Amazon ansehen', prod: 'Produkt', verdict: 'Fazit', all: '← Alle Ratgeber' },
 };
 function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const lbl = BLOG_LBL[lang] || BLOG_LBL.tr;
@@ -201,7 +292,7 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
       + `</div>`;
   }).join('');
   const concl = safeBodyHtml(a[`conclusion_${lang}`] || a.conclusion_tr || '');
-  const DLOC = { tr: 'tr-TR', en: 'en-US', de: 'de-DE' };
+  const DLOC = { tr: 'tr-TR', en: 'en-US' };
   const dRaw = a.publishedAt || a.created;
   let dateStr = '';
   if (dRaw) { try { dateStr = new Date(String(dRaw).replace(' ', 'T')).toLocaleDateString(DLOC[lang] || 'tr-TR', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (_) { dateStr = String(dRaw).slice(0, 10); } }
@@ -401,14 +492,6 @@ const PROD_BODY_TEXT = {
     cta: (l) => `Tüm ${l} modellerini karşılaştır`,
     intro: (n, hi, l, sp) => `${n}${hi ? ` öne çıkan özellikleri: ${hi}.` : ` — ${l}.`} ${n}${sp ? ` ${sp} teknik özelliğini` : ' özelliklerini'}, Qor AI teknik skorunu ve benzer ${l.toLowerCase()} modelleriyle karşılaştırmasını aşağıda incele.`,
   },
-  de: {
-    cats: 'Kategorien',
-    score: (s) => `Qor AI Techscore ${s}/100`,
-    specsH: 'Wichtige technische Daten',
-    relH: (l) => `Ähnliche ${l}-Modelle`,
-    cta: (l) => `Alle ${l}-Modelle vergleichen`,
-    intro: (n, hi, l, sp) => `${n}${hi ? ` Highlights: ${hi}.` : ` — ${l}.`} Sieh dir unten ${sp ? `${sp} technische Merkmale` : 'die Merkmale'} von ${n}, den Qor AI Techscore und den Vergleich mit ähnlichen ${l}-Modellen an.`,
-  },
 };
 
 // Crawlable body for a category landing page: H1 + intro + a real <a> grid to
@@ -438,7 +521,6 @@ function guideHtml(guide) {
 const CAT_BODY_TEXT = {
   tr: { cats: 'Kategoriler', h1: (l) => `${l} Karşılaştırma`, intro: (l) => `En iyi ${l.toLowerCase()} modellerini Qor AI yapay zekâ teknik skoru, özellikleri ve güncel fiyatlarıyla karşılaştır. Aşağıdaki modellerden birini seç ya da filtreleyerek sana en uygununu saniyeler içinde bul.` },
   en: { cats: 'Categories', h1: (l) => `${l} Comparison`, intro: (l) => `Compare the best ${l.toLowerCase()} models with Qor AI: AI tech score, key features and current prices together. Pick one of the models below or filter to find the one that fits you best in seconds.` },
-  de: { cats: 'Kategorien', h1: (l) => `${l} Vergleich`, intro: (l) => `Vergleiche die besten ${l.toLowerCase()}-Modelle mit Qor AI: KI-Techscore, wichtige Merkmale und aktuelle Preise zusammen. Wähle eines der Modelle unten oder filtere, um in Sekunden das passende zu finden.` },
 };
 
 // Karsilastirma sayfalarina giden IC LINKLER. 2026-08-16'da Epey ile yan yana
@@ -455,7 +537,9 @@ const CAT_BODY_TEXT = {
 function compareLinksFor(items, lang, sinir = 12) {
   const topK = [];
   const seen = new Set();
-  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
+  // Varsayılan ÜRETEN döngüyle aynı olmak ZORUNDA (2026-08-21'de 8 → 6).
+  // Ayrışırsa kategori sayfası var olmayan karşılaştırma adresine link verir.
+  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 6);
   for (const d of items || []) {
     if (topK.length >= COMPARE_TOP) break;
     if (!d || !d.name || !d.id) continue;
@@ -478,11 +562,11 @@ function compareLinksFor(items, lang, sinir = 12) {
   return out;
 }
 
-function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKategoriler = []) {
+function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKategoriler = [], compareVar = true) {
   const tx = CAT_BODY_TEXT[lang] || CAT_BODY_TEXT.tr;
   const lbl = esc(label);
-  // İç linkler AYNI DİL AĞACINDA kalmalı: /de/category sayfası öneksiz
-  // /product/… adreslerine bağlanırsa Googlebot /de/ ve /tr/ ürün sayfalarına
+  // İç linkler AYNI DİL AĞACINDA kalmalı: /tr/category sayfası öneksiz
+  // /product/… adreslerine bağlanırsa Googlebot /tr/ ve kök ürün sayfalarına
   // yalnız sitemap'ten ulaşır, iç link yoluyla hiç ulaşamaz.
   const pfx = localePrefix(lang);
   const links = items
@@ -498,7 +582,7 @@ function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKatego
     + `<h1 style="font-size:28px;margin:12px 0 6px">${esc(tx.h1(label))}</h1>`
     + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(tx.intro(label))}</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
-    + karsilastirmaBolumu(items, lang)
+    + (compareVar ? karsilastirmaBolumu(items, lang) : '')
     + digerKategoriBolumu(digerKategoriler, lang)
     + `</main>`;
 }
@@ -506,7 +590,6 @@ function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKatego
 const IC_LINK_TEXT = {
   tr: { kars: 'Popüler karşılaştırmalar', diger: 'Diğer kategoriler' },
   en: { kars: 'Popular comparisons', diger: 'Other categories' },
-  de: { kars: 'Beliebte Vergleiche', diger: 'Weitere Kategorien' },
 };
 
 function karsilastirmaBolumu(items, lang) {
@@ -551,16 +634,22 @@ function guideFaqLd(guide, url) {
 }
 
 // ── comparison ("X vs Y") pages ─────────────────────────────────
-// The clean URL is /compare/<slugA>-<idA>-vs-<slugB>-<idB>. Each id is a 15-char
-// token, so the SPA's /compare/:pair route recovers both ids (split on the first
-// "-vs-", extractProductId each side). Must mirror comparePath() in routes.js.
+// Adres: /compare/<slugA>-vs-<slugB>.
+//
+// 2026-08-22: kayit ID'leri ADRESTEN CIKARILDI. Urun adresinde ayni temizlik
+// `e64350a` ile yapilmisti, compare unutulmustu:
+//   /compare/ecovacs-deebot-t50s-pro-omni-qw4jn21yemj0wez-vs-mamibot-ultra-m10-6fnbz3dy8fzjesx
+// Kimse bunu yazmaz, boyle bir linki paylasmaz, arama sonucunda okuyamaz.
+//
+// SPA tarafi (routes.js parseComparePair) her iki bicimi de cozer: yeni slug-only
+// ve indekste duran eski id'li bicim. Iki fonksiyon BIREBIR ayni jetonu uretmek
+// zorunda; ayrisirlarsa runtime canonical ile on-render dosya yolu/sitemap
+// uyusmaz.
 function compareToken(d) {
-  // Cap the slug hard: a compare path joins TWO slugs + two 15-char ids + "-vs-",
-  // and two full 90-char slugs blow past the Windows 260-char path limit (the
-  // build writes website/compare/<token>/index.html). 40 keeps URLs clean and
-  // the id stays the trailing 15 chars so parseComparePair() still recovers it.
+  // Slug 40 karakterle SINIRLI: build `website/compare/<token>/index.html`
+  // yaziyor ve iki tam slug (90+90) Windows'un 260 karakter yol sinirini asiyor.
   const slug = slugifyProduct(d.slug || d.name || '').slice(0, 40).replace(/-+$/, '');
-  return slug ? `${slug}-${d.id}` : String(d.id);
+  return slug || String(d.id);
 }
 function comparePath(a, b) {
   return `/compare/${compareToken(a)}-vs-${compareToken(b)}`;
@@ -626,17 +715,93 @@ const CMP_TEXT = {
     intro: (a, b) => `${a} ile ${b} karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.`,
     cta: (l) => `Tüm ${l} modellerini karşılaştır`,
   },
-  de: {
-    cats: 'Kategorien', score: 'Qor AI Techscore', brand: 'Marke',
-    screen: 'Display', batt: 'Akku', weight: 'Gewicht', inch: 'Zoll',
-    titleTail: [' — Vergleich', ' | Qor AI'],
-    desc: (a, b, l) => `${a} vs ${b} Vergleich — ${l}. Qor AI Techscore und technische Daten nebeneinander; welches passt besser zu dir?`,
-    intro: (a, b) => `${a} vs ${b} Vergleich: Qor AI Techscore und technische Daten nebeneinander. Sieh in der Tabelle unten, welches besser zu dir passt.`,
-    cta: (l) => `Alle ${l}-Modelle vergleichen`,
+};
+
+// "Kısa sonuç" bloğu — karşılaştırma sayfasının TEK özgün metni.
+//
+// NEDEN VAR: compare gövdesi ortalama 125 kelimeydi ve tamamı spec tablosuydu;
+// yani sayfa, iki ürün sayfasında zaten yazan veriyi tekrar ediyordu. Arayan
+// kişi "hangisi?" sorusuna cevap arıyor, tabloyu kendi okumak istemiyor.
+//
+// Her cümle VERİDEN türetilir — uydurma yorum yok: skor farkı, fiyat farkı,
+// kaç özellikte ayrıştıkları. "Şunu al" demiyoruz; hangi ölçüte göre hangisinin
+// önde olduğunu söylüyoruz, kararı okuyucu veriyor.
+const CMP_SONUC = {
+  en: {
+    h: 'The short answer',
+    skorFark: (w, l, d) => `${w} leads on the Qor AI tech score by ${d} points (${w} vs ${l}). `,
+    skorEsit: (s) => `Both score ${s}/100 on the Qor AI tech score. `,
+    fiyat: (uc, fark) => `${uc} is the cheaper of the two, by ${fark}. `,
+    ayrisma: (n, ornek) => `They differ on ${n} of the compared specs${ornek ? ` — most notably ${ornek}` : ''}. `,
+    secim: (skorlu, ucuz) => (skorlu === ucuz
+      ? `${skorlu} is both the higher-scoring and the cheaper option.`
+      : `Pick ${skorlu} for the stronger spec sheet, ${ucuz} for the lower price.`),
+    secimEsit: (ucuz) => `With the scores level, ${ucuz} is the better value of the two.`,
+  },
+  tr: {
+    h: 'Kısa sonuç',
+    skorFark: (w, l, d) => `Qor AI teknik skorunda ${w}, ${l}'i ${d} puan geçiyor. `,
+    skorEsit: (s) => `Qor AI teknik skorunda ikisi de ${s}/100. `,
+    fiyat: (uc, fark) => `İkisinden ucuzu ${uc}; aradaki fark ${fark}. `,
+    ayrisma: (n, ornek) => `Karşılaştırılan özelliklerin ${n} tanesinde ayrışıyorlar${ornek ? ` — başta ${ornek}` : ''}. `,
+    secim: (skorlu, ucuz) => (skorlu === ucuz
+      ? `${skorlu} hem daha yüksek skorlu hem daha ucuz olan.`
+      : `Daha güçlü teknik tablo istiyorsan ${skorlu}, daha düşük fiyat istiyorsan ${ucuz}.`),
+    secimEsit: (ucuz) => `Skorlar eşit olduğu için fiyat/performansta öne çıkan ${ucuz}.`,
   },
 };
 
-function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SEO_DEFAULT_LOCALE) {
+// İki key-spec haritasının AYRIŞTIĞI etiketler (ikisinde de değeri olan ama
+// değerleri farklı olanlar). Sayısal karşılaştırma YAPMIYORUZ: birim ayrıştırma
+// ("205 dk" vs "3.5 saat") kırılgan ve yanlış kazanan ilan etmek, hiç bir şey
+// söylememekten kötü. Yalnız "farklılar" demek doğrulanabilir.
+function ayrisanSpecler(ksA, ksB, limit = 3) {
+  const a = (ksA && typeof ksA === 'object') ? ksA : {};
+  const b = (ksB && typeof ksB === 'object') ? ksB : {};
+  const out = [];
+  for (const [k, va] of Object.entries(a)) {
+    const vb = b[k];
+    if (vb === undefined) continue;
+    if (String(va).trim().toLowerCase() === String(vb).trim().toLowerCase()) continue;
+    out.push(k);
+  }
+  return { sayi: out.length, ornek: out.slice(0, limit) };
+}
+
+function compareSonucBlok(a, b, ksA, ksB, lang, fiyatA, fiyatB) {
+  const tx = CMP_SONUC[lang] || CMP_SONUC[SEO_DEFAULT_LOCALE];
+  if (!tx) return '';
+  const na = localizedName(a, lang); const nb = localizedName(b, lang);
+  const sa = Number(a.techScore) || 0; const sb = Number(b.techScore) || 0;
+  let metin = '';
+  if (sa && sb) {
+    if (sa === sb) metin += tx.skorEsit(sa);
+    else metin += (sa > sb ? tx.skorFark(na, nb, sa - sb) : tx.skorFark(nb, na, sb - sa));
+  }
+  // Fiyat cümlesi yalnız İKİSİNİN DE aynı pazarda fiyatı varsa — tek taraflı
+  // fiyat "ucuz olan" demeye yetmez.
+  let ucuz = '';
+  if (fiyatA && fiyatB && fiyatA.currency === fiyatB.currency && fiyatA.amount !== fiyatB.amount) {
+    const aUcuz = fiyatA.amount < fiyatB.amount;
+    ucuz = aUcuz ? na : nb;
+    const fark = Math.abs(fiyatA.amount - fiyatB.amount);
+    metin += tx.fiyat(ucuz, fmtMoney(fark, (aUcuz ? fiyatA : fiyatB).country));
+  }
+  const { sayi, ornek } = ayrisanSpecler(ksA, ksB);
+  if (sayi) metin += tx.ayrisma(sayi, ornek.join(', '));
+  // techScore amiral gemilerinde 100'de DOYUYOR — ölçüldü, üst sıradaki
+  // telefonların çoğu 100/100. O yüzden "hangisini seç" cümlesi yalnız skor
+  // farkına bağlı olsaydı en çok aranan çiftlerde hiç çıkmazdı. Skorlar eşitse
+  // karar ölçütü fiyat olur; bu da veriden gelen bir ifade, yorum değil.
+  const skorlu = sa === sb ? '' : (sa > sb ? na : nb);
+  if (skorlu && ucuz) metin += tx.secim(skorlu, ucuz);
+  else if (!skorlu && ucuz && sa && sb) metin += tx.secimEsit(ucuz);
+  if (!metin.trim()) return '';
+  return `<h2 style="font-size:20px;margin:22px 0 6px">${esc(tx.h)}</h2>`
+    + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(metin.trim())}</p>`;
+}
+
+function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SEO_DEFAULT_LOCALE, fiyatA = null, fiyatB = null) {
   const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
   const pfx = localePrefix(lang);
   const na = esc(localizedName(a, lang)); const nb = esc(localizedName(b, lang));
@@ -663,13 +828,14 @@ function compareBody(a, b, label, categoryUrl, ksA = null, ksB = null, lang = SE
     + `<th style="padding:8px 12px;text-align:left"><a href="${pa}" style="color:#2563eb">${na}</a></th>`
     + `<th style="padding:8px 12px;text-align:left"><a href="${pb}" style="color:#2563eb">${nb}</a></th></tr></thead>`
     + `<tbody>${rows}</tbody></table>`
+    + compareSonucBlok(a, b, ksA, ksB, lang, fiyatA, fiyatB)
     + `<p><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${tx.cta(lbl)} →</a></p>`
     + `</main>`;
 }
 
 function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   const tx = CMP_TEXT[lang] || CMP_TEXT[SEO_DEFAULT_LOCALE];
-  // DİL ÖNEKİ ŞART: öneksiz kurulan canonical, /tr/compare/… ve /de/compare/…
+  // DİL ÖNEKİ ŞART: öneksiz kurulan canonical ve /tr/compare/…
   // sayfalarını İngilizce adrese kanonikleştiriyordu — yani Google'a "bu üç
   // sayfa aslında tek sayfa, İngilizcesini al" demiş oluyorduk ve Türkçe/Almanca
   // karşılaştırma sayfaları indexe hiç girmiyordu.
@@ -773,15 +939,6 @@ const PROD_SEO_TEXT = {
     specs: (n) => `${n} teknik özellik. `,
     priceLine: (p) => `Fiyatı ${p}. `,
     tail: 'Mağaza fiyatlarını karşılaştır, yapay zekâ teknik skorunu ve benzer modelleri gör.',
-  },
-  de: {
-    titleParts: (hasPrice) => (hasPrice
-      ? [' Preis', ' & Specs', ' | Qor AI']
-      : [' Specs', ' & Vergleich', ' | Qor AI']),
-    score: (s) => `Qor AI Techscore ${s}/100. `,
-    specs: (n) => `${n} technische Merkmale. `,
-    priceLine: (p) => `Preis ${p}. `,
-    tail: 'Preise der Shops vergleichen, KI-Techscore und ähnliche Modelle ansehen.',
   },
 };
 
@@ -1129,7 +1286,7 @@ function legalBody(kind, lang = 'tr') {
 // link grid to every category landing page and the main tools. Turns the root
 // "/" from an empty SPA shell into a content-bearing hub — the first page the
 // AdSense reviewer and Googlebot hit. React wipes #root on mount.
-// Homepage prerender copy in all three served languages (tr=root, en=/en, de=/de).
+// Homepage prerender copy in both served languages (en=root, tr=/tr).
 const HOME_TEXT = {
   tr: {
     h1: 'Qor AI — Yapay Zekâ Ürün Danışmanı',
@@ -1144,13 +1301,6 @@ const HOME_TEXT = {
     p2: 'Every product shows the Qor AI tech score, current prices, key features and a comparison with similar models. Browse the categories below or pick a tool.',
     cats: 'Categories', tools: 'Tools',
     toolLinks: [['/category', 'All categories'], ['/subscriptions', 'Compare subscriptions'], ['/link-analysis', 'Link analysis'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Personal quiz'], ['/blog', 'Blog & buying guides'], ['/premium', 'Premium'], ['/about', 'About']],
-  },
-  de: {
-    h1: 'Qor AI — KI-Produkt- und Abo-Berater',
-    p1: 'Qor AI ist ein Einkaufs- und Produktentscheidungs-Assistent, der mit KI Tausende Produkte recherchiert und vergleicht — Smartphones, Laptops, Grafikkarten, Kopfhörer, Fernseher, Smartwatches und PC-Komponenten — sowie digitale Abos. Suche Produkte, vergleiche sie nebeneinander, füge einen Produktlink für eine sofortige KI-Analyse ein, bewerte Abos und finde in Sekunden die beste Option für dich.',
-    p2: 'Zu jedem Produkt gibt es den Qor-AI-Techscore, aktuelle Preise, wichtige Merkmale und einen Vergleich mit ähnlichen Modellen. Stöbere unten in den Kategorien oder wähle ein Tool.',
-    cats: 'Kategorien', tools: 'Tools',
-    toolLinks: [['/category', 'Alle Kategorien'], ['/subscriptions', 'Abos vergleichen'], ['/link-analysis', 'Link-Analyse'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Persönliches Quiz'], ['/blog', 'Blog & Kaufratgeber'], ['/premium', 'Premium'], ['/about', 'Über uns']],
   },
 };
 
@@ -1244,10 +1394,10 @@ const LANDING = {
   },
 };
 
-// en/de copy for the landing/feature pages (tr lives in LANDING above). Only h1 +
+// en copy for the landing/feature pages (tr lives in LANDING above). Only h1 +
 // paras + link labels are translated; hrefs are shared and get language-prefixed
 // by localizeBodyLinks. Falls back to the tr entry if a key is missing.
-const GRID_HEADING = { tr: 'Tüm kategoriler', en: 'All categories', de: 'Alle Kategorien' };
+const GRID_HEADING = { tr: 'Tüm kategoriler', en: 'All categories' };
 const LANDING_I18N = {
   en: {
     category: {
@@ -1299,56 +1449,6 @@ const LANDING_I18N = {
       links: [['/quiz', 'Start the quiz'], ['/category', 'Categories'], ['/ai-chat', 'Qor AI Chat']],
     },
   },
-  de: {
-    category: {
-      h1: 'Kategorien',
-      paras: [
-        'Entdecke die Technikprodukte im Qor-AI-Katalog nach Kategorie: Smartphones, Laptops, Grafikkarten, Prozessoren, Kopfhörer, Fernseher, Smartwatches, Monitore, PC-Komponenten und mehr. Jede Kategorie vereint KI-Techscore, aktuelle Preise und wichtige Merkmale.',
-        'Öffne eine Kategorie, filtere die Modelle, vergleiche sie nebeneinander und wähle das passende aus. Starte mit den Kategorien unten.',
-      ],
-      links: [['/', 'Startseite'], ['/blog', 'Blog & Kaufratgeber']],
-    },
-    subscriptions: {
-      h1: 'Abo-Vergleich',
-      paras: [
-        'Vergleiche Netflix, Spotify, YouTube Premium, Disney+, Amazon Prime, ChatGPT Plus, Game Pass und weitere digitale Abos nach Preis, Inhalt und Wert mit KI. Welche Plattform bietet dir den meisten Wert, welche passt zu deinem Budget — Qor AI zeigt sie nebeneinander.',
-        'Bewerte Musik-, Streaming-, Gaming- und KI-Abos auf einem Bildschirm, wähle das passende Paket und kündige, was du nicht nutzt.',
-      ],
-      links: [['/subscriptions', 'Abos vergleichen'], ['/premium', 'Premium'], ['/blog', 'Ratgeber']],
-    },
-    'link-analysis': {
-      h1: 'Link-Analyse',
-      paras: [
-        'Füge einen beliebigen Produktlink ein — Qor AI erkennt das Produkt, extrahiert die Spezifikationen und fasst Vor- und Nachteile zusammen. Füge mehrere Links gleichzeitig ein, um Produkte zu vergleichen.',
-        'Sieh in Sekunden mit KI-Analyse, ob ein Produkt wirklich sein Geld wert ist — ohne dich zwischen Shop-Seiten zu verlieren.',
-      ],
-      links: [['/link-analysis', 'Link-Analyse starten'], ['/category', 'Kategorien'], ['/ai-chat', 'Qor AI Chat']],
-    },
-    premium: {
-      h1: 'Premium',
-      paras: [
-        'Qor AI Premium schaltet tiefere KI-Nutzung frei: Qor AI Chat, visueller Scanner, Produkt-KI-Analyse, Link-Analyse, Link-Vergleich, Abo-Analyse, Premium-Empfehlungen und erweiterte Preishistorie.',
-        'Aktuelle Preise, Testdetails und Planinformationen sind auf dieser Seite aufgeführt. Premium ist derzeit nur über Google Play erhältlich; Web-Zahlungen folgen in Kürze. Kündigungs- und Erstattungsbedingungen findest du in der Erstattungsrichtlinie.',
-      ],
-      links: [['/premium', 'Premium-Pläne'], ['/refund', 'Erstattungsrichtlinie'], ['/terms', 'Nutzungsbedingungen']],
-    },
-    'ai-chat': {
-      h1: 'Qor AI Chat',
-      paras: [
-        'Smartphone, Laptop, Kopfhörer oder ein Abo — stelle deine Produktfrage und erhalte sofort unvoreingenommene Beratung vom Qor-AI-Assistenten. Frage z. B. „Welcher Laptop für dieses Budget?“ oder „Welches dieser beiden Smartphones?“.',
-        'Qor AI Chat ist ein Recherche-Assistent; er erklärt die Alternativen und macht die richtigen Fragen sichtbar. Überprüfe wichtige Merkmale und Preise vor dem Kauf beim Händler.',
-      ],
-      links: [['/ai-chat', 'Chat starten'], ['/category', 'Kategorien'], ['/quiz', 'Persönliches Quiz']],
-    },
-    quiz: {
-      h1: 'Persönliches Quiz',
-      paras: [
-        'Beantworte ein paar Fragen und lass Qor AI das passende Technikprodukt empfehlen. Gib Budget, Einsatzzweck und Prioritäten an; die KI liefert personalisierte Empfehlungen anhand deines Profils.',
-        'Das Quiz ist ein schneller Einstieg, wenn du unsicher bist, wonach du suchen sollst; danach kannst du die empfohlenen Produkte vergleichen und ansehen.',
-      ],
-      links: [['/quiz', 'Quiz starten'], ['/category', 'Kategorien'], ['/ai-chat', 'Qor AI Chat']],
-    },
-  },
 };
 
 function landingBody(kind, guides, lang = 'tr') {
@@ -1378,7 +1478,7 @@ function landingBody(kind, guides, lang = 'tr') {
 // Metinler i18n'den OKUNUR, kopyalanmaz: iki yerde tutulsa ayrisir ve kabuk
 // kalkarken kullanici metnin degistigini GORUR.
 const T = (lang, key) => (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || '';
-const BOOT_LANGS = ['en', 'tr', 'de'];
+const BOOT_LANGS = ['en', 'tr'];
 
 // Iskelet ROTA BICIMLI. Onceden her rota ayni uc kutuyu goruyordu (210 / 52 /
 // 150 px) ve o uc kutu ekranin yalnizca ust yarisini kapliyordu; gerisi bos
@@ -1460,7 +1560,7 @@ function renderPage(template, seo, bodyHtml) {
   const block = `<!-- seo:start -->\n  ${seoBlock(seo)}\n  <!-- seo:end -->`;
   let out = template.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/, () => block);
   // Match the <html lang> attribute to the page language so a crawler that never
-  // runs JS doesn't see e.g. German content under lang="tr". tr is a no-op.
+  // runs JS doesn't see e.g. English content under lang="tr". tr is a no-op.
   const lang = seo.lang || SEO_DEFAULT_LOCALE;
   if (lang !== 'tr') out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
   if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
@@ -1599,7 +1699,7 @@ function localizedKeySpecs(raw, lang, limit = 16) {
   // tutuluyor), Almanca arayüz onları İNGİLİZCE okur. Site bunu zaten böyle
   // yapıyor — bkz. web/src/pages/ProductDetail.jsx:369. Ön-render bu kuralı
   // bilmiyordu ve `de` isteyince spec_i18n çevirecek sözlük bulamayıp KAYNAK
-  // TÜRKÇEYİ olduğu gibi döndürüyordu: ölçüldü, /de/ ürün sayfalarının
+  // TÜRKÇEYİ olduğu gibi döndürüyordu: ölçüldü, öneksiz ürün sayfalarının
   // %100'ünde "Islak Mop: Var, Su Haznesi: 70 ml" gibi ham Türkçe vardı.
   const specLang = lang === 'tr' ? 'tr' : 'en';
   let model;
@@ -1713,7 +1813,6 @@ function localizedName(d, lang) {
     return v && String(v).trim() ? String(v).trim() : '';
   };
   if (lang === 'tr') return pick('tr') || String(d?.name || '');
-  if (lang === 'de') return pick('de') || pick('en') || String(d?.name || '');
   return pick('en') || String(d?.name || '');
 }
 
@@ -1761,7 +1860,7 @@ const STATIC_ROUTES = [
             // not cloaking. This is the strongest signal that the site IS an AI tool.
             '@type': 'WebApplication', '@id': `${SITE}/#webapp`, name: 'Qor AI',
             url: `${SITE}/`, applicationCategory: 'ShoppingApplication',
-            operatingSystem: 'Web, Android', inLanguage: ['tr', 'en', 'de'],
+            operatingSystem: 'Web, Android', inLanguage: ['tr', 'en'],
             description: 'Teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile '
               + 'analiz eden, karşılaştıran ve kişiye özel öneren AI ürün danışmanı.',
             featureList: [
@@ -1929,18 +2028,18 @@ const STATIC_ROUTES = [
   },
 ];
 
-// ── Multilingual SEO (tr=root, en=/en, de=/de) ──────────────────────────────
+// ── Multilingual SEO (en=root, tr=/tr) ─────────────────────────────────────
 // KÖK ADRESİN DİLİ = İNGİLİZCE (2026-08-05). Eskiden kök Türkçeydi: Google'da
 // "qorai iphone specs" arayan bir İngiliz/Alman kullanıcıya Türkçe başlık ve
 // açıklama çıkıyordu. Site dili GERÇEK ziyaretçi için hâlâ tarayıcıdan
 // belirleniyor (bkz. web/src/main.jsx) — burada değişen yalnız arama
 // motorlarının indekslediği ÖN-RENDER HTML'in dili.
-// Adresler: /...  = en · /tr/... = tr · /de/... = de · x-default → kök (en)
+// Adresler: /...  = en · /tr/... = tr · x-default → kök (en)
 const SEO_DEFAULT_LOCALE = 'en';
-const SEO_LOCALES = ['en', 'tr', 'de'];
+const SEO_LOCALES = ['en', 'tr'];
 const localePrefix = (lang) => (lang === SEO_DEFAULT_LOCALE ? '' : `/${lang}`);
 
-// A static route gets en/de variants only when it is indexable AND has real,
+// A static route gets a tr variant only when it is indexable AND has real,
 // translatable content: the homepage, the legal pages (legalBody is lang-aware)
 // and the landing/feature pages (LANDING_I18N). /go and the /product placeholder
 // stay tr-only. Products/compare are NOT multiplied by language — a 3× explosion
@@ -1971,7 +2070,7 @@ function localizeBodyLinks(html, lang) {
   return html.replace(MULTILANG_LINK_RE, (_m, p) => `href="/${lang}${p}"`);
 }
 
-// en/de <title>/<description> for the indexable content routes. Legal routes are
+// tr <title>/<description> for the indexable content routes. Legal routes are
 // resolved from LEGAL_META instead; tr uses the route's own seo. Missing → tr.
 const STATIC_SEO_I18N = {
   en: {
@@ -1982,15 +2081,6 @@ const STATIC_SEO_I18N = {
     premium: { title: 'Qor AI Premium — Prices, Plans and Premium Features', description: 'Qor AI Premium unlocks deeper AI: AI chat, visual scanner, product and link analysis, subscription analysis, premium recommendations and extended price history.' },
     quiz: { title: 'Personal Quiz — Find the Tech Product That Fits You | Qor AI', description: 'Tell us your budget, use case and priorities; Qor AI recommends the phone, laptop or other tech product that fits your profile best — in a few quick questions.' },
     'ai-chat': { title: 'Qor AI Chat — AI Tech & Shopping Advisor', description: 'Phone, laptop, headphones or a subscription — ask your question and get instant, unbiased advice from the Qor AI assistant; weigh the alternatives together.' },
-  },
-  de: {
-    '': { title: 'Qor AI — KI-Produkt- und Abo-Berater', description: 'Technikprodukte und digitale Abos mit KI entdecken, vergleichen und entscheiden. Smartphones, Laptops, GPUs und mehr — analysiert von Qor AI.' },
-    category: { title: 'Alle Technik-Kategorien — Vergleichen & Entdecken | Qor AI', description: 'Entdecke KI-bewertete Produkte in 40+ Kategorien — Smartphones, Laptops, Grafikkarten, Kopfhörer und Fernseher; nach Marke, Preis und Specs filtern und vergleichen.' },
-    'link-analysis': { title: 'Link-Analyse — Produktlink einfügen, KI analysiert | Qor AI', description: 'Füge einen Produktlink ein: Qor AI erkennt das Produkt, extrahiert die Spezifikationen und fasst Vor- und Nachteile zusammen. Mehrere Links gleichzeitig vergleichen.' },
-    subscriptions: { title: 'Abo-Vergleich — Netflix, Spotify, YouTube & mehr | Qor AI', description: 'Vergleiche Netflix, Spotify, YouTube Premium, Disney+, Game Pass und ChatGPT Plus nach Preis, Inhalt und Wert mit KI — nebeneinander in Sekunden.' },
-    premium: { title: 'Qor AI Premium — Preise, Pläne und Premium-Funktionen', description: 'Qor AI Premium schaltet tiefere KI frei: KI-Chat, visueller Scanner, Produkt- und Link-Analyse, Abo-Analyse, Premium-Empfehlungen und erweiterte Preishistorie.' },
-    quiz: { title: 'Persönliches Quiz — Finde dein passendes Technikprodukt | Qor AI', description: 'Nenne Budget, Einsatzzweck und Prioritäten; Qor AI empfiehlt das Smartphone, den Laptop oder das Technikprodukt, das am besten zu deinem Profil passt.' },
-    'ai-chat': { title: 'Qor AI Chat — KI-Technik- und Einkaufsberater', description: 'Smartphone, Laptop, Kopfhörer oder Abo — stelle deine Frage und erhalte sofort unvoreingenommene Beratung vom Qor-AI-Assistenten; Alternativen gemeinsam abwägen.' },
   },
 };
 
@@ -2110,7 +2200,6 @@ async function main() {
   //     near-duplicate scraped-spec SKUs is exactly the "scaled content" Google
   //     penalises, and a new domain's crawl budget can't absorb it anyway. The
   //     long tail stays reachable via the SPA but is kept out of the sitemap.
-  const PER_CAT = Number(process.env.SEO_PRODUCTS_PER_CATEGORY || 150);
   const MAX_PRODUCTS = Number(process.env.SEO_MAX_PRODUCTS || 12000);
   const byCategory = new Map();
   for (const d of products) {
@@ -2119,31 +2208,130 @@ async function main() {
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat).push(d);
   }
-  // Rank within each category by a blend of technical quality (techScore, 0-100)
-  // and live demand/popularity (trendScore, 0-1). Pure techScore surfaced only
-  // spec-flagships and MISSED hugely-searched mid-rangers (e.g. Redmi Note 15:
-  // trendScore 0.98 but techScore ~54). The blend keeps flagships AND the models
-  // people actually search; categories with no trend data fall back to techScore.
+  // ── SIRALAMA: techScore DEĞİL, TALEP ────────────────────────────────────
+  //
+  // 2026-08-21 ÖLÇÜMÜ. Kürasyon `techScore:desc` ile yapılıyordu ve
+  // `trendScore` harmanı kâğıt üzerinde bunu dengeliyordu. Ama:
+  // **`trendScore` 107.449 dokümanın TAMAMINDA 0** — alan fiilen ölü.
+  // Sebebi `scripts/compute_trending.mjs`: skoru `recently_viewed`den,
+  // yani YALNIZ GİRİŞ YAPMIŞ kullanıcı görüntülemelerinden üretiyor. Sitenin
+  // günlük kullanıcısı tek haneli olduğu için tablo boş. Bu döngüsel bir
+  // tuzak: talebi bilmek için trafik, trafik için talep gerekiyor.
+  //
+  // Yani talep sinyali DIŞARIDAN gelmek zorunda. Denenip ELENEN adaylar:
+  //   · `pricedOfferCount` (kaç mağaza satıyor) — ölçüldü, tavanı ~4:
+  //     scraper Epey'den yalnız EN UCUZ 3 mağazayı alıyor. Talep değil,
+  //     scraper tasarımının sınırı.
+  //   · `priceTR>0`u SERT KAPI yapmak — ölçüldü, en değerli kategoriyi
+  //     keserdi: telefonların yalnız %4'ünde TR fiyatı var (196/4.852),
+  //     laptoplarda %46 (4.708/10.273). Fiyat artık kapı değil, ARTI.
+  //
+  // Geriye ölçeklenebilir tek dürüst kaynak kalıyor: KATEGORİ ve MARKA
+  // düzeyinde editoryal talep bilgisi. İkisi de ÜRÜN SAYISIYLA BÜYÜMEYEN
+  // sabit listeler (46 kategori, ~60 marka) — 107k ürün için tek tek karar
+  // vermek imkânsızken, 46 kategori için bir kez karar vermek mümkün.
+  //
+  // `trendScore` terimi formülde BİLEREK duruyor: bugün 0, ama
+  // compute_trending.mjs anlamlı veriyle yeniden koşarsa kendiliğinden
+  // devreye girer ve editoryal katsayıları ezmeye başlar.
   const TREND_W = Number(process.env.SEO_TREND_WEIGHT || 60);
-  const blendedScore = (d) => (Number(d.techScore) || 0) + (Number(d.trendScore) || 0) * TREND_W;
-  for (const arr of byCategory.values()) arr.sort((a, b) => blendedScore(b) - blendedScore(a));
+
+  // Kategori kotaları. Eskiden 46 kategorinin HEPSİ 150 kontenjan alıyordu:
+  // `cpu_coolers` ile `smartphones` eşit sayılıyordu. `desktops` kataloğun en
+  // kalabalık kategorisi (12.924) ama tekil SKU olarak aranmıyor — Turbox /
+  // Dragos / Casper hazır sistem varyantları.
+  const KOTA = { A: 250, B: 120, C: 60, D: 25 };
+  const KATEGORI_TIER = {
+    // A — arama hacminin ezici çoğunluğu
+    smartphones: 'A', laptops: 'A', tvs: 'A', headphones: 'A', smartwatches: 'A', tablets: 'A',
+    // B — güçlü ikinci halka
+    graphics_cards: 'B', cpus: 'B', monitors: 'B', gaming_consoles: 'B', ssd: 'B',
+    robot_vacuums: 'B', printers: 'B', drones: 'B', audio_systems: 'B',
+    // C — bileşen ve çevre birimi
+    keyboards: 'C', mice: 'C', ram: 'C', motherboards: 'C', pc_cases: 'C', psu: 'C',
+    routers: 'C', powerbanks: 'C', projectors: 'C', camera_lenses: 'C', microphones: 'C',
+    e_readers: 'C', ip_cameras: 'C', chargers: 'C',
+    // D — uzun kuyruk (listede olmayan her kategori de D'ye düşer)
+  };
+  // `SEO_PRODUCTS_PER_CATEGORY` eskiden TEK kotaydı. Kaldırıp yok saymak, onu
+  // ayarlayan bir çağıranın (ör. Hetzner cron'u) sessizce etkisiz kalması
+  // demekti; sessiz no-op env değişkeni teşhis edilmesi en zor şeylerden biri.
+  // Ayarlıysa TÜM kategoriler için kotayı ezer — eski davranışa dönüş kapısı.
+  const KOTA_EZME = Number(process.env.SEO_PRODUCTS_PER_CATEGORY || 0);
+  if (KOTA_EZME > 0) console.log(`[seo] SEO_PRODUCTS_PER_CATEGORY=${KOTA_EZME} — kategori kotaları eziliyor (tier tablosu devre dışı)`);
+  const kategoriKotasi = (cat) => (KOTA_EZME > 0 ? KOTA_EZME : KOTA[KATEGORI_TIER[cat] || 'D']);
+
+  // "X vs Y" sayfası ÜRETİLEN kategoriler. Burada tanımlı çünkü kategori
+  // sayfaları (2c) karşılaştırma sayfalarından (2e) ÖNCE üretiliyor ve
+  // kategori gövdesi bu bilgiye ihtiyaç duyuyor — aksi halde var olmayan
+  // adrese link verir. Gerekçe için bkz. 2e.
+  const COMPARE_TIERS = new Set(['A', 'B']);
+
+  // Bilinen markalar. Ölçüldü: katalogtaki en kalabalık markaların önemli bir
+  // kısmı isimsiz aksesuar üreticisi (Turbox 1.595, Dragos 1.501, Rampage 873,
+  // Everest 639, Ramtech 594, Torima 526, Hadron 461, Frisby 454, Platoon 414).
+  // Bunlar spec tablosu dolu olduğu için techScore sıralamasında ÜSTE çıkıyordu.
+  const BILINEN_MARKALAR = new Set([
+    'apple', 'samsung', 'xiaomi', 'sony', 'lg', 'asus', 'lenovo', 'hp', 'dell', 'acer',
+    'msi', 'huawei', 'google', 'oneplus', 'nothing', 'oppo', 'vivo', 'realme', 'honor',
+    'nvidia', 'amd', 'intel', 'logitech', 'razer', 'jbl', 'bose', 'sennheiser', 'anker',
+    'corsair', 'gigabyte', 'tp-link', 'canon', 'nikon', 'philips', 'panasonic', 'beko',
+    'arçelik', 'arcelik', 'vestel', 'grundig', 'casper', 'monster', 'kingston', 'wd',
+    'seagate', 'crucial', 'hyperx', 'cooler master', 'thermaltake', 'epson', 'brother',
+    'hikvision', 'xerox', 'netgear', 'garmin', 'gopro', 'dji', 'ecovacs', 'roborock',
+    'dyson', 'tcl', 'hisense', 'nintendo', 'microsoft', 'steelseries', 'jabra', 'marshall',
+    'baseus', 'ttec', 'viewsonic', 'benq', 'aoc', 'toshiba', 'western digital', 'adata',
+    'xpg', 'g.skill', 'be quiet!', 'nzxt', 'fractal design', 'lexar', 'sandisk',
+  ]);
+  const markaBilinir = (d) => BILINEN_MARKALAR.has(String(d?.brand || '').trim().toLowerCase());
+  // Sayfanın kendi pazarında fiyatı olması "bu ürün gerçekten satılıyor"
+  // demek — kapı değil ama güçlü bir artı.
+  const fiyatiVar = (d) => (Number(d?.priceTR) || 0) > 0
+    || (Number(d?.priceDE) || 0) > 0 || (Number(d?.priceUS) || 0) > 0
+    || (Number(d?.lowestPriceUSD) || 0) > 0;
+
+  // Marka > fiyat > teknik skor. Katsayılar bilerek ayrık: bilinen markalı bir
+  // ürün, spec tablosu daha dolu isimsiz bir üründen HER ZAMAN önce gelir.
+  const talepSkoru = (d) => (markaBilinir(d) ? 300 : 0)
+    + (fiyatiVar(d) ? 80 : 0)
+    + (Number(d.trendScore) || 0) * TREND_W
+    + (Number(d.techScore) || 0);
+  for (const arr of byCategory.values()) arr.sort((a, b) => talepSkoru(b) - talepSkoru(a));
+
   const curatedByCat = new Map();
   let curatedTotal = 0;
+  const SPEC_ESIK = Number(process.env.SEO_MIN_SPECS || 12);
+  const elenen = { gorsel: 0, spec: 0, kopya: 0 };
   for (const [cat, items] of byCategory) {
     if (curatedTotal >= MAX_PRODUCTS) break;
     const seen = new Set();
     const picked = [];
+    const kota = kategoriKotasi(cat);
     for (const d of items) {
-      if (picked.length >= PER_CAT || curatedTotal >= MAX_PRODUCTS) break;
+      if (picked.length >= kota || curatedTotal >= MAX_PRODUCTS) break;
       if (!d?.id || !d?.name) continue;
-      if (!/^https?:\/\//i.test(d.imageUrl || '')) continue; // image-less = thin page, skip
+      if (!/^https?:\/\//i.test(d.imageUrl || '')) { elenen.gorsel += 1; continue; }
+      // İnce sayfa kapısı: spec tablosu zayıf ürün, ne kullanıcıya ne Google'a
+      // bir şey söylüyor. Fiyat kapı DEĞİL (yukarıdaki gerekçe), spec kapı.
+      if ((Number(d.specsCount) || 0) < SPEC_ESIK) { elenen.spec += 1; continue; }
       const key = modelKey(d.name);
-      if (key && seen.has(key)) continue;
+      if (key && seen.has(key)) { elenen.kopya += 1; continue; }
       if (key) seen.add(key);
       picked.push(d);
       curatedTotal += 1;
     }
     if (picked.length) curatedByCat.set(cat, picked);
+  }
+  {
+    const tumu = [...curatedByCat.values()].flat();
+    const markali = tumu.filter(markaBilinir).length;
+    const fiyatli = tumu.filter(fiyatiVar).length;
+    console.log(
+      `[seo] kürasyon: ${curatedTotal} ürün / ${curatedByCat.size} kategori · `
+      + `bilinen marka ${markali} (%${((markali / Math.max(1, curatedTotal)) * 100).toFixed(1)}) · `
+      + `fiyatlı ${fiyatli} (%${((fiyatli / Math.max(1, curatedTotal)) * 100).toFixed(1)}) · `
+      + `elenen: görselsiz ${elenen.gorsel}, spec<${SPEC_ESIK} ${elenen.spec}, kopya ${elenen.kopya}`,
+    );
   }
 
   // Temiz etiketli key-specs'i (ve ürün adının ÇEVİRİLERİNİ) yalnız seçilmiş
@@ -2164,6 +2352,24 @@ async function main() {
     console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
   }
 
+  // KATEGORI KABUKLARINI DIL DIL SIL — kurasyondan DUSEN kategori hayalet
+  // sayfa birakmasin.
+  //
+  // 2026-08-22'de olculdu: `case_fans` spec>=12 kapisini gecen urunu kalmayinca
+  // kurasyondan dustu; sayfasi yeniden URETILMEDI ama ESKISI yerinde kaldi ve
+  // sitemap'te olmadigi halde hala `hreflang="de"` basiyordu — Almanca siteden
+  // kaldirilalim uzun sure sonra. prebuild'in `wipe` listesi bunu cozemez,
+  // cunku orada dil onekli karsilik (`website/tr/category`) kapsanmiyor.
+  for (const lang of SEO_LOCALES) {
+    const catRoot = join(site, ...(localePrefix(lang) ? [lang] : []), 'category');
+    if (!existsSync(catRoot)) continue;
+    for (const entry of readdirSync(catRoot, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        try { rmSync(join(catRoot, entry.name), { recursive: true, force: true }); } catch (_) {}
+      }
+    }
+  }
+
   // 2c) per-category landing shells — content-rich hubs: keyword title +
   //     ItemList JSON-LD + a crawlable <a> grid (categoryBody) to every curated
   //     product, so Google reaches product pages via internal links (home →
@@ -2172,7 +2378,6 @@ async function main() {
   const CAT_SEO_TEXT = {
     tr: { title: (l) => `${l} Karşılaştırma — Fiyat & Özellik | Qor AI`, desc: (l) => `${l} modellerini Qor AI ile karşılaştır: yapay zekâ teknik skoru, özellikler ve güncel fiyatlar bir arada. En iyi ${l} modellerini keşfet, filtrele ve sana en uygununu saniyeler içinde seç.` },
     en: { title: (l) => `${l} Comparison — Price & Specs | Qor AI`, desc: (l) => `Compare ${l} models with Qor AI: AI tech score, features and current prices together. Discover the best ${l} models, filter and pick the one that fits you in seconds.` },
-    de: { title: (l) => `${l} Vergleich — Preis & Specs | Qor AI`, desc: (l) => `Vergleiche ${l}-Modelle mit Qor AI: KI-Techscore, Merkmale und aktuelle Preise zusammen. Entdecke die besten ${l}-Modelle, filtere und wähle in Sekunden das passende.` },
   };
   let categoryShells = 0;
   // Capraz kategori linkleri: her kategori sayfasi digerlerine baglanir, boylece
@@ -2186,7 +2391,7 @@ async function main() {
     const guide = guides.get(cat);
     const top = picked.slice(0, 24);
     const heroImg = String(top[0]?.imageUrl || '');
-    // Category landings are the prime "best <X>" English/German query targets, so
+    // Category landings are the prime "best <X>" English query targets, so
     // generate them in all three languages with hreflang. Products in the JSON-LD
     // itemList stay on their tr-canonical URLs (there is one product page per model).
     for (const lang of SEO_LOCALES) {
@@ -2224,11 +2429,13 @@ async function main() {
         type: 'website',
         alternates: hreflangAlts(path),
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
-      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang, digerKategoriler(cat)), lang)));
+      // Karşılaştırma bölümü YALNIZ o kategoride compare sayfası üretiliyorsa
+      // basılır; aksi halde kategori sayfası 404'e link verir (bkz. 2e).
+      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang, digerKategoriler(cat), COMPARE_TIERS.has(KATEGORI_TIER[cat] || 'D')), lang)));
       categoryShells += 1;
     }
   }
-  console.log(`[seo] wrote ${categoryShells} per-category landing shells (tr/en/de, with internal product links)`);
+  console.log(`[seo] wrote ${categoryShells} per-category landing shells (en/tr, with internal product links)`);
 
   // 2d) curated per-product prerender — real static HTML per model: unique <head>
   //     (title/description/canonical + Product/Breadcrumb JSON-LD) + a content
@@ -2248,7 +2455,7 @@ async function main() {
   // desteklenmesine rağmen Google'da bir ürünü hangi dilde ararsa arasın herkes
   // TEK dildeki başlığı görüyordu (önce Türkçe, 08-05'ten sonra İngilizce).
   // Adresler değişmedi — `/product/<slug>` hâlâ İngilizce; yanına `/tr/product/…`
-  // ve `/de/product/…` eklendi ve üçü hreflang ile birbirine bağlandı, böylece
+  // ve `/tr/product/…` eklendi ve ikisi hreflang ile birbirine bağlandı, böylece
   // arama motoru ziyaretçinin diline uygun olanı gösterir. Ziyaretçinin gerçek
   // dili HÂLÂ tarayıcıdan belirlenir; önek yalnız ön-render HTML'in dilini sabitler.
   const prerendered = [];
@@ -2271,7 +2478,7 @@ async function main() {
         for (let k = 1; k <= 8 && k < picked.length; k += 1) {
           const r = picked[(i + k) % picked.length];
           // Benzer ürün linkleri de kendi dil ağacında kalsın (aksi halde
-          // /tr/ ve /de/ ürün sayfaları arası hiç iç link olmuyor).
+          // /tr/ ve kök ürün sayfaları arası hiç iç link olmuyor).
           related.push({ name: localizedName(r, lang), path: `${prefix}${productPath(r)}` });
         }
         writeHtml(
@@ -2286,7 +2493,7 @@ async function main() {
       prerendered.push({ d, path });
     });
   }
-  console.log(`[seo] wrote ${prerendered.length} curated products × ${SEO_LOCALES.length} languages = ${prerendered.length * SEO_LOCALES.length} product shells (<=${PER_CAT}/category, deduped, image-gated, hreflang-linked)`);
+  console.log(`[seo] wrote ${prerendered.length} curated products × ${SEO_LOCALES.length} languages = ${prerendered.length * SEO_LOCALES.length} product shells (talep sıralı, kategori kotalı, deduped, image-gated, hreflang-linked)`);
 
   // 2e) comparison ("X vs Y") pages — the highest-intent queries for a compare
   //     site. For each category we pair the top-K blended products (flagships +
@@ -2304,9 +2511,25 @@ async function main() {
       }
     }
   }
-  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 8);
+  // ── HANGİ KATEGORİDE karşılaştırma sayfası üretilir ──────────────────────
+  //
+  // Eskiden 46 kategorinin HEPSİNDE top-8'in tüm ikili kombinasyonu (28 çift)
+  // üretiliyordu: 1.288 çift. Ama "X vs Y" kalıbı yalnız birkaç kategoride
+  // gerçekten aranıyor — kimse "APC UPS 650VA vs Tunçmatik 850VA" ya da
+  // "Frisby flash bellek vs Hadron flash bellek" diye aramıyor. O sayfalar
+  // taranıyor, hiç tıklanmıyor ve siteyi "üretilmiş sayfa yığını" gösteriyor.
+  //
+  // Artık yalnız A ve B kategorileri (telefon, laptop, TV, kulaklık, saat,
+  // tablet, ekran kartı, işlemci, monitör, konsol, SSD, robot süpürge, yazıcı,
+  // drone, ses sistemi). C ve D karşılaştırma sayfası ALMAZ — ürün ve kategori
+  // sayfaları onlar için zaten yeterli.
+  //
+  // Top-8 yerine top-6: C(8,2)=28 çiftin kuyruğu (7. ile 8. sıradaki ürün)
+  // zaten aranmıyordu. C(6,2)=15 çift, hepsi üst sıradan.
+  const COMPARE_TOP = Number(process.env.SEO_COMPARE_TOP || 6);
   const compares = [];
   for (const [cat, picked] of curatedByCat) {
+    if (!COMPARE_TIERS.has(KATEGORI_TIER[cat] || 'D')) continue;
     const categoryPathStr = categoryPath(cat);
     // Distinct MODELS only for pairing — never "Watch Ultra 3 vs Watch Ultra 3
     // Milano Loop". modelKey collapses cosmetic colour/strap/storage variants.
@@ -2332,6 +2555,8 @@ async function main() {
           const prefix = localePrefix(lang);
           const ksA = (detA && detA.ks && detA.ks[lang]) || null;
           const ksB = (detB && detB.ks && detB.ks[lang]) || null;
+          const fiyatA = priceForLang(detA && detA.prices, lang);
+          const fiyatB = priceForLang(detB && detB.prices, lang);
           const label = categoryLabel(cat, lang);
           const categoryUrl = `${SITE}${prefix}${categoryPathStr}`;
           writeHtml(
@@ -2342,7 +2567,7 @@ async function main() {
               // on-yuklemesi ne de rota bicimli iskelet aliyordu — urun
               // sayfasindaki ayni hatanin ikizi.
               { ...compareSeo(a, b, label, lang), alternates, routeKey: 'compare' },
-              localizeBodyLinks(compareBody(a, b, label, categoryUrl, ksA, ksB, lang), lang),
+              localizeBodyLinks(compareBody(a, b, label, categoryUrl, ksA, ksB, lang, fiyatA, fiyatB), lang),
             ),
           );
         }
@@ -2375,13 +2600,12 @@ async function main() {
   // BLOG LİSTESİ ÜÇ DİLDE (2026-08-06). Öncesinde yalnız `/blog` vardı ve metni
   // SABİT TÜRKÇEYDİ — üstelik kök adres İngilizceye döndüğü için sayfa
   // `<html lang="en">` deyip Türkçe başlık basıyordu. Daha kötüsü, `/tr/` veya
-  // `/de/` önekindeki bir ziyaretçi menüden Blog'a tıkladığında SPA `/tr/blog`
+  // `/tr/` önekindeki bir ziyaretçi menüden Blog'a tıkladığında SPA `/tr/blog`
   // adresine gidiyor ve orada ön-render bulunmadığı için 404 kabuğu (noindex,
   // canonical → /404) servis ediliyordu.
   const BLOG_LIST_TEXT = {
     en: { title: 'Buying Guides & Blog — Qor AI', desc: '2026 buying guides for phones, laptops, headphones, TVs and more — scored and compared by Qor AI.' },
     tr: { title: 'Alım Rehberleri & Blog — Qor AI', desc: 'Telefon, laptop, kulaklık, TV ve daha fazlası için 2026 alım rehberleri — Qor AI ile puanlandı ve karşılaştırıldı.' },
-    de: { title: 'Kaufberatung & Blog — Qor AI', desc: 'Kaufratgeber 2026 für Smartphones, Laptops, Kopfhörer, Fernseher und mehr — von Qor AI bewertet und verglichen.' },
   };
   const blogUrls = [];
   if (articles.length) {
@@ -2401,11 +2625,11 @@ async function main() {
         priority: lang === SEO_DEFAULT_LOCALE ? '0.7' : '0.6',
       });
     }
-    const BLOG_LANGS = ['tr', 'en', 'de'];
+    const BLOG_LANGS = ['tr', 'en'];
     for (const a of articles) {
       if (!a.slug) continue;
       const cover = articleCoverUrl(a) || DEFAULT_IMG;
-      const slugs = { tr: a.slug_tr || a.slug, en: a.slug_en || a.slug, de: a.slug_de || a.slug };
+      const slugs = { tr: a.slug_tr || a.slug, en: a.slug_en || a.slug, };
       // hreflang map (+ x-default → VARSAYILAN dil, artık EN) so a TR/EN/DE searcher lands on the
       // matching-language URL and Google treats them as one translated article.
       const alternates = BLOG_LANGS.map((l) => ({ hreflang: l, href: `${SITE}/blog/${slugs[l]}` }));
@@ -2446,13 +2670,95 @@ async function main() {
   }
   console.log(`[seo] wrote ${Math.max(0, blogUrls.length - 1)} blog article shells`);
 
+  // 2g) ANALIZLER — /analiz listesi + /analiz/<slug>.
+  //
+  // Sayfa Article + FAQPage semasi tasir. FAQ, admin panelinde elle duzenlenen
+  // ve insanlarin arama kutusuna GERCEKTEN yazdigi sorulari hedefleyen
+  // bloklardan gelir ("batarya omru nasil", "oyun icin uygun mu") — sayfa
+  // basliklarinin tekrari degil. Uzun kuyruk trafigin girisi burasi.
+  const analyses = await fetchAnalyses();
+  const analizUrls = [];
+  if (analyses.length) {
+    const listLastmod = lastmodAtLeastVersion(analyses[0]?.updated);
+    for (const lang of SEO_LOCALES) {
+      const prefix = localePrefix(lang);
+      const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
+      const url = `${SITE}${prefix}/analiz`;
+      writeHtml(`${prefix}/analiz`.replace(/^\//, ''), renderPage(template, {
+        title: tx.title, description: tx.desc, url, lang, type: 'website',
+        routeKey: 'blog',
+        alternates: hreflangAlts('/analiz'),
+        jsonLd: {
+          '@context': 'https://schema.org', '@type': 'CollectionPage',
+          '@id': `${url}#page`, url, name: tx.h1,
+        },
+      }, localizeBodyLinks(analizListeBody(analyses, lang), lang)));
+      analizUrls.push({
+        loc: url, lastmod: listLastmod, changefreq: 'weekly',
+        priority: lang === SEO_DEFAULT_LOCALE ? '0.7' : '0.6',
+      });
+    }
+    for (const a of analyses) {
+      if (!a.slug) continue;
+      const url = `${SITE}/analiz/${a.slug}`;
+      const img = /^https?:\/\//i.test(a.productImage || '') ? a.productImage : DEFAULT_IMG;
+      // Analiz TEK adreste, dilleri ayni sayfada (blogdan farkli: blog dil
+      // basina AYRI slug tutuyor). Bu yuzden hreflang kumesi de tek adrese
+      // isaret eder; ayri dil adresi uydurmak "var olmayan alternatif" olurdu.
+      const alternates = SEO_LOCALES.map((l) => ({ hreflang: l, href: url }));
+      alternates.push({ hreflang: 'x-default', href: url });
+      const lang = SEO_DEFAULT_LOCALE;
+      const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+      const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
+        .filter((f) => f && f.q && f.a).slice(0, 8);
+      const graph = [{
+        '@type': 'Article', '@id': `${url}#article`,
+        headline: t('title'), description: truncate(t('metaDescription') || t('lead')),
+        image: [img], datePublished: a.publishedAt || a.created, dateModified: a.updated,
+        inLanguage: lang,
+        author: { '@type': 'Organization', name: (a.author || '').trim() || 'Qor AI' },
+        publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
+        mainEntityOfPage: url,
+      }];
+      if (faq.length) {
+        graph.push({
+          '@type': 'FAQPage', '@id': `${url}#faq`,
+          mainEntity: faq.map((f) => ({
+            '@type': 'Question', name: f.q,
+            acceptedAnswer: { '@type': 'Answer', text: f.a },
+          })),
+        });
+      }
+      graph.push({
+        '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+          { '@type': 'ListItem', position: 2, name: (ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT.en).h1, item: `${SITE}/analiz` },
+          { '@type': 'ListItem', position: 3, name: t('title'), item: url },
+        ],
+      });
+      writeHtml(`analiz/${a.slug}`, renderPage(template, {
+        title: fitTitle(t('metaTitle') || t('title'), [' | Qor AI'], 68),
+        description: truncate(t('metaDescription') || t('lead')),
+        url, image: img, imageAlt: a.productName || t('title'), type: 'article',
+        alternates, routeKey: 'blogpost', lang,
+        jsonLd: { '@context': 'https://schema.org', '@graph': graph },
+      }, localizeBodyLinks(analizBody(a, lang), lang)));
+      analizUrls.push({
+        loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt),
+        changefreq: 'monthly', priority: '0.8',
+      });
+    }
+  }
+  console.log(`[seo] wrote ${analyses.length} analiz sayfasi (+${SEO_LOCALES.length} liste kabugu)`);
+
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.
   const CHUNK = 45000;
   const routeUrls = [];
   for (const r of STATIC_ROUTES.filter((x) => x.sitemap !== false && !x.noindex && !x.seo?.noindex)) {
     routeUrls.push({ loc: `${SITE}${r.path}`, lastmod: SEO_CONTENT_VERSION, changefreq: r.changefreq, priority: r.priority });
-    // Mirror the en/de variants we actually prerendered (isMultilangRoute) so the
+    // Mirror the tr variants we actually prerendered (isMultilangRoute) so the
     // language pages get crawled, not just discovered via hreflang.
     if (isMultilangRoute(r)) {
       for (const l of SEO_LOCALES.filter((x) => x !== SEO_DEFAULT_LOCALE)) {
@@ -2461,7 +2767,7 @@ async function main() {
     }
   }
   // Only categories we actually generated a content shell for (curatedByCat),
-  // including the en/de variants we now prerender alongside tr. lastmod = the
+  // including the tr variants we now prerender alongside the root. lastmod = the
   // newest product in the category — a real change signal, not the build date.
   const categoryUrls = [];
   const prodTs = (d) => Number(d.updatedAtTs || d.scrapedAtTs) || 0;
@@ -2491,7 +2797,7 @@ async function main() {
       priority: l === SEO_DEFAULT_LOCALE ? '0.5' : '0.4',
     }));
   });
-  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls];
+  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls, ...analizUrls];
 
   const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -2549,7 +2855,7 @@ async function main() {
     '> Qor AI (qorai.net), teknoloji ürünlerini ve dijital abonelikleri yapay zekâ ile analiz eden,',
     '> karşılaştıran ve kişiye özel öneren ürün karar asistanıdır. AI product & subscription advisor:',
     '> compare tech products side by side, paste any product link for an instant AI analysis, and get',
-    '> an AI tech score (0-100). Languages: Turkish (/), English (/en), German (/de). Also on Android.',
+    '> an AI tech score (0-100). Languages: English (/), Turkish (/tr). Also on Android.',
     '',
     '## Ana bölümler / Main sections',
     `- [Kategoriler / Categories](${SITE}/category): ${curatedByCat.size} teknoloji kategorisinde AI puanlı ürünler`,
@@ -2577,7 +2883,7 @@ async function main() {
   // (dizin listeleme kapalı) **403 Forbidden** döner. `website/compare/`
   // 1288 ön-render sayfa tutuyordu ama kendi index.html'i yoktu → karşılaştırma
   // ekranında SAYFA YENİLEMEK her seferinde 403 veriyordu. Aynı durum
-  // `/tr/product/`, `/de/product/`, `/tr/compare/`, `/de/compare/` için de
+  // `/tr/product/` ve `/tr/compare/` için de
   // geçerliydi: tek dilli rota kabukları yalnız varsayılan dile yazılıyor ama
   // ürün/karşılaştırma sayfaları her dile yazılıyor.
   //

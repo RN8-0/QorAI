@@ -80,7 +80,7 @@ if (!cfg.key && !DRY_RUN) {
   throw new Error(`Missing API key for ${PROVIDER}. Set ${PROVIDER === 'openai' ? 'OPENAI_API_KEY' : 'DEEPSEEK_API_KEY'}.`);
 }
 
-const LANGS = ['en', 'de', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'sv', 'ar'];
+const LANGS = ['en', 'es', 'fr', 'it', 'ja', 'nl', 'pl', 'pt', 'sv', 'ar'];
 
 const SYSTEM_PROMPT = `You are a precise technical product specification translator.
 Return valid JSON only.

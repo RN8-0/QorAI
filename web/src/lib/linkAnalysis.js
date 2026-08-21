@@ -13,7 +13,7 @@
 import { askQorAiJson, askQorAiGrounded, adminPrompt } from './ai';
 
 const LANG_NAMES = {
-  en: 'English', tr: 'Turkish', de: 'German', fr: 'French', es: 'Spanish',
+  en: 'English', tr: 'Turkish', fr: 'French', es: 'Spanish',
   pt: 'Portuguese', it: 'Italian', ja: 'Japanese', ko: 'Korean', zh: 'Chinese',
   ar: 'Arabic', ru: 'Russian', hi: 'Hindi', nl: 'Dutch', pl: 'Polish', sv: 'Swedish',
 };
@@ -35,18 +35,7 @@ function compareFactorLabels(language) {
       'Uzun Vadeli Değer',
     ];
   }
-  if (lang === 'de') {
-    return [
-      'Nutzungsfit',
-      'Leistung',
-      'Qualitätsfit',
-      'Funktionsumfang',
-      'Ergonomie und Mobilität',
-      'Zuverlässigkeit und Risiko',
-      'Community-Signal',
-      'Langzeitwert',
-    ];
-  }
+  
   return [
     'Usage Fit',
     'Performance',
@@ -73,18 +62,7 @@ function subscriptionFactorDefinitions(language) {
       { key: 'risk_balance', label: 'Risk Dengesi', emoji: '🛡' },
     ];
   }
-  if (lang === 'de') {
-    return [
-      { key: 'usage_fit', label: 'Nutzungsfit', emoji: '🎯' },
-      { key: 'content_match', label: 'Inhaltsfit', emoji: '🎬' },
-      { key: 'feature_depth', label: 'Funktionstiefe', emoji: '🧩' },
-      { key: 'ecosystem_fit', label: 'Ökosystem-Fit', emoji: '🔗' },
-      { key: 'lifestyle_match', label: 'Lifestyle-Fit', emoji: '🏠' },
-      { key: 'community_signal', label: 'Community-Signal', emoji: '🌐' },
-      { key: 'retention_value', label: 'Langzeitbindung', emoji: '🚀' },
-      { key: 'risk_balance', label: 'Risikobalance', emoji: '🛡' },
-    ];
-  }
+  
   return [
     { key: 'usage_fit', label: 'Usage Fit', emoji: '🎯' },
     { key: 'content_match', label: 'Content Match', emoji: '🎬' },
@@ -234,9 +212,7 @@ function fallbackBaseAnalysis({ url, title, siteName, language }) {
   if (lang === 'tr') {
     return `"${name}" bağlantısı ürün sayfası olarak işlendi. Qor AI ürün adını bağlantı ve site bilgisinden çıkardı; canlı sayfa verisi alınamadığında değerlendirme, ürün adı/kategori sinyalleri ve profil cevapların üzerinden hazırlanır. Satın almadan önce satıcı sayfasındaki güncel fiyat, garanti ve teknik özellikleri de kontrol et.`;
   }
-  if (lang === 'de') {
-    return `"${name}" wurde als Produktlink verarbeitet. Qor AI hat das Produkt aus der URL und dem Shop-Signal erkannt; wenn keine Live-Seitendaten verfügbar sind, wird die Empfehlung aus Titel, Kategorie-Signalen und deinen Antworten erstellt. Prüfe vor dem Kauf trotzdem den aktuellen Preis, die Garantie und die technischen Daten auf der Verkäuferseite.`;
-  }
+  
   return `"${name}" was processed as a product link. Qor AI identified it from the URL and store signal; when live page data is unavailable, the recommendation is built from the title, category signals, and your answers. Check the seller page for current price, warranty, and specs before buying.`;
 }
 
@@ -901,9 +877,7 @@ function addressRule(language) {
   if (lang === 'tr') {
     return 'ADDRESS FORM — HARD RULE: address the reader informally in Turkish, in the "sen" form ("senin için", "alışkanlıklarına göre", "bunu al", "geç"). NEVER use the formal "siz" forms (no "-ınız/-iniz" possessives, no "olun/edersiniz/olmalısınız"). The whole interface speaks in "sen"; the report must match it.';
   }
-  if (lang === 'de') {
-    return 'ADDRESS FORM — HARD RULE: address the reader informally in German ("du/dein"), never the formal "Sie/Ihr".';
-  }
+  
   return 'ADDRESS FORM — HARD RULE: address the reader directly as "you"; never write "the user" or "the buyer" when you mean the reader.';
 }
 
@@ -925,15 +899,14 @@ function researchBlock(research, langName) {
 function enhancedAnalysisPrompt(language) {
   const langName = languageName(language);
   const isTr = String(language || '').slice(0, 2) === 'tr';
-  const isDe = String(language || '').slice(0, 2) === 'de';
-  const usageFit = isTr ? 'Kullanım Uyumu' : isDe ? 'Nutzungsfit' : 'Usage Fit';
-  const budgetMatch = isTr ? 'Bütçe Uyumu' : isDe ? 'Budget-Fit' : 'Budget Match';
-  const qualityFit = isTr ? 'Kalite Uyumu' : isDe ? 'Qualitätsfit' : 'Quality Fit';
-  const futureProofing = isTr ? 'Uzun Vadeli Değer' : isDe ? 'Langzeitwert' : 'Long-term Value';
-  const lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : isDe ? 'Lifestyle-Fit' : 'Lifestyle Match';
-  const featureFit = isTr ? 'Özellik Seti' : isDe ? 'Funktionsumfang' : 'Feature Set';
-  const reliabilityRisk = isTr ? 'Güvenilirlik ve Risk' : isDe ? 'Zuverlässigkeit und Risiko' : 'Reliability and Risk';
-  const communitySignal = isTr ? 'Topluluk Sinyali' : isDe ? 'Community-Signal' : 'Community Signal';
+  const usageFit = isTr ? 'Kullanım Uyumu' : 'Usage Fit';
+  const budgetMatch = isTr ? 'Bütçe Uyumu' : 'Budget Match';
+  const qualityFit = isTr ? 'Kalite Uyumu' : 'Quality Fit';
+  const futureProofing = isTr ? 'Uzun Vadeli Değer' : 'Long-term Value';
+  const lifestyleMatch = isTr ? 'Yaşam Tarzı Uyumu' : 'Lifestyle Match';
+  const featureFit = isTr ? 'Özellik Seti' : 'Feature Set';
+  const reliabilityRisk = isTr ? 'Güvenilirlik ve Risk' : 'Reliability and Risk';
+  const communitySignal = isTr ? 'Topluluk Sinyali' : 'Community Signal';
   return `You are Qor AI's senior product analyst. Given a product, the user's quiz answers, the user profile and live web/community research notes, produce the PERSONAL DECISION half of a comprehensive match report.
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
@@ -1718,21 +1691,16 @@ function prettySubscriptionName(name) {
 
 function subValidationMessages(lang) {
   const isTr = String(lang || '').slice(0, 2) === 'tr';
-  const isDe = String(lang || '').slice(0, 2) === 'de';
   return {
     empty: isTr ? 'Lütfen en az bir abonelik adı girin.'
-      : isDe ? 'Bitte gib mindestens einen Abo-Namen ein.'
       : 'Please enter at least one subscription name.',
     url: isTr ? 'Buraya yalnızca abonelik adı girebilirsin — link kabul edilmez.'
-      : isDe ? 'Hier sind nur Abo-Namen erlaubt — keine Links.'
       : 'Only subscription names are accepted here — links are not allowed.',
     notSub: isTr ? 'Bu metin bir abonelik servisine benzemiyor. Lütfen Netflix, Spotify gibi bir servis adı yaz.'
-      : isDe ? 'Das sieht nicht nach einem Abo-Dienst aus. Gib einen Namen wie Netflix oder Spotify ein.'
       : 'This doesn\'t look like a subscription service. Please enter a name like Netflix or Spotify.',
     failed: isTr ? 'Abonelik doğrulanırken hata oluştu. Lütfen tekrar deneyin.'
-      : isDe ? 'Abo konnte nicht geprüft werden. Bitte erneut versuchen.'
       : 'Could not validate subscription. Please try again.',
-    dup: (n) => (isTr ? `"${n}" zaten eklendi.` : isDe ? `"${n}" ist bereits hinzugefügt.` : `"${n}" is already added.`),
+    dup: (n) => (isTr ? `"${n}" zaten eklendi.` : `"${n}" is already added.`),
   };
 }
 

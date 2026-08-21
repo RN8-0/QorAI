@@ -69,7 +69,7 @@ export default function AuthModal() {
   const currentYear = new Date().getFullYear();
   const monthNames = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
     value: String(i + 1),
-    label: new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US', { month: 'long' }).format(new Date(2020, i, 1)),
+    label: new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', { month: 'long' }).format(new Date(2020, i, 1)),
   })), [lang]);
   const yearOptions = useMemo(() => Array.from({ length: 88 }, (_, i) => String(currentYear - 13 - i)), [currentYear]);
   const dayOptions = useMemo(
@@ -246,17 +246,17 @@ export default function AuthModal() {
               <div className="auth-date-picker">
                 <select value={birthDay} onChange={(e) => updateBirthPart('day', e.target.value)}
                   className={birthDay ? '' : 'auth-select-empty'} required>
-                  <option value="" disabled>{lang === 'tr' ? 'Gün' : lang === 'de' ? 'Tag' : 'Day'}</option>
+                  <option value="" disabled>{lang === 'tr' ? 'Gün' : 'Day'}</option>
                   {dayOptions.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
                 <select value={birthMonth} onChange={(e) => updateBirthPart('month', e.target.value)}
                   className={birthMonth ? '' : 'auth-select-empty'} required>
-                  <option value="" disabled>{lang === 'tr' ? 'Ay' : lang === 'de' ? 'Monat' : 'Month'}</option>
+                  <option value="" disabled>{lang === 'tr' ? 'Ay' : 'Month'}</option>
                   {monthNames.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
                 <select value={birthYear} onChange={(e) => updateBirthPart('year', e.target.value)}
                   className={birthYear ? '' : 'auth-select-empty'} required>
-                  <option value="" disabled>{lang === 'tr' ? 'Yıl' : lang === 'de' ? 'Jahr' : 'Year'}</option>
+                  <option value="" disabled>{lang === 'tr' ? 'Yıl' : 'Year'}</option>
                   {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>

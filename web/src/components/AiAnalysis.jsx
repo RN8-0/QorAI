@@ -24,7 +24,7 @@ import {
 import AiReportView, { Sec } from './AiReportView.jsx';
 import { compareProductToUnified, productReportToUnified } from '../lib/reportAdapters';
 
-const LANG_NAME = { tr: 'Turkish', en: 'English', de: 'German', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish', ja: 'Japanese', ar: 'Arabic' };
+const LANG_NAME = { tr: 'Turkish', en: 'English', es: 'Spanish', fr: 'French', it: 'Italian', pt: 'Portuguese', ru: 'Russian', nl: 'Dutch', pl: 'Polish', sv: 'Swedish', ja: 'Japanese', ar: 'Arabic' };
 function langName(lang) { return LANG_NAME[String(lang || 'en').slice(0, 2).toLowerCase()] || 'English'; }
 const CURRENT_REPORT_DATE = new Date().toISOString().slice(0, 10);
 
@@ -102,7 +102,7 @@ export function withFreshnessRetryInstruction(prompt, productNames = []) {
     'The previous answer was rejected because it contained stale release/availability claims. Rewrite the JSON from scratch.\n' +
     (names ? `Products that must keep exact names: ${names}\n` : '') +
     freshnessRules() +
-    '\nForbidden stale wording includes: unannounced, not on the market, not released, not yet available, based on M4 Max estimates, or equivalent Turkish/German wording unless current web research explicitly proves it.'
+    '\nForbidden stale wording includes: unannounced, not on the market, not released, not yet available, based on M4 Max estimates, or equivalent Turkish wording unless current web research explicitly proves it.'
   );
 }
 
@@ -167,18 +167,18 @@ function localizeAiText(value, L) {
   const raw = String(value || '').trim();
   const key = raw.toLowerCase();
   const exact = {
-    'quiz answers': L('quiz answers', 'quiz cevapları', 'Quiz-Antworten'),
-    'qor catalog specs': L('Qor catalog specs', 'Qor katalog özellikleri', 'Qor-Katalogdaten'),
-    'community/review research': L('community/review research', 'topluluk ve yorum araştırması', 'Community- und Review-Recherche'),
-    'similar products': L('similar products', 'benzer ürünler', 'ähnliche Produkte'),
+    'quiz answers': L('quiz answers', 'quiz cevapları'),
+    'qor catalog specs': L('Qor catalog specs', 'Qor katalog özellikleri'),
+    'community/review research': L('community/review research', 'topluluk ve yorum araştırması'),
+    'similar products': L('similar products', 'benzer ürünler'),
     'reddit': 'Reddit',
-    'youtube reviews': L('YouTube reviews', 'YouTube incelemeleri', 'YouTube-Reviews'),
-    'retailer reviews': L('retailer reviews', 'mağaza yorumları', 'Händlerbewertungen'),
-    'specialist sources': L('specialist sources', 'uzman kaynaklar', 'Fachquellen'),
-    'source types': L('source types', 'kaynak türleri', 'Quellentypen'),
-    buy: L('buy', 'satın al', 'kaufen'),
-    wait: L('wait', 'bekle', 'warten'),
-    watch: L('watch', 'takip et', 'beobachten'),
+    'youtube reviews': L('YouTube reviews', 'YouTube incelemeleri'),
+    'retailer reviews': L('retailer reviews', 'mağaza yorumları'),
+    'specialist sources': L('specialist sources', 'uzman kaynaklar'),
+    'source types': L('source types', 'kaynak türleri'),
+    buy: L('buy', 'satın al'),
+    wait: L('wait', 'bekle'),
+    watch: L('watch', 'takip et'),
   };
   return exact[key] || cleanProductName(raw);
 }
@@ -633,20 +633,20 @@ function DeepView({ data, L }) {
       {overall > 0 && <div className="ai-center"><ScoreRing value={overall} /></div>}
       {strengths.length > 0 && (
         <>
-          <SectionLabel icon="📈" label={L('Strengths', 'Güçlü Yönler', 'Stärken')} color="#22c55e" />
+          <SectionLabel icon="📈" label={L('Strengths', 'Güçlü Yönler')} color="#22c55e" />
           {strengths.map((s, i) => <AttrBar key={i} {...s} color="#22c55e" />)}
         </>
       )}
       {weaknesses.length > 0 && (
         <>
-          <SectionLabel icon="📉" label={L('Weaknesses', 'Zayıf Yönler', 'Schwächen')} color="#f43f5e" />
+          <SectionLabel icon="📉" label={L('Weaknesses', 'Zayıf Yönler')} color="#f43f5e" />
           {weaknesses.map((s, i) => <AttrBar key={i} {...s} color="#f43f5e" />)}
         </>
       )}
       {(pros.length > 0 || cons.length > 0) && (
         <div className="ai-procon-row">
-          <ProCon icon="✓" title={L('Pros', 'Artılar', 'Pro')} items={pros} color="#22c55e" />
-          <ProCon icon="✕" title={L('Cons', 'Eksiler', 'Contra')} items={cons} color="#f43f5e" />
+          <ProCon icon="✓" title={L('Pros', 'Artılar')} items={pros} color="#22c55e" />
+          <ProCon icon="✕" title={L('Cons', 'Eksiler')} items={cons} color="#f43f5e" />
         </div>
       )}
       {verdict && <div className="ai-verdict"><span>💡</span><p>{verdict}</p></div>}
@@ -665,10 +665,10 @@ function AltView({ data, L }) {
           <div className="ai-alt-name">{cleanProductName(a.name)}</div>
           {a.whyBetter && <div className="ai-alt-why">★ {a.whyBetter}</div>}
           <div className="ai-alt-grid">
-            {a.advantage && <div className="ai-alt-cell ai-alt-adv"><b>{L('Advantage', 'Avantaj', 'Vorteil')}</b><span>{a.advantage}</span></div>}
-            {a.tradeoff && <div className="ai-alt-cell ai-alt-trade"><b>{L('Trade-off', 'Dezavantaj', 'Nachteil')}</b><span>{a.tradeoff}</span></div>}
-            {a.priceComparison && <div className="ai-alt-cell"><b>{L('Price', 'Fiyat', 'Preis')}</b><span>{a.priceComparison}</span></div>}
-            {a.bestFor && <div className="ai-alt-cell"><b>{L('Best for', 'Kime uygun', 'Ideal für')}</b><span>{a.bestFor}</span></div>}
+            {a.advantage && <div className="ai-alt-cell ai-alt-adv"><b>{L('Advantage', 'Avantaj')}</b><span>{a.advantage}</span></div>}
+            {a.tradeoff && <div className="ai-alt-cell ai-alt-trade"><b>{L('Trade-off', 'Dezavantaj')}</b><span>{a.tradeoff}</span></div>}
+            {a.priceComparison && <div className="ai-alt-cell"><b>{L('Price', 'Fiyat')}</b><span>{a.priceComparison}</span></div>}
+            {a.bestFor && <div className="ai-alt-cell"><b>{L('Best for', 'Kime uygun')}</b><span>{a.bestFor}</span></div>}
           </div>
         </div>
       ))}
@@ -689,19 +689,19 @@ function AdvisorView({ data, L }) {
       )}
       {String(data.ratingExplanation || '').trim() && <p className="ai-advisor-exp">{data.ratingExplanation}</p>}
       {String(data.whoShouldBuy || '').trim() && (
-        <div className="ai-advisor-box ai-good"><b>👍 {L('Who should buy', 'Kime uygun', 'Für wen geeignet')}</b><p>{data.whoShouldBuy}</p></div>
+        <div className="ai-advisor-box ai-good"><b>👍 {L('Who should buy', 'Kime uygun')}</b><p>{data.whoShouldBuy}</p></div>
       )}
       {String(data.whoShouldAvoid || '').trim() && (
-        <div className="ai-advisor-box ai-bad"><b>👎 {L('Who should avoid', 'Kime uygun değil', 'Für wen ungeeignet')}</b><p>{data.whoShouldAvoid}</p></div>
+        <div className="ai-advisor-box ai-bad"><b>👎 {L('Who should avoid', 'Kime uygun değil')}</b><p>{data.whoShouldAvoid}</p></div>
       )}
       {(buy.length > 0 || skip.length > 0) && (
         <div className="ai-procon-row">
-          <ProCon icon="✓" title={L('Reasons to buy', 'Alma sebepleri', 'Gründe dafür')} items={buy} color="#22c55e" />
-          <ProCon icon="✕" title={L('Reasons to skip', 'Almama sebepleri', 'Gründe dagegen')} items={skip} color="#f43f5e" />
+          <ProCon icon="✓" title={L('Reasons to buy', 'Alma sebepleri')} items={buy} color="#22c55e" />
+          <ProCon icon="✕" title={L('Reasons to skip', 'Almama sebepleri')} items={skip} color="#f43f5e" />
         </div>
       )}
       {tips.length > 0 && (
-        <div className="ai-tips"><b>💡 {L('Pro tips', 'İpuçları', 'Profi-Tipps')}</b><ul>{tips.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+        <div className="ai-tips"><b>💡 {L('Pro tips', 'İpuçları')}</b><ul>{tips.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
       )}
     </div>
   );
@@ -719,15 +719,15 @@ function PredictionView({ data, L }) {
       <div className="ai-pred-head">
         <div className="ai-pred-trend" style={{ color: tColor }}>
           <span className="ai-pred-arrow">{arrow}</span>
-          <div><b>{trend === 'down' ? L('Falling', 'Düşüyor', 'Fällt') : trend === 'up' ? L('Rising', 'Yükseliyor', 'Steigt') : L('Stable', 'Sabit', 'Stabil')}</b>{pct > 0 && <small>~{pct}%</small>}</div>
+          <div><b>{trend === 'down' ? L('Falling', 'Düşüyor') : trend === 'up' ? L('Rising', 'Yükseliyor') : L('Stable', 'Sabit')}</b>{pct > 0 && <small>~{pct}%</small>}</div>
         </div>
         <div className={'ai-pred-verdict ' + (buyWait === 'wait' ? 'wait' : 'buy')}>
-          {buyWait === 'wait' ? `⏳ ${L('Wait', 'Bekle', 'Warten')}` : `✓ ${L('Buy now', 'Şimdi al', 'Jetzt kaufen')}`}
+          {buyWait === 'wait' ? `⏳ ${L('Wait', 'Bekle')}` : `✓ ${L('Buy now', 'Şimdi al')}`}
         </div>
       </div>
       <div className="ai-pred-grid">
-        {String(data.bestTimeToBuy || '').trim() && <div className="ai-pred-cell"><b>{L('Best time', 'En iyi zaman', 'Beste Zeit')}</b><span>{data.bestTimeToBuy}</span></div>}
-        {String(data.expectedDrop || '').trim() && <div className="ai-pred-cell"><b>{L('Expected drop', 'Beklenen indirim', 'Erwarteter Rückgang')}</b><span>{data.expectedDrop}</span></div>}
+        {String(data.bestTimeToBuy || '').trim() && <div className="ai-pred-cell"><b>{L('Best time', 'En iyi zaman')}</b><span>{data.bestTimeToBuy}</span></div>}
+        {String(data.expectedDrop || '').trim() && <div className="ai-pred-cell"><b>{L('Expected drop', 'Beklenen indirim')}</b><span>{data.expectedDrop}</span></div>}
       </div>
       {String(data.reasoning || '').trim() && <p className="ai-pred-reason">{data.reasoning}</p>}
     </div>
@@ -746,7 +746,7 @@ function CompareView({ data, L }) {
   return (
     <div className="ai-cmp">
       {winner && (
-        <div className="ai-cmp-winner"><span>🏆</span><div><small>{L('AI pick', 'AI seçimi', 'KI-Wahl')}</small><b>{winner}</b></div></div>
+        <div className="ai-cmp-winner"><span>🏆</span><div><small>{L('AI pick', 'AI seçimi')}</small><b>{winner}</b></div></div>
       )}
       {String(data.verdict || '').trim() && <p className="ai-cmp-verdict">{data.verdict}</p>}
       <div className="ai-cmp-products">
@@ -762,11 +762,11 @@ function CompareView({ data, L }) {
               <div className="ai-attr-track" style={{ background: `${col}1f` }}>
                 <i style={{ width: `${(p.score / max) * 100}%`, background: `linear-gradient(90deg, ${col}80, ${col})` }} />
               </div>
-              {p.bestFor && <div className="ai-cmp-bestfor">{L('Best for', 'Kime uygun', 'Ideal für')}: <b>{p.bestFor}</b></div>}
+              {p.bestFor && <div className="ai-cmp-bestfor">{L('Best for', 'Kime uygun')}: <b>{p.bestFor}</b></div>}
               {(p.pros.length > 0 || p.cons.length > 0) && (
                 <div className="ai-procon-row">
-                  <ProCon icon="✓" title={L('Pros', 'Artılar', 'Pro')} items={p.pros} color="#22c55e" />
-                  <ProCon icon="✕" title={L('Cons', 'Eksiler', 'Contra')} items={p.cons} color="#f43f5e" />
+                  <ProCon icon="✓" title={L('Pros', 'Artılar')} items={p.pros} color="#22c55e" />
+                  <ProCon icon="✕" title={L('Cons', 'Eksiler')} items={p.cons} color="#f43f5e" />
                 </div>
               )}
             </div>
@@ -792,21 +792,21 @@ function ForumView({ data, L }) {
         <div className="ai-forum-gauge">
           <ScoreRing value={sat} suffix="%" />
           <div className="ai-forum-gauge-t">
-            <b>{L('Community satisfaction', 'Topluluk memnuniyeti', 'Community-Zufriedenheit')}</b>
-            <small>{L('Synthesised from public forums & reviews', 'Açık forum ve yorumlardan derlendi', 'Aus öffentlichen Foren & Reviews')}</small>
+            <b>{L('Community satisfaction', 'Topluluk memnuniyeti')}</b>
+            <small>{L('Synthesised from public forums & reviews', 'Açık forum ve yorumlardan derlendi')}</small>
           </div>
         </div>
       )}
       {String(data.summary || '').trim() && <p className="ai-forum-summary">{data.summary}</p>}
       {(praise.length > 0 || complaints.length > 0) && (
         <div className="ai-procon-row">
-          <ProCon icon="✓" title={L('People love', 'Beğenilenler', 'Beliebt')} items={praise} color="#22c55e" />
-          <ProCon icon="✕" title={L('Common complaints', 'Şikayetler', 'Häufige Kritik')} items={complaints} color="#f43f5e" />
+          <ProCon icon="✓" title={L('People love', 'Beğenilenler')} items={praise} color="#22c55e" />
+          <ProCon icon="✕" title={L('Common complaints', 'Şikayetler')} items={complaints} color="#f43f5e" />
         </div>
       )}
       {sources.length > 0 && (
         <div className="ai-forum-sources">
-          <small>{L('Sources', 'Kaynaklar', 'Quellen')}:</small>
+          <small>{L('Sources', 'Kaynaklar')}:</small>
           {sources.map((s, i) => <span key={i} className="ai-forum-src">{s}</span>)}
         </div>
       )}
@@ -861,7 +861,7 @@ function ReportFactors({ factors = [], L }) {
         const color = scoreColor(f.score);
         return <AttrBar key={`${f.label}-${i}`} name={f.label} score={f.score} detail={f.detail} color={color} />;
       })}
-      <small className="ai-report-hint">{L('Scores combine quiz answers, profile signals and catalog specs.', 'Puanlar quiz cevapları, profil sinyalleri ve katalog özellikleriyle hesaplandı.', 'Die Werte kombinieren Quizantworten, Profilsignale und Katalogdaten.')}</small>
+      <small className="ai-report-hint">{L('Scores combine quiz answers, profile signals and catalog specs.', 'Puanlar quiz cevapları, profil sinyalleri ve katalog özellikleriyle hesaplandı.')}</small>
     </div>
   );
 }
@@ -877,18 +877,18 @@ function CommunityBlock({ data = {}, L }) {
       <div className="ai-community-head">
         {sat > 0 && <ScoreRing value={sat} suffix="%" />}
         <div>
-          <b>{L('Internet satisfaction', 'İnternet memnuniyet oranı', 'Internet-Zufriedenheit')}</b>
-          <span>{L('Reddit, YouTube, retailer reviews and specialist sources are synthesized together.', 'Reddit, YouTube, alışveriş yorumları ve uzman kaynaklar birlikte özetlenir.', 'Reddit, YouTube, Händlerbewertungen und Fachquellen werden zusammengefasst.')}</span>
+          <b>{L('Internet satisfaction', 'İnternet memnuniyet oranı')}</b>
+          <span>{L('Reddit, YouTube, retailer reviews and specialist sources are synthesized together.', 'Reddit, YouTube, alışveriş yorumları ve uzman kaynaklar birlikte özetlenir.')}</span>
         </div>
       </div>
       <Paragraphs text={data.summary} />
       <div className="ai-procon-row">
-        <ProCon icon="✓" title={L('Common positives', 'Öne çıkan artılar', 'Häufige Pluspunkte')} items={arr(data.pros).map(String)} color="#22c55e" />
-        <ProCon icon="✕" title={L('Common negatives', 'Öne çıkan eksiler', 'Häufige Kritik')} items={arr(data.cons).map(String)} color="#f43f5e" />
+        <ProCon icon="✓" title={L('Common positives', 'Öne çıkan artılar')} items={arr(data.pros).map(String)} color="#22c55e" />
+        <ProCon icon="✕" title={L('Common negatives', 'Öne çıkan eksiler')} items={arr(data.cons).map(String)} color="#f43f5e" />
       </div>
       {sources.length > 0 && (
         <div className="ai-source-row">
-          <small>{L('Source types', 'Kaynak türleri', 'Quellentypen')}</small>
+          <small>{L('Source types', 'Kaynak türleri')}</small>
           {sources.map((s, i) => <span key={`${s}-${i}`}>{s}</span>)}
         </div>
       )}
@@ -912,7 +912,7 @@ function AlternativeCards({ alternatives = [], L }) {
             <div className="ai-alt-copy">
               <div className="ai-alt-card-top">
                 <b>{cleanProductName(a.name)}</b>
-                <small>{a.source === 'qor_catalog' ? L('Qor catalog', 'Qor kataloğu', 'Qor-Katalog') : L('External', 'Harici', 'Extern')}</small>
+                <small>{a.source === 'qor_catalog' ? L('Qor catalog', 'Qor kataloğu') : L('External', 'Harici')}</small>
               </div>
               {a.shortComment && <p>{a.shortComment}</p>}
               {a.difference && <p className="ai-alt-diff">{a.difference}</p>}
@@ -951,13 +951,13 @@ function ProductFullReport({ data, L, lang }) {
       showHead={false}
       heroExtra={null}
       altNode={alternatives.length > 0 ? (
-        <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler', 'Intelligente Alternativen')}>
+        <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler')}>
           <AlternativeCards alternatives={alternatives} L={L} />
         </Sec>
       ) : null}
       tailNode={arr(data.product?.reviewedInputs).length > 0 ? (
         <div className="la-verify">
-          <strong>🧾 {L('Inputs used', 'Kullanılan girdiler', 'Verwendete Eingaben')}</strong>
+          <strong>🧾 {L('Inputs used', 'Kullanılan girdiler')}</strong>
           <ul>{localizedAiList(data.product.reviewedInputs, L).map((x, i) => <li key={i}>{x}</li>)}</ul>
         </div>
       ) : null}
@@ -984,7 +984,7 @@ function CompareScoreChartFull({ chart = [], L }) {
           </div>
         );
       })}
-      <small className="ai-report-hint">{L('Final scores are personalized to the comparison quiz.', 'Final puanlar karşılaştırma quizine göre kişiselleştirildi.', 'Endwerte sind auf das Vergleichsquiz personalisiert.')}</small>
+      <small className="ai-report-hint">{L('Final scores are personalized to the comparison quiz.', 'Final puanlar karşılaştırma quizine göre kişiselleştirildi.')}</small>
     </div>
   );
 }
@@ -1020,12 +1020,12 @@ function ComparisonOverview({ cmp = {}, L }) {
   if (!hasContent) return null;
   return (
     <section className="ai-report-section ai-cmp-overview">
-      <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma', 'KI-Gesamtvergleich')}</div>
-      <h4>{L('Which one wins for you', 'Senin için hangisi kazanıyor', 'Was für dich gewinnt')}</h4>
+      <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma')}</div>
+      <h4>{L('Which one wins for you', 'Senin için hangisi kazanıyor')}</h4>
       {cmp.winner && (
         <div className="ai-cmp-winner">
           <span>★</span>
-          <div><small>{L('Recommended pick', 'Önerilen seçim', 'Empfohlene Wahl')}</small><b>{cleanProductName(cmp.winner)}</b></div>
+          <div><small>{L('Recommended pick', 'Önerilen seçim')}</small><b>{cleanProductName(cmp.winner)}</b></div>
           {/* Sayı ETİKETSİZ duruyordu: kullanıcı ürün adının yanındaki "90"ın
               ne olduğunu anlamıyordu ("ne alaka?"). Bu, sayfadaki "Qor AI
               Skoru" (teknik puan) ile de karışıyordu — bunlar FARKLI şeyler:
@@ -1034,7 +1034,7 @@ function ComparisonOverview({ cmp = {}, L }) {
           {toInt(cmp.winnerScore) > 0 && (
             <div className="ai-cmp-winner-score">
               <strong>{toInt(cmp.winnerScore)}</strong>
-              <small>{L('fit for you', 'sana uygunluk', 'Passung')}</small>
+              <small>{L('fit for you', 'sana uygunluk')}</small>
             </div>
           )}
         </div>
@@ -1042,7 +1042,7 @@ function ComparisonOverview({ cmp = {}, L }) {
       <CompareScoreChartFull chart={cmp.chart} L={L} />
       <FactorMatrix rows={cmp.factorMatrix} />
       {(arr(cmp.decisiveDifferences).length > 0 || String(cmp.headToHead || '').trim() || String(cmp.recommendation || '').trim()) && (
-        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz', 'Detaillierte Analyse')}`}>
+        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz')}`}>
           <BulletList items={cmp.decisiveDifferences} tone="notes" />
           <Paragraphs text={cmp.headToHead} />
           {String(cmp.recommendation || '').trim() && (
@@ -1113,11 +1113,11 @@ function CompareFullReport({ data, L, lang, products = [] }) {
             return (
               <section className={'ai-cmp-report' + (isWin ? ' winner' : '')} key={c.key}>
                 <header className="ai-cmp-report-head">
-                  {isWin && <span className="ai-cmp-report-win">★ {L('AI pick', 'AI seçimi', 'KI-Wahl')}</span>}
+                  {isWin && <span className="ai-cmp-report-win">★ {L('AI pick', 'AI seçimi')}</span>}
                   <span className="ai-cmp-report-no">{i + 1}</span>
                   {c.image ? <ProductImg src={c.image} alt={c.name} size="thumb" /> : null}
                   <div className="ai-cmp-report-id">
-                    <small>{L('Full AI review', 'Detaylı AI incelemesi', 'Vollständige KI-Analyse')}</small>
+                    <small>{L('Full AI review', 'Detaylı AI incelemesi')}</small>
                     <b>{c.name}</b>
                   </div>
                 </header>
@@ -1138,7 +1138,7 @@ export default function AiAnalysisView({ kind, raw, data: dataProp, lang, produc
   const data = dataProp && typeof dataProp === 'object' ? dataProp : parseAiJson(raw);
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
-  const L = (en, tr, de) => (code === 'tr' ? tr : code === 'de' ? de : en);
+  const L = (en, tr) => (code === 'tr' ? tr : en);
   if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} lang={lang} />;
   if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} />;
   if (kind === 'deep') return <DeepView data={data} L={L} />;
