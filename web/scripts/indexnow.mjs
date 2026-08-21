@@ -19,13 +19,48 @@ const KEY_LOCATION = `${SITE}/${KEY}.txt`;
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..', '..', 'website');
 
+// Sitemap'ten YALNIZ SON ZAMANDA DEGISMIS adresler.
+//
+// NEDEN (2026-08-21): bu fonksiyon eskiden sitemap'teki HER adresi donduruyordu
+// ve boru ile adres beslenmediginde her gece 23.199 adres IndexNow'a
+// gonderiliyordu — gercekte ~50 sayfa degismisken. IndexNow'in tek amaci
+// "SUNLAR degisti" demek; her seferinde her seyi bildirmek o sinyali gurultuye
+// cevirir ve arama motoru bildirimleri ciddiye almayi birakir. Ayni hatanin
+// sitemap `lastmod` tarafi zaten bir kez yasanmis ve duzeltilmisti.
+//
+// Artik olcut sitemap'in KENDI `lastmod` degeri: son GUN_SINIRI gun icinde
+// degismis adresler gider, digerleri gitmez. Cron'un betigi nasil cagirdigindan
+// bagimsiz olarak dogru davranir.
+const GUN_SINIRI = Number(process.env.INDEXNOW_MAX_AGE_DAYS || 7);
+
+function sitemapDosyalari() {
+  const kok = join(site, 'sitemap.xml');
+  if (!existsSync(kok)) return [];
+  const xml = readFileSync(kok, 'utf8');
+  const parcalar = [...xml.matchAll(/<loc>[^<]*\/(sitemap-\d+\.xml)<\/loc>/g)].map((m) => m[1]);
+  return parcalar.length ? parcalar.map((p) => join(site, p)) : [kok];
+}
+
 function fromSitemap() {
-  const f = join(site, 'sitemap.xml');
-  if (!existsSync(f)) return [];
-  const xml = readFileSync(f, 'utf8');
-  return [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)]
-    .map((m) => m[1].trim())
-    .filter((u) => !/\/sitemap-\d+\.xml$/.test(u));
+  const esik = new Date(Date.now() - GUN_SINIRI * 864e5).toISOString().slice(0, 10);
+  const out = [];
+  let toplam = 0;
+  for (const f of sitemapDosyalari()) {
+    if (!existsSync(f)) continue;
+    const xml = readFileSync(f, 'utf8');
+    for (const m of xml.matchAll(/<url>([\s\S]*?)<\/url>/g)) {
+      const blok = m[1];
+      const loc = (blok.match(/<loc>([^<]+)<\/loc>/) || [])[1];
+      if (!loc || /\/sitemap-\d+\.xml$/.test(loc)) continue;
+      toplam += 1;
+      const lastmod = (blok.match(/<lastmod>([^<]+)<\/lastmod>/) || [])[1] || '';
+      // `lastmod` yoksa adres degismis SAYILMAZ: eksik tarihi "yeni" kabul
+      // etmek tam da kacinmaya calistigimiz toplu gonderimi geri getirirdi.
+      if (lastmod.slice(0, 10) >= esik) out.push(loc.trim());
+    }
+  }
+  console.log(`[indexnow] sitemap: ${toplam} adresin ${out.length} tanesi son ${GUN_SINIRI} gunde degismis`);
+  return out;
 }
 
 async function readStdin() {

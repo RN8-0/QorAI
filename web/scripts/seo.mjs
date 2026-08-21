@@ -18,11 +18,34 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
 import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.js';
+import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..', '..', 'website');
 const templatePath = join(site, 'index.html');
+
+// ── Spec çevirisi: TEK KAYNAK (admin/js/spec_i18n.js) ────────────────────
+//
+// NEDEN: ön-render 2026-08-21'e kadar `_raw.keySpecs`i OLDUĞU GİBİ basıyordu.
+// O alan yarım makine çevirisi taşıyor ("Otomatik Charging", "Islak Mop: Yes"),
+// dolayısıyla İngilizce sayfaya Türkçe etiket, Türkçe sayfaya İngilizce etiket
+// sızıyordu. Ölçüldü (2026-08-21, tüm ağaç): EN açıklamaların %64,2'sinde
+// Türkçe spec etiketi, TR'lerin %30,0'ında İngilizce vardı.
+//
+// Admin paneli ve site bu sorunu ÇOKTAN çözmüştü: ikisi de aynı dosyayı
+// (admin/js/spec_i18n.js) çalıştırıyor, o dosya temiz kaynağı
+// (`multiLangSections.tr`) seçip küratörlü sözlükle çeviriyor. Ön-render
+// üçüncü tüketiciydi ve tek başına kirli alanı okuyordu. Çözüm yeni bir sözlük
+// yazmak DEĞİL, aynı dosyayı burada da koşturmak — ikinci kopya kaçınılmaz
+// olarak ayrışır.
+const specSandbox = loadAdminSandbox([join(here, '..', '..', 'admin', 'js', 'spec_i18n.js')]);
+const SPEC_I18N = specSandbox.QorAiSpecI18n;
+if (!SPEC_I18N || typeof SPEC_I18N.localizeProduct !== 'function') {
+  // Sessizce kirli veriye düşmektense build'i durdur: sızıntı gözle
+  // görülmüyor, aylarca yayında kalıyor.
+  throw new Error('[seo] admin/js/spec_i18n.js yüklenemedi — spec çevirisi tek kaynaktan gelmek zorunda');
+}
 
 // ── Typesense (read-only search key — same as web/src/lib/typesense.js) ──
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
@@ -90,6 +113,32 @@ function livePriceFor(rec, country = 'TR') {
     return fmtMoney(Number(rec.lowestPrice), cc);
   }
   return '';
+}
+
+// Sayfanın dili → o dilin pazarı.
+//
+// SIKI ÜLKE FİYATI KURALI: sayfanın kendi ülkesinin fiyatı yoksa fiyat
+// GÖSTERİLMEZ; başka ülkenin fiyatına düşülmez. Aynı kural app ve sitenin
+// çalışma zamanında da geçerli — ön-render ondan ayrılamaz, yoksa Google'a
+// ziyaretçinin gördüğünden başka bir fiyat göstermiş oluruz.
+//
+// Kapsam ölçüldü (2026-08-21, Typesense): priceTR 32.264 · priceDE 1.105 ·
+// priceUS 242. Yani fiyat pratikte TR'ye ait; EN/DE sayfalarının çoğu fiyatsız
+// kalacak ve BAŞLIKLARINDA da fiyat vaadi olmayacak (bkz. productSeo).
+const LANG_COUNTRY = { tr: 'TR', de: 'DE', en: 'US' };
+function priceForLang(prices, lang) {
+  if (!prices || typeof prices !== 'object') return null;
+  const cc = LANG_COUNTRY[lang] || 'US';
+  const ham = Number(prices[cc]) || 0;
+  if (ham <= 0) return null;
+  // ŞEMADAKİ FİYAT = EKRANDAKİ FİYAT. fmtMoney kuruşu göstermiyor
+  // (maximumFractionDigits: 0), dolayısıyla Offer'a ham değeri koymak
+  // "1673.07 yazdım ama ₺1.673 gösterdim" uyumsuzluğu üretiyordu; Google
+  // yapısal verinin görünen fiyatla eşleşmesini şart koşar. İkisi de aynı
+  // yuvarlanmış sayıdan türetiliyor, böylece ayrışmaları imkânsız.
+  const amount = Math.round(ham);
+  if (amount <= 0) return null;
+  return { amount, currency: PRICE_CURRENCY[cc] || 'USD', text: fmtMoney(amount, cc), country: cc };
 }
 
 // Sanitise stored article HTML for the static shell: allow only the tags the
@@ -198,9 +247,18 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Meta açıklama için kırpma. Başlıkta `…` YASAK (bkz. fitTitle) ama açıklamada
+// kırpma normaldir — yeter ki KELİME ORTASINDAN olmasın: "Fan conversion speed:
+// 1900 RP…" hem yarım bilgi hem baştansavma görünüyor. Son boşluktan kesip
+// noktalamayı temizliyoruz; geriye kelime sınırı kalmazsa (tek uzun jeton)
+// eski davranışa düşer.
 function truncate(s, max = 158) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
-  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+  if (t.length <= max) return t;
+  const kaba = t.slice(0, max - 1);
+  const sonBosluk = kaba.lastIndexOf(' ');
+  const govde = sonBosluk > max * 0.6 ? kaba.slice(0, sonBosluk) : kaba;
+  return `${govde.replace(/[\s,;:.\-–—]+$/, '')}…`;
 }
 
 function slugifyProduct(value) {
@@ -281,7 +339,7 @@ function keySpecRows(keySpecs, limit = 16) {
 // pre-JS snapshot get real, unique text + internal links (category + siblings).
 // Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
 // path and content must exist in the raw HTML, not only after the SPA renders.
-function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
+function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE, price = null) {
   const name = esc(localizedName(d, lang));
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
@@ -313,6 +371,11 @@ function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang 
     + `<h1 style="font-size:26px;margin:12px 0 4px">${name}</h1>`
     + `<p style="color:#475569;margin:0 0 12px">${brand ? `${brand} · ` : ''}${lbl}${score ? ` · ${tx.score(score)}` : ''}</p>`
     + (img ? `<img src="${img}" alt="${name}" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" />` : '')
+    // FIYAT — baslikta vaat ediliyorsa GOVDEDE de bulunmali. Ön-render bugune
+    // kadar hicbir sayfaya fiyat basmiyordu; baslikta "Fiyati" yazip fiyat
+    // gostermemek karsilanmayan bir vaat, ve Product/Offer semasinin govdede
+    // karsiligi olmadan yayilmasi da kural disi.
+    + (price ? `<p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">${esc(price.text)}</p>` : '')
     + `<p style="line-height:1.7;color:#334155">${tx.intro(name, highlights, lbl, specs)}</p>`
     + (items ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.specsH}</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0">${items}</ul>` : '')
     + (relLinks ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.relH(lbl)}</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
@@ -550,7 +613,7 @@ const CMP_TEXT = {
   en: {
     cats: 'Categories', score: 'Qor AI tech score', brand: 'Brand',
     screen: 'Screen', batt: 'Battery', weight: 'Weight', inch: 'in',
-    title: (a, b) => `${a} vs ${b} — Comparison | Qor AI`,
+    titleTail: [' — Comparison', ' | Qor AI'],
     desc: (a, b, l) => `${a} vs ${b} comparison — ${l}. Qor AI tech score and specs side by side; which one fits you better?`,
     intro: (a, b) => `${a} vs ${b} comparison: Qor AI tech score and specifications side by side. See which one suits you better in the table below.`,
     cta: (l) => `Compare all ${l}`,
@@ -558,7 +621,7 @@ const CMP_TEXT = {
   tr: {
     cats: 'Kategoriler', score: 'Qor AI teknik skoru', brand: 'Marka',
     screen: 'Ekran', batt: 'Batarya', weight: 'Ağırlık', inch: 'inç',
-    title: (a, b) => `${a} vs ${b} — Karşılaştırma | Qor AI`,
+    titleTail: [' — Karşılaştırma', ' | Qor AI'],
     desc: (a, b, l) => `${a} ile ${b} karşılaştırması — ${l}. Qor AI teknik skoru ve teknik özellikleri yan yana; hangisi sana daha uygun?`,
     intro: (a, b) => `${a} ile ${b} karşılaştırması: Qor AI yapay zekâ teknik skoru ve teknik özellikleri yan yana. Hangisi sana daha uygun, aşağıdaki tabloda saniyeler içinde gör.`,
     cta: (l) => `Tüm ${l} modellerini karşılaştır`,
@@ -566,7 +629,7 @@ const CMP_TEXT = {
   de: {
     cats: 'Kategorien', score: 'Qor AI Techscore', brand: 'Marke',
     screen: 'Display', batt: 'Akku', weight: 'Gewicht', inch: 'Zoll',
-    title: (a, b) => `${a} vs ${b} — Vergleich | Qor AI`,
+    titleTail: [' — Vergleich', ' | Qor AI'],
     desc: (a, b, l) => `${a} vs ${b} Vergleich — ${l}. Qor AI Techscore und technische Daten nebeneinander; welches passt besser zu dir?`,
     intro: (a, b) => `${a} vs ${b} Vergleich: Qor AI Techscore und technische Daten nebeneinander. Sieh in der Tabelle unten, welches besser zu dir passt.`,
     cta: (l) => `Alle ${l}-Modelle vergleichen`,
@@ -616,7 +679,9 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   const imgA = /^https?:\/\//i.test(a.imageUrl || '') ? a.imageUrl : DEFAULT_IMG;
   const na = localizedName(a, lang);
   const nb = localizedName(b, lang);
-  const title = truncate(tx.title(na, nb), 70);
+  // Ürün çifti başlığın DEĞİŞMEZ çekirdeği: "A vs B" kırpılırsa sayfa hangi
+  // iki ürünü karşılaştırdığını söyleyemez hâle gelir. Sadece son ekler düşer.
+  const title = fitTitle(`${na} vs ${nb}`, tx.titleTail, 70);
   const description = truncate(
     tx.desc(na, nb, label),
   );
@@ -645,14 +710,16 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   };
 }
 
-// Per-product <head> SEO: WebPage + Breadcrumb JSON-LD only. We deliberately do
-// NOT emit a `Product` node here: Google requires a Product to carry offers,
-// review or aggregateRating to be valid, and the static build has no reliable
-// price (it lives in the heavy _raw field, lowestPriceUSD is ~always 0) and no
-// real ratings/reviews. Emitting a Product without those just produces "invalid
-// Product snippet" errors in Search Console for zero gain. The runtime
-// useSeo() hook DOES add a valid Product+offers once the live price loads (and
-// only then), so products that actually have a price still get the rich result.
+// Per-product <head> SEO: WebPage + Breadcrumb, ARTI fiyati olan urunlerde
+// Product + Offer.
+//
+// TARIHCE (yaniltici olmasin diye duruyor): bu blok uzun sure "Product yayma"
+// diyordu, gerekcesi "statik build'in guvenilir fiyati yok, lowestPriceUSD
+// ~her zaman 0". O gerekce YAZILDIGI GUN dogruydu; bugun degil. 2026-08-21'de
+// olculdu: Typesense'te lowestPriceUSD>0 olan 35.752, priceTR>0 olan 31.809
+// dokuman var. Fiyat artik `_raw.prices` icinde ve zaten curated kume icin
+// cekiliyor. Kural bu yuzden "hic yayma" degil, "fiyati olana yay" oldu —
+// fiyatsiz Product hala yayilmaz, cunku gecersizdir.
 // Ürün sayfası SEO metinleri. Kök adres İngilizce olduğu için varsayılan 'en'.
 // BASLIKTA "FIYAT" GECMEK ZORUNDA. 2026-08-16'da olculdu: "Samsung Galaxy S26
 // Ultra fiyat özellikleri karşılaştırma" aramasinda ilk sirada Akakce var ve
@@ -662,59 +729,69 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
 // cogunlukla "<urun> fiyat / fiyatlari" kalibiyla araniyor.
 // Ayrica basligin BASINDA urun adi kalir (Google ilk ~60 karakteri gosterir),
 // marka adi sona atilir.
+// ── BASLIK KURGUSU — `…` YASAK ─────────────────────────────────────────────
+//
+// Eskiden baslik once tam kuruluyor, sonra truncate(68) ile KESILIYORDU. Ek
+// (`| Qor AI`) sonda oldugu icin once o yariliyor, sonra urun adinin kendisi:
+//   "Hikvision DS-2CD1T47G2-LUF Fiyati, Ozellikleri ve Karsilastirma | Q…"
+// Olculdu (2026-08-21, tum agac): TR urun basliklarinin %80,2'si, EN %44,0,
+// DE %41,8, compare %85,6 boyle bitiyordu. Arama sonucunda kirik sayfa gorunumu.
+//
+// Dogru davranis: baslik PARCALARDAN kurulur ve sigmayan parca DUSURULUR.
+// Google zaten kendi kirpiyor; bizim kirpmamiz yalnizca kelimeyi yok ediyor.
+// Ilk parca (urun adi) ASLA kesilmez — sigmazsa tek basina kalir.
+function fitTitle(head, tailParts, max = 68) {
+  const h = String(head || '').replace(/\s+/g, ' ').trim();
+  const parts = (tailParts || []).filter((p) => p && String(p).trim());
+  for (let drop = 0; drop <= parts.length; drop += 1) {
+    const kept = parts.slice(0, parts.length - drop);
+    const candidate = kept.reduce((acc, p) => acc + p, h);
+    if (candidate.length <= max) return candidate;
+  }
+  return h;
+}
+
+// Baslik parcalari EN GENISTEN EN DARA sirali: sigmayan SONDAN dusurulur.
+// `fiyat` parcasi YALNIZ sayfanin kendi ulkesinde gercekten fiyat varsa
+// eklenir — "Fiyati" yazip fiyat gostermemek karsilanmayan bir vaat ve
+// olculdugunde yayindaki urun sayfalarinin %60'i tam olarak bunu yapiyordu.
 const PROD_SEO_TEXT = {
   en: {
-    title: (n) => `${n} Price, Specs & Comparison | Qor AI`,
+    titleParts: (hasPrice) => (hasPrice
+      ? [' Price', ' & Specs', ' | Qor AI']
+      : [' Specs', ' & Comparison', ' | Qor AI']),
     score: (s) => `Qor AI tech score ${s}/100. `,
     specs: (n) => `${n} technical specs. `,
+    priceLine: (p) => `Price ${p}. `,
     tail: 'Compare prices across stores, see the AI tech score and similar models.',
   },
   tr: {
-    title: (n) => `${n} Fiyatı, Özellikleri ve Karşılaştırma | Qor AI`,
+    titleParts: (hasPrice) => (hasPrice
+      ? [' Fiyatı', ' ve Özellikleri', ' | Qor AI']
+      : [' Özellikleri', ' ve Karşılaştırma', ' | Qor AI']),
     score: (s) => `Qor AI teknik skoru ${s}/100. `,
     specs: (n) => `${n} teknik özellik. `,
+    priceLine: (p) => `Fiyatı ${p}. `,
     tail: 'Mağaza fiyatlarını karşılaştır, yapay zekâ teknik skorunu ve benzer modelleri gör.',
   },
   de: {
-    title: (n) => `${n} Preis, Specs & Vergleich | Qor AI`,
+    titleParts: (hasPrice) => (hasPrice
+      ? [' Preis', ' & Specs', ' | Qor AI']
+      : [' Specs', ' & Vergleich', ' | Qor AI']),
     score: (s) => `Qor AI Techscore ${s}/100. `,
     specs: (n) => `${n} technische Merkmale. `,
+    priceLine: (p) => `Preis ${p}. `,
     tail: 'Preise der Shops vergleichen, KI-Techscore und ähnliche Modelle ansehen.',
   },
 };
 
-// Aciklamadaki spec ETIKETLERI Typesense'ten INGILIZCE geliyor, sayfanin dili
-// ne olursa olsun. Olculdu (2026-08-16, /tr/ urun sayfasi):
-//   "… — Akıllı Telefon. 5G: Yes, Battery capacity: 5000 mAh, CPU cores: 8 Core"
-// Turkce sayfada Ingilizce etiket hem kullaniciya kotu gorunuyor hem de arama
-// sonucunda snippet olarak cikiyor. Dile gore key-spec cekmek buyuk bir is
-// (PB multiLangSpecs); en cok gecen etiketler icin kucuk bir sozluk sorunun
-// buyuk kismini ucuza kapatiyor. Karsiligi olmayan etiket oldugu gibi kalir.
-const SPEC_ETIKET = {
-  tr: {
-    '5G': '5G', 'Battery capacity': 'Batarya', 'CPU cores': 'Çekirdek', 'CPU frequency': 'İşlemci hızı',
-    'Screen size': 'Ekran', 'Screen resolution': 'Çözünürlük', 'Refresh rate': 'Yenileme hızı',
-    RAM: 'RAM', Storage: 'Depolama', 'Internal storage': 'Depolama', 'Rear camera': 'Arka kamera',
-    'Front camera': 'Ön kamera', Weight: 'Ağırlık', 'Operating system': 'İşletim sistemi',
-    Processor: 'İşlemci', 'Charging power': 'Şarj gücü', 'Screen type': 'Ekran tipi',
-    Yes: 'Var', No: 'Yok', Color: 'Renk', 'Water resistance': 'Suya dayanıklılık',
-  },
-  de: {
-    '5G': '5G', 'Battery capacity': 'Akku', 'CPU cores': 'CPU-Kerne', 'CPU frequency': 'CPU-Takt',
-    'Screen size': 'Display', 'Screen resolution': 'Auflösung', 'Refresh rate': 'Bildwiederholrate',
-    RAM: 'RAM', Storage: 'Speicher', 'Internal storage': 'Speicher', 'Rear camera': 'Hauptkamera',
-    'Front camera': 'Frontkamera', Weight: 'Gewicht', 'Operating system': 'Betriebssystem',
-    Processor: 'Prozessor', 'Charging power': 'Ladeleistung', 'Screen type': 'Displaytyp',
-    Yes: 'Ja', No: 'Nein', Color: 'Farbe', 'Water resistance': 'Wasserdichtigkeit',
-  },
-};
-function specEtiket(metin, lang) {
-  const s = SPEC_ETIKET[lang];
-  if (!s) return metin;
-  return s[metin] || s[String(metin).trim()] || metin;
-}
+// NOT: burada bir zamanlar ~22 terimlik elle yazilmis bir TR/DE spec etiket
+// sozlugu vardi. Kaldirildi (2026-08-21): etiketler artik localizedKeySpecs()
+// icinde admin/js/spec_i18n.js ile — site ve admin ile AYNI dosya — cevriliyor.
+// Ikinci bir sozluk tutmak tam da bu dosyanin kacinmasi gereken sey: iki kopya
+// ayrisir ve ayristigi gun kimse fark etmez.
 
-function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
+function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE, price = null) {
   const tx = PROD_SEO_TEXT[lang] || PROD_SEO_TEXT[SEO_DEFAULT_LOCALE];
   const url = `${SITE}${localePrefix(lang)}${productPath(d)}`;
   const categoryUrl = `${SITE}${localePrefix(lang)}${categoryPath(d.category)}`;
@@ -725,13 +802,18 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
   // Türkçe başlık göstermek tam da "İngilizce arıyorum Türkçe çıkıyor"
   // şikayetinin sebebiydi.
   const dispName = localizedName(d, lang);
-  const title = truncate(tx.title(dispName), 68);
+  const title = fitTitle(dispName, tx.titleParts(!!price), 68);
   // Lead the description with a few REAL spec values so it is unique per product
   // and long enough (Bing flagged descriptions as too short + too templated).
+  //
+  // Etiketler ARTIK dile göre geliyor (localizedKeySpecs), bu yüzden buradaki
+  // eski `specEtiket()` sözlüğü kaldırıldı: iki kat çeviri, temiz etiketi
+  // yeniden bozuyordu.
   const rows = keySpecRows(keySpecs, 4);
-  const specHi = rows.map(([k, v]) => `${specEtiket(k, lang)}: ${specEtiket(v, lang)}`).join(', ');
+  const specHi = rows.map(([k, v]) => `${k}: ${v}`).join(', ');
   const description = truncate(
     `${dispName}${d.brand ? ` (${d.brand})` : ''} — ${label}. `
+    + `${price ? tx.priceLine(price.text) : ''}`
     + `${specHi ? `${specHi}. ` : ''}`
     + `${score ? tx.score(score) : ''}`
     + `${specs ? tx.specs(specs) : ''}`
@@ -749,9 +831,34 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE) {
       { '@type': 'ListItem', position: 3, name: dispName, item: url },
     ],
   };
+  // Product+Offer YALNIZ gercek fiyat varken. Fiyatsiz Product dugumu Search
+  // Console'da "invalid Product snippet" uretir ve hicbir sey kazandirmaz —
+  // eski kodun bunu hic yaymamasinin gerekcesi buydu ve o gerekce fiyat verisi
+  // yokken DOGRUYDU. Bugun (2026-08-21 olcumu) Typesense'te 35.752 urunun
+  // fiyati var, dolayisiyla kosul artik "hic yayma" degil "fiyati olana yay".
+  const graph = [webPage, breadcrumb];
+  if (price) {
+    graph.push({
+      '@type': 'Product', '@id': `${url}#product`, name: dispName, url,
+      image: img, category: label,
+      ...(d.brand ? { brand: { '@type': 'Brand', name: String(d.brand) } } : {}),
+      ...(d.gtin ? { gtin: String(d.gtin) } : {}),
+      ...(d.mpn ? { mpn: String(d.mpn) } : {}),
+      offers: {
+        '@type': 'Offer', url,
+        price: String(price.amount),
+        priceCurrency: price.currency,
+        availability: 'https://schema.org/InStock',
+        // Fiyat gecerliligi: fiyat hatti her gece kosuyor, ama Google'a
+        // "yarina kadar gecerli" demek her gun yeniden tarama beklentisi
+        // yaratir. 7 gun, gercek tazeleme araligiyla uyumlu ve dogrulanabilir.
+        priceValidUntil: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+      },
+    });
+  }
   return {
     title, description, url, lang, image: img, imageAlt: dispName, type: 'product',
-    jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, breadcrumb] },
+    jsonLd: { '@context': 'https://schema.org', '@graph': graph },
   };
 }
 
@@ -774,7 +881,11 @@ function categoryPath(category) {
 //
 // Bu tarih, ön-render ÇIKTISI anlamlı biçimde değiştiğinde ELLE yükseltilir.
 // Uydurma tazelik değildir: sayfa gerçekten o gün değişmiştir.
-const SEO_CONTENT_VERSION = '2026-08-07'; // ürün adları artık dile göre (en/de sayfalarda Türkçe ad kalmıyor)
+// 2026-08-21: başlık kurgusu (`…` kaldırıldı), spec etiketleri tek kaynaktan
+// (admin/js/spec_i18n.js) çevriliyor, fiyatı olan ürünlerde gövdeye fiyat +
+// Product/Offer şeması eklendi. Her sayfanın GÖRÜNEN metni değişti — uydurma
+// tazelik değil, gerçek değişiklik.
+const SEO_CONTENT_VERSION = '2026-08-21';
 
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
@@ -1471,6 +1582,59 @@ async function fetchAllProducts() {
 // just for the ~few-thousand CURATED products that get a static shell, in id
 // batches, and return id → keySpecs. This is what upgrades each product page from
 // a thin near-duplicate template to a page with real, unique spec content.
+// Bir ürünün ham kaydını alır, İSTENEN DİLDE temiz {etiket: değer} döner.
+//
+// Çeviriyi admin/js/spec_i18n.js yapar (site ve admin ile aynı dosya). Buradaki
+// tek ek iş ARTIK KALMASI GEREKMEYEN satırları elemek: sözlükte karşılığı
+// bulunamayan bir etiket olduğu gibi geçiyordu ve İngilizce sayfada Türkçe
+// olarak görünüyordu. KURAL: yarım çevrilmiş satırı yazma, satırı hiç yazma —
+// eksik spec, yanlış dildeki spec'ten iyidir.
+//
+// TR için ayrı bir eleme YOK: `multiLangSections.tr` zaten temiz kaynak ve
+// ölçüldüğünde İngilizce izi %0,1'di. Oraya bir tahmin sezgisi yazmak yerine
+// seo-audit.mjs'e kapı koyduk; sızıntı olursa build kırılır ve veriyle öğreniriz.
+function localizedKeySpecs(raw, lang, limit = 16) {
+  if (!raw || typeof raw !== 'object') return {};
+  // SPEC DİLİ ≠ SAYFA DİLİ. Almanca spec üretilmiyor (specs yalnız TR+EN
+  // tutuluyor), Almanca arayüz onları İNGİLİZCE okur. Site bunu zaten böyle
+  // yapıyor — bkz. web/src/pages/ProductDetail.jsx:369. Ön-render bu kuralı
+  // bilmiyordu ve `de` isteyince spec_i18n çevirecek sözlük bulamayıp KAYNAK
+  // TÜRKÇEYİ olduğu gibi döndürüyordu: ölçüldü, /de/ ürün sayfalarının
+  // %100'ünde "Islak Mop: Var, Su Haznesi: 70 ml" gibi ham Türkçe vardı.
+  const specLang = lang === 'tr' ? 'tr' : 'en';
+  let model;
+  try { model = SPEC_I18N.localizeProduct(raw, specLang, {}); } catch (_) { return {}; }
+  if (!model) return {};
+  const sourceLang = String(model.sourceLang || 'tr').toLowerCase();
+  const needsResidueGuard = specLang !== sourceLang;
+  const kirli = (translated, source) => {
+    if (!needsResidueGuard) return false;
+    try { return !!SPEC_I18N.translationHasTurkishResidue(specLang, String(translated), String(source || '')); } catch (_) { return false; }
+  };
+
+  const out = {};
+  const ekle = (rows) => {
+    if (!rows || typeof rows !== 'object') return;
+    for (const [k, v] of Object.entries(rows)) {
+      if (Object.keys(out).length >= limit) return;
+      const label = String(k == null ? '' : k).replace(/\s+/g, ' ').trim();
+      const value = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+      if (!label || !value || label.length > 48 || value.length > 64) continue;
+      if (out[label]) continue;
+      if (kirli(label, label) || kirli(value, value)) continue;
+      out[label] = value;
+    }
+  };
+
+  ekle(model.keySpecs);
+  // Öne çıkanlar bloğu eleme sonrası çok inceldiyse bölüm ağacından tamamla —
+  // aksi halde sözlüğü zayıf kategorilerde sayfa spec'siz kalırdı.
+  if (Object.keys(out).length < 3 && model.sections && typeof model.sections === 'object') {
+    for (const rows of Object.values(model.sections)) ekle(rows);
+  }
+  return out;
+}
+
 async function fetchKeySpecsByIds(ids) {
   const byId = new Map();
   const BATCH = 90;
@@ -1482,12 +1646,20 @@ async function fetchKeySpecsByIds(ids) {
       filter_by: `id:[${slice.join(',')}]`,
       per_page: String(slice.length), include_fields: 'id,_raw',
     });
+    // ZAMAN AŞIMI ŞART: katalog sayfalamasının aksine bu çağrının hiç sınırı
+    // yoktu. Hetzner'a giden yol paket kaybına düştüğünde asılı bir soket
+    // burada SÜRESİZ bekler ve gece koşusu hiç bitmez — hata da vermez, ki
+    // teşhisi en zor olan bu. 45 sn, katalog sayfalamasıyla aynı sınır.
     let res;
     try {
-      res = await fetch(
-        `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`,
-        { headers: { 'X-TYPESENSE-API-KEY': TS_KEY } },
-      );
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 45000);
+      try {
+        res = await fetch(
+          `${TS_URL}/collections/${TS_COLLECTION}/documents/search?${qs}`,
+          { headers: { 'X-TYPESENSE-API-KEY': TS_KEY }, signal: ctrl.signal },
+        );
+      } finally { clearTimeout(to); }
     } catch (_) { continue; }
     if (!res || !res.ok) continue;
     let j;
@@ -1497,8 +1669,23 @@ async function fetchKeySpecsByIds(ids) {
       if (!doc.id || !doc._raw) continue;
       try {
         const raw = JSON.parse(doc._raw);
-        if (raw && raw.keySpecs && typeof raw.keySpecs === 'object' && Object.keys(raw.keySpecs).length) {
-          byId.set(doc.id, raw.keySpecs);
+        // Spec'leri BURADA, `_raw` elimizdeyken dile göre çeviriyoruz; ham blob
+        // saklanmıyor. 6.374 ürün × ~25-70 KB `_raw` bellekte tutulsaydı tek
+        // başına ~300 MB ederdi ve bu makinede (4 GB, swap zaten dolu) build'i
+        // öldürürdü. Çıktı ürün başına birkaç yüz bayt.
+        // Spec YALNIZ iki dilde var: tr ve en. Almanca sayfa İngilizce spec
+        // gösteriyor (localizedKeySpecs içindeki specLang kuralı), yani `de`
+        // için ayrıca hesaplamak birebir aynı sonucu üretip işi %50 artırırdı.
+        // 6.374 ürün × 60-150 spec × regex ağırlıklı normalizasyon, 2 vCPU'lu
+        // gece koşusunda ölçülebilir bir yük.
+        const trKs = localizedKeySpecs(raw, 'tr');
+        const enKs = localizedKeySpecs(raw, 'en');
+        const perLang = {};
+        for (const lang of SEO_LOCALES) perLang[lang] = (lang === 'tr' ? trKs : enKs);
+        if (SEO_LOCALES.some((l) => perLang[l] && Object.keys(perLang[l]).length)) {
+          byId.set(doc.id, { ks: perLang, prices: (raw && raw.prices) || null });
+        } else if (raw && raw.prices) {
+          byId.set(doc.id, { ks: perLang, prices: raw.prices });
         }
         // ÜRÜN ADININ ÇEVİRİSİ — 2026-08-07.
         // `name` alanı Epey'den geldiği için TÜRKÇE ("… Bilgisayar Kasası") ve
@@ -1968,10 +2155,11 @@ async function main() {
   for (const picked of curatedByCat.values()) {
     for (const d of picked) if (d?.id) curatedIds.push(d.id);
   }
-  let keySpecsById = new Map();
+  let detailById = new Map();
   try {
-    keySpecsById = await fetchKeySpecsByIds(curatedIds);
-    console.log(`[seo] fetched key-specs for ${keySpecsById.size}/${curatedIds.length} curated products · ${nameById.size} translated names`);
+    detailById = await fetchKeySpecsByIds(curatedIds);
+    const fiyatli = [...detailById.values()].filter((x) => x && x.prices && Object.keys(x.prices).length).length;
+    console.log(`[seo] fetched key-specs for ${detailById.size}/${curatedIds.length} curated products · ${nameById.size} translated names · ${fiyatli} with prices`);
   } catch (err) {
     console.warn(`[seo] key-specs fetch failed (${err.message}) — product shells fall back to lean fields`);
   }
@@ -2069,10 +2257,14 @@ async function main() {
     picked.forEach((d, i) => {
       const path = productPath(d);
       if (!path) return;
-      const ks = keySpecsById.get(d.id) || null;
+      const detail = detailById.get(d.id) || null;
       const alternates = hreflangAlts(path);
       for (const lang of SEO_LOCALES) {
         const prefix = localePrefix(lang);
+        const ks = (detail && detail.ks && detail.ks[lang]) || null;
+        // Sayfanın KENDİ ülkesinin fiyatı — yoksa fiyat yok. Başka ülkenin
+        // fiyatını göstermek yasak (aynı kural app ve sitede de geçerli).
+        const price = priceForLang(detail && detail.prices, lang);
         const label = categoryLabel(cat, lang);
         const categoryUrl = `${SITE}${prefix}${categoryPathStr}`;
         const related = [];
@@ -2086,8 +2278,8 @@ async function main() {
           `${prefix}${path}`.replace(/^\//, ''),
           renderPage(
             template,
-            { ...productSeo(d, label, ks, lang), alternates, preloadImage: lcpVariant(d.imageUrl, 'full'), routeKey: 'product' },
-            localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang), lang),
+            { ...productSeo(d, label, ks, lang, price), alternates, preloadImage: lcpVariant(d.imageUrl, 'full'), routeKey: 'product' },
+            localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang, price), lang),
           ),
         );
       }
@@ -2132,12 +2324,14 @@ async function main() {
         const a = topK[i]; const b = topK[j];
         const path = comparePath(a, b);
         const alternates = hreflangAlts(path);
-        const ksA = keySpecsById.get(a.id) || null;
-        const ksB = keySpecsById.get(b.id) || null;
+        const detA = detailById.get(a.id) || null;
+        const detB = detailById.get(b.id) || null;
         // "X vs Y" en yüksek niyetli sorgu; ürün sayfalarıyla aynı gerekçeyle
         // üç dilde üretilir ve hreflang ile bağlanır.
         for (const lang of SEO_LOCALES) {
           const prefix = localePrefix(lang);
+          const ksA = (detA && detA.ks && detA.ks[lang]) || null;
+          const ksB = (detB && detB.ks && detB.ks[lang]) || null;
           const label = categoryLabel(cat, lang);
           const categoryUrl = `${SITE}${prefix}${categoryPathStr}`;
           writeHtml(

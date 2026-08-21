@@ -121,6 +121,99 @@ function main() {
   }
   assert(checked >= 20, `uniqueness guard sampled too few pages (${checked}) — prerender output looks incomplete`);
 
+  // ── KALITE KAPILARI (2026-08-21) ──────────────────────────────────────────
+  // Bu denetim bugune kadar YAPIYI kontrol ediyordu (kabuk var mi, noindex mi,
+  // klon mu) ama METNIN KENDISINI hic okumuyordu. Uc kusur tam da bu yuzden
+  // aylarca yayinda kaldi ve ancak elle sayilinca gorundu:
+  //   · basliklarin %80,2'si (TR) kelime ortasinda `…` ile bitiyordu
+  //   · EN aciklamalarin %64,2'sinde Turkce spec etiketi vardi
+  //   · sayfalarin %60'i baslikta fiyat vaat edip govdede fiyat gostermiyordu
+  // Uculu de artik derlemeyi KIRAR. Esikler "biraz bozuk kabul edilebilir"
+  // demek degil; veri bosluklarina (orn. cevirisi olmayan urun adi) karsi
+  // gurultu payi, ve asildiklarinda hata mesaji sayiyi soyler.
+  const qaSamples = [
+    ...sampleDirs('product', 120),
+    ...sampleDirs('tr/product', 120),
+    ...sampleDirs('de/product', 120),
+    ...sampleDirs('compare', 60),
+  ];
+  assert(qaSamples.length >= 100, `quality gate sampled too few pages (${qaSamples.length})`);
+
+  // Turkce'ye ozgu harf ya da sik gecen Turkce spec koku. Korunan teknik
+  // atomlar (Wi-Fi, USB, RAM, NFC...) her iki dilde de ayni yazildigi icin
+  // listede YOK — onlar sizinti degil.
+  const TR_IZ = /[çğıİöşüÇĞŞÜÖ]|(^|[^a-zA-Z])(Var|Yok|Adet|Boyutu|Sayısı|Gücü|Hızı|Süresi|Kontrolü|Özellik|Ağırlık|Çözünürlük|Kapasite)([^a-zA-Z]|$)/;
+  const EN_IZ = /(^|[^a-zA-Z])(Yes|No|Count|Charging|General|Specifications|Screen size|Battery capacity|Rear camera|Front camera|Operating system|Refresh rate|Storage|Weight|Number of|Resolution|Support)([^a-zA-Z]|$)/;
+  // Para birimi: fmtMoney ciktisi — ₺33.999 · 33.999 € · $33,999
+  const PARA = /[₺$€£]|\b(?:TRY|EUR|USD|GBP)\b/;
+
+  let kesikBaslik = 0;
+  let specSizinti = 0;
+  let specKontrol = 0;
+  let vaatAcik = 0;
+  const ornek = { baslik: '', sizinti: '', vaat: '' };
+
+  for (const dir of qaSamples) {
+    const html = read(`${dir}/index.html`);
+    const title = (html.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+    // Sayfanin dili yol onekinden: /tr/... = tr, /de/... = de, digeri en.
+    // (de sayfalari spec'leri INGILIZCE gosterir — sitenin kurali, bkz.
+    //  web/src/pages/ProductDetail.jsx:369 — bu yuzden de icin de TR izi aranir.)
+    const lang = dir.startsWith('tr/') ? 'tr' : 'en';
+
+    if (title.includes('…')) {
+      kesikBaslik += 1;
+      if (!ornek.baslik) ornek.baslik = `${dir} → ${title}`;
+    }
+
+    const body = rootBody(html);
+    // Ön-render spec satirlari: productBody/compareBody <li> ve <td> uretir.
+    // Urun ADI bilerek disarida: cevirisi olmayan ad ayri bir veri sorunu ve
+    // bu kapinin olctugu sey degil.
+    const urunSatirlari = [...body.matchAll(/<li><span style="color:#64748b">([\s\S]*?)<\/span>\s*<strong>([\s\S]*?)<\/strong><\/li>/g)]
+      .map((m) => `${m[1]} ${m[2]}`);
+    // Karsilastirma sayfasi ayni spec'leri <td> olarak basar (cmpRow). Bunlar
+    // kapiya dahil DEGILDI; 3.864 compare sayfasi olcumsuz kaliyordu.
+    const cmpSatirlari = [...body.matchAll(/<tr><td style="padding:7px 12px;color:#64748b[^"]*">([\s\S]*?)<\/td>([\s\S]*?)<\/tr>/g)]
+      .map((m) => `${m[1]} ${m[2].replace(/<[^>]+>/g, ' ')}`);
+    const specMetni = [...urunSatirlari, ...cmpSatirlari]
+      .join(' | ')
+      .replace(/<[^>]+>/g, ' ');
+    if (specMetni.trim()) {
+      specKontrol += 1;
+      const kirli = lang === 'tr' ? EN_IZ.test(specMetni) : TR_IZ.test(specMetni);
+      if (kirli) {
+        specSizinti += 1;
+        if (!ornek.sizinti) ornek.sizinti = `${dir} → ${specMetni.slice(0, 120)}`;
+      }
+    }
+
+    // Baslikta fiyat vaadi varsa govdede gercek bir fiyat BULUNMALI.
+    if (/\b(Fiyat|Fiyatı|Price|Preis)\b/.test(title) && !PARA.test(body)) {
+      vaatAcik += 1;
+      if (!ornek.vaat) ornek.vaat = `${dir} → ${title}`;
+    }
+  }
+
+  assert(
+    kesikBaslik === 0,
+    `${kesikBaslik}/${qaSamples.length} <title> kelime ortasinda kesilmis (…). fitTitle() parca dusurmeli, kirpmamali. Ornek: ${ornek.baslik}`,
+  );
+  assert(
+    vaatAcik === 0,
+    `${vaatAcik}/${qaSamples.length} sayfa baslikta fiyat vaat edip govdede fiyat gostermiyor. Ornek: ${ornek.vaat}`,
+  );
+  const sizintiOran = specKontrol ? (specSizinti / specKontrol) * 100 : 0;
+  assert(
+    sizintiOran <= 5,
+    `spec satirlarinin %${sizintiOran.toFixed(1)}'i yanlis dilde (${specSizinti}/${specKontrol}). `
+    + `Ceviri admin/js/spec_i18n.js'ten gelmeli. Ornek: ${ornek.sizinti}`,
+  );
+  console.log(
+    `[seo-audit] kalite: ${qaSamples.length} sayfa · kesik baslik 0 · fiyat vaadi acigi 0 · `
+    + `spec dil sizintisi ${specSizinti}/${specKontrol} (%${sizintiOran.toFixed(1)})`,
+  );
+
   const sitemapIndex = read('sitemap.xml');
   const files = sitemapFiles(sitemapIndex);
   let total = 0;
