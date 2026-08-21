@@ -111,7 +111,12 @@ function _translateTurkishLimitPhrases(text, targetLang = 'en') {
     .replace(/(\d+(?:[.,]\d+)?)\s*[Kk]at[ae]\s+(?:[Kk]adar|[Uu]p\s+to)/g, `${words.max} $1x`)
     .replace(/(\d+(?:[.,]\d+)?)\s*(?:[Ss]aat|[Hh]ours?)e?\s+(?:[Kk]adar|[Uu]p\s+to)/g, `${words.max} $1 hours`)
     .replace(/(\d+(?:[.,]\d+)?)\s*(?:[Dd]akika|[Mm]inutes?)y?[ae]?\s+(?:[Kk]adar|[Uu]p\s+to)/g, `${words.max} $1 minutes`)
-    .replace(/(\d+(?:[.,]\d+)?)\s*([A-Za-z]{1,5})['’]?[a-zçğıöşü]{0,3}\s+(?:[Kk]adar|[Uu]p\s+to)/g, `${words.max} $1 $2`)
+    // DIKKAT: bu genel kural yalnizca TURKCE "kadar" ile eslesir. "up to"
+    // varyanti BILEREK yok — zaten Ingilizce olan metinde ("M.2 2242 SSD up to
+    // 1TB") sayi+kisaltma+`up to` desenine carpip SIRAYI BOZUYORDU
+    // ("M.2 up to 2242 SSD 1TB"). Ustteki uc hedefli kural "up to"yu da kabul
+    // eder, cunku orada kalip Turkce olcu birimiyle sabit (Kat/Saat/Dakika).
+    .replace(/(\d+(?:[.,]\d+)?)\s*([A-Za-z]{1,5})['’]?[a-zçğıöşü]{0,3}\s+[Kk]adar/g, `${words.max} $1 $2`)
     .replace(/\bAzami\s+([0-9][^),;\n]*)/gi, `${words.max} $1`)
     .replace(/\bMaksimum\s+([0-9][^),;\n]*)/gi, `${words.maximum} $1`)
     .replace(/\bAsgari\s+([0-9][^),;\n]*)/gi, `${words.min} $1`)
@@ -1113,6 +1118,259 @@ const _TR_WORD_DICT = {
   'kalem': 'pen', 'kalemi': 'pen', 'barkod': 'barcode', 'konsol': 'console',
   'uydu': 'satellite', 'gece': 'night', 'etme': '',
   'yakalama': 'capture', 'anten': 'antenna', 'antenli': 'antenna',
+  // ── "İ" ile baslayan kelimeler. Bunlar Gemini turuna BOZUK formda gitmisti
+  //    (denetim tokenizer'i U+0307'yi harf saymayip "islev"i "slev" olarak
+  //    kesiyordu), o yuzden model onlara "anlamsiz parca" dedi. Dogru
+  //    formlariyla elle eklendi.
+  'islev': 'function', 'islevli': 'function', 'islevler': 'functions',
+  'islevinde': 'function', 'islevleri': 'functions', 'istege': 'optional',
+  'icermez': 'free', 'igne': 'pin', 'ignesi': 'pin', 'ilani': 'flyer',
+  'isareti': 'gesture', 'isaretleme': 'pointer', 'isaretcili': 'marker',
+  'isitme': 'hearing', 'iceriginde': 'contents', 'icerige': 'content',
+  'icerigi': 'contents', 'ici': 'inner', 'halojen': 'halogen',
+  // ── IKINCI ORNEKLEM: kategori basina RASTGELE 25 urun (1.091 urun,
+  //    103.596 atom). Ilk denetim hep amiral gemisi urunleri gordugu icin
+  //    uzun kuyruktaki bu terimler hic gorunmemisti.
+  'sayfa': 'page', 'polikarbonat': 'polycarbonate', 'derece': 'degree',
+  'fonksiyonlu': 'function', 'yazilimsal': 'software', 'direksiyon': 'steering wheel',
+  'kurtarma': 'rescue', 'stili': 'style', 'stil': 'style',
+  'erkek': 'male', 'disi': 'female',
+  'sunum': 'presentation', 'sutun': 'column', 'imlec': 'cursor', 'hassasiyet': 'sensitivity', 'hassssiyet': 'sensitivity',
+  'buzdolabi': 'refrigerator', 'kasa': 'case', 'kasasi': 'case',
+  'yikama': 'washing', 'derin': 'deep', 'yuzeysel': 'surface',
+  // ── 2026-08-21 · TAM KAPSAM DENETIMI (scripts/_spec_en_tam_denetim.mjs)
+  //    Ilk yama 540 urunluk bir ORNEKLEM uzerinde olculmustu; PB paylasilan
+  //    sozlugundeki 70.023 terimin TAMAMI gecirilince 888 kelime daha acikta
+  //    kaldi. Karsiliklari Gemini ile SPEC BAGLAMINDA uretildi
+  //    (scripts/_spec_sozluk_uret.mjs), cikti oldugu gibi kabul EDILMEDI:
+  //    marka/ozel isim ayrimi ve 21 yanlis siniflandirma elle duzeltildi
+  //    (_spec_sozluk_yaz.mjs · DUZELT + MARKA_DEGIL).
+  //    Bos deger ('') KASITLI: anlamsiz parca ya da Turkce ek, dusurulur.
+  //    Marka adlari ASCII karsiligina eslenir ("arcelik" -> "Arcelik") —
+  //    silinmesinler ama Turkce harf de tasimasinlar.
+  'monitor': 'monitor', 'slemci': '', 'arcelik': 'Arcelik', 'sensor': 'sensor',
+  'adaptoru': 'adapter', 'sayfasi': 'page', 'korper': 'body', 'aynali': 'mirrored',
+  'alicili': 'receiver', 'hoparloru': 'speaker', 'adaptor': 'adapter', 'konig': 'Konig',
+  'cocuk': 'child', 'cin': 'China', 'aktarim': 'transfer', 'kagidi': 'paper',
+  'ozelli': 'feature', 'atestech': 'Atestech', 'temali': 'themed', 'griffin': 'Griffin',
+  'slemcisi': '', 'egimli': 'tilted', 'dakikalik': 'minute', 'cuzdan': 'wallet',
+  'raydin': 'Raydin', 'sletim': '', 'saglamlik': 'durability', 'yukseklikten': 'height',
+  'super': 'super', 'gelistirme': 'enhancement', 'slevi': '', 'simart': 'Simart',
+  'slemciler': '', 'egim': 'tilt', 'puskurtme': 'spray', 'kilif': 'case',
+  'endustriyel': 'industrial', 'ruckseite': 'rear', 'xgimi': 'Xgimi', 'kumas': 'fabric',
+  'miknatisli': 'magnetic', 'acilma': 'startup', 'slem': '', 'sleme': '',
+  'programlanabilir': 'programmable', 'ozellestirilebilir': 'customizable', 'vurus': 'stroke', 'donusturucu': 'converter',
+  'amacli': 'purpose', 'gorunumlu': 'look', 'yilestirme': '', 'aski': 'mount',
+  'kumandali': 'remote', 'kamerali': 'camera', 'planlama': 'planning', 'edilebilir': 'able',
+  'cek': 'core', 'sarki': 'song', 'baslik': 'head', 'cinde': 'in China',
+  'corsair': 'Corsair', 'aparatli': 'attached', 'sarjli': 'rechargeable', 'slemsel': 'processing',
+  'araliginda': 'range', 'bagli': 'optional', 'kapatilabilir': 'switchable', 'bolgeli': 'zoned',
+  'donusturme': 'conversion', 'yaklasik': 'approx', 'uzerine': 'on', 'fenerbahce': 'Fenerbahce',
+  'straight': 'Straight', 'venus': 'Venus', 'cinko': 'zinc', 'karsi': 'against',
+  'ger': '', 'yoneticisi': 'manager', 'letisim': 'communication', 'tazeleme': 'refresh',
+  'bankasi': 'bank', 'uzeri': 'above', 'kopyali': 'copy', 'arasi': 'between',
+  'odasi': 'room', 'artiboyut': 'Artiboyut', 'projektor': 'projector', 'paylasimi': 'sharing',
+  'tabanli': 'based', 'standsiz': 'without stand', 'titresimli': 'vibrating', 'cantasi': 'bag',
+  'sifreli': 'encrypted', 'yukseltici': 'enhancer', 'grundig': 'Grundig', 'mlec': '',
+  'kapaliyken': 'off', 'sekilli': 'shaped', 'grun': 'green', 'acilir': 'openable',
+  'donusturerek': 'converting', 'cifte': 'double', 'degistirme': 'replacement', 'ucretsiz': 'free',
+  'alarmi': 'alarm', 'seridi': 'strip', 'ekranim': 'screen', 'bosluk': 'space',
+  'yakin': 'close', 'dikdortgen': 'rectangular', 'secimi': 'selection', 'inc': 'inch',
+  'gorusme': 'call', 'ucan': 'flying', 'calma': 'playback', 'gorunum': 'view',
+  'kivrimli': 'curved', 'omurlu': 'life', 'olusturma': 'creation', 'cikar': 'detachable',
+  'metis': 'Metis', 'ogrenme': 'learning', 'direnclilik': 'resistance', 'turk': 'Turkish',
+  'modunda': 'mode', 'uzunluk': 'length', 'egzersiz': 'exercise', 'borusu': 'pipe',
+  'gunde': 'day', 'gune': 'day', 'acilabilir': 'openable', 'mentese': 'hinge',
+  'bazi': 'some', 'kisilik': 'person', 'yuklu': 'loaded', 'karsiya': 'upload',
+  'kanalli': 'channel', 'slev': '', 'hatli': 'line', 'yazdirma': 'printing',
+  'utu': 'iron', 'yukseltilebilir': 'upgradable', 'akis': 'flow', 'olcegi': 'scale',
+  'tuslu': 'key', 'yukselik': 'height', 'kilifi': 'case', 'calabilme': 'playback',
+  'hoparlorler': 'speakers', 'duyarli': 'sensitive', 'baglantisiz': 'contactless', 'odeme': 'payment',
+  'satisi': 'sale', 'gulumseme': 'smile', 'tarzi': 'style', 'kil': 'bristle',
+  'cizilmez': 'scratch-resistant', 'dortlu': 'quad', 'dogal': 'natural', 'baslat': 'start',
+  'paylasimli': 'shared', 'obturator': 'shutter', 'olceklenebilir': 'scalable', 'sight': 'Sight',
+  'genisletilmis': 'extended', 'cekilebilir': 'retractable', 'altyazi': 'subtitle', 'gigabyte': 'Gigabyte',
+  'munich': 'Munich', 'taramasi': 'scan', 'sifre': 'password', 'sifirlama': 'reset',
+  'uzerinde': 'on', 'vmeolcer': 'accelerometer', 'yon': 'direction', 'dogrudan': 'direct',
+  'circle': 'Circle', 'qidi': 'Qidi', 'titan': 'Titan', 'formatlari': 'format',
+  'sihirbazi': 'wizard', 'sicramalara': 'splash', 'surus': 'drive', 'surgulu': 'slide',
+  'cozunurlu': 'resolution', 'tum': 'all', 'woller': 'Woller', 'xigmatek': 'Xigmatek',
+  'pazari': 'market', 'hohenmesser': 'altimeter', 'odaklanma': 'focus', 'bileklik': 'band',
+  'hesaplama': 'calculation', 'kopyalama': 'copy', 'efektleri': 'effect', 'dolanma': 'tangle',
+  'gerekebilir': 'required', 'denetimi': 'control', 'kilitleme': 'lock', 'pilsiz': 'battery-free',
+  'stege': '', 'tanimli': 'defined', 'cerik': 'content', 'jakli': 'jack',
+  'vidali': 'screw', 'nisanci': 'sniper', 'gelistirici': 'enhancer', 'sasi': 'chassis',
+  'utulu': 'iron-on', 'aktarimlar': 'transfer', 'duzenleme': 'regulation', 'slemcileri': '',
+  'cekmeli': 'pull', 'sirt': 'back', 'cerigi': 'contents', 'amplifikator': 'amplifier',
+  'tusunda': 'button', 'tusa': 'key', 'antivirus': 'antivirus', 'armatur': 'armature',
+  'arceli': 'Arcelik', 'ariza': 'fault', 'teshisi': 'diagnosis', 'yardim': 'help',
+  'avuc': 'palm', 'nis': 'landing', 'takilabilme': 'attachable', 'tabani': 'base',
+  'balik': 'fish', 'saticidan': 'seller', 'coklayici': 'hub', 'sec': 'select',
+  'disi': 'off', 'menu': 'menu', 'tarafindan': 'by', 'gosterebilir': 'vary',
+  'bukulebilir': 'flexible', 'yuzeylerde': 'surface', 'caydirici': 'deterrent', 'agaci': 'wood',
+  'tikla': 'click', 'tasarimli': 'designed', 'cirt': 'velcro', 'capraz': 'cross',
+  'makarali': 'reel', 'cevre': 'environment', 'isik': 'light', 'slevli': 'function',
+  'cizgi': 'line', 'kulakligi': 'headphone', 'cikarma': 'removal', 'algisi': 'sensing',
+  'deklansor': 'shutter', 'secime': 'option', 'aparati': 'attachment', 'dvip': 'Dvip',
+  'surtunmeli': 'friction', 'ekransiz': 'screenless', 'yazisi': 'handwriting', 'vizor': 'viewfinder',
+  'acilim': 'opening', 'etkilesimli': 'interactive', 'fansiz': 'fanless', 'algilamali': 'sensing',
+  'bitis': 'end', 'sensoru': 'sensor', 'gecici': 'temporary', 'kalipli': 'molded',
+  'dogumu': 'rise', 'gunbatimi': 'sunset', 'asamalari': 'stage', 'yillik': 'annual',
+  'cermez': 'free', 'ozellestirilmis': 'customized', 'sensorlu': 'sensor', 'hiper': 'Hiper',
+  'degistirebilen': 'changing', 'cozucu': 'remover', 'aynasi': 'mirror', 'uzantilari': 'extension',
+  'artisi': 'increase', 'kisitli': 'limited', 'ceride': 'inside', 'jenerator': 'generator',
+  'cizim': 'drawing', 'acacagi': 'opener', 'kapakli': 'covered', 'kapli': 'coated',
+  'yassi': 'flat', 'koseli': 'cornered', 'puskurtmeye': 'spray', 'kose': 'corner',
+  'klif': 'case', 'paylasim': 'sharing', 'magicvoice': 'Magicvoice', 'sarji': 'charger',
+  'cikisli': 'output', 'muhlen': 'Muhlen', 'isiklari': 'lights', 'one': 'featured',
+  'pirinc': 'brass', 'ozgun': 'original', 'kadrani': 'dial', 'guclendirici': 'booster',
+  'bastirma': 'pressing', 'cekimi': 'shooting', 'satranc': 'chess', 'konektoru': 'connector',
+  'vida': 'screw', 'siluet': 'silhouette', 'kullanilamaz': 'unavailable', 'seklindedir': 'form',
+  'infinity': 'Infinity', 'tusta': 'button', 'letisimi': 'communication', 'dokulmesine': 'spill',
+  'studyo': 'studio', 'sicramasina': 'splash', 'sumela': 'Sumela', 'surucusuz': 'driverless',
+  'genius': 'Genius', 'sarjlama': 'charging', 'onayi': 'approval', 'sartlarda': 'conditions',
+  'mesajlasma': 'messaging', 'kemerali': 'camera', 'yabanci': 'foreign', 'guncellestirme': 'update',
+  'yildiz': 'star', 'akrilik': 'acrylic', 'sertlik': 'hardness', 'bloklama': 'blocking',
+  'filtreleme': 'filtering', 'doluluk': 'fill', 'uyarlanma': 'adaptation', 'olarak': 'as',
+  'vericisi': 'transmitter', 'gizlenebilir': 'retractable', 'imi': '', 'sonsuz': 'infinite',
+  'paspaslama': 'mopping', 'kesintisiz': 'uninterruptible', 'raporlama': 'reporting', 'dizilimi': 'layout',
+  'egzersizleri': 'exercises', 'renksiz': 'colorless', 'bellekleme': 'caching', 'gereksinimi': 'requirement',
+  'hoparlorlu': 'speaker', 'uzaklastirma': 'zoom', 'yuvasinda': 'slot', 'gozetleme': 'surveillance',
+  'gosterme': 'display', 'cevirici': 'converter', 'recine': 'resin', 'duyarliligi': 'sensitivity',
+  'yayinlama': 'streaming', 'navigator': 'navigator', 'bolgelerde': 'region', 'guncelle': 'update',
+  'kullaninm': 'usage', 'parca': 'piece', 'gne': 'sun', 'sutun': 'column',
+  'ciftten': 'twin', 'adacayi': 'sage', 'acilip': 'opening', 'afis': 'poster',
+  'bazli': 'based', 'egimi': 'tilt', 'varlik': 'asset', 'duzenleyici': 'regulator',
+  'adlandirma': 'naming', 'alarmli': 'alarm', 'atimli': 'firing', 'altigen': 'hexagonal',
+  'alci': 'plaster', 'aninda': 'instant', 'yazicisina': 'printer', 'sartlarina': 'condition',
+  'lisansli': 'licensed', 'aygiti': 'device', 'yaklasani': 'approaching', 'arapca': 'Arabic',
+  'kapaga': 'cover', 'arkadas': 'friend', 'supur': 'vacuum', 'artillery': 'Artillery',
+  'astrofotografi': 'astrophotography', 'atlayis': 'jump', 'atik': 'waste', 'sutu': 'chute',
+  'tikanikligi': 'blockage', 'firsat': 'opportunity', 'ayakkabiya': 'shoe', 'donebilir': 'rotatable',
+  'seffafligi': 'transparency', 'menteseli': 'hinged', 'zamani': 'time', 'aydinger': 'tracing',
+  'aydinlatmasiz': 'unlit', 'basilabilen': 'pressable', 'ayrilmis': 'dedicated', 'asinma': 'wear',
+  'asinmaz': 'durable', 'alu': 'aluminum', 'balikgozu': 'fisheye', 'balikcilik': 'fishing',
+  'sirasinda': 'during', 'baglanan': 'connected', 'noktasina': 'point', 'behringer': 'Behringer',
+  'belirtilmemis': 'unspecified', 'secme': 'selection', 'biwin': 'Biwin', 'donusturuculu': 'converter',
+  'biyoseluloz': 'biocellulose', 'lani': 'flyer', 'yasaklandi': 'banned', 'temalari': 'theme',
+  'bulaniklik': 'blur', 'ulkeye': 'country', 'farklilik': 'variation', 'bolgesel': 'regional',
+  'bolunmus': 'split', 'kabi': 'container', 'buyutec': 'magnifier', 'gobegi': 'hub',
+  'kirici': 'breaker', 'slevleri': 'function', 'hoporler': 'speaker', 'ayarlanir': 'adjustable',
+  'coolwind': 'Coolwind', 'cografi': 'geographical', 'cevir': 'rotate', 'crucial': 'Crucial',
+  'calisirken': 'working', 'birak': 'release', 'cekecek': 'squeegee', 'cekmeceli': 'drawer',
+  'centiksiz': 'notch-less', 'cerceveli': 'framed', 'bantli': 'band', 'alanli': 'domain',
+  'operator': 'operator', 'yayli': 'spring', 'cicek': 'flower', 'saksisi': 'pot',
+  'cikartmalarla': 'sticker', 'ozellestirilebilme': 'customizable', 'ekolayir': 'equalizer', 'jeneratoru': 'generator',
+  'dalis': 'diving', 'deli': 'Deli', 'tupu': 'tube', 'baglantili': 'connected',
+  'aygitlar': 'devices', 'bilgisayarli': 'computer', 'cevirmeli': 'rotary', 'fuzyonu': 'fusion',
+  'cubuk': 'rod', 'bicimli': 'shaped', 'difuzor': 'diffuser', 'gami': 'gamut',
+  'sikistirilmis': 'compressed', 'uygunlugu': 'compliance', 'acilardan': 'angles', 'bicaksiz': 'bladeless',
+  'adlari': 'names', 'gonder': 'send', 'yazdir': 'print', 'karsiti': 'anti',
+  'guclendirme': 'enhancement', 'donanimsal': 'hardware', 'yonetilebilir': 'managed', 'odaksizlik': 'defocus',
+  'donemsel': 'periodic', 'planlari': 'plans', 'donen': 'rotating', 'dongulu': 'cyclic',
+  'durus': 'posture', 'duzenli': 'organized', 'duzlemsel': 'planar', 'edifier': 'Edifier',
+  'hatirlatici': 'reminder', 'kartini': 'card', 'uygulanmis': 'applied', 'animasyonlari': 'animations',
+  'sareti': 'gesture', 'kullanilabilen': 'usable', 'yardimi': 'help', 'dokunusu': 'touch',
+  'orumcek': 'spider', 'enstruman': 'instrument', 'tuy': 'fur', 'midion': 'Midion',
+  'egilebilir': 'tiltable', 'egitim': 'training', 'sablonlari': 'template', 'egri': 'curved',
+  'egrilik': 'curvature', 'tercuman': 'interpreter', 'hatirlatma': 'reminder', 'olcme': 'measurement',
+  'standardinda': 'standard', 'esik': 'threshold', 'ayagi': 'stand', 'albumu': 'album',
+  'epsilon': 'Epsilon', 'fume': 'tinted', 'firlatarak': 'launch', 'firtina': 'storm',
+  'gamdias': 'Gamdias', 'goruslu': 'vision', 'arsiv': 'archive', 'donusumden': 'recycling',
+  'uretilmis': 'made', 'kisik': 'dim', 'gomulu': 'embedded', 'gorme': 'vision',
+  'gorsel': 'visual', 'fuzyon': 'fusion', 'yazismasi': 'messaging', 'gozluksuz': 'glasses-free',
+  'gul': 'rose', 'isigindan': 'light', 'gundogumu': 'sunrise', 'guneslik': 'sunshade',
+  'guzellik': 'beauty', 'sifirla': 'reset', 'halilara': 'carpet', 'fica': 'brush',
+  'temasli': 'contact', 'hassasligi': 'sensitivity', 'havalimani': 'airport', 'hazfiza': 'memory',
+  'sizdirmazlik': 'sealing', 'henuz': 'yet', 'ulkemizde': 'in Turkey', 'hesabim': 'account',
+  'cuzdanlari': 'wallet', 'haritalandirma': 'mapping', 'elitedesk': 'Elitedesk', 'dolaniklik': 'entanglement',
+  'dayanimini': 'resistance', 'lorby': 'Lorby', 'livboj': 'Livboj', 'gaming': 'Gaming',
+  'degisme': 'switching', 'hirsizlik': 'theft', 'uyandirma': 'wake-up', 'isinma': 'warm-up',
+  'turbin': 'turbine', 'lac': 'medicine', 'infini': 'Infini', 'sensorune': 'sensor',
+  'isiksiz': 'lightless', 'saretcili': 'pointer', 'sitme': 'hearing', 'dugumu': 'node',
+  'slemi': 'operation', 'sleti': 'operating', 'slevselli': 'functionality', 'dizayni': 'design',
+  'puskurtucu': 'sprayer', 'kabartmali': 'embossed', 'bagi': 'tie', 'dolasmayan': 'tangle-free',
+  'sekeri': 'sugar', 'kontrollu': 'controlled', 'notr': 'neutral', 'kardiyovaskuler': 'cardiovascular',
+  'yas': 'age', 'karsilama': 'welcome', 'kaldigi': 'resume', 'kaymayi': 'slip',
+  'tirtikli': 'ridged', 'kisim': 'part', 'degistirebilme': 'replacement', 'office': 'Office',
+  'kingboss': 'Kingboss', 'kingston': 'Kingston', 'olusturabilme': 'creation', 'yapiskanli': 'adhesive',
+  'cikarilabilen': 'removable', 'tarasim': 'design', 'bilesen': 'component', 'joystigi': 'joystick',
+  'korumasiz': 'unprotected', 'kancasi': 'hook', 'seklini': 'shape', 'kulakligimi': 'headphones',
+  'kullanilabilir': 'available', 'bos': 'free', 'pariltisi': 'glitter', 'kumandami': 'remote',
+  'kursun': 'lead', 'ceriginde': 'content', 'kuse': 'coated', 'kursu': 'podium',
+  'kopuk': 'foam', 'kor': 'blind', 'kupe': 'earring', 'sorfu': 'surfing',
+  'saretleme': 'marking', 'olcucu': 'meter', 'katmani': 'layer', 'isiklandirmali': 'illuminated',
+  'konnektorlu': 'connector', 'haporlor': 'speaker', 'geridongu': 'loopback', 'uygulamasini': 'application',
+  'boslugu': 'gap', 'gerginligi': 'tension', 'cagirma': 'recall', 'menekse': 'violet',
+  'yarim': 'half', 'meu': 'MEU', 'mese': 'oak', 'mesgul': 'busy',
+  'yuvasindan': 'slot', 'ucte': 'third', 'yurutme': 'execution', 'aksesuari': 'accessory',
+  'slevinde': 'function', 'cikmaz': 'avoidance', 'bolmesi': 'compartment', 'msi': 'MSI',
+  'cubi': 'Cubi', 'miknatis': 'magnet', 'miknatisa': 'magnetic', 'mio': 'Mio',
+  'miracle': 'Miracle', 'puskurtmeli': 'inkjet', 'kupu': 'cube', 'dokunusla': 'touch',
+  'odemelerini': 'payments', 'vuruslu': 'matrix', 'gozenekli': 'porous', 'tensor': 'tensor',
+  'notrino': 'neutrino', 'atesleme': 'ignition', 'parfumu': 'perfume', 'sinirlayici': 'limiter',
+  'calisir': 'works', 'kagid': 'paper', 'okculuk': 'archery', 'rolesi': 'relay',
+  'ayarlarini': 'settings', 'tuslarinin': 'keys', 'parsomen': 'parchment', 'havalandirma': 'ventilation',
+  'yangina': 'fire', 'dosyalarinda': 'files', 'philips': 'Philips', 'odul': 'reward',
+  'kodlamasi': 'encoding', 'onceden': 'pre', 'basili': 'printed', 'onden': 'front',
+  'genisleyen': 'expanding', 'cikan': 'featured', 'cikanlar': 'highlight', 'uretme': 'generation',
+  'cogaltma': 'replication', 'poliuretan': 'polyurethane', 'pioneer': 'Pioneer', 'savasan': 'fighting',
+  'programci': 'programmer', 'yazilimci': 'developer', 'cozme': 'decoding', 'puruzlu': 'rough',
+  'infinite': 'Infinite', 'radyatore': 'radiator', 'donusumu': 'conversion', 'imposing': 'Imposing',
+  'ultimate': 'Ultimate', 'raysiz': 'rail-less', 'ozellestirme': 'customization', 'reflektorlu': 'reflective',
+  'dogrulugu': 'accuracy', 'korlugu': 'blindness', 'renklendirilmis': 'colored', 'sik': 'frequent',
+  'kullanilan': 'used', 'yapilmadi': 'unannounced', 'kagut': 'paper', 'rusca': 'Russian',
+  'roportaj': 'interview', 'ricoh': 'Ricoh', 'uclari': 'tips', 'cimbiz': 'tweezers',
+  'uyarlamasi': 'adaptation', 'dedektoru': 'detector', 'salinimli': 'oscillating', 'hucresi': 'cell',
+  'saglayan': 'compatible', 'hissiyati': 'sensation', 'sarsinti': 'vibration', 'satici': 'seller',
+  'degisiklik': 'variation', 'savas': 'battle', 'yonlendirici': 'router', 'sertligi': 'hardness',
+  'kisisellestirme': 'personalization', 'aciklamalar': 'descriptions', 'yonlendirme': 'guidance', 'secimsel': 'selective',
+  'partikul': 'particle', 'gnesi': 'sun', 'simule': 'simulated', 'fairy': 'Fairy',
+  'solusyon': 'solution', 'numarayi': 'number', 'ayrik': 'discrete', 'disli': 'geared',
+  'sogukluk': 'coldness', 'sorf': 'surf', 'sozluk': 'dictionary', 'sicakliga': 'temperature',
+  'yumusatma': 'smoothing', 'sinirsiz': 'unlimited', 'sips': 'Sips', 'daglilimli': 'distributed',
+  'uzeinde': '', 'damlaciklarina': 'droplets', 'damlalarina': 'drops', 'tesisati': 'plumbing',
+  'sualti': 'underwater', 'yuzer': 'floating', 'anakarti': 'motherboard', 'isini': 'beam',
+  'ucak': 'airplane', 'sublimasyon': 'sublimation', 'sunger': 'sponge', 'suspansiyonlu': 'suspension',
+  'cikart': 'removable', 'tanitim': 'promotion', 'bakimsiz': 'maintenance', 'sarjda': 'charge',
+  'aylik': 'monthly', 'tutamagi': 'handle', 'kullanimlik': 'disposable', 'temassiz': 'contactless',
+  'tekrari': 'repeat', 'seffaflik': 'transparency', 'sise': 'bottle', 'rohre': 'Rohre',
+  'sertiifikasi': 'certification', 'titresimsiz': 'vibration', 'tisort': 't-shirt', 'yazilan': 'written',
+  'sikistiran': 'compacting', 'torbali': 'bagged', 'tuncmatik': 'Tuncmatik', 'vinn': 'Vinn',
+  'takimli': 'keypad', 'tumu': 'all', 'turkiye': 'Turkey', 'surumunde': 'version',
+  'turksat': 'Turksat', 'yonetmeligi': 'regulation', 'tiklanabilir': 'clickable', 'arizasi': 'failure',
+  'uzatmasi': 'extension', 'uyarlamali': 'adaptive', 'haberlesmesi': 'communication', 'uzatilabilir': 'extendable',
+  'paspasi': 'mop', 'uctan': 'edge', 'vahsi': 'wild', 'wireless': 'wireless',
+  'farki': 'difference', 'venatus': 'Venatus', 'satin': 'purchase', 'alinan': 'purchased',
+  'cerige': 'content', 'sureci': 'process', 'katli': 'layer', 'nozullu': 'nozzle',
+  'vesikalik': 'passport', 'eglence': 'entertainment', 'kaybi': 'loss', 'adaptorle': 'adapter',
+  'boyunbantli': 'neckband', 'kulakustu': 'over-ear', 'asamasi': 'phase', 'viewsonic': 'Viewsonic',
+  'tuslarini': 'key', 'korumali': 'protected', 'menusune': 'menu', 'isinlarina': 'ray',
+  'sogutucusuz': 'without cooler', 'slevler': '', 'white': 'white', 'paylas': 'share',
+  'yalniz': 'only', 'yangin': 'fire', 'gecme': 'crossing', 'kati': 'solid',
+  'cevirme': 'flip', 'yayincilik': 'publishing', 'yaziya': 'text', 'yaslilar': 'elderly',
+  'yapistirilabilir': 'repositionable', 'lambasi': 'lamp', 'dokunuslu': 'touch', 'yonetmen': 'director',
+  'yuklenebilir': 'downloadable', 'performansli': 'performance', 'yun': 'wool', 'parlatici': 'polisher',
+  'yuzuk': 'ring', 'yilan': 'snake', 'suit': 'Suit', 'ortakligi': 'partnership',
+  'zamanlanmis': 'timed', 'kosul': 'condition', 'ziplayabilme': 'jump', 'sailor': 'Sailor',
+  'moglich': 'possible', 'horger': '', 'schlafuberwachung': 'sleep monitoring', 'schwimmzuge': 'strokes',
+  'zyklusuberwachung': 'cycle monitoring', 'modelleme': 'modeling', 'sisi': 'mist', 'kilitsiz': 'unlocked',
+  'kapanabilir': 'closable', 'maimi': 'Maimi', 'elik': '', 'ndirilebilir': '',
+  'binicilik': 'riding', 'gecikmesi': 'delay', 'damlama': 'drip', 'tepsisi': 'tray',
+  'papaslama': 'mopping', 'denizcilik': 'maritime', 'dinlenme': 'rest', 'teknlolojisi': 'technology',
+  'dronumu': 'drone', 'denetimleri': 'controls', 'hortumu': 'hose', 'gizleme': 'hiding',
+  'kurusu': 'dried', 'yararlanma': 'utilization', 'ettirilebilir': 'movable', 'hareketsiz': 'static',
+  'birimleri': 'units', 'hidrolik': 'hydraulic', 'horlama': 'snoring', 'besleyicisi': 'feeder',
+  'kirlilik': 'pollution', 'keskinlik': 'sharpness', 'ayarlama': 'adjustment', 'tutucusu': 'holder',
+  'etiketleri': 'tags', 'oyalanma': 'distraction', 'parlama': 'glare', 'ucundan': 'tip',
+  'patlama': 'burst', 'uygulanabilir': 'applicable', 'pinsiz': 'pinless', 'planlanabilir': 'schedulable',
+  'kesintisi': 'outage', 'kodlama': 'encoding', 'direnciyle': 'resistance', 'saklama': 'storage',
+  'dizisi': 'array', 'sonsuzluk': 'infinity', 'kalitesinde': 'quality', 'lensleri': 'lenses',
+  'tekrarlanabilir': 'repeatable', 'telefonsuz': 'phone-free', 'temizlenebilir': 'cleanable', 'rutinleri': 'routines',
+  'terleme': 'sweat', 'kutumu': 'box', 'toplanabilir': 'retractable', 'transistor': 'transistor',
+  'yolbilgisi': 'navigation', 'otonomisi': 'autonomy', 'konumlama': 'positioning', 'versiyonunda': 'version',
+  'deneyimi': 'experience', 'gerektirebilir': 'require', 'yelkencilik': 'sailing',
+
   'toz': 'dust', 'tozu': 'dust', 'mesaj': 'message', 'anahtar': 'switch',
   'olmayan': 'non', 'seri': 'burst', 'suya': 'water', 'suda': 'water',
   // Kaynakta YAZIM HATASI: Epey kayitlarinda "Teknolojsi" (eksik i) geciyor.
@@ -1187,7 +1445,13 @@ function _applyCaseLike(sourceWord, replacement) {
 
 function _sourceAwareTurkishWordMap(sourceText) {
   const map = new Map();
-  const tokens = String(sourceText || '').match(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g) || [];
+  // ̇ (combining dot above) SINIFA DAHIL: Turkce I'nin kucuk hali tek kod
+  // noktasi degil, `i` + U+0307. Nokta harf sayilmazsa "i̇şlemci" iki token'a
+  // bolunuyor ("i" + "şlemci"), ikincisi sozlukte bulunamayip SILINIYOR ve
+  // kelime yok oluyor. Buyuk harfli "İşlemci" tek kod noktasi oldugu icin
+  // sorun yalnizca kucuk harfe cevrilmis metinde (sozluk anahtarlari,
+  // onbellek degerleri) ortaya cikiyordu.
+  const tokens = String(sourceText || '').match(/[A-Za-zÇĞİÖŞÜçğıöşü̇]+/g) || [];
   const protectedAscii = new Set([
     'a','an','and','as','at','by','for','from','in','into','not','of','on','or','the','to','with',
     'always','display','touch','sampling','rate','sensor','camera','video','audio','hdr',
@@ -1206,17 +1470,21 @@ function _sourceAwareTurkishWordMap(sourceText) {
     if (protectedAscii.has(lower) || protectedAscii.has(folded)) continue;
     const exact = _lookupTurkishWord(lower, folded);
     const foldedHit = exact;
+    // Sozlukte yoksa: MARKA/OZEL ISIM ise ASCII'ye katla, degilse dusur.
+    // Ayirt eden sinyal buyuk harf — bkz. _finalPassTurkishCleanup'taki ayni
+    // gerekce. Eskiden kosulsuz '' idi ve "Arçelik" YOK OLUYORDU (601 gecis).
+    const dusur = (t) => (/^[A-ZÇĞİÖŞÜ]/.test(t) ? _trToAscii(t) : '');
     if (exact) map.set(folded, exact);
     else if (foldedHit) map.set(folded, foldedHit);
     else if (hasTrChars && folded.length >= 4 && !protectedAscii.has(folded)) {
-      map.set(folded, '');
+      map.set(folded, dusur(token));
     } else if (
       sourceHasTurkishChars &&
       folded.length >= 4 &&
       !protectedAscii.has(folded) &&
       /(ligi|lugu|leri|lari|masi|mesi|sayi|sayisi|boyutu|bellegi|islemci|islemcisi|ozellik|ozellikleri|sertifika|sertifikasyon|saglik|sagligi|polimer|azami)$/i.test(folded)
     ) {
-      map.set(folded, '');
+      map.set(folded, dusur(token));
     }
   }
   return map;
@@ -1268,7 +1536,7 @@ function _finalPassTurkishCleanup(text, sourceText = '') {
   // ALWAYS run if any TR chars in output OR any TR chars in source — Argos
   // emits ASCII-folded Turkish ("Sertifikasyonu") even when source had ş/ğ/ı.
   if (!/[çğıİöşüÇĞŞÜÖ]/.test(text) && !sourceMap.size && !sourceHasTurkish) return text;
-  return String(text).replace(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g, (word) => {
+  return String(text).replace(/[A-Za-zÇĞİÖŞÜçğıöşü̇]+/g, (word) => {   // U+0307 dahil — bkz. _sourceAwareTurkishWordMap
     const lower = word.toLowerCase();
     const folded = _foldSourceResidueText(word);
     const hasTrChars = /[çğıİöşüÇĞŞÜÖ]/.test(word);
@@ -1287,10 +1555,18 @@ function _finalPassTurkishCleanup(text, sourceText = '') {
       return _applyCaseLike(word, hit);
     }
     if (!hasTrChars) return word;
-    // No dict entry: queue for background learning AND drop the token so
-    // we never ship Turkish letters. Next scrape, the queued translation
-    // will produce a real English word.
+    // No dict entry: queue for background learning so the next scrape can
+    // learn a real translation.
     if (lower.length >= 3) _unknownTrWords.add(lower);
+    // MARKA / OZEL ISIM KORUMASI (2026-08-21). Eskiden bu dal KOSULSUZ ''
+    // donduruyordu ve bilgi yok oluyordu: "Arçelik" -> "" (olculdu: 601 gecis),
+    // "5525 (Çin)" -> "5525 ()", "(Standsız) Monitör" -> "() monitor".
+    // Bir marka adi hicbir sozlukte olmayacagi icin "sozlukte yok" testi onu
+    // sradan bir Turkce kelimeden ayirmiyor. Ayirt eden sinyal BUYUK HARF:
+    // cumle ici buyuk harfle baslayan ve sozlukte olmayan kelime ozel isimdir.
+    // Onu SILMEK yerine ASCII'ye katla — "Arçelik" -> "Arcelik". Turkce harf
+    // yine sizmaz (kural buydu), ama bilgi de kaybolmaz.
+    if (/^[A-ZÇĞİÖŞÜ]/.test(word)) return _trToAscii(word);
     return '';
   });
 }
@@ -1691,7 +1967,6 @@ function createSpecLocalizer(options) {
     // dogru yer — hem etiket hem deger ayni kapiden geciyor.
     if (_isDegenerateText(tx)) return true;
     if (lang === 'en' && /[çğıİöşüÇĞİÖŞÜ]/.test(tx)) return true;
-    if (lang === 'de' && /[çğıİşÇĞİŞ]/.test(tx)) return true;
     const folded = modalFoldText(tx);
     if (/\bi\s*'\s*m\s+not\b/i.test(tx)) return true;
     // KISALTMA KUCULTME (2026-08-18): kaynakta "VoLTE" gecerken cevirinin
@@ -1716,7 +1991,7 @@ function createSpecLocalizer(options) {
       'sesle komut','ekrana cift dokunarak acma','kutu icerigi','cikartma ignesi',
       'kablosu','type-cden','toza dayaniklilik','suya dayaniklilik','islemci',
     ];
-    const residue = lang === 'de' ? residueCommon : [...residueCommon, 'kamera'];
+    const residue = [...residueCommon, 'kamera'];
     return residue.some(term => new RegExp(`(^|[^a-z0-9])${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i').test(folded));
   }
   function cleanupModalText(text, sourceText = ''){
@@ -1941,6 +2216,10 @@ function createSpecLocalizer(options) {
       out = out.replace(
         /([A-Za-z0-9][A-Za-z0-9.\-]*)['’](?:li|lı|lu|lü|le|la|ye|ya|de|da|te|ta|den|dan|ten|tan|nin|nın|nun|nün|in|ın|un|ün|ne|na|yi|yı|yu|yü|si|sı|su|sü)\b/g,
         '$1');
+      // BOS PARANTEZ ARTIGI: parantez icindeki kelimeler sozlukte bulunamayip
+      // dusunce geriye "()" kaliyordu — "1080p kizilotesi (kapatilabilir)" ->
+      // "1080p infrared ()". Bilgi zaten kayip; en azindan artigi birakma.
+      out = out.replace(/\s*\(\s*\)/g, '').replace(/\s*\[\s*\]/g, '');
       // "Ayni Anda" iki ayri kelime olarak cevrilince "Same Simultaneously"
       // oluyor; ikisi birlikte tek bir zarftir.
       out = out.replace(/\bSame\s+Simultaneously\b/gi, 'simultaneously');
@@ -2104,6 +2383,20 @@ function createSpecLocalizer(options) {
       // ── 2026-08-21 · kelime sozluguyle COZULEMEYEN kaliplar: Turkce'de
       //    niteleyen once gelir, Ingilizce'de sonra. Kelime kelime cevrilince
       //    "Göz Başına Çözünürlük" -> "Eye Per Resolution" cikiyordu.
+      // "İç/Dış" ve "el" tek basina cevrilemiyor: 'ic' ASCII olarak IC
+      // (integrated circuit), 'el' ise Ingilizce koruma listesinde. Ikisi de
+      // sozluge KOYULAMAZ, ifade olarak tasinir.
+      'aio (hepsi birarada)': { en:'AIO (All-in-One)'},
+      'hepsi birarada': { en:'All-in-One'},
+      'arama-kurtarma modu (sar)': { en:'Search and Rescue mode (SAR)'},
+      'duvara monte edilebilir': { en:'Wall mountable'},
+      'monte edilebilir': { en:'Mountable'},
+      'duvara monte': { en:'Wall mount'},
+      'ic mekan': { en:'Indoor'}, 'dis mekan': { en:'Outdoor'},
+      'ic mekan kullanimi': { en:'Indoor use'}, 'dis mekan kullanimi': { en:'Outdoor use'},
+      'arac ici kamera': { en:'Dashcam'}, 'arac ici': { en:'In-car'},
+      'el isareti tanima': { en:'Hand gesture recognition'},
+      'el isareti': { en:'Hand gesture'}, 'el ilani': { en:'Flyer'},
       // "Isin Izleme" kelime kelime "Ray Viewing" oluyordu ('izleme' -> 'viewing'
       // baska baglamlarda dogru: "Izleme Acisi" = "Viewing angle").
       'isin izleme': { en:'Ray Tracing'},
