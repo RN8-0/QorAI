@@ -149,7 +149,10 @@ function CompareProductCard({ product, isWinner, L, lang }) {
   );
 }
 
-function CompareResult({ data, L, lang }) {
+// Karsilastirma raporu — yayinlanan analiz sayfasi (/analiz/<slug>,
+// kind='link', compare modu) da AYNI bileseni cizsin diye DISA ACILDI.
+// Ikinci bir karsilastirma gorunumu yazmak iki tasarimin ayrismasi demek.
+export function CompareResult({ data, L, lang }) {
   const products = list(data?.products)
     .map((p) => ({ ...p, score: Number(p.score) || 0 }))
     .sort((a, b) => (a.rank || 99) - (b.rank || 99) || b.score - a.score);

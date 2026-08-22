@@ -57,6 +57,19 @@ const ALANLAR = [
   { name: 'views', type: 'number' },
   { name: 'likes', type: 'number' },
 
+  // ── analiz TURU ──
+  // Uc akis da AYNI sablonu (AiReportView) cizer ama VERI SEKLI farkli:
+  //   product      -> report.product + report.community (product_full_report)
+  //   link         -> zaten "enhanced" (ortak) sekli
+  //   subscription -> zaten "enhanced" (ortak) sekli
+  // Bos birakilan eski kayitlar 'product' sayilir.
+  { name: 'kind', type: 'select', maxSelect: 1, values: ['product', 'link', 'subscription'] },
+  // Link/abonelik analizinde katalog urunu YOKTUR; konu adlari burada durur.
+  { name: 'subjectNames', type: 'json' },
+  // Kaynak `saved_analyses` kaydinin id'si — ayni analiz iki kez yayina
+  // alinmasin ve nereden geldigi kaybolmasin diye.
+  { name: 'sourceRef', type: 'text' },
+
   // ── analiz EDILEN urun ──
   // Urun kaydina `productId` ile baglaniyor ama ad/gorsel/slug KOPYALANIYOR:
   // analiz yayinlandigi ANDAKI urunu anlatir; katalog kaydi sonradan degisirse
@@ -86,13 +99,17 @@ const ALANLAR = [
   { name: 'metaDescription_en', type: 'text' },
 
   // ── yapilandirilmis cikti ──
-  // `report`: sitenin AiReportView bilesenine giden HAM rapor JSON'u. Admin
-  //   paneli bunu URETIR, site bunu CIZER — iki taraf ayni veriyi kullanir,
-  //   ikinci bir render kopyasi yazilmaz.
+  // `report_*`: sitenin AiReportView bilesenine giden HAM rapor JSON'u, DIL
+  //   BASINA. Admin paneli bunu URETIR, site bunu CIZER — iki taraf ayni
+  //   veriyi kullanir, ikinci bir render kopyasi yazilmaz.
+  // `report`  : TEK DILLI eski alan; yalniz geriye donuk okuma icin duruyor.
+  //   Okuma sirasi: report_<dil> -> report_<oteki dil> -> report.
   // `quiz` : analizi ureten quiz sorulari + secilen cevaplar (kullaniciya
   //   "bu analiz su varsayimlarla yapildi" diyebilmek icin).
   // `faq_*`: [{q,a}] — FAQPage JSON-LD'sini besler.
   { name: 'report', type: 'json' },
+  { name: 'report_tr', type: 'json' },
+  { name: 'report_en', type: 'json' },
   { name: 'quiz', type: 'json' },
   { name: 'faq_tr', type: 'json' },
   { name: 'faq_en', type: 'json' },

@@ -12,6 +12,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { PB_URL, pb } from './pocketbase';
+import { groundedResearchSystemPrompt } from './aiPrompts.js';
 
 // ── Admin prompt override (shared with the mobile app) ──────────────
 // Reads PB `public_config.ai_prompts[key]` — the SAME keys the app's
@@ -308,14 +309,11 @@ export async function askQorAiRaw({
 
 export async function askQorAiGrounded(prompt, opts = {}) {
   const lang = opts.language || opts.lang || 'en';
-  const today = new Date().toISOString().slice(0, 10);
   return groundedGeminiRequest({
-    system:
-      `You are Qor AI's web research assistant. Current date: ${today}. ` +
-      'You MUST use the provided Google Search grounding tool for product status, official specs, market availability, review/community sentiment, and price-cycle signals. ' +
-      'Do not answer from model memory for launch status or availability. If search evidence is thin, say exactly what is uncertain instead of guessing. ' +
-      `Reply in ${languageLabel(lang)}. Summarize evidence, source types, current market status, and uncertainty. ` +
-      'Do not invent quotes, exact prices, or review counts.',
+    // Arastirma talimati TEK KAYNAKTA (admin/js/qor_ai_prompts.js): admin
+    // paneli de analiz uretirken ayni arastirmayi kosuyor ve iki farkli
+    // talimat iki farkli tazelik dayanagi demek olurdu.
+    system: groundedResearchSystemPrompt(lang),
     user: prompt,
     maxOutputTokens: opts.maxOutputTokens || 4096,
     temperature: 0.2,

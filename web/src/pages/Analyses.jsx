@@ -12,6 +12,9 @@ import { Link } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, hreflangAlternates } from '../lib/seo';
+import {
+  analysisKind, analysisKindShort, analysisLead, analysisTitle,
+} from '../lib/analysisRecord';
 import './Analyses.css';
 
 export default function Analyses() {
@@ -19,6 +22,9 @@ export default function Analyses() {
   const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Uc tur ayni listede durur; filtre yalnizca gorunumu daraltir (ayri rota
+  // acmak dizine ince, neredeyse bos sayfalar eklerdi).
+  const [tur, setTur] = useState('');
 
   useSeo({
     title: L('AI Product Analyses — Qor AI', 'Yapay Zekâ Ürün Analizleri — Qor AI'),
@@ -48,7 +54,11 @@ export default function Analyses() {
     return () => { live = false; };
   }, []);
 
-  const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_en`] || a[`${f}_tr`] || '';
+  const turler = ['product', 'link', 'subscription'].filter((k) => items.some((a) => analysisKind(a) === k));
+  const gorunen = tur ? items.filter((a) => analysisKind(a) === tur) : items;
+  // Filtre cipleri KISA adi kullanir: "Yapay Zeka Abonelik Analizi" bir cip
+  // icin fazla uzun ve uc cip yan yana satiri dolduruyor.
+  const turAdi = (k) => analysisKindShort({ kind: k }, lang);
 
   return (
     <main className="an-wrap">
@@ -67,17 +77,37 @@ export default function Analyses() {
         <p className="an-empty">{L('No analyses published yet.', 'Henüz yayınlanmış analiz yok.')}</p>
       )}
 
+      {turler.length > 1 && (
+        <div className="an-filters">
+          <button type="button" className={tur ? '' : 'on'} onClick={() => setTur('')}>
+            {L('All', 'Tümü')}
+          </button>
+          {turler.map((k) => (
+            <button key={k} type="button" className={tur === k ? 'on' : ''} onClick={() => setTur(k)}>
+              {turAdi(k)}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="an-list">
-        {items.map((a) => (
-          <Link key={a.id} to={`/analiz/${a.slug}`} className="an-item">
+        {gorunen.map((a) => (
+          <Link
+            key={a.id}
+            to={`/analiz/${a.slug}`}
+            // Gorseli olmayan kayit (link/abonelik analizi) iki sutuna duser;
+            // aksi halde metin 84px'lik gorsel sutununa sikisiyordu.
+            className={`an-item${a.productImage ? '' : ' an-item-noimg'}`}
+          >
             {a.productImage ? (
               <img src={a.productImage} alt={a.productName || ''} loading="lazy" />
             ) : null}
             <div>
-              <h2>{t(a, 'title') || a.productName}</h2>
-              <p>{t(a, 'lead')}</p>
+              <h2>{analysisTitle(a, lang)}</h2>
+              <p>{analysisLead(a, lang)}</p>
               <span className="an-meta">
-                {a.productBrand ? `${a.productBrand} · ` : ''}
+                <span className="an-kind">{analysisKindShort(a, lang)}</span>
+                {a.productBrand ? <span>{a.productBrand}</span> : null}
                 {a.techScore ? <span className="an-score">Qor AI {a.techScore}/100</span> : null}
               </span>
             </div>

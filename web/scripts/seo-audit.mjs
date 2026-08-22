@@ -259,6 +259,49 @@ function main() {
     console.log(`[seo-audit] not: SEO_CONTENT_VERSION=${contentVersion} bugüne eşit — toplu lastmod bilinçli (churn değil)`);
   }
 
+  // ── YINELENEN META DENETIMI (analiz sayfalari) ──────────────────────────
+  // Analiz artik DIL BASINA ayri adreste ve meta'lar AI ile uretiliyor. Ayni
+  // dilde iki analizin ayni <title> ya da ayni description'i tasimasi, Google
+  // icin iki sayfayi birbirinin kopyasi yapar — ve bu gozle gorulmez, aylarca
+  // yayinda kalir. Admin paneli kayit sirasinda ayni denetimi yapiyor; bu kapi
+  // ELLE PB uzerinden yazilan ya da eski kayitlari da yakalar.
+  //
+  // Dil basina AYRI kova: TR ve EN meta'nin birbirinin cevirisi olmasi
+  // NORMAL ve istenen sey; yasak olan AYNI DILDE tekrar.
+  const analizMeta = { title: new Map(), desc: new Map() };
+  const analizCakismalari = [];
+  for (const pfx of ['', 'tr']) {
+    const kok = join(site, pfx, 'analiz');
+    if (!existsSync(kok)) continue;
+    for (const e of readdirSync(kok, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue;
+      const dosya = join(kok, e.name, 'index.html');
+      if (!existsSync(dosya)) continue;
+      let html = '';
+      try { html = readFileSync(dosya, 'utf8'); } catch { continue; }
+      const dil = pfx || 'en';
+      const t = titleText(html).toLowerCase();
+      const dm = html.match(/<meta name="description" content="([^"]*)"/);
+      const d = (dm ? dm[1] : '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const yol = `${pfx ? `${pfx}/` : ''}analiz/${e.name}`;
+      for (const [alan, deger] of [['title', t], ['desc', d]]) {
+        if (!deger) continue;
+        const anahtar = `${dil}::${deger}`;
+        const onceki = analizMeta[alan].get(anahtar);
+        if (onceki) analizCakismalari.push(`${dil} ${alan}: ${yol} == ${onceki}`);
+        else analizMeta[alan].set(anahtar, yol);
+      }
+    }
+  }
+  assert(
+    analizCakismalari.length === 0,
+    `${analizCakismalari.length} analiz sayfasi AYNI DILDE ayni <title>/description tasiyor `
+    + `(Google icin kopya sayfa): ${analizCakismalari.slice(0, 6).join(' | ')}`,
+  );
+  if (analizMeta.title.size) {
+    console.log(`[seo-audit] not: ${analizMeta.title.size} analiz sayfasinda yinelenen meta yok`);
+  }
+
   // ── KIRIK PAKET REFERANSI DENETIMI (2026-08-18) ─────────────────────────
   // CANLI OLAY: /tr/compare BEYAZ EKRAN veriyordu. O kabuklar
   // aylar once elle eklenip bir daha uretilmemisti; icindeki

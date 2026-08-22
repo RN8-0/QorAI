@@ -132,3 +132,6 @@ backups/
 .analiz_build/
 .analiz_base/
 web/modul_raporu.json
+
+# Playwright MCP gecici ciktilari (ekran goruntusu / DOM dokumu) — surum kontrolune girmez.
+.playwright-mcp/

@@ -1,6 +1,8 @@
-# Qor AI — Analiz yayınlama sistemi: devir promptu
+# Qor AI — Analiz yayınlama sistemi
 
-> Bunu yeni sohbete olduğu gibi ver. Kod tabanı `C:\Users\RN8\Desktop\Compair-master`.
+> Sistemin BUGÜNKÜ hâli. Önceki sürüm bir "devir promptu"ydu (yapılacaklar listesi);
+> o liste 2026-08-22'de bitirildi ve bu dosya artık kaydın kendisi.
+> Kod tabanı `C:\Users\RN8\Desktop\Compair-master`.
 
 ---
 
@@ -8,148 +10,163 @@
 
 Site: **qorai.net** (React/Vite SPA, `web/` → `website/` build çıktısı, Coolify static).
 Admin: **ayrı bir Coolify uygulaması** (`admin/`, düz vanilla JS, derlenmiyor).
-Veri: PocketBase + Typesense. Diller **yalnız TR + EN** (Almanca 2026-08-21'de tamamen kaldırıldı).
+Veri: PocketBase + Typesense. Diller **yalnız TR + EN** (Almanca 2026-08-21'de kaldırıldı).
 
 Deploy: `node scripts/deploy_coolify_static.js website` / `... admin` — **önce commit + push şart.**
 Site build: `cd web && npm run build` (~25 dk, katalog çekimi yüzünden).
 
 ---
 
-## ŞU AN NE VAR
+## Mimarinin tek cümlesi
 
-### Çalışan
-- `/analiz` ve `/analiz/<slug>` rotaları, üst menüde "Analizler" sekmesi.
-- PB `analyses` koleksiyonu — ham raporu `report` (json) alanında tutuyor.
-- `/analiz/<slug>`, `AiAnalysis.jsx`'ten export edilen **`ProductFullReport`** bileşenini çiziyor.
-- Ön-render (`web/scripts/seo.mjs` → `analizBody`) aynı raporu statik HTML yazıyor: manşet,
-  karar, quiz etkisi, güçlü/zayıf, kritik noktalar, özellik tablosu, topluluk, alternatifler,
-  fiyat görünümü, hüküm, SSS. Article + FAQPage + BreadcrumbList şeması. Sitemap'e giriyor.
-- Admin > Analizler: sitede yapılmış analizleri (`saved_analyses`, `category="product_history"`)
-  listeliyor, seçip yayınlatıyor.
-
-### KULLANICININ REDDETTİĞİ / DÜZELTİLECEK OLAN
-Kullanıcı iki ekranı da beğenmedi ve **haklı**:
-
-1. **`/analiz/<slug>` sayfası dar ve sitedeki analizle aynı görünmüyor.**
-   `web/src/pages/Analyses.css` içinde `.an-wrap{max-width:760px}` var ve sayfa
-   kendi başlık/şerit düzenini kuruyor. Ürün sayfasındaki analiz ise geniş, kart
-   tabanlı (skor halkası, MATCH/FITS YOUR LIFE/OWNER SATISFACTION/EVIDENCE
-   kutuları, radar grafiği, community donut, factor-by-factor barlar).
-   **İstenen: ürün sayfasındaki analizle BİREBİR aynı görünüm.** Ek CSS yazma;
-   `ProductDetail.jsx`'in analiz bölümünü hangi sarmalayıcı/genişlikle çiziyorsa
-   onu kullan. Muhtemelen `Analyses.css`'in çoğu SİLİNMELİ.
-
-2. **Admin analiz ekranı çirkin ve yetersiz.** Kullanıcı "o güzel UI"yı istiyor.
+**Analiz TEK YERDE üretilir, TEK YERDE çizilir.** Prompt'lar tek dosyada, rapor
+görünümü sitedeki bileşenin kendisi. İkinci bir kopya yok — çünkü proje bu dersi
+spec çevirisinde bir kez ödedi (bkz. `admin/js/spec_i18n.js`).
 
 ---
 
-## YAPILACAKLAR
+## 1. Prompt'lar — TEK KAYNAK
 
-### 1. `/analiz/<slug>` — sitedeki analizle birebir aynı UI
-- `web/src/pages/AnalysisPost.jsx` ürün sayfasının analiz sarmalayıcısını birebir kullansın.
-- `web/src/pages/Analyses.css` içindeki dar/özel düzeni kaldır; ek bileşen YAZMA.
-- Referans: `web/src/pages/ProductDetail.jsx` içinde `AiAnalysis`/`ProductFullReport`
-  nasıl sarmalanıyorsa aynısı.
+`admin/js/qor_ai_prompts.js` (klasik `<script>`, IIFE → `globalThis.QorAiPrompts`)
 
-### 2. Admin'de quiz — kullanıcı quiz'i ADMİN'DE çözecek
-Şu an analiz sitede yapılıyor. İstenen: **admin panelin üstünde quiz soruları olacak**,
-kullanıcı orada cevaplayacak, analiz oradan üretilecek.
-- Quiz motoru: `web/src/lib/linkAnalysis.js` → `generateQuiz`, `generateCompareQuiz`,
-  `generateSubscriptionQuiz`. Prompt'lar `web/src/components/AiAnalysis.jsx`
-  (`buildFullPrompt`, `buildComparePrompt`, ...).
-- **UYARI:** admin düz vanilla JS, web ES modülü. Prompt'u KOPYALAMA — proje bu dersi
-  `spec_i18n`'de bir kez ödedi. Doğru yol: prompt kurucularını `admin/js/*.js` altında
-  klasik script'e **TAŞI** (kopyalama), `AiAnalysis.jsx` oradan içe aktarsın —
-  `admin/js/spec_i18n.js` + `web/src/lib/specI18n.js` deseninin aynısı.
-  Node tarafı için `scripts/_spec_sandbox.mjs` zaten var.
-- `buildFullPrompt` bağımlılıkları: `productLine`, `promptContext`, `languageGate`,
-  `freshnessRules`, `availabilityContextForProduct`, `quizLines`, `langName`,
-  `CURRENT_REPORT_DATE`, `compactDate` (AiAnalysis.jsx satır ~27-220) artı
-  `displayProductName`/`cleanProductName` (`web/src/lib/productNames.js`),
-  `productSpecsContext`, `productPath`.
-- Taşımayı **saf taşıma** yap ve `git diff` ile hiçbir satırın içeriğinin değişmediğini doğrula.
+İçindekiler ve nereden **taşındıkları** (kopyalanmadı — 31 fonksiyonun tamamı
+`git show HEAD:<dosya>` ile byte-byte karşılaştırılarak doğrulandı):
 
-### 3. Üç analiz türü de yayınlanabilir olacak
-Şu an yalnız ürün analizi. İstenen: **link analizi** ve **abonelik analizi** de.
-- `saved_analyses.category` değerleri: `product_history`, `link_history`,
-  (abonelik için `web/src/lib/pbHistory.js`'e bak).
-- Üçü de aynı `AiReportView` şablonunu kullanıyor (`web/src/lib/reportAdapters.js`:
-  `productReportToUnified`, `compareProductToUnified`, `compareVerdictToUnified`).
-- `analyses` koleksiyonuna `kind` alanı ekle (`product` | `link` | `subscription`),
-  `/analiz` listesi türe göre filtrelesin, `AnalysisPost.jsx` türe göre doğru
-  adaptörü çağırsın.
-- Ön-render (`analizBody`) da türe göre doğru bloğu yazsın.
+| Ne | Kaynak |
+|---|---|
+| `buildFullPrompt`, `buildCompare*`, `buildDeep/Alt/Advisor/Prediction/Forum/*ResearchPrompt`, `parseAiJson`, `hasStaleAvailabilityClaims`, `withFreshnessRetryInstruction`, `productLine`, `promptContext`, `languageGate`, `freshnessRules`, `availabilityContextForProduct`, `productSpecsContext`, `quizLines`, `cleanProductForPrompt`, `arr`, `firstSentences` | `web/src/components/AiAnalysis.jsx` |
+| `quizGenerationPrompt`, `compareQuizGenerationPrompt`, `subscriptionQuizPrompt`, `productQuizCount`, `compareQuizCount`, `subscriptionQuizCount`, `isComplexQuizCategory`, `variationSeed`, `languageName` | `web/src/lib/linkAnalysis.js` |
+| `cleanProductName`, `displayProductName` | `web/src/lib/productNames.js` |
+| `slugifyProduct`, `productSlug`, `productPath` | `web/src/lib/routes.js` |
+| `groundedResearchSystemPrompt` | `web/src/lib/ai.js` (`askQorAiGrounded`) |
+| `buildPublishMetaPrompt` | YENİ — yayın başlığı/özeti/meta/SSS, iki dil tek çağrıda |
 
-### 4. TR + EN eşgüdümlü, otomatik, kopya olmayan meta
-Şu an rapor tek dilde üretiliyor; başlık/açıklama rapordan türüyor.
-İstenen: **her analiz hem TR hem EN üretilecek, ikisi de SEO'lu, meta'lar kopya olmayacak.**
-- `analyses` alanları hazır: `title_tr/_en`, `lead_tr/_en`, `metaTitle_tr/_en`,
-  `metaDescription_tr/_en`, `faq_tr/_en`. `report` şu an tek — **`report_tr` / `report_en`
-  yap** ya da `report: {tr:…, en:…}`.
-- Prompt zaten dil parametresi alıyor (`buildFullPrompt(p, lang, …)`) ve içinde
-  `languageGate(lang)` var — iki dil için iki çağrı yeterli.
-- Meta kopya olmasın: TR ve EN meta'lar birbirinin çevirisi olabilir ama
-  **aynı dilde iki analiz aynı meta'yı taşımamalı**. `seo-audit.mjs`'e kapı ekle:
-  aynı dilde yinelenen `<title>`/`meta description` varsa build kırılsın.
-- hreflang: analiz sayfası şu an TEK adreste, `SEO_LOCALES.map(l => ({hreflang:l, href:url}))`
-  ile aynı adrese işaret ediyor (`seo.mjs`, 2g bloğu). İki dilli olunca ya
-  `/analiz/<slug>` + `/tr/analiz/<slug>` üret, ya da tek adreste kal ve hreflang'i buna göre
-  düzelt. **Var olmayan alternatif adres uydurma.**
+**Kim okuyor:**
+- Site → `web/src/lib/aiPrompts.js` (köprü; derlemede içe aktarır, çalışma
+  zamanında admin'e bağımlı DEĞİL). `productNames.js` ve `routes.js` de artık
+  buradan re-export ediyor.
+- Admin → doğrudan `QorAiPrompts.` (index.html script listesinde `analyses.js`'ten ÖNCE).
+- Node (build) → `scripts/_spec_sandbox.mjs` ile koşturulabilir (spec_i18n ile aynı desen).
+
+**Prompt metnini değiştirmek = hem siteyi hem admin'i değiştirmek.** Başka yolu yok.
 
 ---
 
-## SEO — FAZLARDA EKSİK/YANLIŞ KALANLAR
+## 2. Admin — analiz BURADA üretilir
 
-Faz 0-3 canlıda. Kalanlar:
+`admin/js/analyses.js` (UI) + `admin/js/qor_ai_run.js` (motor)
 
-1. **`trendScore` ölü.** 107.449 dokümanın tamamında 0. `scripts/compute_trending.mjs`
-   skoru `recently_viewed`den üretiyor = yalnız giriş yapmış görüntülemeler; sitenin
-   günlük kullanıcısı tek haneli. Kürasyon şu an marka + fiyat + techScore ile çalışıyor.
-   Gerçek talep sinyali için: anonim görüntüleme kaydı aç, ya da GSC API bağla.
+İki yol var:
 
-2. **Ürünlerin %8,7'sinde `nameTranslated.en` yok** → EN sayfada Türkçe ad kalıyor
-   ("Oyun Kolu"). Kürasyon filtresine eklenebilir ya da çeviri backfill'i yapılabilir.
+**a) Yeni analiz üret** — 4 adım: ürün ara (Typesense) → **quiz'i admin'de yanıtla**
+→ rapor **TR + EN** → yayın meta'sı. 5 AI çağrısı:
+TR araştırma → TR rapor → EN araştırma → EN rapor → meta+SSS (iki dil tek çağrı).
+Sıra ve tazelik onarımı sitedeki `runProductAnalysisJob()` ile birebir aynı.
 
-3. **Fiyat rollup boşluğu:** PB'de 853 telefonun fiyatlı teklifi var ama Typesense'te
-   yalnız 196'sında `priceTR` görünüyor. Telefon kategorisinde fiyat kapsamı %4
-   (laptoplarda %46). Ayrı bir hat; kürasyonda fiyat KAPI değil ARTI olarak duruyor.
+**b) Sitede yapılmışlardan al** — `saved_analyses`'ten seç: `product_history`,
+`link_history`, `subscription_history`. Bu yol **tek dillidir** (analizin yapıldığı
+dil); ikinci dil boş kalır ve uydurma çeviri yazılmaz.
 
-4. **`spec dil sızıntısı 3/300 (%1,0)`** — seo-audit kapısı %5'te, geçiyor ama
-   sıfır değil. Kalan 3 sayfaya bakılmadı.
-
-5. **`SEO_CONTENT_VERSION = '2026-08-21'`** (`web/scripts/seo.mjs`). Ön-render çıktısı
-   toplu değiştiğinde ELLE yükseltilmeli, yoksa sitemap `lastmod`'u eski kalır.
-
-6. **Cloudflare purge:** `.env`'de `CF_API_TOKEN` yok. Kullanıcı edge cache TTL'ini
-   kapattığını söyledi, purge gerekmiyor olabilir — doğrula.
-
-7. **IndexNow** `web/scripts/indexnow.mjs` artık yalnız son 7 günde `lastmod`'u değişen
-   adresleri gönderiyor. Hetzner cron'unun bunu nasıl çağırdığı DOĞRULANMADI.
+`qor_ai_run.js` yalnızca TAŞIMA katmanıdır (hangi proxy, hangi sırayla, kaç deneme)
+— sıra `web/src/lib/ai.js` ile aynı: Gemini önce (yalnız 5xx'te bir tekrar),
+sonra DeepSeek. Grounded araştırma yalnız Gemini'de (Google Search aracı).
 
 ---
 
-## KIRILGAN NOKTALAR — bunlara dikkat
+## 3. `analyses` koleksiyonu
 
-- **`website/` ortak ağaç.** Build sırasında başka bir iş `git restore`/`git clean` yaparsa
-  çıktı gider. Build ortasında `npx vite build` çalıştırma — `seo-audit` ana sayfanın
-  boş `#root`'unu yakalayıp build'i düşürür (iki kez yaşandı).
-- **Üretilmeyen ağaç kendiliğinden SİLİNMEZ.** `website/de` ve `category/case_fans` böyle
-  hayalet sayfa bıraktı. `prebuild.mjs`'in `wipe` listesi dil öneklerini kapsamaz;
-  dil-farkındalıklı silme `seo.mjs` içinde yapılır.
-- **`docs/nginx_website.conf`'u commit etmek onu YAYINA ALMAZ.** Canlı yapılandırma
-  Coolify DB'sinde base64. Doğru yol `coolify-db psql`; REST API PATCH siteyi 503 yapmıştı.
-  Prosedür hafızada: `reference_coolify_nginx_base64.md`.
-- **PocketBase koleksiyonu oluştururken `created`/`updated` autodate alanlarını UNUTMA** —
-  yoksa `sort=-updated` HTTP 400 verir (2026-08-22'de yaşandı).
+`migration/create_analyses_collection.js` — idempotent, eksik alanı ekler.
+
+Kritik alanlar:
+- `kind`: `product` | `link` | `subscription` (boş = eski ürün analizi)
+- `report_tr` / `report_en`: dil başına HAM rapor. `report` tek dilli ESKİ alan,
+  yalnız geriye dönük okuma için duruyor.
+- `subjectNames`: link/abonelik analizinde konu adları (katalog ürünü yok)
+- `sourceRef`: kaynak `saved_analyses` kaydının id'si
+- `title_*`, `lead_*`, `metaTitle_*`, `metaDescription_*`, `faq_*`
+- `created`/`updated` **autodate** — unutulursa `sort=-updated` HTTP 400 verir.
+
+---
+
+## 4. Sayfa — sitedeki raporun BİREBİR aynısı
+
+`web/src/pages/AnalysisPost.jsx` sarmalayıcı olarak `.page > .container` (1240px)
+kullanır — ürün sayfasındaki analizle **aynı genişlik**. Rapor gövdesini kim çiziyorsa
+o çizer:
+
+| kind | bileşen | nerede de kullanılıyor |
+|---|---|---|
+| `product` | `ProductFullReport` | ürün sayfası |
+| `subscription` | `SubscriptionReportView` | Abonelikler sayfası |
+| `link` (2+ ürün) | `CompareResult` | Link Analizi sayfası |
+| `link` (tek ürün) | `AiReportView` | ortak şablon |
+
+Son ikisi **tembel** yüklenir. `SubscriptionReportView` bu iş için
+`pages/Subscriptions.jsx`'ten TAŞINDI (kopyalanmadı); `CompareResult`
+`pages/LinkAnalysis.jsx`'ten export edildi.
+
+**TUZAK:** `AiReportView` CSS'ini bilerek import etmez (paket boyutu — o dosyadaki
+nota bak). `la-*` stillerini kullanan her SAYFA `LinkAnalysis.css`'i kendisi import
+etmek zorunda. İlk sürümde bu unutulmuştu ve rapor STİLSİZ çıkıyordu.
+
+Kayıt okuma kuralları (tür, dile göre rapor, başlık, özet, meta, SSS) **tek yerde**:
+`web/src/lib/analysisRecord.js` — hem React sayfası hem ön-render aynı fonksiyonları
+çağırır.
+
+---
+
+## 5. SEO
+
+- Analiz artık **dil başına ayrı adreste**: `/analiz/<slug>` (EN) ve `/tr/analiz/<slug>`.
+  Öncesinde tek adres vardı ve hreflang iki dili de AYNI adrese işaret ediyordu.
+- **Bir dilde raporu olmayan analiz o dilde SAYFA ÜRETMEZ** ve hreflang'e girmez.
+  Kural: `analysisRenderLangs()` — `analysisReport()`'un aksine öteki dile DÜŞMEZ.
+  Runtime (`AnalysisPost`) ve ön-render (`seo.mjs`) aynı fonksiyonu kullanır.
+- Ön-render gövdesi türe göre ayrı: `anUrunGovde` / `anLinkGovde` /
+  `anKarsilastirmaGovde` / `anAbonelikGovde`.
+- `seo.mjs` analiz kabuklarını **dil dil siler** (kategori/compare ile aynı gerekçe:
+  üretilmeyen ağaç kendiliğinden silinmez). `analiz` prebuild'in wipe listesinde
+  OLAMAZ — `/tr` öneki orada temizlenemez.
+- **Yinelenen meta kapısı:** `seo-audit.mjs` aynı dilde yinelenen
+  `<title>`/`description` bulursa build'i DÜŞÜRÜR. Admin de kayıt sırasında aynı
+  denetimi yapar ve yasaklı listeyi meta prompt'una gönderir.
+- `SEO_CONTENT_VERSION` 2026-08-22'ye yükseltildi (çıktı toplu değişti).
+
+---
+
+## KALAN İŞLER (bu turda yapılmadı — gerekçesiyle)
+
+1. **`trendScore` ölü.** 107.449 dokümanın tamamında 0.
+   `scripts/compute_trending.mjs` skoru `recently_viewed`den üretiyor = yalnız giriş
+   yapmış görüntülemeler. Gerçek talep sinyali için anonim görüntüleme kaydı ya da
+   GSC API bağlanmalı — ikisi de yeni veri hattı, bu turun kapsamı değildi.
+   Kürasyon şu an marka + fiyat + techScore ile çalışıyor.
+2. **Ürünlerin %8,7'sinde `nameTranslated.en` yok** → EN sayfada Türkçe ad kalıyor.
+   Çeviri `_raw`'dan KÜRASYONDAN SONRA çekiliyor, o yüzden kürasyona kapı olarak
+   eklenemiyor. Doğru çözüm ya çeviri backfill'i ya da EN kümesini ayırmak — ikincisi
+   7.486 ürün adresinin hreflang'ini değiştirir, ayrı bir iş.
+3. **Fiyat rollup boşluğu:** PB'de 853 telefonun fiyatlı teklifi var, Typesense'te
+   yalnız 196'sında `priceTR` görünüyor. Ayrı hat.
+4. **`spec dil sızıntısı 3/300 (%1,0)`** — kapı %5'te, geçiyor ama sıfır değil.
+   Kalan 3 sayfaya bakılmadı.
+5. **Cloudflare purge:** ölçüldü — `Cache-Control: max-age=120`,
+   `cf-cache-status: REVALIDATED/MISS`. Uzun ömürlü bayat edge kopyası görünmüyor,
+   yani deploy sonrası elle purge gerekmiyor. `.env`'de `CF_API_TOKEN` hâlâ yok.
+6. **IndexNow — DOĞRULANDI.** Hetzner cron'u (`/root/qorai-seo-refresh.sh`, 04:17)
+   değişen adresleri `git diff` ile bulup **stdin'den** `indexnow.mjs`'e veriyor;
+   7 günlük sitemap filtresi yalnızca stdin boşken devreye giren yedek yol.
+   Her iki yol da doğru davranıyor.
+
+---
+
+## KIRILGAN NOKTALAR
+
+- `website/` ortak ağaç. Build ortasında **`npx vite build` çalıştırma** — ön-render'sız
+  boş `#root` bırakır ve `seo-audit` build'i düşürür. Yalnız `npm run build`.
+- Üretilmeyen ağaç kendiliğinden SİLİNMEZ (`website/de`, `category/case_fans` böyle
+  hayalet sayfa bıraktı).
+- `docs/nginx_website.conf`'u commit etmek onu YAYINA ALMAZ. Canlı yapılandırma
+  Coolify DB'sinde base64; doğru yol `coolify-db psql`.
+- PocketBase koleksiyonu oluştururken `created`/`updated` autodate alanlarını unutma.
 - **Admin panelini ayrıca deploy et.** Site deploy'u admin'i güncellemez.
-- **Sabit hex yazma.** Web'de `global.css` token'ları, admin'de `--bg2/--bg3/--border/--text1`.
-
----
-
-## ÇALIŞMA KURALLARI (kullanıcının)
-
-- Türkçe konuş, kodda/commit'te İngilizce.
-- Yorum yapma, açıklama yapma, bahane üretme. **Sadece işi yap ve bitir.**
-- Push/deploy için onay isteme — standing yetki var.
-- Var olan sistemi kullan. Sıfırdan paralel sistem kurma. İkinci kopya = ayrışma.
-- Ekran görüntüsü ile doğrulamadan "bitti" deme.
+- Sabit hex yazma. Web'de `global.css` token'ları, admin'de `--bg2/--bg3/--border/--text1`.

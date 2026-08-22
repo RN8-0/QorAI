@@ -1,52 +1,20 @@
-const ID_RE = /[a-z0-9]{15}$/i;
-
-export function slugifyProduct(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ı/g, 'i')
-    .replace(/ş/g, 's')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 90);
-}
-
-export function productSlug(product) {
-  if (!product || typeof product !== 'object') return '';
-  return slugifyProduct(product.slug || product.name || '');
-}
+// Rota yardimcilari.
+//
+// slugifyProduct / productSlug / productPath BURADA TANIMLI DEGIL — kaynaklari
+// admin/js/qor_ai_prompts.js (TEK KOPYA). Admin paneli de prompt'a giden urun
+// adresini ayni fonksiyondan uretiyor; iki ayri slug uygulamasi tutmak
+// on-render dosya yolu ile runtime canonical'i ayristirir.
+export { slugifyProduct, productSlug, productPath } from './aiPrompts.js';
+import { productSlug } from './aiPrompts.js';
 
 // NOT: burada `extractProductId()` vardi — "sondaki 15 karakteri id say".
 // Kaldirildi (2026-08-22): tek kullanicisi parseComparePair() idi, o da artik
 // parseProductToken() kullaniyor. Varsayim zaten TEK BASINA YANLISTI — 462
 // urunun slug'i o kalipla biten bir sonek tasiyor.
 
-// ── /product/<slug> — SONDAKI ID KALDIRILDI (2026-08-19) ───────────────────
-// Onceki bicim `/product/<slug>-<id>` idi. Kaldirmanin on kosulu slug'in TUM
-// KATALOGDA benzersiz olmasi; olculdu (scripts/_slug_cakisma.mjs, PB uzerinden
-// 107.449 urun): 107.449 benzersiz slug, 0 cakisma, slug'i bos kayit 0.
-// URL'de kullanilan bicim (slugifyProduct + 90 karakter kirpma) uzerinden de
-// AYRICA olculdu: 33 ham slug 90 karakteri asiyor ama kirpilmis halleri yine
-// cakismiyor — 107.449 benzersiz.
-//
-// Eski adresler nginx'te 301 ile yeniye gider (bkz. scripts/_nginx_301.mjs).
-// Cozumleyici hem slug'i hem 15 karakterlik id'yi kabul eder: eski link
-// istemci tarafinda da (SPA ici gezinme, paylasilmis link) calisir.
-export function productPath(productOrId) {
-  const isProduct = productOrId && typeof productOrId === 'object';
-  const id = String(isProduct ? productOrId.id : productOrId || '').trim();
-  if (!id) return '/product';
-  const slug = isProduct ? productSlug(productOrId) : '';
-  // Slug yoksa (elde yalnizca id varsa) id'ye duseriz — cozumleyici 15
-  // karakterlik jetonu id olarak taniyor.
-  return slug ? `/product/${slug}` : `/product/${id}`;
-}
+// NOT: `/product/<slug>` bicimi (sondaki id KALDIRILDI, 2026-08-19) ve onu
+// ureten productPath() artik admin/js/qor_ai_prompts.js icinde — yukaridaki
+// re-export ile geliyor. Gerekce ve olcum orada.
 
 // Adres cubugundaki jeton NE? Uc bicim de desteklenir:
 //   <slug>            → yeni bicim

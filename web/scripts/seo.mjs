@@ -18,6 +18,15 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
 import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.js';
+// Analiz kaydini okuma kurallari (tur, dile gore rapor, baslik/ozet/meta) TEK
+// KAYNAKTA: sayfayi cizen React bileseni (pages/AnalysisPost.jsx) ve buradaki
+// on-render AYNI fonksiyonlari cagirmak zorunda, yoksa crawler'in gordugu
+// baslik ile kullanicinin gordugu baslik ayrisir.
+import {
+  analysisFaq, analysisKind, analysisLead, analysisMetaDescription,
+  analysisMetaTitle, analysisRenderLangs, analysisReport, analysisSubject, analysisTitle,
+  analysisUnified,
+} from '../src/lib/analysisRecord.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
@@ -181,6 +190,15 @@ const ANALIZ_LISTE_TEXT = {
     trend: 'Trend', buyWait: 'Buy or wait', bestTime: 'Best time to buy',
     who: 'Who is it for?', bestFor: 'Buy it if', notFor: 'Skip it if',
     verdict: 'Verdict',
+    // Link ve abonelik analizleri ayni sayfada yayinlaniyor; onlarin bloklari
+    // urun raporundaki karsiliklarindan FARKLI adlandirilir, yoksa okuyucu
+    // hangi turu okudugunu anlamiyor.
+    kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
+    services: 'Services compared', winner: 'Best match', decisive: 'What actually decides it',
+    fit: 'Overall fit', featuresSec: 'Features and content', ux: 'Experience',
+    risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
+    score: 'Score', pros: 'What works', cons: 'What does not',
+    headToHead: 'Head to head', products: 'Products compared',
   },
   tr: {
     h1: 'Yapay Zekâ Ürün Analizleri',
@@ -200,21 +218,28 @@ const ANALIZ_LISTE_TEXT = {
     trend: 'Eğilim', buyWait: 'Al ya da bekle', bestTime: 'En uygun zaman',
     who: 'Kime uygun?', bestFor: 'Alması gereken', notFor: 'Almaması gereken',
     verdict: 'Sonuç',
+    kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
+    services: 'Karşılaştırılan servisler', winner: 'En iyi eşleşme', decisive: 'Kararı belirleyen farklar',
+    fit: 'Genel uyum', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
+    risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
+    score: 'Puan', pros: 'İyi yanları', cons: 'Zayıf yanları',
+    headToHead: 'Karşı karşıya', products: 'Karşılaştırılan ürünler',
   },
 };
 
 function analizListeBody(analyses, lang) {
   const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
-  const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+  const pfx = localePrefix(lang);
   const items = analyses.filter((a) => a.slug).map((a) => {
-    // Baslik ve ozet RAPORDAN gelir; ayri bir 'title/lead' metni tutulmuyor.
-    const r = (a.report && a.report.product) ? a.report.product : null;
-    const baslik = esc(`${a.productName || a.slug} — ${tx.h1Tek}`);
-    const lead = esc(truncate(r ? (r.headline || r.overallVerdict || '') : '', 180));
+    // Baslik ve ozet, sayfayi cizen React bileseniyle AYNI fonksiyondan gelir
+    // (lib/analysisRecord.js): admin bir baslik yazdiysa o, yazmadiysa
+    // konudan turetilen. Iki taraf ayrisirsa crawler baska bir baslik gorur.
+    const baslik = esc(analysisTitle(a, lang));
+    const lead = esc(truncate(analysisLead(a, lang), 180));
     return `<li style="margin:0;padding:18px 0;border-top:1px solid #e2e8f0">`
-      + `<a href="/analiz/${esc(a.slug)}" style="color:#0f172a;text-decoration:none;font-size:18px;font-weight:700">${baslik}</a>`
+      + `<a href="${pfx}/analiz/${esc(a.slug)}" style="color:#0f172a;text-decoration:none;font-size:18px;font-weight:700">${baslik}</a>`
       + (lead ? `<p style="margin:6px 0 0;color:#475569;line-height:1.55">${lead}</p>` : '')
-      + `<div style="margin-top:6px;font-size:12.5px;color:#64748b">${esc(a.productBrand || '')}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
+      + `<div style="margin-top:6px;font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
       + `</li>`;
   }).join('');
   return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
@@ -224,144 +249,303 @@ function analizListeBody(analyses, lang) {
     + `</main>`;
 }
 
-// Analiz sayfasinin ON-RENDER govdesi.
+function kindLabel(a, tx) {
+  const k = analysisKind(a);
+  return k === 'link' ? tx.kindLink : k === 'subscription' ? tx.kindSub : tx.kindProduct;
+}
+
+// ── ON-RENDER GOVDESI ─────────────────────────────────────────────────────
 //
-// Crawler React CALISTIRMAZ, dolayisiyla ProductFullReport'un cizdigi raporun
-// METIN karsiligi burada statik HTML olarak uretilir. Ayni VERI (`report`),
-// ayni sira: manset -> karar -> ozet -> quiz etkisi -> guclu/zayif ->
-// kritik noktalar -> topluluk -> alternatifler -> hukum -> SSS.
+// Crawler React CALISTIRMAZ, dolayisiyla sayfanin cizdigi raporun METIN
+// karsiligi burada statik HTML olarak uretilir. Ayni VERI, ayni sira.
 //
 // Grafikler (skor halkasi, radar, donut) ON-RENDER'a girmez — onlar gorsel,
 // arama motoruna bir sey soylemiyorlar. Onlarin TASIDIGI BILGI metin olarak
 // yazilir; kullanici JS gelince gercek bileseni gorur.
-function analizBody(a, lang) {
-  const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
-  const rapor = (a.report && typeof a.report === 'object' && a.report.product) ? a.report : null;
-  const p = rapor ? rapor.product : {};
-  const img = /^https?:\/\//i.test(a.productImage || '') ? esc(a.productImage) : '';
-  const ad = esc(a.productName || '');
-  const baslik = `${ad} — ${esc(tx.h1Tek)}`;
-  const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
-    .filter((f) => f && f.q && f.a).slice(0, 8);
+//
+// UC TUR, UC GOVDE: veri sekilleri gercekten farkli (urun raporu
+// `product`+`community`, link raporu ortak "enhanced" sekil ya da
+// karsilastirma, abonelik raporu `services[]`). Tek govdeye zorlamak,
+// bloklarin yarisini bos birakmak demekti.
+const anDizi = (v) => (Array.isArray(v) ? v : []);
 
-  const dizi = (v) => (Array.isArray(v) ? v : []);
-  const par = (metin) => String(metin || '').split(/\n{2,}/)
+function anPar(metin) {
+  return String(metin || '').split(/\n{2,}/)
     .map((x) => x.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .map((x) => `<p style="line-height:1.72;color:#334155;margin:0 0 14px;max-width:68ch">${esc(x)}</p>`)
     .join('');
-  const h2 = (t) => `<h2 style="font-size:21px;margin:30px 0 10px;padding-top:18px;border-top:1px solid #e2e8f0">${esc(t)}</h2>`;
-  const liste = (items, renk) => (items.length
-    ? `<ul style="margin:0 0 16px;padding-left:20px">${items.map((x) => `<li style="line-height:1.7;margin:6px 0;color:${renk}">${esc(x)}</li>`).join('')}</ul>`
-    : '');
+}
+const anH2 = (t) => `<h2 style="font-size:21px;margin:30px 0 10px;padding-top:18px;border-top:1px solid #e2e8f0">${esc(t)}</h2>`;
+const anH3 = (t) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(t)}</h3>`;
+// Rakam tasiyan satir daima mono/tabular: skorlar goz hizasinda kalsin.
+const anSayi = (t) => `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 12px">${esc(t)}</p>`;
+function anListe(items) {
+  const list = anDizi(items).map((x) => (typeof x === 'string' ? x : String(x?.title || x?.label || x?.name || ''))).filter(Boolean);
+  return list.length
+    ? `<ul style="margin:0 0 16px;padding-left:20px">${list.map((x) => `<li style="line-height:1.7;margin:6px 0;color:#334155">${esc(x)}</li>`).join('')}</ul>`
+    : '';
+}
+// {title, detail} ya da duz string tasiyan bloklar (kritik noktalar, farklar).
+function anBaslikliListe(items) {
+  const list = anDizi(items)
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '' }
+      : { title: String(x?.title || x?.label || ''), detail: String(x?.detail || x?.why || '') }))
+    .filter((x) => x.title || x.detail);
+  return list.map((x) => (x.title ? anH3(x.title) : '')
+    + (x.detail ? `<p style="line-height:1.7;color:#475569;margin:0">${esc(x.detail)}</p>` : '')).join('');
+}
+
+// Quiz etkisi — kullanicinin verdigi cevaplar ve skora etkisi. Uc turde de
+// ayni sekil (`quizInsights`), o yuzden tek fonksiyon.
+function anQuizEtkisi(insights, tx) {
+  const qi = anDizi(insights).filter((q) => q && (q.topic || q.answer));
+  if (!qi.length) return '';
+  return anH2(tx.quiz)
+    + `<ul style="margin:0 0 16px;padding-left:20px">${qi.map((q) => {
+      const et = Number(q.impact);
+      const isaret = Number.isFinite(et) && et !== 0 ? ` (${et > 0 ? '+' : ''}${et})` : '';
+      return `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(q.topic || '')}</strong>${q.answer ? ` — ${esc(q.answer)}` : ''}${esc(isaret)}${q.note ? `<br><span style="color:#64748b">${esc(q.note)}</span>` : ''}</li>`;
+    }).join('')}</ul>`;
+}
+
+function anOzellikTablosu(features, tx) {
+  const fm = anDizi(features).filter((x) => x && x.label);
+  if (!fm.length) return '';
+  return anH2(tx.features)
+    + `<table style="border-collapse:collapse;width:100%;max-width:680px;margin:0 0 16px">`
+    + fm.slice(0, 12).map((x) => `<tr>`
+      + `<td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">${esc(x.label)}</td>`
+      + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0"><strong>${esc(x.productValue || '—')}</strong></td>`
+      + `<td style="padding:7px 12px;color:#475569;border-top:1px solid #e2e8f0">${esc(x.comment || '')}</td>`
+      + `</tr>`).join('')
+    + `</table>`;
+}
+
+function anFiyat(pf, tx) {
+  if (!pf || (!pf.analysis && !pf.bestTimeToBuy && !pf.bestTime && !pf.note)) return '';
+  const bits = [];
+  if (pf.trend) bits.push(`${tx.trend}: ${pf.trend}`);
+  if (pf.buyOrWait) bits.push(`${tx.buyWait}: ${pf.buyOrWait}`);
+  const en = pf.bestTimeToBuy || pf.bestTime;
+  if (en) bits.push(`${tx.bestTime}: ${en}`);
+  return anH2(tx.price)
+    + (bits.length ? anSayi(bits.join(' · ')) : '')
+    + anPar(pf.analysis || pf.note);
+}
+
+// ── URUN raporu (`product_full_report`) ───────────────────────────────────
+function anUrunGovde(rapor, tx) {
+  const p = rapor.product || {};
+  let g = '';
+  if (p.headline) {
+    g += `<p style="font-size:18px;line-height:1.6;color:#0f172a;font-weight:600;max-width:64ch;margin:0 0 12px">${esc(p.headline)}</p>`;
+  }
+  const kararBits = [];
+  if (p.decision) kararBits.push(`${tx.decision}: ${p.decision}`);
+  if (Number(p.matchScore)) kararBits.push(`${tx.match}: ${p.matchScore}/100`);
+  if (Number(p.confidence)) kararBits.push(`${tx.confidence}: ${p.confidence}/100`);
+  if (kararBits.length) g += anSayi(kararBits.join(' · '));
+  if (p.matchComment) g += anPar(p.matchComment);
+  if (p.analysis) { g += anH2(tx.detail); g += anPar(p.analysis); }
+
+  g += anQuizEtkisi(p.quizInsights, tx);
+
+  const guclu = anDizi(p.strengths);
+  const zayif = anDizi(p.weaknesses);
+  if (guclu.length) { g += anH2(tx.strengths); g += anListe(guclu); }
+  if (zayif.length) { g += anH2(tx.weaknesses); g += anListe(zayif); }
+
+  const kn = anBaslikliListe(p.criticalPoints);
+  if (kn) { g += anH2(tx.critical); g += kn; }
+
+  g += anOzellikTablosu(p.featureMatches, tx);
+
+  const c = rapor.community || {};
+  if (c.summary || anDizi(c.pros).length || anDizi(c.cons).length) {
+    g += anH2(tx.community);
+    if (Number(c.satisfaction)) g += anSayi(`${tx.satisfaction}: ${Number(c.satisfaction)}/100`);
+    if (c.summary) g += anPar(c.summary);
+    g += anListe(c.pros);
+    g += anListe(c.cons);
+  }
+
+  const alt = anDizi(rapor.alternatives).filter((x) => x && x.name);
+  if (alt.length) {
+    g += anH2(tx.alternatives);
+    g += `<ul style="margin:0 0 16px;padding-left:20px">${alt.map((x) => `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(x.name)}</strong>${x.difference ? ` — ${esc(x.difference)}` : ''}</li>`).join('')}</ul>`;
+  }
+
+  g += anFiyat(rapor.priceForecast, tx);
+
+  if (p.bestFor || p.notFor) {
+    g += anH2(tx.who);
+    if (p.bestFor) g += `<p style="line-height:1.7;color:#334155;margin:0 0 8px"><strong>${esc(tx.bestFor)}:</strong> ${esc(p.bestFor)}</p>`;
+    if (p.notFor) g += `<p style="line-height:1.7;color:#334155;margin:0"><strong>${esc(tx.notFor)}:</strong> ${esc(p.notFor)}</p>`;
+  }
+  if (p.overallVerdict) { g += anH2(tx.verdict); g += anPar(p.overallVerdict); }
+  return g;
+}
+
+// ── LINK raporu — tekil (ortak "enhanced" sekil) ──────────────────────────
+function anLinkGovde(u, tx) {
+  let g = '';
+  if (u.headline) {
+    g += `<p style="font-size:18px;line-height:1.6;color:#0f172a;font-weight:600;max-width:64ch;margin:0 0 12px">${esc(u.headline)}</p>`;
+  }
+  const bits = [];
+  if (u.decision) bits.push(`${tx.decision}: ${u.decision}`);
+  if (Number(u.enhancedScore)) bits.push(`${tx.match}: ${u.enhancedScore}/100`);
+  if (Number(u.confidence)) bits.push(`${tx.confidence}: ${u.confidence}/100`);
+  if (bits.length) g += anSayi(bits.join(' · '));
+  if (u.personaAnalysis) g += anPar(u.personaAnalysis);
+  if (u.verdict) { g += anH2(tx.detail); g += anPar(u.verdict); }
+
+  g += anQuizEtkisi(u.quizInsights, tx);
+
+  if (anDizi(u.prosForUser).length) { g += anH2(tx.strengths); g += anListe(u.prosForUser); }
+  if (anDizi(u.consForUser).length) { g += anH2(tx.weaknesses); g += anListe(u.consForUser); }
+
+  const kn = anBaslikliListe(u.criticalPoints);
+  if (kn) { g += anH2(tx.critical); g += kn; }
+
+  g += anOzellikTablosu(u.featureMatches, tx);
+
+  if (u.communityAnalysis || anDizi(u.praisePoints).length || anDizi(u.complaintPoints).length) {
+    g += anH2(tx.community);
+    if (Number(u.communityScore)) g += anSayi(`${tx.satisfaction}: ${Number(u.communityScore)}/100`);
+    if (u.communityAnalysis) g += anPar(u.communityAnalysis);
+    g += anListe(u.praisePoints);
+    g += anListe(u.complaintPoints);
+  }
+
+  g += anFiyat(u.priceOutlook, tx);
+
+  if (u.bestFor || u.notFor) {
+    g += anH2(tx.who);
+    if (u.bestFor) g += `<p style="line-height:1.7;color:#334155;margin:0 0 8px"><strong>${esc(tx.bestFor)}:</strong> ${esc(u.bestFor)}</p>`;
+    if (u.notFor) g += `<p style="line-height:1.7;color:#334155;margin:0"><strong>${esc(tx.notFor)}:</strong> ${esc(u.notFor)}</p>`;
+  }
+  if (u.overallVerdict) { g += anH2(tx.verdict); g += anPar(u.overallVerdict); }
+  return g;
+}
+
+// ── LINK raporu — karsilastirma (`products[]` + `comparison`) ─────────────
+function anKarsilastirmaGovde(r, tx) {
+  const cmp = r.comparison || {};
+  const urunler = anDizi(r.products);
+  let g = '';
+  if (cmp.winner) g += anSayi(`${tx.winner}: ${cmp.winner}${Number(cmp.winnerScore) ? ` · ${cmp.winnerScore}/100` : ''}`);
+  if (cmp.recommendation) g += anPar(cmp.recommendation);
+
+  const chart = anDizi(cmp.chart).filter((x) => x && x.name);
+  if (chart.length) {
+    g += anH2(tx.products);
+    g += `<table style="border-collapse:collapse;width:100%;max-width:680px;margin:0 0 16px">`
+      + chart.map((x) => `<tr>`
+        + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0"><strong>${esc(x.name)}</strong></td>`
+        + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0;font-family:ui-monospace,Consolas,monospace">${Number(x.score) || 0}/100</td>`
+        + `<td style="padding:7px 12px;color:#475569;border-top:1px solid #e2e8f0">${esc(x.reason || '')}</td>`
+        + `</tr>`).join('')
+      + `</table>`;
+  }
+
+  const farklar = anBaslikliListe(cmp.decisiveDifferences);
+  if (farklar) { g += anH2(tx.decisive); g += farklar; }
+  if (cmp.headToHead) { g += anH2(tx.headToHead); g += anPar(cmp.headToHead); }
+
+  urunler.filter((p) => p && p.name).forEach((p) => {
+    g += anH2(`${p.name}${Number(p.matchScore) ? ` — ${p.matchScore}/100` : ''}`);
+    if (p.headline) g += anPar(p.headline);
+    if (p.matchComment) g += anPar(p.matchComment);
+    if (p.analysis) g += anPar(p.analysis);
+    if (anDizi(p.pros).length) { g += anH3(tx.pros); g += anListe(p.pros); }
+    if (anDizi(p.cons).length) { g += anH3(tx.cons); g += anListe(p.cons); }
+  });
+  return g;
+}
+
+// ── ABONELIK raporu (`services[]`) ────────────────────────────────────────
+function anAbonelikGovde(r, tx) {
+  const servisler = anDizi(r.services).filter((s) => s && s.name);
+  const w = r.winner || {};
+  let g = '';
+  const kazanan = w.name || (servisler.slice().sort((a, b) => (b.score || 0) - (a.score || 0))[0] || {}).name;
+  if (kazanan) g += anSayi(`${tx.winner}: ${kazanan}${Number(w.scoreGap) ? ` · +${w.scoreGap}` : ''}`);
+  if (w.reason || w.recommendation) g += anPar(w.reason || w.recommendation);
+
+  if (servisler.length) {
+    g += anH2(tx.services);
+    g += `<table style="border-collapse:collapse;width:100%;max-width:680px;margin:0 0 16px">`
+      + servisler.map((s) => `<tr>`
+        + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0"><strong>${esc(s.name)}</strong></td>`
+        + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0;font-family:ui-monospace,Consolas,monospace">${Number(s.score) || 0}/100</td>`
+        + `<td style="padding:7px 12px;color:#475569;border-top:1px solid #e2e8f0">${esc(s.verdict || s.summary || '')}</td>`
+        + `</tr>`).join('')
+      + `</table>`;
+  }
+
+  const farklar = anBaslikliListe(r.decisiveDifferences);
+  if (farklar) { g += anH2(tx.decisive); g += farklar; }
+
+  g += anQuizEtkisi(r.quizInsights, tx);
+
+  servisler.forEach((s) => {
+    g += anH2(`${s.name}${Number(s.score) ? ` — ${s.score}/100` : ''}`);
+    if (s.summary) g += anPar(s.summary);
+    if (anDizi(s.pros).length) { g += anH3(tx.pros); g += anListe(s.pros); }
+    if (anDizi(s.cons).length) { g += anH3(tx.cons); g += anListe(s.cons); }
+  });
+
+  const d = r.detailed || {};
+  [[d.fit, tx.fit], [d.features, tx.featuresSec], [d.ux, tx.ux], [d.community, tx.risk], [d.plan, tx.plan]]
+    .forEach(([metin, baslik]) => { if (metin) { g += anH2(baslik); g += anPar(metin); } });
+
+  if (r.recommendation) { g += anH2(tx.reco); g += anPar(r.recommendation); }
+  return g;
+}
+
+function analizBody(a, lang) {
+  const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
+  const pfx = localePrefix(lang);
+  const kind = analysisKind(a);
+  const ham = analysisReport(a, lang);
+  const img = /^https?:\/\//i.test(a.productImage || '') ? esc(a.productImage) : '';
+  const konu = esc(analysisSubject(a, lang));
+  const baslik = esc(analysisTitle(a, lang));
+  const faq = analysisFaq(a, lang).slice(0, 8);
 
   let govde = '';
-  if (rapor) {
-    // Manset + karar: sayfanin CEVABI en ustte.
-    if (p.headline) {
-      govde += `<p style="font-size:18px;line-height:1.6;color:#0f172a;font-weight:600;max-width:64ch;margin:0 0 12px">${esc(p.headline)}</p>`;
+  if (ham) {
+    if (kind === 'product' && ham.product) govde = anUrunGovde(ham, tx);
+    else if (kind === 'subscription') govde = anAbonelikGovde(ham, tx);
+    else if (Array.isArray(ham.products)) govde = anKarsilastirmaGovde(ham, tx);
+    else {
+      // Kayittaki sekil zaten ortak ("enhanced"); adaptor yalnizca urun
+      // raporunu cevirir, digerini oldugu gibi dondurur.
+      const u = analysisUnified(a, lang);
+      govde = u ? anLinkGovde(u, tx) : '';
     }
-    const kararBits = [];
-    if (p.decision) kararBits.push(`${tx.decision}: ${p.decision}`);
-    if (Number(p.matchScore)) kararBits.push(`${tx.match}: ${p.matchScore}/100`);
-    if (Number(p.confidence)) kararBits.push(`${tx.confidence}: ${p.confidence}/100`);
-    if (kararBits.length) {
-      govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 18px">${esc(kararBits.join(' · '))}</p>`;
-    }
-    if (p.matchComment) govde += par(p.matchComment);
-    if (p.analysis) { govde += h2(tx.detail); govde += par(p.analysis); }
-
-    // Quiz etkisi — kullanicinin verdigi cevaplar ve skora etkisi. Kullanicinin
-    // "quiz cevaplari da sayfada olsun" istegi tam olarak bu blok.
-    const qi = dizi(p.quizInsights).filter((q) => q && (q.topic || q.answer));
-    if (qi.length) {
-      govde += h2(tx.quiz);
-      govde += `<ul style="margin:0 0 16px;padding-left:20px">${qi.map((q) => {
-        const et = Number(q.impact);
-        const isaret = Number.isFinite(et) && et !== 0 ? ` (${et > 0 ? '+' : ''}${et})` : '';
-        return `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(q.topic || '')}</strong>${q.answer ? ` — ${esc(q.answer)}` : ''}${esc(isaret)}${q.note ? `<br><span style="color:#64748b">${esc(q.note)}</span>` : ''}</li>`;
-      }).join('')}</ul>`;
-    }
-
-    const g = dizi(p.strengths).map(String);
-    const z = dizi(p.weaknesses).map(String);
-    if (g.length) { govde += h2(tx.strengths); govde += liste(g, '#334155'); }
-    if (z.length) { govde += h2(tx.weaknesses); govde += liste(z, '#334155'); }
-
-    const kn = dizi(p.criticalPoints).filter((x) => x && x.title);
-    if (kn.length) {
-      govde += h2(tx.critical);
-      govde += kn.map((x) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(x.title)}</h3>`
-        + (x.detail ? `<p style="line-height:1.7;color:#475569;margin:0">${esc(x.detail)}</p>` : '')).join('');
-    }
-
-    const fm = dizi(p.featureMatches).filter((x) => x && x.label);
-    if (fm.length) {
-      govde += h2(tx.features);
-      govde += `<table style="border-collapse:collapse;width:100%;max-width:680px;margin:0 0 16px">`
-        + fm.slice(0, 12).map((x) => `<tr>`
-          + `<td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">${esc(x.label)}</td>`
-          + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0"><strong>${esc(x.productValue || '—')}</strong></td>`
-          + `<td style="padding:7px 12px;color:#475569;border-top:1px solid #e2e8f0">${esc(x.comment || '')}</td>`
-          + `</tr>`).join('')
-        + `</table>`;
-    }
-
-    // Topluluk — gercek rapordaki `community` blogu.
-    const c = rapor.community || {};
-    if (c.summary || dizi(c.pros).length || dizi(c.cons).length) {
-      govde += h2(tx.community);
-      if (Number(c.satisfaction)) {
-        govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 12px">${esc(tx.satisfaction)}: ${Number(c.satisfaction)}/100</p>`;
-      }
-      if (c.summary) govde += par(c.summary);
-      if (dizi(c.pros).length) govde += liste(dizi(c.pros).map(String), '#334155');
-      if (dizi(c.cons).length) govde += liste(dizi(c.cons).map(String), '#334155');
-    }
-
-    const alt = dizi(rapor.alternatives).filter((x) => x && x.name);
-    if (alt.length) {
-      govde += h2(tx.alternatives);
-      govde += `<ul style="margin:0 0 16px;padding-left:20px">${alt.map((x) => `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(x.name)}</strong>${x.difference ? ` — ${esc(x.difference)}` : ''}</li>`).join('')}</ul>`;
-    }
-
-    // Fiyat gorunumu
-    const pf = rapor.priceForecast || {};
-    if (pf.analysis || pf.bestTimeToBuy) {
-      govde += h2(tx.price);
-      const bits = [];
-      if (pf.trend) bits.push(`${tx.trend}: ${pf.trend}`);
-      if (pf.buyOrWait) bits.push(`${tx.buyWait}: ${pf.buyOrWait}`);
-      if (pf.bestTimeToBuy) bits.push(`${tx.bestTime}: ${pf.bestTimeToBuy}`);
-      if (bits.length) govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 12px">${esc(bits.join(' · '))}</p>`;
-      if (pf.analysis) govde += par(pf.analysis);
-    }
-
-    if (p.bestFor || p.notFor) {
-      govde += h2(tx.who);
-      if (p.bestFor) govde += `<p style="line-height:1.7;color:#334155;margin:0 0 8px"><strong>${esc(tx.bestFor)}:</strong> ${esc(p.bestFor)}</p>`;
-      if (p.notFor) govde += `<p style="line-height:1.7;color:#334155;margin:0"><strong>${esc(tx.notFor)}:</strong> ${esc(p.notFor)}</p>`;
-    }
-    if (p.overallVerdict) { govde += h2(tx.verdict); govde += par(p.overallVerdict); }
   }
 
   return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
-    + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/analiz">${esc(tx.h1)}</a></nav>`
+    + `<nav style="font-size:13px;color:#64748b"><a href="${pfx || '/'}">Qor AI</a> › <a href="${pfx}/analiz">${esc(tx.h1)}</a></nav>`
     + `<h1 style="font-size:27px;margin:12px 0 8px">${baslik}</h1>`
     // Analiz edilen ürüne İÇ LİNK: analiz sayfası otorite taşır, ürün sayfası
     // ince — bağ ince sayfaya değer akıtır ve okuyucuyu satın almaya yaklaştırır.
     + `<div style="display:flex;gap:14px;align-items:center;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:18px 0">`
-    + (img ? `<img src="${img}" alt="${ad}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
-    + `<div><strong>${ad}</strong>`
-    + `<div style="font-size:12.5px;color:#64748b">${esc(a.productBrand || '')}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
-    + (a.productSlug ? `<a href="/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
+    + (img ? `<img src="${img}" alt="${konu}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
+    + `<div><strong>${konu}</strong>`
+    + `<div style="font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
+    + (kind === 'product' && a.productSlug ? `<a href="${pfx}/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
     + `</div></div>`
     + govde
     + (faq.length
-      ? h2(tx.faq)
-        + faq.map((f) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(f.q)}</h3><p style="line-height:1.7;color:#475569;margin:0;max-width:68ch">${esc(f.a)}</p>`).join('')
+      ? anH2(tx.faq)
+        + faq.map((f) => `${anH3(f.q)}<p style="line-height:1.7;color:#475569;margin:0;max-width:68ch">${esc(f.a)}</p>`).join('')
       : '')
-    + `<p style="margin-top:26px"><a href="/analiz" style="color:#2563eb;font-weight:600">${esc(tx.all)}</a></p>`
+    + `<p style="margin-top:26px"><a href="${pfx}/analiz" style="color:#2563eb;font-weight:600">${esc(tx.all)}</a></p>`
     + `</main>`;
 }
 
@@ -1174,7 +1358,11 @@ function categoryPath(category) {
 // (admin/js/spec_i18n.js) çevriliyor, fiyatı olan ürünlerde gövdeye fiyat +
 // Product/Offer şeması eklendi. Her sayfanın GÖRÜNEN metni değişti — uydurma
 // tazelik değil, gerçek değişiklik.
-const SEO_CONTENT_VERSION = '2026-08-21';
+// 2026-08-22: analiz sayfaları dil başına ayrı adrese ayrıldı
+// (`/analiz/<slug>` + `/tr/analiz/<slug>`), hreflang artık gerçek alternatifi
+// gösteriyor, gövde türe göre (ürün / link / abonelik) yazılıyor ve başlık ile
+// açıklama admin'de üretilen meta'dan geliyor.
+const SEO_CONTENT_VERSION = '2026-08-22';
 
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
@@ -2810,6 +2998,20 @@ async function main() {
   // basliklarinin tekrari degil. Uzun kuyruk trafigin girisi burasi.
   const analyses = await fetchAnalyses();
   const analizUrls = [];
+  // ANALIZ KABUKLARINI DIL DIL SIL. Uretilmeyen agac kendiliginden SILINMEZ:
+  // yayindan kaldirilan ya da bir dilde raporu olmayan analizin eski kabugu
+  // yerinde kalir, sitemap'ten dusse bile adres 200 dondurmeye devam eder ve
+  // Google onu "artik hicbir yerden linklenmemis, guncellenmeyen sayfa" olarak
+  // gorur. `analiz` prebuild'in wipe listesinde OLAMAZ — dil onekli karsiligi
+  // (`website/tr/analiz`) orada temizlenemezdi; kategori/compare ile ayni
+  // gerekce ve ayni yer.
+  for (const lang of SEO_LOCALES) {
+    const analizRoot = join(site, localePrefix(lang).replace(/^\//, ''), 'analiz');
+    if (!existsSync(analizRoot)) continue;
+    for (const entry of readdirSync(analizRoot, { withFileTypes: true })) {
+      if (entry.isDirectory()) { try { rmSync(join(analizRoot, entry.name), { recursive: true, force: true }); } catch (_) {} }
+    }
+  }
   if (analyses.length) {
     const listLastmod = lastmodAtLeastVersion(analyses[0]?.updated);
     for (const lang of SEO_LOCALES) {
@@ -2830,64 +3032,77 @@ async function main() {
         priority: lang === SEO_DEFAULT_LOCALE ? '0.7' : '0.6',
       });
     }
+    // Analiz artik DIL BASINA AYRI ADRESTE: `/analiz/<slug>` (EN) ve
+    // `/tr/analiz/<slug>`. Onceden tek adres vardi ve hreflang kumesi iki dili
+    // de AYNI adrese isaret ediyordu — yani "alternatif" diye gosterilen sey
+    // sayfanin kendisiydi, Google icin bilgi tasimayan bir dongu.
+    //
+    // Kayit iki raporu birden tasir (report_tr / report_en). Bir dilde rapor
+    // YOKSA o dilin sayfasi da URETILMEZ ve hreflang'e girmez: var olmayan
+    // alternatif uydurmak, tek adrese isaret etmekten daha kotu.
     for (const a of analyses) {
       if (!a.slug) continue;
-      const url = `${SITE}/analiz/${a.slug}`;
+      // DIKKAT: analysisReport() oteki dile DUSER; burada duserse Ingilizce
+      // sayfaya Turkce metin basip onu hreflang ile alternatif diye gosteririz.
+      const diller = analysisRenderLangs(a, SEO_DEFAULT_LOCALE).filter((l) => SEO_LOCALES.includes(l));
+      if (!diller.length) continue;
       const img = /^https?:\/\//i.test(a.productImage || '') ? a.productImage : DEFAULT_IMG;
-      // Analiz TEK adreste, dilleri ayni sayfada (blogdan farkli: blog dil
-      // basina AYRI slug tutuyor). Bu yuzden hreflang kumesi de tek adrese
-      // isaret eder; ayri dil adresi uydurmak "var olmayan alternatif" olurdu.
-      const alternates = SEO_LOCALES.map((l) => ({ hreflang: l, href: url }));
-      alternates.push({ hreflang: 'x-default', href: url });
-      const lang = SEO_DEFAULT_LOCALE;
-      const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
-      // Baslik ve aciklama RAPORDAN gelir; analiz kaydinda ayri bir metin
-      // alani tutulmuyor — sayfa neyi cizecekse basligi da ondan turemeli.
-      const rp = (a.report && a.report.product) ? a.report.product : {};
-      const anBaslik = `${a.productName || a.slug} — ${tx.h1Tek}`;
-      const anOzet = rp.headline || rp.overallVerdict || '';
-      const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
-        .filter((f) => f && f.q && f.a).slice(0, 8);
-      const graph = [{
-        '@type': 'Article', '@id': `${url}#article`,
-        headline: anBaslik, description: truncate(anOzet),
-        image: [img], datePublished: a.publishedAt || a.created, dateModified: a.updated,
-        inLanguage: lang,
-        author: { '@type': 'Organization', name: (a.author || '').trim() || 'Qor AI' },
-        publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
-        mainEntityOfPage: url,
-      }];
-      if (faq.length) {
+      const alternates = diller.map((l) => ({ hreflang: l, href: `${SITE}${localePrefix(l)}/analiz/${a.slug}` }));
+      alternates.push({
+        hreflang: 'x-default',
+        href: `${SITE}${localePrefix(diller.includes(SEO_DEFAULT_LOCALE) ? SEO_DEFAULT_LOCALE : diller[0])}/analiz/${a.slug}`,
+      });
+      for (const lang of diller) {
+        const prefix = localePrefix(lang);
+        const url = `${SITE}${prefix}/analiz/${a.slug}`;
+        // Baslik/aciklama sayfayi cizen bilesenle AYNI fonksiyondan gelir
+        // (lib/analysisRecord.js) — admin metaTitle/metaDescription yazdiysa
+        // onlar, yazmadiysa rapordan turetilenler.
+        const anBaslik = analysisMetaTitle(a, lang);
+        const anOzet = analysisMetaDescription(a, lang);
+        const faq = analysisFaq(a, lang).slice(0, 8);
+        const graph = [{
+          '@type': 'Article', '@id': `${url}#article`,
+          headline: analysisTitle(a, lang), description: truncate(anOzet),
+          image: [img], datePublished: a.publishedAt || a.created, dateModified: a.updated,
+          inLanguage: lang,
+          author: { '@type': 'Organization', name: (a.author || '').trim() || 'Qor AI' },
+          publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: DEFAULT_IMG } },
+          mainEntityOfPage: url,
+        }];
+        if (faq.length) {
+          graph.push({
+            '@type': 'FAQPage', '@id': `${url}#faq`,
+            mainEntity: faq.map((f) => ({
+              '@type': 'Question', name: f.q,
+              acceptedAnswer: { '@type': 'Answer', text: f.a },
+            })),
+          });
+        }
+        const listeTx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
         graph.push({
-          '@type': 'FAQPage', '@id': `${url}#faq`,
-          mainEntity: faq.map((f) => ({
-            '@type': 'Question', name: f.q,
-            acceptedAnswer: { '@type': 'Answer', text: f.a },
-          })),
+          '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${prefix || '/'}` },
+            { '@type': 'ListItem', position: 2, name: listeTx.h1, item: `${SITE}${prefix}/analiz` },
+            { '@type': 'ListItem', position: 3, name: analysisTitle(a, lang), item: url },
+          ],
+        });
+        writeHtml(`${prefix}/analiz/${a.slug}`.replace(/^\//, ''), renderPage(template, {
+          title: fitTitle(anBaslik, [' | Qor AI'], 68),
+          description: truncate(anOzet),
+          url, image: img, imageAlt: analysisSubject(a, lang) || anBaslik, type: 'article',
+          alternates, routeKey: 'blogpost', lang,
+          jsonLd: { '@context': 'https://schema.org', '@graph': graph },
+        }, localizeBodyLinks(analizBody(a, lang), lang)));
+        analizUrls.push({
+          loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt),
+          changefreq: 'monthly', priority: lang === SEO_DEFAULT_LOCALE ? '0.8' : '0.7',
         });
       }
-      graph.push({
-        '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
-          { '@type': 'ListItem', position: 2, name: (ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT.en).h1, item: `${SITE}/analiz` },
-          { '@type': 'ListItem', position: 3, name: anBaslik, item: url },
-        ],
-      });
-      writeHtml(`analiz/${a.slug}`, renderPage(template, {
-        title: fitTitle(anBaslik, [' | Qor AI'], 68),
-        description: truncate(anOzet),
-        url, image: img, imageAlt: a.productName || anBaslik, type: 'article',
-        alternates, routeKey: 'blogpost', lang,
-        jsonLd: { '@context': 'https://schema.org', '@graph': graph },
-      }, localizeBodyLinks(analizBody(a, lang), lang)));
-      analizUrls.push({
-        loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt),
-        changefreq: 'monthly', priority: '0.8',
-      });
     }
   }
-  console.log(`[seo] wrote ${analyses.length} analiz sayfasi (+${SEO_LOCALES.length} liste kabugu)`);
+  console.log(`[seo] wrote ${analizUrls.length} analiz adresi (${analyses.length} kayit x dil + ${SEO_LOCALES.length} liste kabugu)`);
 
   // 3) sitemap — chunked into <=45k-URL files (sitemaps cap at 50k) with a
   //    sitemap index. A single 106k-URL sitemap is invalid per the spec.

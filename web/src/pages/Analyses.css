@@ -1,13 +1,18 @@
-/* Analiz bölümü — /analiz ve /analiz/<slug>
+/* Analiz bölümü — /analiz listesi
  *
- * Tamamı global.css token'larından. Sabit hex YOK: bu projede her renk bir
- * kontrast denetiminden sonra en az bir kez taşındı, doğrudan hex yazmak o
- * denetimi atlamak demek. Metin taşıyan marka/semantik renkler --ink-* .
+ * TEK ANALIZ SAYFASI (/analiz/<slug>) BURADAN STIL ALMAZ. O sayfa ürün
+ * sayfasındaki analizin BIREBIR aynısıdır: aynı bileşen (ProductFullReport),
+ * aynı sarmalayıcı (`.container`, 1240px), aynı `la-*` stil dosyası
+ * (pages/LinkAnalysis.css). Buraya ikinci bir rapor düzeni yazmak iki
+ * tasarımın zamanla ayrışması demekti — ilk sürümde tam olarak bu oldu:
+ * yayınlanan analiz 760px'lik bir blog gibi, sitedeki analiz ise geniş ve
+ * kart tabanlı görünüyordu.
  *
- * Ayrım kutu ve gölgeyle değil, 1px hairline + boşlukla kuruluyor. */
+ * Tamamı global.css token'larından. Sabit hex YOK. Ayrım kutu ve gölgeyle
+ * değil, 1px hairline + boşlukla kuruluyor. */
 
 .an-wrap {
-  max-width: 760px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 28px 20px 80px;
 }
@@ -32,6 +37,9 @@
   color: inherit;
 }
 .an-item:last-child { border-bottom: 1px solid var(--divider); }
+/* Gorseli olmayan analiz (link / abonelik) tek sutuna duser — yoksa metin
+   84px'lik gorsel sutununa sikisip harf harf sariyordu. */
+.an-item-noimg { grid-template-columns: 1fr; }
 .an-item img {
   width: 84px; height: 84px; object-fit: contain;
   background: var(--surface-2); border-radius: var(--r-sm, 10px);
@@ -53,63 +61,48 @@
 }
 .an-score { font-variant-numeric: tabular-nums; color: var(--ink-blue); font-weight: 600; }
 
-/* ── tek analiz ──────────────────────────────────────────── */
+/* Tür rozeti — ürün / link / abonelik analizi aynı listede durur. */
+.an-kind {
+  font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: var(--r-xs, 6px);
+  color: var(--ink-blue); background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.an-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.an-filters button {
+  padding: 6px 14px; border-radius: var(--r-pill, 999px); cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text-2);
+  font: inherit; font-size: 13.5px; font-weight: 600;
+  transition: color .12s ease-out, border-color .12s ease-out;
+}
+.an-filters button:hover { color: var(--text); border-color: var(--border-strong); }
+.an-filters button.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+
+/* ── tek analiz — YALNIZ sayfa başlığı ve künye ─────────────
+ * Raporun kendisi ProductFullReport / AiReportView tarafından çizilir; bu
+ * bloklar yalnızca onun üstündeki başlık şeridi. */
 .an-crumbs { font-size: 13px; color: var(--text-3); margin-bottom: 14px; }
 .an-crumbs a { color: var(--text-2); text-decoration: none; }
 .an-crumbs a:hover { color: var(--accent); }
 
+.an-post { padding-bottom: 80px; }
 .an-post h1 {
   font-size: clamp(27px, 5vw, 40px); line-height: 1.1; font-weight: 800;
   letter-spacing: -.022em; margin: 0 0 12px; text-wrap: balance;
-}
-.an-lead {
-  font-size: 18px; line-height: 1.6; color: var(--text-2);
-  margin: 0 0 22px; max-width: 62ch;
 }
 
 /* Analiz edilen ürün — sayfanın neyi anlattığını tek bakışta veren şerit. */
 .an-strip {
   display: flex; gap: 14px; align-items: center;
   border: 1px solid var(--border); border-radius: var(--r-md, 14px);
-  background: var(--surface); padding: 14px; margin: 0 0 28px;
+  background: var(--surface); padding: 14px; margin: 0 0 22px;
 }
+/* Gorsel yoksa serit yalnizca metin tasir — bos kutu ayrilmaz. */
+.an-strip-noimg { padding: 12px 14px; }
 .an-strip img { width: 64px; height: 64px; object-fit: contain; background: var(--surface-2); border-radius: var(--r-sm, 10px); }
 .an-strip strong { display: block; font-size: 15px; margin-bottom: 3px; }
 .an-strip a { font-size: 13.5px; color: var(--accent); text-decoration: none; }
 .an-strip a:hover { text-decoration: underline; }
-
-.an-body { color: var(--text); }
-.an-body h2 {
-  font-size: 22px; line-height: 1.25; font-weight: 700; letter-spacing: -.012em;
-  margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--divider);
-  text-wrap: balance;
-}
-.an-body h3 { font-size: 17px; font-weight: 700; margin: 22px 0 7px; }
-.an-body p { line-height: 1.72; margin: 0 0 15px; color: var(--text-soft); max-width: 68ch; }
-.an-body ul { margin: 0 0 16px; padding-left: 20px; }
-.an-body li { line-height: 1.7; margin: 6px 0; color: var(--text-soft); }
-.an-body li::marker { color: var(--text-3); }
-.an-body strong { color: var(--text); font-weight: 700; }
-
-/* Hüküm — sayfanın cevabı. Tek vurgulu blok, sayfanın geri kalanı sakin. */
-.an-verdict {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: var(--r-sm, 10px);
-  background: var(--surface);
-  padding: 18px 20px;
-  margin: 32px 0;
-}
-.an-verdict h2 {
-  font-size: 13px; text-transform: uppercase; letter-spacing: .11em;
-  color: var(--accent); margin: 0 0 8px; font-weight: 700;
-}
-.an-verdict p { margin: 0; line-height: 1.7; color: var(--text-soft); }
-
-.an-faq { margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--divider); }
-.an-faq > h2 { font-size: 22px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.012em; }
-.an-faq h3 { font-size: 16px; font-weight: 700; margin: 20px 0 6px; }
-.an-faq p { margin: 0; line-height: 1.7; color: var(--text-soft); max-width: 68ch; }
 
 .an-back { margin-top: 32px; }
 .an-back a { color: var(--accent); text-decoration: none; font-weight: 600; }
