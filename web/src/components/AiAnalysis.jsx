@@ -940,7 +940,10 @@ function AlternativeCards({ alternatives = [], L }) {
 // (Eskiden kendi düzeni vardı: kritik noktalar, quiz etkisi, topluluk temaları
 // ve radar grafiği hiç görünmüyordu. Kullanıcı dört akışın da aynı olmasını
 // istedi; şema `lib/reportAdapters.js` ile ortak şekle çevriliyor.)
-function ProductFullReport({ data, L, lang }) {
+// `export`: /analiz/<slug> sayfasi da AYNI bileseni cizer. Yayinlanan analiz,
+// urun sayfasinda calisan analizin BIREBIR AYNISI gorunmek zorunda — ikinci bir
+// gorunum yazmak iki tasarimin ayrismasi demek.
+export function ProductFullReport({ data, L, lang }) {
   const unified = productReportToUnified(data);
   const alternatives = arr(data.alternatives);
   return (

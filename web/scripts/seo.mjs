@@ -165,21 +165,41 @@ const ANALIZ_LISTE_TEXT = {
     h1: 'AI Product Analyses',
     title: 'AI Product Analyses — Qor AI',
     desc: 'In-depth AI analyses of popular tech products: what the specs mean in daily use, strengths, weaknesses and who each product is actually for.',
-    intro: 'Every analysis is written from the product\'s real catalogue specs and reviewed before publishing.',
+    intro: 'Every analysis is the same report the product page produces — quiz answers, scores and all — reviewed before publishing.',
     all: '← All analyses',
     prod: 'View product page',
-    verdict: 'Verdict',
     faq: 'Frequently asked questions',
+    // Rapor bloklarinin basliklari — ProductFullReport'un cizdigi bolumlerin
+    // metin karsiligi (crawler React calistirmaz).
+    h1Tek: 'AI Analysis',
+    decision: 'Decision', match: 'Match', confidence: 'Confidence',
+    detail: 'Detailed analysis', quiz: 'What your answers changed',
+    strengths: 'Strengths', weaknesses: 'Weaknesses',
+    critical: 'Things that change the decision', features: 'Feature by feature',
+    community: 'What owners say', satisfaction: 'Satisfaction',
+    alternatives: 'Smart alternatives', price: 'Price outlook',
+    trend: 'Trend', buyWait: 'Buy or wait', bestTime: 'Best time to buy',
+    who: 'Who is it for?', bestFor: 'Buy it if', notFor: 'Skip it if',
+    verdict: 'Verdict',
   },
   tr: {
     h1: 'Yapay Zekâ Ürün Analizleri',
     title: 'Yapay Zekâ Ürün Analizleri — Qor AI',
     desc: 'Popüler teknoloji ürünlerinin derinlemesine yapay zekâ analizleri: özellikler günlük kullanımda ne anlama geliyor, güçlü ve zayıf yanları, kime uygun.',
-    intro: 'Her analiz ürünün gerçek katalog özelliklerinden yazılır ve yayınlanmadan önce gözden geçirilir.',
+    intro: 'Her analiz, ürün sayfasında çalışan raporun aynısıdır — quiz cevapları, skorlar, hepsi — ve yayınlanmadan önce gözden geçirilir.',
     all: '← Tüm analizler',
     prod: 'Ürün sayfasına git',
-    verdict: 'Sonuç',
     faq: 'Sık sorulan sorular',
+    h1Tek: 'Yapay Zekâ Analizi',
+    decision: 'Karar', match: 'Uyum', confidence: 'Güven',
+    detail: 'Ayrıntılı analiz', quiz: 'Cevapların neyi değiştirdi',
+    strengths: 'Güçlü yanları', weaknesses: 'Zayıf yanları',
+    critical: 'Kararı değiştirenler', features: 'Özellik özellik',
+    community: 'Kullananlar ne diyor', satisfaction: 'Memnuniyet',
+    alternatives: 'Akıllı alternatifler', price: 'Fiyat görünümü',
+    trend: 'Eğilim', buyWait: 'Al ya da bekle', bestTime: 'En uygun zaman',
+    who: 'Kime uygun?', bestFor: 'Alması gereken', notFor: 'Almaması gereken',
+    verdict: 'Sonuç',
   },
 };
 
@@ -187,8 +207,10 @@ function analizListeBody(analyses, lang) {
   const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
   const t = (a, f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const items = analyses.filter((a) => a.slug).map((a) => {
-    const baslik = esc(t(a, 'title') || a.productName || '');
-    const lead = esc(truncate(t(a, 'lead'), 180));
+    // Baslik ve ozet RAPORDAN gelir; ayri bir 'title/lead' metni tutulmuyor.
+    const r = (a.report && a.report.product) ? a.report.product : null;
+    const baslik = esc(`${a.productName || a.slug} — ${tx.h1Tek}`);
+    const lead = esc(truncate(r ? (r.headline || r.overallVerdict || '') : '', 180));
     return `<li style="margin:0;padding:18px 0;border-top:1px solid #e2e8f0">`
       + `<a href="/analiz/${esc(a.slug)}" style="color:#0f172a;text-decoration:none;font-size:18px;font-weight:700">${baslik}</a>`
       + (lead ? `<p style="margin:6px 0 0;color:#475569;line-height:1.55">${lead}</p>` : '')
@@ -202,34 +224,144 @@ function analizListeBody(analyses, lang) {
     + `</main>`;
 }
 
-// Analiz gövdesi. `body_*` admin panelinde üretilir/düzenlenir; safeBodyHtml
-// ile aynı etiket kümesine kısıtlanır (h2/h3/p/ul/li/strong/em).
+// Analiz sayfasinin ON-RENDER govdesi.
+//
+// Crawler React CALISTIRMAZ, dolayisiyla ProductFullReport'un cizdigi raporun
+// METIN karsiligi burada statik HTML olarak uretilir. Ayni VERI (`report`),
+// ayni sira: manset -> karar -> ozet -> quiz etkisi -> guclu/zayif ->
+// kritik noktalar -> topluluk -> alternatifler -> hukum -> SSS.
+//
+// Grafikler (skor halkasi, radar, donut) ON-RENDER'a girmez — onlar gorsel,
+// arama motoruna bir sey soylemiyorlar. Onlarin TASIDIGI BILGI metin olarak
+// yazilir; kullanici JS gelince gercek bileseni gorur.
 function analizBody(a, lang) {
   const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
-  const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
-  const baslik = esc(t('title') || a.productName || '');
+  const rapor = (a.report && typeof a.report === 'object' && a.report.product) ? a.report : null;
+  const p = rapor ? rapor.product : {};
   const img = /^https?:\/\//i.test(a.productImage || '') ? esc(a.productImage) : '';
+  const ad = esc(a.productName || '');
+  const baslik = `${ad} — ${esc(tx.h1Tek)}`;
   const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
     .filter((f) => f && f.q && f.a).slice(0, 8);
+
+  const dizi = (v) => (Array.isArray(v) ? v : []);
+  const par = (metin) => String(metin || '').split(/\n{2,}/)
+    .map((x) => x.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .map((x) => `<p style="line-height:1.72;color:#334155;margin:0 0 14px;max-width:68ch">${esc(x)}</p>`)
+    .join('');
+  const h2 = (t) => `<h2 style="font-size:21px;margin:30px 0 10px;padding-top:18px;border-top:1px solid #e2e8f0">${esc(t)}</h2>`;
+  const liste = (items, renk) => (items.length
+    ? `<ul style="margin:0 0 16px;padding-left:20px">${items.map((x) => `<li style="line-height:1.7;margin:6px 0;color:${renk}">${esc(x)}</li>`).join('')}</ul>`
+    : '');
+
+  let govde = '';
+  if (rapor) {
+    // Manset + karar: sayfanin CEVABI en ustte.
+    if (p.headline) {
+      govde += `<p style="font-size:18px;line-height:1.6;color:#0f172a;font-weight:600;max-width:64ch;margin:0 0 12px">${esc(p.headline)}</p>`;
+    }
+    const kararBits = [];
+    if (p.decision) kararBits.push(`${tx.decision}: ${p.decision}`);
+    if (Number(p.matchScore)) kararBits.push(`${tx.match}: ${p.matchScore}/100`);
+    if (Number(p.confidence)) kararBits.push(`${tx.confidence}: ${p.confidence}/100`);
+    if (kararBits.length) {
+      govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 18px">${esc(kararBits.join(' · '))}</p>`;
+    }
+    if (p.matchComment) govde += par(p.matchComment);
+    if (p.analysis) { govde += h2(tx.detail); govde += par(p.analysis); }
+
+    // Quiz etkisi — kullanicinin verdigi cevaplar ve skora etkisi. Kullanicinin
+    // "quiz cevaplari da sayfada olsun" istegi tam olarak bu blok.
+    const qi = dizi(p.quizInsights).filter((q) => q && (q.topic || q.answer));
+    if (qi.length) {
+      govde += h2(tx.quiz);
+      govde += `<ul style="margin:0 0 16px;padding-left:20px">${qi.map((q) => {
+        const et = Number(q.impact);
+        const isaret = Number.isFinite(et) && et !== 0 ? ` (${et > 0 ? '+' : ''}${et})` : '';
+        return `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(q.topic || '')}</strong>${q.answer ? ` — ${esc(q.answer)}` : ''}${esc(isaret)}${q.note ? `<br><span style="color:#64748b">${esc(q.note)}</span>` : ''}</li>`;
+      }).join('')}</ul>`;
+    }
+
+    const g = dizi(p.strengths).map(String);
+    const z = dizi(p.weaknesses).map(String);
+    if (g.length) { govde += h2(tx.strengths); govde += liste(g, '#334155'); }
+    if (z.length) { govde += h2(tx.weaknesses); govde += liste(z, '#334155'); }
+
+    const kn = dizi(p.criticalPoints).filter((x) => x && x.title);
+    if (kn.length) {
+      govde += h2(tx.critical);
+      govde += kn.map((x) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(x.title)}</h3>`
+        + (x.detail ? `<p style="line-height:1.7;color:#475569;margin:0">${esc(x.detail)}</p>` : '')).join('');
+    }
+
+    const fm = dizi(p.featureMatches).filter((x) => x && x.label);
+    if (fm.length) {
+      govde += h2(tx.features);
+      govde += `<table style="border-collapse:collapse;width:100%;max-width:680px;margin:0 0 16px">`
+        + fm.slice(0, 12).map((x) => `<tr>`
+          + `<td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">${esc(x.label)}</td>`
+          + `<td style="padding:7px 12px;border-top:1px solid #e2e8f0"><strong>${esc(x.productValue || '—')}</strong></td>`
+          + `<td style="padding:7px 12px;color:#475569;border-top:1px solid #e2e8f0">${esc(x.comment || '')}</td>`
+          + `</tr>`).join('')
+        + `</table>`;
+    }
+
+    // Topluluk — gercek rapordaki `community` blogu.
+    const c = rapor.community || {};
+    if (c.summary || dizi(c.pros).length || dizi(c.cons).length) {
+      govde += h2(tx.community);
+      if (Number(c.satisfaction)) {
+        govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 12px">${esc(tx.satisfaction)}: ${Number(c.satisfaction)}/100</p>`;
+      }
+      if (c.summary) govde += par(c.summary);
+      if (dizi(c.pros).length) govde += liste(dizi(c.pros).map(String), '#334155');
+      if (dizi(c.cons).length) govde += liste(dizi(c.cons).map(String), '#334155');
+    }
+
+    const alt = dizi(rapor.alternatives).filter((x) => x && x.name);
+    if (alt.length) {
+      govde += h2(tx.alternatives);
+      govde += `<ul style="margin:0 0 16px;padding-left:20px">${alt.map((x) => `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(x.name)}</strong>${x.difference ? ` — ${esc(x.difference)}` : ''}</li>`).join('')}</ul>`;
+    }
+
+    // Fiyat gorunumu
+    const pf = rapor.priceForecast || {};
+    if (pf.analysis || pf.bestTimeToBuy) {
+      govde += h2(tx.price);
+      const bits = [];
+      if (pf.trend) bits.push(`${tx.trend}: ${pf.trend}`);
+      if (pf.buyOrWait) bits.push(`${tx.buyWait}: ${pf.buyOrWait}`);
+      if (pf.bestTimeToBuy) bits.push(`${tx.bestTime}: ${pf.bestTimeToBuy}`);
+      if (bits.length) govde += `<p style="font-family:ui-monospace,Consolas,monospace;font-size:13px;color:#475569;margin:0 0 12px">${esc(bits.join(' · '))}</p>`;
+      if (pf.analysis) govde += par(pf.analysis);
+    }
+
+    if (p.bestFor || p.notFor) {
+      govde += h2(tx.who);
+      if (p.bestFor) govde += `<p style="line-height:1.7;color:#334155;margin:0 0 8px"><strong>${esc(tx.bestFor)}:</strong> ${esc(p.bestFor)}</p>`;
+      if (p.notFor) govde += `<p style="line-height:1.7;color:#334155;margin:0"><strong>${esc(tx.notFor)}:</strong> ${esc(p.notFor)}</p>`;
+    }
+    if (p.overallVerdict) { govde += h2(tx.verdict); govde += par(p.overallVerdict); }
+  }
+
   return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
     + `<nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/analiz">${esc(tx.h1)}</a></nav>`
     + `<h1 style="font-size:27px;margin:12px 0 8px">${baslik}</h1>`
-    + (t('lead') ? `<p style="font-size:17px;line-height:1.6;color:#475569;max-width:62ch">${esc(t('lead'))}</p>` : '')
     // Analiz edilen ürüne İÇ LİNK: analiz sayfası otorite taşır, ürün sayfası
     // ince — bağ ince sayfaya değer akıtır ve okuyucuyu satın almaya yaklaştırır.
-    + `<div style="display:flex;gap:14px;align-items:center;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:20px 0">`
-    + (img ? `<img src="${img}" alt="${esc(a.productName || '')}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
-    + `<div><strong>${esc(a.productName || '')}</strong>`
+    + `<div style="display:flex;gap:14px;align-items:center;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin:18px 0">`
+    + (img ? `<img src="${img}" alt="${ad}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
+    + `<div><strong>${ad}</strong>`
     + `<div style="font-size:12.5px;color:#64748b">${esc(a.productBrand || '')}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
     + (a.productSlug ? `<a href="/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
     + `</div></div>`
-    + `<div style="line-height:1.72">${safeBodyHtml(t('body'))}</div>`
-    + (t('verdict') ? `<h2 style="font-size:20px;margin:26px 0 6px">${esc(tx.verdict)}</h2><div style="line-height:1.7;color:#334155">${safeBodyHtml(t('verdict'))}</div>` : '')
+    + govde
     + (faq.length
-      ? `<h2 style="font-size:20px;margin:28px 0 6px">${esc(tx.faq)}</h2>`
-        + faq.map((f) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(f.q)}</h3><p style="line-height:1.7;color:#475569;margin:0">${esc(f.a)}</p>`).join('')
+      ? h2(tx.faq)
+        + faq.map((f) => `<h3 style="font-size:16px;margin:16px 0 4px">${esc(f.q)}</h3><p style="line-height:1.7;color:#475569;margin:0;max-width:68ch">${esc(f.a)}</p>`).join('')
       : '')
-    + `<p style="margin-top:24px"><a href="/analiz" style="color:#2563eb;font-weight:600">${esc(tx.all)}</a></p>`
+    + `<p style="margin-top:26px"><a href="/analiz" style="color:#2563eb;font-weight:600">${esc(tx.all)}</a></p>`
     + `</main>`;
 }
 
@@ -2708,12 +2840,17 @@ async function main() {
       const alternates = SEO_LOCALES.map((l) => ({ hreflang: l, href: url }));
       alternates.push({ hreflang: 'x-default', href: url });
       const lang = SEO_DEFAULT_LOCALE;
-      const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
+      const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
+      // Baslik ve aciklama RAPORDAN gelir; analiz kaydinda ayri bir metin
+      // alani tutulmuyor — sayfa neyi cizecekse basligi da ondan turemeli.
+      const rp = (a.report && a.report.product) ? a.report.product : {};
+      const anBaslik = `${a.productName || a.slug} — ${tx.h1Tek}`;
+      const anOzet = rp.headline || rp.overallVerdict || '';
       const faq = (Array.isArray(a[`faq_${lang}`]) && a[`faq_${lang}`].length ? a[`faq_${lang}`] : (a.faq_tr || a.faq_en || []))
         .filter((f) => f && f.q && f.a).slice(0, 8);
       const graph = [{
         '@type': 'Article', '@id': `${url}#article`,
-        headline: t('title'), description: truncate(t('metaDescription') || t('lead')),
+        headline: anBaslik, description: truncate(anOzet),
         image: [img], datePublished: a.publishedAt || a.created, dateModified: a.updated,
         inLanguage: lang,
         author: { '@type': 'Organization', name: (a.author || '').trim() || 'Qor AI' },
@@ -2734,13 +2871,13 @@ async function main() {
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
           { '@type': 'ListItem', position: 2, name: (ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT.en).h1, item: `${SITE}/analiz` },
-          { '@type': 'ListItem', position: 3, name: t('title'), item: url },
+          { '@type': 'ListItem', position: 3, name: anBaslik, item: url },
         ],
       });
       writeHtml(`analiz/${a.slug}`, renderPage(template, {
-        title: fitTitle(t('metaTitle') || t('title'), [' | Qor AI'], 68),
-        description: truncate(t('metaDescription') || t('lead')),
-        url, image: img, imageAlt: a.productName || t('title'), type: 'article',
+        title: fitTitle(anBaslik, [' | Qor AI'], 68),
+        description: truncate(anOzet),
+        url, image: img, imageAlt: a.productName || anBaslik, type: 'article',
         alternates, routeKey: 'blogpost', lang,
         jsonLd: { '@context': 'https://schema.org', '@graph': graph },
       }, localizeBodyLinks(analizBody(a, lang), lang)));

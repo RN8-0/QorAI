@@ -1,14 +1,22 @@
 // Tek analiz sayfasi — /analiz/<slug>
 //
-// Sayfa Article + FAQPage semasi tasir. FAQ bloklari admin panelinde elle
-// duzenlenir ve insanlarin arama kutusuna GERCEKTEN yazdigi sorulari hedefler
-// ("batarya omru nasil", "oyun icin uygun mu") — sayfa basliklarinin tekrari
-// degil. Uzun kuyruk trafigin girisi bu.
+// SAYFA KENDI GORUNUMUNU YAZMAZ. Urun sayfasinda "Analiz Et" dendiginde
+// calisan raporun BIREBIR AYNISINI cizer: ayni bilesen (ProductFullReport),
+// ayni veri sekli (`product_full_report`), ayni grafikler, ayni skor halkasi,
+// ayni kritik noktalar / quiz etkisi / topluluk temalari.
+//
+// Ilk surumde buraya blog benzeri AYRI bir gorunum yazilmisti — yanlisti:
+// yayinlanan analiz, urun sayfasinda calisan analizden farkli gorunuyordu.
+// Ikinci bir gorunum tutmak iki tasarimin zamanla ayrismasi demek.
+//
+// Kayit ham raporu `analyses.report` alaninda tutar; admin paneli yalnizca
+// hangi raporun YAYINDA oldugunu belirler.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, hreflangAlternates, truncate } from '../lib/seo';
+import { ProductFullReport } from '../components/AiAnalysis.jsx';
 import './Analyses.css';
 
 export default function AnalysisPost() {
@@ -28,17 +36,19 @@ export default function AnalysisPost() {
     return () => { live = false; };
   }, [slug]);
 
-  const t = (f) => (a ? (a[`${f}_${lang}`] || a[`${f}_en`] || a[`${f}_tr`] || '') : '');
-  const faq = a ? (a[`faq_${lang}`] || a.faq_en || a.faq_tr || []) : [];
-  const baslik = t('title') || (a ? a.productName : '');
+  const rapor = a && a.report && typeof a.report === 'object' && a.report.product ? a.report : null;
+  const urunAdi = a ? (a.productName || '') : '';
+  const manset = rapor?.product?.headline || '';
+  const baslik = urunAdi ? `${urunAdi} — ${L('AI Analysis', 'Yapay Zekâ Analizi')}` : L('Analysis', 'Analiz');
+  const faq = a ? (a[`faq_${lang}`] || a.faq_tr || a.faq_en || []) : [];
 
   useSeo({
-    title: a ? truncate(t('metaTitle') || baslik, 68) : L('Analysis', 'Analiz'),
-    description: a ? truncate(t('metaDescription') || t('lead'), 158) : '',
+    title: a ? truncate(baslik, 68) : L('Analysis', 'Analiz'),
+    description: a ? truncate(manset || rapor?.product?.overallVerdict || '', 158) : '',
     path: `/analiz/${slug || ''}`,
     htmlLang: lang,
     image: a ? a.productImage : undefined,
-    imageAlt: a ? a.productName : undefined,
+    imageAlt: urunAdi,
     type: 'article',
     noindex: !a,
     alternates: hreflangAlternates(`/analiz/${slug || ''}`),
@@ -49,7 +59,7 @@ export default function AnalysisPost() {
           '@type': 'Article',
           '@id': `${SITE_URL}/analiz/${a.slug}#article`,
           headline: baslik,
-          description: t('lead'),
+          description: manset || undefined,
           image: a.productImage || undefined,
           datePublished: a.publishedAt || a.created,
           dateModified: a.updated,
@@ -84,7 +94,7 @@ export default function AnalysisPost() {
     return (
       <main className="an-wrap">
         <p className="an-empty">{L('Analysis not found.', 'Analiz bulunamadı.')}</p>
-        <p><Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link></p>
+        <p className="an-back"><Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link></p>
       </main>
     );
   }
@@ -97,50 +107,29 @@ export default function AnalysisPost() {
       </nav>
 
       <h1>{baslik}</h1>
-      {t('lead') && <p className="an-lead">{t('lead')}</p>}
 
       <div className="an-strip">
-        {a.productImage && <img src={a.productImage} alt={a.productName || ''} />}
+        {a.productImage ? <img src={a.productImage} alt={urunAdi} /> : null}
         <div>
-          <strong>{a.productName}</strong>
+          <strong>{urunAdi}</strong>
           <div className="an-meta">
-            {a.productBrand ? `${a.productBrand} · ` : ''}
+            {a.productBrand ? <span>{a.productBrand}</span> : null}
             {a.techScore ? <span className="an-score">Qor AI {a.techScore}/100</span> : null}
           </div>
-          {a.productSlug && (
+          {a.productSlug ? (
             <Link to={`/product/${a.productSlug}`}>
               {L('View product page →', 'Ürün sayfasına git →')}
             </Link>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Govde admin panelinde uretilir/duzenlenir; izin verilen etiketler
-          h2/h3/p/ul/li/strong/em (analysis_prompt.js analizHtml). */}
-      <article className="an-body" dangerouslySetInnerHTML={{ __html: t('body') }} />
+      {/* Urun sayfasindaki raporun AYNISI — ayni bilesen, ayni grafikler. */}
+      {rapor
+        ? <ProductFullReport data={rapor} L={L} lang={lang} />
+        : <p className="an-empty">{L('This analysis has no report data.', 'Bu analizde rapor verisi yok.')}</p>}
 
-      {t('verdict') && (
-        <section className="an-verdict">
-          <h2>{L('Verdict', 'Sonuç')}</h2>
-          <div dangerouslySetInnerHTML={{ __html: t('verdict') }} />
-        </section>
-      )}
-
-      {!!faq.length && (
-        <section className="an-faq">
-          <h2>{L('Frequently asked questions', 'Sık sorulan sorular')}</h2>
-          {faq.map((f, i) => (
-            <div key={i}>
-              <h3>{f.q}</h3>
-              <p>{f.a}</p>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <p style={{ marginTop: 24 }}>
-        <Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link>
-      </p>
+      <p className="an-back"><Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link></p>
     </main>
   );
 }
