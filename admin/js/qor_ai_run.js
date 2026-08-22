@@ -265,7 +265,49 @@ async function runProductReport(o) {
   return { data: data, researched: Boolean(research) };
 }
 
-/** Yayin meta'si — iki dil TEK cagrida, yasakli meta listesiyle. */
+/**
+ * Quiz cevaplarini hedef dile cevirir.
+ *
+ * Adminde quiz BIR KEZ yanitlanip IKI rapor uretiliyor. Cevirmezsek Ingilizce
+ * rapor Turkce cevap dizesini oldugu gibi tasiyor (olculdu — bkz. prompt
+ * dosyasindaki not). Ceviri basarisiz olursa ORIJINAL cevaplarla devam edilir:
+ * karisik dilli bir rapor, hic rapor olmamasindan iyidir.
+ */
+async function translateQuizAnswers(answers, targetLang) {
+  var pairs = (answers || []).map(function (a) {
+    return { question: String(a.question || ''), answer: String(a.answer == null ? '' : a.answer) };
+  });
+  if (!pairs.length) return answers || [];
+  try {
+    var res = await askJson({
+      system: 'You are a precise translator. Return only valid JSON.',
+      user: P.buildQuizTranslationPrompt(pairs, targetLang),
+      maxOutputTokens: 2048,
+      temperature: 0.2,
+    });
+    var items = Array.isArray(res.items) ? res.items : [];
+    // Sayi tutmuyorsa ESLESTIRME YAPMA: yanlis soruya yanlis cevap yazmak,
+    // cevirmemekten kotu.
+    if (items.length !== pairs.length) return answers;
+    return pairs.map(function (p0, i) {
+      var it = items[i] || {};
+      return {
+        question: String(it.question || '').trim() || p0.question,
+        answer: String(it.answer || '').trim() || p0.answer,
+      };
+    });
+  } catch (_) { return answers; }
+}
+
+/**
+ * Yayin meta'si — iki dil TEK cagrida, yasakli meta listesiyle.
+ *
+ * `metaTitle` 60 KARAKTERI ASARSA BIR KEZ YENIDEN ISTENIR. Prompt zaten sinir
+ * koyuyor ama model duzenli olarak 62-65 karakter yaziyordu ve admin ekraninda
+ * "62/60" kirmizi kaliyordu. Alanlar elle duzenlenmedigi icin (rapor ve meta
+ * AI uretir, insan onaylar) tek care yeniden istemek; kirpmak basligin son
+ * kelimesini yariyor ve arama sonucunda "..." birakiyor.
+ */
 async function publishMeta(o) {
   var res = await askJson({
     system: 'You are Qor AI SEO editor. Return only valid JSON. Never repeat a forbidden value.',
@@ -273,6 +315,31 @@ async function publishMeta(o) {
     maxOutputTokens: 4096,
     temperature: 0.6,
   });
+  var uzun = ['tr', 'en'].filter(function (l) {
+    var v = res[l] && res[l].metaTitle;
+    return v && String(v).length > 60;
+  });
+  if (uzun.length) {
+    try {
+      var tekrar = await askJson({
+        system: 'You are Qor AI SEO editor. Return only valid JSON. Never repeat a forbidden value.',
+        user: P.buildPublishMetaPrompt(o)
+          + '\n\nRETRY — LENGTH VIOLATION:\n'
+          + uzun.map(function (l) {
+            return '- ' + l + '.metaTitle was ' + String(res[l].metaTitle).length
+              + ' characters ("' + res[l].metaTitle + '"). It MUST be 60 or fewer, INCLUDING spaces. '
+              + 'Rewrite it shorter — drop qualifiers, not the product name.';
+          }).join('\n'),
+        maxOutputTokens: 4096,
+        temperature: 0.4,
+      });
+      // Yalniz SINIRA UYAN dili degistir: uyan dili bozma.
+      uzun.forEach(function (l) {
+        var yeni = tekrar[l] && tekrar[l].metaTitle;
+        if (yeni && String(yeni).length <= 60) res[l].metaTitle = yeni;
+      });
+    } catch (_) { /* ilk deger duruyor, ekranda uzunluk uyarisi gorunur */ }
+  }
   function pick(v) {
     return {
       title: String((v && v.title) || '').trim(),
@@ -290,6 +357,7 @@ async function publishMeta(o) {
 
 root.QorAiRun = {
   askRaw: askRaw,
+  translateQuizAnswers: translateQuizAnswers,
   askJson: askJson,
   askGrounded: askGrounded,
   searchProducts: searchProducts,

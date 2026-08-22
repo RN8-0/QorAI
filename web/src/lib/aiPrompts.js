@@ -77,6 +77,7 @@ export const buildCompareVerdictPrompt = API.buildCompareVerdictPrompt;
 // ── yayin metasi ──────────────────────────────────────────────────────────
 export const groundedResearchSystemPrompt = API.groundedResearchSystemPrompt;
 export const buildPublishMetaPrompt = API.buildPublishMetaPrompt;
+export const buildQuizTranslationPrompt = API.buildQuizTranslationPrompt;
 
 // ── ayristirma ────────────────────────────────────────────────────────────
 export const parseAiJson = API.parseAiJson;

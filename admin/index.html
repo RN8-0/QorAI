@@ -62,11 +62,11 @@
       <div class="sidebar-nav">
         <a class="nav-link active" data-view="dashboard" onclick="showView('dashboard')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          <span>Dashboard</span>
+          <span>Panel</span>
         </a>
         <a class="nav-link" data-view="products" onclick="showView('products')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-          <span>Products</span>
+          <span>Ürünler</span>
         </a>
         <a class="nav-link" data-view="blog" onclick="showView('blog')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 7h7M9 11h7"/></svg>
@@ -78,15 +78,15 @@
         </a>
         <a class="nav-link" data-view="users" onclick="showView('users')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-          <span>Users</span>
+          <span>Kullanıcılar</span>
         </a>
         <a class="nav-link" data-view="insights" onclick="showView('userinsights')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg>
-          <span>Insights</span>
+          <span>İstatistik</span>
         </a>
         <a class="nav-link" data-view="prompts" onclick="showView('prompts')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0110 10c0 3.31-1.61 6.24-4.09 8.05"/><path d="M12 2A10 10 0 002 12c0 3.31 1.61 6.24 4.09 8.05"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
-          <span>AI Prompts</span>
+          <span>AI Prompt'ları</span>
         </a>
         <a class="nav-link" data-view="scraper" onclick="showView('scraper')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
@@ -94,11 +94,11 @@
         </a>
         <a class="nav-link" data-view="notifications" onclick="showView('notifications')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span>Notifications</span>
+          <span>Bildirimler</span>
         </a>
         <a class="nav-link" data-view="support" onclick="showView('support')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>Contact Us <span class="count-badge" id="supportBadge" style="display:none"></span></span>
+          <span>İletişim <span class="count-badge" id="supportBadge" style="display:none"></span></span>
         </a>
       </div>
       <div class="sidebar-footer">
@@ -130,7 +130,7 @@
         <div class="quick-actions-bar">
           <button class="quick-action" onclick="showView('products')"><span>Catalog</span><b>Products & quality</b></button>
           <button class="quick-action" onclick="showView('users')"><span>Customers</span><b>Users & premium</b></button>
-          <button class="quick-action" onclick="showView('support')"><span>Inbox</span><b>Contact Us</b></button>
+          <button class="quick-action" onclick="showView('support')"><span>Gelen kutusu</span><b>İletişim</b></button>
           <button class="quick-action" onclick="showView('notifications')"><span>Messaging</span><b>Notifications</b></button>
           <button class="quick-action" onclick="showView('scraper')"><span>Data</span><b>Scraper</b></button>
           <button class="quick-action" onclick="showView('userinsights')"><span>Analytics</span><b>Insights</b></button>
@@ -143,7 +143,7 @@
               <div class="stat-card stat-blue"><div class="stat-value" id="dashTotalComparisons">—</div><div class="stat-label">Comparisons</div></div>
               <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Avg Score</div></div>
               <div class="stat-card stat-green"><div class="stat-value" id="dashPremiumUsers">—</div><div class="stat-label">Premium Users</div></div>
-              <div class="stat-card stat-amber"><div class="stat-value" id="dashOpenSupport">—</div><div class="stat-label">Open Contact Us</div></div>
+              <div class="stat-card stat-amber"><div class="stat-value" id="dashOpenSupport">—</div><div class="stat-label">Açık iletişim talebi</div></div>
             </div>
             <div class="grid-3 command-chart-grid">
               <div class="card"><div class="card-title">User Plan Split</div><div class="chart-shell compact"><canvas id="dashPlanChart"></canvas></div></div>
@@ -170,7 +170,7 @@
       <!-- ===== PRODUCTS ===== -->
       <section id="productsView" class="view">
         <div class="view-header">
-          <h1>Products <span class="count-badge" id="productCount">0</span></h1>
+          <h1>Ürünler <span class="count-badge" id="productCount">0</span></h1>
           <div class="view-actions">
             <div class="dropdown" style="position:relative">
               <button class="btn btn-ghost" onclick="this.nextElementSibling.classList.toggle('show')">📤 Export ▾</button>
@@ -243,7 +243,7 @@
 
       <section id="usersView" class="view">
         <div class="view-header">
-          <h1>Users <span class="count-badge" id="usersCount">0</span></h1>
+          <h1>Kullanıcılar <span class="count-badge" id="usersCount">0</span></h1>
           <button class="btn btn-ghost" onclick="loadUsers()">Refresh</button>
         </div>
         <div class="stats-grid stats-4-sm">
@@ -298,7 +298,7 @@
           <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
         </div>
         <div class="view-header">
-          <h1>User Intelligence</h1>
+          <h1>Kullanıcı İstatistikleri</h1>
           <div class="view-actions">
             <span class="text-muted" id="userIntelligenceUpdatedAt"></span>
             <button class="btn btn-ghost" onclick="loadUsers()">Refresh</button>
@@ -354,7 +354,7 @@
           <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
           <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
         </div>
-        <div class="view-header"><h1>Algorithm</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Save</button></div>
+        <div class="view-header"><h1>Algoritma</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Save</button></div>
         <div class="card">
           <div class="card-title">Algorithm Health</div>
           <div class="stats-grid stats-4-sm" style="margin-bottom:16px">
@@ -1045,7 +1045,7 @@
           <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
         </div>
         <div class="view-header">
-          <h1>Activity Log</h1>
+          <h1>İşlem Kaydı</h1>
           <div class="view-actions">
             <button class="btn btn-ghost" onclick="loadActivityLog()">Refresh</button>
           </div>
@@ -1094,7 +1094,7 @@
       <section id="promptsView" class="view">
         <div class="view-header">
           <div>
-            <h1>AI Prompts</h1>
+            <h1>AI Prompt'ları</h1>
             <p class="text-muted" style="margin:6px 0 0;font-size:13px">Edit live prompts by section. Saved values are applied through public_config.ai_prompts without redeploying the app.</p>
           </div>
           <div class="view-actions">
@@ -1127,7 +1127,7 @@
       <!-- ===== NOTIFICATIONS ===== -->
       <section id="notificationsView" class="view">
         <div class="view-header">
-          <h1>Notifications <span class="count-badge" id="notifSentCount">0</span></h1>
+          <h1>Bildirimler <span class="count-badge" id="notifSentCount">0</span></h1>
           <div class="view-actions">
             <button class="btn btn-ghost" onclick="loadNotificationsView()">Refresh</button>
           </div>
@@ -1231,7 +1231,7 @@
       <!-- ===== SUPPORT MESSAGES ===== -->
       <section id="supportView" class="view">
         <div class="view-header">
-          <h1>Contact Us <span class="count-badge" id="supportCount">0</span></h1>
+          <h1>İletişim <span class="count-badge" id="supportCount">0</span></h1>
           <div class="view-actions">
             <select class="field-select" id="supportStatusFilter" onchange="renderSupportMessages()">
               <option value="">All</option>

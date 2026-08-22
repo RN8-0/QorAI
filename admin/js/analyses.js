@@ -123,19 +123,36 @@
       '.an-acts{display:flex;gap:6px;flex-wrap:wrap}',
 
       '.an-card{border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--bg2);margin-bottom:14px;max-width:960px}',
+      '.an-card-wide{max-width:none}',
       '.an-card h3{margin:0 0 14px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}',
-      '.an-f{margin-bottom:12px}',
-      '.an-f label{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px}',
-      '.an-f label i{font-style:normal;font-variant-numeric:tabular-nums;color:var(--text3);font-weight:500}',
-      '.an-f label i.over{color:var(--red)}',
-      '.an-f input,.an-f textarea,.an-f select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);',
-      '  font:inherit;box-sizing:border-box;background:var(--bg3);color:var(--text1)}',
-      '.an-f textarea{min-height:76px;resize:vertical;line-height:1.55}',
-      '.an-f input:focus,.an-f textarea:focus,.an-f select:focus{outline:2px solid var(--accent);outline-offset:1px}',
       '.an-hint{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.55}',
-      '.an-faq{border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;background:var(--bg3)}',
+      '.an-hint a{color:var(--accent)}',
       '.an-note{background:var(--bg3);color:var(--text2);border-left:2px solid var(--accent);padding:12px 14px;',
       '  border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:13px;margin-bottom:16px;max-width:960px;line-height:1.65}',
+      '.an-note-err{border-left-color:var(--red);color:var(--red)}',
+
+      /* Editor basligi: eylemler SAGA yaslanir, bulunmasi icin aranmaz. */
+      '.an-head{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}',
+      '.an-head strong{font-size:15px;color:var(--text1)}',
+      '.an-head-sp{flex:1 1 auto}',
+
+      /* Onizleme: sitedeki sayfanin KENDISI. Yukseklik sabit degil, ekrana
+         gore — rapor uzun ve kucuk bir kutuda okunmuyor. */
+      '.an-frame{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--bg3)}',
+      '.an-frame iframe{display:block;width:100%;height:min(78vh,900px);border:0}',
+
+      /* Salt okunur kunye satiri — input DEGIL, cunku duzenlenmiyor. */
+      '.an-ro{padding:12px 0;border-top:1px solid var(--border)}',
+      '.an-ro:first-of-type{border-top:0;padding-top:0}',
+      '.an-ro > span{display:block;font-size:11.5px;font-weight:600;color:var(--text3);margin-bottom:5px;letter-spacing:.02em}',
+      '.an-ro > span i{font-style:normal;font-variant-numeric:tabular-nums;font-weight:500}',
+      '.an-ro > span i.over{color:var(--red);font-weight:700}',
+      '.an-ro > p{margin:0;font-size:14px;line-height:1.6;color:var(--text1)}',
+      '.an-ro > p em{color:var(--text3)}',
+      '.an-faqlist{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}',
+      '.an-faqlist li{color:var(--text2);font-size:13.5px;line-height:1.55}',
+      '.an-faqlist b{display:block;color:var(--text1);font-weight:650}',
+      '.an-tabbar button em{font-style:normal;font-size:11px;color:var(--text3);margin-left:4px}',
 
       /* Rapor ozeti — sayilar mono/tabular, etiketler sabit genislikte. */
       '.an-rapor{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:1px;background:var(--border);',
@@ -278,7 +295,8 @@
       + '<div class="an-acts">'
       + (a.status === 'published'
         ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + SITE + '/analiz/' + esc(a.slug) + '">Sitede aç</a>' : '')
-      + '<button class="btn" onclick="analysesEdit(\'' + a.id + '\')">Düzenle</button>'
+      // "Duzenle" DEGIL: ekran duzenlemiyor, gosteriyor ve yayinliyor.
+      + '<button class="btn" onclick="analysesEdit(\'' + a.id + '\')">Aç</button>'
       + '<button class="btn btn-ghost" onclick="analysesDelete(\'' + a.id + '\')">Sil</button>'
       + '</div></div>';
   }
@@ -488,12 +506,20 @@
     try {
       var similar = await QorAiRun.similarProducts(r.product, 8);
       var out = {};
+      // Quiz Turkce yanitlandi. Her dil KENDI dilindeki cevaplarla rapor
+      // uretir; ceviri basarisiz olursa orijinal cevaplarla devam eder.
+      var cevaplar = { tr: answers, en: null };
       for (var li = 0; li < LANGS.length; li++) {
         var lang = LANGS[li][0];
+        if (!cevaplar[lang]) {
+          mark('translate', 'run');
+          cevaplar[lang] = await QorAiRun.translateQuizAnswers(answers, lang);
+          mark('translate', 'done');
+        }
         var res = await QorAiRun.runProductReport({
           product: r.product,
           lang: lang,
-          answers: answers,
+          answers: cevaplar[lang],
           similar: similar,
           onStage: (function (l) {
             return function (stage) {
@@ -532,6 +558,12 @@
         likes: 0,
       };
       metaYaz(_editing, meta);
+      // TASLAK OLARAK HEMEN KAYDET. Onizleme sitedeki sayfanin kendisi ve o
+      // sayfa kaydi `?id=` ile cekiyor — kayit yoksa onizleyecek bir sey de
+      // yok. Ayrica 6 AI cagrisinin sonucu sekme kazara kapanirsa kaybolmasin.
+      mark('save', 'run');
+      await kaydet('draft');
+      mark('save', 'done');
       renderEditor();
     } catch (e) {
       var acik = Object.keys(durum).filter(function (k) { return durum[k] === 'run'; });
@@ -546,7 +578,7 @@
 
   // Yasakli meta listesi: AYNI DILDE yinelenen <title>/description Google'da
   // iki sayfayi birbirinin kopyasi yapar. Liste prompt'a gider, kayit oncesi
-  // ayrica denetlenir (analysesSave).
+  // ayrica denetlenir (metaCakismasi, kaydet oncesi).
   async function metaUret(subject, kind, report) {
     var used = { titles: [], descriptions: [] };
     _items.forEach(function (a) {
@@ -701,6 +733,7 @@
       mevcut.kind = tur;
       mevcut.sourceRef = x.k.id;
       _editing = mevcut;
+      await kaydet(mevcut.status || 'draft');
       toast('Bu analizin kaydı vardı — raporu tazelendi', 'i');
       renderEditor();
       return;
@@ -711,8 +744,11 @@
       var meta = await metaUret(ad, tur, x.rapor);
       metaYaz(_editing, meta);
     } catch (e) {
-      toast('Meta üretilemedi, elle doldur: ' + (e.message || e), 'e');
+      toast('Meta üretilemedi: ' + (e.message || e), 'e');
     }
+    // TASLAK OLARAK KAYDET: onizleme sitedeki sayfanin kendisi ve kaydi
+    // `?id=` ile cekiyor — kayit yoksa onizlenecek bir sey de yok.
+    await kaydet('draft');
     renderEditor();
   }
 
@@ -732,65 +768,135 @@
   }
 
   // ══ EDITOR ═════════════════════════════════════════════════
+  //
+  //  BURADA HICBIR SEY ELLE DUZENLENMEZ.
+  //  Rapor da, baslik/ozet/meta/SSS de AI uretiyor ve hepsi SEO'ya gore
+  //  kuruluyor. Ilk surumde her alan bir <input> idi; anlamsizdi — insanin
+  //  yapacagi is metni yeniden yazmak degil, ONAYLAMAK ya da yeniden urettirmek.
+  //  Ekran artik: ONIZLEME (sitedeki sayfanin kendisi) + kunye (salt okunur) +
+  //  Yayinla/Yayindan kaldir/Yeniden uret.
+  //
+  //  ONIZLEME NEDEN IFRAME: admin duz vanilla JS, site React. Raporu burada
+  //  ikinci kez cizmek iki tasarimin ayrismasi demek — zaten bir kez yasandi.
+  //  Bunun yerine sitenin KENDI sayfasi gomuluyor (`?id=` taslagi da acar,
+  //  bkz. pages/AnalysisPost.jsx). Dil sekmesi adres onekini degistirir:
+  //  `/analiz/...` = EN, `/tr/analiz/...` = TR. Sitede dil tarayicidan gelir,
+  //  manuel secici YOKTUR; onek zaten var olan mekanizma.
   function renderEditor() {
     var a = _editing;
     var root = $('analysesAdminRoot');
     var L = _lang;
-    var faq = Array.isArray(a['faq_' + L]) ? a['faq_' + L] : [];
     var kind = kindOf(a);
     var rapor = reportOf(a, L);
     var diller = langsOf(a);
+    var yayinda = a.status === 'published';
 
     root.innerHTML = ''
-      + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+      + '<div class="an-head">'
       + '<button class="btn btn-ghost" onclick="loadAnalysesAdmin()">← Geri</button>'
-      + '<strong style="font-size:15px">' + esc(subjectOf(a) || '') + '</strong>'
-      + '<span class="an-pill ' + (a.status === 'published' ? 'pub' : 'draft') + '">' + (a.status === 'published' ? 'yayında' : 'taslak') + '</span>'
+      + '<strong>' + esc(subjectOf(a) || '') + '</strong>'
+      + '<span class="an-pill ' + (yayinda ? 'pub' : 'draft') + '">' + (yayinda ? 'yayında' : 'taslak') + '</span>'
       + '<span class="an-pill kind">' + esc(KIND_LABEL[kind]) + '</span>'
+      + '<span class="an-head-sp"></span>'
+      + eylemler(a, yayinda)
       + '</div>'
       + adimlar(3)
-      + raporKart(a, kind, rapor, diller, L)
+      + (rapor ? '' : '<div class="an-note an-note-err">Rapor verisi yok — bu kayıt yayınlanamaz.</div>')
       + '<div class="an-tabbar">'
       + LANGS.map(function (x) {
-        var v = a['report_' + x[0]] ? ' ✓' : '';
-        return '<button class="' + (x[0] === L ? 'on' : '') + '" onclick="analysesLang(\'' + x[0] + '\')">' + x[1] + v + '</button>';
+        var v = a['report_' + x[0]] ? '' : ' <em>rapor yok</em>';
+        return '<button class="' + (x[0] === L ? 'on' : '') + '" onclick="analysesLang(\'' + x[0] + '\')">'
+          + x[1] + v + '</button>';
       }).join('')
       + '</div>'
-      + metaKart(a, L)
-      + faqKart(faq)
-      + yayinKart(a);
-
-    ['anSlug'].forEach(function (id) {
-      var el = $(id);
-      if (el) el.oninput = function () { $('anSlugEcho').textContent = el.value; };
-    });
-    ['anMetaTitle', 'anMetaDesc'].forEach(function (id) { sayacBagla(id); });
+      + onizlemeKart(a, L, diller)
+      + kunyeKart(a, L, kind, rapor);
   }
 
-  function sayacBagla(id) {
-    var el = $(id);
-    if (!el) return;
-    var c = $(id + 'Count');
-    var max = Number(el.getAttribute('data-max')) || 0;
-    var yaz = function () {
-      if (!c) return;
-      c.textContent = el.value.length + '/' + max;
-      c.className = el.value.length > max ? 'over' : '';
-    };
-    el.oninput = yaz;
-    yaz();
+  function eylemler(a, yayinda) {
+    var kayitli = Boolean(a.id);
+    return '<div class="an-acts">'
+      + (yayinda && kayitli
+        ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + SITE + '/analiz/' + esc(a.slug) + '">Sitede aç</a>'
+        : '')
+      + '<button class="btn btn-ghost" onclick="analysesMetaYenile()">Meta\'yı yeniden üret</button>'
+      + (yayinda
+        ? '<button class="btn" onclick="analysesYayindanKaldir()">Yayından kaldır</button>'
+        : '<button class="btn btn-primary" onclick="analysesYayinla()">Yayınla</button>')
+      + (kayitli ? '<button class="btn btn-ghost" onclick="analysesDelete(\'' + a.id + '\')">Sil</button>' : '')
+      + '</div>';
   }
 
-  function raporKart(a, kind, rapor, diller, L) {
-    if (!rapor) {
-      return '<div class="an-card"><h3>Rapor</h3>'
-        + '<p style="color:var(--red);font-size:13px">Rapor verisi yok — bu kayıt yayınlanamaz.</p></div>';
+  // Onizleme adresi. Kayit HENUZ KAYDEDILMEMISSE (id yok) sitede gosterilecek
+  // bir sey de yoktur — o durumda once taslak olarak kaydedilir.
+  function onizlemeAdresi(a, lang) {
+    var onek = lang === 'tr' ? '/tr' : '';
+    return SITE + onek + '/analiz/' + encodeURIComponent(a.slug || '') + '?id=' + encodeURIComponent(a.id || '');
+  }
+
+  function onizlemeKart(a, L, diller) {
+    if (!a.id) {
+      return '<div class="an-card">'
+        + '<h3>Önizleme</h3>'
+        + '<p class="an-hint">Önizleme sitedeki sayfanın kendisidir; bunun için kaydın önce '
+        + '<strong>taslak olarak kaydedilmesi</strong> gerekiyor.</p>'
+        + '<button class="btn btn-primary" onclick="analysesTaslakKaydet()">Taslak olarak kaydet</button>'
+        + '</div>';
     }
+    if (diller.indexOf(L) < 0 && !reportOf(a, L)) {
+      return '<div class="an-card"><h3>Önizleme</h3>'
+        + '<p class="an-hint">Bu dilde rapor yok.</p></div>';
+    }
+    var url = onizlemeAdresi(a, L);
+    return '<div class="an-card an-card-wide">'
+      + '<h3>Önizleme · sitedeki sayfanın kendisi</h3>'
+      + '<div class="an-frame"><iframe src="' + esc(url) + '" loading="lazy" title="Analiz önizleme"></iframe></div>'
+      + '<div class="an-hint">Bu çerçevedeki sayfa <code>' + esc(url.replace(SITE, '')) + '</code> adresinden geliyor — '
+      + 'ürün sayfasındaki analizle <strong>aynı bileşen</strong>. '
+      + '<a href="' + esc(url) + '" target="_blank" rel="noopener">Yeni sekmede aç</a></div>'
+      + '</div>';
+  }
+
+  // Kunye: AI'nin urettigi yayin metni + rapor ozeti. SALT OKUNUR.
+  function kunyeKart(a, L, kind, rapor) {
+    var t = function (f) { return String(a[f + '_' + L] || '').trim(); };
+    var faq = Array.isArray(a['faq_' + L]) ? a['faq_' + L] : [];
+    var mt = t('metaTitle');
+    var md = t('metaDescription');
+    var uzun = function (v, max) {
+      return '<i class="' + (v.length > max ? 'over' : '') + '">' + v.length + '/' + max + '</i>';
+    };
+    var satir = function (etiket, deger, sayac) {
+      return '<div class="an-ro"><span>' + esc(etiket) + (sayac || '') + '</span>'
+        + '<p>' + (deger ? esc(deger) : '<em>boş</em>') + '</p></div>';
+    };
+    return '<div class="an-card">'
+      + '<h3>Yayın metni · ' + esc(LANGS.filter(function (x) { return x[0] === L; })[0][1]) + ' · AI üretti</h3>'
+      + satir('Başlık (H1)', t('title'))
+      + satir('Özet', t('lead'))
+      + satir('Arama başlığı <title>', mt, ' ' + uzun(mt, 60))
+      + satir('Arama açıklaması', md, ' ' + uzun(md, 155))
+      + '<div class="an-ro"><span>Sık sorulan sorular (' + faq.length + ')</span>'
+      + (faq.length
+        ? '<ol class="an-faqlist">' + faq.map(function (f) {
+          return '<li><b>' + esc(f.q) + '</b><span>' + esc(f.a) + '</span></li>';
+        }).join('') + '</ol>'
+        : '<p><em>boş</em></p>')
+      + '</div>'
+      + satir('Adres', (a.slug || '') && (SITE + '/analiz/' + a.slug + '  ·  ' + SITE + '/tr/analiz/' + a.slug))
+      + raporOzeti(kind, rapor)
+      + '<div class="an-hint">Bu alanlar <strong>elle düzenlenmez</strong>. Rapor da, başlık/özet/meta/SSS de '
+      + 'AI üretir ve SEO kurallarına göre kurulur; insanın işi onaylamak ya da '
+      + '<strong>yeniden ürettirmek</strong>. Metin yanlışsa analizi yeniden üret.</div>'
+      + '</div>';
+  }
+
+  function raporOzeti(kind, rapor) {
+    if (!rapor) return '';
     var hucre = function (etiket, deger) {
       return '<div><span>' + esc(etiket) + '</span><b>' + esc(String(deger)) + '</b></div>';
     };
     var govde = '';
-    var lead = '';
     if (kind === 'product' && rapor.product) {
       var p = rapor.product;
       govde = hucre('Karar', p.decision || '—')
@@ -801,118 +907,24 @@
         + hucre('Kritik nokta', (p.criticalPoints || []).length)
         + hucre('Güçlü / zayıf', (p.strengths || []).length + ' / ' + (p.weaknesses || []).length)
         + hucre('Alternatif', (rapor.alternatives || []).length);
-      lead = p.headline || '';
     } else if (kind === 'subscription') {
       var svc = rapor.services || [];
       govde = hucre('Servis', svc.length)
         + hucre('Kazanan', (rapor.winner && rapor.winner.name) || '—')
         + hucre('Güven', num(rapor.confidence) + '/100')
         + hucre('Fark', (rapor.decisiveDifferences || []).length);
-      lead = rapor.recommendation || (rapor.winner && rapor.winner.reason) || '';
     } else {
-      var cok = Array.isArray(rapor.products);
-      govde = hucre('Biçim', cok ? 'karşılaştırma' : 'tekil')
+      govde = hucre('Biçim', Array.isArray(rapor.products) ? 'karşılaştırma' : 'tekil')
         + hucre('Uyum', num(rapor.enhancedScore) + '/100')
         + hucre('Karar', rapor.decision || '—')
         + hucre('Faktör', (rapor.factors || []).length);
-      lead = rapor.headline || rapor.overallVerdict || '';
     }
-    return '<div class="an-card">'
-      + '<h3>Rapor · ' + esc(L.toUpperCase()) + ' · üretildi, burada değiştirilmez</h3>'
-      + '<div class="an-rapor">' + govde + '</div>'
-      + (lead ? '<p class="an-lead">' + esc(lead) + '</p>' : '')
-      + '<div class="an-hint">Diller: <strong>' + (diller.length ? diller.map(function (x) { return x.toUpperCase(); }).join(' + ') : 'yok') + '</strong>. '
-      + 'Bu içerik <code>/analiz/' + esc(a.slug || '') + '</code> sayfasında sitedeki raporla <strong>aynı bileşenle</strong> çizilir. '
-      + 'Metni değiştirmek için analizi yeniden üret.</div>'
-      + '</div>';
+    return '<div class="an-ro"><span>Rapor</span><div class="an-rapor">' + govde + '</div></div>';
   }
 
-  function metaKart(a, L) {
-    var t = function (f) { return esc(a[f + '_' + L] || ''); };
-    return '<div class="an-card">'
-      + '<h3>Yayın metni · ' + esc(LANGS.filter(function (x) { return x[0] === L; })[0][1]) + '</h3>'
-      + '<div class="an-f"><label>Başlık (sayfadaki H1)</label>'
-      + '<input id="anTitle" value="' + t('title') + '"></div>'
-      + '<div class="an-f"><label>Özet (listede ve girişte)</label>'
-      + '<textarea id="anLead">' + t('lead') + '</textarea></div>'
-      + '<div class="an-f"><label>Arama başlığı &lt;title&gt; <i id="anMetaTitleCount"></i></label>'
-      + '<input id="anMetaTitle" data-max="60" value="' + t('metaTitle') + '"></div>'
-      + '<div class="an-f"><label>Arama açıklaması <i id="anMetaDescCount"></i></label>'
-      + '<textarea id="anMetaDesc" data-max="155">' + t('metaDescription') + '</textarea></div>'
-      + '<div class="an-hint">Bu iki alan <strong>aynı dilde başka bir analizle aynı olamaz</strong>; kayıt sırasında denetlenir. '
-      + 'Yinelenen başlık/açıklama iki sayfayı Google gözünde birbirinin kopyası yapar.</div>'
-      + '</div>';
-  }
+  function analysesLang(c) { _lang = c; renderEditor(); }
 
-  function faqKart(faq) {
-    return '<div class="an-card">'
-      + '<h3>Sık sorulan sorular</h3>'
-      + '<div id="anFaq">' + faq.map(faqHtml).join('') + '</div>'
-      + '<button class="btn btn-ghost" onclick="analysesFaqAdd()">+ Soru ekle</button>'
-      + '<div class="an-hint">Sayfaya <code>FAQPage</code> şeması olarak eklenir. İnsanların arama kutusuna gerçekten '
-      + 'yazdığı sorular olmalı ("batarya ömrü nasıl", "oyun için uygun mu") — başlık tekrarı değil.</div>'
-      + '</div>';
-  }
-
-  function yayinKart(a) {
-    return '<div class="an-card">'
-      + '<h3>Yayın</h3>'
-      + '<div class="an-f"><label>Adres (slug)</label>'
-      + '<input id="anSlug" value="' + esc(a.slug || '') + '">'
-      + '<div class="an-hint">' + SITE + '/analiz/<span id="anSlugEcho">' + esc(a.slug || '') + '</span>'
-      + ' · ' + SITE + '/tr/analiz/<span>' + esc(a.slug || '') + '</span></div></div>'
-      + '<div class="an-f"><label>Durum</label>'
-      + '<select id="anStatusSel">'
-      + '<option value="draft"' + (a.status !== 'published' ? ' selected' : '') + '>Taslak</option>'
-      + '<option value="published"' + (a.status === 'published' ? ' selected' : '') + '>Yayında</option>'
-      + '</select></div>'
-      + '<button class="btn btn-primary" onclick="analysesSave()">Kaydet</button>'
-      + '</div>';
-  }
-
-  function faqHtml(f, i) {
-    return '<div class="an-faq" data-i="' + i + '">'
-      + '<div class="an-f"><label>Soru ' + (i + 1) + '</label><input class="an-q-in" value="' + esc(f.q || '') + '"></div>'
-      + '<div class="an-f"><label>Cevap</label><textarea class="an-a-in">' + esc(f.a || '') + '</textarea></div>'
-      + '<button class="btn btn-ghost" onclick="analysesFaqDel(' + i + ')">Kaldır</button>'
-      + '</div>';
-  }
-
-  function faqTopla() {
-    return [].slice.call(document.querySelectorAll('#anFaq .an-faq')).map(function (el) {
-      return {
-        q: el.querySelector('.an-q-in').value.trim(),
-        a: el.querySelector('.an-a-in').value.trim(),
-      };
-    }).filter(function (f) { return f.q && f.a; });
-  }
-
-  function alanlariTopla() {
-    var a = _editing;
-    if (!a || !$('anSlug')) return;
-    a.slug = slugify($('anSlug').value) || a.slug;
-    a.status = $('anStatusSel').value;
-    a['title_' + _lang] = $('anTitle').value.trim();
-    a['lead_' + _lang] = $('anLead').value.trim();
-    a['metaTitle_' + _lang] = $('anMetaTitle').value.trim();
-    a['metaDescription_' + _lang] = $('anMetaDesc').value.trim();
-    a['faq_' + _lang] = faqTopla();
-  }
-
-  function analysesLang(c) { alanlariTopla(); _lang = c; renderEditor(); }
-  function analysesFaqAdd() {
-    alanlariTopla();
-    _editing['faq_' + _lang] = (_editing['faq_' + _lang] || []).concat([{ q: '', a: '' }]);
-    renderEditor();
-  }
-  function analysesFaqDel(i) {
-    alanlariTopla();
-    var list = (_editing['faq_' + _lang] || []).slice();
-    list.splice(i, 1);
-    _editing['faq_' + _lang] = list;
-    renderEditor();
-  }
-
+  // ── kaydetme / yayin ───────────────────────────────────────
   // Ayni dilde YINELENEN meta yayina cikamaz. seo-audit.mjs build'i ayrica
   // kirar; burada yakalamak, kirik build'i beklemekten ucuz.
   function metaCakismasi(a) {
@@ -933,40 +945,69 @@
     return carp;
   }
 
-  async function analysesSave() {
-    alanlariTopla();
-    var a = _editing;
-    if (!a.slug) { toast('Slug boş olamaz', 'e'); return; }
+  function slugCakismasi(a) {
     // Ayni slug ikinci bir kayitta olursa /analiz/<slug> hangisini cizecegi
-    // BELIRSIZ olur (site getFirstListItem ile ilk esleseni aliyor) ve
-    // on-render iki kaydi ayni dosyaya yazip birini sessizce ezer.
-    var slugCakisan = _items.filter(function (o) {
+    // BELIRSIZ olur ve on-render iki kaydi ayni dosyaya yazip birini ezer.
+    return _items.filter(function (o) {
       return o.id !== a.id && String(o.slug || '') === a.slug;
     })[0];
-    if (slugCakisan) {
-      toast('Bu slug zaten kullanılıyor: ' + (subjectOf(slugCakisan) || slugCakisan.id), 'e');
-      return;
+  }
+
+  async function kaydet(durum) {
+    var a = _editing;
+    if (!a.slug) { toast('Slug boş olamaz', 'e'); return false; }
+    var carpanSlug = slugCakismasi(a);
+    if (carpanSlug) {
+      toast('Bu slug zaten kullanılıyor: ' + (subjectOf(carpanSlug) || carpanSlug.id), 'e');
+      return false;
     }
-    if (a.status === 'published' && !reportOf(a, 'tr')) {
-      toast('Rapor verisi olmayan analiz yayınlanamaz', 'e');
-      return;
-    }
-    if (a.status === 'published') {
+    if (durum === 'published') {
+      if (!reportOf(a, 'tr')) { toast('Rapor verisi olmayan analiz yayınlanamaz', 'e'); return false; }
       var carp = metaCakismasi(a);
       if (carp.length) {
         toast('Yinelenen meta: ' + carp[0] + ' — düzeltmeden yayınlanamaz', 'e');
-        return;
+        return false;
       }
       if (!a.publishedAt) a.publishedAt = new Date().toISOString();
     }
+    a.status = durum;
     try {
       var rec = a.id
         ? await getPb().collection('analyses').update(a.id, a, { $autoCancel: false })
         : await getPb().collection('analyses').create(a, { $autoCancel: false });
       _editing = rec;
-      toast(a.status === 'published' ? 'Yayınlandı' : 'Taslak kaydedildi', 's');
-      loadAnalysesAdmin();
-    } catch (e) { toast('Kaydedilemedi: ' + (e.message || e), 'e'); }
+      // Liste onbellegi de tazelensin: slug/meta catisma denetimi _items'a bakiyor.
+      var i = _items.findIndex(function (o) { return o.id === rec.id; });
+      if (i >= 0) _items[i] = rec; else _items.unshift(rec);
+      return true;
+    } catch (e) { toast('Kaydedilemedi: ' + (e.message || e), 'e'); return false; }
+  }
+
+  async function analysesTaslakKaydet() {
+    if (await kaydet('draft')) { toast('Taslak kaydedildi', 's'); renderEditor(); }
+  }
+  async function analysesYayinla() {
+    if (await kaydet('published')) { toast('Yayınlandı', 's'); renderEditor(); }
+  }
+  async function analysesYayindanKaldir() {
+    if (await kaydet('draft')) { toast('Yayından kaldırıldı', 'i'); renderEditor(); }
+  }
+
+  // Meta begenilmediyse: raporu yeniden uretmeden YALNIZ yayin metnini tazele.
+  async function analysesMetaYenile() {
+    var a = _editing;
+    var rapor = reportOf(a, 'tr');
+    if (!rapor) { toast('Rapor yok', 'e'); return; }
+    toast('Meta yeniden üretiliyor…', 'i');
+    try {
+      var meta = await metaUret(subjectOf(a), kindOf(a), rapor);
+      metaYaz(a, meta);
+      // kaydet() catisma/dogrulama nedeniyle REDDEDEBILIR; o zaman "yenilendi"
+      // demek yalan olur — yeni meta yalniz ekranda durur, kayitta degil.
+      var yazildi = a.id ? await kaydet(a.status || 'draft') : true;
+      toast(yazildi ? 'Meta yenilendi' : 'Meta üretildi ama KAYDEDİLEMEDİ', yazildi ? 's' : 'e');
+      renderEditor();
+    } catch (e) { toast('Meta üretilemedi: ' + (e.message || e), 'e'); }
   }
 
   async function analysesDelete(id) {
@@ -988,9 +1029,10 @@
   window.analysesSitede = analysesSitede;
   window.analysesPick = analysesPick;
   window.analysesEdit = analysesEdit;
-  window.analysesSave = analysesSave;
   window.analysesDelete = analysesDelete;
   window.analysesLang = analysesLang;
-  window.analysesFaqAdd = analysesFaqAdd;
-  window.analysesFaqDel = analysesFaqDel;
+  window.analysesTaslakKaydet = analysesTaslakKaydet;
+  window.analysesYayinla = analysesYayinla;
+  window.analysesYayindanKaldir = analysesYayindanKaldir;
+  window.analysesMetaYenile = analysesMetaYenile;
 })();

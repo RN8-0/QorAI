@@ -59,9 +59,39 @@ spec çevirisinde bir kez ödedi (bkz. `admin/js/spec_i18n.js`).
 İki yol var:
 
 **a) Yeni analiz üret** — 4 adım: ürün ara (Typesense) → **quiz'i admin'de yanıtla**
-→ rapor **TR + EN** → yayın meta'sı. 5 AI çağrısı:
-TR araştırma → TR rapor → EN araştırma → EN rapor → meta+SSS (iki dil tek çağrı).
-Sıra ve tazelik onarımı sitedeki `runProductAnalysisJob()` ile birebir aynı.
+→ rapor **TR + EN** → yayın meta'sı. 6 AI çağrısı:
+TR araştırma → TR rapor → **quiz cevaplarının EN çevirisi** → EN araştırma →
+EN rapor → meta+SSS (iki dil tek çağrı). Sıra ve tazelik onarımı sitedeki
+`runProductAnalysisJob()` ile birebir aynı. Sonuç **taslak olarak hemen
+kaydedilir** (önizleme kaydı `?id=` ile çekiyor, ayrıca 6 çağrılık iş sekme
+kapanınca kaybolmasın).
+
+**QUIZ CEVABI ÇEVİRİSİ — neden var:** sitede quiz kullanıcının dilinde üretilip
+rapor aynı dilde yazılır, uyumsuzluk olmaz. Adminde quiz BİR KEZ (Türkçe)
+yanıtlanıp İKİ rapor üretiliyor ve aynı Türkçe cevap dizesi İngilizce raporun
+`quizInsights[].answer` alanına olduğu gibi kopyalanıyordu — canlı sayfada
+"HOW YOUR ANSWERS SHAPED THIS" başlığının altında Türkçe cümleler görünüyordu
+(ölçüldü, 6/6 cevap). Prompt'u sertleştirmek çözmez; model kullanıcının
+cevabını ALINTI sayıp aynen yazıyor. Rapordan önce çeviriliyor
+(`buildQuizTranslationPrompt`).
+
+### Ekran: düzenleme yok, önizleme var
+Rapor da başlık/özet/meta/SSS de AI üretiyor ve hepsi SEO'ya göre kuruluyor —
+o yüzden **hiçbir alan elle düzenlenmiyor**. İlk sürümde her alan bir `<input>`
+idi; anlamsızdı. Ekran şimdi:
+
+- **Önizleme = sitedeki sayfanın kendisi**, `<iframe>` içinde. Admin vanilla JS,
+  site React; raporu adminde ikinci kez çizmek iki tasarımın ayrışması demek.
+  Taslak kayıt `?id=` ile açılır (`pages/AnalysisPost.jsx`) ve o adres
+  `noindex`. Dil sekmesi adres önekini değiştirir: `/analiz/…` = EN,
+  `/tr/analiz/…` = TR. Sitede manuel dil seçici YOKTUR; önek zaten var olan
+  mekanizma.
+- **Künye** (başlık, özet, `<title>`, açıklama, SSS, adres, rapor özeti) salt
+  okunur, karakter sayaçlarıyla.
+- **Yayınla / Yayından kaldır / Meta'yı yeniden üret / Sil** — üstte, sağda.
+
+`metaTitle` 60 karakteri aşarsa `publishMeta` **bir kez yeniden ister**
+(kırpmak başlığın son kelimesini yarıyor).
 
 **b) Sitede yapılmışlardan al** — `saved_analyses`'ten seç: `product_history`,
 `link_history`, `subscription_history`. Bu yol **tek dillidir** (analizin yapıldığı
@@ -149,6 +179,9 @@ Kayıt okuma kuralları (tür, dile göre rapor, başlık, özet, meta, SSS) **t
    yalnız 196'sında `priceTR` görünüyor. Ayrı hat.
 4. **`spec dil sızıntısı 3/300 (%1,0)`** — kapı %5'te, geçiyor ama sıfır değil.
    Kalan 3 sayfaya bakılmadı.
+4b. **Product JSON-LD'de `description` eksikti** — Search Console "Satıcı
+   girişleri" (Merchant listings) raporu bildirdi (2026-08-22). Eklendi;
+   sayfanın meta açıklamasının aynısını kullanıyor.
 5. **Cloudflare purge:** ölçüldü — `Cache-Control: max-age=120`,
    `cf-cache-status: REVALIDATED/MISS`. Uzun ömürlü bayat edge kopyası görünmüyor,
    yani deploy sonrası elle purge gerekmiyor. `.env`'de `CF_API_TOKEN` hâlâ yok.

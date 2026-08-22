@@ -854,6 +854,35 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
   );
 }
 
+/* ── 10) QUIZ CEVAPLARININ CEVIRISI ────────────────────────────────────────
+   ADMIN'E OZGU BIR SORUN. Sitede quiz kullanicinin dilinde uretilir ve rapor
+   AYNI dilde yazilir, uyumsuzluk olmaz. Adminde ise quiz BIR KEZ (Turkce)
+   yanitlanip IKI rapor uretiliyor; ayni Turkce cevap dizesi Ingilizce raporun
+   `quizInsights[].answer` alanina OLDUGU GIBI kopyalaniyordu.
+
+   Olculdu (2026-08-22, samsung-galaxy-s23-ultra-1tb):
+     report_en.quizInsights[0].topic  = "Battery Life Expectation"   (EN)
+     report_en.quizInsights[0].answer = "Sabah baslayip aksam ..."   (TR)
+   Sayfada "HOW YOUR ANSWERS SHAPED THIS" basliginin altinda Turkce cumleler
+   goruunuyordu.
+
+   Cozum prompt'u sertlestirmek DEGIL (model kullanicinin cevabini ALINTI
+   sayip aynen yaziyor) — cevaplari rapordan ONCE hedef dile cevirmek. */
+function buildQuizTranslationPrompt(pairs, targetLang) {
+  return (
+    `Translate the following product-quiz questions and the answers the user picked into ${langName(targetLang)}.\n\n` +
+    'Return ONLY one valid JSON object with this exact structure:\n' +
+    '{"items": [{"question": "", "answer": ""}]}\n\n' +
+    'Rules:\n' +
+    `- One entry per input item, IN THE SAME ORDER. Exactly ${pairs.length} items.\n` +
+    '- Translate meaning, not words. The answer must read like something a person would actually say in that language.\n' +
+    '- Keep official brand names, product/model names and technical standards (RTX, USB-C, Wi-Fi, IP68) as-is.\n' +
+    '- Keep any emoji that appears in the question.\n' +
+    '- Do not add, drop, merge or reorder items. Do not answer the questions yourself.\n\n' +
+    `INPUT:\n${JSON.stringify(pairs, null, 2)}`
+  );
+}
+
 /* ── Disari acilan yuzey ─────────────────────────────────────────────────
    Web tarafi bunlari web/src/lib/aiPrompts.js uzerinden, admin dogrudan
    `QorAiPrompts.` ile kullanir. */
@@ -879,7 +908,7 @@ root.QorAiPrompts = {
   buildFullPrompt, buildComparePrompt, buildCompareProductPrompt,
   buildCompareVerdictPrompt,
   // yayin metasi
-  groundedResearchSystemPrompt, buildPublishMetaPrompt,
+  groundedResearchSystemPrompt, buildPublishMetaPrompt, buildQuizTranslationPrompt,
   // ayristirma
   parseAiJson,
 };

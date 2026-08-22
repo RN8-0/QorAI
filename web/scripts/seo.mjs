@@ -1313,6 +1313,11 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE, price 
   if (price) {
     graph.push({
       '@type': 'Product', '@id': `${url}#product`, name: dispName, url,
+      // `description` ZORUNLU DEGIL ama Search Console "Satici girisleri"
+      // (Merchant listings) raporunda EKSIK ALAN olarak bildiriliyor
+      // (2026-08-22 uyarisi). Sayfanin meta aciklamasinin AYNISI kullaniliyor:
+      // ikisi ayrisirsa yapisal veri sayfada gorunmeyen bir sey iddia eder.
+      description,
       image: img, category: label,
       ...(d.brand ? { brand: { '@type': 'Brand', name: String(d.brand) } } : {}),
       ...(d.gtin ? { gtin: String(d.gtin) } : {}),

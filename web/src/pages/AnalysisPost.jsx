@@ -17,7 +17,7 @@
 // Uc tur de yayinlanabilir: urun / link / abonelik. Fark yalnizca VERI
 // SEKLINDE ve o fark lib/analysisRecord.js icinde tek yerde kapatiliyor.
 import { Suspense, lazy, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, SEO_DEFAULT_LOCALE, truncate } from '../lib/seo';
@@ -44,6 +44,16 @@ import './LinkAnalysis.css';
 
 export default function AnalysisPost() {
   const { slug } = useParams();
+  const [params] = useSearchParams();
+  // ?id=<kayit> — ADMIN ONIZLEMESI. Admin paneli raporu KENDI cizmez, sitedeki
+  // bu sayfayi iframe icinde gosterir; ikinci bir rapor gorunumu tutmak iki
+  // tasarimin ayrismasi demek (proje bu dersi bir kez odedi).
+  //
+  // Taslak kayit `getFirstListItem` ile GELMEZ: listRule yalniz yayinda
+  // olanlari donduruyor. viewRule herkese acik oldugu icin `getOne(id)`
+  // taslagi da getirir — yayin kapisi listRule'da kaliyor, yani taslak
+  // adresten TAHMIN EDILEREK bulunamaz, yalnizca id bilinerek acilir.
+  const onizlemeId = String(params.get('id') || '').trim();
   const { lang, t } = useI18n();
   const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [a, setA] = useState(null);
@@ -52,12 +62,15 @@ export default function AnalysisPost() {
   useEffect(() => {
     let live = true;
     setDurum('loading');
-    pb.collection('analyses')
-      .getFirstListItem(`slug="${String(slug || '').replace(/"/g, '')}"`, { $autoCancel: false })
+    const istek = onizlemeId
+      ? pb.collection('analyses').getOne(onizlemeId, { $autoCancel: false })
+      : pb.collection('analyses')
+        .getFirstListItem(`slug="${String(slug || '').replace(/"/g, '')}"`, { $autoCancel: false });
+    istek
       .then((r) => { if (live) { setA(r); setDurum('ok'); } })
       .catch(() => { if (live) { setA(null); setDurum('yok'); } });
     return () => { live = false; };
-  }, [slug]);
+  }, [slug, onizlemeId]);
 
   const kind = a ? analysisKind(a) : 'product';
   const ham = a ? analysisReport(a, lang) : null;
@@ -87,7 +100,9 @@ export default function AnalysisPost() {
     image: a ? a.productImage : undefined,
     imageAlt: konu,
     type: 'article',
-    noindex: !a,
+    // Onizleme adresi (?id=) DIZINE GIRMEZ: ayni icerigin ikinci bir adresi
+    // olurdu ve taslaklar da oradan gorunurdu.
+    noindex: !a || Boolean(onizlemeId),
     alternates,
     jsonLd: a ? {
       '@context': 'https://schema.org',
