@@ -40,6 +40,22 @@ spec çevirisinde bir kez ödedi (bkz. `admin/js/spec_i18n.js`).
 | `slugifyProduct`, `productSlug`, `productPath` | `web/src/lib/routes.js` |
 | `groundedResearchSystemPrompt` | `web/src/lib/ai.js` (`askQorAiGrounded`) |
 | `buildPublishMetaPrompt` | YENİ — yayın başlığı/özeti/meta/SSS, iki dil tek çağrıda |
+| `buildQuizTranslationPrompt` | YENİ — quiz cevaplarını hedef dile çevirir |
+
+### `admin/js/qor_ai_link.js` — link + abonelik MOTORU
+
+`web/src/lib/linkAnalysis.js`'in **tamamı** buraya taşındı (29 fonksiyon,
+byte-byte doğrulandı): `analyzeLink`, `enhancedAnalysis`, `compareAnalysis`,
+`subscriptionAnalysis`, araştırma fonksiyonları ve bunların prompt'ları.
+
+**Taşıma katmanı ENJEKTE EDİLİR** — motor hangi sağlayıcıya gittiğini bilmez:
+
+```js
+QorAiLink.configure({ askJson, askGrounded, adminPrompt })
+```
+
+Site kendi `ai.js`'ini verir (`web/src/lib/linkAnalysis.js` artık sadece
+köprü), admin kendi proxy istemcisini. **Aynı kod, aynı prompt, iki taraf.**
 
 **Kim okuyor:**
 - Site → `web/src/lib/aiPrompts.js` (köprü; derlemede içe aktarır, çalışma
@@ -58,7 +74,19 @@ spec çevirisinde bir kez ödedi (bkz. `admin/js/spec_i18n.js`).
 
 İki yol var:
 
-**a) Yeni analiz üret** — 4 adım: ürün ara (Typesense) → **quiz'i admin'de yanıtla**
+**a) Yeni analiz üret** — 4 adım. Birinci adım **ÜÇ KAYNAKTAN** biri:
+
+| Kaynak | Giriş | Motor |
+|---|---|---|
+| **Ürün** | Typesense'te ara, katalogdan seç | `buildFullPrompt` (ürün raporu) |
+| **Link** | 1-4 ürün linki yapıştır | `analyzeLink` → `enhancedAnalysis` (tek) / `compareAnalysis` (2+) |
+| **Abonelik** | Virgülle servis adları | `subscriptionAnalysis` |
+
+Link ve abonelik, sitedeki Link Analizi / Abonelikler sayfalarıyla **aynı
+motoru** kullanır (`admin/js/qor_ai_link.js`). Abonelikte "aynı tür" kuralı da
+aynı: video ile müzik karşılaştırılmaz (`subscriptionsMixCategories`).
+
+Sonraki adımlar üç kaynakta da AYNI: **quiz'i admin'de yanıtla**
 → rapor **TR + EN** → yayın meta'sı. 6 AI çağrısı:
 TR araştırma → TR rapor → **quiz cevaplarının EN çevirisi** → EN araştırma →
 EN rapor → meta+SSS (iki dil tek çağrı). Sıra ve tazelik onarımı sitedeki
@@ -138,6 +166,16 @@ Son ikisi **tembel** yüklenir. `SubscriptionReportView` bu iş için
 **TUZAK:** `AiReportView` CSS'ini bilerek import etmez (paket boyutu — o dosyadaki
 nota bak). `la-*` stillerini kullanan her SAYFA `LinkAnalysis.css`'i kendisi import
 etmek zorunda. İlk sürümde bu unutulmuştu ve rapor STİLSİZ çıkıyordu.
+
+### Quiz künyesi — raporun ÜSTÜNDE
+Okuyucu quizi çözmedi; "92/100 uyum" kimin uyumu olduğu söylenmeden anlamsız.
+Sayfa, raporun üstünde soruları ve seçilen cevapları gösteriyor
+(`analysisQuiz()`, `.an-quiz`). Rapor gövdesindeki "cevapların neyi değiştirdi"
+bloğu AYRI bir soruyu yanıtlıyor (her cevap puanı ne kadar oynattı), o yüzden
+ikisi de duruyor. Ön-render'da da aynı sırada (`anQuizKunye`).
+
+Kaynak **dile göre rapordur**, `quiz` alanı değil: `quiz` adminde quizin
+yanıtlandığı dilde (Türkçe) duruyor, rapor her dilde kendi metnini taşıyor.
 
 Kayıt okuma kuralları (tür, dile göre rapor, başlık, özet, meta, SSS) **tek yerde**:
 `web/src/lib/analysisRecord.js` — hem React sayfası hem ön-render aynı fonksiyonları

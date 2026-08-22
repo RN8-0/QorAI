@@ -142,6 +142,44 @@ async function askGrounded(prompt, lang, maxOutputTokens) {
   throw lastErr || new Error('grounded search failed');
 }
 
+// ── Link/abonelik motoru: TASIMA KATMANINI BAGLA ───────────────────────────
+// Motor (admin/js/qor_ai_link.js) hangi saglayiciya gittigini bilmez; site
+// kendi ai.js'ini verir, admin burayi verir. Ayni kod, ayni prompt.
+var _promptCache = null;
+var _promptCacheAt = 0;
+async function loadAiPrompts() {
+  var now = Date.now();
+  if (_promptCache && now - _promptCacheAt < 5 * 60 * 1000) return _promptCache;
+  try {
+    var rec = await pb().collection('public_config').getFirstListItem('key = "ai_prompts"', { $autoCancel: false });
+    _promptCache = (rec && rec.value && typeof rec.value === 'object') ? rec.value : {};
+  } catch (_) { _promptCache = {}; }
+  _promptCacheAt = now;
+  return _promptCache;
+}
+// Sitedeki adminPrompt() ile AYNI kural: PB'de en az 40 karakterlik bir
+// override varsa o, yoksa kodun icindeki varsayilan.
+async function adminPrompt(key, fallback) {
+  try {
+    var prompts = await loadAiPrompts();
+    var v = prompts ? prompts[key] : null;
+    var t = (v == null ? '' : String(v)).trim();
+    if (t.length >= 40) return t;
+  } catch (_) { /* varsayilana dus */ }
+  return fallback;
+}
+
+if (root.QorAiLink) {
+  root.QorAiLink.configure({
+    askJson: askJson,
+    askGrounded: function (prompt, o) {
+      o = o || {};
+      return askGrounded(prompt, o.language || o.lang || 'en', o.maxOutputTokens);
+    },
+    adminPrompt: adminPrompt,
+  });
+}
+
 // ── katalog ────────────────────────────────────────────────────────────────
 var LEAN = 'id,name,brand,category,techScore,imageUrl,slug,priceTR,priceUSD,lowestPriceUSD';
 
@@ -266,6 +304,99 @@ async function runProductReport(o) {
 }
 
 /**
+ * LINK ANALIZI — sitedeki linkAnalysisJobs.js akisinin AYNISI, ayni motorla.
+ * Tek link  -> enhancedAnalysis (ortak "enhanced" sekil)
+ * 2+ link   -> compareAnalysis  (products[] + comparison)
+ */
+async function analyzeLinks(urls, lang) {
+  var L = root.QorAiLink;
+  var bases = [];
+  for (var i = 0; i < urls.length; i++) {
+    bases.push(await L.analyzeLink(urls[i], lang, {}));
+  }
+  return bases;
+}
+
+async function linkQuiz(bases, lang) {
+  var L = root.QorAiLink;
+  if (bases.length > 1) {
+    return L.generateCompareQuiz({
+      products: bases.map(function (b) { return { title: b.title, category: b.category, url: b.url }; }),
+      language: lang,
+      userProfile: {},
+    });
+  }
+  var b = bases[0];
+  return L.generateQuiz({
+    category: b.category,
+    productTitle: b.title,
+    url: b.url,
+    siteName: b.siteName,
+    productContext: String(b.analysis || '').slice(0, 1200),
+    language: lang,
+    userProfile: {},
+  });
+}
+
+async function runLinkReport(o) {
+  var L = root.QorAiLink;
+  var bases = o.bases;
+  var lang = o.lang;
+  var stage = o.onStage || function () {};
+
+  stage('research', lang);
+  var research = '';
+  try {
+    research = bases.length > 1
+      ? await L.researchProductsCommunity({ bases: bases, language: lang })
+      : await L.researchProductCommunity({
+        title: bases[0].title, category: bases[0].category,
+        url: bases[0].url, siteName: bases[0].siteName, language: lang,
+      });
+  } catch (_) { research = ''; }
+
+  stage('report', lang);
+  var data = bases.length > 1
+    ? await L.compareAnalysis({ bases: bases, answers: o.answers, language: lang, userProfile: {}, research: research })
+    : await L.enhancedAnalysis({ base: bases[0], answers: o.answers, language: lang, userProfile: {}, research: research });
+
+  if (!data || typeof data !== 'object') throw new Error('Rapor çözülemedi (' + lang + ')');
+  if (bases.length > 1 && !(Array.isArray(data.products) && data.products.length >= 2)) {
+    throw new Error('Karşılaştırma raporu eksik (' + lang + ')');
+  }
+  return { data: data, researched: Boolean(research) };
+}
+
+/** ABONELIK ANALIZI — sitedeki subscriptionAnalysisJobs.js akisinin AYNISI. */
+async function subscriptionQuiz(names, lang) {
+  return root.QorAiLink.generateSubscriptionQuiz({
+    subscriptionNames: names, language: lang, userProfile: {},
+  });
+}
+
+async function runSubscriptionReport(o) {
+  var L = root.QorAiLink;
+  var names = o.names;
+  var lang = o.lang;
+  var stage = o.onStage || function () {};
+
+  stage('research', lang);
+  var research = '';
+  try {
+    research = await L.researchSubscriptionsCommunity({ names: names, language: lang });
+  } catch (_) { research = ''; }
+
+  stage('report', lang);
+  var data = await L.subscriptionAnalysis({
+    subscriptionNames: names, answers: o.answers, language: lang, userProfile: {}, research: research,
+  });
+  if (!data || !Array.isArray(data.services) || !data.services.length) {
+    throw new Error('Abonelik raporu boş (' + lang + ')');
+  }
+  return { data: data, researched: Boolean(research) };
+}
+
+/**
  * Quiz cevaplarini hedef dile cevirir.
  *
  * Adminde quiz BIR KEZ yanitlanip IKI rapor uretiliyor. Cevirmezsek Ingilizce
@@ -365,6 +496,11 @@ root.QorAiRun = {
   similarProducts: similarProducts,
   generateQuiz: generateQuiz,
   runProductReport: runProductReport,
+  analyzeLinks: analyzeLinks,
+  linkQuiz: linkQuiz,
+  runLinkReport: runLinkReport,
+  subscriptionQuiz: subscriptionQuiz,
+  runSubscriptionReport: runSubscriptionReport,
   publishMeta: publishMeta,
 };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

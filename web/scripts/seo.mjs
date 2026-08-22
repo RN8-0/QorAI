@@ -24,8 +24,8 @@ import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.
 // baslik ile kullanicinin gordugu baslik ayrisir.
 import {
   analysisFaq, analysisKind, analysisLead, analysisMetaDescription,
-  analysisMetaTitle, analysisRenderLangs, analysisReport, analysisSubject, analysisTitle,
-  analysisUnified,
+  analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
+  analysisTitle, analysisUnified,
 } from '../src/lib/analysisRecord.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
@@ -194,6 +194,7 @@ const ANALIZ_LISTE_TEXT = {
     // urun raporundaki karsiliklarindan FARKLI adlandirilir, yoksa okuyucu
     // hangi turu okudugunu anlamiyor.
     kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
+    quizTop: 'Answers this analysis was built on',
     services: 'Services compared', winner: 'Best match', decisive: 'What actually decides it',
     fit: 'Overall fit', featuresSec: 'Features and content', ux: 'Experience',
     risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
@@ -219,6 +220,7 @@ const ANALIZ_LISTE_TEXT = {
     who: 'Kime uygun?', bestFor: 'Alması gereken', notFor: 'Almaması gereken',
     verdict: 'Sonuç',
     kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
+    quizTop: 'Bu analiz şu cevaplara göre yapıldı',
     services: 'Karşılaştırılan servisler', winner: 'En iyi eşleşme', decisive: 'Kararı belirleyen farklar',
     fit: 'Genel uyum', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
     risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
@@ -506,6 +508,24 @@ function anAbonelikGovde(r, tx) {
   return g;
 }
 
+// Quiz kunyesi — "bu analiz su varsayimlarla yapildi". Rapordaki
+// `anQuizEtkisi` blogundan FARKLI: orada her cevabin puana etkisi anlatiliyor,
+// burada yalnizca hangi sorulara ne cevap verildigi.
+function anQuizKunye(quiz, tx) {
+  if (!quiz.length) return '';
+  return `<section style="border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;margin:0 0 22px">`
+    + `<h2 style="font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#64748b;margin:0 0 12px;padding:0;border:0">${esc(tx.quizTop)}</h2>`
+    + `<ol style="margin:0;padding:0;list-style:none">${quiz.map((q, i) => {
+      const etki = Number.isFinite(q.etki) && q.etki !== 0
+        ? ` <span style="font-family:ui-monospace,Consolas,monospace;font-size:12.5px;color:${q.etki > 0 ? '#047857' : '#b91c1c'}">${q.etki > 0 ? '+' : ''}${q.etki}</span>`
+        : '';
+      return `<li style="padding:11px 0;${i ? 'border-top:1px solid #e2e8f0' : 'padding-top:0'}">`
+        + (q.soru ? `<div style="font-size:13.5px;line-height:1.5;color:#475569">${esc(q.soru)}</div>` : '')
+        + (q.cevap ? `<div style="font-size:14.5px;line-height:1.45;font-weight:650;color:#0f172a">${esc(q.cevap)}${etki}</div>` : '')
+        + `</li>`;
+    }).join('')}</ol></section>`;
+}
+
 function analizBody(a, lang) {
   const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
   const pfx = localePrefix(lang);
@@ -540,6 +560,9 @@ function analizBody(a, lang) {
     + `<div style="font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
     + (kind === 'product' && a.productSlug ? `<a href="${pfx}/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
     + `</div></div>`
+    // ANALIZI URETEN QUIZ — GOVDENIN USTUNDE, sayfadaki sirayla ayni.
+    // Crawler React calistirmaz; bu blok sayfada gorunenin metin karsiligi.
+    + anQuizKunye(analysisQuiz(a, lang), tx)
     + govde
     + (faq.length
       ? anH2(tx.faq)

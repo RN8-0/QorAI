@@ -86,9 +86,51 @@
 .an-crumbs a:hover { color: var(--accent); }
 
 .an-post { padding-bottom: 80px; }
+/* Baslik ONCEDEN clamp(27px, 5vw, 40px) idi ve 1440px'te 40px'e dayaniyordu:
+   iki satirlik bir urun adi ekranin ustunu tek basina yiyordu. Raporun kendisi
+   zaten skor halkasi + kartlarla basliyor; sayfa basligi ONA yol vermeli.
+   Hiyerarsi punto ve bosluktan geliyor, kutu ya da golgeden degil. */
 .an-post h1 {
-  font-size: clamp(27px, 5vw, 40px); line-height: 1.1; font-weight: 800;
-  letter-spacing: -.022em; margin: 0 0 12px; text-wrap: balance;
+  font-size: clamp(21px, 2.4vw, 28px); line-height: 1.2; font-weight: 750;
+  letter-spacing: -.018em; margin: 0 0 14px; max-width: 30ch; text-wrap: balance;
+}
+
+/* ── Quiz künyesi — raporun ÜSTÜNDE ──────────────────────────
+ * Okuyucu quizi ÇÖZMEDİ; bu analizin hangi varsayımlarla yapıldığını en başta
+ * bilmesi gerekiyor, yoksa "92/100 uyum" kimin uyumu belli değil. Rapor
+ * gövdesindeki "cevapların neyi değiştirdi" bloğu AYRI bir soruyu yanıtlıyor
+ * (her cevap puanı ne kadar oynattı), o yüzden ikisi de duruyor. */
+.an-quiz {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 14px);
+  background: var(--surface);
+  padding: 16px 18px;
+  margin: 0 0 22px;
+}
+.an-quiz > h2 {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-3); margin: 0 0 12px;
+}
+.an-quiz ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 1px; background: var(--divider); }
+.an-quiz li { background: var(--surface); padding: 11px 0; display: grid; gap: 4px; }
+.an-quiz li:first-child { padding-top: 0; }
+.an-quiz li:last-child { padding-bottom: 0; }
+.an-quiz q {
+  font-size: 13.5px; line-height: 1.5; color: var(--text-2); quotes: none;
+}
+.an-quiz b {
+  font-size: 14.5px; line-height: 1.45; font-weight: 650; color: var(--text);
+}
+/* Puan etkisi tabular — alt alta hizalansin. */
+.an-quiz i {
+  font-style: normal; font-variant-numeric: tabular-nums; font-size: 12.5px;
+  font-weight: 650; color: var(--text-3);
+}
+.an-quiz i.up { color: var(--ink-green); }
+.an-quiz i.down { color: var(--ink-red); }
+@media (min-width: 720px) {
+  .an-quiz li { grid-template-columns: 1fr auto; align-items: baseline; }
+  .an-quiz q { grid-column: 1 / -1; }
 }
 
 /* Analiz edilen ürün — sayfanın neyi anlattığını tek bakışta veren şerit. */

@@ -97,6 +97,18 @@
       '  font:inherit;font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;margin-bottom:-1px;transition:color .12s}',
       '.an-tabbar button:hover{color:var(--text1)}',
       '.an-tabbar button.on{color:var(--accent);border-bottom-color:var(--accent)}',
+      /* Alt sekme (urun / link / abonelik): ust sekmeden hafif, ikinci duzey. */
+      '.an-tabbar-sub button{font-weight:550;padding:8px 14px}',
+      '.an-tabbar-sub button em{font-style:normal;font-size:11px;color:var(--text3);margin-left:5px}',
+      '.an-tabbar-sub button.on em{color:var(--accent)}',
+      '.an-err{color:var(--red);font-size:13px;line-height:1.6;margin:10px 0}',
+      /* Link/abonelik girisi: tek alan, genis. */
+      '.an-f{margin-bottom:12px}',
+      '.an-f label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px}',
+      '.an-f input,.an-f textarea{width:100%;padding:10px 12px;border:1px solid var(--border);',
+      '  border-radius:var(--radius-sm);font:inherit;box-sizing:border-box;background:var(--bg3);color:var(--text1)}',
+      '.an-f textarea{resize:vertical;line-height:1.6;font-size:13px}',
+      '.an-f input:focus,.an-f textarea:focus{outline:2px solid var(--accent);outline-offset:1px}',
 
       '.an-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}',
       '.an-bar input,.an-bar select{padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);',
@@ -314,16 +326,46 @@
       + '<button class="' + (t === 'sitede' ? 'on' : '') + '" onclick="analysesNew(\'sitede\')">Sitede yapılmışlardan al</button>'
       + '</div>'
       + '<div id="anNewBody"></div>';
-    if (t === 'uret') renderUretAra('');
+    if (t === 'uret') analysesUretTur(_uretTur);
     else renderSitedeSec('product');
   }
 
-  // ── 1) Yeni analiz üret: ürün ara ──────────────────────────
-  function renderUretAra(q, hits, yukleniyor) {
+  // ── 1) Yeni analiz üret: TUR SEC (urun / link / abonelik) ──
+  //
+  //  Uc turun de KAYNAGI farkli, gerisi AYNI: quiz -> TR rapor -> cevap
+  //  cevirisi -> EN rapor -> meta -> taslak. O yuzden yalnizca bu adim
+  //  ture gore degisiyor; quiz ve uretim ekrani ortak.
+  var _uretTur = 'product';
+  var URET_TUR = [
+    ['product', 'Ürün', 'katalogdan ara'],
+    ['link', 'Link', 'ürün linki yapıştır'],
+    ['subscription', 'Abonelik', 'servis adlarını yaz'],
+  ];
+
+  function analysesUretTur(tur) {
+    _uretTur = tur || 'product';
+    _run = null;
     var b = $('anNewBody');
     if (!b) return;
     b.innerHTML = ''
       + adimlar(0)
+      + '<div class="an-tabbar an-tabbar-sub">'
+      + URET_TUR.map(function (x) {
+        return '<button class="' + (x[0] === _uretTur ? 'on' : '') + '" onclick="analysesUretTur(\'' + x[0] + '\')">'
+          + x[1] + ' <em>' + x[2] + '</em></button>';
+      }).join('')
+      + '</div>'
+      + '<div id="anKaynak"></div>';
+    if (_uretTur === 'product') renderUretAra('');
+    else if (_uretTur === 'link') renderLinkGiris();
+    else renderAbonelikGiris();
+  }
+
+  // ── Kaynak: KATALOG URUNU ──────────────────────────────────
+  function renderUretAra(q, hits, yukleniyor) {
+    var b = $('anKaynak');
+    if (!b) return;
+    b.innerHTML = ''
       + '<div class="an-card">'
       + '<h3>1 · Analiz edilecek ürün</h3>'
       + '<div class="an-bar">'
@@ -354,12 +396,101 @@
     }
   }
 
+  // ── Kaynak: LINK ───────────────────────────────────────────
+  function renderLinkGiris(hata) {
+    var b = $('anKaynak');
+    if (!b) return;
+    b.innerHTML = ''
+      + '<div class="an-card">'
+      + '<h3>1 · Ürün linkleri</h3>'
+      + '<div class="an-f"><label>Her satıra bir link (en fazla 4)</label>'
+      + '<textarea id="anLinks" rows="4" placeholder="https://www.amazon.com.tr/dp/…&#10;https://www.trendyol.com/…"></textarea></div>'
+      + (hata ? '<p class="an-err">' + esc(hata) + '</p>' : '')
+      + '<button class="btn btn-primary" onclick="analysesLinkBasla()">Linkleri tanı</button>'
+      + '<div class="an-hint">Tek link → tekil analiz. İki ve üzeri → karşılaştırma. '
+      + 'Linki tanıma, quiz ve rapor <strong>sitedeki Link Analizi ile aynı motoru</strong> kullanır.</div>'
+      + '</div>';
+    var el = $('anLinks');
+    if (el) el.focus();
+  }
+
+  async function analysesLinkBasla() {
+    var ham = ($('anLinks') || {}).value || '';
+    var urls = ham.split(/\s+/).map(function (x) { return x.trim(); })
+      .filter(function (x) { return /^https?:\/\//i.test(x); }).slice(0, 4);
+    if (!urls.length) { renderLinkGiris('En az bir geçerli link gir (http/https).'); return; }
+    var b = $('anKaynak');
+    b.innerHTML = '<div class="an-card"><h3>1 · Linkler tanınıyor</h3>'
+      + '<p class="an-empty">' + urls.length + ' link inceleniyor…</p></div>';
+    try {
+      var hepsi = await QorAiRun.analyzeLinks(urls, 'tr');
+      // Urun OLMAYAN adresi analize sokma: motorun kendi kapisi bunu
+      // `isProduct:false` ile bildiriyor (sitede de ayni kapi var). Icerde
+      // birakmak, YouTube linkini urunmus gibi puanlamak demek.
+      var bases = hepsi.filter(function (x) { return x.isProduct !== false; });
+      if (!bases.length) {
+        renderLinkGiris('Bu adres(ler) satın alınabilir bir ürüne benzemiyor.');
+        return;
+      }
+      if (bases.length < hepsi.length) {
+        toast((hepsi.length - bases.length) + ' adres ürün değil, atlandı', 'i');
+      }
+      var q = await QorAiRun.linkQuiz(bases, 'tr');
+      if (!q.length) throw new Error('Quiz üretilemedi');
+      _run = { kind: 'link', bases: bases, questions: q, answers: [] };
+      renderQuiz();
+    } catch (e) {
+      renderLinkGiris('Tanınamadı: ' + (e.message || e));
+    }
+  }
+
+  // ── Kaynak: ABONELIK ───────────────────────────────────────
+  function renderAbonelikGiris(hata) {
+    var b = $('anKaynak');
+    if (!b) return;
+    b.innerHTML = ''
+      + '<div class="an-card">'
+      + '<h3>1 · Abonelik servisleri</h3>'
+      + '<div class="an-f"><label>Virgülle ayır (en fazla 4)</label>'
+      + '<input id="anSubs" placeholder="Netflix, Disney+"></div>'
+      + (hata ? '<p class="an-err">' + esc(hata) + '</p>' : '')
+      + '<button class="btn btn-primary" onclick="analysesAbonelikBasla()">Devam</button>'
+      + '<div class="an-hint">Tek servis → uyum analizi. İki ve üzeri → karşılaştırma. '
+      + 'Servisler <strong>aynı türden</strong> olmalı (sitedeki kuralın aynısı): '
+      + 'video ile müzik karşılaştırılmaz.</div>'
+      + '</div>';
+    var el = $('anSubs');
+    if (el) el.focus();
+  }
+
+  async function analysesAbonelikBasla() {
+    var ham = ($('anSubs') || {}).value || '';
+    var names = ham.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 4);
+    if (!names.length) { renderAbonelikGiris('En az bir servis adı gir.'); return; }
+    // Sitedeki kuralin AYNISI: farkli turden servisler karsilastirilmaz.
+    if (names.length > 1 && QorAiLink.subscriptionsMixCategories(names)) {
+      renderAbonelikGiris('Servisler aynı türden olmalı (ör. hepsi video ya da hepsi müzik).');
+      return;
+    }
+    var b = $('anKaynak');
+    b.innerHTML = '<div class="an-card"><h3>1 · Quiz hazırlanıyor</h3>'
+      + '<p class="an-empty">' + esc(names.join(', ')) + '</p></div>';
+    try {
+      var q = await QorAiRun.subscriptionQuiz(names, 'tr');
+      if (!q.length) throw new Error('Quiz üretilemedi');
+      _run = { kind: 'subscription', names: names, questions: q, answers: [] };
+      renderQuiz();
+    } catch (e) {
+      renderAbonelikGiris('Başlatılamadı: ' + (e.message || e));
+    }
+  }
+
   function adimlar(i) {
     var ad = [
-      ['Ürün', 'katalogdan seç'],
+      ['Kaynak', 'ürün / link / abonelik'],
       ['Quiz', 'soruları yanıtla'],
       ['Rapor', 'TR + EN üret'],
-      ['Yayın', 'meta ve slug'],
+      ['Yayın', 'önizle ve yayınla'],
     ];
     return '<div class="an-steps">' + ad.map(function (x, k) {
       var cls = k < i ? 'done' : (k === i ? 'on' : '');
@@ -384,23 +515,31 @@
   async function analysesPickProduct(i) {
     var hit = (window.__anHits || [])[i];
     if (!hit) return;
-    var b = $('anNewBody');
-    b.innerHTML = adimlar(1) + '<p class="an-empty">Ürün yükleniyor ve quiz hazırlanıyor…</p>';
+    var b = $('anKaynak');
+    b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
+      + '<p class="an-empty">Ürün yükleniyor ve quiz hazırlanıyor…</p></div>';
     try {
       // Quiz ve rapor TAM PB kaydindan uretilir: Typesense dokumaninda
       // specSections yok, oysa prompt'un tasidigi en degerli baglam o.
       var product = await QorAiRun.loadProduct(hit.id);
       var quiz = await QorAiRun.generateQuiz(product, 'tr');
       if (!quiz.length) throw new Error('Quiz üretilemedi');
-      _run = { product: product, questions: quiz, answers: [], stages: [] };
+      _run = { kind: 'product', product: product, questions: quiz, answers: [] };
       renderQuiz();
     } catch (e) {
-      b.innerHTML = adimlar(1)
-        + '<div class="an-card"><h3>Quiz üretilemedi</h3>'
-        + '<p class="an-hint">' + esc(e.message || e) + '</p>'
-        + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Tekrar dene</button>'
-        + '<button class="btn btn-ghost" onclick="analysesNew(\'uret\')">Başka ürün</button></div>';
+      b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
+        + '<p class="an-err">' + esc(e.message || e) + '</p>'
+        + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Tekrar dene</button> '
+        + '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Başka ürün</button></div>';
     }
+  }
+
+  // Uretim akisinin KONUSU — uc turde de tek satirlik ad.
+  function runKonu(r) {
+    if (!r) return '';
+    if (r.kind === 'product') return r.product.name || '';
+    if (r.kind === 'subscription') return (r.names || []).join(' · ');
+    return (r.bases || []).map(function (b) { return b.title; }).filter(Boolean).join(' · ');
   }
 
   function renderQuiz() {
@@ -410,9 +549,10 @@
     b.innerHTML = ''
       + adimlar(1)
       + '<div class="an-note">Quiz, sitedeki analizin ürettiği quiz\'in <strong>aynısı</strong> (aynı prompt, aynı soru sayısı). '
-      + 'Verdiğin cevaplar rapordaki uyum puanını ve "cevapların neyi değiştirdi" bölümünü belirler.</div>'
+      + 'Verdiğin cevaplar rapordaki uyum puanını ve "cevapların neyi değiştirdi" bölümünü belirler; '
+      + 'yayınlanan sayfada da <strong>en üstte</strong> görünürler.</div>'
       + '<div class="an-card" style="max-width:960px">'
-      + '<h3 id="anQuizHead">2 · ' + esc(r.product.name || '') + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
+      + '<h3 id="anQuizHead">2 · ' + esc(runKonu(r)) + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
       + r.questions.map(function (q, qi) {
         return '<div class="an-q"><p><b>' + (qi + 1) + '.</b>' + esc(q.text) + '</p>'
           + '<div class="an-opts">'
@@ -428,10 +568,10 @@
       + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'
       + '<button class="btn btn-primary" id="anQuizGo" onclick="analysesRunReport()"' + (yanit < r.questions.length ? ' disabled' : '') + '>'
       + (yanit < r.questions.length ? 'Tüm soruları yanıtla' : 'Raporu üret (TR + EN)') + '</button>'
-      + '<button class="btn btn-ghost" onclick="analysesNew(\'uret\')">Vazgeç</button>'
+      + '<button class="btn btn-ghost" onclick="analysesUretTur(\'' + r.kind + '\')">Vazgeç</button>'
       + '</div>'
-      + '<p class="an-hint">Rapor üretimi 5 AI çağrısı sürer (TR araştırma + TR rapor, EN araştırma + EN rapor, yayın meta\'sı). '
-      + 'Bu sekmeyi kapatma.</p>'
+      + '<p class="an-hint">Rapor üretimi 6 AI çağrısı sürer (TR araştırma + TR rapor, cevap çevirisi, '
+      + 'EN araştırma + EN rapor, yayın meta\'sı). Bu sekmeyi kapatma.</p>'
       + '</div>';
   }
 
@@ -451,7 +591,7 @@
     }
     var yanit = _run.questions.filter(function (q, i) { return _run.answers[i] != null; }).length;
     var baslik = $('anQuizHead');
-    if (baslik) baslik.textContent = '2 · ' + (_run.product.name || '') + ' · ' + yanit + '/' + _run.questions.length + ' yanıtlandı';
+    if (baslik) baslik.textContent = '2 · ' + runKonu(_run) + ' · ' + yanit + '/' + _run.questions.length + ' yanıtlandı';
     var btn = $('anQuizGo');
     if (btn) {
       var tam = yanit === _run.questions.length;
@@ -464,16 +604,20 @@
   var PROG = [
     ['tr-research', 'Türkçe · web araştırması'],
     ['tr-report', 'Türkçe · rapor'],
+    // Quiz BIR KEZ Turkce yanitlaniyor; cevirmezsek Ingilizce rapor Turkce
+    // cevap dizesini oldugu gibi tasiyor (olculdu, bkz. prompt dosyasi).
+    ['translate', 'Quiz cevapları İngilizceye çevriliyor'],
     ['en-research', 'İngilizce · web araştırması'],
     ['en-report', 'İngilizce · rapor'],
     ['meta', 'Yayın meta\'sı ve SSS (TR + EN)'],
+    ['save', 'Taslak olarak kaydediliyor'],
   ];
 
   function renderProgress(durum, hata) {
     var b = $('anNewBody');
     if (!b) return;
     b.innerHTML = adimlar(2)
-      + '<div class="an-card"><h3>3 · Rapor üretiliyor</h3>'
+      + '<div class="an-card"><h3>3 · Rapor üretiliyor · ' + esc(runKonu(_run)) + '</h3>'
       + '<div class="an-prog">'
       + PROG.map(function (p) {
         var st = durum[p[0]] || '';
@@ -483,7 +627,7 @@
       }).join('')
       + '</div>'
       + (hata
-        ? '<p style="color:var(--red);font-size:13px;line-height:1.6">' + esc(hata) + '</p>'
+        ? '<p class="an-err">' + esc(hata) + '</p>'
           + '<button class="btn btn-primary" onclick="analysesRunReport()">Tekrar dene</button> '
           + '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
         : '<p class="an-hint">Araştırma adımı başarısız olursa rapor yine üretilir — sadece "kanıt zayıf" olarak işaretlenir.</p>')
@@ -491,6 +635,59 @@
   }
 
   function analysesBackToQuiz() { if (_run) renderQuiz(); }
+
+  // Tek dilde rapor — TUR fark eder, gerisi ayni.
+  function raporUret(r, lang, answers, similar, onStage) {
+    if (r.kind === 'product') {
+      return QorAiRun.runProductReport({
+        product: r.product, lang: lang, answers: answers, similar: similar, onStage: onStage,
+      });
+    }
+    if (r.kind === 'subscription') {
+      return QorAiRun.runSubscriptionReport({ names: r.names, lang: lang, answers: answers, onStage: onStage });
+    }
+    return QorAiRun.runLinkReport({ bases: r.bases, lang: lang, answers: answers, onStage: onStage });
+  }
+
+  // Uretilen rapordan YAYIN KAYDI. Urun analizinde katalog kaydi var, digerlerinde
+  // yok — konu adlari `subjectNames`e yaziliyor (site oradan okuyor).
+  function kayitKur(r, out, answers) {
+    var ortak = {
+      kind: r.kind,
+      report_tr: out.tr,
+      report_en: out.en,
+      quiz: answers,
+      sourceRef: '',
+      status: 'draft',
+      author: 'Qor AI',
+      views: 0,
+      likes: 0,
+      productId: '', productSlug: '', productName: '', productImage: '', productBrand: '',
+      category: '', techScore: 0, subjectNames: [],
+    };
+    if (r.kind === 'product') {
+      var p = r.product;
+      ortak.productId = p.id;
+      ortak.productSlug = p.slug || slugify(p.name);
+      ortak.productName = p.name || '';
+      ortak.productImage = p.imageUrl || (Array.isArray(p.images) ? p.images[0] : '') || '';
+      ortak.productBrand = p.brand || '';
+      ortak.category = p.category || '';
+      ortak.techScore = num(p.techScore);
+      ortak.slug = slugify(p.slug || p.name);
+      return ortak;
+    }
+    if (r.kind === 'subscription') {
+      ortak.subjectNames = r.names.slice();
+      ortak.category = QorAiLink.subscriptionCategory(r.names[0]) || '';
+      ortak.slug = slugify(r.names.join(' vs '));
+      return ortak;
+    }
+    ortak.subjectNames = r.bases.map(function (b) { return b.title; }).filter(Boolean);
+    ortak.category = r.bases[0] ? (r.bases[0].category || '') : '';
+    ortak.slug = slugify(ortak.subjectNames.join(' vs '));
+    return ortak;
+  }
 
   async function analysesRunReport() {
     if (!_run) return;
@@ -504,7 +701,7 @@
     function mark(key, st) { durum[key] = st; renderProgress(durum); }
 
     try {
-      var similar = await QorAiRun.similarProducts(r.product, 8);
+      var similar = r.kind === 'product' ? await QorAiRun.similarProducts(r.product, 8) : [];
       var out = {};
       // Quiz Turkce yanitlandi. Her dil KENDI dilindeki cevaplarla rapor
       // uretir; ceviri basarisiz olursa orijinal cevaplarla devam eder.
@@ -516,47 +713,22 @@
           cevaplar[lang] = await QorAiRun.translateQuizAnswers(answers, lang);
           mark('translate', 'done');
         }
-        var res = await QorAiRun.runProductReport({
-          product: r.product,
-          lang: lang,
-          answers: cevaplar[lang],
-          similar: similar,
-          onStage: (function (l) {
-            return function (stage) {
-              if (stage === 'research') mark(l + '-research', 'run');
-              if (stage === 'report') { mark(l + '-research', 'done'); mark(l + '-report', 'run'); }
-            };
-          }(lang)),
-        });
+        var res = await raporUret(r, lang, cevaplar[lang], similar, (function (l) {
+          return function (stage) {
+            if (stage === 'research') mark(l + '-research', 'run');
+            if (stage === 'report') { mark(l + '-research', 'done'); mark(l + '-report', 'run'); }
+          };
+        }(lang)));
         mark(lang + '-research', 'done');
         mark(lang + '-report', 'done');
         out[lang] = res.data;
       }
 
       mark('meta', 'run');
-      var meta = await metaUret(P_subject(r.product), 'product', out.tr);
+      var meta = await metaUret(runKonu(r), r.kind, out.tr);
       mark('meta', 'done');
 
-      _editing = {
-        kind: 'product',
-        productId: r.product.id,
-        productSlug: r.product.slug || slugify(r.product.name),
-        productName: r.product.name || '',
-        productImage: r.product.imageUrl || (Array.isArray(r.product.images) ? r.product.images[0] : '') || '',
-        productBrand: r.product.brand || '',
-        category: r.product.category || '',
-        techScore: num(r.product.techScore),
-        slug: slugify(r.product.slug || r.product.name),
-        report_tr: out.tr,
-        report_en: out.en,
-        quiz: answers,
-        subjectNames: [],
-        sourceRef: '',
-        status: 'draft',
-        author: 'Qor AI',
-        views: 0,
-        likes: 0,
-      };
+      _editing = kayitKur(r, out, answers);
       metaYaz(_editing, meta);
       // TASLAK OLARAK HEMEN KAYDET. Onizleme sitedeki sayfanin kendisi ve o
       // sayfa kaydi `?id=` ile cekiyor — kayit yoksa onizleyecek bir sey de
@@ -570,10 +742,6 @@
       acik.forEach(function (k) { durum[k] = 'fail'; });
       renderProgress(durum, e.message || String(e));
     }
-  }
-
-  function P_subject(product) {
-    return QorAiPrompts.cleanProductName(product.name || '');
   }
 
   // Yasakli meta listesi: AYNI DILDE yinelenen <title>/description Google'da
@@ -1028,7 +1196,10 @@
 
   window.loadAnalysesAdmin = loadAnalysesAdmin;
   window.analysesNew = analysesNew;
+  window.analysesUretTur = analysesUretTur;
   window.analysesProdSearch = analysesProdSearch;
+  window.analysesLinkBasla = analysesLinkBasla;
+  window.analysesAbonelikBasla = analysesAbonelikBasla;
   window.analysesPickProduct = analysesPickProduct;
   window.analysesAnswer = analysesAnswer;
   window.analysesRunReport = analysesRunReport;

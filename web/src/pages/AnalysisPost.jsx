@@ -34,8 +34,8 @@ const SubscriptionReportView = lazy(() => import('../components/SubscriptionRepo
 const CompareResult = lazy(() => import('../pages/LinkAnalysis.jsx').then((m) => ({ default: m.CompareResult })));
 import {
   analysisFaq, analysisKind, analysisKindShort, analysisLead, analysisMetaDescription,
-  analysisMetaTitle, analysisRenderLangs, analysisReport, analysisSubject, analysisTitle,
-  analysisUnified,
+  analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
+  analysisTitle, analysisUnified,
 } from '../lib/analysisRecord';
 import './Analyses.css';
 // `la-*` sinifları burada YASAR. AiReportView paylasilan modul oldugu icin
@@ -78,6 +78,7 @@ export default function AnalysisPost() {
   const konu = a ? analysisSubject(a, lang) : '';
   const baslik = a ? analysisTitle(a, lang) : L('Analysis', 'Analiz');
   const faq = a ? analysisFaq(a, lang) : [];
+  const quiz = a ? analysisQuiz(a, lang) : [];
   const yol = `/analiz/${slug || ''}`;
   // hreflang, ON-RENDER'IN GERCEKTEN URETTIGI adresleri gostermek zorunda.
   // `hreflangAlternates()` her iki dili birden yazar; bir analizin yalnizca tek
@@ -187,6 +188,30 @@ export default function AnalysisPost() {
             ) : null}
           </div>
         </div>
+
+        {/* ANALIZI URETEN QUIZ — RAPORUN USTUNDE.
+            Okuyucu quizi cozmedi; "92/100 uyum" kimin uyumu oldugu
+            soylenmeden anlamsiz. Rapordaki "cevaplarin neyi degistirdi"
+            blogu ayri bir soruyu yanitliyor (her cevap puani ne oynatti),
+            o yuzden ikisi de duruyor. */}
+        {quiz.length > 0 && (
+          <section className="an-quiz">
+            <h2>{L('Answers this analysis was built on', 'Bu analiz şu cevaplara göre yapıldı')}</h2>
+            <ol>
+              {quiz.map((q, i) => (
+                <li key={i}>
+                  {q.soru && <q>{q.soru}</q>}
+                  {q.cevap && <b>{q.cevap}</b>}
+                  {q.etki != null && q.etki !== 0 && (
+                    <i className={q.etki > 0 ? 'up' : 'down'}>
+                      {q.etki > 0 ? '+' : ''}{q.etki}
+                    </i>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
 
         {/* Sitede o analizi kim ciziyorsa BURADA DA O cizer:
               urun            -> ProductFullReport   (urun sayfasindaki)

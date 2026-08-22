@@ -160,6 +160,36 @@ export function analysisMetaDescription(rec, lang) {
   return String(rec?.[`metaDescription_${lang}`] || '').trim() || analysisLead(rec, lang);
 }
 
+/**
+ * ANALIZI URETEN QUIZ — soru + secilen cevap (+ puana etkisi).
+ *
+ * Yayinlanan sayfanin okuyucusu quizi COZMEDI. "92/100 uyum" cumlesi, kimin
+ * uyumu oldugu soylenmeden anlamsiz; o yuzden sayfa raporun USTUNDE bu
+ * varsayimlari gosteriyor. Rapor govdesindeki "cevaplarin neyi degistirdi"
+ * blogu AYRI bir soruyu yanitliyor (her cevap puani ne kadar oynatti).
+ *
+ * Kaynak DILE GORE rapordur, `quiz` alani degil: `quiz` adminde quizin
+ * yanitlandigi dilde (Turkce) duruyor, rapor ise her dilde kendi metnini
+ * tasiyor. Ikisi ayrisirsa Ingilizce sayfada Turkce soru cikar — bu tam
+ * olarak bir kez yasandi.
+ */
+export function analysisQuiz(rec, lang) {
+  const raw = analysisReport(rec, lang);
+  if (!raw) return [];
+  // Urun raporunda `product` altinda, link/abonelik raporunda ust seviyede.
+  const list = Array.isArray(raw.product?.quizInsights)
+    ? raw.product.quizInsights
+    : (Array.isArray(raw.quizInsights) ? raw.quizInsights : []);
+  return list
+    .map((q) => ({
+      soru: String(q?.topic || '').trim(),
+      cevap: String(q?.answer || '').trim(),
+      not: String(q?.note || '').trim(),
+      etki: Number.isFinite(Number(q?.impact)) ? Number(q.impact) : null,
+    }))
+    .filter((q) => q.soru || q.cevap);
+}
+
 /** FAQ blogu — dil yoksa oteki dile duser (SSS bos kalmasin). */
 export function analysisFaq(rec, lang) {
   const pick = (v) => (Array.isArray(v) ? v.filter((f) => f && f.q && f.a) : []);
