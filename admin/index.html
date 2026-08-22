@@ -118,52 +118,52 @@
       <section id="dashboardView" class="view active">
         <div class="ops-hero">
           <div>
-            <div class="eyebrow">Global command center</div>
+            <div class="eyebrow">Kontrol merkezi</div>
             <h1>Qor AI Admin</h1>
-            <p>Monitor catalog quality, user growth, support load, notifications, scraping, and app configuration from one operational surface.</p>
+            <p>Katalog kalitesi, kullanıcı büyümesi, destek yükü, bildirimler, scraper ve uygulama ayarları — hepsi tek ekranda.</p>
           </div>
           <div class="ops-actions">
-            <span class="text-muted" id="dashLastUpdated">Not loaded yet</span>
-            <button class="btn btn-primary" onclick="refreshDashboard()">Refresh Dashboard</button>
+            <span class="text-muted" id="dashLastUpdated">Henüz yüklenmedi</span>
+            <button class="btn btn-primary" onclick="refreshDashboard()">Paneli yenile</button>
           </div>
         </div>
         <div class="quick-actions-bar">
-          <button class="quick-action" onclick="showView('products')"><span>Catalog</span><b>Products & quality</b></button>
-          <button class="quick-action" onclick="showView('users')"><span>Customers</span><b>Users & premium</b></button>
+          <button class="quick-action" onclick="showView('products')"><span>Katalog</span><b>Ürünler ve kalite</b></button>
+          <button class="quick-action" onclick="showView('users')"><span>Müşteriler</span><b>Kullanıcılar ve premium</b></button>
           <button class="quick-action" onclick="showView('support')"><span>Gelen kutusu</span><b>İletişim</b></button>
-          <button class="quick-action" onclick="showView('notifications')"><span>Messaging</span><b>Notifications</b></button>
-          <button class="quick-action" onclick="showView('scraper')"><span>Data</span><b>Scraper</b></button>
-          <button class="quick-action" onclick="showView('userinsights')"><span>Analytics</span><b>Insights</b></button>
+          <button class="quick-action" onclick="showView('notifications')"><span>Mesajlaşma</span><b>Bildirimler</b></button>
+          <button class="quick-action" onclick="showView('scraper')"><span>Veri</span><b>Scraper</b></button>
+          <button class="quick-action" onclick="showView('userinsights')"><span>Analitik</span><b>İstatistik</b></button>
         </div>
         <div class="ops-layout">
           <div class="ops-main">
             <div class="stats-grid stats-grid-command">
-              <div class="stat-card stat-purple"><div class="stat-value" id="dashTotalProducts">—</div><div class="stat-label">Products</div><div class="stat-trend" id="dashProductsTrend"></div></div>
-              <div class="stat-card stat-green"><div class="stat-value" id="dashTotalUsers">—</div><div class="stat-label">Users</div><div class="stat-trend" id="dashUsersTrend"></div></div>
-              <div class="stat-card stat-blue"><div class="stat-value" id="dashTotalComparisons">—</div><div class="stat-label">Comparisons</div></div>
-              <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Avg Score</div></div>
-              <div class="stat-card stat-green"><div class="stat-value" id="dashPremiumUsers">—</div><div class="stat-label">Premium Users</div></div>
+              <div class="stat-card stat-purple"><div class="stat-value" id="dashTotalProducts">—</div><div class="stat-label">Ürün</div><div class="stat-trend" id="dashProductsTrend"></div></div>
+              <div class="stat-card stat-green"><div class="stat-value" id="dashTotalUsers">—</div><div class="stat-label">Kullanıcı</div><div class="stat-trend" id="dashUsersTrend"></div></div>
+              <div class="stat-card stat-blue"><div class="stat-value" id="dashTotalComparisons">—</div><div class="stat-label">Karşılaştırma</div></div>
+              <div class="stat-card stat-amber"><div class="stat-value" id="dashAvgScore">—</div><div class="stat-label">Ortalama puan</div></div>
+              <div class="stat-card stat-green"><div class="stat-value" id="dashPremiumUsers">—</div><div class="stat-label">Premium kullanıcı</div></div>
               <div class="stat-card stat-amber"><div class="stat-value" id="dashOpenSupport">—</div><div class="stat-label">Açık iletişim talebi</div></div>
             </div>
             <div class="grid-3 command-chart-grid">
-              <div class="card"><div class="card-title">User Plan Split</div><div class="chart-shell compact"><canvas id="dashPlanChart"></canvas></div></div>
-              <div class="card"><div class="card-title">Support Queue</div><div class="chart-shell compact"><canvas id="dashSupportChart"></canvas></div></div>
-              <div class="card"><div class="card-title">Catalog Quality</div><div class="chart-shell compact"><canvas id="dashQualityChart"></canvas></div></div>
+              <div class="card"><div class="card-title">Plan dağılımı</div><div class="chart-shell compact"><canvas id="dashPlanChart"></canvas></div></div>
+              <div class="card"><div class="card-title">Destek kuyruğu</div><div class="chart-shell compact"><canvas id="dashSupportChart"></canvas></div></div>
+              <div class="card"><div class="card-title">Katalog kalitesi</div><div class="chart-shell compact"><canvas id="dashQualityChart"></canvas></div></div>
             </div>
           </div>
           <aside class="ops-side">
-            <div class="card ops-health-card"><div class="card-title">Operational Health</div><div id="dashOpsHealth" class="ops-health-list"><div class="placeholder">Loading...</div></div></div>
-            <div class="card"><div class="card-title">Next Best Actions</div><div id="dashNextActions" class="insight-stack"><div class="placeholder">Loading...</div></div></div>
+            <div class="card ops-health-card"><div class="card-title">Sistem sağlığı</div><div id="dashOpsHealth" class="ops-health-list"><div class="placeholder">Yükleniyor…</div></div></div>
+            <div class="card"><div class="card-title">Sıradaki işler</div><div id="dashNextActions" class="insight-stack"><div class="placeholder">Yükleniyor…</div></div></div>
           </aside>
         </div>
         <div class="grid-2">
-          <div class="card"><div class="card-title">Category Distribution</div><div class="card-body"><canvas id="categoryChart"></canvas></div></div>
-          <div class="card"><div class="card-title">Products Added (30 Days)</div><div class="card-body"><canvas id="dailyTrendChart" height="280"></canvas></div></div>
+          <div class="card"><div class="card-title">Kategori dağılımı</div><div class="card-body"><canvas id="categoryChart"></canvas></div></div>
+          <div class="card"><div class="card-title">Eklenen ürünler (30 gün)</div><div class="card-body"><canvas id="dailyTrendChart" height="280"></canvas></div></div>
         </div>
         <div class="grid-3">
-          <div class="card"><div class="card-title">Recently Added</div><div class="card-body" id="dashRecentProducts"><div class="placeholder">Loading...</div></div></div>
-          <div class="card"><div class="card-title">Top Brands</div><div class="card-body" id="dashTopBrands"><div class="placeholder">Loading...</div></div></div>
-          <div class="card"><div class="card-title">Insights</div><div class="card-body" id="dashAiInsights"><div class="placeholder">Loading...</div></div></div>
+          <div class="card"><div class="card-title">Son eklenenler</div><div class="card-body" id="dashRecentProducts"><div class="placeholder">Yükleniyor…</div></div></div>
+          <div class="card"><div class="card-title">Öne çıkan markalar</div><div class="card-body" id="dashTopBrands"><div class="placeholder">Yükleniyor…</div></div></div>
+          <div class="card"><div class="card-title">Öne çıkanlar</div><div class="card-body" id="dashAiInsights"><div class="placeholder">Yükleniyor…</div></div></div>
         </div>
       </section>
 
@@ -338,11 +338,11 @@
         <div class="grid-2 intelligence-detail-grid">
           <div class="card">
             <div class="card-title">Country Momentum</div>
-            <div id="userCountryBars" class="rank-bar-list"><div class="placeholder">Loading...</div></div>
+            <div id="userCountryBars" class="rank-bar-list"><div class="placeholder">Yükleniyor…</div></div>
           </div>
           <div class="card">
             <div class="card-title">What Users Like</div>
-            <div id="userIntelligenceInsights" class="insight-stack"><div class="placeholder">Loading...</div></div>
+            <div id="userIntelligenceInsights" class="insight-stack"><div class="placeholder">Yükleniyor…</div></div>
           </div>
         </div>
       </section>
@@ -1086,7 +1086,7 @@
         </div>
         <div class="card">
           <div class="card-title">Recent Activity</div>
-          <div id="activityLogList" class="activity-log-list"><div class="placeholder">Loading...</div></div>
+          <div id="activityLogList" class="activity-log-list"><div class="placeholder">Yükleniyor…</div></div>
         </div>
       </section>
 
@@ -1245,7 +1245,7 @@
         </div>
         <div class="card">
           <div class="card-body" id="supportMessagesList">
-            <div class="placeholder">Loading...</div>
+            <div class="placeholder">Yükleniyor…</div>
           </div>
         </div>
       </section>
