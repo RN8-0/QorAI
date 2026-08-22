@@ -843,9 +843,16 @@
         + '<button class="btn btn-primary" onclick="analysesTaslakKaydet()">Taslak olarak kaydet</button>'
         + '</div>';
     }
-    if (diller.indexOf(L) < 0 && !reportOf(a, L)) {
-      return '<div class="an-card"><h3>Önizleme</h3>'
-        + '<p class="an-hint">Bu dilde rapor yok.</p></div>';
+    // DIL BASINA DURUST OL. `reportOf()` bilerek toleransli (oteki dile duser),
+    // ama o dilde KENDI raporu yoksa: site o adreste oteki dilin metnini
+    // gosterir ve on-render o sayfayi HIC URETMEZ. Onizlemede oteki dilin
+    // raporunu gostermek "bu dil hazir" izlenimi verirdi.
+    if (langsOf(a).indexOf(L) < 0) {
+      return '<div class="an-card"><h3>Önizleme · ' + esc(L.toUpperCase()) + '</h3>'
+        + '<p class="an-hint">Bu kaydın <strong>' + esc(L.toUpperCase()) + ' raporu yok</strong>. '
+        + 'Site bu adreste diğer dilin metnini gösterir ve ön-render bu dilde '
+        + '<strong>sayfa üretmez</strong>; hreflang listesine de girmez. '
+        + 'İki dilli yayın için <strong>Yeni analiz üret</strong> yolunu kullan.</p></div>';
     }
     var url = onizlemeAdresi(a, L);
     return '<div class="an-card an-card-wide">'
