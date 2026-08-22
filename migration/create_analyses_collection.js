@@ -41,6 +41,14 @@ function loadEnv() {
 }
 
 const ALANLAR = [
+  // ── sistem zaman damgalari ──
+  // BUNLAR UNUTULURSA `sort=-updated` / `sort=-created` HTTP 400 verir ve
+  // admin listesi "Something went wrong" ile bos kalir. PocketBase bu alanlari
+  // KENDILIGINDEN eklemez; `articles` koleksiyonunda da acikca tanimli.
+  // (2026-08-22'de tam olarak bu yasandi.)
+  { name: 'created', type: 'autodate', onCreate: true, onUpdate: false },
+  { name: 'updated', type: 'autodate', onCreate: true, onUpdate: true },
+
   // ── kimlik ──
   { name: 'slug', type: 'text', required: true },
   { name: 'status', type: 'select', required: true, maxSelect: 1, values: ['draft', 'published'] },

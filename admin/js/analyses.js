@@ -55,32 +55,32 @@
     s.id = 'anStyles';
     s.textContent = `
       .an-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
-      .an-bar input,.an-bar select{padding:8px 10px;border:1px solid #d8dee9;border-radius:6px;font:inherit}
+      .an-bar input,.an-bar select{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit;background:var(--bg2);color:var(--text1)}
       .an-grid{display:flex;flex-direction:column;gap:10px}
       .an-row{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;
-        border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;background:#fff}
-      .an-row img{width:56px;height:56px;object-fit:contain;border-radius:6px;background:#f1f5f9}
-      .an-row h4{margin:0 0 3px;font-size:15px}
-      .an-meta{font-size:12px;color:#64748b;display:flex;gap:10px;flex-wrap:wrap}
+        border:1px solid var(--border);border-radius:8px;padding:10px 12px;background:var(--bg3)}
+      .an-row img{width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg2)}
+      .an-row h4{margin:0 0 3px;font-size:15px;color:var(--text1)}
+      .an-meta{font-size:12px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap}
       .an-pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
-      .an-pill.pub{color:#047857;background:rgba(4,120,87,.09)}
-      .an-pill.draft{color:#92400e;background:rgba(146,64,14,.09)}
+      .an-pill.pub{color:var(--green);background:rgba(4,120,87,.09)}
+      .an-pill.draft{color:var(--amber);background:rgba(146,64,14,.09)}
       .an-acts{display:flex;gap:6px;flex-wrap:wrap}
-      .an-card{border:1px solid #e2e8f0;border-radius:8px;padding:14px;background:#fff;margin-bottom:12px;max-width:820px}
-      .an-card h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+      .an-card{border:1px solid var(--border);border-radius:8px;padding:14px;background:var(--bg3);margin-bottom:12px;max-width:820px}
+      .an-card h3{margin:0 0 10px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
       .an-f{margin-bottom:10px}
-      .an-f label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:4px}
-      .an-f input,.an-f textarea,.an-f select{width:100%;padding:8px 10px;border:1px solid #d8dee9;border-radius:6px;font:inherit;box-sizing:border-box}
+      .an-f label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+      .an-f input,.an-f textarea,.an-f select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit;box-sizing:border-box;background:var(--bg2);color:var(--text1)}
       .an-f textarea{min-height:70px;resize:vertical}
       .an-tabs{display:flex;gap:6px;margin-bottom:12px}
-      .an-tabs button{padding:6px 12px;border:1px solid #d8dee9;background:#fff;border-radius:6px;cursor:pointer}
-      .an-tabs button.on{background:#1565C0;color:#fff;border-color:#1565C0}
-      .an-hint{font-size:12px;color:#64748b;margin-top:4px}
-      .an-faq{border:1px solid #e2e8f0;border-radius:6px;padding:10px;margin-bottom:8px}
-      .an-note{background:rgba(21,101,192,.06);border-left:3px solid #1565C0;padding:10px 12px;
+      .an-tabs button{padding:6px 12px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);border-radius:6px;cursor:pointer}
+      .an-tabs button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+      .an-hint{font-size:12px;color:var(--text3);margin-top:4px}
+      .an-faq{border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px}
+      .an-note{background:var(--bg2);color:var(--text2);border-left:3px solid var(--accent);padding:10px 12px;
         border-radius:4px;font-size:13px;margin-bottom:14px;max-width:820px;line-height:1.6}
-      .an-rapor{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.6}
-      .an-rapor b{display:inline-block;min-width:120px;color:#475569}
+      .an-rapor{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.6;color:var(--text1)}
+      .an-rapor b{display:inline-block;min-width:120px;color:var(--text2)}
     `;
     document.head.appendChild(s);
   }
@@ -90,11 +90,11 @@
     styles();
     const root = $('analysesAdminRoot');
     if (!root) return;
-    root.innerHTML = '<p style="color:#64748b">Yükleniyor…</p>';
+    root.innerHTML = '<p style="color:var(--text3)">Yükleniyor…</p>';
     try {
       _items = await getPb().collection('analyses').getFullList({ sort: '-updated', $autoCancel: false });
     } catch (e) {
-      root.innerHTML = `<p style="color:#b91c1c">Yüklenemedi: ${esc(e.message || e)}</p>`;
+      root.innerHTML = `<p style="color:var(--red)">Yüklenemedi: ${esc(e.message || e)}</p>`;
       return;
     }
     const cnt = $('analysesCount');
@@ -130,7 +130,7 @@
         <button class="btn btn-primary" onclick="analysesNew()">+ Yeni analiz</button>
       </div>
       ${list.length ? `<div class="an-grid">${list.map(rowHtml).join('')}</div>`
-    : '<p style="color:#64748b">Kayıt yok.</p>'}`;
+    : '<p style="color:var(--text3)">Kayıt yok.</p>'}`;
 
     const si = $('anSearch');
     if (si) {
@@ -154,7 +154,7 @@
             ${r && r.product.matchScore ? `<span>uyum ${r.product.matchScore}/100</span>` : ''}
             ${r && r.product.decision ? `<span>${esc(r.product.decision)}</span>` : ''}
             ${a.techScore ? `<span>Qor AI ${a.techScore}/100</span>` : ''}
-            ${!r ? '<span style="color:#b91c1c">rapor verisi YOK</span>' : ''}
+            ${!r ? '<span style="color:var(--red)">rapor verisi YOK</span>' : ''}
           </div>
         </div>
         <div class="an-acts">
@@ -170,7 +170,7 @@
     styles();
     const root = $('analysesAdminRoot');
     root.innerHTML = `<button class="btn btn-ghost" onclick="loadAnalysesAdmin()">← Geri</button>
-      <p style="color:#64748b;margin-top:12px">Sitede yapılmış analizler yükleniyor…</p>`;
+      <p style="color:var(--text3);margin-top:12px">Sitede yapılmış analizler yükleniyor…</p>`;
     let kayitlar = [];
     try {
       kayitlar = await getPb().collection('saved_analyses').getFullList({
@@ -178,7 +178,7 @@
       });
     } catch (e) {
       root.innerHTML = `<button class="btn btn-ghost" onclick="loadAnalysesAdmin()">← Geri</button>
-        <p style="color:#b91c1c;margin-top:12px">Okunamadı: ${esc(e.message || e)}</p>`;
+        <p style="color:var(--red);margin-top:12px">Okunamadı: ${esc(e.message || e)}</p>`;
       return;
     }
     // Yalniz GERCEK rapor tasiyanlar — yarim kalmis analiz yayinlanamaz.
@@ -205,7 +205,7 @@
             </div>
             <button class="btn btn-primary" onclick="analysesPick(${i})">Seç</button>
           </div>`).join('')}</div>`
-    : `<p style="color:#64748b">Yayınlanabilir analiz yok.</p>
+    : `<p style="color:var(--text3)">Yayınlanabilir analiz yok.</p>
          <p class="an-hint">Sitede bir ürün sayfasına gir → <strong>Analiz Et</strong> → quiz'i yanıtla.
          Rapor çıktığında burada listelenir.</p>`}
       </div>`;
@@ -283,7 +283,7 @@
         </div>
         <div class="an-hint">Bu içerik <code>/analiz/${esc(a.slug)}</code> sayfasında ürün sayfasındakiyle
         <strong>aynı bileşenle</strong> çizilir. Değiştirmek için sitede yeniden analiz et.</div>`
-    : '<p style="color:#b91c1c">Rapor verisi yok — bu kayıt yayınlanamaz.</p>'}
+    : '<p style="color:var(--red)">Rapor verisi yok — bu kayıt yayınlanamaz.</p>'}
       </div>
 
       <div class="an-tabs">
