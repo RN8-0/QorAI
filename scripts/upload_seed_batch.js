@@ -29,7 +29,13 @@ const DICT_PB_KEY = 'tr_translation_dict';
 const DICT_MANIFEST_KEY = `${DICT_PB_KEY}_manifest`;
 const DICT_SHARD_PREFIX = `${DICT_PB_KEY}__part_`;
 const DICT_SHARD_MAX_BYTES = 180000;
-const LANGS = ['en', 'de', 'es', 'fr', 'pt', 'ru'];
+// Seed dizileri KONUM tabanlidir: [en, de, es, fr, pt, ru]. Almanca
+// 2026-08-21'de urunden kaldirildi ama dosyalardaki SUTUN yerinde duruyor —
+// 'de'yi listeden CIKARMAK sonraki butun dilleri bir kaydirirdi ('es' Almanca
+// degeri alirdi). O yuzden sutun null ile isaretlenir, silinmez; LANGS de
+// bundan turetilir, boylece PB'ye Almanca YAZILMAZ.
+const SEED_COLUMNS = ['en', null, 'es', 'fr', 'pt', 'ru'];
+const LANGS = SEED_COLUMNS.filter(Boolean);
 
 const normalizeKey = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -39,11 +45,11 @@ function loadAllBatches() {
   for (const file of fs.readdirSync(dir).filter(f => /^atom_translations_.*\.json$/i.test(f)).sort()) {
     const obj = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
     for (const [src, vals] of Object.entries(obj)) {
-      if (!Array.isArray(vals) || vals.length < LANGS.length) continue;
+      if (!Array.isArray(vals) || vals.length < SEED_COLUMNS.length) continue;
       const key = normalizeKey(src);
       if (!key) continue;
       const entry = { tr: src };
-      LANGS.forEach((l, i) => { if (vals[i]) entry[l] = vals[i]; });
+      SEED_COLUMNS.forEach((l, i) => { if (l && vals[i]) entry[l] = vals[i]; });
       merged[key] = entry;
     }
     console.log(`  loaded ${file}: ${Object.keys(obj).length} entries`);

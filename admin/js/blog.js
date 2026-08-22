@@ -1802,7 +1802,7 @@ KURALLAR — ÇOK ÖNEMLİ:
 1. HİÇBİR CÜMLEYİ ATLAMA, ÖZETLEME, KISALTMA. Metnin tamamı çıktıda yer almalı. Bu bir çeviri/biçimlendirme işidir, yeniden yazma değil.
 2. Ham metinde KAÇ DİL varsa o kadarını doldur. Olmayan dili boş obje bırak ({}). Kendin ÇEVİRİ YAPMA.
 3. Numaralı ürün/hizmet bölümleri ("1. Apple iPad Pro (M5) — ...", "## 2. NordVPN" gibi) items dizisine gider; o bölümün TÜM metni (paragraflar, Artıları/Eksileri listeleri, "Kime Uygun?" kısmı) o öğenin blocks[0] metnine girer.
-   - Aynı ürünün farklı dillerdeki bölümleri AYNI item'ın blocks[0] içinde tr/en/de olarak eşleşmeli (sıra aynıdır).
+   - Aynı ürünün farklı dillerdeki bölümleri AYNI item'ın blocks[0] içinde tr/en olarak eşleşmeli (sıra aynıdır).
    - "search": mağaza/fiyat eki olmadan sade model adı ("Apple iPad Pro (M5)" -> "Apple iPad Pro M5").
    - "name": yazarın yazdığı başlık aynen korunur.
 4. Ürün bölümlerinden ÖNCEKİ giriş/genel yazı body_html'e; ürünlerden SONRAKİ sonuç/özet bölümü conclusion_html'e gider.
@@ -1951,7 +1951,7 @@ HAM METİN:
       const conclMd = L.conclusion_md || L.conclusionMd || L.conclusion || '';
       if (conclMd && (replace || !_editing['conclusion_' + c])) _editing['conclusion_' + c] = /<\w+[^>]*>/.test(conclMd) ? conclMd : mdToHtml(conclMd);
     }
-    if (!filled) { toast('JSON içinde tr/en/de bulunamadı — şemayı kontrol et', 'e'); return; }
+    if (!filled) { toast('JSON içinde tr/en bulunamadı — şemayı kontrol et', 'e'); return; }
     if (data.category) _editing.category = data.category;
     if (data.cover) _editing.cover = data.cover;
     if (data.publishedAt) _editing.publishedAt = toDtLocal(data.publishedAt.length <= 10 ? data.publishedAt + 'T09:00' : data.publishedAt);

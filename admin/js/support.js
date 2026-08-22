@@ -33,7 +33,7 @@ function _supportNormalizeAccount(record) {
 }
 
 function _supportPreferredName(message) {
-  return _supportText(message?.accountDisplayName || message?.displayName) || 'Unnamed';
+  return _supportText(message?.accountDisplayName || message?.displayName) || 'Adsız';
 }
 
 function _supportPreferredEmail(message) {
@@ -53,7 +53,7 @@ function _supportHasSeparateSubmittedIdentity(message) {
 
 function _supportIdentityCaption(message) {
   if (!_supportHasSeparateSubmittedIdentity(message)) return '';
-  const name = _supportText(message?.displayName) || 'Unnamed';
+  const name = _supportText(message?.displayName) || 'Adsız';
   const email = _supportEmail(message?.email);
   return `<div style="font-size:11px;color:var(--text3);margin-top:6px">Submitted as: ${_supportEscape(name)}${email ? ` &lt;${_supportEscape(email)}&gt;` : ''}</div>`;
 }
@@ -140,14 +140,14 @@ function _supportNeedsAdminReply(message) {
 }
 
 function _supportStatusBadge(message) {
-  if (_supportIsClosed(message)) return '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;font-size:10px">Closed</span>';
-  if (_supportNeedsAdminReply(message)) return '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:10px">Needs reply</span>';
-  return '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Admin replied</span>';
+  if (_supportIsClosed(message)) return '<span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;font-size:10px">Kapatıldı</span>';
+  if (_supportNeedsAdminReply(message)) return '<span class="badge" style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:10px">Yanıt bekliyor</span>';
+  return '<span class="badge" style="background:rgba(34,197,94,.15);color:#22c55e;font-size:10px">Yönetici yanıtladı</span>';
 }
 
 async function loadSupportMessages() {
   const list = document.getElementById('supportMessagesList');
-  if (list) list.innerHTML = '<div class="placeholder">Loading...</div>';
+  if (list) list.innerHTML = '<div class="placeholder">Yükleniyor…</div>';
   try {
     const records = await pbGetList('support_messages', 1, 300, { sort: '-created' });
     await _supportHydrateMessages(records.items || records);
@@ -155,7 +155,7 @@ async function loadSupportMessages() {
     updateSupportBadge();
   } catch (error) {
     console.error('loadSupportMessages:', error);
-    if (list) list.innerHTML = '<div class="placeholder">Could not load messages.</div>';
+    if (list) list.innerHTML = '<div class="placeholder">Mesajlar yüklenemedi.</div>';
   }
 }
 
@@ -226,7 +226,7 @@ function renderSupportMessages() {
   if (filterValue === 'closed') messages = messages.filter(_supportIsClosed);
 
   if (!messages.length) {
-    list.innerHTML = '<div class="placeholder">No messages found.</div>';
+    list.innerHTML = '<div class="placeholder">Mesaj bulunamadı.</div>';
     return;
   }
 
@@ -247,7 +247,7 @@ function renderSupportMessages() {
           <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">${_supportEscape(initial)}</div>
           <div style="min-width:0">
             <div style="font-weight:700;font-size:14px;color:var(--text)">${_supportEscape(name)}</div>
-            <div style="font-size:11px;color:var(--text3)">${_supportEscape(email || 'No email')}${message.userId ? ` · ID: ${_supportEscape(message.userId)}` : ''}</div>
+            <div style="font-size:11px;color:var(--text3)">${_supportEscape(email || 'E-posta yok')}${message.userId ? ` · ID: ${_supportEscape(message.userId)}` : ''}</div>
             ${_supportIdentityCaption(message)}
           </div>
         </div>
@@ -256,14 +256,14 @@ function renderSupportMessages() {
           <span style="font-size:11px;color:var(--text3)">${chatMessages.length} messages · ${dateText}</span>
         </div>
       </div>
-      <div style="padding:0 16px 14px;color:var(--text2);font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_supportEscape(preview || 'No message')}</div>
+      <div style="padding:0 16px 14px;color:var(--text2);font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_supportEscape(preview || 'Mesaj yok')}</div>
     </div>`;
   }).join('');
 }
 
 async function deleteRepliedSupportMessages() {
   const replied = _supportMessages.filter((message) => !_supportIsClosed(message) && !_supportNeedsAdminReply(message));
-  if (!replied.length) { toast('No replied messages to delete.', 'w'); return; }
+  if (!replied.length) { toast('Silinecek yanıtlanmış mesaj yok.', 'w'); return; }
 
   if (!confirm(`Delete ${replied.length} replied Contact Us messages? This cannot be undone.`)) return;
 
@@ -316,7 +316,7 @@ function _renderChatModalThread(messageId) {
   if (!body) return;
 
   const messagesHtml = chatMessages.length === 0
-    ? '<div style="text-align:center;padding:20px;color:var(--text3)">No messages yet.</div>'
+    ? '<div style="text-align:center;padding:20px;color:var(--text3)">Henüz mesaj yok.</div>'
     : chatMessages.map((item) => {
         const isAdmin = item.role === 'admin';
         const timeText = item.ts ? new Date(item.ts).toLocaleString('en-US') : '';
@@ -334,21 +334,21 @@ function _renderChatModalThread(messageId) {
     <div style="background:var(--bg2);border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <div>
         <div style="font-weight:600;font-size:13px">${_supportEscape(name)}</div>
-        <div style="font-size:11px;color:var(--text3)">${_supportEscape(email || 'No email')} · ${message.userId ? `ID: ${_supportEscape(message.userId)}` : 'No ID'}</div>
+        <div style="font-size:11px;color:var(--text3)">${_supportEscape(email || 'E-posta yok')} · ${message.userId ? `ID: ${_supportEscape(message.userId)}` : 'No ID'}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         ${_supportStatusBadge(message)}
-        <button class="btn btn-sm ${isClosed ? 'btn-ghost' : 'btn-danger'}" onclick="toggleSupportBan('${messageId}',${!isClosed})">${isClosed ? 'Reopen' : 'Close'}</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteSupportMessage('${messageId}')">Delete</button>
+        <button class="btn btn-sm ${isClosed ? 'btn-ghost' : 'btn-danger'}" onclick="toggleSupportBan('${messageId}',${!isClosed})">${isClosed ? 'Yeniden aç' : 'Kapat'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSupportMessage('${messageId}')">Sil</button>
       </div>
     </div>
     <div id="supportChatThread" style="max-height:320px;overflow-y:auto;margin-bottom:16px;padding:4px">${messagesHtml}</div>
-    ${isClosed ? '<div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:13px;color:#ef4444;text-align:center">This conversation is closed. The user cannot reply in this thread.</div>' : `
+    ${isClosed ? '<div style="padding:12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;font-size:13px;color:#ef4444;text-align:center">Bu görüşme kapatıldı. Kullanıcı bu başlıkta yanıt veremez.</div>' : `
       <div>
-        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">${lastIsUser ? 'Reply to user' : 'Send a new message'}</label>
+        <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">${lastIsUser ? 'Kullanıcıya yanıt ver' : 'Yeni mesaj gönder'}</label>
         <textarea class="input" id="supportChatReplyText" rows="4" placeholder="Admin reply..." style="resize:vertical;width:100%"></textarea>
         <div style="display:flex;justify-content:flex-end;margin-top:10px;gap:8px">
-          <button class="btn btn-ghost" onclick="_closeSupportChatModal()">Close</button>
+          <button class="btn btn-ghost" onclick="_closeSupportChatModal()">Kapat</button>
           <button class="btn btn-primary" onclick="sendSupportChatReply('${messageId}','${message.userId || ''}')">Send + Notify</button>
         </div>
       </div>`}
@@ -368,9 +368,9 @@ async function toggleSupportBan(messageId, ban) {
     _renderChatModalThread(messageId);
     renderSupportMessages();
     updateSupportBadge();
-    toast(ban ? 'Conversation closed.' : 'Conversation reopened.', 's');
+    toast(ban ? 'Görüşme kapatıldı.' : 'Görüşme yeniden açıldı.', 's');
   } catch (error) {
-    toast('Action failed: ' + (error.message || error), 'e');
+    toast('İşlem başarısız: ' + (error.message || error), 'e');
   }
 }
 
@@ -400,13 +400,13 @@ async function _supportResolveUserId(message, userId) {
 async function sendSupportChatReply(messageId, userId) {
   const message = _supportMessages.find((item) => item.id === messageId);
   const replyText = _supportText(document.getElementById('supportChatReplyText')?.value);
-  if (!replyText) { toast('Reply cannot be empty.', 'w'); return; }
+  if (!replyText) { toast('Yanıt boş olamaz.', 'w'); return; }
 
   const resolvedUserId = await _supportResolveUserId(message, userId);
-  if (!resolvedUserId) { toast('User account not found. Notification cannot be sent.', 'e'); return; }
+  if (!resolvedUserId) { toast('Kullanıcı hesabı bulunamadı. Bildirim gönderilemez.', 'e'); return; }
 
   const button = document.querySelector('#supportChatModalBody .btn-primary');
-  if (button) { button.disabled = true; button.textContent = 'Sending...'; }
+  if (button) { button.disabled = true; button.textContent = 'Gönderiliyor…'; }
 
   try {
     const latest = await getPb().collection('support_messages').getOne(messageId, { $autoCancel: false });
@@ -456,13 +456,13 @@ async function sendSupportChatReply(messageId, userId) {
       });
     }
 
-    toast(notificationCreated ? 'Message sent and user notified.' : 'Message sent, but notification could not be created.', notificationCreated ? 's' : 'w');
+    toast(notificationCreated ? 'Mesaj gönderildi ve kullanıcı bilgilendirildi.' : 'Mesaj gönderildi ama bildirim oluşturulamadı.', notificationCreated ? 's' : 'w');
     _renderChatModalThread(messageId);
     renderSupportMessages();
     updateSupportBadge();
   } catch (error) {
     console.error('sendSupportChatReply:', error);
-    toast('Send failed: ' + (error.message || error), 'e');
+    toast('Gönderme başarısız: ' + (error.message || error), 'e');
     if (button) { button.disabled = false; button.textContent = 'Send + Notify'; }
   }
 }
@@ -480,9 +480,9 @@ async function deleteSupportMessage(messageId) {
     _closeSupportChatModal();
     renderSupportMessages();
     updateSupportBadge();
-    toast('Message deleted.', 's');
+    toast('Mesaj silindi.', 's');
   } catch (error) {
-    toast('Delete failed: ' + (error.message || error), 'e');
+    toast('Silme başarısız: ' + (error.message || error), 'e');
   }
 }
 
@@ -502,9 +502,9 @@ function openUserSupportChat(uid) {
 
 async function _openNewAdminMessageForUser(uid) {
   const user = (typeof allUsers !== 'undefined') ? allUsers.find((item) => item.uid === uid || item.id === uid) : null;
-  if (!user) { toast('User not found.', 'e'); return; }
+  if (!user) { toast('Kullanıcı bulunamadı.', 'e'); return; }
 
-  const text = prompt('Message to send to this user:');
+  const text = prompt('Bu kullanıcıya gönderilecek mesaj:');
   if (!text || !text.trim()) return;
 
   const email = _supportEmail(user.email || user.googleEmail);
@@ -537,10 +537,10 @@ async function _openNewAdminMessageForUser(uid) {
       language,
     });
 
-    toast('Message sent.', 's');
+    toast('Mesaj gönderildi.', 's');
     await loadSupportMessages();
     openSupportChatModal(record.id);
   } catch (error) {
-    toast('Send failed: ' + (error.message || error), 'e');
+    toast('Gönderme başarısız: ' + (error.message || error), 'e');
   }
 }

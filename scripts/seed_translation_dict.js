@@ -53,12 +53,18 @@ const DICT_MANIFEST_KEY = `${DICT_PB_KEY}_manifest`;
 const DICT_SHARD_PREFIX = `${DICT_PB_KEY}__part_`;
 const DICT_SHARD_MAX_BYTES = 180000;
 
-const LANGS = ['en', 'de', 'es', 'fr', 'pt', 'ru'];
+// Seed dizileri KONUM tabanlidir: [en, de, es, fr, pt, ru]. Almanca
+// 2026-08-21'de urunden kaldirildi ama dosyalardaki SUTUN yerinde duruyor —
+// 'de'yi listeden CIKARMAK sonraki butun dilleri bir kaydirirdi ('es' Almanca
+// degeri alirdi). O yuzden sutun null ile isaretlenir, silinmez; LANGS de
+// bundan turetilir, boylece PB'ye Almanca YAZILMAZ.
+const SEED_COLUMNS = ['en', null, 'es', 'fr', 'pt', 'ru'];
+const LANGS = SEED_COLUMNS.filter(Boolean);
 
 // ════════════════════════════════════════════════════════════════════════
 //  SEED — curated TR → EN / DE / ES / FR / PT / RU translations.
 //
-//  Format: 'turkish text': ['en', 'de', 'es', 'fr', 'pt', 'ru']
+//  Format: 'turkish text': ['en', <de — artik okunmuyor>, 'es', 'fr', 'pt', 'ru']
 //  Keys are lowercased + trimmed when stored (dict lookup is
 //  case-insensitive via normalizeDictSourceKey).
 // ════════════════════════════════════════════════════════════════════════
@@ -580,11 +586,11 @@ function normalizeKey(text) {
 function buildTerms() {
   const terms = {};
   for (const [src, vals] of Object.entries(SEED)) {
-    if (!vals || vals.length < LANGS.length) continue;
+    if (!vals || vals.length < SEED_COLUMNS.length) continue;
     const key = normalizeKey(src);
     if (!key) continue;
     const entry = { tr: src };
-    LANGS.forEach((l, i) => { if (vals[i]) entry[l] = vals[i]; });
+    SEED_COLUMNS.forEach((l, i) => { if (l && vals[i]) entry[l] = vals[i]; });
     terms[key] = entry;
   }
   return terms;

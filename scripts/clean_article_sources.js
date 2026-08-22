@@ -33,7 +33,10 @@ const ENV = Object.fromEntries(
     .map(l => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }),
 );
 const PB = ENV.POCKETBASE_URL.replace(/\/+$/, '');
-const LANGS = ['tr', 'en', 'de'];
+// Almanca 2026-08-21'de urunden tamamen kaldirildi. Bu betikler PB'deki
+// ortak sozluge YAZIYOR; listede 'de' kalirsa bir kez calistirmak Almancayi
+// katalog hattina geri sokar.
+const LANGS = ['tr', 'en'];
 
 // admin/js/blog.js -> junkCandidates() ile AYNI kurallar
 function collectCandidates(article) {

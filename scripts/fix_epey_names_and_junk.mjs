@@ -218,10 +218,13 @@ function buildPatch(p) {
   if (src) {
     const nt = { ...(p.nameTranslated || {}) };
     const en = nameFromSource(src, 'en');
-    const de = nameFromSource(src, 'de');
     if (en && nt.en !== en) { nt.en = en; touched = true; }
-    if (de && nt.de !== de) { nt.de = de; touched = true; }
     if (!nt.tr || nt.tr !== src) { nt.tr = src; touched = true; }
+    // Almanca 2026-08-21'de kaldirildi. Burada `nameTranslated.de` de
+    // yaziliyordu; bu betik 100k+ urune dokunuyor, yani bir kez calistirmak
+    // Almanca adlari katalogun tamamina geri koyardi. Var olan `de` alani da
+    // temizlenir — kalintiyi tasimanin anlami yok.
+    if (nt.de !== undefined) { delete nt.de; touched = true; }
     if (touched) patch.nameTranslated = nt;
   }
 

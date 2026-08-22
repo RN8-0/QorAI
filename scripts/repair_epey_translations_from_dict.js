@@ -15,7 +15,10 @@ const path = require('path');
 
 const APPLY = process.argv.includes('--apply');
 const LIMIT = Number((process.argv.find(a => a.startsWith('--limit=')) || '').split('=')[1] || 0);
-const LANGS = ['en', 'de', 'es', 'fr', 'pt', 'ru'];
+// Almanca 2026-08-21'de urunden tamamen kaldirildi. Bu betikler PB'deki
+// ortak sozluge YAZIYOR; listede 'de' kalirsa bir kez calistirmak Almancayi
+// katalog hattina geri sokar.
+const LANGS = ['en', 'es', 'fr', 'pt', 'ru'];
 
 function loadEnv(p) {
   if (!fs.existsSync(p)) return {};

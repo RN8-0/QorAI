@@ -267,6 +267,68 @@ Kayıt okuma kuralları (tür, dile göre rapor, başlık, özet, meta, SSS) **t
 
 ---
 
+## 6. DENETİM TURU (2026-08-22/23) — bulunan ve düzeltilen hatalar
+
+Kullanıcı "yeni oluşturduğun kısımları kontrol et, SEO tarafı da dahil" dedi.
+Bulunanlar, hepsi düzeltildi:
+
+| Nerede | Hata | Kök neden |
+|---|---|---|
+| `analysisRecord.js` `analysisQuiz` | Ürün KARŞILAŞTIRMASINDA quiz künyesi boş | `quizInsights` üç yerde durabiliyor; `comparison.*` dalı okunmuyordu |
+| `analysisRecord.js` `analysisLead` | Link karşılaştırmasının özeti ve meta description'ı boş | Motor `recommendation`'ı ÜST SEVİYEYE koyuyor, kod `comparison.recommendation` arıyordu |
+| `analysisRecord.js` `analysisKindLabel` | Başlıklar "iPhone — Ürün"e düşmüştü | "Kullanılmıyor" diye kaldırmıştım; `analysisTitle` kullanıyordu. `kindLabel()` olarak geri alındı |
+| `admin/js/analyses.js` | "Tekrar dene" biten dilin raporunu YENİDEN üretiyordu | TR rapor bittikten sonra EN quiz üretimi patlarsa aynı yere dönülüyor; koruma yoktu |
+
+### SEO tarafı — bakılan ve DOĞRU çıkanlar
+
+`/analiz/<slug>` ve `/tr/analiz/<slug>`: canonical kendi adresine, hreflang
+YALNIZCA raporu gerçekten olan dile (`analysisRenderLangs()` öteki dile
+DÜŞMEZ — `analysisReport()` düşer, ikisini karıştırma), `x-default` varsayılan
+dile, `Article` + `FAQPage` + `BreadcrumbList` JSON-LD, `inLanguage`, sitemap
+kaydı. Başlık `fitTitle(…, 68)` — 60 değil ama proje geneli böyle (ürün 68,
+karşılaştırma 70); yalnız analiz rotasını 60'a çekmek tutarsızlık olurdu.
+
+## 7. ALMANCA — İKİNCİ TARAMA (2026-08-22/23)
+
+`grep` temizdi ama üç kalıntı duruyordu; ayrıntı ve ölçümler
+`project_almanca_kaldirma` hafıza kaydında. Özet:
+
+1. `nameTranslated.de` — 107.449 ürünün **78.319'unda**. JSON alanının İÇİNDE
+   alt anahtar olduğu için `_de` kolonlarını süpüren eski temizleyici hiç
+   görmedi. `migration/drop_german_name_key.js` temizliyor.
+2. Almancayı **geri yazan** 6 betik. En tehlikelisi
+   `fix_epey_names_and_junk.mjs` — 100k+ ürüne dokunuyor, bir kez koşmak
+   Almancayı katalogun tamamına geri koyardı.
+3. Scraper Almanca tarayıcı dili sunuyordu (`navigator.languages` `de-DE`).
+   Tek kaynak Epey (Türkçe) kalınca parmak izini zayıflatıyordu → `tr-TR`.
+4. Blog AI içe aktarma prompt'u modele hâlâ `tr/en/de` diyordu (`blog.js`) →
+   `tr/en`.
+
+**DOKUNULMAYANLAR ve gerekçesi** — büyük harf `DE` bir ÜLKE kodu, dil değil:
+`amazon.de` pazarı, EUR, `de-DE` sayı/para biçimlendirme yereli
+(`Intl.NumberFormat`), Amazon kazıyıcısının `Accept-Language` başlığı. Bunları
+silmek DE pazarındaki fiyatları bozar. `admin/js/spec_i18n.js`'teki Almanca
+satırlar da duruyor: kaynak diline bakmadan spec DEĞERİNE uygulanıyorlar, yani
+Almanca ÜRETMİYOR, Almancayı çeviriyorlar.
+
+### DERS: konum tabanlı dil listesi
+
+`LANGS = ['en','de','es','fr','pt','ru']`'dan `'de'`yi silmek üç seed betiğini
+BOZDU: diziler `LANGS.forEach((l,i) => entry[l] = vals[i])` ile KONUM eşlemeli
+okunuyor, dolayısıyla `es` Almanca değeri alıyordu. Doğrusu sütunu silmek
+değil işaretlemek:
+
+```js
+const SEED_COLUMNS = ['en', null, 'es', 'fr', 'pt', 'ru'];
+const LANGS = SEED_COLUMNS.filter(Boolean);
+```
+
+`repair_epey_translations_from_dict.js` ve `clean_article_sources.js` anahtar
+tabanlı okuyor — onlarda düz silme güvenliydi. Bir dili listeden çıkarmadan
+önce **listenin konumsal mı anahtarsal mı okunduğuna bak.**
+
+---
+
 ## KIRILGAN NOKTALAR
 
 - `website/` ortak ağaç. Build ortasında **`npx vite build` çalıştırma** — ön-render'sız
@@ -278,3 +340,10 @@ Kayıt okuma kuralları (tür, dile göre rapor, başlık, özet, meta, SSS) **t
 - PocketBase koleksiyonu oluştururken `created`/`updated` autodate alanlarını unutma.
 - **Admin panelini ayrıca deploy et.** Site deploy'u admin'i güncellemez.
 - Sabit hex yazma. Web'de `global.css` token'ları, admin'de `--bg2/--bg3/--border/--text1`.
+- **Node'un `fetch`'inde varsayılan zaman aşımı YOK.** Katalog gezen migration
+  betikleri `AbortSignal.timeout()` olmadan asılı kalır; `drop_german_name_key.js`
+  ilk koşuda 170. sayfada öyle dondu (PB sağlıklıydı, soket ölmüştü).
+- **Katalog gezen betikte `sort=id` sabitle.** Sırasız listede PATCH `updated`
+  alanını değiştirir; sayfalar altından kayar ve tarama kayıt ATLAR.
+- `.mjs` betiğini söz dizimi kontrolü için `import()` ETME — çalıştırır.
+  `node --check` kullan.

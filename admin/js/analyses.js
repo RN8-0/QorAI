@@ -755,13 +755,19 @@
 
     try {
       if (r.kind === 'product' && !r.similar) r.similar = await QorAiRun.similarProducts(r.product, 8);
-      var res = await raporUret(r, lang, answers, r.similar || [], function (stage) {
-        if (stage === 'research') mark(lang + '-research', 'run');
-        if (stage === 'report') { mark(lang + '-research', 'done'); mark(lang + '-report', 'run'); }
-      });
+      // BU DILIN RAPORU ZATEN VARSA YENIDEN URETME. Ornek: Turkce rapor
+      // basariyla ciktiktan sonra Ingilizce QUIZ uretimi patlarsa "Tekrar dene"
+      // ayni yere donuyor; korumasiz kalirsa iki pahali cagriyi (arastirma +
+      // rapor) bosuna yeniden harcardi.
+      if (!r.out[lang]) {
+        var res = await raporUret(r, lang, answers, r.similar || [], function (stage) {
+          if (stage === 'research') mark(lang + '-research', 'run');
+          if (stage === 'report') { mark(lang + '-research', 'done'); mark(lang + '-report', 'run'); }
+        });
+        r.out[lang] = res.data;
+      }
       mark(lang + '-research', 'done');
       mark(lang + '-report', 'done');
-      r.out[lang] = res.data;
 
       // TURKCE BITTI -> INGILIZCE QUIZ. Sorular BASTAN uretilir; ceviri degil.
       if (lang === 'tr') {

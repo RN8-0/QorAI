@@ -85,14 +85,18 @@ export function analysisSubject(rec, lang) {
   ).trim();
 }
 
+// Iki uzunluk, iki is: UZUN ad basligi tamamlar ("iPhone 16 — Yapay Zeka
+// Analizi"), KISA ad kunye satirindaki rozette durur. Rozette uzunu kullanmak
+// satiri dort satira sariyordu; baslikta kisayi kullanmak ("iPhone 16 — Urun")
+// sayfanin ne oldugunu soylemiyor.
 const KIND_LABEL = {
   product: { en: 'AI Analysis', tr: 'Yapay Zekâ Analizi' },
   link: { en: 'AI Link Analysis', tr: 'Yapay Zekâ Link Analizi' },
   subscription: { en: 'AI Subscription Analysis', tr: 'Yapay Zekâ Abonelik Analizi' },
 };
 
-/** Baslikta kullanilan UZUN tur adi ("Yapay Zeka Link Analizi"). */
-export function analysisKindLabel(rec, lang) {
+/** Basliktaki UZUN tur adi. Disari acilmiyor — tek kullanicisi analysisTitle. */
+function kindLabel(rec, lang) {
   const row = KIND_LABEL[analysisKind(rec)] || KIND_LABEL.product;
   return row[lang === 'tr' ? 'tr' : 'en'];
 }
@@ -123,7 +127,7 @@ export function analysisTitle(rec, lang) {
   const stored = String(rec?.[`title_${lang}`] || '').trim();
   if (stored) return stored;
   const subject = analysisSubject(rec, lang);
-  const label = analysisKindLabel(rec, lang);
+  const label = kindLabel(rec, lang);
   return subject ? `${subject} — ${label}` : label;
 }
 
@@ -143,8 +147,16 @@ export function analysisLead(rec, lang) {
     return String(raw.winner?.reason || raw.winner?.recommendation || raw.recommendation || '').trim();
   }
   if (Array.isArray(raw.products)) {
+    // IKI KARSILASTIRMA SEKLI VAR ve ozet farkli yerde duruyor:
+    //  · link karsilastirmasi (lib/linkAnalysis compareAnalysis) -> UST SEVIYE
+    //    `recommendation` / `winner.reason`
+    //  · urun karsilastirmasi (compare_full_report)              -> `comparison.*`
+    // Ilk surum yalnizca ikincisine bakiyordu; link karsilastirmasinin ozeti
+    // (ve dolayisiyla meta description'i) BOS kaliyordu.
     const cmp = raw.comparison || {};
-    return String(cmp.recommendation || cmp.headToHead || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
+    const kaynak = cmp.recommendation || raw.recommendation
+      || raw.winner?.reason || raw.winner?.recommendation || cmp.headToHead || '';
+    return String(kaynak).trim().split(/(?<=[.!?])\s+/)[0] || '';
   }
   const u = analysisUnified(rec, lang);
   return String(u?.headline || u?.overallVerdict || '').trim();
@@ -177,9 +189,13 @@ export function analysisQuiz(rec, lang) {
   const raw = analysisReport(rec, lang);
   if (!raw) return [];
   // Urun raporunda `product` altinda, link/abonelik raporunda ust seviyede.
-  const list = Array.isArray(raw.product?.quizInsights)
-    ? raw.product.quizInsights
-    : (Array.isArray(raw.quizInsights) ? raw.quizInsights : []);
+  // Uc yer: urun raporunda `product` altinda, link/abonelik raporunda ust
+  // seviyede, urun KARSILASTIRMASINDA (`compare_full_report`) `comparison`
+  // altinda.
+  const list = Array.isArray(raw.product?.quizInsights) ? raw.product.quizInsights
+    : Array.isArray(raw.quizInsights) ? raw.quizInsights
+      : Array.isArray(raw.comparison?.quizInsights) ? raw.comparison.quizInsights
+        : [];
   return list
     .map((q) => ({
       soru: String(q?.topic || '').trim(),

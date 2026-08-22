@@ -520,7 +520,11 @@ async function getPage() {
     // navigator.webdriver = false (stealth handles this but redundancy is cheap)
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     // Plausible plugin / mimeType counts (empty arrays look bot-like)
-    Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de', 'en-US', 'en'] });
+    // Dil listesi HEDEF SITEYLE uyumlu olmali. Burada 'de-DE' yaziyordu —
+    // Geizhals (Almanca) kazinirken dogruydu, o kaynak kaldirildi ve geriye
+    // tek kaynak olarak Epey (Turkce) kaldi. Turkce bir siteye Almanca
+    // tarayici dili sunmak parmak izini ZAYIFLATIR, guclendirmez.
+    Object.defineProperty(navigator, 'languages', { get: () => ['tr-TR', 'tr', 'en-US', 'en'] });
   });
   // FIX: Do NOT call setRequestInterception here — it leaks when the page is
   // reused across requests and causes "Request is already handled" errors.

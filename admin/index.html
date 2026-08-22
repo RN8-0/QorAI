@@ -19,11 +19,11 @@
         <div class="login-header">
           <div class="login-logo-icon"><img src="qorai_logo.png" alt="Qor AI" width="52" height="52" style="border-radius:12px;object-fit:contain;"></div>
           <h1>Qor AI</h1>
-          <p>Admin Panel</p>
+          <p>Yönetim Paneli</p>
         </div>
       <div class="login-copy">
-        <h2>Admin Sign In</h2>
-        <p>Continue with an authorized GitHub account.</p>
+        <h2>Yönetim Girişi</h2>
+        <p>Yetkili bir GitHub hesabıyla devam et.</p>
       </div>
       <div class="login-actions">
         <button type="button" id="loginBtn" class="btn-oauth btn-github" onclick="handleGitHubLogin()">
@@ -32,11 +32,11 @@
               <path d="M12 .5C5.65.5.5 5.66.5 12.02c0 5.09 3.29 9.41 7.86 10.94.57.11.78-.25.78-.55 0-.27-.01-.99-.02-1.95-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.69-1.28-1.69-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.2 1.77 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.19 1.18a11.1 11.1 0 0 1 5.8 0c2.22-1.49 3.18-1.18 3.18-1.18.63 1.59.24 2.77.12 3.06.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.68.42.37.78 1.09.78 2.2 0 1.59-.01 2.86-.01 3.24 0 .3.2.67.79.55A11.53 11.53 0 0 0 23.5 12C23.5 5.66 18.35.5 12 .5Z"/>
             </svg>
           </span>
-          <span>Continue with GitHub</span>
+          <span>GitHub ile devam et</span>
         </button>
         <div class="login-note">
-          <span>This panel is restricted to approved GitHub accounts.</span>
-          <span>Your session opens automatically after GitHub verification.</span>
+          <span>Bu panel yalnızca onaylı GitHub hesaplarına açıktır.</span>
+          <span>GitHub doğrulamasından sonra oturumun otomatik açılır.</span>
         </div>
       </div>
       <div id="loginError" class="login-error"></div>
@@ -90,7 +90,7 @@
         </a>
         <a class="nav-link" data-view="scraper" onclick="showView('scraper')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 019-9"/></svg>
-          <span>Scraper</span>
+          <span>Tarayıcı</span>
         </a>
         <a class="nav-link" data-view="notifications" onclick="showView('notifications')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
@@ -105,9 +105,9 @@
         <div class="sidebar-user" id="sidebarUser"></div>
         <button class="btn-theme" onclick="toggleTheme()">
           <span id="themeIcon">🌙</span>
-          <span id="themeLabel">Dark</span>
+          <span id="themeLabel">Koyu</span>
         </button>
-        <button class="btn-logout" onclick="logout()">Sign Out</button>
+        <button class="btn-logout" onclick="logout()">Çıkış yap</button>
       </div>
     </nav>
 
@@ -132,7 +132,7 @@
           <button class="quick-action" onclick="showView('users')"><span>Müşteriler</span><b>Kullanıcılar ve premium</b></button>
           <button class="quick-action" onclick="showView('support')"><span>Gelen kutusu</span><b>İletişim</b></button>
           <button class="quick-action" onclick="showView('notifications')"><span>Mesajlaşma</span><b>Bildirimler</b></button>
-          <button class="quick-action" onclick="showView('scraper')"><span>Veri</span><b>Scraper</b></button>
+          <button class="quick-action" onclick="showView('scraper')"><span>Veri</span><b>Tarayıcı</b></button>
           <button class="quick-action" onclick="showView('userinsights')"><span>Analitik</span><b>İstatistik</b></button>
         </div>
         <div class="ops-layout">
@@ -173,45 +173,45 @@
           <h1>Ürünler <span class="count-badge" id="productCount">0</span></h1>
           <div class="view-actions">
             <div class="dropdown" style="position:relative">
-              <button class="btn btn-ghost" onclick="this.nextElementSibling.classList.toggle('show')">📤 Export ▾</button>
+              <button class="btn btn-ghost" onclick="this.nextElementSibling.classList.toggle('show')">📤 Dışa aktar ▾</button>
               <div class="dropdown-menu">
                 <button onclick="exportProductsJSON();this.parentElement.classList.remove('show')">Download JSON</button>
                 <button onclick="exportProductsCSV();this.parentElement.classList.remove('show')">Download CSV</button>
                 <button onclick="importProducts();this.parentElement.classList.remove('show')">📥 Import JSON</button>
               </div>
             </div>
-            <button class="btn btn-ghost" onclick="loadProducts()">Refresh</button>
+            <button class="btn btn-ghost" onclick="loadProducts()">Yenile</button>
           </div>
         </div>
         <div class="toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="searchInput" placeholder="Search products...">
+            <input type="text" id="searchInput" placeholder="Üründe ara…">
           </div>
-          <select id="brandFilter" class="field-select" onchange="filterProducts()"><option value="">All Brands</option></select>
-          <select id="categoryFilter" class="field-select" onchange="filterProducts()"><option value="">All Categories</option></select>
+          <select id="brandFilter" class="field-select" onchange="filterProducts()"><option value="">Tüm markalar</option></select>
+          <select id="categoryFilter" class="field-select" onchange="filterProducts()"><option value="">Tüm kategoriler</option></select>
           <select id="dateFilter" class="field-select" onchange="filterProducts()">
-            <option value="">All Time</option><option value="today">Today</option><option value="week">7 Days</option><option value="month">30 Days</option>
+            <option value="">Tüm zamanlar</option><option value="today">Bugün</option><option value="week">7 gün</option><option value="month">30 gün</option>
           </select>
           <select id="offerFilter" class="field-select" onchange="filterProducts()">
             <option value="">Tüm Ürünler</option><option value="with">💰 Fiyatlı</option><option value="without">Fiyatsız</option>
           </select>
           <select id="sortFilter" class="field-select" onchange="filterProducts()">
-            <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name-az">A-Z</option><option value="score-high">Score ↓</option>
+            <option value="newest">En yeni</option><option value="oldest">En eski</option><option value="name-az">A-Z</option><option value="score-high">Puan ↓</option>
           </select>
           <button class="btn btn-ghost btn-sm" id="groupVariantsBtn" onclick="toggleGroupVariants()" title="Varyantları grupla / tüm SKU'ları göster">⊞ Gruplu</button>
           <button class="btn btn-ghost btn-icon" onclick="toggleViewMode()" title="Toggle view">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <button class="btn btn-sm btn-danger" onclick="wipeAllProducts()" title="Tüm legacy ürünleri sil — geri alınamaz" style="margin-left:auto">🗑️ Wipe All</button>
+          <button class="btn btn-sm btn-danger" onclick="wipeAllProducts()" title="Tüm legacy ürünleri sil — geri alınamaz" style="margin-left:auto">🗑️ Tümünü sil</button>
         </div>
         <div class="selection-bar" id="selectionBar" style="display:none">
           <span id="selectionCount">0 selected</span>
-          <button class="btn btn-sm" onclick="selectAll()">Select All</button>
-          <button class="btn btn-sm" onclick="deselectAll()">Clear Selection</button>
-          <button class="btn btn-sm" onclick="bulkChangeCategory()">📂 Change Category</button>
-          <button class="btn btn-sm" onclick="bulkChangeBrand()">🏷️ Change Brand</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ Delete</button>
+          <button class="btn btn-sm" onclick="selectAll()">Tümünü seç</button>
+          <button class="btn btn-sm" onclick="deselectAll()">Seçimi temizle</button>
+          <button class="btn btn-sm" onclick="bulkChangeCategory()">📂 Kategori değiştir</button>
+          <button class="btn btn-sm" onclick="bulkChangeBrand()">🏷️ Marka değiştir</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑️ Sil</button>
         </div>
         <div class="product-grid" id="productGrid"></div>
         <div class="pagination" id="pagination"></div>
@@ -222,8 +222,8 @@
         <div class="view-header">
           <h1>Blog <span class="count-badge" id="blogCount">0</span></h1>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadBlogAdmin()">Refresh</button>
-            <button class="btn btn-primary" onclick="blogNew()">+ New article</button>
+            <button class="btn btn-ghost" onclick="loadBlogAdmin()">Yenile</button>
+            <button class="btn btn-primary" onclick="blogNew()">+ Yeni makale</button>
           </div>
         </div>
         <div id="blogAdminRoot"></div>
@@ -244,104 +244,104 @@
       <section id="usersView" class="view">
         <div class="view-header">
           <h1>Kullanıcılar <span class="count-badge" id="usersCount">0</span></h1>
-          <button class="btn btn-ghost" onclick="loadUsers()">Refresh</button>
+          <button class="btn btn-ghost" onclick="loadUsers()">Yenile</button>
         </div>
         <div class="stats-grid stats-4-sm">
           <div class="stat-card-sm"><div class="stat-value-sm" id="usTotalCount">—</div><div class="stat-label-sm">Total</div></div>
           <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="usPremiumCount">—</div><div class="stat-label-sm">Premium</div></div>
           <div class="stat-card-sm"><div class="stat-value-sm" id="usFreeCount">—</div><div class="stat-label-sm">Free</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="usActiveCount">—</div><div class="stat-label-sm">Active 30d</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="usActiveCount">—</div><div class="stat-label-sm">Son 30 gün aktif</div></div>
         </div>
         <div class="card" style="margin:0 0 16px;padding:16px">
-          <div class="card-title">🪙 Q Coin Control</div>
+          <div class="card-title">🪙 Q Coin kontrolü</div>
           <div class="form-grid" style="align-items:end">
             <div class="form-field">
-              <label>Signup Bonus Q Coins (one-time)</label>
+              <label>Kayıt bonusu Q Coin (tek seferlik)</label>
               <input class="input" type="number" id="usersSignupBonusInput" min="0" value="20">
             </div>
             <div class="form-field">
-              <label>Quick Actions</label>
+              <label>Hızlı işlemler</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="saveUsersSignupBonus()">Save Signup Bonus</button>
-                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Reset All Q Balances</button>
+                <button class="btn btn-primary" onclick="saveUsersSignupBonus()">Kayıt bonusunu kaydet</button>
+                <button class="btn btn-ghost" onclick="resetAllUserExtraQCoins()">Tüm Q bakiyelerini sıfırla</button>
               </div>
             </div>
           </div>
-          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">One-time Q Coin grant for newly registered users. Existing users are not affected. There is no daily refresh — once spent, the balance only grows via purchases or admin grants.</div>
-          <div class="text-muted" style="font-size:12px;margin-top:8px">Premium plan controls and Qor AI user portraits live in each user detail modal.</div>
+          <div id="usersQCoinHint" class="text-muted" style="font-size:12px">Yeni kayıt olan kullanıcılara tek seferlik Q Coin verilir. Mevcut kullanıcılar etkilenmez. Günlük yenileme yoktur — harcandıktan sonra bakiye yalnızca satın alma ya da yönetici tanımıyla artar.</div>
+          <div class="text-muted" style="font-size:12px;margin-top:8px">Premium plan kontrolleri ve Qor AI kullanıcı portreleri her kullanıcının detay penceresindedir.</div>
         </div>
         <div class="toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="userSearchInput" placeholder="Search users..." oninput="filterUsers()">
+            <input type="text" id="userSearchInput" placeholder="Kullanıcıda ara…" oninput="filterUsers()">
           </div>
-          <select id="userTypeFilter" class="field-select" onchange="filterUsers()"><option value="">All</option><option value="premium">Premium</option><option value="free">Free</option></select>
-          <select id="userCountryFilter" class="field-select" onchange="filterUsers()"><option value="">All Countries</option></select>
-          <select id="userSortFilter" class="field-select" onchange="filterUsers()"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="name">Name</option></select>
+          <select id="userTypeFilter" class="field-select" onchange="filterUsers()"><option value="">Tümü</option><option value="premium">Premium</option><option value="free">Ücretsiz</option></select>
+          <select id="userCountryFilter" class="field-select" onchange="filterUsers()"><option value="">Tüm ülkeler</option></select>
+          <select id="userSortFilter" class="field-select" onchange="filterUsers()"><option value="newest">En yeni</option><option value="oldest">En eski</option><option value="name">Ad</option></select>
         </div>
-        <div id="userList" class="user-list"><div class="placeholder">Loading users...</div></div>
+        <div id="userList" class="user-list"><div class="placeholder">Kullanıcılar yükleniyor…</div></div>
         <div class="pagination" id="userPagination"></div>
       </section>
 
       <!-- User Modal -->
       <div id="userModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeUserModal()">
         <div class="modal-box modal-lg modal-user-detail">
-          <div class="modal-head"><h2 id="userModalTitle">User</h2><button class="modal-x" onclick="closeUserModal()">✕</button></div>
+          <div class="modal-head"><h2 id="userModalTitle">Kullanıcı</h2><button class="modal-x" onclick="closeUserModal()">✕</button></div>
           <div class="modal-body" id="userModalBody"></div>
         </div>
       </div>
 
       <section id="userinsightsView" class="view">
         <div class="insights-subtabs">
-          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
-          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
-          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 Kullanıcı analitiği</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algoritma</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 İşlem kaydı</button>
         </div>
         <div class="view-header">
           <h1>Kullanıcı İstatistikleri</h1>
           <div class="view-actions">
             <span class="text-muted" id="userIntelligenceUpdatedAt"></span>
-            <button class="btn btn-ghost" onclick="loadUsers()">Refresh</button>
+            <button class="btn btn-ghost" onclick="loadUsers()">Yenile</button>
           </div>
         </div>
         <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
-          <div class="stat-card-sm"><div class="stat-value-sm" id="uiTotalUsers">—</div><div class="stat-label-sm">Total Users</div></div>
-          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="uiQuizCoverage">—</div><div class="stat-label-sm">Quiz Coverage</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAnalysisCoverage">—</div><div class="stat-label-sm">AI Coverage</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAvgCompleteness">—</div><div class="stat-label-sm">Profile Avg</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiTotalUsers">—</div><div class="stat-label-sm">Toplam kullanıcı</div></div>
+          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="uiQuizCoverage">—</div><div class="stat-label-sm">Quiz kapsamı</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAnalysisCoverage">—</div><div class="stat-label-sm">AI kapsamı</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="uiAvgCompleteness">—</div><div class="stat-label-sm">Profil ort.</div></div>
         </div>
         <div class="card" style="margin:0 0 20px;padding:16px">
           <div class="card-title">
-            <span>🧠 Qor AI Segment Analysis</span>
+            <span>🧠 Qor AI segment analizi</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="generateBulkDeepSeekSegments()">Analyze Segments</button>
-              <button class="btn btn-ghost btn-sm" onclick="loadStoredSegmentAnalysis()">Reload Saved Report</button>
+              <button class="btn btn-primary btn-sm" onclick="generateBulkDeepSeekSegments()">Segmentleri analiz et</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadStoredSegmentAnalysis()">Kayıtlı raporu yükle</button>
             </div>
           </div>
-          <div id="deepSeekSegmentMeta" class="text-muted" style="font-size:12px;margin-bottom:12px">No saved segment analysis yet.</div>
-          <div id="deepSeekSegmentContent"><div class="placeholder">Qor AI will segment users and generate actionable admin recommendations.</div></div>
+          <div id="deepSeekSegmentMeta" class="text-muted" style="font-size:12px;margin-bottom:12px">Henüz kayıtlı segment analizi yok.</div>
+          <div id="deepSeekSegmentContent"><div class="placeholder">Qor AI kullanıcıları segmentlere ayırıp uygulanabilir yönetim önerileri üretir.</div></div>
         </div>
         <div class="grid-3 intelligence-chart-grid">
           <div class="card">
-            <div class="card-title">Plan Split</div>
+            <div class="card-title">Plan dağılımı</div>
             <div class="chart-shell"><canvas id="userPlanChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">Persona Distribution</div>
+            <div class="card-title">Persona dağılımı</div>
             <div class="chart-shell"><canvas id="userPersonaChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">Top Interest Categories</div>
+            <div class="card-title">En çok ilgi gören kategoriler</div>
             <div class="chart-shell"><canvas id="userInterestChart"></canvas></div>
           </div>
         </div>
         <div class="grid-2 intelligence-detail-grid">
           <div class="card">
-            <div class="card-title">Country Momentum</div>
+            <div class="card-title">Ülke ivmesi</div>
             <div id="userCountryBars" class="rank-bar-list"><div class="placeholder">Yükleniyor…</div></div>
           </div>
           <div class="card">
-            <div class="card-title">What Users Like</div>
+            <div class="card-title">Kullanıcılar neyi seviyor</div>
             <div id="userIntelligenceInsights" class="insight-stack"><div class="placeholder">Yükleniyor…</div></div>
           </div>
         </div>
@@ -350,91 +350,91 @@
       <!-- ===== ALGORITHM ===== -->
       <section id="algorithmView" class="view">
         <div class="insights-subtabs">
-          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
-          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
-          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 Kullanıcı analitiği</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algoritma</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 İşlem kaydı</button>
         </div>
-        <div class="view-header"><h1>Algoritma</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Save</button></div>
+        <div class="view-header"><h1>Algoritma</h1><button class="btn btn-primary" onclick="saveAlgorithmConfig()">Kaydet</button></div>
         <div class="card">
-          <div class="card-title">Algorithm Health</div>
+          <div class="card-title">Algoritma sağlığı</div>
           <div class="stats-grid stats-4-sm" style="margin-bottom:16px">
-            <div class="stat-card-sm"><div class="stat-value-sm" id="algoWeightSum">—</div><div class="stat-label-sm">Weight Sum</div></div>
-            <div class="stat-card-sm"><div class="stat-value-sm" id="algoBehaviorSum">—</div><div class="stat-label-sm">Behavior Sum</div></div>
-            <div class="stat-card-sm"><div class="stat-value-sm" id="algoDisabledCategories">—</div><div class="stat-label-sm">Disabled Categories</div></div>
-            <div class="stat-card-sm"><div class="stat-value-sm" id="algoCacheHours">—</div><div class="stat-label-sm">Cache Hours</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoWeightSum">—</div><div class="stat-label-sm">Ağırlık toplamı</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoBehaviorSum">—</div><div class="stat-label-sm">Davranış toplamı</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoDisabledCategories">—</div><div class="stat-label-sm">Kapalı kategoriler</div></div>
+            <div class="stat-card-sm"><div class="stat-value-sm" id="algoCacheHours">—</div><div class="stat-label-sm">Önbellek saati</div></div>
           </div>
           <div class="toolbar" style="margin-bottom:10px">
-            <button class="btn btn-ghost btn-sm" onclick="normalizeAlgorithmWeights()">Normalize to 100%</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('balanced')">Balanced</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('discovery')">Discovery</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('conversion')">Conversion</button>
+            <button class="btn btn-ghost btn-sm" onclick="normalizeAlgorithmWeights()">%100’e normalize et</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('balanced')">Dengeli</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('discovery')">Keşif</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyAlgorithmPreset('conversion')">Dönüşüm</button>
           </div>
-          <div class="text-muted" id="algorithmHealthNote">Configuration health is loading...</div>
+          <div class="text-muted" id="algorithmHealthNote">Yapılandırma sağlığı yükleniyor…</div>
         </div>
-        <div class="card"><div class="card-title">Match Score Weights</div>
+        <div class="card"><div class="card-title">Uyum puanı ağırlıkları</div>
           <div class="slider-group">
-            <div class="slider-row"><label>Personal Fit</label><input type="range" min="0" max="100" value="40" id="weightPersonalFit" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelPersonalFit">40%</span></div>
-            <div class="slider-row"><label>Expert Score</label><input type="range" min="0" max="100" value="25" id="weightExpert" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelExpert">25%</span></div>
-            <div class="slider-row"><label>Community Score</label><input type="range" min="0" max="100" value="20" id="weightCommunity" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCommunity">20%</span></div>
-            <div class="slider-row"><label>Price-Performance</label><input type="range" min="0" max="100" value="15" id="weightPricePerf" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelPricePerf">15%</span></div>
+            <div class="slider-row"><label>Kişisel uyum</label><input type="range" min="0" max="100" value="40" id="weightPersonalFit" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelPersonalFit">40%</span></div>
+            <div class="slider-row"><label>Uzman puanı</label><input type="range" min="0" max="100" value="25" id="weightExpert" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelExpert">25%</span></div>
+            <div class="slider-row"><label>Topluluk puanı</label><input type="range" min="0" max="100" value="20" id="weightCommunity" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCommunity">20%</span></div>
+            <div class="slider-row"><label>Fiyat/performans</label><input type="range" min="0" max="100" value="15" id="weightPricePerf" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelPricePerf">15%</span></div>
           </div>
         </div>
-        <div class="card"><div class="card-title">Brand Controls</div>
+        <div class="card"><div class="card-title">Marka kontrolleri</div>
           <div class="form-grid">
-            <div class="form-field"><label>Blacklisted Brands</label><textarea class="input" id="brandBlacklist" rows="4" placeholder="One per line..."></textarea></div>
-            <div class="form-field"><label>Boosted Brands (1.15x)</label><textarea class="input" id="brandBoost" rows="4" placeholder="One per line..."></textarea></div>
+            <div class="form-field"><label>Kara listedeki markalar</label><textarea class="input" id="brandBlacklist" rows="4" placeholder="Her satıra bir tane…"></textarea></div>
+            <div class="form-field"><label>Öne çıkarılan markalar (1,15x)</label><textarea class="input" id="brandBoost" rows="4" placeholder="Her satıra bir tane…"></textarea></div>
           </div>
         </div>
-        <div class="card"><div class="card-title">Behavior Signals</div>
+        <div class="card"><div class="card-title">Davranış sinyalleri</div>
           <div class="slider-group">
-            <div class="slider-row"><label>Category View</label><input type="range" min="0" max="30" value="12" id="boostCategoryView" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCategoryView">12%</span></div>
-            <div class="slider-row"><label>Search History</label><input type="range" min="0" max="30" value="8" id="boostSearch" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelSearch">8%</span></div>
-            <div class="slider-row"><label>Quiz Answers</label><input type="range" min="0" max="30" value="15" id="boostQuiz" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelQuiz">15%</span></div>
-            <div class="slider-row"><label>Comparisons</label><input type="range" min="0" max="30" value="10" id="boostCompare" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCompare">10%</span></div>
-            <div class="slider-row"><label>Ecosystem Match</label><input type="range" min="0" max="30" value="18" id="boostEcosystem" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelEcosystem">18%</span></div>
-            <div class="slider-row"><label>Budget Match</label><input type="range" min="0" max="30" value="15" id="boostBudget" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelBudget">15%</span></div>
+            <div class="slider-row"><label>Kategori görüntüleme</label><input type="range" min="0" max="30" value="12" id="boostCategoryView" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCategoryView">12%</span></div>
+            <div class="slider-row"><label>Arama geçmişi</label><input type="range" min="0" max="30" value="8" id="boostSearch" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelSearch">8%</span></div>
+            <div class="slider-row"><label>Quiz cevapları</label><input type="range" min="0" max="30" value="15" id="boostQuiz" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelQuiz">15%</span></div>
+            <div class="slider-row"><label>Karşılaştırmalar</label><input type="range" min="0" max="30" value="10" id="boostCompare" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelCompare">10%</span></div>
+            <div class="slider-row"><label>Ekosistem uyumu</label><input type="range" min="0" max="30" value="18" id="boostEcosystem" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelEcosystem">18%</span></div>
+            <div class="slider-row"><label>Bütçe uyumu</label><input type="range" min="0" max="30" value="15" id="boostBudget" oninput="updateAlgoLabel(this)"><span class="slider-val" id="labelBudget">15%</span></div>
           </div>
         </div>
-        <div class="card"><div class="card-title">🏠 Home Feed Control</div>
+        <div class="card"><div class="card-title">🏠 Ana akış kontrolü</div>
           <div class="form-grid">
-            <div class="form-field"><label>Min Year Filter</label><input class="input" type="number" id="minYear" value="2018" min="2010" max="2026"><small class="text-muted">Products older than this year are hidden</small></div>
-            <div class="form-field"><label>Max per Brand (per category)</label><input class="input" type="number" id="maxPerBrand" value="3" min="1" max="10"></div>
-            <div class="form-field"><label>Trending Count</label><input class="input" type="number" id="trendingCount" value="70" min="10" max="200"></div>
-            <div class="form-field"><label>New Arrivals Count</label><input class="input" type="number" id="newArrivalsCount" value="35" min="5" max="100"></div>
-            <div class="form-field"><label>Products per Category</label><input class="input" type="number" id="productsPerCategory" value="40" min="10" max="100"><small class="text-muted">Home feed each category cap</small></div>
-            <div class="form-field"><label>Cache Duration (hours)</label><input class="input" type="number" id="cacheDuration" value="4" min="1" max="48"></div>
+            <div class="form-field"><label>En eski yıl filtresi</label><input class="input" type="number" id="minYear" value="2018" min="2010" max="2026"><small class="text-muted">Bu yıldan eski ürünler gizlenir</small></div>
+            <div class="form-field"><label>Marka başına en fazla (kategori başına)</label><input class="input" type="number" id="maxPerBrand" value="3" min="1" max="10"></div>
+            <div class="form-field"><label>Trend adedi</label><input class="input" type="number" id="trendingCount" value="70" min="10" max="200"></div>
+            <div class="form-field"><label>Yeni gelen adedi</label><input class="input" type="number" id="newArrivalsCount" value="35" min="5" max="100"></div>
+            <div class="form-field"><label>Kategori başına ürün</label><input class="input" type="number" id="productsPerCategory" value="40" min="10" max="100"><small class="text-muted">Ana akışta kategori başına üst sınır</small></div>
+            <div class="form-field"><label>Önbellek süresi (saat)</label><input class="input" type="number" id="cacheDuration" value="4" min="1" max="48"></div>
           </div>
           <div style="margin-top:16px">
-            <button class="btn btn-ghost btn-sm" onclick="previewFeedStats()" style="margin-right:8px">📊 Preview Feed Stats</button>
-            <button class="btn btn-ghost btn-sm" onclick="clearAllUserCaches()">🗑️ Clear All User Caches</button>
+            <button class="btn btn-ghost btn-sm" onclick="previewFeedStats()" style="margin-right:8px">📊 Akış istatistiklerini önizle</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearAllUserCaches()">🗑️ Tüm kullanıcı önbelleklerini temizle</button>
           </div>
           <div id="feedStatsPreview" style="margin-top:12px"></div>
         </div>
 
-        <div class="card"><div class="card-title">📌 Pinned Products (Always Show on Home)</div>
-          <p class="text-muted" style="margin-bottom:12px">Add product IDs to always show them in the Featured section. Max 10.</p>
+        <div class="card"><div class="card-title">📌 Sabitlenmiş ürünler (ana sayfada hep görünür)</div>
+          <p class="text-muted" style="margin-bottom:12px">Öne çıkanlar bölümünde hep görünmesi için ürün kimliği ekle. En fazla 10.</p>
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <input class="input" id="pinnedProductId" placeholder="Enter product ID (e.g. samsung-galaxy-s25)" style="flex:1">
-            <button class="btn btn-primary btn-sm" onclick="addPinnedProduct()">Add</button>
+            <button class="btn btn-primary btn-sm" onclick="addPinnedProduct()">Ekle</button>
           </div>
           <div id="pinnedProductsList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
 
-        <div class="card"><div class="card-title">🚫 Hidden Products (Never Show on Home)</div>
-          <p class="text-muted" style="margin-bottom:12px">Add product IDs to permanently hide from the home feed.</p>
+        <div class="card"><div class="card-title">🚫 Gizli ürünler (ana sayfada hiç görünmez)</div>
+          <p class="text-muted" style="margin-bottom:12px">Ana akıştan kalıcı olarak gizlemek için ürün kimliği ekle.</p>
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <input class="input" id="hiddenProductId" placeholder="Enter product ID to hide" style="flex:1">
-            <button class="btn btn-ghost btn-sm" onclick="addHiddenProduct()">Add</button>
+            <button class="btn btn-ghost btn-sm" onclick="addHiddenProduct()">Ekle</button>
           </div>
           <div id="hiddenProductsList" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
 
-        <div class="card"><div class="card-title">📂 Category Visibility</div>
-          <p class="text-muted" style="margin-bottom:12px">Toggle which categories appear on the home feed.</p>
+        <div class="card"><div class="card-title">📂 Kategori görünürlüğü</div>
+          <p class="text-muted" style="margin-bottom:12px">Ana akışta hangi kategorilerin görüneceğini aç/kapat.</p>
           <div id="categoryToggles" class="form-grid" style="grid-template-columns:repeat(4,1fr)"></div>
           <div style="margin-top:12px">
-            <button class="btn btn-ghost btn-sm" onclick="selectAllCategories()">Select All</button>
-            <button class="btn btn-ghost btn-sm" onclick="deselectAllCategories()">Deselect All</button>
+            <button class="btn btn-ghost btn-sm" onclick="selectAllCategories()">Tümünü seç</button>
+            <button class="btn btn-ghost btn-sm" onclick="deselectAllCategories()">Seçimi kaldır</button>
           </div>
         </div>
       </section>
@@ -442,7 +442,7 @@
       <!-- ===== SCRAPER ===== -->
       <section id="scraperView" class="view">
         <div class="view-header">
-          <h1>Scraper</h1>
+          <h1>Tarayıcı</h1>
           <div class="view-actions">
             <button
               class="btn btn-ghost btn-sm"
@@ -452,8 +452,8 @@
               style="display:flex;align-items:center;gap:6px;font-family:ui-monospace,monospace">
               📚 <span id="dictCounterText">TR —</span>
             </button>
-            <span class="proxy-status" id="proxyStatus">● Proxy: Checking...</span>
-            <button class="btn btn-ghost btn-sm" onclick="checkProxy(true)">Check Proxy</button>
+            <span class="proxy-status" id="proxyStatus">● Proxy: denetleniyor…</span>
+            <button class="btn btn-ghost btn-sm" onclick="checkProxy(true)">Proxy’yi denetle</button>
           </div>
         </div>
 
@@ -485,8 +485,8 @@
               <option value="tr">Epey TR</option>
             </select>
             <input class="input" id="dictSearch" placeholder="Sözlükte ara..." oninput="renderDictionaryTable()" style="height:32px;padding:4px 8px;flex:1;min-width:150px">
-            <button class="btn btn-sm" onclick="addDictionaryRow()">Add</button>
-            <button class="btn btn-primary btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Save</button>
+            <button class="btn btn-sm" onclick="addDictionaryRow()">Ekle</button>
+            <button class="btn btn-primary btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Kaydet</button>
             <button class="btn btn-sm" style="background:#7f1d1d;color:#fff;border-color:#991b1b" onclick="wipeDictionary()" title="Aktif sözlüğü tamamen siler (PocketBase + local cache). Sonraki scrape sıfırdan öğrenir.">🗑 Sözlüğü Temizle</button>
             <span class="text-muted" id="dictStats" style="font-size:11px;margin-left:auto">—</span>
           </div>
@@ -500,27 +500,27 @@
 
         <!-- Proxy connection info -->
         <div class="card" id="proxyInfoCard" style="border-left:3px solid var(--amber)">
-          <div class="card-title">⚡ Local Proxy Required</div>
-          <p class="text-muted" style="margin-bottom:8px">The proxy runs on this device, so scrape requests use this device IP address.</p>
+          <div class="card-title">⚡ Yerel proxy gerekli</div>
+          <p class="text-muted" style="margin-bottom:8px">Proxy bu cihazda çalışır; tarama istekleri bu cihazın IP adresini kullanır.</p>
           <code class="code-block" id="proxyCommandBlock">npm run scraper:stack</code>
           <div class="proxy-helper-actions">
-            <button class="btn btn-primary btn-sm" onclick="copyProxyCommand()">Copy Start Command</button>
-            <button class="btn btn-success btn-sm" onclick="startProxyFromBrowser()">▶ Start Proxy</button>
-            <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Download Proxy + Translate Launcher</a>
-            <button class="btn btn-sm" onclick="openLocalProxyHealth()">Open Local Health</button>
+            <button class="btn btn-primary btn-sm" onclick="copyProxyCommand()">Başlatma komutunu kopyala</button>
+            <button class="btn btn-success btn-sm" onclick="startProxyFromBrowser()">▶ Proxy’yi başlat</button>
+            <a class="btn btn-sm" href="start-scraper-proxy.bat" download>Proxy + Çeviri başlatıcısını indir</a>
+            <button class="btn btn-sm" onclick="openLocalProxyHealth()">Yerel sağlık sayfasını aç</button>
           </div>
-          <p class="text-muted" style="margin-top:8px;font-size:11px">The launcher checks dependencies, starts the translate worker on <b>localhost:8797</b>, then starts the scraper proxy on <b>localhost:3456</b>. Requests use this device IP address.</p>
+          <p class="text-muted" style="margin-top:8px;font-size:11px">Başlatıcı bağımlılıkları denetler, çeviri işçisini <b>localhost:8797</b> üzerinde, ardından tarayıcı proxy’sini <b>localhost:3456</b> üzerinde başlatır. İstekler bu cihazın IP adresini kullanır.</p>
         </div>
 
         <!-- Scraper Tabs -->
         <div class="scraper-tabs">
-          <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Bulk Scrape</button>
-          <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Translate</button>
-          <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Add by URL</button>
-          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Affiliate</button>
-          <button class="scraper-tab" data-tab="priceLab" onclick="switchScraperTab(this); priceLabInit()">💵 Price</button>
+          <button class="scraper-tab active" data-tab="bulkScrape" onclick="switchScraperTab(this)">📂 Toplu tarama</button>
+          <button class="scraper-tab" data-tab="translate" onclick="switchScraperTab(this)">🌐 Çeviri</button>
+          <button class="scraper-tab" data-tab="singleUrl" onclick="switchScraperTab(this)">🔗 Adresle ekle</button>
+          <button class="scraper-tab" data-tab="offers" onclick="switchScraperTab(this); offersLoadConfig(); offersRefreshStatus(); priceSyncRefreshStatus()">💰 Ortaklık</button>
+          <button class="scraper-tab" data-tab="priceLab" onclick="switchScraperTab(this); priceLabInit()">💵 Fiyat</button>
           <button class="scraper-tab" data-tab="stores" onclick="switchScraperTab(this); storesLoad()">🏪 Mağazalar</button>
-          <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Score Engine v7</button>
+          <button class="scraper-tab" data-tab="scoreEngine" onclick="switchScraperTab(this)">⚡ Puan Motoru v7</button>
           <button class="scraper-tab" data-tab="jobRuns" onclick="switchScraperTab(this); jobRunsRefresh()">🗓️ Otomatik İşler</button>
         </div>
 
@@ -547,7 +547,7 @@
         <!-- Bulk Scrape -->
         <div class="scraper-panel active" id="bulkScrapePanel">
           <div class="card">
-            <div class="card-title">Bulk Product Import</div>
+            <div class="card-title">Toplu ürün içe aktarma</div>
             <div class="form-grid">
               <div class="form-field" style="grid-column:span 2">
                 <label>Kaynak</label>
@@ -571,7 +571,7 @@
                 <input class="input" type="number" id="scrapeMaxProducts" value="100000" min="1">
               </div>
               <div class="form-field">
-                <label>Delay (ms)</label>
+                <label>Bekleme (ms)</label>
                 <input class="input" type="number" id="scrapeDelay" value="0" min="0" step="50">
               </div>
               <div class="form-field">
@@ -600,10 +600,10 @@
               <b>TAM katalog</b> ise marka marka her şeyi tarar — yalnız sıfırdan kurulum/onarım için, saatler sürer.
             </p>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Start Scraping</button>
-              <button class="btn" id="btnResumeScrape" onclick="resumeBulkScrape()" style="display:none;background:#0891b2;color:#fff">▶ Resume</button>
-              <button class="btn btn-ghost btn-sm" id="btnClearCheckpoint" onclick="clearScraperCheckpoint();updateResumeUI();" style="display:none">Checkpoint sil</button>
-              <button class="btn btn-danger" id="btnStopScrape" onclick="stopScraping()" style="display:none">Stop</button>
+              <button class="btn btn-primary" id="btnBulkScrape" onclick="startBulkScrape()">Taramayı başlat</button>
+              <button class="btn" id="btnResumeScrape" onclick="resumeBulkScrape()" style="display:none;background:#0891b2;color:#fff">▶ Devam et</button>
+              <button class="btn btn-ghost btn-sm" id="btnClearCheckpoint" onclick="clearScraperCheckpoint();updateResumeUI();" style="display:none">Kontrol noktasını sil</button>
+              <button class="btn btn-danger" id="btnStopScrape" onclick="stopScraping()" style="display:none">Durdur</button>
             </div>
             <div id="resumeHint" class="text-muted" style="margin-top:8px;font-size:12px;display:none"></div>
           </div>
@@ -629,15 +629,15 @@
               <div class="form-field">
                 <label>Sözlük kaynağı</label>
                 <select class="input" id="dictSourceSelect" onchange="switchDictionarySource(this.value)">
-                  <option value="tr">TR source → EN</option>
+                  <option value="tr">TR kaynak → EN</option>
                 </select>
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-              <button class="btn btn-primary" id="btnDictXlateStart" onclick="startCategoryTranslation()">Start Translation</button>
-              <button class="btn btn-danger" id="btnDictXlateStop" onclick="stopCategoryTranslation()" style="display:none">Stop</button>
-              <button class="btn btn-ghost btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Save Dictionary</button>
-              <button class="btn btn-ghost btn-sm" onclick="wipeDictionary()">Wipe Dictionary</button>
+              <button class="btn btn-primary" id="btnDictXlateStart" onclick="startCategoryTranslation()">Çeviriyi başlat</button>
+              <button class="btn btn-danger" id="btnDictXlateStop" onclick="stopCategoryTranslation()" style="display:none">Durdur</button>
+              <button class="btn btn-ghost btn-sm" id="dictSaveBtn" onclick="saveDictionary()">Sözlüğü kaydet</button>
+              <button class="btn btn-ghost btn-sm" onclick="wipeDictionary()">Sözlüğü sıfırla</button>
             </div>
             <div id="dictXlateProgress" style="display:none;margin-top:14px">
               <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
@@ -655,8 +655,8 @@
           <div class="card">
             <div class="card-title">📚 Dictionary <span class="text-muted" id="dictStats" style="font-weight:normal;font-size:12px"></span></div>
             <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-              <input class="input" id="dictSearch" placeholder="Search dictionary..." oninput="renderDictionaryTable()" style="max-width:360px">
-              <button class="btn btn-sm" onclick="addDictionaryRow()">Add Term</button>
+              <input class="input" id="dictSearch" placeholder="Sözlükte ara…" oninput="renderDictionaryTable()" style="max-width:360px">
+              <button class="btn btn-sm" onclick="addDictionaryRow()">Terim ekle</button>
             </div>
             <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px">
               <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -711,7 +711,7 @@
                   <label class="affiliate-provider-label">Sağlayıcı</label>
                   <select class="input" id="offersConnector" onchange="offersRenderProvider()">
                     <option value="epey_amazon">Epey → Amazon TR (gerçek fiyat + /dp linki)</option>
-                    <option value="amazon_direct">Amazon Direct — DE/GB (ASIN-first)</option>
+                    <option value="amazon_direct">Amazon Direct — DE/GB (önce ASIN)</option>
                     <option value="admitad">Admitad</option>
                     <option value="awin">Awin</option>
                     <option value="amazon">Amazon</option>
@@ -734,7 +734,7 @@
                     <input class="input" id="admitadClientId" autocomplete="off" placeholder="Admitad API client_id">
                   </div>
                   <div class="form-field">
-                    <label>Client Secret</label>
+                    <label>İstemci parolası</label>
                     <input class="input" id="admitadClientSecret" type="password" autocomplete="new-password" placeholder="Boş bırakılırsa mevcut secret korunur">
                   </div>
                   <div class="form-field">
@@ -755,7 +755,7 @@
                 <div class="form-grid" style="grid-template-columns:1fr 1fr">
                   <div class="form-field">
                     <label>Publisher ID / awinaffid</label>
-                    <input class="input" id="awinPublisherId" autocomplete="off" placeholder="Awin publisher id">
+                    <input class="input" id="awinPublisherId" autocomplete="off" placeholder="Awin yayıncı kimliği">
                   </div>
                   <div class="form-field">
                     <label>Marketler</label>
@@ -770,19 +770,19 @@
               <div class="offer-provider-panel" data-provider="amazon" style="display:none">
                 <div class="form-grid" style="grid-template-columns:1fr 1fr">
                   <div class="form-field">
-                    <label>Default Associates Tag</label>
+                    <label>Varsayılan ortaklık etiketi</label>
                     <input class="input" id="amazonTag" autocomplete="off" placeholder="qorai-20">
                   </div>
                   <div class="form-field">
-                    <label>Marketplaces</label>
+                    <label>Pazar yerleri</label>
                     <input class="input" id="amazonMarketplaces" autocomplete="off" value="GB,DE,US" placeholder="GB,DE,US">
                   </div>
                   <div class="form-field">
-                    <label>Amazon UK Tag</label>
+                    <label>Amazon UK etiketi</label>
                     <input class="input" id="amazonTagGB" autocomplete="off" placeholder="qorai0e-21">
                   </div>
                   <div class="form-field">
-                    <label>Amazon DE Tag</label>
+                    <label>Amazon DE etiketi</label>
                     <input class="input" id="amazonTagDE" autocomplete="off" placeholder="qorai0d-21">
                   </div>
                 </div>
@@ -929,7 +929,7 @@
               <label>Category (auto-detected from URL)</label>
               <select class="input" id="singleUrlCategory"></select>
             </div>
-            <button class="btn btn-primary" onclick="scrapeByUrl()" style="margin-top:8px">Scrape & Add</button>
+            <button class="btn btn-primary" onclick="scrapeByUrl()" style="margin-top:8px">Tara ve ekle</button>
           </div>
 
           <div class="card" style="margin-top:12px">
@@ -980,9 +980,9 @@
             </p>
             <div class="form-grid">
               <div class="form-field">
-                <label>Category (for Calculate Selected Category)</label>
+                <label>Kategori (“Seçili kategoriyi hesapla” için)</label>
                 <select class="input" id="scoreEngineCategory">
-                  <option value="">Select Category</option>
+                  <option value="">Kategori seç</option>
                 </select>
               </div>
               <div class="form-field">
@@ -993,9 +993,9 @@
               </div>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="runScoreEngineAll()">Calculate All Products</button>
-              <button class="btn" onclick="runScoreEngineCategory()">Calculate Selected Category</button>
-              <button class="btn btn-secondary" onclick="stopScoreEngine()">Stop</button>
+              <button class="btn btn-primary" onclick="runScoreEngineAll()">Tüm ürünleri hesapla</button>
+              <button class="btn" onclick="runScoreEngineCategory()">Seçili kategoriyi hesapla</button>
+              <button class="btn btn-secondary" onclick="stopScoreEngine()">Durdur</button>
             </div>
             <div style="margin-top:14px">
               <div style="background:var(--surface-2,#1a1a1a);border-radius:6px;height:8px;overflow:hidden">
@@ -1014,8 +1014,8 @@
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
               <span class="scraper-progress" id="scraperProgress"></span>
               <span class="text-muted" id="scraperETA" style="font-size:11px"></span>
-              <button class="btn btn-sm btn-ghost" onclick="clearScraperLog()">Clear</button>
-              <button class="btn btn-sm btn-ghost" onclick="downloadScraperLog()">Download</button>
+              <button class="btn btn-sm btn-ghost" onclick="clearScraperLog()">Temizle</button>
+              <button class="btn btn-sm btn-ghost" onclick="downloadScraperLog()">İndir</button>
             </div>
           </div>
           <div class="scraper-log-split" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -1023,7 +1023,7 @@
               <div class="text-muted" style="font-size:11px;font-weight:600;letter-spacing:.4px;margin-bottom:4px;padding:0 4px">
                 📥 SCRAPE — çekilen ürünler
               </div>
-              <div class="scraper-log" id="scraperLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Ready. Start the proxy and select a scraping mode.</div></div>
+              <div class="scraper-log" id="scraperLog" style="height:380px;overflow:auto"><div class="text-muted" style="padding:12px">Hazır. Proxy’yi başlat ve bir tarama modu seç.</div></div>
             </div>
             <div>
               <div class="text-muted" style="font-size:11px;font-weight:600;letter-spacing:.4px;margin-bottom:4px;padding:0 4px">
@@ -1040,52 +1040,52 @@
       <!-- ===== ACTIVITY LOG ===== -->
       <section id="activitylogView" class="view">
         <div class="insights-subtabs">
-          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 User Intelligence</button>
-          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algorithm</button>
-          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 Activity Log</button>
+          <button class="ins-tab" data-sub="userinsights" onclick="showView('userinsights')">📊 Kullanıcı analitiği</button>
+          <button class="ins-tab" data-sub="algorithm" onclick="showView('algorithm')">⚙️ Algoritma</button>
+          <button class="ins-tab" data-sub="activitylog" onclick="showView('activitylog')">📋 İşlem kaydı</button>
         </div>
         <div class="view-header">
           <h1>İşlem Kaydı</h1>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadActivityLog()">Refresh</button>
+            <button class="btn btn-ghost" onclick="loadActivityLog()">Yenile</button>
           </div>
         </div>
         <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
-          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTotal">—</div><div class="stat-label-sm">Total Logs</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTotal">—</div><div class="stat-label-sm">Toplam kayıt</div></div>
           <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="activityToday">—</div><div class="stat-label-sm">Today</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="activityAdmins">—</div><div class="stat-label-sm">Admins</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTopAction">—</div><div class="stat-label-sm">Top Action</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityAdmins">—</div><div class="stat-label-sm">Yöneticiler</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="activityTopAction">—</div><div class="stat-label-sm">En sık işlem</div></div>
         </div>
         <div class="toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="activitySearchInput" placeholder="Search audit details..." oninput="renderActivityLog()">
+            <input type="text" id="activitySearchInput" placeholder="Denetim kaydında ara…" oninput="renderActivityLog()">
           </div>
           <select id="activityTypeFilter" class="field-select" onchange="renderActivityLog()">
-            <option value="">All Actions</option>
-            <option value="product">Product</option>
-            <option value="user">User</option>
-            <option value="algorithm">Algorithm</option>
-            <option value="scraper">Scraper</option>
-            <option value="system">System</option>
+            <option value="">Tüm işlemler</option>
+            <option value="product">Ürün</option>
+            <option value="user">Kullanıcı</option>
+            <option value="algorithm">Algoritma</option>
+            <option value="scraper">Tarayıcı</option>
+            <option value="system">Sistem</option>
           </select>
         </div>
         <div class="grid-2 intelligence-detail-grid">
           <div class="card">
-            <div class="card-title">What this audit trail shows</div>
+            <div class="card-title">Bu denetim kaydı neyi gösterir</div>
             <div id="activityPurpose" class="insight-stack">
-              <div class="insight-item"><div class="insight-label">AUDIT</div>Tracks product, user, algorithm, import/export, scraper, and system-level admin changes.</div>
-              <div class="insight-item"><div class="insight-label">OPERATIONS</div>Shows which actions run most often, which admin acted, and what changed today.</div>
-              <div class="insight-item"><div class="insight-label">DEBUG</div>If the list is empty, the log collection has not accumulated records yet.</div>
+              <div class="insight-item"><div class="insight-label">AUDIT</div>Ürün, kullanıcı, algoritma, içe/dışa aktarma, tarayıcı ve sistem düzeyindeki yönetici değişikliklerini izler.</div>
+              <div class="insight-item"><div class="insight-label">İŞLEMLER</div>Hangi işlemin en sık koştuğunu, hangi yöneticinin işlem yaptığını ve bugün neyin değiştiğini gösterir.</div>
+              <div class="insight-item"><div class="insight-label">DEBUG</div>Liste boşsa kayıt koleksiyonu henüz kayıt biriktirmemiştir.</div>
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Action Distribution</div>
+            <div class="card-title">İşlem dağılımı</div>
             <div class="chart-shell"><canvas id="activityActionChart"></canvas></div>
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Recent Activity</div>
+          <div class="card-title">Son etkinlik</div>
           <div id="activityLogList" class="activity-log-list"><div class="placeholder">Yükleniyor…</div></div>
         </div>
       </section>
@@ -1095,33 +1095,33 @@
         <div class="view-header">
           <div>
             <h1>AI Prompt'ları</h1>
-            <p class="text-muted" style="margin:6px 0 0;font-size:13px">Edit live prompts by section. Saved values are applied through public_config.ai_prompts without redeploying the app.</p>
+            <p class="text-muted" style="margin:6px 0 0;font-size:13px">Canlı prompt’ları bölüm bölüm düzenle. Kaydedilen değerler uygulama yeniden dağıtılmadan public_config.ai_prompts üzerinden uygulanır.</p>
           </div>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadAiPromptManager()">Refresh</button>
-            <button class="btn btn-primary" onclick="saveAiPromptManager()">Save Prompts</button>
+            <button class="btn btn-ghost" onclick="loadAiPromptManager()">Yenile</button>
+            <button class="btn btn-primary" onclick="saveAiPromptManager()">Prompt’ları kaydet</button>
           </div>
         </div>
         <div class="prompt-toolbar">
           <div class="search-field">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="promptSearchInput" placeholder="Search prompt title, key, or category..." oninput="filterAiPromptCards()">
+            <input type="text" id="promptSearchInput" placeholder="Prompt başlığı, anahtarı veya kategorisinde ara…" oninput="filterAiPromptCards()">
           </div>
           <select id="promptGroupFilter" class="field-select" onchange="filterAiPromptCards()">
-            <option value="">All Categories</option>
+            <option value="">Tüm kategoriler</option>
           </select>
-          <button class="btn btn-ghost" onclick="resetAllPromptEditorsToDefaults()">Show Defaults</button>
+          <button class="btn btn-ghost" onclick="resetAllPromptEditorsToDefaults()">Varsayılanları göster</button>
         </div>
         <div class="card prompt-info-card">
-          <div class="card-title">How It Works</div>
+          <div class="card-title">Nasıl çalışır</div>
           <div class="insight-stack">
-            <div class="insight-item"><div class="insight-label">SERVER</div>The save button writes prompts to the ai_prompts map in PocketBase public_config.</div>
-            <div class="insight-item"><div class="insight-label">APP</div>Flutter reads this map before each related AI call; empty prompts fall back to safe code defaults.</div>
-            <div class="insight-item"><div class="insight-label">DEFAULT</div>Editors show the current code defaults first; server overrides are marked with a badge.</div>
+            <div class="insight-item"><div class="insight-label">SUNUCU</div>Kaydet düğmesi prompt’ları PocketBase public_config içindeki ai_prompts eşlemesine yazar.</div>
+            <div class="insight-item"><div class="insight-label">APP</div>Flutter ilgili her yapay zekâ çağrısından önce bu eşlemeyi okur; boş prompt’lar koddaki güvenli varsayılana düşer.</div>
+            <div class="insight-item"><div class="insight-label">VARSAYILAN</div>Düzenleyiciler önce koddaki güncel varsayılanı gösterir; sunucudaki geçersiz kılmalar rozetle işaretlenir.</div>
           </div>
         </div>
         <div id="aiPromptStatus" class="text-muted" style="font-size:12px;margin:12px 0"></div>
-        <div id="aiPromptList" class="prompt-editor-list"><div class="placeholder">Loading prompts...</div></div>
+        <div id="aiPromptList" class="prompt-editor-list"><div class="placeholder">Prompt’lar yükleniyor…</div></div>
       </section>
 
       <!-- ===== NOTIFICATIONS ===== -->
@@ -1129,40 +1129,40 @@
         <div class="view-header">
           <h1>Bildirimler <span class="count-badge" id="notifSentCount">0</span></h1>
           <div class="view-actions">
-            <button class="btn btn-ghost" onclick="loadNotificationsView()">Refresh</button>
+            <button class="btn btn-ghost" onclick="loadNotificationsView()">Yenile</button>
           </div>
         </div>
 
         <!-- Stats Row -->
         <div class="stats-grid stats-4-sm" style="margin-bottom:20px">
-          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatTotal">—</div><div class="stat-label-sm">Total Sent</div></div>
-          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="notifStatToday">—</div><div class="stat-label-sm">Sent Today</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatUsers">—</div><div class="stat-label-sm">Users Reached</div></div>
-          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatRead">—</div><div class="stat-label-sm">Read Rate</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatTotal">—</div><div class="stat-label-sm">Toplam gönderilen</div></div>
+          <div class="stat-card-sm stat-premium"><div class="stat-value-sm" id="notifStatToday">—</div><div class="stat-label-sm">Bugün gönderilen</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatUsers">—</div><div class="stat-label-sm">Ulaşılan kullanıcı</div></div>
+          <div class="stat-card-sm"><div class="stat-value-sm" id="notifStatRead">—</div><div class="stat-label-sm">Okunma oranı</div></div>
         </div>
 
         <!-- Composer -->
         <div class="card" style="margin-bottom:20px">
           <div class="card-title">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-3px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-            Compose Notification
+            Bildirim oluştur
           </div>
           <div class="card-body">
             <!-- Template Grid -->
             <div style="margin-bottom:20px">
-              <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Quick Templates</label>
+              <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Hazır şablonlar</label>
               <div id="notifTemplateGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
             </div>
 
             <!-- Form -->
             <div class="form-grid">
               <div class="form-field">
-                <label>Recipient</label>
+                <label>Alıcı</label>
                 <select class="input" id="notifRecipient">
-                  <option value="all">📢 All Users</option>
-                  <option value="premium">👑 Premium Only</option>
-                  <option value="free">🆓 Free Users Only</option>
-                  <option value="specific">👤 Specific User</option>
+                  <option value="all">📢 Tüm kullanıcılar</option>
+                  <option value="premium">👑 Yalnız Premium</option>
+                  <option value="free">🆓 Yalnız ücretsiz kullanıcılar</option>
+                  <option value="specific">👤 Belirli kullanıcı</option>
                 </select>
               </div>
               <div class="form-field" id="notifSpecificUserField" style="display:none">
@@ -1170,32 +1170,32 @@
                 <input class="input" type="text" id="notifSpecificUser" placeholder="user@email.com or user ID">
               </div>
               <div class="form-field">
-                <label>Notification Type</label>
+                <label>Bildirim türü</label>
                 <select class="input" id="notifType">
-                  <option value="transactional">✅ Transactional</option>
-                  <option value="marketing">📣 Marketing</option>
-                  <option value="alert">🔔 Alert</option>
+                  <option value="transactional">✅ İşlemsel</option>
+                  <option value="marketing">📣 Pazarlama</option>
+                  <option value="alert">🔔 Uyarı</option>
                 </select>
               </div>
               <div class="form-field" style="grid-column:1/-1">
-                <label>Title</label>
-                <input class="input" type="text" id="notifTitle" placeholder="Notification title..." maxlength="100">
+                <label>Başlık</label>
+                <input class="input" type="text" id="notifTitle" placeholder="Bildirim başlığı…" maxlength="100">
               </div>
               <div class="form-field" style="grid-column:1/-1">
-                <label>Message</label>
-                <textarea class="input" id="notifBody" placeholder="Notification message..." rows="3" maxlength="300" style="resize:vertical"></textarea>
+                <label>Mesaj</label>
+                <textarea class="input" id="notifBody" placeholder="Bildirim mesajı…" rows="3" maxlength="300" style="resize:vertical"></textarea>
               </div>
             </div>
 
             <!-- Preview -->
             <div style="margin-top:16px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px" id="notifPreviewBox">
-              <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Preview</div>
+              <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Önizleme</div>
               <div style="display:flex;align-items:flex-start;gap:12px">
                 <div id="notifPreviewIcon" style="width:40px;height:40px;border-radius:50%;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
                 <div style="flex:1;min-width:0">
-                  <div id="notifPreviewTitle" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">Notification Title</div>
-                  <div id="notifPreviewBody" style="font-size:13px;color:var(--text2);line-height:1.5">Notification message will appear here.</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:6px">Qor AI Team · just now</div>
+                  <div id="notifPreviewTitle" style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px">Bildirim başlığı</div>
+                  <div id="notifPreviewBody" style="font-size:13px;color:var(--text2);line-height:1.5">Bildirim mesajı burada görünecek.</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:6px">Qor AI Team · az önce</div>
                 </div>
               </div>
             </div>
@@ -1203,13 +1203,13 @@
             <!-- Send Actions -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:10px">
               <div style="font-size:13px;color:var(--text2)">
-                <span id="notifRecipientCount">—</span> users will receive this notification
+                <span id="notifRecipientCount">—</span> kullanıcı bu bildirimi alacak
               </div>
               <div style="display:flex;gap:10px">
-                <button class="btn btn-ghost" onclick="resetNotifComposer()">Clear</button>
+                <button class="btn btn-ghost" onclick="resetNotifComposer()">Temizle</button>
                 <button class="btn btn-primary" id="notifSendBtn" onclick="sendBroadcastNotification()">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                  Send Notification
+                  Bildirimi gönder
                 </button>
               </div>
             </div>
@@ -1220,10 +1220,10 @@
         <div class="card">
           <div class="card-title">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;vertical-align:-2px"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
-            Broadcast History
+            Duyuru geçmişi
           </div>
           <div class="card-body" id="notifHistoryList">
-            <div class="placeholder">Loading history...</div>
+            <div class="placeholder">Geçmiş yükleniyor…</div>
           </div>
         </div>
       </section>
@@ -1234,13 +1234,13 @@
           <h1>İletişim <span class="count-badge" id="supportCount">0</span></h1>
           <div class="view-actions">
             <select class="field-select" id="supportStatusFilter" onchange="renderSupportMessages()">
-              <option value="">All</option>
-              <option value="open">Needs Reply</option>
-              <option value="replied">Admin Replied</option>
-              <option value="closed">Closed</option>
+              <option value="">Tümü</option>
+              <option value="open">Yanıt bekliyor</option>
+              <option value="replied">Yönetici yanıtladı</option>
+              <option value="closed">Kapatıldı</option>
             </select>
-            <button class="btn btn-ghost" onclick="loadSupportMessages()">Refresh</button>
-            <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Delete all replied messages">🗑 Delete Replied</button>
+            <button class="btn btn-ghost" onclick="loadSupportMessages()">Yenile</button>
+            <button class="btn btn-danger" onclick="deleteRepliedSupportMessages()" title="Delete all replied messages">🗑 Yanıtlananları sil</button>
           </div>
         </div>
         <div class="card">
@@ -1252,7 +1252,7 @@
 
       <div id="supportChatModal" class="modal-backdrop" style="display:none" onclick="if(event.target===this)_closeSupportChatModal()">
         <div class="modal-box modal-lg" style="max-width:640px">
-          <div class="modal-head"><h2 id="supportChatModalTitle">Conversation</h2><button class="modal-x" onclick="_closeSupportChatModal()">✕</button></div>
+          <div class="modal-head"><h2 id="supportChatModalTitle">Görüşme</h2><button class="modal-x" onclick="_closeSupportChatModal()">✕</button></div>
           <div class="modal-body" id="supportChatModalBody"></div>
         </div>
       </div>
@@ -1263,7 +1263,7 @@
     <!-- Product Modal -->
     <div id="modalOverlay" class="modal-backdrop" style="display:none" onclick="if(event.target===this)closeModal()">
       <div class="modal-box modal-lg">
-        <div class="modal-head"><h2 id="modalTitle">Product</h2><button class="modal-x" onclick="closeModal()">✕</button></div>
+        <div class="modal-head"><h2 id="modalTitle">Ürün</h2><button class="modal-x" onclick="closeModal()">✕</button></div>
         <div class="modal-body" id="modalBody"></div>
       </div>
     </div>

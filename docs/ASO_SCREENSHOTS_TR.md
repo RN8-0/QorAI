@@ -58,4 +58,6 @@ Mevcut sıralama ANALİZ ile başlıyor; "binlerce ürünü analiz et" soyut bir
   uygun.
 - Feature graphic (1024x500) da Türkçe olmalı — şu an mağazada görünen tanıtım
   görselini kontrol et.
-- Aynı iş `de-DE` için de gerekli; Almanca listede de İngilizce görseller var.
+- ~~Aynı iş `de-DE` için de gerekli~~ — **Almanca 2026-08-21'de kaldırıldı**
+  (uygulama ve site Almanca desteklemiyor). Play Console'daki Almanca
+  listeleme silinecek; görsel üretilmeyecek. Bkz. `play-store-listings-12-languages.md`.

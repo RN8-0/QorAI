@@ -79,7 +79,6 @@ export default function Header() {
     && !hasCompletedQuiz(user)
     && !String(user.email || '').toLowerCase().endsWith('@qorai.local');
   const quizNext = `${loc.pathname}${loc.search}${loc.hash}`;
-  const isPremiumRoute = loc.pathname === '/premium';
   const coinTip = isPremium
     ? L('Premium is active. AI features do not spend Qor Coins.',
       'Premium aktif. AI özellikleri Qor Coin harcamaz.')

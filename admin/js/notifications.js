@@ -125,8 +125,8 @@ function applyTemplate(id) {
 }
 
 function _updatePreview() {
-  const title = document.getElementById('notifTitle')?.value || 'Notification Title';
-  const body = document.getElementById('notifBody')?.value || 'Notification message.';
+  const title = document.getElementById('notifTitle')?.value || 'Bildirim başlığı';
+  const body = document.getElementById('notifBody')?.value || 'Bildirim mesajı.';
   const type = document.getElementById('notifType')?.value || 'transactional';
   document.getElementById('notifPreviewIcon').textContent = NOTIF_TYPE_ICONS[type] || '🔔';
   document.getElementById('notifPreviewTitle').textContent = title;
@@ -150,8 +150,8 @@ async function sendBroadcastNotification() {
   const type = document.getElementById('notifType')?.value || 'transactional';
   const mode = document.getElementById('notifRecipient')?.value || 'all';
   const template = NOTIF_TEMPLATES.find(t => t.id === _notifSelectedTemplateId);
-  if (!title) { toast('Please enter a notification title', 'w'); return; }
-  if (!body) { toast('Please enter a notification message', 'w'); return; }
+  if (!title) { toast('Bir bildirim başlığı gir', 'w'); return; }
+  if (!body) { toast('Bir bildirim mesajı gir', 'w'); return; }
 
   let recipients = [];
   if (mode === 'all') recipients = _notifAllUsers;
@@ -159,14 +159,14 @@ async function sendBroadcastNotification() {
   else if (mode === 'free') recipients = _notifAllUsers.filter(u => !u.isPremium);
   else if (mode === 'specific') {
     const query = document.getElementById('notifSpecificUser')?.value?.trim();
-    if (!query) { toast('Please enter a user email or ID', 'w'); return; }
+    if (!query) { toast('Bir kullanıcı e-postası ya da kimliği gir', 'w'); return; }
     const found = _notifAllUsers.find(u => u.email === query || u.id === query);
-    if (!found) { toast('User not found', 'e'); return; }
+    if (!found) { toast('Kullanıcı bulunamadı', 'e'); return; }
     recipients = [found];
   }
-  if (!recipients.length) { toast('No users match the selected recipient group', 'w'); return; }
+  if (!recipients.length) { toast('Seçilen alıcı grubuna uyan kullanıcı yok', 'w'); return; }
 
-  const modeLabel = { all: 'All Users', premium: 'Premium Only', free: 'Free Users', specific: 'Specific User' }[mode];
+  const modeLabel = { all: 'Tüm kullanıcılar', premium: 'Yalnız Premium', free: 'Ücretsiz kullanıcılar', specific: 'Belirli kullanıcı' }[mode];
   if (!confirm(`Send "${title}" to ${recipients.length} ${modeLabel}?`)) return;
 
   const btn = document.getElementById('notifSendBtn');
@@ -203,7 +203,7 @@ async function sendBroadcastNotification() {
       if (progressEl) progressEl.style.width = pct + '%';
       if (textEl) textEl.textContent = `Sending... ${sent + errors} / ${recipients.length} users`;
     }
-    if (sent === 0 && errors > 0) { toast('Send failed: ' + (firstError?.message || firstError || 'PocketBase rejected all records'), 'e'); return; }
+    if (sent === 0 && errors > 0) { toast('Gönderme başarısız: ' + (firstError?.message || firstError || 'PocketBase rejected all records'), 'e'); return; }
     _notifBroadcastLog.unshift({ id: Date.now().toString(36), timestamp: new Date().toISOString(), title, body, type, templateId: _notifSelectedTemplateId, recipientType: mode, recipientLabel: modeLabel, count: sent, errors });
     await _saveBroadcastLog();
     toast(`Sent to ${sent} users${errors > 0 ? ` (${errors} errors)` : ''}`, 's');
@@ -212,7 +212,7 @@ async function sendBroadcastNotification() {
     resetNotifComposer();
   } catch (e) {
     console.error('[Notif] sendBroadcast fatal error:', e);
-    toast('Send failed: ' + (e.message || e), 'e');
+    toast('Gönderme başarısız: ' + (e.message || e), 'e');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px;vertical-align:-2px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Send Notification';
@@ -224,13 +224,13 @@ function _renderBroadcastHistory() {
   const list = document.getElementById('notifHistoryList');
   if (!list) return;
   if (!_notifBroadcastLog.length) {
-    list.innerHTML = '<div class="placeholder" style="padding:24px;text-align:center;color:var(--text3)">No notifications sent yet. Use the composer above to send your first broadcast.</div>';
+    list.innerHTML = '<div class="placeholder" style="padding:24px;text-align:center;color:var(--text3)">Henüz bildirim gönderilmedi. İlk duyurunu göndermek için yukarıdaki alanı kullan.</div>';
     return;
   }
   list.innerHTML = _notifBroadcastLog.map(item => {
     const icon = NOTIF_TYPE_ICONS[item.type] || '🔔';
     const date = new Date(item.timestamp);
-    return `<div class="notif-history-item"><div class="notif-history-icon">${icon}</div><div style="min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${escHtml(item.title)}</div><div style="font-size:13px;color:var(--text2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.body)}</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="notif-badge">${escHtml(item.recipientLabel || item.recipientType || 'Broadcast')}</span><span style="font-size:11px;color:var(--text3)">${Number(item.count || 0).toLocaleString()} recipients</span>${item.errors > 0 ? `<span style="font-size:11px;color:var(--danger)">${item.errors} errors</span>` : ''}</div></div><div style="text-align:right;white-space:nowrap"><div style="font-size:12px;font-weight:600;color:var(--text2)">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div><div style="font-size:11px;color:var(--text3)">${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div></div></div>`;
+    return `<div class="notif-history-item"><div class="notif-history-icon">${icon}</div><div style="min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${escHtml(item.title)}</div><div style="font-size:13px;color:var(--text2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.body)}</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="notif-badge">${escHtml(item.recipientLabel || item.recipientType || 'Duyuru')}</span><span style="font-size:11px;color:var(--text3)">${Number(item.count || 0).toLocaleString()} recipients</span>${item.errors > 0 ? `<span style="font-size:11px;color:var(--danger)">${item.errors} errors</span>` : ''}</div></div><div style="text-align:right;white-space:nowrap"><div style="font-size:12px;font-weight:600;color:var(--text2)">${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div><div style="font-size:11px;color:var(--text3)">${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div></div></div>`;
   }).join('');
   const countEl = document.getElementById('notifSentCount');
   if (countEl) countEl.textContent = _notifBroadcastLog.length;
@@ -250,8 +250,8 @@ function resetNotifComposer() {
   ['notifTitle', 'notifBody'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('notifType').value = 'transactional';
   document.getElementById('notifRecipient').value = 'all';
-  document.getElementById('notifPreviewTitle').textContent = 'Notification Title';
-  document.getElementById('notifPreviewBody').textContent = 'Notification message will appear here.';
+  document.getElementById('notifPreviewTitle').textContent = 'Bildirim başlığı';
+  document.getElementById('notifPreviewBody').textContent = 'Bildirim mesajı burada görünecek.';
   document.getElementById('notifPreviewIcon').textContent = '🔔';
   _notifSelectedTemplateId = '';
   document.querySelectorAll('.notif-template-btn').forEach(b => b.classList.remove('active'));

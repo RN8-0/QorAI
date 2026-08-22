@@ -6,7 +6,7 @@ const URL = `http://127.0.0.1:${PORT}/translate`;
 
 const CASES = [
   // TR source — realistic product spec language we actually ship.
-  { from: 'tr', to: ['de', 'en'], texts: [
+  { from: 'tr', to: ['en'], texts: [
     'Kablosuz Bluetooth Kulaklık Aktif Gürültü Önleme',
     'Ekran kartı bellek tipi GDDR7',
     'Yüksek hızlı PCIe 5.0 destekli M.2 SSD',
@@ -18,19 +18,9 @@ const CASES = [
     'Apple iPhone 17 Pro Max 1 TB titanyum',
     'Toz ve su direnci IP68 sertifikalı gövde',
   ] },
-  { from: 'de', to: ['tr', 'en'], texts: [
-    'Kabelloser Bluetooth-Kopfhörer mit aktiver Geräuschunterdrückung',
-    'Grafikkarten-Speichertyp GDDR7',
-    'Hochgeschwindigkeits-M.2-SSD mit PCIe 5.0',
-    'Wasserdichte Smartwatch mit Herzfrequenz- und Sauerstoffmessung',
-    'OLED 4K 144 Hz Gaming-Monitor mit HDR10-Unterstützung',
-    'Schnellladegerät 65 W USB-C Netzteil',
-    'Dualband-Wi-Fi-7-Mesh-Router',
-    'Wärmeleitpaste und Keramik-Kühlblock im Lieferumfang',
-    'Apple iPhone 17 Pro Max 1 TB Titan',
-    'Staub- und Wasserschutz nach IP68',
-  ] },
-  { from: 'en', to: ['tr', 'de'], texts: [
+  // Almanca KAYNAK vakasi kaldirildi (2026-08-21): worker'in LANGS kapisi
+  // artik 'de' istegini reddediyor, bu vaka her kosuda basarisiz olurdu.
+  { from: 'en', to: ['tr'], texts: [
     'Wireless Bluetooth headphones with active noise cancellation',
     'Graphics card memory type GDDR7',
     'High-speed PCIe 5.0 M.2 SSD',

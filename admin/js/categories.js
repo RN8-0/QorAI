@@ -924,9 +924,9 @@ function _scraperGroupForCat(cat) {
 }
 
 function _buildScraperCategoryOptions(counts = {}, epeyCounts = {}, includeSynced = true) {
-  let bulkOpts = '<option value="">Select Category</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
+  let bulkOpts = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
   let dictOpts = '<option value="">Kategori seç</option><option value="__all_epey__">Tüm Epey kategorileri</option>';
-  let flatOpts = '<option value="">All Categories</option>';
+  let flatOpts = '<option value="">Tüm kategoriler</option>';
   const visibleCat = (cat) => {
     if (!cat || isRemovedCategoryLike(cat)) return false;
     const id = QorAiCategories.canonicalId?.(cat.id) || '';

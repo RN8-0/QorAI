@@ -44,7 +44,13 @@ const DICT_PB_KEY = 'tr_translation_dict';
 const DICT_MANIFEST_KEY = `${DICT_PB_KEY}_manifest`;
 const DICT_SHARD_PREFIX = `${DICT_PB_KEY}__part_`;
 const DICT_SHARD_MAX_BYTES = 180000;
-const LANGS = ['en', 'de', 'es', 'fr', 'pt', 'ru'];
+// Seed dizileri KONUM tabanlidir: [en, de, es, fr, pt, ru]. Almanca
+// 2026-08-21'de urunden kaldirildi ama dosyalardaki SUTUN yerinde duruyor —
+// 'de'yi listeden CIKARMAK sonraki butun dilleri bir kaydirirdi ('es' Almanca
+// degeri alirdi). O yuzden sutun null ile isaretlenir, silinmez; LANGS de
+// bundan turetilir, boylece PB'ye Almanca YAZILMAZ.
+const SEED_COLUMNS = ['en', null, 'es', 'fr', 'pt', 'ru'];
+const LANGS = SEED_COLUMNS.filter(Boolean);
 
 const ATOMS = require('./_missing_atoms.json');
 
@@ -168,8 +174,8 @@ function loadTranslationBatches() {
     const full = path.join(dir, file);
     const data = JSON.parse(fs.readFileSync(full, 'utf8'));
     for (const [atom, translations] of Object.entries(data)) {
-      if (!Array.isArray(translations) || translations.length !== LANGS.length) {
-        throw new Error(`${file}: ${atom} must have ${LANGS.length} translations`);
+      if (!Array.isArray(translations) || translations.length !== SEED_COLUMNS.length) {
+        throw new Error(`${file}: ${atom} must have ${SEED_COLUMNS.length} translations`);
       }
       out[atom] = translations;
     }

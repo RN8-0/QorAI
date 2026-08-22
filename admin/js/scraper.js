@@ -200,9 +200,9 @@ function slog(msg, type = 'info') {
 function clearScraperLog() {
   _slogBuffer.length = 0;
   const el = document.getElementById('scraperLog');
-  if (el) el.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
+  if (el) el.innerHTML = '<div class="text-muted" style="padding:12px">Kayıt temizlendi.</div>';
   const xl = document.getElementById('xlateLog');
-  if (xl) xl.innerHTML = '<div class="text-muted" style="padding:12px">Log cleared.</div>';
+  if (xl) xl.innerHTML = '<div class="text-muted" style="padding:12px">Kayıt temizlendi.</div>';
   const pg = document.getElementById('scraperProgress');
   if (pg) pg.textContent = '';
   if (typeof updateResumeUI === 'function') updateResumeUI();
@@ -553,7 +553,7 @@ async function checkProxy(manual = false) {
   const el = document.getElementById('proxyStatus');
   const card = document.getElementById('proxyInfoCard');
   if (el) {
-    el.innerHTML = '<span style="color:var(--amber,#f59e0b)">● Proxy: Checking...</span>';
+    el.innerHTML = '<span style="color:var(--amber,#f59e0b)">● Proxy: denetleniyor…</span>';
     el.title = PROXY_URL;
   }
   try {
@@ -586,7 +586,7 @@ async function checkProxy(manual = false) {
 async function copyProxyCommand() {
   try {
     await navigator.clipboard.writeText(PROXY_START_COMMAND);
-    toast('Proxy start command copied to clipboard.', 's');
+    toast('Proxy başlatma komutu panoya kopyalandı.', 's');
   } catch (_) {
     toast(`Run this command manually: ${PROXY_START_COMMAND}`, 'i', 6000);
   }
@@ -599,7 +599,7 @@ function openLocalProxyHealth() {
 async function startProxyFromBrowser() {
   // Try to start the proxy by calling a local endpoint
   // Since browsers can't spawn Node processes directly, we try multiple methods
-  slog('Attempting to start proxy...', 'info');
+  slog('Proxy başlatılmaya çalışılıyor…', 'info');
   
   // Method 1: Try to fetch a local endpoint that might trigger the proxy
   try {
@@ -612,7 +612,7 @@ async function startProxyFromBrowser() {
   } catch {}
   
   // Method 2: Try to open the .bat file via a hidden iframe (Windows only)
-  slog('Proxy not running. Please start it manually:', 'warn');
+  slog('Proxy çalışmıyor. Elle başlat:', 'warn');
   slog(`Command: ${PROXY_START_COMMAND}`, 'info');
   
   // Show the proxy info card with instructions
@@ -704,7 +704,7 @@ function switchScraperTab(btn) {
   if (panel) panel.classList.add('active');
   // The category dropdowns live in panels that may render before the category
   // catalog finishes loading. Re-populate them whenever a tab is opened so the
-  // "Add by URL" / "Bulk Scrape" selects are never empty.
+  // "Adresle ekle" / "Toplu tarama" selects are never empty.
   if (['singleUrl', 'bulkScrape', 'offers', 'translate'].includes(btn.dataset.tab)
       && typeof populateScraperCategories === 'function') {
     populateScraperCategories().catch(() => {});
@@ -1159,7 +1159,7 @@ function prepareProductPayload(product) {
   }
 
   if (!payload.slug) payload.slug = generateProductId(slugFromUrl(payload.sourceUrl || ''));
-  if (!payload.name) throw new Error('Product name is empty');
+  if (!payload.name) throw new Error('Ürün adı boş');
 
   return typeof _clean === 'function' ? _clean(payload) : payload;
 }
@@ -2102,7 +2102,7 @@ async function _saveDeDict() {
   return _saveDeDictNow();
 }
 // Write a single public_config doc, retrying transient PocketBase failures
-// (cold-start 500s, "Something went wrong", timeouts) with exponential backoff.
+// (cold-start 500s, "Bir şeyler ters gitti", timeouts) with exponential backoff.
 // The RAM-bound single host occasionally drops a write under load; without
 // retry one dropped shard would throw and abort the entire bulk run.
 async function _pbSetDocWithRetry(collection, id, data, attempts = 5) {
@@ -3276,7 +3276,7 @@ Rules:
 
           const data = await response.json().catch(() => ({}));
           if (!response.ok || data.error) {
-            const detail = data.message || data.error || data.detail || 'DeepSeek API error';
+            const detail = data.message || data.error || data.detail || 'DeepSeek API hatası';
             throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
           }
 
@@ -3297,7 +3297,7 @@ Rules:
             }
           }
           if (storedForChunk === 0) {
-            throw new Error('DeepSeek returned no usable translations');
+            throw new Error('DeepSeek kullanılabilir çeviri döndürmedi');
           }
           let pbSaved = true;
           if (storedForChunk > 0) {
@@ -3482,7 +3482,7 @@ async function translateGermanName(germanName, targetLangs = TARGET_LANGS) {
 // ONCE for the union of missing atoms (chunked), persist the dictionary, then
 // build per-product multiLangSpecs / multiLangSections / nameTranslated from
 // dictionary lookups only — no further API calls. This is the engine behind
-// the Dictionary tab's "Translate Category" panel.
+// the Dictionary tab's "Kategoriyi çevir" panel.
 function _isEpeyTranslateProduct(p) {
   return /epey/i.test(String(p?.source || p?.sourceUrl || ''));
 }
@@ -4590,7 +4590,7 @@ function _formatPocketBaseError(error) {
       .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v).slice(0, 120)}`);
     if (fieldHints.length) parts.push(fieldHints.join(' | '));
   }
-  return parts.join(' — ') || 'PocketBase write failed';
+  return parts.join(' — ') || 'PocketBase yazma işlemi başarısız';
 }
 
 function _pbRetryDelay(attempt, options = {}) {
@@ -5521,7 +5521,7 @@ async function persistTranslationBacklog(terms) {
 
     slog(`Saved ${batch.length} untranslated terms to PocketBase backlog (${mergedTerms.length} total)`, 'info');
   } catch (e) {
-    console.warn('Failed to persist translation backlog:', e);
+    console.warn('Çeviri kuyruğu kalıcılaştırılamadı:', e);
     slog(`Translation backlog save failed: ${e.message}`, 'warn');
   }
   return {};
@@ -5545,7 +5545,7 @@ async function loadLearnedTranslations() {
       }
     }
   } catch (e) {
-    console.warn('Failed to load learned translations:', e);
+    console.warn('Öğrenilmiş çeviriler yüklenemedi:', e);
   }
 }
 
@@ -5555,7 +5555,7 @@ function triggerAITranslation() {
   _pendingAITerms.clear();
   // Free mode: persist unknown Turkish terms for later review/reuse.
   persistTranslationBacklog(terms).catch(e => {
-    console.warn('Translation backlog background error:', e);
+    console.warn('Çeviri kuyruğu arka plan hatası:', e);
   });
 }
 
@@ -5564,15 +5564,15 @@ function triggerAITranslation() {
 // ═══════════════════════════════════════
 
 async function startBulkScrape() {
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (scraperRunning) { toast('Tarayıcı zaten çalışıyor', 'w'); return; }
+  if (!(await checkProxy())) { toast('Önce yerel proxy’yi başlat', 'e'); return; }
 
   const mode = document.getElementById('scrapeMode')?.value || 'brand';
   const searchTerm = document.getElementById('scrapeSearchTerm')?.value?.trim() || '';
   const catSelect = document.getElementById('scrapeCategory');
   const catValue = catSelect ? catSelect.value : '';
-  if (mode === 'brand' && !searchTerm) { toast('Enter a brand or search term', 'w'); return; }
-  if (mode === 'category' && !catValue) { toast('Select a category', 'w'); return; }
+  if (mode === 'brand' && !searchTerm) { toast('Bir marka ya da arama terimi gir', 'w'); return; }
+  if (mode === 'category' && !catValue) { toast('Bir kategori seç', 'w'); return; }
 
   const maxProducts = parseInt(document.getElementById('scrapeMaxProducts')?.value) || 6000;
   const delay = parseInt(document.getElementById('scrapeDelay')?.value) || 2000;
@@ -5614,7 +5614,7 @@ async function startBulkScrape() {
     }
 
     if (!urlItems.length) {
-      slog('No product URLs found. Try a different category or check proxy.', 'error');
+      slog('Ürün adresi bulunamadı. Farklı bir kategori dene ya da proxy’yi denetle.', 'error');
       finishScraping();
       return;
     }
@@ -5629,7 +5629,7 @@ async function startBulkScrape() {
     slog(`\n═══ Done: ${results.added} eklendi | ${results.updated} güncellendi | ${results.skipped} atlandı | ${results.errors} hata ═══`, 'success');
     if ((results.added > 0 || results.updated > 0) && typeof loadProducts === 'function') {
       await loadProducts();
-      slog('Products view refreshed.', 'success');
+      slog('Ürün görünümü yenilendi.', 'success');
     }
   } catch (e) {
     slog(`Fatal error: ${e.message}`, 'error');
@@ -5650,8 +5650,8 @@ async function startBulkScrape() {
 // ═══════════════════════════════════════
 
 async function startScoreUpdate() {
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (scraperRunning) { toast('Tarayıcı zaten çalışıyor', 'w'); return; }
+  if (!(await checkProxy())) { toast('Önce yerel proxy’yi başlat', 'e'); return; }
 
   const cat = document.getElementById('scoreCategory')?.value || '';
   const limitRaw = document.getElementById('scoreLimit')?.value;
@@ -5662,7 +5662,7 @@ async function startScoreUpdate() {
   scraperAbort = false;
   clearScraperLog();
 
-  slog('Loading products for score update...');
+  slog('Puan güncellemesi için ürünler yükleniyor…');
 
   let products;
   try {
@@ -6366,7 +6366,7 @@ function epeyBrandCategoryUrls(term) {
 // term it narrows to that brand inside the category (`…/<epeyPath>/<brand>/`).
 //
 // SEARCH mode (no categoryId) = Epey site search (`/ara/?ara=<term>`), used by
-// the "Add by URL" lookup.
+// the "Adresle ekle" lookup.
 async function collectSearchProductUrls(searchTerm, maxProducts = 200, categoryId = '', options = {}) {
   const term = String(searchTerm || '').trim();
   if (!term && !categoryId) return [];
@@ -7647,8 +7647,8 @@ function getCheckedEpeyScrapeCategories() {
 }
 
 async function startBulkScrape() {
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (scraperRunning) { toast('Tarayıcı zaten çalışıyor', 'w'); return; }
+  if (!(await checkProxy())) { toast('Önce yerel proxy’yi başlat', 'e'); return; }
 
   const categoryId = document.getElementById('scrapeCategory')?.value?.trim() || '';
   const checkedCats = getCheckedEpeyScrapeCategories();
@@ -7751,7 +7751,7 @@ async function startBulkScrape() {
     if (catsForRun.length !== 1 || isAllCategories) {
       const cats = catsForRun;
       if (!cats.length) {
-        slog('No Epey-enabled categories found.', 'error');
+        slog('Epey destekli kategori bulunamadı.', 'error');
         finishScraping();
         return;
       }
@@ -7808,12 +7808,12 @@ async function startBulkScrape() {
       }
 
       if (scraperAbort) {
-        slog('Stopped during URL collection.', 'warn');
+        slog('Adres toplama sırasında durduruldu.', 'warn');
         finishScraping();
         return;
       }
       if (!collected.length) {
-        slog('No URLs collected from any category.', 'error');
+        slog('Hiçbir kategoriden adres toplanamadı.', 'error');
         finishScraping();
         return;
       }
@@ -7881,7 +7881,7 @@ async function startBulkScrape() {
     const urlItems = await collectSearchProductUrls('', singleLimit, singleCat?.id || categoryId, { collectAll: collectAllSelected });
     slog(`Found ${urlItems.length} Epey product URLs`, urlItems.length ? 'success' : 'warn');
     if (!urlItems.length) {
-      slog('No product URLs found. Check the category or proxy.', 'error');
+      slog('Ürün adresi bulunamadı. Kategoriyi ya da proxy’yi denetle.', 'error');
       finishScraping();
       return;
     }
@@ -7916,8 +7916,8 @@ async function startBulkScrape() {
 async function scrapeByUrl() {
   const inputVal = document.getElementById('scrapeUrl')?.value?.trim() || '';
   if (!inputVal) { toast('Epey URL veya ürün adı gir', 'w'); return; }
-  if (scraperRunning) { toast('Scraper already running', 'w'); return; }
-  if (!(await checkProxy())) { toast('Start the local proxy first', 'e'); return; }
+  if (scraperRunning) { toast('Tarayıcı zaten çalışıyor', 'w'); return; }
+  if (!(await checkProxy())) { toast('Önce yerel proxy’yi başlat', 'e'); return; }
 
   clearScraperLog();
   scraperRunning = true;
@@ -7954,14 +7954,14 @@ async function scrapeByUrl() {
       slog(`Searching Epey: ${inputVal}`);
       const links = await collectSearchProductUrls(inputVal, 1);
       url = links[0]?.url || '';
-      if (!url) { slog('No Epey result found', 'error'); return; }
+      if (!url) { slog('Epey sonucu bulunamadı', 'error'); return; }
       slog(`First Epey match: ${url}`, 'info');
     }
 
     const html = await proxyFetch(url);
-    if (!html || isChallengePage(html)) { slog('Page not found or blocked', 'error'); return; }
+    if (!html || isChallengePage(html)) { slog('Sayfa bulunamadı ya da engellendi', 'error'); return; }
     const product = await scrapeProductDetail(html, url, document.getElementById('singleUrlCategory')?.value || '');
-    if (!product) { slog('Could not parse product data', 'error'); return; }
+    if (!product) { slog('Ürün verisi ayrıştırılamadı', 'error'); return; }
     const clean = prepareProductPayload(product);
     if (!_isSupportedScrapePayload(clean)) {
       slog(`Skipped unsupported category: ${clean.name || url}`, 'warn');
@@ -8038,7 +8038,7 @@ const OFFERS_PROVIDER_META = {
     testLabel: 'Awin test koşusu başladı…',
   },
   amazon: {
-    title: 'Amazon Associates Search Links',
+    title: 'Amazon Associates arama bağlantıları',
     hint: 'Amazon tagleri marketplace bazlıdır. API fiyat erişimi açılana kadar search-link modunda fiyat yazmadan link üretir.',
     testLabel: 'Amazon test koşusu başladı…',
   },
@@ -8131,7 +8131,7 @@ async function offersLoadConfig() {
       admitadSecret.value = '';
       admitadSecret.placeholder = admitad.clientSecretSet
         ? 'Kayıtlı secret var; değiştirmek için yeni secret gir'
-        : 'Admitad Client Secret';
+        : 'Admitad istemci parolası';
     }
 
     const awin = cfg.awin || {};
