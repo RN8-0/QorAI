@@ -635,6 +635,71 @@ export function VerdictBanner({ score, decision, headline, confidence, L = (en) 
 }
 
 // ── (L) Zengin artı/eksi listesi — başlık + etki cümlesi ──────────────────
+/**
+ * FORUM BULGULARI — sahiplerin en cok sevdigi + KRONIK sorunlar.
+ *
+ * NEDEN AYRI BIR BILESEN: rapor eskiden ayni listeyi iki kez basiyordu. Once
+ * "sana uygun / dikkat et" (quiz'e gore), sonra "kullanicilarin sevdigi /
+ * sikayeti" — ikincisi neredeyse ilkin kopyasiydi, cunku ikisi de urunun
+ * ozelliklerinden turetiliyordu.
+ *
+ * Bu blok baska bir soruyu yanitliyor: SPEC SAYFASINDAN OKUNAMAYAN sey.
+ * Kronik sorun aylar sonra ortaya cikiyor (belirli bir uretim partisi, geri
+ * gelen bir firmware hatasi, garanti deneyimi) ve yalnizca forumlarda goruunur.
+ * Yayginlik rozeti (`frequency`) bunun icin var: "yaygin" ile "ara sira" ayni
+ * agirlikta okunmamali.
+ */
+export function ForumFindings({ loved = [], chronic = [], L = (en) => en }) {
+  const norm = (v) => (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '', frequency: '' }
+      : { title: x?.title || x?.label || '', detail: x?.detail || '', frequency: x?.frequency || '' }))
+    .filter((x) => x.title || x.detail);
+  const iyi = norm(loved);
+  const kotu = norm(chronic);
+  if (!iyi.length && !kotu.length) return null;
+  const siklik = {
+    widespread: L('widespread', 'yaygın'),
+    common: L('common', 'sık'),
+    occasional: L('occasional', 'ara sıra'),
+  };
+  return (
+    <div className="aic-forum">
+      {iyi.length > 0 && (
+        <div className="aic-forum-col loved">
+          <h4>💚 {L('What owners keep praising', 'Sahiplerin en çok sevdiği')}</h4>
+          <ul>
+            {iyi.map((x, i) => (
+              <li key={i} style={{ animationDelay: `${i * 55}ms` }}>
+                <b>{x.title}</b>
+                {x.detail && <span>{x.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {kotu.length > 0 && (
+        <div className="aic-forum-col chronic">
+          <h4>🩺 {L('Chronic problems', 'Kronik sorunlar')}</h4>
+          <ul>
+            {kotu.map((x, i) => (
+              <li key={i} style={{ animationDelay: `${i * 55}ms` }}>
+                <b>
+                  {x.title}
+                  {x.frequency && siklik[x.frequency] && (
+                    <i className={`aic-freq ${x.frequency}`}>{siklik[x.frequency]}</i>
+                  )}
+                </b>
+                {x.detail && <span>{x.detail}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProConList({ pros = [], cons = [], L = (en) => en, titles = null }) {
   const norm = (v) => (Array.isArray(v) ? v : [])
     .map((x) => (typeof x === 'string' ? { title: x, detail: '' } : { title: x?.title || x?.label || '', detail: x?.detail || '' }))

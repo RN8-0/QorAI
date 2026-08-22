@@ -173,7 +173,7 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       let txt = await askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
         user: prompt,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16384,
         temperature: 0.45,
         jsonMode: true,
       });
@@ -184,7 +184,7 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
         const retry = await askQorAiRaw({
           system: `You are Qor AI. Return only valid JSON in language code ${lang}. This is a freshness-critical retry; remove stale launch/availability assumptions. Every user-facing text field must be in the requested language.`,
           user: withFreshnessRetryInstruction(prompt, [productTitle]),
-          maxOutputTokens: 8192,
+          maxOutputTokens: 16384,
           temperature: 0.25,
           jsonMode: true,
         });

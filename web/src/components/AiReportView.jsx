@@ -24,6 +24,7 @@ import {
   DecisionBadge,
   DistributionBar,
   FactorList,
+  ForumFindings,
   ProConList,
   QuizImpact,
   RadarChart,
@@ -208,8 +209,15 @@ export default function AiReportView({
   const critical = Array.isArray(data.criticalPoints) ? data.criticalPoints : [];
   const insights = Array.isArray(data.quizInsights) ? data.quizInsights : [];
   const themes = Array.isArray(data.communityThemes) ? data.communityThemes : [];
-  const praise = bullets(data.praisePoints);
-  const complaints = bullets(data.complaintPoints);
+  // FORUM BULGULARI — eski adlar (praise/complaint) geriye donuk okunuyor.
+  // Bunlar ARTIK artı/eksi listesi degil: sevilen ozellikler + KRONIK sorunlar.
+  //
+  // DIKKAT: bullets() KULLANILMIYOR. O normalizer {title, detail} disindaki
+  // her alani DUSURUYOR ve kronik sorunun `frequency` degeri ("yaygin" /
+  // "sik" / "ara sira") boylece kayboluyordu — rozetler bos ciziliyordu.
+  // ForumFindings kendi normalizasyonunu yapiyor.
+  const loved = data.lovedFeatures || data.praisePoints;
+  const chronic = data.chronicIssues || data.complaintPoints;
   const reliability = bullets(data.reliabilityNotes);
   const verification = bullets(data.verificationNotes);
   const features = Array.isArray(data.featureMatches) ? data.featureMatches : [];
@@ -294,15 +302,11 @@ export default function AiReportView({
           <div className="la-community">
             <CommunityThemes themes={themes} L={L} />
             <SourceChips sources={data.sources} L={L} />
-            {(praise.length > 0 || complaints.length > 0) && (
-              <ProConList
-                pros={praise} cons={complaints} L={L}
-                titles={{
-                  pro: L('What owners love', 'Kullanıcıların sevdiği'),
-                  con: L('What owners complain about', 'Kullanıcıların şikâyeti'),
-                }}
-              />
-            )}
+            {/* Artı/eksi listesi YUKARIDA bir kez var (ProConList). Burada
+                farklı bir şey duruyor: forumlardan gelen KRONIK sorunlar ve
+                sahiplerin en çok övdüğü yanlar. Eskiden burası ikinci bir
+                artı/eksi listesiydi ve neredeyse birebir aynısını basıyordu. */}
+            <ForumFindings loved={loved} chronic={chronic} L={L} />
             {data.communityAnalysis && (
               <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu')}
                 meta={data.communityScore ? `${Math.round(data.communityScore)}/100` : ''}>

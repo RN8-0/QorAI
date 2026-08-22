@@ -453,11 +453,13 @@ function communityResearchChecklist(langName) {
   return `Cover ALL of the following, as compact notes:
 1) IDENTITY: what this exactly is (edition/variant), current market status, and the headline specs or plan details that actually matter.
 2) COMMUNITY SENTIMENT — THE MAIN JOB: scan real user discussion (Reddit threads, YouTube review takeaways and their comment sections, retailer review patterns such as Amazon/Trendyol/Best Buy, specialist review sites, forums, app-store reviews). Extract the RECURRING THEMES, not one-off opinions. For each theme note: the theme, whether it is praise / complaint / mixed, and roughly how dominant it is (e.g. "mentioned in most threads" vs "occasional").
-3) COMPLAINTS IN DETAIL: the most repeated negatives, failures, regrets, after-sales/support problems, and whether they hit everyone or only a specific use case. Never soften them.
-4) WHO LOVES IT vs WHO REGRETS IT: the usage profiles behind each side.
-5) DEAL-BREAKERS: the things a buyer would be angry about not knowing beforehand.
-6) ALTERNATIVES people actually compare it against, and why they switch.
-7) VALUE / TIMING signal: discount cadence, a newer model or plan change on the horizon, or long-term cost drift. No invented exact prices.
+3) CHRONIC PROBLEMS — SEARCH FOR THESE ON PURPOSE: the failures owners report AFTER months of use, not the drawbacks visible on the spec sheet. Look for threads titled around a defect, "is anyone else having…", warranty/RMA experiences, a batch or production run with a known fault, a firmware/driver/app update that broke something and whether it was fixed. For each: what fails, how long into ownership it appears, whether a fix or workaround exists, and roughly how widespread it is (widespread / common / occasional). If you genuinely find none, say so — an absent problem is a real finding, an invented one is not.
+4) OTHER COMPLAINTS: the remaining repeated negatives, regrets and after-sales/support problems, and whether they hit everyone or only a specific use case. Never soften them.
+5) MOST-LOVED FEATURES: what owners bring up unprompted as the best part, and why it keeps coming up.
+6) WHO LOVES IT vs WHO REGRETS IT: the usage profiles behind each side.
+7) DEAL-BREAKERS: the things a buyer would be angry about not knowing beforehand.
+8) ALTERNATIVES people actually compare it against, and why they switch.
+9) VALUE / TIMING signal: discount cadence, a newer model or plan change on the horizon, or long-term cost drift. No invented exact prices.
 Write in ${langName}. Do NOT invent direct quotes, exact review counts, or exact prices. Where evidence is thin, say plainly that it is thin.`;
 }
 
@@ -817,6 +819,7 @@ RULES:
 - ABSENCE OF EVIDENCE IS NOT A STRENGTH: "no complaints found" or "limited information" must never be presented as a positive theme or used to raise a score — say the evidence is thin and lower the confidence instead.
 - FACTS ONLY FROM RESEARCH: availability, versions and plan details must come from the research notes; if they are not covered, omit them rather than recalling them from memory.
 - "themes" are the topics people keep coming back to (battery, noise, sizing, support, ads, price hikes…), NOT one-off opinions. "strength" is roughly how dominant that theme is in the discussion (0-100).
+- "chronicIssues" are what owners keep reporting AFTER living with it: failures that appear over months, a batch with a known defect, a firmware/driver issue that keeps returning, support that keeps disappointing. They are NOT the drawbacks anyone can read off the spec sheet or the price — those belong to the decision half of the report. If the research shows no recurring problem, return an empty array and say so in verificationNotes rather than promoting a spec-sheet drawback into this list.
 - Sentiment percentages must be realistic and consistent with the themes: if half the themes are complaints, the split cannot be 90% positive.
 
 Return valid JSON (all text in ${langName}):
@@ -825,8 +828,8 @@ Return valid JSON (all text in ${langName}):
   "communityAnalysis": "3 paragraphs in ${langName}: (1) how it is received overall and what earns the praise, (2) the recurring complaints stated plainly with who they hit, (3) what long-term owners say after months of use. IGNORE the user profile here — this is about everyone.",
   "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},
   "communityThemes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": <0-100>, "detail": "1 sentence with the concrete substance of that theme"}, "... 5-7 themes, a realistic mix of positive and negative"],
-  "praisePoints": [{"title": "what owners consistently love", "detail": "1 sentence"}, "... 3-4 items"],
-  "complaintPoints": [{"title": "what owners consistently complain about", "detail": "1 sentence including how widespread it is"}, "... 3-4 items"],
+  "lovedFeatures": [{"title": "what owners single out unprompted as the best part", "detail": "1 sentence on WHY it keeps coming up"}, "... 3-5 items"],
+  "chronicIssues": [{"title": "recurring, well-documented problem", "detail": "1 sentence: what fails, when it shows up, whether there is a fix or workaround", "frequency": "widespread|common|occasional"}, "... 3-5 items, or an empty array when the research genuinely shows none"],
   "reliabilityNotes": ["1 sentence each in ${langName} on durability, failures, warranty/support experience — 2-3 items"],
   "sources": [{"name": "source or source type (Reddit, YouTube reviews, retailer reviews, specialist sites…)", "note": "what it contributed"}, "... 4-6 items — only source TYPES you actually relied on"],
   "alternatives": [{"name": "exact competing product name", "why": "1 sentence on who should take this instead"}, "... 3 items"],
@@ -843,6 +846,19 @@ function num(v) {
 
 // AI'dan gelen sentiment dağılımını {positive, neutral, negative} olarak okur;
 // alan yok/bozuksa null döner (render tarafı satisfaction'dan türetir).
+// Kronik sorun listesi — bulletList ile ayni, ama `frequency` KORUNUR
+// (yayginlik rozeti onunla ciziliyor).
+function issueList(raw, max) {
+  return bulletList(raw, max).map((x, i) => {
+    const ham = Array.isArray(raw) ? raw[i] : null;
+    const f = String((ham && ham.frequency) || '').toLowerCase().trim();
+    return {
+      ...x,
+      frequency: ['widespread', 'common', 'occasional'].includes(f) ? f : '',
+    };
+  });
+}
+
 function parseSentimentBreakdown(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const positive = Math.max(0, Math.round(num(raw.positive)));
@@ -936,8 +952,13 @@ async function enhancedAnalysis({ base, answers, language, userProfile = {}, res
       com.sentimentBreakdown || com.sentiment_breakdown || res.sentimentBreakdown || res.sentiment_breakdown,
     ),
     communityThemes: themeList(com.communityThemes, 8),
-    praisePoints: bulletList(com.praisePoints, 5),
-    complaintPoints: bulletList(com.complaintPoints, 5),
+    // Forum bulgulari. `praisePoints`/`complaintPoints` ESKI adlar — artik
+    // uretilmiyorlar ama eski kayitlar hala tasiyor, o yuzden okunuyorlar.
+    // Yeni adlar ayirt edici: "loved" = sahiplerin one cikardigi, "chronic" =
+    // sahiplik sonrasi TEKRAR EDEN sorun (spec sayfasindan okunabilen eksi
+    // degil — o zaten raporun karar yarisinda).
+    lovedFeatures: bulletList(com.lovedFeatures || com.praisePoints, 5),
+    chronicIssues: issueList(com.chronicIssues || com.complaintPoints, 5),
     reliabilityNotes: bulletList(com.reliabilityNotes, 4),
     sources: sourceList(com.sources, 8),
     verificationNotes: bulletList(com.verificationNotes, 4),
@@ -1201,6 +1222,7 @@ VENDOR NEUTRALITY — HARD RULE (this analysis runs on a model that may BE one o
 - sentiment_breakdown values are integer percentages summing to ~100, realistic and consistent with the themes
 - Never invent quotes, exact review counts or exact prices. Where the research is thin, say so.
 - Be specific and personalized to the quiz answers and the user profile, not generic
+- chronic_issues are what subscribers keep reporting over MONTHS — an app that keeps crashing on one platform, a library that keeps shrinking, streams that keep failing at peak, support tickets that keep going nowhere. They are NOT the same as "cons": a con is a design trade-off anyone can see on the plan page, a chronic issue only surfaces after living with the service. Never repeat a con here.
 - NEVER mention price, cost, affordability, monthly fees, yearly fees, discounts, or billing
 
 Return ONLY valid JSON (no markdown fences, no commentary) matching this exact schema:
@@ -1221,6 +1243,8 @@ Return ONLY valid JSON (no markdown fences, no commentary) matching this exact s
       "sentiment_breakdown": {"positive": "int", "neutral": "int", "negative": "int"},
       "sources": [{"name": "source type you relied on", "note": "what it contributed"}, "... 3-5 items"],
       "cancel_reasons": ["2-3 one-sentence reasons people actually cancel this, in ${langName}"],
+      "loved_features": [{"title": "what subscribers single out unprompted as the best part", "detail": "1 sentence on why it keeps coming up"}, "... 3-4 items"],
+      "chronic_issues": [{"title": "recurring, well-documented problem", "detail": "1 sentence: what keeps breaking or disappointing, and whether support fixes it", "frequency": "widespread|common|occasional"}, "... 2-4 items, or an empty array when the research genuinely shows none"],
       "best_for": "string - 2 sentences on the ideal subscriber and usage context",
       "not_for": "string - 1-2 sentences on who should skip it",
       "factors": {
@@ -1365,6 +1389,11 @@ async function subscriptionAnalysis({ subscriptionNames, answers, language, user
       communityThemes: themeList(d?.community_themes || d?.communityThemes, 6),
       sources: sourceList(d?.sources, 6),
       cancelReasons: bulletList(d?.cancel_reasons || d?.cancelReasons, 4),
+      // Forum bulgulari — abonelikte de ayni ayrim: `cons` plan
+      // sayfasindan okunabilen takas, `chronicIssues` aylar sonra cikan
+      // ve tekrar eden sorun.
+      lovedFeatures: bulletList(d?.loved_features || d?.lovedFeatures, 5),
+      chronicIssues: issueList(d?.chronic_issues || d?.chronicIssues, 5),
       sentiment: parseSentimentBreakdown(d?.sentiment_breakdown || d?.sentimentBreakdown),
       bestFor: String(d?.best_for || ''),
       notFor: String(d?.not_for || d?.notFor || ''),

@@ -78,8 +78,16 @@ function bodyToUnified(p = {}, community = {}, extra = {}) {
     sentimentBreakdown: c.sentimentBreakdown || c.sentiment_breakdown || null,
     communityThemes: arr(c.themes),
     communityAnalysis: String(c.summary || '').trim(),
-    praisePoints: arr(c.pros),
-    complaintPoints: arr(c.cons),
+    // FORUM BULGULARI. `pros`/`cons` ESKI adlar — artik uretilmiyorlar ama
+    // eski kayitlar tasiyor, o yuzden geriye donuk okunuyorlar.
+    //
+    // Neden yeniden adlandirildi: rapor ayni listeyi IKI KEZ basiyordu —
+    // once "sana uygun / dikkat et" (prosForUser/consForUser), sonra
+    // "kullanicilarin sevdigi / sikayeti" olarak neredeyse ayni maddeler.
+    // Ikinci blok artik farkli bir sey soyluyor: KRONIK sorun, yani spec
+    // sayfasindan okunamayan, sahiplik sonrasi tekrar eden ariza.
+    lovedFeatures: arr(c.lovedFeatures).length ? arr(c.lovedFeatures) : arr(c.pros),
+    chronicIssues: arr(c.chronicIssues).length ? arr(c.chronicIssues) : arr(c.cons),
     sources: arr(c.sources),
     verificationNotes: arr(c.verificationNotes),
 
@@ -135,6 +143,8 @@ export function compareVerdictToUnified(cmp = {}, entries = [], extra = {}) {
     communityScore: int(winner.community?.satisfaction),
     sentimentBreakdown: winner.community?.sentimentBreakdown || null,
     communityThemes: arr(winner.community?.themes),
+    lovedFeatures: arr(winner.community?.lovedFeatures),
+    chronicIssues: arr(winner.community?.chronicIssues),
     sources: arr(winner.community?.sources),
   };
 }

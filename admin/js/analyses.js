@@ -437,7 +437,7 @@
       }
       var q = await QorAiRun.linkQuiz(bases, 'tr');
       if (!q.length) throw new Error('Quiz üretilemedi');
-      _run = { kind: 'link', bases: bases, questions: q, answers: [] };
+      _run = yeniRun('link', { bases: bases }, q);
       renderQuiz();
     } catch (e) {
       renderLinkGiris('Tanınamadı: ' + (e.message || e));
@@ -478,7 +478,7 @@
     try {
       var q = await QorAiRun.subscriptionQuiz(names, 'tr');
       if (!q.length) throw new Error('Quiz üretilemedi');
-      _run = { kind: 'subscription', names: names, questions: q, answers: [] };
+      _run = yeniRun('subscription', { names: names }, q);
       renderQuiz();
     } catch (e) {
       renderAbonelikGiris('Başlatılamadı: ' + (e.message || e));
@@ -524,7 +524,7 @@
       var product = await QorAiRun.loadProduct(hit.id);
       var quiz = await QorAiRun.generateQuiz(product, 'tr');
       if (!quiz.length) throw new Error('Quiz üretilemedi');
-      _run = { kind: 'product', product: product, questions: quiz, answers: [] };
+      _run = yeniRun('product', { product: product }, quiz);
       renderQuiz();
     } catch (e) {
       b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
@@ -532,6 +532,20 @@
         + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Tekrar dene</button> '
         + '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Başka ürün</button></div>';
     }
+  }
+
+  // Uretim durumu. `lang` HANGI DILDE oldugumuz; iki dil bagimsiz kosuyor,
+  // o yuzden cevaplar ve raporlar dil basina ayri tutuluyor.
+  function yeniRun(kind, kaynak, questions) {
+    return Object.assign({
+      kind: kind,
+      lang: 'tr',
+      questions: questions,
+      answers: [],
+      cevaplar: { tr: null, en: null },
+      out: { tr: null, en: null },
+      similar: null,
+    }, kaynak);
   }
 
   // Uretim akisinin KONUSU — uc turde de tek satirlik ad.
@@ -548,11 +562,15 @@
     var yanit = r.questions.filter(function (q, i) { return r.answers[i] != null; }).length;
     b.innerHTML = ''
       + adimlar(1)
-      + '<div class="an-note">Quiz, sitedeki analizin ürettiği quiz\'in <strong>aynısı</strong> (aynı prompt, aynı soru sayısı). '
-      + 'Verdiğin cevaplar rapordaki uyum puanını ve "cevapların neyi değiştirdi" bölümünü belirler; '
-      + 'yayınlanan sayfada da <strong>en üstte</strong> görünürler.</div>'
+      + '<div class="an-note">'
+      + (r.lang === 'tr'
+        ? '<strong>1/2 · Türkçe quiz.</strong> Sitedeki analizin ürettiği quiz\'in aynısı. '
+          + 'Bunu yanıtla, Türkçe rapor çıksın; ardından <strong>ayrı bir İngilizce quiz</strong> gelecek.'
+        : '<strong>2/2 · İngilizce quiz.</strong> Türkçe rapor hazır. Bu sorular '
+          + '<strong>çeviri değil</strong>, İngilizce okuyucu için baştan üretildi — iki dil iki ayrı varyant.')
+      + ' Verdiğin cevaplar uyum puanını belirler ve yayınlanan sayfada <strong>en üstte</strong> görünür.</div>'
       + '<div class="an-card" style="max-width:960px">'
-      + '<h3 id="anQuizHead">2 · ' + esc(runKonu(r)) + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
+      + '<h3 id="anQuizHead">2 · ' + (r.lang === 'tr' ? 'TR' : 'EN') + ' · ' + esc(runKonu(r)) + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
       + r.questions.map(function (q, qi) {
         return '<div class="an-q"><p><b>' + (qi + 1) + '.</b>' + esc(q.text) + '</p>'
           + '<div class="an-opts">'
@@ -567,11 +585,16 @@
       }).join('')
       + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'
       + '<button class="btn btn-primary" id="anQuizGo" onclick="analysesRunReport()"' + (yanit < r.questions.length ? ' disabled' : '') + '>'
-      + (yanit < r.questions.length ? 'Tüm soruları yanıtla' : 'Raporu üret (TR + EN)') + '</button>'
+      + (yanit < r.questions.length
+        ? 'Tüm soruları yanıtla'
+        : (r.lang === 'tr' ? 'Türkçe raporu üret' : 'İngilizce raporu üret ve bitir')) + '</button>'
       + '<button class="btn btn-ghost" onclick="analysesUretTur(\'' + r.kind + '\')">Vazgeç</button>'
+      + (r.lang === 'en'
+        ? '<span class="an-hint" style="align-self:center;margin:0">Türkçe rapor hazır — vazgeçersen o da gider.</span>'
+        : '')
       + '</div>'
-      + '<p class="an-hint">Rapor üretimi 6 AI çağrısı sürer (TR araştırma + TR rapor, cevap çevirisi, '
-      + 'EN araştırma + EN rapor, yayın meta\'sı). Bu sekmeyi kapatma.</p>'
+      + '<p class="an-hint">Her dil kendi araştırmasını ve raporunu üretir; '
+      + 'toplam 2 quiz + 4 rapor çağrısı + yayın metası. Bu sekmeyi kapatma.</p>'
       + '</div>';
   }
 
@@ -591,35 +614,55 @@
     }
     var yanit = _run.questions.filter(function (q, i) { return _run.answers[i] != null; }).length;
     var baslik = $('anQuizHead');
-    if (baslik) baslik.textContent = '2 · ' + runKonu(_run) + ' · ' + yanit + '/' + _run.questions.length + ' yanıtlandı';
+    if (baslik) {
+      baslik.textContent = '2 · ' + (_run.lang === 'tr' ? 'TR' : 'EN') + ' · ' + runKonu(_run)
+        + ' · ' + yanit + '/' + _run.questions.length + ' yanıtlandı';
+    }
     var btn = $('anQuizGo');
     if (btn) {
       var tam = yanit === _run.questions.length;
       btn.disabled = !tam;
-      btn.textContent = tam ? 'Raporu üret (TR + EN)' : 'Tüm soruları yanıtla';
+      btn.textContent = tam
+        ? (_run.lang === 'tr' ? 'Türkçe raporu üret' : 'İngilizce raporu üret ve bitir')
+        : 'Tüm soruları yanıtla';
     }
   }
 
-  // ── 3) Rapor üret (TR + EN) ────────────────────────────────
-  var PROG = [
-    ['tr-research', 'Türkçe · web araştırması'],
-    ['tr-report', 'Türkçe · rapor'],
-    // Quiz BIR KEZ Turkce yanitlaniyor; cevirmezsek Ingilizce rapor Turkce
-    // cevap dizesini oldugu gibi tasiyor (olculdu, bkz. prompt dosyasi).
-    ['translate', 'Quiz cevapları İngilizceye çevriliyor'],
-    ['en-research', 'İngilizce · web araştırması'],
-    ['en-report', 'İngilizce · rapor'],
-    ['meta', 'Yayın meta\'sı ve SSS (TR + EN)'],
+  // ── 3) Rapor üret — HER DIL KENDI QUIZI ILE ────────────────
+  //
+  //  ONCEKI SURUM: quiz BIR KEZ Turkce yanitlaniyor, ayni cevaplar cevrilip
+  //  Ingilizce rapora veriliyordu. Iki sorunu vardi:
+  //   1. Cevap dizesi Ingilizce rapora OLDUGU GIBI kopyalaniyordu (olculdu:
+  //      6/6). Ceviri adimi bunu kapatti ama ustune bir AI cagrisi ekledi.
+  //   2. Daha onemlisi: Turkce quizin sorulari Turkce kullanicinin
+  //      onceliklerine gore kuruluyor. Ayni sorulari cevirip Ingilizce rapora
+  //      vermek, Ingilizce sayfaya BASKA BIRININ oncelikleriyle yazilmis bir
+  //      analiz koymak demekti.
+  //
+  //  SIMDI: iki dil BAGIMSIZ. Once Turkce quiz + Turkce rapor, sonra
+  //  Ingilizce quiz (bastan uretilir) + Ingilizce rapor. Iki ayri varyant.
+  function progAdimlari(lang) {
+    var ad = lang === 'tr' ? 'Türkçe' : 'İngilizce';
+    return [
+      [lang + '-research', ad + ' · web araştırması'],
+      [lang + '-report', ad + ' · rapor'],
+    ];
+  }
+  var PROG_SON = [
+    ['meta', 'Yayın metası ve SSS (TR + EN)'],
     ['save', 'Taslak olarak kaydediliyor'],
   ];
 
   function renderProgress(durum, hata) {
     var b = $('anNewBody');
     if (!b) return;
+    var lang = _run ? _run.lang : 'tr';
+    var liste = progAdimlari(lang).concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
     b.innerHTML = adimlar(2)
-      + '<div class="an-card"><h3>3 · Rapor üretiliyor · ' + esc(runKonu(_run)) + '</h3>'
+      + '<div class="an-card"><h3>3 · ' + (lang === 'tr' ? 'Türkçe' : 'İngilizce')
+      + ' rapor üretiliyor · ' + esc(runKonu(_run)) + '</h3>'
       + '<div class="an-prog">'
-      + PROG.map(function (p) {
+      + liste.map(function (p) {
         var st = durum[p[0]] || '';
         var ic = st === 'done' ? '✓' : st === 'run' ? '◐' : st === 'fail' ? '✕' : '·';
         return '<div class="' + (st === 'run' ? 'on' : st === 'done' ? 'done' : st === 'fail' ? 'fail' : '') + '">'
@@ -649,14 +692,22 @@
     return QorAiRun.runLinkReport({ bases: r.bases, lang: lang, answers: answers, onStage: onStage });
   }
 
+  // Kaynak turune gore quiz — ilk adimda da, ikinci dilde de ayni yol.
+  function quizUret(r, lang) {
+    if (r.kind === 'product') return QorAiRun.generateQuiz(r.product, lang);
+    if (r.kind === 'subscription') return QorAiRun.subscriptionQuiz(r.names, lang);
+    return QorAiRun.linkQuiz(r.bases, lang);
+  }
+
   // Uretilen rapordan YAYIN KAYDI. Urun analizinde katalog kaydi var, digerlerinde
   // yok — konu adlari `subjectNames`e yaziliyor (site oradan okuyor).
-  function kayitKur(r, out, answers) {
+  function kayitKur(r) {
     var ortak = {
       kind: r.kind,
-      report_tr: out.tr,
-      report_en: out.en,
-      quiz: answers,
+      report_tr: r.out.tr,
+      report_en: r.out.en,
+      // Iki dilin quizi AYRI; kayit ikisini de tutar.
+      quiz: { tr: r.cevaplar.tr || [], en: r.cevaplar.en || [] },
       sourceRef: '',
       status: 'draft',
       author: 'Qor AI',
@@ -692,47 +743,48 @@
   async function analysesRunReport() {
     if (!_run) return;
     var r = _run;
+    var lang = r.lang;
     var durum = {};
     renderProgress(durum);
     var answers = r.questions.map(function (q, i) {
       return { question: q.text, answer: r.answers[i] };
     }).filter(function (a) { return a.answer != null; });
+    r.cevaplar[lang] = answers;
 
     function mark(key, st) { durum[key] = st; renderProgress(durum); }
 
     try {
-      var similar = r.kind === 'product' ? await QorAiRun.similarProducts(r.product, 8) : [];
-      var out = {};
-      // Quiz Turkce yanitlandi. Her dil KENDI dilindeki cevaplarla rapor
-      // uretir; ceviri basarisiz olursa orijinal cevaplarla devam eder.
-      var cevaplar = { tr: answers, en: null };
-      for (var li = 0; li < LANGS.length; li++) {
-        var lang = LANGS[li][0];
-        if (!cevaplar[lang]) {
-          mark('translate', 'run');
-          cevaplar[lang] = await QorAiRun.translateQuizAnswers(answers, lang);
-          mark('translate', 'done');
-        }
-        var res = await raporUret(r, lang, cevaplar[lang], similar, (function (l) {
-          return function (stage) {
-            if (stage === 'research') mark(l + '-research', 'run');
-            if (stage === 'report') { mark(l + '-research', 'done'); mark(l + '-report', 'run'); }
-          };
-        }(lang)));
-        mark(lang + '-research', 'done');
-        mark(lang + '-report', 'done');
-        out[lang] = res.data;
+      if (r.kind === 'product' && !r.similar) r.similar = await QorAiRun.similarProducts(r.product, 8);
+      var res = await raporUret(r, lang, answers, r.similar || [], function (stage) {
+        if (stage === 'research') mark(lang + '-research', 'run');
+        if (stage === 'report') { mark(lang + '-research', 'done'); mark(lang + '-report', 'run'); }
+      });
+      mark(lang + '-research', 'done');
+      mark(lang + '-report', 'done');
+      r.out[lang] = res.data;
+
+      // TURKCE BITTI -> INGILIZCE QUIZ. Sorular BASTAN uretilir; ceviri degil.
+      if (lang === 'tr') {
+        mark('next-quiz', 'run');
+        var q = await quizUret(r, 'en');
+        if (!q.length) throw new Error('İngilizce quiz üretilemedi');
+        mark('next-quiz', 'done');
+        r.lang = 'en';
+        r.questions = q;
+        r.answers = [];
+        renderQuiz();
+        return;
       }
 
       mark('meta', 'run');
-      var meta = await metaUret(runKonu(r), r.kind, out.tr);
+      var meta = await metaUret(runKonu(r), r.kind, r.out.tr);
       mark('meta', 'done');
 
-      _editing = kayitKur(r, out, answers);
+      _editing = kayitKur(r);
       metaYaz(_editing, meta);
       // TASLAK OLARAK HEMEN KAYDET. Onizleme sitedeki sayfanin kendisi ve o
       // sayfa kaydi `?id=` ile cekiyor — kayit yoksa onizleyecek bir sey de
-      // yok. Ayrica 6 AI cagrisinin sonucu sekme kazara kapanirsa kaybolmasin.
+      // yok. Ayrica bu kadar cagrinin sonucu sekme kazara kapanirsa kaybolmasin.
       mark('save', 'run');
       await kaydet('draft');
       mark('save', 'done');

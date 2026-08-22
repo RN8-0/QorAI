@@ -270,6 +270,10 @@ async function runProductReport(o) {
   } catch (_) { research = ''; }
 
   stage('report', lang);
+  // 16384 jeton: 8192 DeepSeek'in siniriydi ve DeepSeek'e giden istek zaten
+  // ayrica kirpiliyor, yani dusuk tavan yalnizca Gemini'yi bogazliyordu.
+  // Olculdu (2026-08-22, iPhone 16 Pro Max): 26.2k karakterlik rapor gecti,
+  // 28.9k karakterlik olan priceForecast'in ortasinda KESILDI ve ayristirilamadi.
   var prompt = P.buildFullPrompt(product, lang, {}, {
     quizAnswers: answers,
     research: research,
@@ -279,7 +283,7 @@ async function runProductReport(o) {
   var txt = await askRaw({
     system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.',
     user: prompt,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 16384,
     temperature: 0.45,
     jsonMode: true,
   });
@@ -291,7 +295,7 @@ async function runProductReport(o) {
       var retry = await askRaw({
         system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. This is a freshness-critical retry; remove stale launch/availability assumptions. Every user-facing text field must be in the requested language.',
         user: P.withFreshnessRetryInstruction(prompt, [P.displayProductName(product, lang)]),
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16384,
         temperature: 0.25,
         jsonMode: true,
       });
@@ -397,40 +401,6 @@ async function runSubscriptionReport(o) {
 }
 
 /**
- * Quiz cevaplarini hedef dile cevirir.
- *
- * Adminde quiz BIR KEZ yanitlanip IKI rapor uretiliyor. Cevirmezsek Ingilizce
- * rapor Turkce cevap dizesini oldugu gibi tasiyor (olculdu — bkz. prompt
- * dosyasindaki not). Ceviri basarisiz olursa ORIJINAL cevaplarla devam edilir:
- * karisik dilli bir rapor, hic rapor olmamasindan iyidir.
- */
-async function translateQuizAnswers(answers, targetLang) {
-  var pairs = (answers || []).map(function (a) {
-    return { question: String(a.question || ''), answer: String(a.answer == null ? '' : a.answer) };
-  });
-  if (!pairs.length) return answers || [];
-  try {
-    var res = await askJson({
-      system: 'You are a precise translator. Return only valid JSON.',
-      user: P.buildQuizTranslationPrompt(pairs, targetLang),
-      maxOutputTokens: 2048,
-      temperature: 0.2,
-    });
-    var items = Array.isArray(res.items) ? res.items : [];
-    // Sayi tutmuyorsa ESLESTIRME YAPMA: yanlis soruya yanlis cevap yazmak,
-    // cevirmemekten kotu.
-    if (items.length !== pairs.length) return answers;
-    return pairs.map(function (p0, i) {
-      var it = items[i] || {};
-      return {
-        question: String(it.question || '').trim() || p0.question,
-        answer: String(it.answer || '').trim() || p0.answer,
-      };
-    });
-  } catch (_) { return answers; }
-}
-
-/**
  * Yayin meta'si — iki dil TEK cagrida, yasakli meta listesiyle.
  *
  * `metaTitle` 60 KARAKTERI ASARSA BIR KEZ YENIDEN ISTENIR. Prompt zaten sinir
@@ -488,7 +458,6 @@ async function publishMeta(o) {
 
 root.QorAiRun = {
   askRaw: askRaw,
-  translateQuizAnswers: translateQuizAnswers,
   askJson: askJson,
   askGrounded: askGrounded,
   searchProducts: searchProducts,

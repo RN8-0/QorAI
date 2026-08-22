@@ -25,6 +25,7 @@ import {
   DecisionBadge,
   DistributionBar,
   FactorList,
+  ForumFindings,
   HeatMatrix,
   ProConList,
   QuizImpact,
@@ -105,6 +106,12 @@ function serviceSections(s, L) {
   const critical = list(s.criticalPoints);
   const themes = list(s.communityThemes);
   const cancelReasons = bullets(s.cancelReasons);
+  // Forum bulgulari: `cons` plan sayfasindan okunabilen takas, bunlar aylar
+  // sonra cikan ve TEKRAR EDEN sorun. Ayni listeyi iki kez basmamak icin ayri.
+  // bullets() KULLANILMIYOR: {title, detail} disini dusuruyor ve kronik
+  // sorunun `frequency` rozeti kayboluyordu.
+  const loved = s.lovedFeatures;
+  const chronic = s.chronicIssues;
   const features = list(s.features);
   const sentiment = normalizeSentiment(s.sentiment, score);
   const dist = factorDistribution(factors);
@@ -130,6 +137,7 @@ function serviceSections(s, L) {
       />
     ) : null,
     critical: critical.length ? <CriticalPoints items={critical} L={L} /> : null,
+    forum: <ForumFindings loved={loved} chronic={chronic} L={L} />,
     forwho: (s.bestFor || s.notFor) ? (
       <div className="subs-forwho">
         {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun')}:</b> {s.bestFor}</p>}
@@ -173,7 +181,7 @@ function serviceSections(s, L) {
 
 const SECTION_ORDER = [
   'explanation', 'charts', 'factors', 'proscons', 'critical',
-  'forwho', 'themes', 'community', 'cancel', 'extras',
+  'forwho', 'themes', 'forum', 'community', 'cancel', 'extras',
 ];
 
 function ServiceHeader({ s, isWinner, L }) {

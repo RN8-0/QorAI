@@ -94,14 +94,23 @@ EN rapor → meta+SSS (iki dil tek çağrı). Sıra ve tazelik onarımı sitedek
 kaydedilir** (önizleme kaydı `?id=` ile çekiyor, ayrıca 6 çağrılık iş sekme
 kapanınca kaybolmasın).
 
-**QUIZ CEVABI ÇEVİRİSİ — neden var:** sitede quiz kullanıcının dilinde üretilip
+**İKİ DİL = İKİ AYRI VARYANT (2026-08-22, ikinci düzeltme).** Önce Türkçe quiz
+→ Türkçe rapor, sonra **baştan üretilen İngilizce quiz** → İngilizce rapor.
+Çeviri adımı kaldırıldı. Neden: Türkçe quizin soruları Türkçe okuyucunun
+önceliklerine göre kuruluyor; onları çevirip İngilizce rapora vermek, İngilizce
+sayfaya *başkasının* öncelikleriyle yazılmış bir analiz koymak demekti.
+
+<details><summary>Kaldırılan çeviri adımının hikâyesi (kayıt için)</summary>
+
+**QUIZ CEVABI ÇEVİRİSİ — neden vardı:** sitede quiz kullanıcının dilinde üretilip
 rapor aynı dilde yazılır, uyumsuzluk olmaz. Adminde quiz BİR KEZ (Türkçe)
 yanıtlanıp İKİ rapor üretiliyor ve aynı Türkçe cevap dizesi İngilizce raporun
 `quizInsights[].answer` alanına olduğu gibi kopyalanıyordu — canlı sayfada
 "HOW YOUR ANSWERS SHAPED THIS" başlığının altında Türkçe cümleler görünüyordu
 (ölçüldü, 6/6 cevap). Prompt'u sertleştirmek çözmez; model kullanıcının
-cevabını ALINTI sayıp aynen yazıyor. Rapordan önce çeviriliyor
-(`buildQuizTranslationPrompt`).
+cevabını ALINTI sayıp aynen yazıyor. Rapordan önce çeviriliyordu. Artık gerek
+yok: her dil kendi quizini kendi dilinde üretiyor.
+</details>
 
 ### Ekran: düzenleme yok, önizleme var
 Rapor da başlık/özet/meta/SSS de AI üretiyor ve hepsi SEO'ya göre kuruluyor —
@@ -166,6 +175,34 @@ Son ikisi **tembel** yüklenir. `SubscriptionReportView` bu iş için
 **TUZAK:** `AiReportView` CSS'ini bilerek import etmez (paket boyutu — o dosyadaki
 nota bak). `la-*` stillerini kullanan her SAYFA `LinkAnalysis.css`'i kendisi import
 etmek zorunda. İlk sürümde bu unutulmuştu ve rapor STİLSİZ çıkıyordu.
+
+### Forum bulguları: kronik sorunlar + en sevilenler
+Rapor eskiden **aynı listeyi iki kez** basıyordu: "sana uygun / dikkat et"
+(quiz'e göre) ve hemen ardından "kullanıcıların sevdiği / şikâyeti" — ikisi de
+ürünün özelliklerinden türetildiği için neredeyse birebir aynıydı.
+
+İkinci blok artık başka bir soruyu yanıtlıyor: **spec sayfasından okunamayan**
+şeyi. `community.chronicIssues` sahiplik sonrası tekrar eden arızalar (belirli
+bir üretim partisi, geri gelen firmware hatası, garanti deneyimi) ve
+`community.lovedFeatures` sahiplerin kendiliğinden öne çıkardığı yanlar.
+Kronik sorunlarda `frequency` rozeti var (yaygın / sık / ara sıra).
+
+**SINIR İKİ TARAFA DA YAZILI.** Tek yönlü kural yetmedi — ölçüldü
+(iPhone 16 Pro Max, 3 koşu): kronik sorunlar temizdi ama *zayıf yanlar*
+listesine "yazılımsal hatalar ve aşırı ısınma" sızdı. Kural hem
+`community.chronicIssues` hem `product.weaknesses` şema satırına yazılınca
+3/3 temiz çıktı. Araştırma prompt'u da kronik sorunu **ayrıca** arıyor; genel
+"yorumları tara" talimatı spec sayfasından okunabilen eksileri getiriyordu.
+
+**TUZAK:** `bullets()` normalizer'ı `{title, detail}` dışını düşürüyor ve
+`frequency` rozeti kayboluyordu. `ForumFindings` ham diziyi alır, kendi
+normalizasyonunu yapar.
+
+**Çıktı tavanı 16384'e çıkarıldı.** 8192 DeepSeek'in sınırıydı ve DeepSeek'e
+giden istek zaten ayrıca kırpılıyor — düşük tavan yalnızca Gemini'yi
+boğazlıyordu. Ölçüldü: 26,2k karakterlik rapor geçti, 28,9k karakterlik olan
+`priceForecast`'in ortasında kesilip ayrıştırılamadı. Kronik sorunlar bloğu
+raporu o sınırın üstüne çıkardı.
 
 ### Quiz künyesi — raporun ÜSTÜNDE
 Okuyucu quizi çözmedi; "92/100 uyum" kimin uyumu olduğu söylenmeden anlamsız.

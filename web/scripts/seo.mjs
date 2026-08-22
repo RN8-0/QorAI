@@ -195,6 +195,8 @@ const ANALIZ_LISTE_TEXT = {
     // hangi turu okudugunu anlamiyor.
     kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
     quizTop: 'Answers this analysis was built on',
+    loved: 'What owners keep praising', chronic: 'Chronic problems',
+    freqWidespread: 'widespread', freqCommon: 'common', freqOccasional: 'occasional',
     services: 'Services compared', winner: 'Best match', decisive: 'What actually decides it',
     fit: 'Overall fit', featuresSec: 'Features and content', ux: 'Experience',
     risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
@@ -221,6 +223,8 @@ const ANALIZ_LISTE_TEXT = {
     verdict: 'Sonuç',
     kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
     quizTop: 'Bu analiz şu cevaplara göre yapıldı',
+    loved: 'Sahiplerin en çok sevdiği', chronic: 'Kronik sorunlar',
+    freqWidespread: 'yaygın', freqCommon: 'sık', freqOccasional: 'ara sıra',
     services: 'Karşılaştırılan servisler', winner: 'En iyi eşleşme', decisive: 'Kararı belirleyen farklar',
     fit: 'Genel uyum', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
     risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
@@ -369,9 +373,9 @@ function anUrunGovde(rapor, tx) {
     g += anH2(tx.community);
     if (Number(c.satisfaction)) g += anSayi(`${tx.satisfaction}: ${Number(c.satisfaction)}/100`);
     if (c.summary) g += anPar(c.summary);
-    g += anListe(c.pros);
-    g += anListe(c.cons);
   }
+  // Artı/eksi YUKARIDA bir kez yazildi; burasi forum bulgulari.
+  g += anForumBulgulari(c.lovedFeatures || c.pros, c.chronicIssues || c.cons, tx);
 
   const alt = anDizi(rapor.alternatives).filter((x) => x && x.name);
   if (alt.length) {
@@ -418,9 +422,8 @@ function anLinkGovde(u, tx) {
     g += anH2(tx.community);
     if (Number(u.communityScore)) g += anSayi(`${tx.satisfaction}: ${Number(u.communityScore)}/100`);
     if (u.communityAnalysis) g += anPar(u.communityAnalysis);
-    g += anListe(u.praisePoints);
-    g += anListe(u.complaintPoints);
   }
+  g += anForumBulgulari(u.lovedFeatures || u.praisePoints, u.chronicIssues || u.complaintPoints, tx);
 
   g += anFiyat(u.priceOutlook, tx);
 
@@ -498,6 +501,9 @@ function anAbonelikGovde(r, tx) {
     if (s.summary) g += anPar(s.summary);
     if (anDizi(s.pros).length) { g += anH3(tx.pros); g += anListe(s.pros); }
     if (anDizi(s.cons).length) { g += anH3(tx.cons); g += anListe(s.cons); }
+    // Forum bulgulari: yukaridaki artı/eksi plan sayfasindan okunabilen
+    // takaslar, bunlar aylar sonra cikan ve tekrar eden sorunlar.
+    g += anForumBulgulari(s.lovedFeatures, s.chronicIssues, tx);
   });
 
   const d = r.detailed || {};
@@ -511,6 +517,31 @@ function anAbonelikGovde(r, tx) {
 // Quiz kunyesi — "bu analiz su varsayimlarla yapildi". Rapordaki
 // `anQuizEtkisi` blogundan FARKLI: orada her cevabin puana etkisi anlatiliyor,
 // burada yalnizca hangi sorulara ne cevap verildigi.
+// Forum bulgulari — sahiplerin sevdigi + KRONIK sorunlar. Rapordaki artı/eksi
+// listesinden AYRI: orada urunun ozelliklerinden turetilen takaslar var,
+// burada spec sayfasindan okunamayan, sahiplik sonrasi tekrar eden sorunlar.
+function anForumBulgulari(loved, chronic, tx) {
+  const dizi = (v) => (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '', frequency: '' }
+      : { title: String(x?.title || x?.label || ''), detail: String(x?.detail || ''), frequency: String(x?.frequency || '') }))
+    .filter((x) => x.title || x.detail);
+  const iyi = dizi(loved);
+  const kotu = dizi(chronic);
+  if (!iyi.length && !kotu.length) return '';
+  const siklik = { widespread: tx.freqWidespread, common: tx.freqCommon, occasional: tx.freqOccasional };
+  const blok = (baslik, items, renk) => (items.length
+    ? anH2(baslik) + `<ul style="margin:0 0 16px;padding-left:20px">${items.map((x) => {
+      const f = siklik[x.frequency]
+        ? ` <span style="font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:${renk};text-transform:uppercase">${esc(siklik[x.frequency])}</span>`
+        : '';
+      return `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(x.title)}</strong>${f}`
+        + (x.detail ? `<br><span style="color:#475569">${esc(x.detail)}</span>` : '') + `</li>`;
+    }).join('')}</ul>`
+    : '');
+  return blok(tx.loved, iyi, '#047857') + blok(tx.chronic, kotu, '#b91c1c');
+}
+
 function anQuizKunye(quiz, tx) {
   if (!quiz.length) return '';
   return `<section style="border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;margin:0 0 22px">`
@@ -2185,8 +2216,8 @@ const STATIC_ROUTES = [
             sameAs: [
               'https://play.google.com/store/apps/details?id=com.compair.app',
               'https://www.tiktok.com/@qorai.net',
-              'https://www.youtube.com/@qoraiweb',
-              'https://www.instagram.com/qoraiweb/',
+              'https://www.youtube.com/@qorainet',
+              'https://www.instagram.com/qorainet/',
             ],
           },
           {

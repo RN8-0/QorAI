@@ -8,7 +8,6 @@ import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel, CURRENCY_BY_COUNTRY, countryDisplayName } from '../lib/format';
 import { categoryPath } from '../lib/routes';
 import { useGeoCountry, setGeoCountry } from '../lib/geo';
-import PlayBadge from './PlayBadge.jsx';
 import HeaderSearch from './HeaderSearch.jsx';
 import './Header.css';
 
@@ -102,6 +101,11 @@ export default function Header() {
               arama artik HER sayfada erisilebilir (rakiplerde de ust barda). */}
           <HeaderSearch />
 
+          {/* Menu ORTADA: nav'in iki yaninda esnek bosluk var. Onceden tek
+              `.grow` vardi ve o da nav'dan SONRA geliyordu, yani menu sola
+              yaslaniyordu. Iki bosluk arayi esit boler. */}
+          <div className="grow" />
+
           <nav className="nav" onMouseLeave={closeCatSoon}>
             <NavLink to="/" end onMouseEnter={closeCatNow}
               className={({ isActive }) => (isActive ? 'active' : '')}>
@@ -166,11 +170,6 @@ export default function Header() {
               ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6 4.2 4.2M19.8 19.8l-1.4-1.4M18.4 5.6l1.4-1.4M4.2 19.8l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /></svg>
               : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" /></svg>}
           </button>
-
-          {!isPremiumRoute && (
-            <PlayBadge size="sm" className="desk-only" iconOnly
-              getItOn={L('GET IT ON', 'İNDİR')} label={t('header.googlePlay')} />
-          )}
 
           {user ? (
             <div className="hd-user">

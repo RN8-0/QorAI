@@ -560,7 +560,11 @@ function buildProductResearchPrompt(p, lang, context = {}) {
     `Category: ${category || '-'}\nTech score in catalog: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\n\n` +
     `MARKET STATUS CONTEXT:\n${availabilityContextForProduct(p)}\n\n` +
     `${freshnessRules()}\n${languageGate(lang)}\n\n` +
-    'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. ' +
+    'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. '
+    // KRONIK SORUN AYRI BIR ARAMA. Genel "yorumlari tara" talimati spec
+    // sayfasindan da okunabilen eksileri getiriyor; sahiplik sonrasi tekrar
+    // eden arizalar ancak ozellikle aranirsa cikiyor.
+    + 'SEARCH SEPARATELY FOR CHRONIC PROBLEMS: failures owners report after months of use, threads about a defect or a bad batch, warranty/RMA experiences, a firmware or driver update that broke something and whether it was fixed. For each note what fails, how far into ownership it appears, whether a workaround exists, and how widespread it is. Also note what owners bring up unprompted as the best part. If there is genuinely no recurring problem, say so — that is a real finding. ' +
     'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
     `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
@@ -616,7 +620,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 detailed sentences with evidence"}],\n' +
     '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n' +
     '    "strengths": ["6 detailed strengths grounded in specs"],\n' +
-    '    "weaknesses": ["5 detailed weaknesses or caveats"],\n' +
+    '    "weaknesses": ["5 detailed drawbacks a buyer can judge BEFORE paying — size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in. Failures, crashes, overheating, defects and support problems do NOT belong here; they go in community.chronicIssues"],\n' +
     '    "reliabilityNotes": [{"title": "durability/support/warranty note", "detail": "1-2 sentences"}],\n' +
     '    "bestFor": "1-2 sentences describing the buyer this is perfect for",\n' +
     '    "notFor": "1-2 sentences describing who should skip it",\n' +
@@ -627,8 +631,8 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},\n' +
     '    "themes": [{"label": "recurring discussion topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}],\n' +
     '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums, and specialist reviews; include uncertainty where needed",\n' +
-    '    "pros": ["6 recurring positive themes"],\n' +
-    '    "cons": ["5 recurring negative themes"],\n' +
+    '    "lovedFeatures": [{"title": "what owners single out as the best part", "detail": "1-2 sentences on WHY it keeps coming up"}],\n' +
+    '    "chronicIssues": [{"title": "recurring, well-documented problem", "detail": "1-2 sentences: what fails, when it shows up, whether there is a fix or workaround", "frequency": "widespread|common|occasional"}],\n' +
     '    "sources": ["Reddit", "<source type in requested language>", "<source type in requested language>"],\n' +
     '    "verificationNotes": ["what is directly grounded", "what remains uncertain"]\n' +
     '  },\n' +
@@ -640,6 +644,17 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     'Rules:\n' +
     '- community.sentimentBreakdown must be integer percentages summing to ~100, realistic (never all-positive) and consistent with community.summary.\n' +
     '- community.themes must include 5-6 recurring discussion topics with varied sentiment (never all positive).\n' +
+    // KRONIK SORUN != EKSI. Eksiler urunun ozelliklerinden cikarilabilir
+    // ("pahali", "agir"); kronik sorun ancak SAHIPLIK sonrasi ortaya cikar ve
+    // forumlarda TEKRAR EDER. Ikisini ayni sey saymak raporda ayni listeyi
+    // iki kez basiyordu.
+    '- community.chronicIssues: 3-5 problems owners keep reporting AFTER living with it — failures that appear over months, a batch with a known defect, a firmware/driver issue that keeps returning, support that keeps disappointing. NOT a restatement of product.weaknesses: a weakness is visible on the spec sheet, a chronic issue only shows up in ownership. If research covers none, return an empty array and say so in verificationNotes — do NOT invent one and do NOT downgrade a spec-sheet drawback into this list.\n' +
+    '- community.lovedFeatures: 3-5 things owners single out unprompted as the best part. Same rule: what OWNERS keep saying, not what the spec sheet implies.\n' +
+    // TEK YONLU KURAL YETMIYOR. Olculdu (iPhone 16 Pro Max, 2026-08-22):
+    // kronik sorunlar temizdi ama zayif yanlar listesine "yazilimsal hatalar
+    // ve asiri isinma" sizmisti — ayni sey iki bolumde. Sinir IKI TARAFA da
+    // yazilmali.
+    '- product.weaknesses must stay on the DECISION side: size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in — things a buyer can judge before paying. Do NOT list failures, crashes, overheating, defects or support problems there; those belong to community.chronicIssues and repeating them makes the report say the same thing twice.\n' +
     '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, missing accessories, service coverage) — not restated specs.\n' +
     '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product. Never invent an answer that was not given.\n' +
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
@@ -697,7 +712,7 @@ function buildComparePrompt(products, lang, profile = {}, context = {}) {
     '{\n' +
     '  "type": "compare_full_report",\n' +
     '  "products": [\n' +
-    `    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "decision": "buy|consider|skip", "confidence": <0-100>, "headline": "one decisive sentence", "matchComment": "${v.matchSent} detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "criticalPoints": [{"title": "warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}], "quizInsights": [{"topic": "topic", "answer": "user answer", "impact": <-100..100>, "note": "1-2 sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "${v.analysisPara} substantial paragraphs, each 45-85 words", "pros": ["${v.prosN} detailed pros"], "cons": ["${v.consN} detailed cons"], "bestFor": "1-2 sentences", "notFor": "1-2 sentences", "community": {"satisfaction": <0-100>, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "${v.commPara} substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "${v.fcPara} substantial paragraphs"}}\n` +
+    `    {"name": "exact product name", "imageUrl": "copy from product context", "url": "copy from product context", "matchScore": <0-100>, "decision": "buy|consider|skip", "confidence": <0-100>, "headline": "one decisive sentence", "matchComment": "${v.matchSent} detailed sentences", "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}], "criticalPoints": [{"title": "warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}], "quizInsights": [{"topic": "topic", "answer": "user answer", "impact": <-100..100>, "note": "1-2 sentences"}], "featureMatches": [{"label": "feature/spec", "productValue": "value", "userNeed": "need", "score": <0-100>, "comment": "2 evidence-based sentences"}], "analysis": "${v.analysisPara} substantial paragraphs, each 45-85 words", "pros": ["${v.prosN} detailed pros"], "cons": ["${v.consN} detailed cons"], "bestFor": "1-2 sentences", "notFor": "1-2 sentences", "community": {"satisfaction": <0-100>, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "${v.commPara} substantial paragraphs", "lovedFeatures": [{"title": "what owners single out", "detail": "1 sentence"}], "chronicIssues": [{"title": "recurring ownership problem", "detail": "1 sentence", "frequency": "widespread|common|occasional"}], "sources": ["source types"]}, "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "${v.fcPara} substantial paragraphs"}}\n` +
     '  ],\n' +
     `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
@@ -743,7 +758,7 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     '  "bestFor": "1-2 sentences",\n' +
     '  "notFor": "1-2 sentences",\n' +
     '  "overallVerdict": "2-3 sentence closing verdict for THIS product",\n' +
-    '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "pros": ["themes"], "cons": ["themes"], "sources": ["source types"]},\n' +
+    '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "lovedFeatures": [{"title": "what owners single out", "detail": "1 sentence"}], "chronicIssues": [{"title": "recurring ownership problem", "detail": "1 sentence", "frequency": "widespread|common|occasional"}], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
     'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Include 4-6 criticalPoints, 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product), and 4-6 community.themes with varied sentiment.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
@@ -854,35 +869,6 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
   );
 }
 
-/* ── 10) QUIZ CEVAPLARININ CEVIRISI ────────────────────────────────────────
-   ADMIN'E OZGU BIR SORUN. Sitede quiz kullanicinin dilinde uretilir ve rapor
-   AYNI dilde yazilir, uyumsuzluk olmaz. Adminde ise quiz BIR KEZ (Turkce)
-   yanitlanip IKI rapor uretiliyor; ayni Turkce cevap dizesi Ingilizce raporun
-   `quizInsights[].answer` alanina OLDUGU GIBI kopyalaniyordu.
-
-   Olculdu (2026-08-22, samsung-galaxy-s23-ultra-1tb):
-     report_en.quizInsights[0].topic  = "Battery Life Expectation"   (EN)
-     report_en.quizInsights[0].answer = "Sabah baslayip aksam ..."   (TR)
-   Sayfada "HOW YOUR ANSWERS SHAPED THIS" basliginin altinda Turkce cumleler
-   goruunuyordu.
-
-   Cozum prompt'u sertlestirmek DEGIL (model kullanicinin cevabini ALINTI
-   sayip aynen yaziyor) — cevaplari rapordan ONCE hedef dile cevirmek. */
-function buildQuizTranslationPrompt(pairs, targetLang) {
-  return (
-    `Translate the following product-quiz questions and the answers the user picked into ${langName(targetLang)}.\n\n` +
-    'Return ONLY one valid JSON object with this exact structure:\n' +
-    '{"items": [{"question": "", "answer": ""}]}\n\n' +
-    'Rules:\n' +
-    `- One entry per input item, IN THE SAME ORDER. Exactly ${pairs.length} items.\n` +
-    '- Translate meaning, not words. The answer must read like something a person would actually say in that language.\n' +
-    '- Keep official brand names, product/model names and technical standards (RTX, USB-C, Wi-Fi, IP68) as-is.\n' +
-    '- Keep any emoji that appears in the question.\n' +
-    '- Do not add, drop, merge or reorder items. Do not answer the questions yourself.\n\n' +
-    `INPUT:\n${JSON.stringify(pairs, null, 2)}`
-  );
-}
-
 /* ── Disari acilan yuzey ─────────────────────────────────────────────────
    Web tarafi bunlari web/src/lib/aiPrompts.js uzerinden, admin dogrudan
    `QorAiPrompts.` ile kullanir. */
@@ -908,7 +894,7 @@ root.QorAiPrompts = {
   buildFullPrompt, buildComparePrompt, buildCompareProductPrompt,
   buildCompareVerdictPrompt,
   // yayin metasi
-  groundedResearchSystemPrompt, buildPublishMetaPrompt, buildQuizTranslationPrompt,
+  groundedResearchSystemPrompt, buildPublishMetaPrompt,
   // ayristirma
   parseAiJson,
 };

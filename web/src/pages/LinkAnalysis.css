@@ -1184,3 +1184,41 @@
 .la-failed p { margin-top: 8px; font-size: 13.5px; line-height: 1.6; color: var(--text2); }
 .la-failed-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
 [data-theme='dark'] .la-failed-icon { color: #fbbf24; }
+
+/* ── Forum bulgulari: sevilen ozellikler + KRONIK sorunlar ─────────────
+ * Ayri bir blok, cunku ayri bir soruyu yanitliyor. Artı/eksi listesi urunun
+ * ozelliklerinden turer; kronik sorun ancak SAHIPLIK sonrasi ortaya cikar ve
+ * yalnizca forumlarda gorunur. Ikisi bir arada basildiginda rapor ayni
+ * maddeleri iki kez yaziyordu. */
+.aic-forum {
+  display: grid; gap: 14px; margin: 16px 0;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.aic-forum-col {
+  border: 1px solid var(--border); border-radius: var(--r-md, 14px);
+  background: var(--surface); padding: 15px 17px;
+}
+.aic-forum-col.loved { border-left: 3px solid var(--score-excellent); }
+.aic-forum-col.chronic { border-left: 3px solid var(--score-poor); }
+.aic-forum-col h4 {
+  margin: 0 0 11px; font-size: 13.5px; font-weight: 700; letter-spacing: -.01em;
+}
+.aic-forum-col.loved h4 { color: var(--ink-green); }
+.aic-forum-col.chronic h4 { color: var(--ink-red); }
+.aic-forum-col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+.aic-forum-col li { display: grid; gap: 3px; }
+.aic-forum-col b {
+  font-size: 14px; font-weight: 650; line-height: 1.45; color: var(--text);
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+}
+.aic-forum-col span { font-size: 13px; line-height: 1.55; color: var(--text-2); }
+
+/* Yayginlik rozeti — "yaygin" ile "ara sira" ayni agirlikta okunmamali. */
+.aic-freq {
+  font-style: normal; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: var(--r-xs, 6px); white-space: nowrap;
+}
+.aic-freq.widespread { color: var(--ink-red); background: color-mix(in srgb, var(--red) 13%, transparent); }
+.aic-freq.common { color: var(--ink-amber); background: color-mix(in srgb, var(--amber) 15%, transparent); }
+.aic-freq.occasional { color: var(--text-3); background: var(--surface-2); }
