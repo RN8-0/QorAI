@@ -418,7 +418,10 @@ function anLinkGovde(u, tx) {
 
   g += anOzellikTablosu(u.featureMatches, tx);
 
-  if (u.communityAnalysis || anDizi(u.praisePoints).length || anDizi(u.complaintPoints).length) {
+  // Kapi YENI adlara da baksin: eski kayitlar praise/complaint tasiyor,
+  // yeni kayitlar loved/chronic. Ikisi de yoksa baslik yazilmasin.
+  if (u.communityAnalysis || anDizi(u.lovedFeatures).length || anDizi(u.chronicIssues).length
+    || anDizi(u.praisePoints).length || anDizi(u.complaintPoints).length) {
     g += anH2(tx.community);
     if (Number(u.communityScore)) g += anSayi(`${tx.satisfaction}: ${Number(u.communityScore)}/100`);
     if (u.communityAnalysis) g += anPar(u.communityAnalysis);
