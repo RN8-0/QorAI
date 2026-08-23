@@ -29,6 +29,9 @@ import {
 } from '../src/lib/analysisRecord.js';
 // Tekrar agi: ON-RENDER ile SITE ayni modulu kosar (bkz. reportDedupe.js).
 import { dropRestated } from '../src/lib/reportDedupe.js';
+// Urun adi temizligi TEK KAYNAK (admin/js/qor_ai_prompts.js). Web istemcisi de
+// ayni fonksiyonu cagiriyor; on-render ile SPA ayni adi gostermek zorunda.
+import { cleanProductName } from '../src/lib/productNames.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
@@ -2234,8 +2237,16 @@ function localizedName(d, lang) {
     const v = nt && nt[code];
     return v && String(v).trim() ? String(v).trim() : '';
   };
-  if (lang === 'tr') return pick('tr') || String(d?.name || '');
-  return pick('en') || String(d?.name || '');
+  // SATICI SKU KODU BURADA DA TEMIZLENIR. Once yalniz istemci temizliyordu,
+  // yani /product/<slug> ON-RENDER'inda <title> ve <h1> hala
+  // "... Monitor (69D0GACBTK)" diyordu: Google kodlu basligi indeksliyor,
+  // ziyaretci ise temiz adi goruyordu. Ayni ayrisma sinifi bu projede
+  // karsilastirma raporunda da yasandi — on-render ile SPA ayni metni
+  // gostermek ZORUNDA.
+  const ham = lang === 'tr'
+    ? (pick('tr') || String(d?.name || ''))
+    : (pick('en') || String(d?.name || ''));
+  return cleanProductName(ham) || ham;
 }
 
 // ── Static routes ───────────────────────────────────────────────

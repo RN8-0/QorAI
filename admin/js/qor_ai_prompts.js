@@ -65,9 +65,16 @@ const CHIP_FAMILY_RE = /^(?:RTX|GTX|RADEON|RX|ARC|RYZEN|THREADRIPPER|XEON|CORE|I
 
 function looksLikeSku(token) {
   if (!/\d/.test(token)) return false;      // saf harf: model adi olabilir
-  if (!/[A-Z]/.test(token)) return false;   // saf rakam: yil / olcu olabilir
   if (SPEC_UNIT_RE.test(token)) return false;
   if (CHIP_FAMILY_RE.test(token)) return false;
+  if (!/[A-Z]/.test(token)) {
+    // HARFSIZ token. Kisa olani birak — "2026" yil, "1080" cozunurluk olabilir.
+    // Ama AMD'nin parca numarasi harfsiz ve UZUN: `100-100001489`,
+    // `100-000001584`. Ilk surumde "saf rakam = olcu olabilir" diye tamamen
+    // muaf tutuluyordu ve on-render'da 46 islemci sayfasi basligini kodla
+    // birlikte tasiyordu. Dokuz karakter esigi ikisini ayiriyor.
+    return token.replace(/\D/g, '').length >= 9;
+  }
   return true;
 }
 
