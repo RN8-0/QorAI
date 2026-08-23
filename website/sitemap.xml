@@ -66,8 +66,8 @@
   <url><loc>https://qorai.net/tr/category/headphones</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/ip_cameras</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/category/ip_cameras</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/category/keyboards</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/tr/category/keyboards</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/category/keyboards</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/category/keyboards</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/laptop_coolers</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/category/laptop_coolers</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/laptops</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -7216,6 +7216,8 @@
   <url><loc>https://qorai.net/tr/product/trezor-one</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/tangem-2-0</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/tangem-2-0</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/microsoft-surface-pro-flex</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/microsoft-surface-pro-flex</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/huawei-smart-magnetic-matepad-pro-13-2inc</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/huawei-smart-magnetic-matepad-pro-13-2inc</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-ef-dt630</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7334,8 +7336,6 @@
   <url><loc>https://qorai.net/tr/product/logitech-mk370-combo-for-business</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/logitech-pop-icon</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/logitech-pop-icon</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/logitech-mk235-920-007927</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/logitech-mk235-920-007927</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/arcelik-pt1000</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/arcelik-pt1000</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/easythreed-mini</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7440,6 +7440,8 @@
   <url><loc>https://qorai.net/tr/product/nikon-me-w1</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dji-mic-3</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/dji-mic-3</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/dji-mic-mini-2</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/dji-mic-mini-2</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dji-mic-mini</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/dji-mic-mini</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dji-mic-mini-2-kisilik</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7476,6 +7478,8 @@
   <url><loc>https://qorai.net/tr/product/jbl-quantum-streamtalk</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/jbl-quantum-stream-gaming</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/jbl-quantum-stream-gaming</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/jbl-pbm100</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/jbl-pbm100</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/jbl-partybox</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/jbl-partybox</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hyperx-quadcast-2-s</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7490,6 +7494,8 @@
   <url><loc>https://qorai.net/tr/product/razer-seiren-v3-chroma</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/razer-seiren-elite</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/razer-seiren-elite</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/razer-seiren-v2-pro</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/razer-seiren-v2-pro</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/razer-seiren-mini</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/razer-seiren-mini</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/razer-seiren-v2-x</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7550,12 +7556,6 @@
   <url><loc>https://qorai.net/tr/product/sennheiser-e904</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sennheiser-me-4</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/sennheiser-me-4</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/sennheiser-e901</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/sennheiser-e901</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/sennheiser-e965</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/sennheiser-e965</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/sennheiser-e914</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/sennheiser-e914</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/benq-qcast-mirror-qp30</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/benq-qcast-mirror-qp30</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/viewsonic-wpd-900</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>

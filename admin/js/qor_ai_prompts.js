@@ -177,15 +177,15 @@ Derive the equivalent decisive angles for the ACTUAL category in front of you. G
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
 Rules:
-- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
+- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - Questions must be relevant to the product CATEGORY.
 - Ask EXACTLY ${count} questions — no more, no fewer. Spend them on the ${count} highest-signal trade-offs that decide the fit; drop anything lower-signal.
-- Cover real use moments, environment, quality tolerance, ergonomics, ownership risk and long-term value.
+- Cover the axes that actually separate products in this category: the performance headroom the buyer needs, the environment and constraints they operate under, the quality floor they refuse to go below, ergonomics, ownership risk and long-term value.
 - Each question reveals one concrete trade-off (comfort vs durability, speed vs battery, detail vs simplicity, portability vs capacity, privacy vs convenience).
 - HARD RULE — do NOT name the product or brand in the OPTIONS, and mention the product name at most once in the whole quiz (otherwise say "this one" or the category). Options describe behaviors/priorities only, never a brand name.
-- Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority, not a one-word label.
+- Each question has exactly 4 options. Every option is a DISTINCT POSITION on that trade-off, 8-20 words, stating what the buyer prioritises AND what they accept giving up for it. Never a one-word label, never four rewordings of the same stance, and never a lifestyle anecdote. The four options must map to genuinely different products.
 - Vary the situations; do not repeat the same day, time, place, or routine across questions.
-- Do not use markdown, bold markers, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. At most ONE emoji per question and only where it genuinely helps scanning — this is a buying decision, not a chat message.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
@@ -235,16 +235,16 @@ Derive the equivalent decisive angles for the ACTUAL category in front of you. G
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
 Rules:
-- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
+- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
 - Ask EXACTLY ${count} questions — no more, no fewer — the ${count} most decisive trade-offs that determine which product fits best, whether comparing two products or several.
 - Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
 - Each question exposes one real decision trade-off between the options' differing strengths.
 - HARD RULE — NEVER name, write, or hint at any of the compared products or brands in the questions OR in the options. Not even once. The user must NOT be able to tell which option maps to which product. Describe only behaviors, situations and priorities.
-- Each question has exactly 4 options; each option is a short, concrete everyday behavior or priority (no brand names, no model names) that silently maps to a different product's strength.
+- Each question has exactly 4 options. Every option is a DISTINCT POSITION on that trade-off, 8-20 words, stating what the buyer prioritises AND what they accept giving up for it (no brand names, no model names). Each option must silently map to a DIFFERENT product's strength — four rewordings of the same stance make the quiz worthless.
 - Make the four options clearly distinct so the answer is meaningful.
 - Vary the situations; do not repeat the same day, time, place, or routine across questions.
-- Do not use markdown, bold markers, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
+- Do not use markdown, bold markers, quotation marks, or headline-style labels. At most ONE emoji per question and only where it genuinely helps scanning — this is a buying decision, not a chat message.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}
 
@@ -282,14 +282,14 @@ their specific habits, preferences, and expectations.
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene and a different ordering than the most obvious default. Two runs on the same services must not share a question.
 
 Rules:
-- Each question is a vivid everyday-life mini-scene of about 28-45 words (one rich sentence, or two short ones): set a relatable real-life moment with a little concrete detail, then ask. Make it noticeably longer and more descriptive than a one-liner, yet still natural and easy to read — never a dry label and never a dense paragraph.
+- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - Ask EXACTLY ${count} questions — no more, no fewer — the ${count} most decisive ones that determine which service fits best, whether analysing one service or comparing several.
 - Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
 - HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
-- Each question has exactly 4 options. Every option is a short, concrete everyday behavior or priority — NO brand names, NO service names, NO product-specific feature jargon — that silently maps to a different service's strength.
+- Each question has exactly 4 options. Every option is a DISTINCT POSITION on that trade-off, 8-20 words, stating what the subscriber prioritises AND what they accept giving up for it — NO brand names, NO service names, NO product-specific feature jargon. Each option must silently map to a DIFFERENT service's strength.
 - Make the four options clearly distinct so the answer is meaningful, and keep each option short (a few words to one short clause).
 - Vary the situations; do not repeat the same moment, place or time across questions.
-- Do not use markdown, bold, quotation marks, or headline-style labels. Add one or two fitting emojis to each question (matching the scene) so it feels lively and friendly.
+- Do not use markdown, bold, quotation marks, or headline-style labels. At most ONE emoji per question and only where it genuinely helps scanning — this is a buying decision, not a chat message.
 - NEVER ask about budget or brand preference.
 - ALL text must be in ${langName}.
 

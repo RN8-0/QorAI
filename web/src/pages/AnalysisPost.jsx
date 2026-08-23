@@ -72,6 +72,30 @@ export default function AnalysisPost() {
     return () => { live = false; };
   }, [slug, onizlemeId]);
 
+  // ── SAYFA DILI ile RAPOR DILI AYRISAMAZ ────────────────────────────────
+  //
+  // `analysisReport()` istenen dilde rapor yoksa OTEKI dile duser. Bu, raporu
+  // hic gostermemekten iyi olabilir ama sayfa cevresi (basliklar, rozetler,
+  // "Good for you" / "Watch outs") sayfanin DILINDE ciziliyor: sonuc Ingilizce
+  // kabuk + Turkce rapor oluyordu. Canli ornek: /analiz/apple-iphone-17-pro-512gb
+  // — kaydin `report_en`'i YOK, ON-RENDER o adresi hic uretmiyor, ama SPA
+  // rotasi yine de aciliyordu.
+  //
+  // Cozum: o dilde rapor yoksa raporu OLAN dile YONLENDIR. Boylece adres
+  // kumesi on-render'in urettigiyle ayni kalir ve okuyucu tek dilde bir sayfa
+  // gorur. Yonlendirme `replace` cunku geri tusu kirilmamali.
+  const mevcutDiller = a ? analysisRenderLangs(a, SEO_DEFAULT_LOCALE) : [];
+  const dilYok = Boolean(a) && mevcutDiller.length > 0 && !mevcutDiller.includes(lang);
+  const hedefDil = dilYok ? mevcutDiller[0] : lang;
+
+  useEffect(() => {
+    if (!dilYok || onizlemeId) return;
+    // Dil onegi BrowserRouter `basename`'inden geliyor, yani rota degil ADRES
+    // degismeli: tam sayfa gecisi.
+    const onek = hedefDil === SEO_DEFAULT_LOCALE ? '' : `/${hedefDil}`;
+    window.location.replace(`${onek}/analiz/${slug || ''}`);
+  }, [dilYok, hedefDil, slug, onizlemeId]);
+
   const kind = a ? analysisKind(a) : 'product';
   const ham = a ? analysisReport(a, lang) : null;
   const unified = a ? analysisUnified(a, lang) : null;
@@ -143,7 +167,9 @@ export default function AnalysisPost() {
     } : undefined,
   });
 
-  if (durum === 'loading') {
+  // Yonlendirme sirasinda KARISIK sayfayi bir an bile gosterme: efekt adresi
+  // degistirene kadar yukleme durumunda kal.
+  if (durum === 'loading' || dilYok) {
     return (
       <div className="page an-post">
         <div className="container"><p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p></div>

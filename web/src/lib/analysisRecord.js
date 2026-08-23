@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { productReportToUnified } from './reportAdapters.js';
 
-export const ANALYSIS_KINDS = ['product', 'link', 'subscription'];
+export const ANALYSIS_KINDS = ['product', 'compare', 'link', 'subscription'];
 
 /** Turu dondurur; alan bos olan ESKI kayitlar urun analizidir. */
 export function analysisKind(rec) {
@@ -91,6 +91,7 @@ export function analysisSubject(rec, lang) {
 // sayfanin ne oldugunu soylemiyor.
 const KIND_LABEL = {
   product: { en: 'AI Analysis', tr: 'Yapay Zekâ Analizi' },
+  compare: { en: 'AI Comparison', tr: 'Yapay Zekâ Karşılaştırması' },
   link: { en: 'AI Link Analysis', tr: 'Yapay Zekâ Link Analizi' },
   subscription: { en: 'AI Subscription Analysis', tr: 'Yapay Zekâ Abonelik Analizi' },
 };
@@ -103,6 +104,7 @@ function kindLabel(rec, lang) {
 
 const KIND_SHORT = {
   product: { en: 'Product', tr: 'Ürün' },
+  compare: { en: 'Comparison', tr: 'Karşılaştırma' },
   link: { en: 'Link', tr: 'Link' },
   subscription: { en: 'Subscription', tr: 'Abonelik' },
 };

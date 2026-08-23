@@ -250,6 +250,85 @@ async function generateQuiz(product, lang) {
 }
 
 /**
+ * KARSILASTIRMA QUIZI — 2+ urun icin. Tek urun quizinden ayri bir prompt
+ * kullanir (`compareQuizGenerationPrompt`): sorular "hangisi sana uygun"
+ * ekseninde kurulmali, "bu urun sana uygun mu" ekseninde degil.
+ */
+async function generateCompareQuiz(products, lang) {
+  var count = P.compareQuizCount ? P.compareQuizCount(products.length) : 5;
+  var res = await askJson({
+    system: P.compareQuizGenerationPrompt(lang, count),
+    user: JSON.stringify({
+      products: (products || []).map(function (p) {
+        return {
+          name: P.displayProductName(p, lang),
+          brand: p.brand || '',
+          category: p.category || '',
+          techScore: p.techScore || 0,
+        };
+      }),
+      userProfile: {},
+      variationSeed: P.variationSeed(),
+    }),
+    maxOutputTokens: 3072,
+    temperature: 0.95,
+  });
+  return (Array.isArray(res.questions) ? res.questions : [])
+    .map(function (q, i) {
+      return {
+        id: 'q' + i,
+        text: String(q.question || ''),
+        options: Array.isArray(q.options) ? q.options.map(String) : [],
+      };
+    })
+    .filter(function (q) { return q.text && q.options.length >= 2; })
+    .slice(0, count);
+}
+
+/**
+ * TEK DILDE karsilastirma raporu. Urun raporuyla ayni iskelet: once GROUNDED
+ * arastirma, sonra tek JSON cagrisi. Cikti `compare_full_report` seklinde ve
+ * site tarafinda `reportAdapters.js` onu zaten taniyor — yani yayinlanan sayfa
+ * hicbir yeni cizim kodu gerektirmiyor.
+ */
+async function runCompareReport(o) {
+  var products = o.products || [];
+  var lang = o.lang;
+  var answers = o.answers || [];
+  var stage = o.onStage || function () {};
+
+  stage('research', lang);
+  var research = '';
+  try {
+    research = await askGrounded(
+      P.buildCompareResearchPrompt(products, lang, { quizAnswers: answers }),
+      lang, 2048
+    );
+  } catch (_) { research = ''; }
+
+  stage('report', lang);
+  var prompt = P.buildComparePrompt(products, lang, {}, {
+    quizAnswers: answers,
+    research: research,
+  });
+  var txt = await askRaw({
+    system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.',
+    user: prompt,
+    // Karsilastirmada cikti urun sayisiyla buyuyor; tavan urun raporuyla ayni
+    // tutuluyor (bkz. runProductReport: 8192 DeepSeek'in siniriydi ve yalniz
+    // Gemini'yi bogazliyordu).
+    maxOutputTokens: 16384,
+    temperature: 0.45,
+    jsonMode: true,
+  });
+  var data = P.parseAiJson(txt);
+  if (!data || !Array.isArray(data.products) || !data.products.length) {
+    throw new Error('Karsilastirma raporu bos (' + lang + ')');
+  }
+  return { data: data, researched: Boolean(research) };
+}
+
+/**
  * TEK DILDE rapor. Sirasi ve tazelik onarimi sitedeki
  * runProductAnalysisJob() ile birebir ayni.
  */
@@ -465,6 +544,8 @@ root.QorAiRun = {
   similarProducts: similarProducts,
   generateQuiz: generateQuiz,
   runProductReport: runProductReport,
+  generateCompareQuiz: generateCompareQuiz,
+  runCompareReport: runCompareReport,
   analyzeLinks: analyzeLinks,
   linkQuiz: linkQuiz,
   runLinkReport: runLinkReport,

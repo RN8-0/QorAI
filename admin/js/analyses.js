@@ -22,7 +22,7 @@
 (function () {
   var LANGS = [['tr', 'Türkçe'], ['en', 'English']];
   var SITE = 'https://qorai.net';
-  var KIND_LABEL = { product: 'Ürün', link: 'Link', subscription: 'Abonelik' };
+  var KIND_LABEL = { product: 'Ürün', compare: 'Karşılaştırma', link: 'Link', subscription: 'Abonelik' };
   var SAVED_CATEGORY = {
     product: 'product_history',
     link: 'link_history',
@@ -135,6 +135,11 @@
       '.an-img-prev.empty{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3)}',
       '.an-img-prev.bad{opacity:.35}',
       '.an-img-hint{font-size:11px;color:var(--text3);margin:6px 0 0}',
+      /* Karsilastirmada secili urun cipleri. */
+      '.an-chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}',
+      '.an-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);font-size:12.5px;color:var(--text1)}',
+      '.an-chip button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px}',
+      '.an-chip button:hover{color:var(--text1)}',
       '.an-pill{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap}',
       '.an-pill.pub{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
       '.an-pill.draft{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
@@ -346,6 +351,7 @@
   var _uretTur = 'product';
   var URET_TUR = [
     ['product', 'Ürün', 'katalogdan ara'],
+    ['compare', 'Karşılaştırma', '2+ ürün seç'],
     ['link', 'Link', 'ürün linki yapıştır'],
     ['subscription', 'Abonelik', 'servis adlarını yaz'],
   ];
@@ -365,8 +371,129 @@
       + '</div>'
       + '<div id="anKaynak"></div>';
     if (_uretTur === 'product') renderUretAra('');
+    else if (_uretTur === 'compare') { _cmpSecili = []; renderCmpAra(''); }
     else if (_uretTur === 'link') renderLinkGiris();
     else renderAbonelikGiris();
+  }
+
+  // ── Kaynak: KARSILASTIRMA (2+ katalog urunu) ───────────────
+  //
+  // Motor bunu ZATEN destekliyordu (compareQuizGenerationPrompt +
+  // buildComparePrompt + `compare_full_report`), site tarafi da ciziyor
+  // (reportAdapters -> CompareResult). Eksik olan tek sey buradaki secim
+  // ekraniydi, yani karsilastirma analizi URETILEMIYORDU.
+  var _cmpSecili = [];
+  var CMP_MAX = 4;
+
+  function cmpSeciliSerit() {
+    if (!_cmpSecili.length) {
+      return '<p class="an-hint">En az 2 ürün seç. Aynı kategoriden seçmek en anlamlı '
+        + 'karşılaştırmayı verir; farklı kategoriler karşılaştırılabilir ama rapor zayıflar.</p>';
+    }
+    return '<div class="an-chips">'
+      + _cmpSecili.map(function (p, i) {
+        return '<span class="an-chip">' + esc(p.name || '')
+          + '<button onclick="analysesCmpCikar(' + i + ')" title="Çıkar">×</button></span>';
+      }).join('')
+      + '</div>'
+      + (_cmpSecili.length >= 2
+        ? '<button class="btn btn-primary" onclick="analysesCmpBasla()">'
+          + _cmpSecili.length + ' ürünü karşılaştır →</button>'
+        : '<p class="an-hint">Bir ürün daha seç.</p>');
+  }
+
+  function renderCmpAra(q, hits, yukleniyor) {
+    var b = $('anKaynak');
+    if (!b) return;
+    var secili = {};
+    _cmpSecili.forEach(function (p) { secili[p.id] = true; });
+    b.innerHTML = ''
+      + '<div class="an-card">'
+      + '<h3>1 · Karşılaştırılacak ürünler <em>(' + _cmpSecili.length + '/' + CMP_MAX + ')</em></h3>'
+      + cmpSeciliSerit()
+      + '<div class="an-bar" style="margin-top:12px">'
+      + '<input id="anCmpQ" placeholder="Ürün adı, marka ya da model…" style="min-width:340px" value="' + esc(q || '') + '">'
+      + '<button class="btn btn-primary" onclick="analysesCmpSearch()">Ara</button>'
+      + '</div>'
+      + (yukleniyor ? '<p class="an-empty">Aranıyor…</p>' : '')
+      + (hits && hits.length
+        ? '<div class="an-grid">' + hits.map(function (p, i) {
+          var var_ = secili[p.id];
+          return ''
+            + '<div class="an-row' + (p.imageUrl ? '' : ' noimg') + '">'
+            + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '')
+            + '<div><h4>' + esc(p.name || '') + '</h4>'
+            + '<div class="an-meta">'
+            + (p.brand ? '<span>' + esc(p.brand) + '</span>' : '')
+            + (p.category ? '<span>' + esc(p.category) + '</span>' : '')
+            + (p.techScore ? '<span>Qor AI <b>' + num(p.techScore) + '</b>/100</span>' : '')
+            + '</div></div>'
+            + (var_
+              ? '<button class="btn btn-ghost" disabled>Seçildi</button>'
+              : '<button class="btn btn-primary" onclick="analysesCmpEkle(' + i + ')"'
+                + (_cmpSecili.length >= CMP_MAX ? ' disabled title="En fazla ' + CMP_MAX + ' ürün"' : '')
+                + '>Ekle</button>')
+            + '</div>';
+        }).join('') + '</div>'
+        : (hits ? '<p class="an-empty">Sonuç yok.</p>' : ''))
+      + '</div>';
+    var el = $('anCmpQ');
+    if (el) el.onkeydown = function (e) { if (e.key === 'Enter') analysesCmpSearch(); };
+  }
+
+  async function analysesCmpSearch() {
+    var el = $('anCmpQ');
+    var q = el ? String(el.value || '').trim() : '';
+    if (!q) return;
+    renderCmpAra(q, null, true);
+    try {
+      var hits = await QorAiRun.searchProducts(q, 12);
+      window.__anCmpHits = hits;
+      renderCmpAra(q, hits);
+    } catch (e) {
+      renderCmpAra(q, []);
+      toast('Arama başarısız: ' + (e && e.message ? e.message : e), 'e');
+    }
+  }
+
+  async function analysesCmpEkle(i) {
+    var hit = (window.__anCmpHits || [])[i];
+    if (!hit || _cmpSecili.length >= CMP_MAX) return;
+    if (_cmpSecili.some(function (p) { return p.id === hit.id; })) return;
+    try {
+      // TAM PB kaydi: Typesense dokumaninda specSections yok ve prompt'un
+      // tasidigi en degerli baglam o (urun akisiyla ayni gerekce).
+      var tam = await QorAiRun.loadProduct(hit.id);
+      _cmpSecili.push(tam);
+    } catch (_) {
+      _cmpSecili.push(hit);
+    }
+    var el = $('anCmpQ');
+    renderCmpAra(el ? el.value : '', window.__anCmpHits);
+  }
+
+  function analysesCmpCikar(i) {
+    _cmpSecili.splice(i, 1);
+    var el = $('anCmpQ');
+    renderCmpAra(el ? el.value : '', window.__anCmpHits);
+  }
+
+  async function analysesCmpBasla() {
+    if (_cmpSecili.length < 2) return;
+    var b = $('anKaynak');
+    b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
+      + '<p class="an-empty">Karşılaştırma quizi hazırlanıyor…</p></div>';
+    try {
+      var quiz = await QorAiRun.generateCompareQuiz(_cmpSecili, 'tr');
+      if (!quiz.length) throw new Error('Quiz üretilemedi');
+      _run = yeniRun('compare', { products: _cmpSecili.slice() }, quiz);
+      renderQuiz();
+    } catch (e) {
+      b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
+        + '<p class="an-err">' + esc(e.message || e) + '</p>'
+        + '<button class="btn btn-primary" onclick="analysesCmpBasla()">Tekrar dene</button> '
+        + '<button class="btn btn-ghost" onclick="analysesUretTur(\'compare\')">Ürünleri değiştir</button></div>';
+    }
   }
 
   // ── Kaynak: KATALOG URUNU ──────────────────────────────────
@@ -694,6 +821,11 @@
         product: r.product, lang: lang, answers: answers, similar: similar, onStage: onStage,
       });
     }
+    if (r.kind === 'compare') {
+      return QorAiRun.runCompareReport({
+        products: r.products, lang: lang, answers: answers, onStage: onStage,
+      });
+    }
     if (r.kind === 'subscription') {
       return QorAiRun.runSubscriptionReport({ names: r.names, lang: lang, answers: answers, onStage: onStage });
     }
@@ -703,6 +835,7 @@
   // Kaynak turune gore quiz — ilk adimda da, ikinci dilde de ayni yol.
   function quizUret(r, lang) {
     if (r.kind === 'product') return QorAiRun.generateQuiz(r.product, lang);
+    if (r.kind === 'compare') return QorAiRun.generateCompareQuiz(r.products, lang);
     if (r.kind === 'subscription') return QorAiRun.subscriptionQuiz(r.names, lang);
     return QorAiRun.linkQuiz(r.bases, lang);
   }
@@ -734,6 +867,19 @@
       ortak.category = p.category || '';
       ortak.techScore = num(p.techScore);
       ortak.slug = slugify(p.slug || p.name);
+      return ortak;
+    }
+    if (r.kind === 'compare') {
+      var urunler = r.products || [];
+      ortak.subjectNames = urunler.map(function (p) { return p.name || ''; }).filter(Boolean);
+      // Karsilastirmada TEK bir urun kaydi yok; ilki temsil eder (gorsel ve
+      // kategori ondan gelir), digerleri `subjectNames`te durur.
+      var ilk = urunler[0] || {};
+      ortak.productName = ortak.subjectNames.join(' vs ');
+      ortak.productImage = ilk.imageUrl || (Array.isArray(ilk.images) ? ilk.images[0] : '') || '';
+      ortak.productBrand = ilk.brand || '';
+      ortak.category = ilk.category || '';
+      ortak.slug = slugify(ortak.subjectNames.join(' vs '));
       return ortak;
     }
     if (r.kind === 'subscription') {
@@ -1344,6 +1490,10 @@
   window.analysesLinkBasla = analysesLinkBasla;
   window.analysesAbonelikBasla = analysesAbonelikBasla;
   window.analysesPickProduct = analysesPickProduct;
+  window.analysesCmpSearch = analysesCmpSearch;
+  window.analysesCmpEkle = analysesCmpEkle;
+  window.analysesCmpCikar = analysesCmpCikar;
+  window.analysesCmpBasla = analysesCmpBasla;
   window.analysesAnswer = analysesAnswer;
   window.analysesRunReport = analysesRunReport;
   window.analysesBackToQuiz = analysesBackToQuiz;
