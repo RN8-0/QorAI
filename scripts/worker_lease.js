@@ -35,7 +35,6 @@
  * biter, log'a tek satir yazar.
  */
 const os = require('os');
-const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { req } = require('../migration/pb');
@@ -48,24 +47,32 @@ const [, , action = 'status', role = 'price', ...bayraklar] = process.argv;
 const FORCE = bayraklar.includes('--force');
 
 /**
- * MAKINE KIMLIGI — hostname TEK BASINA yetmez: iki farkli PC ayni ada sahip
- * olabilir (kurumsal imajlar "DESKTOP-XXXX" uretir) ve o zaman ikisi de
- * kiralamayi kendi sanardi. Kimlik ilk calismada uretilip diske yazilir,
- * boylece ayni PC repoyu yeniden klonlasa bile AYNI isci olarak taninir.
+ * MAKINE KIMLIGI — DETERMINISTIK, dosyaya YAZILMAZ.
+ *
+ * ILK SURUM rastgele bir id uretip `%LOCALAPPDATA%\QorAI\worker-id` dosyasina
+ * yaziyordu. Kabuktan calistirinca dogru okuyordu ama GOREV ZAMANLAYICISINDAN
+ * calisinca her seferinde YENI id uretiyordu — olculdu: ayni kullanici, ayni
+ * LOCALAPPDATA degeri, farkli sonuc. Sonucu sessiz ve olumculdu: gece gorevi
+ * kendini "baska PC" sanip her koşuyu atliyordu.
+ *
+ * Kok nedeni kovalamak yerine bagimliligi kaldirdik. Kimlik artik SABIT iki
+ * seyden turetiliyor: makine adi + repo yolunun ozeti. Ne dosyaya, ne ortam
+ * degiskenine, ne de rastgeleye dokunuyor — `__dirname` sureci nasil
+ * baslatilirsa baslatilsin ayni.
+ *
+ * Yan faydasi: repo ayni yola YENIDEN klonlansa bile id degismez, yani yeni
+ * kurulum kiralamayi kaybetmez. Ayni PC'de iki AYRI klon iki ayri isci sayilir
+ * — dogrusu da bu, cunku her klonun kendi zamanlanmis gorevleri var.
+ * Repo baska bir yola tasinirsa id degisir; panelde gorunur ve "bu PC'yi isci
+ * yap" ile tek tikta duzelir.
  */
 function workerId() {
-  const dir = path.join(process.env.LOCALAPPDATA || os.homedir(), 'QorAI');
-  const file = path.join(dir, 'worker-id');
-  try {
-    const v = fs.readFileSync(file, 'utf8').trim();
-    if (v) return v;
-  } catch { /* ilk calisma */ }
-  const id = `${os.hostname()}-${crypto.randomBytes(4).toString('hex')}`;
-  try {
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(file, id);
-  } catch { /* yazamadiysak da id uret — o zaman her kosuda degisir, log'da gorunur */ }
-  return id;
+  const kok = path.resolve(__dirname, '..');
+  // Buyuk/kucuk harf ve ters bolu farklari ayni kurulumu iki farkli isci
+  // gostermesin (Windows yollari "C:\..." ve "c:/..." olarak gelebiliyor).
+  const nrm = kok.replace(/\\/g, '/').toLowerCase();
+  const ozet = crypto.createHash('sha1').update(nrm).digest('hex').slice(0, 8);
+  return `${os.hostname()}-${ozet}`;
 }
 
 function nowIso() { return new Date().toISOString(); }
