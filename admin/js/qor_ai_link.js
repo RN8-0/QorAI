@@ -637,6 +637,34 @@ function themeList(v, max = 8) {
     .slice(0, max);
 }
 
+/**
+ * QUIZ KUNYESI YEDEGI — model uretmezse CEVAPLARDAN kurar.
+ *
+ * Abonelik raporunda `quiz_insights` AYRI bir "verdict" cagrisindan geliyor ve
+ * o cagri `try/catch -> {}` ile sarili: patlarsa sessizce bos donuyor. Canli
+ * ornek: Netflix analizinin TURKCESINDE 5 kunye satiri vardi, INGILIZCESINDE
+ * hic yoktu — okuyucu "bu analiz hangi cevaplara gore yapildi" sorusunun
+ * yanitini goremiyordu.
+ *
+ * Soru ve cevaplar ZATEN elimizde (`qaPairs`). Modelin katkisi `impact` ve
+ * `note`; onlar yoksa da kunyenin KENDISI gosterilebilir. Bos bolum yerine
+ * eksik bolum.
+ */
+function withFallback(liste, qaPairs) {
+  return (liste && liste.length) ? liste : insightFallback(qaPairs);
+}
+
+function insightFallback(qaPairs) {
+  return (Array.isArray(qaPairs) ? qaPairs : [])
+    .map((qa) => ({
+      topic: String((qa && (qa.question || qa.topic)) || '').trim().slice(0, 120),
+      answer: String((qa && (qa.answer || qa.choice)) || '').trim(),
+      impact: 0,   // model vermedi; sifir "etki bilinmiyor" demek, uydurma degil
+      note: '',
+    }))
+    .filter((x) => x.topic && x.answer);
+}
+
 function insightList(v, max = 7) {
   if (!Array.isArray(v)) return [];
   return v
@@ -934,7 +962,7 @@ async function enhancedAnalysis({ base, answers, language, userProfile = {}, res
     prosForUser: bulletList(res.prosForUser || res.pros, 6),
     consForUser: bulletList(res.consForUser || res.cons, 5),
     criticalPoints: criticalList(res.criticalPoints, 5),
-    quizInsights: insightList(res.quizInsights, 7),
+    quizInsights: withFallback(insightList(res.quizInsights, 7), qaPairs),
     featureMatches: featureMatchList(res.featureMatches, 8),
     alternatives: bulletList(
       Array.isArray(alternatives)
@@ -1175,7 +1203,7 @@ async function compareAnalysis({ bases, answers, language, userProfile = {}, res
     scores: Object.fromEntries(products.map((p) => [p.name, p.score])),
     detailed,
     decisiveDifferences: bulletList(verdictRes.decisiveDifferences, 6),
-    quizInsights: insightList(verdictRes.quizInsights, 7),
+    quizInsights: withFallback(insightList(verdictRes.quizInsights, 7), qaPairs),
     confidence: Math.max(0, Math.min(100, Math.round(num(verdictRes.confidence)))) || (research ? 76 : 56),
     researched: Boolean(String(research || '').trim()),
     recommendation: String(verdictRes.recommendation || res.recommendation || detailed?.recommendation || winner.reason || ''),
@@ -1431,7 +1459,7 @@ async function subscriptionAnalysis({ subscriptionNames, answers, language, user
       plan: String(rawDetailed.final_plan || ''),
     } : null,
     decisiveDifferences: bulletList(verdictRes.decisive_differences || verdictRes.decisiveDifferences, 6),
-    quizInsights: insightList(verdictRes.quiz_insights || verdictRes.quizInsights, 7),
+    quizInsights: withFallback(insightList(verdictRes.quiz_insights || verdictRes.quizInsights, 7), qaPairs),
     confidence: Math.max(0, Math.min(100, Math.round(num(verdictRes.confidence)))) || (research ? 76 : 56),
     researched: Boolean(String(research || '').trim()),
     recommendation: String(verdictRes.recommendation || res.recommendation || rawWinner?.recommendation || ''),

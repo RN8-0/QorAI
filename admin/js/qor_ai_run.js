@@ -495,11 +495,19 @@ async function publishMeta(o) {
     maxOutputTokens: 4096,
     temperature: 0.6,
   });
+  // BASLIK cok uzun YA DA ACIKLAMA cok kisa olabilir. Onceden yalnizca
+  // baslik denetleniyordu; denetim (scripts/audit_analyses.mjs) acikamalarin
+  // surekli 126-132 karakterde kaldigini gosterdi — arama sonucunda satirin
+  // sonu bos kaliyor, yani ucretsiz bir alan harcaniyor.
   var uzun = ['tr', 'en'].filter(function (l) {
     var v = res[l] && res[l].metaTitle;
     return v && String(v).length > 60;
   });
-  if (uzun.length) {
+  var kisa = ['tr', 'en'].filter(function (l) {
+    var v = res[l] && res[l].metaDescription;
+    return v && String(v).length < 140;
+  });
+  if (uzun.length || kisa.length) {
     try {
       var tekrar = await askJson({
         system: 'You are Qor AI SEO editor. Return only valid JSON. Never repeat a forbidden value.',
@@ -509,7 +517,12 @@ async function publishMeta(o) {
             return '- ' + l + '.metaTitle was ' + String(res[l].metaTitle).length
               + ' characters ("' + res[l].metaTitle + '"). It MUST be 60 or fewer, INCLUDING spaces. '
               + 'Rewrite it shorter — drop qualifiers, not the product name.';
-          }).join('\n'),
+          }).concat(kisa.map(function (l) {
+            return '- ' + l + '.metaDescription was ' + String(res[l].metaDescription).length
+              + ' characters ("' + res[l].metaDescription + '"). It MUST be 140-155, INCLUDING spaces. '
+              + 'Rewrite it LONGER by adding a concrete detail from the report — a number, the verdict, '
+              + 'or who it suits. Do not pad with filler.';
+          })).join('\n'),
         maxOutputTokens: 4096,
         temperature: 0.4,
       });
@@ -517,6 +530,11 @@ async function publishMeta(o) {
       uzun.forEach(function (l) {
         var yeni = tekrar[l] && tekrar[l].metaTitle;
         if (yeni && String(yeni).length <= 60) res[l].metaTitle = yeni;
+      });
+      kisa.forEach(function (l) {
+        var yeni = tekrar[l] && tekrar[l].metaDescription;
+        var u = yeni ? String(yeni).length : 0;
+        if (u >= 140 && u <= 158) res[l].metaDescription = yeni;
       });
     } catch (_) { /* ilk deger duruyor, ekranda uzunluk uyarisi gorunur */ }
   }

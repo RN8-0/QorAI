@@ -684,7 +684,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // ve asiri isinma" sizmisti — ayni sey iki bolumde. Sinir IKI TARAFA da
     // yazilmali.
     '- product.weaknesses must stay on the DECISION side: size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in — things a buyer can judge before paying. Do NOT list failures, crashes, overheating, defects or support problems there; those belong to community.chronicIssues and repeating them makes the report say the same thing twice.\n' +
-    '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, missing accessories, service coverage) — not restated specs.\n' +
+    '- product.criticalPoints: 4-6 things that would CHANGE THE DECISION ITSELF — a compatibility trap, a hidden cost, ecosystem lock-in, an accessory you must buy separately, patchy service coverage, a regional limitation. Denetim olcumu: bu bolum en cok TEKRARLANAN bolum. A criticalPoint is NOT a strength, NOT a weakness and NOT a chronic issue restated with a scarier title. Test each one: if the buyer already learned it from strengths/weaknesses/chronicIssues, it does not belong here. If fewer than 4 survive that test, return fewer — an honest short list beats a padded one.\n' +
     // TEK OLGU, TEK YER. Olculdu: bu sinir yokken model ayni 4-5 olguyu
     // weaknesses + criticalPoints + reliabilityNotes + chronicIssues +
     // summary icine kopyaliyordu, yani okuyucu ayni sikayeti BES KEZ
@@ -905,7 +905,7 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
     '- title: the on-page H1. Max 70 characters. Must name the subject and say what the page decides, not just what it is. Never a bare product name.\n' +
     '- lead: 1-2 sentences, max 200 characters, the answer a reader came for. No marketing wording, no "in this article".\n' +
     '- metaTitle: max 60 characters INCLUDING spaces. Different wording from `title` — not a truncation of it.\n' +
-    '- metaDescription: 140-155 characters. Must contain one concrete number or verdict word from the report so it cannot be confused with another page.\n' +
+    '- metaDescription: 140-155 characters — COUNT THEM. Olculdu: model surekli 126-132 yaziyor ve arama sonucunda satirin sonu bos kaliyor. If your draft is under 140, add a concrete detail from the report (a number, a verdict word, who it suits) until it fits the range; do not pad with filler. Must contain one concrete number or verdict word from the report so it cannot be confused with another page.\n' +
     '- faq: 4-6 entries. Questions must be what a real buyer types into a search box ("battery life", "is it good for gaming"), NEVER a restatement of the title. Answers 2-3 sentences, grounded ONLY in the report below.\n' +
     '- Do not invent specs, prices or review counts. If the report does not support a claim, leave it out.\n' +
     (usedT.length ? `- FORBIDDEN metaTitle values (already used by other published analyses — yours must differ in wording, not only in the product name):\n${usedT.map((x) => `  - ${x}`).join('\n')}\n` : '') +
