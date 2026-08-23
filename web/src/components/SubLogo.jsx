@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { localLogoFor as sharedLocalLogoFor } from '../lib/subLogos';
 
 // Port of the app's SubscriptionLogoWidget (lib/presentation/widgets/
 // subscription_logo_widget.dart): known service -> crisp SVG logo,
@@ -121,55 +122,10 @@ const WORDMARKS = {
   'chatgpt plus': { text: 'GPT', color: '#111827', bg: '#FFFFFF' },
 };
 
-const LOCAL_LOGOS = {
-  'netflix': 'netflix.svg',
-  'disney+': 'disney_plus.png',
-  'disney plus': 'disney_plus.png',
-  'amazon prime': 'prime_video.png',
-  'amazon prime video': 'prime_video.png',
-  'prime video': 'prime_video.png',
-  'apple tv+': 'apple_tv_plus.svg',
-  'apple tv': 'apple_tv_plus.svg',
-  'hbo max': 'max.svg',
-  'max': 'max.svg',
-  'youtube premium': 'youtube_premium.svg',
-  'youtube': 'youtube_premium.svg',
-  'crunchyroll': 'crunchyroll.svg',
-  'spotify': 'spotify.svg',
-  'apple music': 'apple_music.svg',
-  'youtube music': 'youtube_music.svg',
-  'tidal': 'tidal.svg',
-  'chatgpt': 'chatgpt_plus.png',
-  'chatgpt plus': 'chatgpt_plus.png',
-  'claude': 'claude.svg',
-  'claude pro': 'claude.svg',
-  'gemini': 'gemini.svg',
-  'gemini advanced': 'gemini.svg',
-  'perplexity': 'perplexity.svg',
-  'midjourney': 'midjourney.png',
-  'xbox game pass': 'game_pass.png',
-  'xbox': 'game_pass.png',
-  'playstation plus': 'ps_plus.svg',
-  'playstation': 'ps_plus.svg',
-  // Yeni varsayılan kutular (2026-08-08) — hepsinin YEREL logosu var, uzak
-  // CDN'e düşmesinler (Amazon Music aksi hâlde jenerik Amazon logosu oluyordu).
-  'amazon music': 'amazon_music.png',
-  'amazon music unlimited': 'amazon_music.png',
-  'deezer': 'deezer.svg',
-  'geforce now': 'geforce_now.svg',
-  'nvidia geforce now': 'geforce_now.svg',
-  'nintendo switch online': 'switch_online.png',
-  'nintendo online': 'switch_online.png',
-  'dropbox': 'dropbox.svg',
-  'microsoft 365': 'microsoft_365.png',
-  'google one': 'google_one.png',
-  'icloud+': 'icloud.svg',
-  'icloud': 'icloud.svg',
-  'adobe creative cloud': 'adobe_cc.png',
-  'adobe': 'adobe_cc.png',
-  'notion': 'notion.svg',
-  'canva': 'canva.png',
-};
+// LOCAL_LOGOS tablosu buradan `admin/js/sub_logos.js`'e TASINDI (tek kaynak).
+// Admin de analiz kaydinin gorselini ayni tablodan dolduruyor; iki kopya
+// kacinilmaz olarak ayrisirdi (bkz. lib/specI18n.js ayni gerekce).
+
 
 const SIMPLE_ICON_SLUGS = {
   'netflix': 'netflix',
@@ -255,7 +211,9 @@ function wordmarkFor(name) {
 }
 
 function localLogoFor(name) {
-  const file = LOCAL_LOGOS[String(name || '').toLowerCase().trim()];
+  // Goreli yol DONER: site kendi kokunden servis ediyor. (Ortak modul mutlak
+  // adres dondurur cunku o adresi ADMIN kayda yaziyor ve kaydi app de okuyor.)
+  const file = sharedLocalLogoFor(name);
   return file ? `/assets/subscriptions/${file}` : '';
 }
 

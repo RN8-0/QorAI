@@ -127,6 +127,14 @@
       '.an-meta{font-size:12px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap;align-items:center}',
       /* Sayilar daima tabular: puanlar alt alta hizalansin. */
       '.an-meta b{font-variant-numeric:tabular-nums;font-weight:650;color:var(--text2)}',
+      /* Kunyedeki TEK duzenlenebilir alan: gorsel. */
+      '.an-ro-edit{border-left:2px solid var(--border)}',
+      '.an-img-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:4px}',
+      '.an-img-row .ba-input{flex:1 1 260px;min-width:0}',
+      '.an-img-prev{width:44px;height:44px;object-fit:contain;border-radius:8px;background:var(--bg3);border:1px solid var(--border);flex:0 0 auto}',
+      '.an-img-prev.empty{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3)}',
+      '.an-img-prev.bad{opacity:.35}',
+      '.an-img-hint{font-size:11px;color:var(--text3);margin:6px 0 0}',
       '.an-pill{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap}',
       '.an-pill.pub{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
       '.an-pill.draft{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
@@ -732,12 +740,45 @@
       ortak.subjectNames = r.names.slice();
       ortak.category = QorAiLink.subscriptionCategory(r.names[0]) || '';
       ortak.slug = slugify(r.names.join(' vs '));
+      // LOGO. Abonelik kaydinda gorsel BOS kaliyordu ve analiz listesinde
+      // Netflix satiri gorselsiz duruyordu. Tablo sitenin kendi abonelik
+      // logolariyla AYNI (admin/js/sub_logos.js — tek kaynak).
+      ortak.productName = r.names[0] || '';
+      ortak.productImage = gorselCoz('subscription', r.names[0], '');
       return ortak;
     }
     ortak.subjectNames = r.bases.map(function (b) { return b.title; }).filter(Boolean);
     ortak.category = r.bases[0] ? (r.bases[0].category || '') : '';
     ortak.slug = slugify(ortak.subjectNames.join(' vs '));
+    // LINK analizi: baglantidan cikarilan urun gorseli varsa onu kullan.
+    ortak.productName = ortak.subjectNames[0] || '';
+    ortak.productImage = gorselCoz('link', ortak.subjectNames[0], linkGorseli(r.bases));
     return ortak;
+  }
+
+  // Kaydin gorselini cozer. Sirasi: ELLE girilen adres > kaynagin kendi
+  // gorseli (link analizinde og:image) > abonelik logo tablosu. Bulunamazsa
+  // bos doner ve liste gorselsiz satiri zaten dogru ciziyor.
+  function gorselCoz(tur, ad, kaynakGorsel) {
+    if (kaynakGorsel && /^https?:\/\//i.test(kaynakGorsel)) return kaynakGorsel;
+    // DIKKAT: `root` bu dosyada YEREL bir degisken ($('analysesAdminRoot')).
+    // Global icin window kullanilir — QorAiLink de boyle cagriliyor.
+    if (tur === 'subscription' && window.QorSubLogos) {
+      return window.QorSubLogos.logoUrl(ad) || '';
+    }
+    return '';
+  }
+
+  // Link analizinde AI, sayfadan bir gorsel cikarmis olabilir; alan adi
+  // kaynaga gore degisiyor, o yuzden hepsine bakilir.
+  function linkGorseli(bases) {
+    var liste = Array.isArray(bases) ? bases : [];
+    for (var i = 0; i < liste.length; i += 1) {
+      var b = liste[i] || {};
+      var aday = b.imageUrl || b.image || b.ogImage || b.thumbnail || '';
+      if (aday && /^https?:\/\//i.test(aday)) return aday;
+    }
+    return '';
   }
 
   async function analysesRunReport() {
@@ -1091,6 +1132,49 @@
   }
 
   // Kunye: AI'nin urettigi yayin metni + rapor ozeti. SALT OKUNUR.
+  // GORSEL — kunyedeki TEK duzenlenebilir alan.
+  //
+  // Neden elle: urun analizinde gorsel katalogdan gelir, ama ABONELIK ve LINK
+  // analizinde kaynakta gorsel olmayabilir (Netflix kaydi gorselsiz yayina
+  // cikmisti ve analiz listesinde bos satir olarak duruyordu). Abonelikte
+  // otomatik doldurma sitenin kendi logo tablosundan yapilir
+  // (admin/js/sub_logos.js), bulunamazsa buradan elle verilir.
+  //
+  // URL alani, dosya YUKLEME degil: katalogdaki butun gorseller zaten
+  // URL-only tutuluyor (bkz. reference_product_images) ve PB'ye ikinci bir
+  // dosya deposu acmak bu kaydin app tarafindan okunmasini da degistirirdi.
+  function gorselKart(a) {
+    var url = String(a.productImage || '');
+    return '<div class="an-ro an-ro-edit"><span>Görsel</span>'
+      + '<div class="an-img-row">'
+      + (url
+        ? '<img class="an-img-prev" src="' + esc(url) + '" alt=""'
+          + ' onerror="this.classList.add(\'bad\')">'
+        : '<div class="an-img-prev empty">yok</div>')
+      + '<input class="ba-input" id="anImgUrl" value="' + esc(url) + '"'
+      + ' placeholder="https://… (logo ya da ürün görseli)">'
+      + '<button class="btn btn-sm" onclick="analysesSaveImage()">Kaydet</button>'
+      + '</div>'
+      + '<p class="an-img-hint">Abonelik analizlerinde site logosu otomatik gelir; '
+      + 'gelmezse ya da başka bir görsel istiyorsan adresi buraya yapıştır.</p>'
+      + '</div>';
+  }
+
+  async function analysesSaveImage() {
+    if (!_editing) return;
+    var el = $('anImgUrl');
+    var url = el ? String(el.value || '').trim() : '';
+    if (url && !/^https?:\/\//i.test(url)) { toast('Adres http(s) ile başlamalı', 'w'); return; }
+    try {
+      await getPb().collection('analyses').update(_editing.id, { productImage: url });
+      _editing.productImage = url;
+      toast('Görsel kaydedildi', 's');
+      renderEditor();
+    } catch (e) {
+      toast('Görsel kaydedilemedi: ' + (e && e.message ? e.message : e), 'e');
+    }
+  }
+
   function kunyeKart(a, L, kind, rapor) {
     var t = function (f) { return String(a[f + '_' + L] || '').trim(); };
     var faq = Array.isArray(a['faq_' + L]) ? a['faq_' + L] : [];
@@ -1117,6 +1201,7 @@
         : '<p><em>boş</em></p>')
       + '</div>'
       + satir('Adres', (a.slug || '') && (SITE + '/analiz/' + a.slug + '  ·  ' + SITE + '/tr/analiz/' + a.slug))
+      + gorselKart(a)
       + raporOzeti(kind, rapor)
       + '<div class="an-hint">Bu alanlar <strong>elle düzenlenmez</strong>. Rapor da, başlık/özet/meta/SSS de '
       + 'AI üretir ve SEO kurallarına göre kurulur; insanın işi onaylamak ya da '
@@ -1266,6 +1351,7 @@
   window.analysesPick = analysesPick;
   window.analysesEdit = analysesEdit;
   window.analysesDelete = analysesDelete;
+  window.analysesSaveImage = analysesSaveImage;
   window.analysesLang = analysesLang;
   window.analysesTaslakKaydet = analysesTaslakKaydet;
   window.analysesYayinla = analysesYayinla;
