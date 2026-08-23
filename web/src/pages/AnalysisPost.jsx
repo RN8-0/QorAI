@@ -247,18 +247,19 @@ export default function AnalysisPost() {
             Hicbiri icin ikinci bir gorunum yazilmadi. */}
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
-            <ProductFullReport data={ham} L={L} lang={lang} />
+            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
           ) : kind === 'subscription' && Array.isArray(ham?.services) ? (
             <SubscriptionReportView
               result={ham}
               winnerName={ham?.winner?.best || ham?.winner?.overall || ham?.winner?.name || ''}
               L={L}
               t={t}
+              hideQuiz={quiz.length > 0}
             />
           ) : Array.isArray(ham?.products) ? (
-            <CompareResult data={ham} L={L} lang={lang} />
+            <CompareResult data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
           ) : unified ? (
-            <AiReportView data={unified} L={L} lang={lang} showHead={false} />
+            <AiReportView data={unified} L={L} lang={lang} showHead={false} hideQuiz={quiz.length > 0} />
           ) : (
             <p className="an-empty">{L('This analysis has no report data.', 'Bu analizde rapor verisi yok.')}</p>
           )}

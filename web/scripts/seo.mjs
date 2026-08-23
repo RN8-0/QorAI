@@ -344,7 +344,7 @@ function anFiyat(pf, tx) {
 }
 
 // ── URUN raporu (`product_full_report`) ───────────────────────────────────
-function anUrunGovde(rapor, tx) {
+function anUrunGovde(rapor, tx, quizGizle = false) {
   const p = rapor.product || {};
   let g = '';
   if (p.headline) {
@@ -358,7 +358,7 @@ function anUrunGovde(rapor, tx) {
   if (p.matchComment) g += anPar(p.matchComment);
   if (p.analysis) { g += anH2(tx.detail); g += anPar(p.analysis); }
 
-  g += anQuizEtkisi(p.quizInsights, tx);
+  if (!quizGizle) g += anQuizEtkisi(p.quizInsights, tx);
 
   // TEKRAR AGI — sayfadaki SIRAYLA cagrilir, olgu ilk gorundugu bolumde kalir.
   // Site tarafi (AiReportView) ayni moduldeki ayni fonksiyonu kosuyor; aksi
@@ -412,7 +412,7 @@ function anUrunGovde(rapor, tx) {
 }
 
 // ── LINK raporu — tekil (ortak "enhanced" sekil) ──────────────────────────
-function anLinkGovde(u, tx) {
+function anLinkGovde(u, tx, quizGizle = false) {
   let g = '';
   if (u.headline) {
     g += `<p style="font-size:18px;line-height:1.6;color:#0f172a;font-weight:600;max-width:64ch;margin:0 0 12px">${esc(u.headline)}</p>`;
@@ -425,7 +425,7 @@ function anLinkGovde(u, tx) {
   if (u.personaAnalysis) g += anPar(u.personaAnalysis);
   if (u.verdict) { g += anH2(tx.detail); g += anPar(u.verdict); }
 
-  g += anQuizEtkisi(u.quizInsights, tx);
+  if (!quizGizle) g += anQuizEtkisi(u.quizInsights, tx);
 
   // Tekrar agi urun raporundaki gibi: SIRAYLA, olgu ilk bolumde kalir.
   const gorulenU = [];
@@ -465,7 +465,7 @@ function anLinkGovde(u, tx) {
 }
 
 // ── LINK raporu — karsilastirma (`products[]` + `comparison`) ─────────────
-function anKarsilastirmaGovde(r, tx) {
+function anKarsilastirmaGovde(r, tx, quizGizle = false) {
   const cmp = r.comparison || {};
   const urunler = anDizi(r.products);
   let g = '';
@@ -500,7 +500,7 @@ function anKarsilastirmaGovde(r, tx) {
 }
 
 // ── ABONELIK raporu (`services[]`) ────────────────────────────────────────
-function anAbonelikGovde(r, tx) {
+function anAbonelikGovde(r, tx, quizGizle = false) {
   const servisler = anDizi(r.services).filter((s) => s && s.name);
   const w = r.winner || {};
   let g = '';
@@ -522,7 +522,7 @@ function anAbonelikGovde(r, tx) {
   const farklar = anBaslikliListe(r.decisiveDifferences);
   if (farklar) { g += anH2(tx.decisive); g += farklar; }
 
-  g += anQuizEtkisi(r.quizInsights, tx);
+  if (!quizGizle) g += anQuizEtkisi(r.quizInsights, tx);
 
   servisler.forEach((s) => {
     g += anH2(`${s.name}${Number(s.score) ? ` — ${s.score}/100` : ''}`);
@@ -595,16 +595,24 @@ function analizBody(a, lang) {
   const baslik = esc(analysisTitle(a, lang));
   const faq = analysisFaq(a, lang).slice(0, 8);
 
+  // QUIZ TEK YERDE. Kunye govdenin USTUNDE ciziliyor; govde de kendi
+  // "cevaplarin sonucu nasil degistirdi" blogunu cizerse AYNI sorular sayfada
+  // IKI KEZ gorunuyor — canli Netflix sayfasinda tam boyleydi. Kunye varsa
+  // govdedeki blok bastirilir (React tarafinda `hideQuiz` propu ayni isi
+  // yapiyor; ikisi ayrisirsa crawler ile okuyucu farkli sayfa gorur).
+  const kunye = analysisQuiz(a, lang);
+  const quizGizle = kunye.length > 0;
+
   let govde = '';
   if (ham) {
-    if (kind === 'product' && ham.product) govde = anUrunGovde(ham, tx);
-    else if (kind === 'subscription') govde = anAbonelikGovde(ham, tx);
-    else if (Array.isArray(ham.products)) govde = anKarsilastirmaGovde(ham, tx);
+    if (kind === 'product' && ham.product) govde = anUrunGovde(ham, tx, quizGizle);
+    else if (kind === 'subscription') govde = anAbonelikGovde(ham, tx, quizGizle);
+    else if (Array.isArray(ham.products)) govde = anKarsilastirmaGovde(ham, tx, quizGizle);
     else {
       // Kayittaki sekil zaten ortak ("enhanced"); adaptor yalnizca urun
       // raporunu cevirir, digerini oldugu gibi dondurur.
       const u = analysisUnified(a, lang);
-      govde = u ? anLinkGovde(u, tx) : '';
+      govde = u ? anLinkGovde(u, tx, quizGizle) : '';
     }
   }
 
@@ -621,7 +629,7 @@ function analizBody(a, lang) {
     + `</div></div>`
     // ANALIZI URETEN QUIZ — GOVDENIN USTUNDE, sayfadaki sirayla ayni.
     // Crawler React calistirmaz; bu blok sayfada gorunenin metin karsiligi.
-    + anQuizKunye(analysisQuiz(a, lang), tx)
+    + anQuizKunye(kunye, tx)
     + govde
     + (faq.length
       ? anH2(tx.faq)

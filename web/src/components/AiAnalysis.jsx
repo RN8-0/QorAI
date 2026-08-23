@@ -457,7 +457,7 @@ function AlternativeCards({ alternatives = [], L }) {
 // `export`: /analiz/<slug> sayfasi da AYNI bileseni cizer. Yayinlanan analiz,
 // urun sayfasinda calisan analizin BIREBIR AYNISI gorunmek zorunda — ikinci bir
 // gorunum yazmak iki tasarimin ayrismasi demek.
-export function ProductFullReport({ data, L, lang }) {
+export function ProductFullReport({ data, L, lang, hideQuiz = false }) {
   const unified = productReportToUnified(data);
   const alternatives = arr(data.alternatives);
   return (
@@ -466,6 +466,7 @@ export function ProductFullReport({ data, L, lang }) {
       L={L}
       lang={lang}
       showHead={false}
+      hideQuiz={hideQuiz}
       heroExtra={null}
       altNode={alternatives.length > 0 ? (
         <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler')}>

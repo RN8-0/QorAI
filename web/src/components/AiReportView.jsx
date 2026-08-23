@@ -198,7 +198,7 @@ export function FeatureMatchTable({ rows = [], L }) {
  */
 export default function AiReportView({
   data = {}, L, lang, headerNode = null, heroExtra = null, altNode = null, tailNode = null,
-  showHead = true,
+  showHead = true, hideQuiz = false,
 }) {
   const score = Math.round(data.enhancedScore || 0);
   // History entries saved by older builds may miss the array fields — guard so
@@ -307,7 +307,7 @@ export default function AiReportView({
 
         <ProConList pros={pros} cons={cons} L={L} />
 
-        <QuizImpact items={insights} L={L} />
+        {!hideQuiz && <QuizImpact items={insights} L={L} />}
 
         {(themes.length > 0 || data.communityAnalysis) && (
           <div className="la-community">

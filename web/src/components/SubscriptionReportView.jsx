@@ -210,7 +210,7 @@ function ServiceCard({ s, isWinner, L }) {
   );
 }
 
-export default function SubscriptionReportView({ result, winnerName, L, t, onReset = null }) {
+export default function SubscriptionReportView({ result, winnerName, L, t, hideQuiz = false, onReset = null }) {
   const services = result.services || [];
   const best = services.find((s) => s.name === winnerName) || [...services].sort((a, b) => b.score - a.score)[0];
   const diffs = bullets(result.decisiveDifferences);
@@ -265,7 +265,7 @@ export default function SubscriptionReportView({ result, winnerName, L, t, onRes
         </Sec>
       )}
 
-      <QuizImpact items={insights} L={L} />
+      {!hideQuiz && <QuizImpact items={insights} L={L} />}
 
       <div className="subs-svc-grid">
         {services.map((s) => (
