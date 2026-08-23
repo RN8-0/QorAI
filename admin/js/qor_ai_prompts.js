@@ -55,7 +55,14 @@ const COUNTRY_SKU_GROUP_RE = /\s*[\[(][^\])]*\b[A-Z0-9]{4,}[A-Z]{1,3}\/[A-Z]\b[^
 // baslama sarti "Wi-Fi" gibi adlari da disarida birakir.
 const PAREN_TOKEN_RE = /\s*[[（(]\s*([A-Z0-9][A-Z0-9./-]{5,})\s*[)）\]]/g;
 // Rakamin hemen ardindan gelen olcu birimi = bu bir SKU degil, teknik deger.
-const SPEC_UNIT_RE = /\d(?:GB|TB|MB|KB|CPU|GPU|GHZ|MHZ|HZ|MAH|WH|NM|MP|FPS|RPM|BIT|K|W|V|A)\b/;
+//
+// TEK HARFLI BIRIM YOK (K/W/V/A). Ilk surumde vardilar ve SKU'lari koruyup
+// isi bozuyorlardi: `RC71L-NH001W` icindeki "1W", `90IG0850-MO9A0V` icindeki
+// "0V" birim sayiliyor, kod temiz sanilip birakiliyordu — on-render denetiminde
+// 68 sayfa boyle kaldi. Cikarmak GUVENLI, cunku mesru tek harfli birim
+// tokenlari ("4K", "650W", "12V") zaten alti karakterin ALTINDA ve
+// looksLikeSku'ya hic ulasmiyorlar.
+const SPEC_UNIT_RE = /\d(?:GB|TB|MB|KB|CPU|GPU|GHZ|MHZ|HZ|MAH|WH|NM|MP|FPS|RPM|BIT)\b/;
 // ISLEMCI / EKRAN KARTI AILESI — SKU'ya benziyor ama kullaniciya gercekten
 // bir sey anlatiyor. Olculdu (20.000 urunluk ornek): bu korumasiz 3 urun
 // yanlis temizleniyordu — `(RTX5090)` ve `(RTX5080-O16G-NOCTUA)`. Liste
