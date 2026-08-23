@@ -588,7 +588,18 @@
       }
       var q = await QorAiRun.linkQuiz(bases, 'tr');
       if (!q.length) throw new Error('Quiz üretilemedi');
-      _run = yeniRun('link', { bases: bases }, q);
+      // KATALOG ESLESMESI burada aranir: kayit kurulurken (kayitKur) async
+      // cagri yapilamiyor. Eslesirse analiz sayfasi urun sayfasina ic link
+      // verir; eslesme zayifsa null doner ve link yazilmaz.
+      var katalog = null;
+      if (bases.length === 1 && bases[0] && bases[0].title) {
+        try {
+          katalog = await QorAiLink.findCatalogMatch(bases[0].title, {
+            searchProducts: QorAiRun.searchProducts,
+          });
+        } catch (_) { katalog = null; }
+      }
+      _run = yeniRun('link', { bases: bases, katalog: katalog }, q);
       renderQuiz();
     } catch (e) {
       renderLinkGiris('Tanınamadı: ' + (e.message || e));
@@ -948,6 +959,19 @@
     // LINK analizi: baglantidan cikarilan urun gorseli varsa onu kullan.
     ortak.productName = ortak.subjectNames[0] || '';
     ortak.productImage = gorselCoz('link', ortak.subjectNames[0], linkGorseli(r.bases));
+    // KATALOG ESLESMESI. Yapistirilan urun BIZDE de varsa kaydin
+    // `productSlug`'ini yaz: analiz sayfasi o zaman urun sayfasina IC LINK
+    // verir. Onceden bu yalnizca `kind === 'product'` icin vardi, yani link
+    // analizleri katalog urunune baglansa bile hicbir yere link vermiyordu.
+    // Eslesme ZAYIFSA yazilmaz — yanlis urune baglamak, hic baglamamaktan
+    // kotudur (findCatalogMatch minScore=0.55 ile ayni gerekce).
+    if (r.katalog && r.katalog.slug) {
+      ortak.productSlug = r.katalog.slug;
+      ortak.productId = r.katalog.id || '';
+      if (!ortak.productImage) ortak.productImage = r.katalog.imageUrl || '';
+      if (!ortak.productBrand) ortak.productBrand = r.katalog.brand || '';
+      if (!ortak.category) ortak.category = r.katalog.category || '';
+    }
     return ortak;
   }
 

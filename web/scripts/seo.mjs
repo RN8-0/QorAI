@@ -625,7 +625,10 @@ function analizBody(a, lang) {
     + (img ? `<img src="${img}" alt="${konu}" width="64" height="64" style="object-fit:contain" loading="lazy" />` : '')
     + `<div><strong>${konu}</strong>`
     + `<div style="font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
-    + (kind === 'product' && a.productSlug ? `<a href="${pfx}/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
+    // KOSUL `kind` DEGIL `productSlug`: link analizi de katalog urunune
+    // eslesmis olabilir ve o zaman ic link verilmeli. `productSlug` zaten
+    // yalnizca gercek bir eslesme varken yaziliyor.
+    + (a.productSlug ? `<a href="${pfx}/product/${esc(a.productSlug)}" style="color:#2563eb;font-size:13.5px">${esc(tx.prod)} →</a>` : '')
     + `</div></div>`
     // ANALIZI URETEN QUIZ — GOVDENIN USTUNDE, sayfadaki sirayla ayni.
     // Crawler React calistirmaz; bu blok sayfada gorunenin metin karsiligi.
