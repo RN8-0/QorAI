@@ -12,6 +12,13 @@ scripts/.diag_*
 scripts/.fix_*
 scripts/.test-*
 scripts/_*
+# ISTISNA — `scripts/_*` tek kullanimlik teshis betikleri icindi, ama bu dosya
+# URETIM BAGIMLILIGI: web/scripts/seo.mjs onu import ediyor. Kural onu da
+# yutunca sunucudaki `git pull` dosyayi hic almadi ve gecelik SEO tazeleme
+# cron'u (04:17) her gece ERR_MODULE_NOT_FOUND ile coktu — yerelde build
+# calistigi icin de fark edilmedi. Yeni bir `_` dosyasi build tarafindan
+# import edilecekse BURAYA da eklenmeli.
+!scripts/_spec_sandbox.mjs
 
 # Miscellaneous
 *.class

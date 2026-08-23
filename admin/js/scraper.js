@@ -805,6 +805,25 @@ function cleanCountryCodes(value) {
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+-\s*$/g, '')
     .trim();
+  // SATICI/BOLGE SKU KODU — `(69D0GACBTK)`, `(MGE64TU/A)`, `(SM-L330NZSATUR)`.
+  // Yukaridaki kurallar yalnizca adin SONUNDAKI ulke ekini (`-021TR`) aliyordu;
+  // parantez icindeki tam parca numarasi kaliyordu ve katalogda olculdu:
+  // 10.000 urunluk ornekte adlarin %17'si boyle bir kod tasiyor.
+  //
+  // TEK KAYNAK: temizlik kurali `qor_ai_prompts.js` icinde yasiyor ve siteyle
+  // ORTAK (kart, analiz, prompt hepsi onu cagiriyor). Burada ikinci bir kopya
+  // yazmak, iki tarafin zamanla ayrismasi demekti.
+  //
+  // SLUG'A DOKUNMAZ: payload.slug `sourceProduct.slug || id || dedupKey`'den,
+  // yani KAYNAK URL'den geliyor (bkz. asagida payload) — addan degil. O yuzden
+  // burasi adresleri degistirmez, 107k urunun URL'i yerinde kalir.
+  const P = (typeof globalThis !== 'undefined' && globalThis.QorAiPrompts) || null;
+  if (P && typeof P.cleanProductName === 'function') {
+    const temiz = P.cleanProductName(s);
+    // Kural adin TAMAMINI yiyorsa uygulama — kod disinda bir sey kalmamis
+    // demektir ve adsiz urun, kodlu urunden kotudur.
+    if (temiz) s = temiz;
+  }
   return s;
 }
 

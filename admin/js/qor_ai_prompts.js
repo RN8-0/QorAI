@@ -34,10 +34,48 @@
 const COUNTRY_SKU_RE = /\b[A-Z0-9]{4,}[A-Z]{1,3}\/[A-Z]\b/g;
 const COUNTRY_SKU_GROUP_RE = /\s*[\[(][^\])]*\b[A-Z0-9]{4,}[A-Z]{1,3}\/[A-Z]\b[^\])]*[\])]/g;
 
+// PARANTEZ ICINDEKI SATICI/BOLGE SKU KODU.
+//
+// Yukaridaki iki kural yalnizca Apple'in `MGE64TU/A` bicimini yakaliyordu.
+// Katalogda olculdu (10.000 urunluk ornek, Typesense): adin icinde parantezli
+// bir SKU tasiyan urun **%5,3** — yani ~5.700 kayit. Apple bicimi bunun
+// yalnizca %0,5'i. Kalanlar Lenovo `(69D0GACBTK)`, Samsung `(SM-L330NZSATUR)`,
+// kasa/PSU `(0R20B00262)` gibi kodlar ve kullaniciya HICBIR sey anlatmiyorlar.
+// Kart uzerinde ayrica goze batiyorlardi: ProductCard adin sonundaki parantezi
+// "varyant" satirina aliyor (orasi normalde "512 GB" yazar), yani kodlar
+// kartin en okunakli ikinci satirinda duruyordu.
+//
+// VARYANTI YEMEMEK SART. `(512 GB)`, `(12 GB / 512 GB)`, `(M5 Pro)`, `(4K)`,
+// `(Wi-Fi)`, `(18CPU/20GPU)` KALMALI. Uc kapi birden:
+//   1. bosluk yok           -> "512 GB", "M5 Pro" elenir
+//   2. en az 6 karakter     -> "M5", "4K" elenir
+//   3. rakam+harf var ve
+//      birim kalibi yok     -> "18CPU/20GPU" (rakam+CPU) elenir
+// Kucuk harf iceren icerik zaten 1. kapiya takilmaz ama `[A-Z0-9]` ile
+// baslama sarti "Wi-Fi" gibi adlari da disarida birakir.
+const PAREN_TOKEN_RE = /\s*[[（(]\s*([A-Z0-9][A-Z0-9./-]{5,})\s*[)）\]]/g;
+// Rakamin hemen ardindan gelen olcu birimi = bu bir SKU degil, teknik deger.
+const SPEC_UNIT_RE = /\d(?:GB|TB|MB|KB|CPU|GPU|GHZ|MHZ|HZ|MAH|WH|NM|MP|FPS|RPM|BIT|K|W|V|A)\b/;
+// ISLEMCI / EKRAN KARTI AILESI — SKU'ya benziyor ama kullaniciya gercekten
+// bir sey anlatiyor. Olculdu (20.000 urunluk ornek): bu korumasiz 3 urun
+// yanlis temizleniyordu — `(RTX5090)` ve `(RTX5080-O16G-NOCTUA)`. Liste
+// bilerek DAR: genis tutunca `A1336011`, `BT265S`, `M2437E1` gibi gercek
+// parca numaralari da korunuyor ve asil is yapilmamis oluyor.
+const CHIP_FAMILY_RE = /^(?:RTX|GTX|RADEON|RX|ARC|RYZEN|THREADRIPPER|XEON|CORE|I[3579])[\s-]?\d/;
+
+function looksLikeSku(token) {
+  if (!/\d/.test(token)) return false;      // saf harf: model adi olabilir
+  if (!/[A-Z]/.test(token)) return false;   // saf rakam: yil / olcu olabilir
+  if (SPEC_UNIT_RE.test(token)) return false;
+  if (CHIP_FAMILY_RE.test(token)) return false;
+  return true;
+}
+
 function cleanProductName(name) {
   return String(name || '')
     .replace(COUNTRY_SKU_GROUP_RE, '')
     .replace(COUNTRY_SKU_RE, '')
+    .replace(PAREN_TOKEN_RE, (tam, ic) => (looksLikeSku(ic) ? '' : tam))
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([,;:])/g, '$1')
     .replace(/\s+([.)])/g, '$1')
