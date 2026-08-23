@@ -10,7 +10,7 @@ rem Sira: once VITRIN kategorileri (ana sayfa/kategori sayfalarinda gorunenler),
 rem sonra genel havuz. Boylece kullanici sonucu dakikalar icinde gorur.
 rem Tek surec: epey.com'a istek hizi connector'un global 1.1 sn kapisiyla sabit
 rem kalir (paralel surec ACMA — bot duvarina caparsin).
-cd /d C:\Users\RN8\Desktop\Compair-master
+cd /d "%~dp0.."
 set LOG=%USERPROFILE%\qorai-price-discovery.log
 echo ===== %date% %time% yakalama kosusu basladi ===== >> "%LOG%"
 set NO_REINDEX=1

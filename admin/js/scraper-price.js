@@ -117,8 +117,90 @@
     pollStatus();
   };
 
+  // ── İŞÇİ + ZAMANLAMA PANELİ ────────────────────────────────────────────
+  //
+  //  Fiyat işleri Hetzner'dan bu PC'ye taşındı (Amazon datacenter IP'sine
+  //  dört pazarda birden bot duvarı çıkarıyor). Bu iki soruyu panelden
+  //  yanıtlanabilir yapmak şart oldu:
+  //    1. İşi HANGİ PC koşturuyor?  -> PocketBase'deki işçi kiralaması
+  //    2. Gece görevleri kurulu mu? -> Windows görev zamanlayıcısı
+  //  İkisini de proxy okuyor (tarayıcı görev zamanlayıcısını göremez).
+  const TARIH = (v) => {
+    if (!v) return '—';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime()) || d.getFullYear() < 2000) return '—';
+    return d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  };
+  const esc = (s) => String(s == null ? '' : s).replace(/[<>&]/g, '');
+
+  async function refreshWorker() {
+    const box = el('priceWorkerBox');
+    if (!box) return;
+    let s;
+    try {
+      s = await jfetch('/price/schedule');
+    } catch (e) {
+      box.innerHTML = `<div class="text-muted" style="font-size:12px">Zamanlama okunamadı — proxy kapalı olabilir (${esc(e.message)}).
+        Başlatmak için: <code>admin\\start-scraper-proxy.bat</code></div>`;
+      return;
+    }
+    const lease = s.lease || {};
+    const owner = lease.owner || null;
+    const benim = Boolean(lease.mine);
+    // Üç durum: iş bende / iş başka PC'de / hiç sahip yok.
+    const rozet = benim
+      ? '<span style="background:#16a34a;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px">bu PC koşturuyor</span>'
+      : owner
+        ? `<span style="background:#d97706;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px">işçi: ${esc(owner.hostName)}</span>`
+        : '<span style="background:#64748b;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px">sahipsiz</span>';
+
+    const gorevler = (s.tasks || []).map((t) => {
+      const yok = t.state === 'missing';
+      return `<tr>
+        <td style="padding:3px 12px 3px 0;white-space:nowrap">${yok ? '✕' : '✓'}</td>
+        <td style="padding:3px 14px 3px 0">${esc(t.name)}</td>
+        <td style="padding:3px 14px 3px 0;color:#64748b;white-space:nowrap">${yok ? 'kurulu değil' : 'sonraki ' + TARIH(t.next)}</td>
+        <td style="padding:3px 0;color:#64748b;white-space:nowrap">${yok ? '' : 'son ' + TARIH(t.last)}</td>
+      </tr>`;
+    }).join('');
+
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <b style="font-size:13px">👷 Fiyat işçisi</b>${rozet}
+        <span style="color:#64748b;font-size:12px">${esc(s.hostName)} · ${esc(s.repoPath)}</span>
+      </div>
+      ${owner && !benim ? `<div style="font-size:12px;color:#64748b;margin-bottom:8px">
+        Bu PC <b>yedek</b>. Sahibi ${esc(owner.hostName)} (son görüldü ${TARIH(owner.lastSeenAt)}).
+        ${lease.stale ? 'Sahip bayat — bu PC bir sonraki koşuda kendiliğinden devralır.'
+          : `Sahip ${lease.staleAfterHours || 26} saat görünmezse bu PC kendiliğinden devralır.`}
+      </div>` : ''}
+      <table style="font-size:12px;border-collapse:collapse;margin-bottom:8px">${gorevler}</table>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${s.allInstalled
+          ? '<button class="btn btn-sm" onclick="priceScheduleAction(\'remove\')">Görevleri kaldır</button>'
+          : '<button class="btn btn-primary btn-sm" onclick="priceScheduleAction(\'install\')">Gece görevlerini bu PC\'ye kur</button>'}
+        ${benim ? '' : '<button class="btn btn-primary btn-sm" onclick="priceScheduleAction(\'claim\')">Bu PC\'yi işçi yap</button>'}
+      </div>`;
+  }
+
+  window.priceScheduleAction = async (action) => {
+    const box = el('priceWorkerBox');
+    if (box) box.innerHTML = '<div class="text-muted" style="font-size:12px">Uygulanıyor…</div>';
+    try {
+      await jfetch('/price/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+    } catch (e) {
+      alert(`İşlem başarısız: ${e.message}`);
+    }
+    refreshWorker();
+  };
+
   window.priceLabInit = () => {
     renderJobs();
+    refreshWorker();
     refreshCoverage();
     pollStatus().then(() => {
       // Sekme açıkken koşu sürüyorsa canlı takibe geç.

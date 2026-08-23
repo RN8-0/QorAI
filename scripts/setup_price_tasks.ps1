@@ -1,11 +1,17 @@
 ﻿# ══════════════════════════════════════════════════════════════════
 #  Qor AI — fiyat görevlerini YENİ PC'ye kuran script
 #
-#  Bu PC'nin fiyat sistemindeki TEK rolü Epey tabanlı TR mağaza
-#  fiyatları (Epey datacenter IP'lerini 403'ler → ev IP'si şart) ve
-#  gündüz ekstra Amazon kapasitesi. Amazon TR/DE/GB/US gece koşusu,
-#  15:10 topup'ı ve FCM token yenileme HETZNER'da zaten çalışıyor —
-#  PC tamamen kapalı kalsa bile site fiyatsız kalmaz.
+#  2026-08-24: FİYATIN TEK KOŞUCUSU ARTIK BU PC. Amazon, Hetzner'ın
+#  datacenter IP'sine dört pazarda birden bot duvarı çıkarmaya başladı
+#  (gece koşusu 291 → 19 teklif); oradaki 03:10 ve 15:10 cron'ları
+#  yoruma alındı. Hetzner'da yalnız SEO ön-render (04:17) ve FCM token
+#  kaldı. PC uzun süre kapalı kalırsa fiyatlar bayatlar ve kartlarda
+#  GİZLENİR — ayrıntı: docs/PRICE_PIPELINE.md
+#
+#  İKİ PC ÇAKIŞMAZ: .cmd zincirleri koşmadan önce PocketBase'deki işçi
+#  kiralamasına bakar (scripts/worker_lease.js). Sahibi hayattaki başka
+#  bir PC ise koşu sessizce atlanır; sahip 26 saattir görünmüyorsa bu PC
+#  kendiliğinden devralır.
 #
 #  Yeni PC'ye taşınma (tam adımlar docs/PRICE_PIPELINE.md):
 #    1. Repoyu klonla (veya kopyala)

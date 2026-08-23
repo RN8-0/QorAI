@@ -27,6 +27,7 @@ const http = require('http');
 const https = require('https');
 const zlib = require('zlib');
 const path = require('path');
+const os = require('os');
 const fs = require('fs');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -266,6 +267,150 @@ const PRICE_JOBS = {
   },
 };
 let priceJob = null; // { key, startedAt, proc, logFile }
+
+// ══ ZAMANLANMIS GOREVLER + ISCI KIRALAMASI ════════════════════════════════
+//
+//  Fiyat isleri Hetzner'da datacenter IP'sine cikan bot duvarina carpiyordu
+//  (Amazon dort pazarda birden; Epey'de de ayni sinif sorun var). Isler bu
+//  yuzden PC'de kosuyor. Iki sey gerekiyordu:
+//
+//   1. TASINABILIRLIK — repo baska bir PC'ye klonlaninca gorevler ORADA da
+//      kendiliginden kurulsun. `ensurePriceTasks()` proxy her acildiginda
+//      idempotent kosar: gorev varsa dokunmaz, yoksa kurar.
+//   2. TEK SAHIP — iki PC ayni anda kosarsa ayni urunleri tarar ve birbirinin
+//      rollup damgasini ezerler. `scripts/worker_lease.js` PocketBase'de tek
+//      bir sahiplik kaydi tutar; gorevler kosmadan once ona bakar.
+//
+//  Gorev adlari setup_price_tasks.ps1 ile AYNI olmali — orasi kurar, burasi
+//  raporlar; ayrisirsa panel "kurulu degil" der ama gorev calisiyor olur.
+const PRICE_TASKS = ['QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch'];
+
+function runPowerShell(script, timeoutMs = 60000) {
+  return new Promise((resolve, reject) => {
+    const { execFile } = require('child_process');
+    execFile('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      { windowsHide: true, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err && !stdout) return reject(new Error(String(stderr || err.message).trim().slice(0, 500)));
+        resolve(String(stdout || ''));
+      });
+  });
+}
+
+function runNode(args, timeoutMs = 60000) {
+  return new Promise((resolve, reject) => {
+    const { execFile } = require('child_process');
+    execFile(process.execPath, args,
+      { cwd: rootDir, windowsHide: true, timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        // worker_lease "benim isim degil" icin cikis 1 doner — bu bir HATA DEGIL,
+        // cevabin kendisi. stdout'u yine dondur.
+        if (err && !stdout) return reject(new Error(String(stderr || err.message).trim().slice(0, 500)));
+        resolve(String(stdout || ''));
+      });
+  });
+}
+
+/** Windows gorev zamanlayicisindan bu PC'deki Qor gorevlerini okur. */
+async function readScheduledTasks() {
+  if (process.platform !== 'win32') return [];
+  const ps = `$ErrorActionPreference='SilentlyContinue';`
+    + `@(${PRICE_TASKS.map((t) => `'${t}'`).join(',')}) | ForEach-Object {`
+    + ` $t = Get-ScheduledTask -TaskName $_ -ErrorAction SilentlyContinue;`
+    + ` if ($t) { $i = $t | Get-ScheduledTaskInfo;`
+    + `   [pscustomobject]@{name=$_;state=[string]$t.State;last=$i.LastRunTime;next=$i.NextRunTime;result=$i.LastTaskResult} }`
+    + ` else { [pscustomobject]@{name=$_;state='missing';last=$null;next=$null;result=$null} } }`
+    + ` | ConvertTo-Json -Compress -Depth 3`;
+  try {
+    const out = (await runPowerShell(ps)).trim();
+    if (!out) return [];
+    const parsed = JSON.parse(out);
+    const liste = Array.isArray(parsed) ? parsed : [parsed];
+    // ConvertTo-Json tarihleri `/Date(1787530200000)/` diye yaziyor ve
+    // tarayicidaki `new Date()` bunu AYRISTIRAMAZ — panelde her zaman "—"
+    // gorunurdu. ISO'ya burada cevriliyor; panel ham veri temizlemesin.
+    const isoYap = (v) => {
+      if (v == null) return null;
+      const m = /^\/Date\((-?\d+)\)\/$/.exec(String(v));
+      if (m) {
+        const t = Number(m[1]);
+        // Kurulmamis gorevlerde Windows 1999-11-30 damgasi koyuyor — "hic
+        // kosmadi" demek; panelde tarih gibi gostermek yaniltici olurdu.
+        return Number.isFinite(t) && t > 946684800000 ? new Date(t).toISOString() : null;
+      }
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d.toISOString();
+    };
+    return liste.map((t) => ({ ...t, last: isoYap(t.last), next: isoYap(t.next) }));
+  } catch { return []; }
+}
+
+/** setup_price_tasks.ps1'i kosturur — gorev tanimlarinin TEK KAYNAGI orasi. */
+async function installPriceTasks({ uninstall = false } = {}) {
+  const ps1 = path.join(rootDir, 'scripts', 'setup_price_tasks.ps1');
+  if (!fs.existsSync(ps1)) throw new Error('setup_price_tasks.ps1 bulunamadi');
+  const args = `-RepoPath '${rootDir.replace(/'/g, "''")}'${uninstall ? ' -Uninstall' : ''}`;
+  return runPowerShell(`& '${ps1.replace(/'/g, "''")}' ${args}`, 120000);
+}
+
+async function priceScheduleStatus() {
+  const [tasks, leaseRaw] = await Promise.all([
+    readScheduledTasks(),
+    runNode(['scripts/worker_lease.js', 'status', 'price']).catch((e) => JSON.stringify({ error: e.message })),
+  ]);
+  let lease = null;
+  try { lease = JSON.parse(leaseRaw); } catch { lease = { error: 'kiralama okunamadi' }; }
+  const kurulu = tasks.filter((t) => t.state !== 'missing').length;
+  return {
+    repoPath: rootDir,
+    hostName: os.hostname(),
+    tasks,
+    installed: kurulu,
+    total: PRICE_TASKS.length,
+    allInstalled: kurulu === PRICE_TASKS.length,
+    lease,
+  };
+}
+
+/**
+ * Proxy acilisinda BIR KEZ: gorevler eksikse kur, kiralamayi tazele.
+ *
+ * Kullanicinin istegi: "farkli bir pc de gh den repo cekilince tekrar cron o
+ * pc de devreye girecek". Proxy zaten o PC'de calisan ve admin panelinin
+ * bagli oldugu surec — dogal kurulum noktasi burasi.
+ *
+ * SESSIZ VE IDEMPOTENT: gorev zaten varsa hicbir sey yapmaz. Kiralama baska
+ * bir CANLI PC'deyse gorevleri yine kurar ama .cmd zinciri kosmadan once
+ * kiralamaya bakip cekilir — yani ikinci PC "yedek" olarak hazir bekler ve
+ * ilki 26 saat gorunmezse kendiliginden devralir.
+ */
+async function ensurePriceTasks() {
+  if (process.platform !== 'win32') return;
+  try {
+    if (!fs.existsSync(path.join(rootDir, 'migration', '.env'))) {
+      console.log('  ⏰ zamanlanmis gorevler ATLANDI — migration\\.env yok (gizli anahtarlar git\'te tutulmuyor)');
+      return;
+    }
+    const tasks = await readScheduledTasks();
+    const eksik = tasks.filter((t) => t.state === 'missing').map((t) => t.name);
+    if (eksik.length) {
+      console.log(`  ⏰ eksik zamanlanmis gorev: ${eksik.join(', ')} — kuruluyor…`);
+      await installPriceTasks();
+      console.log('  ⏰ zamanlanmis gorevler kuruldu (setup_price_tasks.ps1)');
+    } else {
+      console.log(`  ⏰ zamanlanmis gorevler yerinde (${tasks.length})`);
+    }
+    // Kalp atisi: bu PC hayatta. Sahibi baskasiysa cikis 1 doner ve dokunmaz.
+    const beat = await runNode(['scripts/worker_lease.js', 'beat', 'price']).catch(() => '');
+    const st = JSON.parse(await runNode(['scripts/worker_lease.js', 'status', 'price']).catch(() => '{}') || '{}');
+    if (st && st.mine) console.log(`  👷 fiyat iscisi: BU PC (${st.hostName})`);
+    else if (st && st.owner) console.log(`  👷 fiyat iscisi baska PC: ${st.owner.hostName} (bu PC yedek)`);
+    else if (beat) console.log('  👷 fiyat iscisi kiralamasi alindi');
+  } catch (e) {
+    console.log(`  ⏰ zamanlanmis gorev kontrolu basarisiz: ${e.message}`);
+  }
+}
 
 function isPriceRunning() {
   return !!(priceJob && priceJob.proc && !priceJob.proc.killed && priceJob.proc.exitCode === null);
@@ -1887,6 +2032,42 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── ZAMANLAMA + ISCI DURUMU ────────────────────────────────────────────
+  //
+  //  NEDEN PROXY: fiyat isleri Hetzner'dan PC'ye tasindi, ama tarayicidaki
+  //  admin paneli Windows gorev zamanlayicisini goremez. Proxy zaten bu PC'de
+  //  ve zaten is kosturuyor — gorevleri de o rapor eder ve kurar.
+  //
+  //  GET  /price/schedule -> gorevler kurulu mu, son/sonraki kosu, isci kimde
+  //  POST /price/schedule {action:'install'|'remove'|'claim'}
+  if (req.url === '/price/schedule' && req.method === 'GET') {
+    priceScheduleStatus().then((s) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(s));
+    }).catch((e) => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    return;
+  }
+
+  if (req.url === '/price/schedule' && req.method === 'POST') {
+    readJsonBody(req).then(async (opts) => {
+      const action = String(opts.action || '');
+      if (action === 'install') await installPriceTasks();
+      else if (action === 'remove') await installPriceTasks({ uninstall: true });
+      else if (action === 'claim') await runNode(['scripts/worker_lease.js', 'claim', 'price', '--force']);
+      else throw new Error(`bilinmeyen action: ${action}`);
+      const s = await priceScheduleStatus();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, ...s }));
+    }).catch((e) => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    return;
+  }
+
   // POST /offers/stop
   if (req.url === '/offers/config' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -3036,6 +3217,12 @@ server.listen(PORT, async () => {
   console.log(`  🛡️  puppeteer-extra-plugin-stealth enabled`);
   console.log(`  📡 STRICT selectors — NO sidebar/carousel links`);
   console.log(`  ⚡ Product details: plain HTTPS fast path + Puppeteer fallback`);
+
+  // ZAMANLANMIS GOREVLER — bu PC'de kurulu degilse kur, kiralamayi tazele.
+  // Kullanicinin sarti: repo baska bir PC'ye cekilince cron ORADA devreye
+  // girsin. Proxy o PC'de calisan ve panelin bagli oldugu surec, yani dogal
+  // kurulum noktasi. Idempotent — gorev varsa dokunmaz.
+  await ensurePriceTasks();
 
   // Probe FlareSolverr first — if it's running we'll route through it.
   console.log(`  🔍 Probing FlareSolverr at ${FLARESOLVERR_URL}…`);
