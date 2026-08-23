@@ -1575,6 +1575,27 @@ function prettySubscriptionName(name) {
   return raw.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Bilinen servislerin KANONIK listesi — SUB_CATEGORY + SUB_DISPLAY'DEN
+// TURETILIR, elle yazilmis ucuncu bir liste DEGIL. Admin panelindeki abonelik
+// secicisi bunu kullaniyor; sabit bir dizi kopyalasaydik yeni bir servis
+// eklendiginde iki yerden birinin unutulmasi kacinilmazdi (spec_i18n.js ve
+// sub_logos.js ile ayni gerekce).
+//
+// Takma adlar ELENIR: 'disney+' ve 'disney plus' ayni servis, ikisi de
+// 'Disney+' olarak gorunur ve listede tek satir kalir.
+function subscriptionCatalog() {
+  const gorulen = new Set();
+  const out = [];
+  for (const key of Object.keys(SUB_CATEGORY)) {
+    const name = prettySubscriptionName(key);
+    const lower = name.toLowerCase();
+    if (gorulen.has(lower)) continue;
+    gorulen.add(lower);
+    out.push({ name, category: SUB_CATEGORY[key] });
+  }
+  return out;
+}
+
 function subValidationMessages(lang) {
   const isTr = String(lang || '').slice(0, 2) === 'tr';
   return {
@@ -1686,6 +1707,8 @@ root.QorAiLink = {
   compareAnalysis: compareAnalysis,
   subscriptionAnalysis: subscriptionAnalysis,
   subscriptionCategory: subscriptionCategory,
+  subscriptionCatalog: subscriptionCatalog,
+  prettySubscriptionName: prettySubscriptionName,
   normalizeSubscriptionCategoryKey: normalizeSubscriptionCategoryKey,
   subscriptionsMixCategories: subscriptionsMixCategories,
   looksLikeSubscriptionUrl: looksLikeSubscriptionUrl,

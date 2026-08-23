@@ -2,16 +2,24 @@
 // ══════════════════════════════════════════════════════════════
 //  QOR AI ADMIN — Analizler (`analyses` koleksiyonu)
 //
-//  UC IS YAPAR:
-//   1. ANALIZ URETIR. Urunu ara, quiz'i BURADA yanitla, rapor TR + EN olarak
-//      uretilsin. Quiz ve rapor prompt'lari SITENIN prompt'larinin AYNISI —
-//      kopya degil, ayni dosya (admin/js/qor_ai_prompts.js; site tarafi
-//      web/src/lib/aiPrompts.js ile ayni dosyayi ice aktariyor).
-//   2. SITEDE YAPILMIS analizleri yayina alir (`saved_analyses`): urun, link
-//      ve abonelik analizleri.
-//   3. Yayin meta'sini uretir ve YINELENMEYI ENGELLER: ayni dilde iki analiz
+//  IKI IS YAPAR:
+//   1. ANALIZ URETIR. Kaynagi sec (urun / karsilastirma / link / abonelik),
+//      quiz'i BURADA yanitla, rapor TR + EN olarak uretilsin. Quiz ve rapor
+//      prompt'lari SITENIN prompt'larinin AYNISI — kopya degil, ayni dosya
+//      (admin/js/qor_ai_prompts.js; site tarafi web/src/lib/aiPrompts.js ile
+//      ayni dosyayi ice aktariyor).
+//   2. Yayin meta'sini uretir ve YINELENMEYI ENGELLER: ayni dilde iki analiz
 //      ayni <title>/description tasiyamaz; yasakli liste prompt'a gider ve
 //      kayit oncesi tekrar denetlenir.
+//
+//  KALDIRILDI — "Sitede yapilmislardan al" (`saved_analyses`).
+//  Ziyaretcinin sitede yaptigi analiz TEK DILDE uretiliyor (onun dilinde).
+//  Buradan yayina alinan her kayit dolayisiyla tek dilliydi: oteki dilde
+//  rapor yok demek, o dilde ON-RENDER YOK ve hreflang listesinde YOK demek —
+//  yani yayinlanan sayfanin yarisi eksik dogyordu. Ustelik o analizler bir
+//  BASKASININ quiz cevaplariyla uretilmisti; yayinlanan sayfada "bu analiz su
+//  cevaplara gore yapildi" kunyesi o kisinin tercihlerini gosteriyordu.
+//  Artik tek yol var: analiz BURADA, iki dilde, bastan uretilir.
 //
 //  Yayinlanan kayit /analiz/<slug> (+ /tr/analiz/<slug>) adresinde sitedeki
 //  raporun BIREBIR AYNISI olarak cizilir ve sitemap'e girer.
@@ -23,11 +31,6 @@
   var LANGS = [['tr', 'Türkçe'], ['en', 'English']];
   var SITE = 'https://qorai.net';
   var KIND_LABEL = { product: 'Ürün', compare: 'Karşılaştırma', link: 'Link', subscription: 'Abonelik' };
-  var SAVED_CATEGORY = {
-    product: 'product_history',
-    link: 'link_history',
-    subscription: 'subscription_history',
-  };
 
   var _items = [];
   var _editing = null;
@@ -45,22 +48,6 @@
   // uretiyor, ikinci bir slugify ayrisir.
   var slugify = function (v) { return QorAiPrompts.slugifyProduct(v); };
   var num = function (v) { return Number(v) || 0; };
-
-  // `saved_analyses.analysisData` icindeki HAM raporu cozer.
-  //  - urun  : `analysisData.analysis` (metin ya da obje) -> product_full_report
-  //  - link  : `analysisData.result`   -> ortak ("enhanced") sekil ya da compare
-  //  - abone : `analysisData.result`   -> abonelik sekli (services[])
-  function raporCoz(ham) {
-    if (!ham) return null;
-    if (typeof ham === 'object') return ham;
-    var s = String(ham).trim();
-    var fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fence) s = fence[1].trim();
-    var ilk = s.indexOf('{');
-    var son = s.lastIndexOf('}');
-    if (ilk < 0 || son <= ilk) return null;
-    try { return JSON.parse(s.slice(ilk, son + 1)); } catch (_) { return null; }
-  }
 
   // Kayittan turun okunmasi — site tarafiyla ayni kural
   // (web/src/lib/analysisRecord.js: bos alan = eski urun analizi).
@@ -91,8 +78,25 @@
     var s = document.createElement('style');
     s.id = 'anStyles';
     s.textContent = [
+      /* ── OLCULU TEK SUTUN ──────────────────────────────────────────────
+         .main-content ekranin TAMAMINI kapliyor (margin-left:220px, baska
+         sinir yok). Kartlarin kendi max-width:960px'i vardi, yani genis bir
+         monitorde butun ekran analiz ekraninin SOL UCTE BIRINE sikismis
+         goruunuyordu ve sagda 700px bos alan kaliyordu. Genislik artik TEK
+         yerde: bu sutun. Kartlar sutunu doldurur, sutun ortalanir. Baslik
+         seridi de ayni sutuna hizalanir — yoksa baslik solda, icerik ortada
+         kalir ve hiza kirilir. */
+      '#analysesView .view-header{max-width:1120px;margin-left:auto;margin-right:auto;width:100%}',
+      '#analysesAdminRoot{max-width:1120px;margin:0 auto}',
       /* Ayrim kutu/golge ile degil, 1px hairline + bosluk ile. Sabit hex yok. */
-      '.an-tabbar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px}',
+      /* Dar ekranda sekme cubugu TASIYORDU ve sayfa yatay kaydirmadigi icin
+         tasan sekmeler ekranin disinda kalip TIKLANAMIYORDU (390px'te abonelik
+         kategorilerinden 'Hosting / Site' ve 'Oyun' boyleydi — olculdu: son
+         butonun sag kenari 538px). Cubugun kendisi kayiyor; butonlar da
+         sikismasin diye buzulmuyor. */
+      '.an-tabbar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:18px;',
+      '  overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--bg5) transparent}',
+      '.an-tabbar button{flex:0 0 auto}',
       '.an-tabbar button{appearance:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--text2);',
       '  font:inherit;font-size:13px;font-weight:600;padding:10px 16px;cursor:pointer;margin-bottom:-1px;transition:color .12s}',
       '.an-tabbar button:hover{color:var(--text1)}',
@@ -135,11 +139,37 @@
       '.an-img-prev.empty{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3)}',
       '.an-img-prev.bad{opacity:.35}',
       '.an-img-hint{font-size:11px;color:var(--text3);margin:6px 0 0}',
-      /* Karsilastirmada secili urun cipleri. */
-      '.an-chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}',
-      '.an-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);font-size:12.5px;color:var(--text1)}',
-      '.an-chip button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px}',
+      /* Karsilastirmada / abonelikte secili konu cipleri. */
+      '.an-chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}',
+      '.an-chips-lg{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}',
+      '.an-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;border-radius:999px;',
+      '  background:var(--bg3);border:1px solid var(--border);font-size:12.5px;color:var(--text1);max-width:280px}',
+      '.an-chip img{width:20px;height:20px;object-fit:contain;border-radius:5px;background:var(--bg2);flex:0 0 auto}',
+      '.an-chip button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:0 0 auto}',
       '.an-chip button:hover{color:var(--text1)}',
+
+      /* ── ABONELIK SECICI ──────────────────────────────────────────────
+         Kutucuk = logo + ad. Sitedeki `subs-tile` ile ayni fikir; fark
+         KATEGORI ONCE geliyor, yani karisik tur secimi hic kurulamiyor. */
+      '.an-sub-kat{margin:0 0 14px}',
+      '.an-sub-kat button:disabled{opacity:.32;cursor:not-allowed}',
+      '.an-sub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;margin-bottom:16px}',
+      '.an-sub-tile{position:relative;display:flex;align-items:center;gap:10px;padding:9px 11px;text-align:left;',
+      '  border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text2);',
+      '  font:inherit;font-size:12.5px;cursor:pointer;transition:border-color .12s,color .12s}',
+      '.an-sub-tile:hover{border-color:var(--bg5);color:var(--text1)}',
+      '.an-sub-tile:focus-visible{outline:2px solid var(--accent);outline-offset:1px}',
+      '.an-sub-tile.on{border-color:var(--accent);color:var(--text1);background:var(--accent3)}',
+      '.an-sub-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}',
+      '.an-sub-tick{margin-left:auto;color:var(--accent);font-weight:800;font-size:12px;flex:0 0 auto}',
+      '.an-sub-logo{flex:0 0 auto;object-fit:contain;border-radius:7px;background:var(--bg2)}',
+      /* Logosu olmayan servis: bos kare degil, adin ilk harfi. */
+      '.an-sub-mono{display:inline-flex;align-items:center;justify-content:center;font-weight:750;',
+      '  color:var(--text3);border:1px solid var(--border);font-size:13px}',
+      '.an-sub-add{display:flex;gap:8px;flex-wrap:wrap}',
+      '.an-sub-add input{flex:1 1 300px;min-width:0;padding:9px 12px;border:1px solid var(--border);',
+      '  border-radius:var(--radius-sm);font:inherit;background:var(--bg3);color:var(--text1)}',
+      '.an-sub-add input:focus{outline:2px solid var(--accent);outline-offset:1px}',
       /* Uretim ilerlemesi: cubuk + donen gosterge + sayan sure. */
       '.an-bar-track{height:3px;border-radius:999px;background:var(--bg3);overflow:hidden;margin:2px 0 14px}',
       '.an-bar-fill{height:100%;background:var(--accent,#7c5cff);transition:width .4s ease-out}',
@@ -153,20 +183,66 @@
       '.an-pill.pub{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
       '.an-pill.draft{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
       '.an-pill.kind{color:var(--accent);background:var(--accent3)}',
-      '.an-pill.warn{color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent)}',
+      '.an-pill.warn{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
+      '.an-pill.ready{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
+      '.an-pill.err{color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent)}',
       '.an-acts{display:flex;gap:6px;flex-wrap:wrap}',
 
-      '.an-card{border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--bg2);margin-bottom:14px;max-width:960px}',
-      '.an-card-wide{max-width:none}',
-      '.an-card h3{margin:0 0 14px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700}',
+      /* Genislik artik SUTUNUN isi (yukaridaki #analysesAdminRoot); kart
+         kendi tavanini koymuyor. `an-card-wide` bu yuzden gereksiz kaldi ama
+         cagrilari duruyor — zararsiz, kaldirmak icin sebep yok. */
+      '.an-card{border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;background:var(--bg2);margin-bottom:14px}',
+      '.an-card h3{margin:0 0 14px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);font-weight:700;',
+      '  display:flex;align-items:center;gap:10px;flex-wrap:wrap}',
+      '.an-card h3 em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums}',
       '.an-hint{font-size:12px;color:var(--text3);margin-top:6px;line-height:1.55}',
       '.an-hint a{color:var(--accent)}',
       '.an-note{background:var(--bg3);color:var(--text2);border-left:2px solid var(--accent);padding:12px 14px;',
-      '  border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:13px;margin-bottom:16px;max-width:960px;line-height:1.65}',
+      '  border-radius:0 var(--radius-sm) var(--radius-sm) 0;font-size:13px;margin-bottom:16px;line-height:1.65}',
       '.an-note-err{border-left-color:var(--red);color:var(--red)}',
+      '.an-note-warn{border-left-color:var(--amber)}',
+      '.an-note b{font-variant-numeric:tabular-nums}',
+
+      /* ── Ozet seridi ── Sayilar buyuk ve tabular; etiket kucuk ve sessiz.
+         Kutu/golge yok, ayrim yine 1px hairline. */
+      '.an-ozet{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:0 0 16px;margin-bottom:16px;',
+      '  border-bottom:1px solid var(--border)}',
+      '.an-ozet-say{display:flex;gap:26px;flex-wrap:wrap}',
+      '.an-ozet-say div{display:flex;flex-direction:column;gap:1px}',
+      '.an-ozet-say b{font-size:23px;font-weight:750;line-height:1.05;color:var(--text1);font-variant-numeric:tabular-nums}',
+      '.an-ozet-say span{font-size:11px;color:var(--text3);letter-spacing:.02em}',
+      '.an-ozet-say .ok b{color:var(--green)}',
+      '.an-ozet-say .uyari b{color:var(--amber)}',
+      '.an-ozet-tur{display:flex;gap:14px;flex-wrap:wrap;padding-left:22px;border-left:1px solid var(--border)}',
+      '.an-tur{font-size:12px;color:var(--text3);display:inline-flex;gap:5px;align-items:baseline}',
+      '.an-tur b{color:var(--text2);font-weight:650;font-variant-numeric:tabular-nums}',
+      '.an-ozet-son{margin-left:auto;font-size:12px;color:var(--text3)}',
+      '.an-ozet-son b{color:var(--text2);font-weight:650;font-variant-numeric:tabular-nums}',
+      '@media (max-width:860px){.an-ozet-tur{padding-left:0;border-left:0}.an-ozet-son{margin-left:0}}',
+
+      /* ── Yayin hazirlik listesi ── */
+      '.an-chk h3{justify-content:flex-start}',
+      '.an-chklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}',
+      '.an-chklist li{display:flex;gap:10px;align-items:flex-start;padding:9px 0;font-size:13px;line-height:1.55;',
+      '  color:var(--text2);border-top:1px solid var(--border)}',
+      '.an-chklist li:first-child{border-top:0;padding-top:0}',
+      '.an-chklist i{font-style:normal;font-weight:800;font-size:11px;line-height:1.6;flex:0 0 14px;text-align:center}',
+      '.an-chk-engel i{color:var(--red)}',
+      '.an-chk-engel{color:var(--text1)}',
+      '.an-chk-uyari i{color:var(--amber)}',
+      '.an-chk-ok{margin:0;font-size:13.5px;color:var(--green);line-height:1.6}',
+      '.an-urls{display:flex;gap:14px;flex-wrap:wrap}',
+      '.an-urls code{font-size:11.5px;color:var(--text3)}',
+
+      /* ── "Devam" seridi — buton + neden yanyana ── */
+      '.an-go{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:4px}',
+      '.an-go-note{font-size:12px;color:var(--text3);line-height:1.55;max-width:56ch}',
+      '.an-go-note b{color:var(--text2);font-weight:650;font-variant-numeric:tabular-nums}',
 
       /* Editor basligi: eylemler SAGA yaslanir, bulunmasi icin aranmaz. */
-      '.an-head{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}',
+      '.an-head{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}',
+      '.an-head-slim{padding-bottom:14px;border-bottom:1px solid var(--border)}',
+      '.an-head-slim strong{font-size:14px;color:var(--text2);font-weight:650}',
       '.an-head strong{font-size:15px;color:var(--text1)}',
       '.an-head-sp{flex:1 1 auto}',
 
@@ -197,7 +273,7 @@
       '.an-lead{margin:12px 0 0;color:var(--text2);font-size:13.5px;line-height:1.65}',
 
       /* ── Uretim akisi ── */
-      '.an-steps{display:flex;gap:0;margin-bottom:20px;max-width:960px}',
+      '.an-steps{display:flex;gap:0;margin-bottom:22px}',
       '.an-step{flex:1;padding:10px 0 12px;border-top:2px solid var(--border);color:var(--text3);font-size:12px;font-weight:600}',
       '.an-step.on{border-top-color:var(--accent);color:var(--accent)}',
       '.an-step.done{border-top-color:var(--green);color:var(--text2)}',
@@ -216,7 +292,7 @@
       '.an-opt.on{border-color:var(--accent);color:var(--text1);background:var(--accent3)}',
       '.an-opt input{margin:3px 0 0;accent-color:var(--accent);flex:0 0 auto}',
 
-      '.an-prog{display:flex;flex-direction:column;gap:2px;max-width:640px;margin:18px 0}',
+      '.an-prog{display:flex;flex-direction:column;gap:2px;max-width:660px;margin:18px auto}',
       '.an-prog div{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);',
       '  border-radius:var(--radius-sm);background:var(--bg2);font-size:13px;color:var(--text3)}',
       '.an-prog div.on{color:var(--text1);border-color:var(--accent)}',
@@ -235,6 +311,7 @@
     if (!root) return;
     _run = null;
     _editing = null;
+    _slugHata = ''; _slugTaslak = '';
     root.innerHTML = '<p class="an-empty">Yükleniyor…</p>';
     try {
       _items = await getPb().collection('analyses').getFullList({ sort: '-updated', $autoCancel: false });
@@ -263,12 +340,7 @@
     var yayin = _items.filter(function (a) { return a.status === 'published'; }).length;
 
     root.innerHTML = ''
-      + '<div class="an-note">'
-      + '<strong>Analiz artık burada üretilir.</strong> <strong>+ Yeni analiz</strong> → ürünü ara → '
-      + 'quiz\'i bu ekranda yanıtla → rapor <strong>TR ve EN</strong> olarak üretilsin. '
-      + 'Sitede yapılmış ürün / link / abonelik analizlerini de yayına alabilirsin. '
-      + 'Yayınlanan sayfa <code>/analiz/&lt;slug&gt;</code> adresinde <em>sitedeki raporun birebir aynısı</em> olarak çizilir.'
-      + '</div>'
+      + ozetSerit()
       + '<div class="an-bar">'
       + '<input id="anSearch" placeholder="Konu ya da slug ara…" style="min-width:260px" value="' + esc(filtre) + '">'
       + '<select id="anStatus">'
@@ -303,6 +375,51 @@
     });
   }
 
+  // ── OZET SERIDI ────────────────────────────────────────────
+  //
+  //  Yerine gectigi sey, ekrani her acilista okunan dort satirlik bir
+  //  aciklama metniydi ("analiz artik burada uretilir…"). Ilk seferden sonra
+  //  hicbir sey soylemiyordu. Ayni yer artik DEGISEN seyi gosteriyor: kac
+  //  taslak var, kaci gercekten yayina hazir, kac kayit tek dilli. Sayilar
+  //  daima tabular — alt alta hizalansinlar.
+  function ozetSerit() {
+    var yayin = _items.filter(function (a) { return a.status === 'published'; });
+    var taslak = _items.filter(function (a) { return a.status !== 'published'; });
+    var hazir = taslak.filter(function (a) { return yayinDenetim(a).hazir; }).length;
+    var tekDil = _items.filter(function (a) { return langsOf(a).length < 2; }).length;
+    var sonTarih = yayin.map(function (a) { return a.publishedAt || a.updated || ''; })
+      .filter(Boolean).sort().pop();
+
+    var hucre = function (etiket, deger, vurgu) {
+      return '<div' + (vurgu ? ' class="' + vurgu + '"' : '') + '>'
+        + '<b>' + esc(String(deger)) + '</b><span>' + esc(etiket) + '</span></div>';
+    };
+    var turler = Object.keys(KIND_LABEL).map(function (k) {
+      var n = _items.filter(function (a) { return kindOf(a) === k; }).length;
+      return n ? '<span class="an-tur"><b>' + n + '</b>' + esc(KIND_LABEL[k]) + '</span>' : '';
+    }).filter(Boolean).join('');
+
+    return '<div class="an-ozet">'
+      + '<div class="an-ozet-say">'
+      + hucre('toplam', _items.length)
+      + hucre('yayında', yayin.length, 'ok')
+      + hucre('taslak', taslak.length)
+      + hucre('yayınlanabilir', hazir, hazir ? 'ok' : '')
+      + (tekDil ? hucre('tek dilli', tekDil, 'uyari') : '')
+      + '</div>'
+      + (turler ? '<div class="an-ozet-tur">' + turler + '</div>' : '')
+      + (sonTarih
+        ? '<div class="an-ozet-son">son yayın <b>'
+          + esc(new Date(sonTarih).toLocaleDateString('tr-TR')) + '</b></div>'
+        : '')
+      + '</div>'
+      + (tekDil
+        ? '<div class="an-note an-note-warn">Tek dilli <b>' + tekDil + '</b> kayıt var. '
+          + 'Bir dilde raporu olmayan analiz o dilde <strong>ön-render edilmez</strong> ve '
+          + 'hreflang listesine girmez — yani o dil için arama sonucunda yoktur.</div>'
+        : '');
+  }
+
   function rowHtml(a) {
     var diller = langsOf(a);
     var kind = kindOf(a);
@@ -318,13 +435,18 @@
       + '<h4>' + esc(subjectOf(a) || a.slug || '(adsız)') + '</h4>'
       + '<div class="an-meta">'
       + '<span class="an-pill ' + (a.status === 'published' ? 'pub' : 'draft') + '">' + (a.status === 'published' ? 'yayında' : 'taslak') + '</span>'
+      // Taslakta "yayina hazir mi" sorusunun cevabi, kaydi ACMADAN gorunsun.
+      // UC DURUM, iki degil: "engelsiz" ile "kusursuz" ayni sey DEGIL. Tek
+      // dilli, SSS'siz bir kayit yayinlanabilir ama yarim cikar; ona "hazır"
+      // demek soz vermek olurdu.
+      + (a.status === 'published' ? '' : durumRozeti(a))
       + '<span class="an-pill kind">' + esc(KIND_LABEL[kind]) + '</span>'
-      + (diller.length ? '<span>' + diller.map(function (l) { return l.toUpperCase(); }).join(' + ') + '</span>'
-        : '<span class="an-pill warn">tek dil</span>')
+      + (diller.length === 2 ? '<span>TR + EN</span>'
+        : diller.length ? '<span class="an-pill warn">yalnız ' + diller[0].toUpperCase() + '</span>'
+          : '<span class="an-pill warn">rapor yok</span>')
       + (a.productBrand ? '<span>' + esc(a.productBrand) + '</span>' : '')
       + (skor ? '<span>uyum <b>' + skor + '</b>/100</span>' : '')
       + (a.techScore ? '<span>Qor AI <b>' + num(a.techScore) + '</b>/100</span>' : '')
-      + (!r ? '<span class="an-pill warn">rapor yok</span>' : '')
       + '</div></div>'
       + '<div class="an-acts">'
       + (a.status === 'published'
@@ -335,24 +457,24 @@
       + '</div></div>';
   }
 
-  // ══ YENI ANALIZ — iki yol ══════════════════════════════════
-  function analysesNew(sekme) {
+  // ══ YENI ANALIZ ════════════════════════════════════════════
+  //
+  // TEK YOL. Ust sekme cubugu (Yeni analiz uret / Sitede yapilmislardan al)
+  // KALDIRILDI — gerekcesi dosya basliginda. Tek secenegin sekmesi olmaz.
+  function analysesNew() {
     styles();
     _run = null;
-    var t = sekme || 'uret';
     var root = $('analysesAdminRoot');
     root.innerHTML = ''
-      + '<button class="btn btn-ghost" onclick="loadAnalysesAdmin()" style="margin-bottom:14px">← Geri</button>'
-      + '<div class="an-tabbar">'
-      + '<button class="' + (t === 'uret' ? 'on' : '') + '" onclick="analysesNew(\'uret\')">Yeni analiz üret</button>'
-      + '<button class="' + (t === 'sitede' ? 'on' : '') + '" onclick="analysesNew(\'sitede\')">Sitede yapılmışlardan al</button>'
+      + '<div class="an-head an-head-slim">'
+      + '<button class="btn btn-ghost" onclick="loadAnalysesAdmin()">← Analizler</button>'
+      + '<strong>Yeni analiz</strong>'
       + '</div>'
       + '<div id="anNewBody"></div>';
-    if (t === 'uret') analysesUretTur(_uretTur);
-    else renderSitedeSec('product');
+    analysesUretTur(_uretTur);
   }
 
-  // ── 1) Yeni analiz üret: TUR SEC (urun / link / abonelik) ──
+  // ── 1) Yeni analiz: KAYNAK TUR SEC ────────────────────────
   //
   //  Uc turun de KAYNAGI farkli, gerisi AYNI: quiz -> TR rapor -> cevap
   //  cevirisi -> EN rapor -> meta -> taslak. O yuzden yalnizca bu adim
@@ -362,7 +484,7 @@
     ['product', 'Ürün', 'katalogdan ara'],
     ['compare', 'Karşılaştırma', '2+ ürün seç'],
     ['link', 'Link', 'ürün linki yapıştır'],
-    ['subscription', 'Abonelik', 'servis adlarını yaz'],
+    ['subscription', 'Abonelik', 'servis seç'],
   ];
 
   function analysesUretTur(tur) {
@@ -382,39 +504,49 @@
     if (_uretTur === 'product') renderUretAra('');
     else if (_uretTur === 'compare') { _cmpSecili = []; renderCmpAra(''); }
     else if (_uretTur === 'link') renderLinkGiris();
-    else renderAbonelikGiris();
+    else { _subSecili = []; _subKat = 'video'; renderAbonelikGiris(); }
   }
 
   // ── Kaynak: KARSILASTIRMA (2+ katalog urunu) ───────────────
   //
   // Motor bunu ZATEN destekliyordu (compareQuizGenerationPrompt +
-  // buildComparePrompt + `compare_full_report`), site tarafi da ciziyor
-  // (reportAdapters -> CompareResult). Eksik olan tek sey buradaki secim
-  // ekraniydi, yani karsilastirma analizi URETILEMIYORDU.
+  // buildCompareProductPrompt + buildCompareVerdictPrompt -> compare_full_report)
+  // ve on-render de dogru ciziyordu (seo.mjs -> anKarsilastirmaGovde).
+  // Eksik olan iki sey vardi: buradaki secim ekrani ve sitenin REACT
+  // tarafindaki dogru bilesen (AnalysisPost link gorunumune dusuyordu —
+  // orada duzeltildi).
   var _cmpSecili = [];
-  // Motorun kendi olcekleme tablosu 5 urune kadar tasarlanmis
-  // (qor_ai_prompts.js: `big = n >= 4` -> her urune daha az paragraf) ve
-  // cikti tavani 16384 jetona cikarildi. 6 guvenli ust sinir; daha fazlasinda
-  // urun basina metin gorunur sekilde inceliyor.
-  var CMP_MAX = 6;
+  // ESKIDEN 6 IDI ve gerekcesi suydu: tek bir AI cagrisi butun urunleri tek
+  // JSON'a yaziyordu, yani cikti tavani (16k jeton) urun sayisiyla bolusuluyor
+  // ve motor 4. urunden sonra istedigi paragraf sayisini kendisi dusuruyordu.
+  // Motor artik sitedeki hatti kullaniyor (qor_ai_run.js -> runCompareReport):
+  // HER URUN KENDI cagrisinda tam derinlikte yaziliyor, sonra tek hukum
+  // cagrisi. Derinlik urun sayisindan bagimsiz; sinirlayan tek sey SURE.
+  var CMP_MAX = 12;
+
+  // Kac AI cagrisi olacagini ONCEDEN soyle. Iki dil bagimsiz kosuyor:
+  // dil basina 1 arastirma + N urun raporu + 1 hukum, ustune 2 quiz ve 1 meta.
+  function cmpCagriSayisi(n) { return 2 * (2 + n) + 1; }
 
   function cmpSeciliSerit() {
     if (!_cmpSecili.length) {
       return '<p class="an-hint">En az 2 ürün seç. Aynı kategoriden seçmek en anlamlı '
         + 'karşılaştırmayı verir; farklı kategoriler karşılaştırılabilir ama rapor zayıflar.</p>';
     }
+    var n = _cmpSecili.length;
     return '<div class="an-chips">'
       + _cmpSecili.map(function (p, i) {
-        return '<span class="an-chip">' + esc(p.name || '')
+        return '<span class="an-chip">'
+          + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" onerror="this.remove()">' : '')
+          + esc(p.name || '')
           + '<button onclick="analysesCmpCikar(' + i + ')" title="Çıkar">×</button></span>';
       }).join('')
       + '</div>'
-      + (_cmpSecili.length >= 2
-        ? '<button class="btn btn-primary" onclick="analysesCmpBasla()">'
-          + _cmpSecili.length + ' ürünü karşılaştır →</button>'
-          + (_cmpSecili.length > 4
-            ? '<p class="an-hint">4 üründen sonra rapor ürün başına kısalır — motor toplam uzunluğu sabit tutar.</p>'
-            : '')
+      + (n >= 2
+        ? '<div class="an-go"><button class="btn btn-primary" onclick="analysesCmpBasla()">'
+          + n + ' ürünü karşılaştır →</button>'
+          + '<span class="an-go-note">Her ürün <b>kendi</b> raporunu alır — derinlik ürün sayısıyla '
+          + 'azalmaz. Toplam <b>' + cmpCagriSayisi(n) + '</b> AI çağrısı (2 dil).</span></div>'
         : '<p class="an-hint">Bir ürün daha seç.</p>');
   }
 
@@ -607,36 +739,214 @@
   }
 
   // ── Kaynak: ABONELIK ───────────────────────────────────────
+  //
+  //  ESKI HALI tek satirlik "virgulle ayir (en fazla 4)" kutusuydu ve uc seyi
+  //  birden kaybediyordu: logo yok, yazim hatasi yakalanmiyor, "ayni tur"
+  //  kurali yalniz BILINEN servislerde calisiyordu (yanlis yazilan ad
+  //  `subscriptionCategory` icin null doner, null'lar elenir, karsilastirma
+  //  gecerli sayilirdi).
+  //
+  //  YENI HALI sitedeki secicinin (pages/Subscriptions.jsx) admin karsiligi —
+  //  ama KATEGORI ONCE. Sitede duz bir izgara var ve karisik secim ancak
+  //  analiz aninda hata mesajiyla reddediliyor; burada kategori sekmesi
+  //  seciliyor, ilk servis secildigi anda oteki sekmeler KILITLENIYOR. Kural
+  //  ayni kural, ama yapisal — reddedilecek bir secim hic kurulamiyor.
+  //
+  //  Servis listesi elle yazilmadi: QorAiLink.subscriptionCatalog() SUB_CATEGORY
+  //  + SUB_DISPLAY tablolarindan turetiyor, logolar QorSubLogos'tan geliyor.
+  //  SAYI SINIRI YOK — sitede de yok.
+  var _subSecili = [];
+  var _subKat = 'video';
+  var _subKatalog = null;
+
+  var SUB_KAT_LABEL = {
+    video: 'Video', music: 'Müzik', ai: 'Yapay zekâ', cloud: 'Bulut',
+    productivity: 'Üretkenlik', hosting: 'Hosting / Site', gaming: 'Oyun',
+    vpn: 'VPN', news: 'Haber', fitness: 'Fitness', education: 'Eğitim',
+    bundles: 'Paket', other: 'Diğer',
+  };
+
+  function subKatalog() {
+    if (_subKatalog) return _subKatalog;
+    var gruplar = {};
+    var sira = [];
+    // AYNI LOGO = AYNI SERVIS. `subscriptionCatalog()` takma adlari GORUNEN
+    // ada gore eliyor, ama ayni servisin iki farkli gorunen adi olabiliyor:
+    // "HBO Max" ve "Max" ayni sey ve tabloda ayri satirlar. Elenmezse
+    // kutucuklarda iki kez cikar ve ikisi birden secilirse bir servis
+    // KENDISIYLE karsilastirilir. Logo dosyasi bu esligin tek nesnel
+    // gostergesi (sub_logos.js zaten iki adi da ayni dosyaya bagliyor).
+    var logoGorulen = {};
+    (QorAiLink.subscriptionCatalog() || []).forEach(function (x) {
+      var dosya = (window.QorSubLogos && window.QorSubLogos.logoFile(x.name)) || '';
+      if (dosya) {
+        if (logoGorulen[dosya]) return;
+        logoGorulen[dosya] = true;
+      }
+      if (!gruplar[x.category]) { gruplar[x.category] = []; sira.push(x.category); }
+      gruplar[x.category].push(x.name);
+    });
+    _subKatalog = { gruplar: gruplar, sira: sira };
+    return _subKatalog;
+  }
+
+  // Secimin KILITLEDIGI kategori — ilk bilinen kategori. AI ile dogrulanan
+  // (katalogda olmayan) servisler de kendi kategorisini tasiyor.
+  function subAktifKat() {
+    for (var i = 0; i < _subSecili.length; i += 1) {
+      if (_subSecili[i].category) return _subSecili[i].category;
+    }
+    return null;
+  }
+
+  function subLogo(ad, boyut) {
+    var url = (window.QorSubLogos && window.QorSubLogos.logoUrl(ad)) || '';
+    if (url) {
+      return '<img class="an-sub-logo" style="width:' + boyut + 'px;height:' + boyut + 'px" '
+        + 'src="' + esc(url) + '" alt="" loading="lazy" onerror="this.replaceWith(Object.assign('
+        + 'document.createElement(\'span\'),{className:\'an-sub-logo an-sub-mono\',textContent:'
+        + JSON.stringify(String(ad || '?').slice(0, 1).toUpperCase()) + '}))">';
+    }
+    return '<span class="an-sub-logo an-sub-mono" style="width:' + boyut + 'px;height:' + boyut + 'px">'
+      + esc(String(ad || '?').slice(0, 1).toUpperCase()) + '</span>';
+  }
+
   function renderAbonelikGiris(hata) {
     var b = $('anKaynak');
     if (!b) return;
+    var kat = subKatalog();
+    var kilit = subAktifKat();
+    if (kilit && _subKat !== kilit) _subKat = kilit;
+    if (!kat.gruplar[_subKat]) _subKat = kat.sira[0] || 'video';
+    var secili = {};
+    _subSecili.forEach(function (s) { secili[s.name.toLowerCase()] = true; });
+    var kutucuklar = kat.gruplar[_subKat] || [];
+    window.__anSubTiles = kutucuklar;
+    var n = _subSecili.length;
+
     b.innerHTML = ''
       + '<div class="an-card">'
-      + '<h3>1 · Abonelik servisleri</h3>'
-      + '<div class="an-f"><label>Virgülle ayır (en fazla 4)</label>'
-      + '<input id="anSubs" placeholder="Netflix, Disney+"></div>'
+      + '<h3>1 · Abonelik servisleri <em>(' + n + ' seçili)</em></h3>'
+
+      + '<div class="an-tabbar an-tabbar-sub an-sub-kat">'
+      + kat.sira.map(function (k) {
+        var kapali = kilit && k !== kilit;
+        return '<button class="' + (k === _subKat ? 'on' : '') + '"'
+          + (kapali ? ' disabled title="Seçim ' + esc(SUB_KAT_LABEL[kilit] || kilit) + ' türüne kilitlendi"' : '')
+          + ' onclick="analysesSubKat(\'' + k + '\')">' + esc(SUB_KAT_LABEL[k] || k) + '</button>';
+      }).join('')
+      + '</div>'
+
+      + '<div class="an-sub-grid">'
+      + kutucuklar.map(function (ad, i) {
+        var on = secili[ad.toLowerCase()];
+        return '<button type="button" class="an-sub-tile' + (on ? ' on' : '') + '"'
+          + ' aria-pressed="' + (on ? 'true' : 'false') + '"'
+          + ' onclick="analysesSubTogla(' + i + ')" title="' + esc(ad) + '">'
+          + subLogo(ad, 34)
+          + '<span class="an-sub-name">' + esc(ad) + '</span>'
+          + (on ? '<span class="an-sub-tick" aria-hidden="true">✓</span>' : '')
+          + '</button>';
+      }).join('')
+      + '</div>'
+
+      + '<div class="an-sub-add">'
+      + '<input id="anSubAdd" placeholder="Listede yok mu? Servis adını yaz (ör. Ubisoft+)">'
+      + '<button class="btn" id="anSubAddBtn" onclick="analysesSubEkle()">Ekle</button>'
+      + '</div>'
+      + '<p class="an-hint">Listede olmayan bir ad AI ile doğrulanır — gerçekten bir abonelik '
+      + 'servisi mi ve hangi türden, oradan gelir. Sitedeki “ekle” kutusunun aynısı.</p>'
+
+      + (n
+        ? '<div class="an-chips an-chips-lg">'
+          + _subSecili.map(function (s, i) {
+            return '<span class="an-chip">' + subLogo(s.name, 20) + esc(s.name)
+              + '<button onclick="analysesSubCikar(' + i + ')" title="Çıkar">×</button></span>';
+          }).join('')
+          + '</div>'
+        : '')
+
       + (hata ? '<p class="an-err">' + esc(hata) + '</p>' : '')
-      + '<button class="btn btn-primary" onclick="analysesAbonelikBasla()">Devam</button>'
-      + '<div class="an-hint">Tek servis → uyum analizi. İki ve üzeri → karşılaştırma. '
-      + 'Servisler <strong>aynı türden</strong> olmalı (sitedeki kuralın aynısı): '
-      + 'video ile müzik karşılaştırılmaz.</div>'
+
+      + (n
+        ? '<div class="an-go"><button class="btn btn-primary" onclick="analysesAbonelikBasla()">'
+          + (n > 1 ? n + ' servisi karşılaştır →' : 'Uyum analizi →') + '</button>'
+          + '<span class="an-go-note">' + (n > 1
+            ? 'Karşılaştırma raporu — hepsi <b>' + esc(SUB_KAT_LABEL[kilit] || kilit) + '</b> türünde.'
+            : 'Tek servis → uyum analizi. İkincisini eklersen karşılaştırmaya döner.')
+          + '</span></div>'
+        : '<p class="an-hint">Başlamak için en az bir servis seç.</p>')
       + '</div>';
-    var el = $('anSubs');
-    if (el) el.focus();
+
+    var el = $('anSubAdd');
+    if (el) el.onkeydown = function (e) { if (e.key === 'Enter') { e.preventDefault(); analysesSubEkle(); } };
+  }
+
+  function analysesSubKat(k) {
+    if (subAktifKat() && k !== subAktifKat()) return;
+    _subKat = k;
+    renderAbonelikGiris();
+  }
+
+  function analysesSubTogla(i) {
+    var ad = (window.__anSubTiles || [])[i];
+    if (!ad) return;
+    var yer = -1;
+    for (var j = 0; j < _subSecili.length; j += 1) {
+      if (_subSecili[j].name.toLowerCase() === ad.toLowerCase()) { yer = j; break; }
+    }
+    if (yer >= 0) _subSecili.splice(yer, 1);
+    else _subSecili.push({ name: ad, category: QorAiLink.subscriptionCategory(ad) || _subKat });
+    renderAbonelikGiris();
+  }
+
+  function analysesSubCikar(i) {
+    _subSecili.splice(i, 1);
+    renderAbonelikGiris();
+  }
+
+  // Katalogda olmayan servis — sitedeki "ekle" kutusuyla AYNI dogrulayici
+  // (QorAiLink.validateSubscriptionInput): bilinen ad yerel cozulur, bilinmeyen
+  // ad AI'ya sorulur ("bu bir abonelik servisi mi, hangi turden").
+  async function analysesSubEkle() {
+    var el = $('anSubAdd');
+    var btn = $('anSubAddBtn');
+    var ham = el ? String(el.value || '').trim() : '';
+    if (!ham) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Kontrol ediliyor…'; }
+    try {
+      var res = await QorAiLink.validateSubscriptionInput(
+        ham,
+        _subSecili.map(function (s) { return s.name; }),
+        'tr',
+        subAktifKat() || ''
+      );
+      if (res.error) { renderAbonelikGiris(res.error); return; }
+      var kilit = subAktifKat();
+      if (kilit && res.category && res.category !== kilit) {
+        renderAbonelikGiris('“' + res.displayName + '” ' + (SUB_KAT_LABEL[res.category] || res.category)
+          + ' türünde; seçim ' + (SUB_KAT_LABEL[kilit] || kilit) + ' türüne kilitli.');
+        return;
+      }
+      _subSecili.push({ name: res.displayName, category: res.category || null });
+      renderAbonelikGiris();
+    } catch (e) {
+      renderAbonelikGiris('Doğrulanamadı: ' + (e && e.message ? e.message : e));
+    }
   }
 
   async function analysesAbonelikBasla() {
-    var ham = ($('anSubs') || {}).value || '';
-    var names = ham.split(',').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 4);
-    if (!names.length) { renderAbonelikGiris('En az bir servis adı gir.'); return; }
-    // Sitedeki kuralin AYNISI: farkli turden servisler karsilastirilmaz.
+    var names = _subSecili.map(function (s) { return s.name; }).filter(Boolean);
+    if (!names.length) { renderAbonelikGiris('En az bir servis seç.'); return; }
+    // SON KAPI. Ekleme aninda zaten engelleniyor; bu, kategorisi bilinmeyen
+    // (AI'nin null dondurdugu) bir servisin araya karismasina karsi.
     if (names.length > 1 && QorAiLink.subscriptionsMixCategories(names)) {
       renderAbonelikGiris('Servisler aynı türden olmalı (ör. hepsi video ya da hepsi müzik).');
       return;
     }
     var b = $('anKaynak');
     b.innerHTML = '<div class="an-card"><h3>1 · Quiz hazırlanıyor</h3>'
-      + '<p class="an-empty">' + esc(names.join(', ')) + '</p></div>';
+      + '<p class="an-empty">' + esc(names.join(' · ')) + '</p></div>';
     try {
       var q = await QorAiRun.subscriptionQuiz(names, 'tr');
       if (!q.length) throw new Error('Quiz üretilemedi');
@@ -649,7 +959,7 @@
 
   function adimlar(i) {
     var ad = [
-      ['Kaynak', 'ürün / link / abonelik'],
+      ['Kaynak', 'ürün · karşılaştırma · link · abonelik'],
       ['Quiz', 'soruları yanıtla'],
       ['Rapor', 'TR + EN üret'],
       ['Yayın', 'önizle ve yayınla'],
@@ -710,10 +1020,19 @@
     }, kaynak);
   }
 
-  // Uretim akisinin KONUSU — uc turde de tek satirlik ad.
+  // Uretim akisinin KONUSU — dort turde de tek satirlik ad.
+  //
+  // HATA (duzeltildi): `compare` hicbir dala girmiyordu ve son satira dusup
+  // `r.bases`e bakiyordu — karsilastirmada oyle bir alan yok, yani DAIMA bos
+  // dizge donuyordu. Gorunur sonucu quiz basliginin bos kalmasiydi; asil
+  // zarar sessizdi: metaUret() KONUSUZ cagriliyor, yani yayin basligi ve
+  // arama aciklamasi hangi urunler icin yazildigini bilmeden uretiliyordu.
   function runKonu(r) {
     if (!r) return '';
-    if (r.kind === 'product') return r.product.name || '';
+    if (r.kind === 'product') return (r.product && r.product.name) || '';
+    if (r.kind === 'compare') {
+      return (r.products || []).map(function (p) { return p.name; }).filter(Boolean).join(' vs ');
+    }
     if (r.kind === 'subscription') return (r.names || []).join(' · ');
     return (r.bases || []).map(function (b) { return b.title; }).filter(Boolean).join(' · ');
   }
@@ -731,7 +1050,7 @@
         : '<strong>2/2 · İngilizce quiz.</strong> Türkçe rapor hazır. Bu sorular '
           + '<strong>çeviri değil</strong>, İngilizce okuyucu için baştan üretildi — iki dil iki ayrı varyant.')
       + ' Verdiğin cevaplar uyum puanını belirler ve yayınlanan sayfada <strong>en üstte</strong> görünür.</div>'
-      + '<div class="an-card" style="max-width:960px">'
+      + '<div class="an-card">'
       + '<h3 id="anQuizHead">2 · ' + (r.lang === 'tr' ? 'TR' : 'EN') + ' · ' + esc(runKonu(r)) + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
       + r.questions.map(function (q, qi) {
         return '<div class="an-q"><p><b>' + (qi + 1) + '.</b>' + esc(q.text) + '</p>'
@@ -803,11 +1122,27 @@
   //
   //  SIMDI: iki dil BAGIMSIZ. Once Turkce quiz + Turkce rapor, sonra
   //  Ingilizce quiz (bastan uretilir) + Ingilizce rapor. Iki ayri varyant.
-  function progAdimlari(lang) {
+  // Karsilastirmada her urun KENDI AI cagrisini aliyor (bkz. qor_ai_run.js ->
+  // runCompareReport) ve ustune bir hukum cagrisi geliyor. Tek satirlik
+  // "rapor" cubugu 12 urunluk bir kosuda on dakika kimildamadan duruyordu;
+  // sayac isin nerede oldugunu gosteriyor.
+  var _cmpIlerleme = null;
+
+  function progAdimlari(lang, kind) {
     var ad = lang === 'tr' ? 'Türkçe' : 'İngilizce';
+    var raporAd = ad + ' · rapor';
+    if (kind === 'compare') {
+      raporAd = ad + ' · ürün raporları'
+        + (_cmpIlerleme ? ' (' + _cmpIlerleme.done + '/' + _cmpIlerleme.total + ')' : '');
+      return [
+        [lang + '-research', ad + ' · web araştırması'],
+        [lang + '-report', raporAd],
+        [lang + '-verdict', ad + ' · karşılaştırma hükmü'],
+      ];
+    }
     return [
       [lang + '-research', ad + ' · web araştırması'],
-      [lang + '-report', ad + ' · rapor'],
+      [lang + '-report', raporAd],
     ];
   }
   var PROG_SON = [
@@ -839,7 +1174,8 @@
     var b = $('anNewBody');
     if (!b) return;
     var lang = _run ? _run.lang : 'tr';
-    var liste = progAdimlari(lang).concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
+    var liste = progAdimlari(lang, _run ? _run.kind : '')
+      .concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
     var biten = liste.filter(function (p) { return durum[p[0]] === 'done'; }).length;
     var yuzde = Math.round((biten / Math.max(1, liste.length)) * 100);
     b.innerHTML = adimlar(2)
@@ -900,6 +1236,18 @@
     return QorAiRun.linkQuiz(r.bases, lang);
   }
 
+  // COK KONULU kaydin adresi. Karsilastirma ve abonelik artik SAYICA SINIRSIZ
+  // (12 urun, 8 servis mumkun) ve butun adlari birlestirmek 300 karakterlik bir
+  // slug uretiyordu. Iki somut zarari vardi: ön-render `website/analiz/<slug>/`
+  // dizinini aciyor (Windows'ta yol uzunlugu sinirina carpiyor) ve arama
+  // sonucunda adres kirpiliyor. Ilk uc ad okunur, gerisi sayiya duser.
+  function cokKonuSlug(names, ayirac) {
+    var liste = (names || []).filter(Boolean);
+    if (!liste.length) return '';
+    if (liste.length <= 3) return slugify(liste.join(' ' + ayirac + ' '));
+    return slugify(liste.slice(0, 3).join(' ' + ayirac + ' ') + ' ve ' + (liste.length - 3) + ' daha');
+  }
+
   // Uretilen rapordan YAYIN KAYDI. Urun analizinde katalog kaydi var, digerlerinde
   // yok — konu adlari `subjectNames`e yaziliyor (site oradan okuyor).
   function kayitKur(r) {
@@ -931,7 +1279,14 @@
     }
     if (r.kind === 'compare') {
       var urunler = r.products || [];
-      ortak.subjectNames = urunler.map(function (p) { return p.name || ''; }).filter(Boolean);
+      // ADLAR RAPORDAN OKUNUR, secim listesinden degil: motor iki denemede de
+      // yazamadigi bir urunu dusurebiliyor (runCompareReport -> dropped) ve o
+      // zaman secim listesi rapordan FAZLA urun icerir. Kunyede olmayan bir
+      // urunun adini yazmak, sayfanin basligini yalan yapar.
+      var raporUrun = (r.out.tr && Array.isArray(r.out.tr.products)) ? r.out.tr.products : null;
+      ortak.subjectNames = raporUrun
+        ? raporUrun.map(function (p) { return p.name || ''; }).filter(Boolean)
+        : urunler.map(function (p) { return p.name || ''; }).filter(Boolean);
       // Karsilastirmada TEK bir urun kaydi yok; ilki temsil eder (gorsel ve
       // kategori ondan gelir), digerleri `subjectNames`te durur.
       var ilk = urunler[0] || {};
@@ -939,13 +1294,13 @@
       ortak.productImage = ilk.imageUrl || (Array.isArray(ilk.images) ? ilk.images[0] : '') || '';
       ortak.productBrand = ilk.brand || '';
       ortak.category = ilk.category || '';
-      ortak.slug = slugify(ortak.subjectNames.join(' vs '));
+      ortak.slug = cokKonuSlug(ortak.subjectNames, 'vs');
       return ortak;
     }
     if (r.kind === 'subscription') {
       ortak.subjectNames = r.names.slice();
       ortak.category = QorAiLink.subscriptionCategory(r.names[0]) || '';
-      ortak.slug = slugify(r.names.join(' vs '));
+      ortak.slug = cokKonuSlug(r.names, 'vs');
       // LOGO. Abonelik kaydinda gorsel BOS kaliyordu ve analiz listesinde
       // Netflix satiri gorselsiz duruyordu. Tablo sitenin kendi abonelik
       // logolariyla AYNI (admin/js/sub_logos.js — tek kaynak).
@@ -955,7 +1310,7 @@
     }
     ortak.subjectNames = r.bases.map(function (b) { return b.title; }).filter(Boolean);
     ortak.category = r.bases[0] ? (r.bases[0].category || '') : '';
-    ortak.slug = slugify(ortak.subjectNames.join(' vs '));
+    ortak.slug = cokKonuSlug(ortak.subjectNames, 'vs');
     // LINK analizi: baglantidan cikarilan urun gorseli varsa onu kullan.
     ortak.productName = ortak.subjectNames[0] || '';
     ortak.productImage = gorselCoz('link', ortak.subjectNames[0], linkGorseli(r.bases));
@@ -1005,6 +1360,7 @@
     var r = _run;
     var lang = r.lang;
     var durum = {};
+    _cmpIlerleme = null;
     renderProgress(durum);
     var answers = r.questions.map(function (q, i) {
       return { question: q.text, answer: r.answers[i] };
@@ -1020,14 +1376,26 @@
       // ayni yere donuyor; korumasiz kalirsa iki pahali cagriyi (arastirma +
       // rapor) bosuna yeniden harcardi.
       if (!r.out[lang]) {
-        var res = await raporUret(r, lang, answers, r.similar || [], function (stage) {
+        var res = await raporUret(r, lang, answers, r.similar || [], function (stage, _lg, bilgi) {
           if (stage === 'research') mark(lang + '-research', 'run');
           if (stage === 'report') { mark(lang + '-research', 'done'); mark(lang + '-report', 'run'); }
+          // Yalniz karsilastirmada: urun basina ilerleme sayaci.
+          if (stage === 'progress') { _cmpIlerleme = bilgi; renderProgress(durum); }
+          if (stage === 'verdict') { mark(lang + '-report', 'done'); mark(lang + '-verdict', 'run'); }
         });
         r.out[lang] = res.data;
+        // Karsilastirmada bir urunun raporu iki denemede de gelmediyse motor
+        // onu DUSURUYOR. Sessiz kalmak, 6 urun sectigim halde 5 urunlu bir
+        // sayfa yayinlamak demek — kayit da rapordan okundugu icin (kayitKur)
+        // ad listesi tutarli kalir, ama bunu BILEREK yayinlamak gerekir.
+        if (res.dropped && res.dropped.length) {
+          toast('Rapor üretilemeyen ürün çıkarıldı: ' + res.dropped.join(', '), 'w');
+        }
       }
       mark(lang + '-research', 'done');
       mark(lang + '-report', 'done');
+      if (r.kind === 'compare') mark(lang + '-verdict', 'done');
+      _cmpIlerleme = null;
 
       // TURKCE BITTI -> INGILIZCE QUIZ. Sorular BASTAN uretilir; ceviri degil.
       if (lang === 'tr') {
@@ -1087,172 +1455,9 @@
     });
   }
 
-  // ── Sitede yapılmışlardan al ───────────────────────────────
-  async function renderSitedeSec(tur) {
-    var b = $('anNewBody');
-    b.innerHTML = ''
-      + '<div class="an-tabbar" style="margin-bottom:14px">'
-      + Object.keys(KIND_LABEL).filter(function (k) { return !SITEDE_HARIC[k]; }).map(function (k) {
-        return '<button class="' + (tur === k ? 'on' : '') + '" onclick="analysesSitede(\'' + k + '\')">' + KIND_LABEL[k] + '</button>';
-      }).join('')
-      + '</div><p class="an-empty">Yükleniyor…</p>';
-    var kayitlar = [];
-    try {
-      kayitlar = await getPb().collection('saved_analyses').getFullList({
-        filter: 'category="' + SAVED_CATEGORY[tur] + '"', sort: '-savedAt', $autoCancel: false,
-      });
-    } catch (e) {
-      b.innerHTML += '<p style="color:var(--red)">Okunamadı: ' + esc(e.message || e) + '</p>';
-      return;
-    }
-    var uygun = kayitlar.map(function (k) {
-      var d = k.analysisData || {};
-      var rapor = tur === 'product' ? raporCoz(d.analysis) : raporCoz(d.result || d.analysisResult);
-      return { k: k, d: d, rapor: rapor };
-    }).filter(function (x) { return gecerliRapor(x.rapor, tur); });
-    window.__anSaved = uygun;
-
-    b.innerHTML = ''
-      + '<div class="an-tabbar" style="margin-bottom:14px">'
-      + Object.keys(KIND_LABEL).filter(function (k) { return !SITEDE_HARIC[k]; }).map(function (k) {
-        return '<button class="' + (tur === k ? 'on' : '') + '" onclick="analysesSitede(\'' + k + '\')">' + KIND_LABEL[k] + '</button>';
-      }).join('')
-      + '</div>'
-      + '<div class="an-note">Bu liste sitede GERÇEKTEN yapılmış analizlerden gelir. Yayına alınan kayıt tek dillidir '
-      + '(analizin yapıldığı dil); iki dilli yayın için <strong>Yeni analiz üret</strong> yolunu kullan.</div>'
-      + (uygun.length
-        ? '<div class="an-grid">' + uygun.map(function (x, i) {
-          var bilgi = sitedeBilgi(x, tur);
-          return '<div class="an-row noimg">'
-            + '<div><h4>' + esc(bilgi.ad) + '</h4><div class="an-meta">'
-            + '<span>' + new Date(x.k.savedAt || x.k.created).toLocaleDateString('tr-TR') + '</span>'
-            + bilgi.meta
-            + '</div></div>'
-            + '<button class="btn btn-primary" onclick="analysesPick(' + i + ',\'' + tur + '\')">Seç</button></div>';
-        }).join('') + '</div>'
-        : '<p class="an-empty">Yayınlanabilir ' + KIND_LABEL[tur].toLowerCase() + ' analizi yok.</p>');
-  }
-
-  function gecerliRapor(r, tur) {
-    if (!r || typeof r !== 'object') return false;
-    if (tur === 'product') return !!r.product;
-    if (tur === 'subscription') return Array.isArray(r.services) && r.services.length > 0;
-    // link: tekil rapor (ortak sekil) ya da karsilastirma
-    return r.enhancedScore != null || !!r.base || Array.isArray(r.products);
-  }
-
-  function sitedeBilgi(x, tur) {
-    if (tur === 'product') {
-      var p = x.rapor.product || {};
-      return {
-        ad: x.d.productName || x.k.title || '',
-        meta: (p.matchScore ? '<span>uyum <b>' + num(p.matchScore) + '</b>/100</span>' : '')
-          + (p.decision ? '<span>' + esc(p.decision) + '</span>' : '')
-          + (Array.isArray(p.quizInsights) ? '<span><b>' + p.quizInsights.length + '</b> quiz cevabı</span>' : ''),
-      };
-    }
-    if (tur === 'subscription') {
-      var svc = (x.rapor.services || []).map(function (s) { return s.name; }).filter(Boolean);
-      return {
-        ad: svc.join(' vs ') || x.k.title || '',
-        meta: '<span><b>' + svc.length + '</b> servis</span>'
-          + (x.rapor.winner && x.rapor.winner.name ? '<span>kazanan: ' + esc(x.rapor.winner.name) + '</span>' : ''),
-      };
-    }
-    var cok = Array.isArray(x.rapor.products);
-    return {
-      ad: (x.rapor.base && x.rapor.base.title) || x.k.title || '',
-      meta: '<span>' + (cok ? 'karşılaştırma' : 'tekil') + '</span>'
-        + (x.rapor.enhancedScore ? '<span>uyum <b>' + num(x.rapor.enhancedScore) + '</b>/100</span>' : ''),
-    };
-  }
-
-  // Sitede yapilan analizler TEK DILDE uretiliyor (ziyaretcinin dilinde);
-  // admin analizleri ise TR+EN. Karsilastirmayi buradan almak, iki dilli
-  // olmasi gereken bir kaydi tek dille yayina sokardi — o yuzden `compare`
-  // bu sekmede HIC listelenmez, adminde bastan uretilir.
-  var SITEDE_HARIC = { compare: true };
-
-  function analysesSitede(tur) { renderSitedeSec(tur); }
-
-  async function analysesPick(i, tur) {
-    var x = (window.__anSaved || [])[i];
-    if (!x) return;
-    var b = $('anNewBody');
-    b.innerHTML = '<p class="an-empty">Yayın meta\'sı üretiliyor…</p>';
-
-    var d = x.d;
-    var ad = sitedeBilgi(x, tur).ad;
-    // Analizin dili tespit edilemiyor; kaynak dil olarak TR varsayilir ve
-    // rapor O dilin alanina yazilir. Ikinci dil BOS kalir — site okurken
-    // otekine duser, uydurma ceviri yazilmaz.
-    var lang = 'tr';
-    var kayit = {
-      kind: tur,
-      slug: slugify(ad),
-      sourceRef: x.k.id,
-      subjectNames: tur === 'product' ? [] : konuAdlari(x, tur),
-      status: 'draft',
-      author: 'Qor AI',
-      views: 0,
-      likes: 0,
-      productId: '', productSlug: '', productName: '', productImage: '', productBrand: '',
-      category: '', techScore: 0,
-    };
-    kayit['report_' + lang] = x.rapor;
-
-    if (tur === 'product') {
-      var pid = d.productId || '';
-      var p = {};
-      try { p = await getPb().collection('products').getOne(pid, { $autoCancel: false }); } catch (_) { p = {}; }
-      kayit.productId = pid;
-      kayit.productSlug = p.slug || slugify(ad);
-      kayit.productName = d.productName || p.name || ad;
-      kayit.productImage = p.imageUrl || '';
-      kayit.productBrand = p.brand || '';
-      kayit.category = d.category || p.category || '';
-      kayit.techScore = num(p.techScore) || num(x.k.aiScore);
-      kayit.slug = slugify(p.slug || kayit.productName);
-    }
-
-    // Ayni kaynak zaten yayindaysa IKINCI kayit acma, mevcudu tazele.
-    var mevcut = _items.find(function (a) {
-      return (a.sourceRef && a.sourceRef === x.k.id)
-        || (tur === 'product' && kayit.productId && a.productId === kayit.productId);
-    });
-    if (mevcut) {
-      mevcut['report_' + lang] = x.rapor;
-      mevcut.kind = tur;
-      mevcut.sourceRef = x.k.id;
-      _editing = mevcut;
-      await kaydet(mevcut.status || 'draft');
-      toast('Bu analizin kaydı vardı — raporu tazelendi', 'i');
-      renderEditor();
-      return;
-    }
-
-    _editing = kayit;
-    try {
-      var meta = await metaUret(ad, tur, x.rapor);
-      metaYaz(_editing, meta);
-    } catch (e) {
-      toast('Meta üretilemedi: ' + (e.message || e), 'e');
-    }
-    // TASLAK OLARAK KAYDET: onizleme sitedeki sayfanin kendisi ve kaydi
-    // `?id=` ile cekiyor — kayit yoksa onizlenecek bir sey de yok.
-    await kaydet('draft');
-    renderEditor();
-  }
-
-  function konuAdlari(x, tur) {
-    if (tur === 'subscription') return (x.rapor.services || []).map(function (s) { return s.name; }).filter(Boolean);
-    if (Array.isArray(x.rapor.products)) return x.rapor.products.map(function (p) { return p.name; }).filter(Boolean);
-    var t = (x.rapor.base && x.rapor.base.title) || x.k.title || '';
-    return t ? [t] : [];
-  }
-
   async function analysesEdit(id) {
     styles();
+    _slugHata = ''; _slugTaslak = '';
     try {
       _editing = await getPb().collection('analyses').getOne(id, { $autoCancel: false });
       renderEditor();
@@ -1301,6 +1506,7 @@
           + x[1] + v + '</button>';
       }).join('')
       + '</div>'
+      + denetimKart(a)
       + onizlemeKart(a, L, diller)
       + kunyeKart(a, L, kind, rapor);
   }
@@ -1345,7 +1551,8 @@
         + '<p class="an-hint">Bu kaydın <strong>' + esc(L.toUpperCase()) + ' raporu yok</strong>. '
         + 'Site bu adreste diğer dilin metnini gösterir ve ön-render bu dilde '
         + '<strong>sayfa üretmez</strong>; hreflang listesine de girmez. '
-        + 'İki dilli yayın için <strong>Yeni analiz üret</strong> yolunu kullan.</p></div>';
+        + 'Tek dilli kayıtlar “Sitede yapılmışlardan al” yolundan kalmadır; '
+        + 'iki dilli bir yayın için analizi <strong>+ Yeni analiz</strong> ile baştan üret.</p></div>';
     }
     var url = onizlemeAdresi(a, L);
     return '<div class="an-card an-card-wide">'
@@ -1384,6 +1591,72 @@
       + '<p class="an-img-hint">Abonelik analizlerinde site logosu otomatik gelir; '
       + 'gelmezse ya da başka bir görsel istiyorsan adresi buraya yapıştır.</p>'
       + '</div>';
+  }
+
+  // ADRES — kunyedeki IKINCI duzenlenebilir alan.
+  //
+  // Neden elle: slug konu adindan otomatik uretiliyor ve iki analizin ayni
+  // adrese dusmesi mumkun (ayni urunun ikinci analizi, ayni kisaltmaya inen
+  // iki karsilastirma). Boyle bir durumda kaydet() kaydi REDDEDIYORDU ve
+  // duzeltmenin yolu yoktu: adres salt okunurdu, yani uretilmis bir analiz
+  // (2 quiz + 4+ rapor cagrisi) kurtarilamadan cope gidiyordu. OLU UCTU.
+  // Reddedilen adres SATIRDA yazili kalir, yalniz toast'la degil. Toast birkac
+  // saniyede kayboluyor ve geride tutarsiz bir ekran birakiyordu: kutuda
+  // reddedilen deger, iki satir asagidaki adreste ise eski deger. Ikinci kez
+  // "Kaydet" demek hicbir sey yapmamis gibi goruunuyordu.
+  var _slugHata = '';
+  var _slugTaslak = '';
+
+  function slugKart(a) {
+    // KUTUDAKI deger ile ADRES ayni sey degil: kutu reddedilen taslagi
+    // gosterebilir, adres DAIMA kayitta duran gercek slug'i gosterir. Ikisini
+    // ayni degiskene baglamak, "kaydedilmedi" yazarken altinda kaydedilmemis
+    // adresi yayindaymis gibi listeliyordu.
+    var kutu = _slugTaslak || String(a.slug || '');
+    var kayitli = String(a.slug || '');
+    return '<div class="an-ro an-ro-edit"><span>Adres (slug)</span>'
+      + '<div class="an-img-row">'
+      + '<input class="ba-input" id="anSlug" value="' + esc(kutu) + '" placeholder="ornek-urun-analizi">'
+      + '<button class="btn btn-sm" onclick="analysesSaveSlug()">Kaydet</button>'
+      + '</div>'
+      + (_slugHata ? '<p class="an-err" style="margin:8px 0 0">' + esc(_slugHata) + '</p>' : '')
+      + (kayitli
+        ? '<p class="an-img-hint an-urls"><code>' + esc(SITE + '/analiz/' + kayitli) + '</code>'
+          + '<code>' + esc(SITE + '/tr/analiz/' + kayitli) + '</code></p>'
+        : '')
+      + '<p class="an-img-hint">Yazdığın değer adres biçimine çevrilir. '
+      + '<strong>Yayındaki bir kaydın adresini değiştirmek eski adresi kırar</strong> — '
+      + 'yalnızca çakışmayı çözmek için değiştir.</p>'
+      + '</div>';
+  }
+
+  async function analysesSaveSlug() {
+    if (!_editing) return;
+    var el = $('anSlug');
+    var ham = el ? String(el.value || '') : '';
+    var yeni = slugify(ham);
+
+    function reddet(mesaj) { _slugHata = mesaj; _slugTaslak = ham; renderEditor(); }
+
+    if (!yeni) { reddet('Adres boş olamaz.'); return; }
+    if (yeni === _editing.slug) { _slugHata = ''; _slugTaslak = ''; renderEditor(); toast('Adres zaten bu', 'i'); return; }
+    var eski = _editing.slug;
+    _editing.slug = yeni;
+    var carp = slugCakismasi(_editing);
+    if (carp) {
+      _editing.slug = eski;
+      reddet('Bu adres “' + (subjectOf(carp) || carp.id) + '” kaydında kullanılıyor — kaydedilmedi.');
+      return;
+    }
+    if (!_editing.id) { _slugHata = ''; _slugTaslak = ''; renderEditor(); toast('Adres ayarlandı', 's'); return; }
+    if (await kaydet(_editing.status || 'draft')) {
+      _slugHata = ''; _slugTaslak = '';
+      renderEditor();
+      toast('Adres kaydedildi', 's');
+    } else {
+      _editing.slug = eski;
+      reddet('Kaydedilemedi — yukarıdaki engellere bak.');
+    }
   }
 
   async function analysesSaveImage() {
@@ -1426,7 +1699,7 @@
         }).join('') + '</ol>'
         : '<p><em>boş</em></p>')
       + '</div>'
-      + satir('Adres', (a.slug || '') && (SITE + '/analiz/' + a.slug + '  ·  ' + SITE + '/tr/analiz/' + a.slug))
+      + slugKart(a)
       + gorselKart(a)
       + raporOzeti(kind, rapor)
       + '<div class="an-hint"><strong>Meta\'yı yeniden üret</strong>: raporu değiştirmeden yalnız '
@@ -1497,6 +1770,84 @@
     return _items.filter(function (o) {
       return o.id !== a.id && String(o.slug || '') === a.slug;
     })[0];
+  }
+
+  // ── YAYIN HAZIRLIK DENETIMI ────────────────────────────────
+  //
+  //  "Yayinla" butonu neden reddettigini ancak TIKLANDIKTAN sonra bir toast
+  //  ile soyluyordu ve bazi sebepler (slug catismasi) o ana kadar gorunmuyordu.
+  //  Ayni kurallar burada ONCEDEN kosturuluyor:
+  //    engel  — kaydet() zaten reddeder ya da seo-audit.mjs build'i kirar
+  //    uyari  — yayinlanir ama sayfa eksik/zayif cikar
+  //
+  //  Uzunluk esikleri sabit degil, OLCUME dayali: metaTitle 60 (Google'in
+  //  kirpma siniri, prompt da bunu istiyor), metaDescription 140-155 (155 ust
+  //  sinir; 140 alt sinir cunku denetim (scripts/audit_analyses.mjs)
+  //  aciklamalarin surekli 126-132'de kaldigini, yani bedava alanin bos
+  //  birakildigini gosterdi).
+  function yayinDenetim(a) {
+    var engel = [];
+    var uyari = [];
+    var diller = langsOf(a);
+
+    if (!String(a.slug || '').trim()) engel.push('Adres (slug) boş');
+    else {
+      var carpanSlug = slugCakismasi(a);
+      if (carpanSlug) engel.push('Adres başka bir kayıtta kullanılıyor: ' + (subjectOf(carpanSlug) || carpanSlug.id));
+    }
+    if (!diller.length) engel.push('Rapor verisi yok — bu kayıt yayınlanamaz');
+    metaCakismasi(a).forEach(function (c) { engel.push('Yinelenen meta: ' + c.replace(/<[^>]*>/g, '')); });
+
+    if (diller.length === 1) {
+      uyari.push('Yalnız ' + diller[0].toUpperCase() + ' raporu var — diğer dilde sayfa ön-render EDİLMEZ ve hreflang’e girmez');
+    }
+    LANGS.forEach(function (x) {
+      var l = x[0];
+      if (diller.indexOf(l) < 0) return;
+      var mt = String(a['metaTitle_' + l] || '').trim();
+      var md = String(a['metaDescription_' + l] || '').trim();
+      if (!mt) uyari.push(l.toUpperCase() + ' arama başlığı boş');
+      else if (mt.length > 60) uyari.push(l.toUpperCase() + ' arama başlığı ' + mt.length + '/60 — arama sonucunda kırpılır');
+      if (!md) uyari.push(l.toUpperCase() + ' arama açıklaması boş');
+      else if (md.length > 155) uyari.push(l.toUpperCase() + ' arama açıklaması ' + md.length + '/155 — kırpılır');
+      else if (md.length < 140) uyari.push(l.toUpperCase() + ' arama açıklaması ' + md.length + '/155 — kısa, boş alan harcanıyor');
+      if (!String(a['title_' + l] || '').trim()) uyari.push(l.toUpperCase() + ' H1 başlığı boş');
+      if (!(Array.isArray(a['faq_' + l]) && a['faq_' + l].length)) uyari.push(l.toUpperCase() + ' SSS boş — FAQPage şeması üretilmez');
+    });
+    if (!String(a.productImage || '').trim()) uyari.push('Görsel yok — liste ve künye satırı boş görünür');
+
+    return { engel: engel, uyari: uyari, hazir: engel.length === 0 };
+  }
+
+  // Denetimin TEK CUMLELIK karsiligi — listede rozet, editorde baslik.
+  function durumRozeti(a) {
+    var d = yayinDenetim(a);
+    if (d.engel.length) return '<span class="an-pill err">' + d.engel.length + ' engel</span>';
+    if (d.uyari.length) return '<span class="an-pill warn">' + d.uyari.length + ' eksik</span>';
+    return '<span class="an-pill ready">hazır</span>';
+  }
+
+  function denetimKart(a) {
+    var d = yayinDenetim(a);
+    var satir = function (metin, tur) {
+      return '<li class="an-chk-' + tur + '"><i>' + (tur === 'engel' ? '✕' : '!') + '</i>' + esc(metin) + '</li>';
+    };
+    return '<div class="an-card an-chk">'
+      + '<h3>Yayın hazırlığı ' + durumRozeti(a) + '</h3>'
+      + ((d.engel.length || d.uyari.length)
+        ? '<ul class="an-chklist">'
+          + d.engel.map(function (x) { return satir(x, 'engel'); }).join('')
+          + d.uyari.map(function (x) { return satir(x, 'uyari'); }).join('')
+          + '</ul>'
+        : '<p class="an-chk-ok">✓ Her iki dilde rapor, meta ve SSS yerinde; adres benzersiz. Yayınlanabilir.</p>')
+      + (d.engel.length
+        ? '<p class="an-hint"><strong>Engeller</strong> yayını durdurur — kaydet() zaten reddeder ya da '
+          + '<code>seo-audit</code> build’i kırar. <strong>Uyarılar</strong> durdurmaz; sayfa yayınlanır ama eksik çıkar.</p>'
+        : (d.uyari.length
+          ? '<p class="an-hint">Uyarılar yayını durdurmaz. Meta ile ilgili olanlar için '
+            + '<strong>Meta’yı yeniden üret</strong> genelde yeterli.</p>'
+          : ''))
+      + '</div>';
   }
 
   async function kaydet(durum) {
@@ -1571,6 +1922,10 @@
   window.analysesProdSearch = analysesProdSearch;
   window.analysesLinkBasla = analysesLinkBasla;
   window.analysesAbonelikBasla = analysesAbonelikBasla;
+  window.analysesSubKat = analysesSubKat;
+  window.analysesSubTogla = analysesSubTogla;
+  window.analysesSubCikar = analysesSubCikar;
+  window.analysesSubEkle = analysesSubEkle;
   window.analysesPickProduct = analysesPickProduct;
   window.analysesCmpSearch = analysesCmpSearch;
   window.analysesCmpEkle = analysesCmpEkle;
@@ -1579,11 +1934,10 @@
   window.analysesAnswer = analysesAnswer;
   window.analysesRunReport = analysesRunReport;
   window.analysesBackToQuiz = analysesBackToQuiz;
-  window.analysesSitede = analysesSitede;
-  window.analysesPick = analysesPick;
   window.analysesEdit = analysesEdit;
   window.analysesDelete = analysesDelete;
   window.analysesSaveImage = analysesSaveImage;
+  window.analysesSaveSlug = analysesSaveSlug;
   window.analysesLang = analysesLang;
   window.analysesTaslakKaydet = analysesTaslakKaydet;
   window.analysesYayinla = analysesYayinla;

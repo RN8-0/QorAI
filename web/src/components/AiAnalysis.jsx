@@ -574,8 +574,8 @@ function ComparisonOverview({ cmp = {}, L }) {
 
 // One product's complete review — the SAME template the product-detail, link
 // and subscription reports use, rendered inside the compare detail modal.
-function CompareProductDetail({ data = {}, L, lang }) {
-  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false} />;
+function CompareProductDetail({ data = {}, L, lang, hideQuiz = false }) {
+  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false} hideQuiz={hideQuiz} />;
 }
 
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
@@ -593,7 +593,7 @@ function CompareProductDetail({ data = {}, L, lang }) {
 // Artık: kazanan hükmü + tek bir hizalı faktör karşılaştırması (HeatMatrix),
 // ardından HER ÜRÜNÜN tam raporu kart içinde ALT ALTA — abonelikteki
 // `subs-svc-grid` düzeninin birebir karşılığı. Modal ve tıklama kalktı.
-function CompareFullReport({ data, L, lang, products = [] }) {
+function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
   const aiProducts = arr(data.products);
   const cmp = data.comparison || {};
 
@@ -639,7 +639,7 @@ function CompareFullReport({ data, L, lang, products = [] }) {
                     <b>{c.name}</b>
                   </div>
                 </header>
-                <CompareProductDetail data={c.ai} L={L} lang={lang} />
+                <CompareProductDetail data={c.ai} L={L} lang={lang} hideQuiz={hideQuiz} />
               </section>
             );
           })}
@@ -652,13 +652,13 @@ function CompareFullReport({ data, L, lang, products = [] }) {
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 // kind: 'deep' | 'alts' | 'advisor' | 'pred'. Returns null when JSON is unusable
 // so the caller can fall back to plain text.
-export default function AiAnalysisView({ kind, raw, data: dataProp, lang, products }) {
+export default function AiAnalysisView({ kind, raw, data: dataProp, lang, products, hideQuiz = false }) {
   const data = dataProp && typeof dataProp === 'object' ? dataProp : parseAiJson(raw);
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (en, tr) => (code === 'tr' ? tr : en);
   if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} lang={lang} />;
-  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} />;
+  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} hideQuiz={hideQuiz} />;
   if (kind === 'deep') return <DeepView data={data} L={L} />;
   if (kind === 'alts') return <AltView data={data} L={L} />;
   if (kind === 'advisor') return <AdvisorView data={data} L={L} />;

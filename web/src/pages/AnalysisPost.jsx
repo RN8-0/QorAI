@@ -21,7 +21,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, SEO_DEFAULT_LOCALE, truncate } from '../lib/seo';
-import { ProductFullReport } from '../components/AiAnalysis.jsx';
+import AiAnalysisView, { ProductFullReport } from '../components/AiAnalysis.jsx';
 import AiReportView from '../components/AiReportView.jsx';
 // Abonelik ve karsilastirma raporlari ORTAK sablonu kullanamiyor (veri sekli
 // gercekten farkli), o yuzden kendi bilesenlerini cizerler. Ikisi de sitede
@@ -240,11 +240,25 @@ export default function AnalysisPost() {
         )}
 
         {/* Sitede o analizi kim ciziyorsa BURADA DA O cizer:
-              urun            -> ProductFullReport   (urun sayfasindaki)
-              abonelik        -> SubscriptionReportView (Abonelikler sayfasindaki)
-              link (2+ urun)  -> CompareResult       (Link Analizi sayfasindaki)
-              link (tek urun) -> AiReportView        (ortak sablon)
-            Hicbiri icin ikinci bir gorunum yazilmadi. */}
+              urun               -> ProductFullReport      (urun sayfasindaki)
+              abonelik           -> SubscriptionReportView (Abonelikler sayfasindaki)
+              urun karsilastirma -> AiAnalysisView         (Karsilastir sayfasindaki)
+              link (2+ urun)     -> CompareResult          (Link Analizi sayfasindaki)
+              link (tek urun)    -> AiReportView           (ortak sablon)
+            Hicbiri icin ikinci bir gorunum yazilmadi.
+
+            IKI FARKLI KARSILASTIRMA SEKLI VAR ve karistirilmalari sayfayi
+            SESSIZCE bozuyordu:
+              · link karsilastirmasi -> products[].score, winner.best,
+                UST SEVIYE decisiveDifferences        -> CompareResult
+              · urun karsilastirmasi -> products[].matchScore, comparison.*
+                (type: compare_full_report)           -> AiAnalysisView
+            Kosul yalnizca `Array.isArray(ham.products)` idi, yani ADMINDE
+            uretilen her urun karsilastirmasi link gorunumune dusuyordu:
+            butun puanlar 0, kazanan listenin ilki, farklar ve head-to-head
+            hic gorunmuyordu. Ilginc olan, ON-RENDER'IN DOGRU cizmesiydi
+            (scripts/seo.mjs -> anKarsilastirmaGovde `comparison.*` okuyor) —
+            yani crawler saglam sayfayi, okuyucu bozugunu goruyordu. */}
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
             <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
@@ -256,6 +270,13 @@ export default function AnalysisPost() {
               t={t}
               hideQuiz={quiz.length > 0}
             />
+          ) : (ham?.type === 'compare_full_report' || ham?.comparison) && Array.isArray(ham?.products) ? (
+            /* hideQuiz: kunye USTTE ciziliyor. Onsuz ayni sorular her urunun
+               raporunda bir daha cikardi (12 urun = 12 tekrar) ve on-render
+               bunlari HIC cizmiyor — yani crawler ile okuyucu farkli sayfa
+               gorurdu. Ayni prop urun/abonelik/link akislarinda da bu isi
+               yapiyor. */
+            <AiAnalysisView kind="compareFull" data={ham} lang={lang} hideQuiz={quiz.length > 0} />
           ) : Array.isArray(ham?.products) ? (
             <CompareResult data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
           ) : unified ? (

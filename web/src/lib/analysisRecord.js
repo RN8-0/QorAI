@@ -190,14 +190,22 @@ export function analysisMetaDescription(rec, lang) {
 export function analysisQuiz(rec, lang) {
   const raw = analysisReport(rec, lang);
   if (!raw) return [];
-  // Urun raporunda `product` altinda, link/abonelik raporunda ust seviyede.
-  // Uc yer: urun raporunda `product` altinda, link/abonelik raporunda ust
+  // Dort yer: urun raporunda `product` altinda, link/abonelik raporunda ust
   // seviyede, urun KARSILASTIRMASINDA (`compare_full_report`) `comparison`
-  // altinda.
+  // altinda — VE oradan cikmadiginda ilk urunun kendi girdisinde.
+  //
+  // Son dal olmadan urun karsilastirmalarinda kunye BOS kaliyordu: prompt
+  // `quizInsights`i `comparison` altinda DEGIL, her products[] girdisinin
+  // icinde uretiyor (bkz. buildCompareProductPrompt). Sorular ve verilen
+  // cevaplar butun urunlerde ayni (quiz bir kez yanitlandi); urune gore
+  // degisen yalnizca `note` ve `impact`, o yuzden ilkini almak dogru kunyeyi
+  // verir. Kunye bos kalinca sayfa "92/100 uyum" diyip KIMIN uyumu oldugunu
+  // hic soylemiyordu.
   const list = Array.isArray(raw.product?.quizInsights) ? raw.product.quizInsights
     : Array.isArray(raw.quizInsights) ? raw.quizInsights
       : Array.isArray(raw.comparison?.quizInsights) ? raw.comparison.quizInsights
-        : [];
+        : Array.isArray(raw.products?.[0]?.quizInsights) ? raw.products[0].quizInsights
+          : [];
   return list
     .map((q) => ({
       soru: String(q?.topic || '').trim(),

@@ -285,17 +285,51 @@ async function generateCompareQuiz(products, lang) {
     .slice(0, count);
 }
 
+// N istegi ayni anda degil, en fazla `limit` tanesi kosar — sitedeki
+// mapWithConcurrency ile ayni is. Admin tek kullanicilik ama AI proxy'si
+// site ve app ile PAYLASIMLI ve 429 tam da burada patliyor.
+async function mapWithConcurrency(items, limit, fn) {
+  var out = new Array(items.length);
+  var sirada = 0;
+  async function isci() {
+    for (;;) {
+      var i = sirada; sirada += 1;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  var n = Math.max(1, Math.min(limit, items.length));
+  var isciler = [];
+  for (var k = 0; k < n; k += 1) isciler.push(isci());
+  await Promise.all(isciler);
+  return out;
+}
+
 /**
- * TEK DILDE karsilastirma raporu. Urun raporuyla ayni iskelet: once GROUNDED
- * arastirma, sonra tek JSON cagrisi. Cikti `compare_full_report` seklinde ve
- * site tarafinda `reportAdapters.js` onu zaten taniyor — yani yayinlanan sayfa
- * hicbir yeni cizim kodu gerektirmiyor.
+ * TEK DILDE karsilastirma raporu — SITEDEKI HATTIN AYNISI
+ * (web/src/lib/compareAnalysisJobs.js -> runCompareAnalysisJob).
+ *
+ * ONCEKI SURUM tek bir `buildComparePrompt` cagrisiyla butun urunleri tek
+ * JSON'a yazdiriyordu ve bunun iki bedeli vardi:
+ *   1. O prompt urun sayisi arttikca kendi istedigi paragraf sayisini
+ *      DUSURUYOR (`big = n >= 4`), yani 5. urunun raporu 2 urunlu bir
+ *      karsilastirmadakinin yarisi kadar oluyordu.
+ *   2. Tek cikti 16k jetonu zorladigi icin 6 urun pratik tavandi; ustunde
+ *      JSON yarida kesiliyordu.
+ * Site bunu zaten cozmus: her urun KENDI cagrisinda tam derinlikte yazilir
+ * (8192 jeton, es zamanli 5), sonra ozetlerden TEK hukum cagrisi yapilir.
+ * Cikti sekli birebir ayni (`compare_full_report`) — ne site cizimi ne
+ * on-render degisiyor, yalnizca urun basina derinlik SABIT kaliyor.
  */
 async function runCompareReport(o) {
   var products = o.products || [];
   var lang = o.lang;
   var answers = o.answers || [];
   var stage = o.onStage || function () {};
+  var sistem = 'You are Qor AI. Return only valid JSON in language code ' + lang
+    + '. Use current research and Qor catalog context over stale model memory. '
+    + 'Every user-facing text field must be in the requested language; keep only '
+    + 'brand/product names and technical terms as-is.';
 
   stage('research', lang);
   var research = '';
@@ -307,25 +341,63 @@ async function runCompareReport(o) {
   } catch (_) { research = ''; }
 
   stage('report', lang);
-  var prompt = P.buildComparePrompt(products, lang, {}, {
-    quizAnswers: answers,
-    research: research,
-  });
-  var txt = await askRaw({
-    system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.',
-    user: prompt,
-    // Karsilastirmada cikti urun sayisiyla buyuyor; tavan urun raporuyla ayni
-    // tutuluyor (bkz. runProductReport: 8192 DeepSeek'in siniriydi ve yalniz
-    // Gemini'yi bogazliyordu).
-    maxOutputTokens: 16384,
-    temperature: 0.45,
-    jsonMode: true,
-  });
-  var data = P.parseAiJson(txt);
-  if (!data || !Array.isArray(data.products) || !data.products.length) {
-    throw new Error('Karsilastirma raporu bos (' + lang + ')');
+  var peerNames = products.map(function (p) { return P.displayProductName(p, lang); });
+  var biten = 0;
+  stage('progress', lang, { done: 0, total: products.length });
+
+  function urunRaporu(p) {
+    return askRaw({
+      system: sistem,
+      user: P.buildCompareProductPrompt(p, lang, {}, {
+        quizAnswers: answers, research: research, peerNames: peerNames,
+      }),
+      maxOutputTokens: 8192,
+      temperature: 0.42,
+      jsonMode: true,
+    }).then(function (txt) { return P.parseAiJson(txt); }, function () { return null; });
   }
-  return { data: data, researched: Boolean(research) };
+
+  var raporlar = await mapWithConcurrency(products, 5, async function (p) {
+    // TEK SEFER YENIDEN DENE. Site tek deneme yapip basarisiz urunu sessizce
+    // DUSURUYOR; orada bir ziyaretci bekliyor. Adminde ise dusurulen urun,
+    // "6 urun karsilastirdim" diye yayinlanan bir sayfanin 5 urun icermesi
+    // demek — bir deneme daha, on dakikalik kosuyu kurtarmaya deger.
+    var parsed = await urunRaporu(p);
+    if (!parsed || typeof parsed !== 'object') parsed = await urunRaporu(p);
+    biten += 1;
+    stage('progress', lang, { done: biten, total: products.length });
+    if (!parsed || typeof parsed !== 'object') return null;
+    return Object.assign({}, parsed, {
+      name: parsed.name || P.displayProductName(p, lang),
+      imageUrl: p.imageUrl || parsed.imageUrl || '',
+      url: P.productPath(p),
+    });
+  });
+
+  var ok = raporlar.filter(Boolean);
+  var dusen = products.filter(function (p, i) { return !raporlar[i]; })
+    .map(function (p) { return P.displayProductName(p, lang); });
+  if (ok.length < 2) throw new Error('Karşılaştırma raporu üretilemedi (' + lang + ')');
+
+  stage('verdict', lang);
+  var verdict = {};
+  try {
+    verdict = P.parseAiJson(await askRaw({
+      system: sistem,
+      user: P.buildCompareVerdictPrompt(products, ok, lang, {}, {
+        quizAnswers: answers, research: research,
+      }),
+      maxOutputTokens: 6144,
+      temperature: 0.4,
+      jsonMode: true,
+    })) || {};
+  } catch (_) { verdict = {}; }
+
+  return {
+    data: { type: 'compare_full_report', products: ok, comparison: verdict },
+    researched: Boolean(research),
+    dropped: dusen,
+  };
 }
 
 /**
