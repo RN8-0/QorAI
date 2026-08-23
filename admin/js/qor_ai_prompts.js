@@ -176,8 +176,16 @@ Derive the equivalent decisive angles for the ACTUAL category in front of you. G
 
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
+WHAT A GOOD QUESTION LOOKS LIKE — copy this register, not these words:
+  BAD  (everyday, vague, teaches nothing): "How long does your battery need to last on a busy day?"
+  GOOD (names the trade-off AND its cost): "A bigger battery adds weight and thickness, and fast charging trades long-term cell health for convenience. Where do you sit between all-day endurance and a phone that stays light in the hand?"
+  BAD  option: "It matters that it lasts until I get home in the evening."
+  GOOD option: "Two full days off the charger, and I accept the extra 30-40 g and the slower charging that comes with it."
+The good question TEACHES why the trade-off exists; every good option names the gain AND the price paid.
+An option that only expresses a feeling is worthless — it cannot separate two products.
+
 Rules:
-- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
+- Each question is a SUBSTANTIVE BUYING QUESTION of 25-45 words — count them; a 12-word question is a FAILURE and must be rewritten longer. In languages that pack more meaning per word than English (Turkish, Finnish, Hungarian) still write at least 20 words. Write it the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - Questions must be relevant to the product CATEGORY.
 - Ask EXACTLY ${count} questions — no more, no fewer. Spend them on the ${count} highest-signal trade-offs that decide the fit; drop anything lower-signal.
 - Cover the axes that actually separate products in this category: the performance headroom the buyer needs, the environment and constraints they operate under, the quality floor they refuse to go below, ergonomics, ownership risk and long-term value.
@@ -234,8 +242,16 @@ Derive the equivalent decisive angles for the ACTUAL category in front of you. G
 
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene, and a different ordering than the most obvious default. Two runs on the same product must not share a question.
 
+WHAT A GOOD QUESTION LOOKS LIKE — copy this register, not these words:
+  BAD  (everyday, vague, teaches nothing): "How long does your battery need to last on a busy day?"
+  GOOD (names the trade-off AND its cost): "A bigger battery adds weight and thickness, and fast charging trades long-term cell health for convenience. Where do you sit between all-day endurance and a phone that stays light in the hand?"
+  BAD  option: "It matters that it lasts until I get home in the evening."
+  GOOD option: "Two full days off the charger, and I accept the extra 30-40 g and the slower charging that comes with it."
+The good question TEACHES why the trade-off exists; every good option names the gain AND the price paid.
+An option that only expresses a feeling is worthless — it cannot separate two products.
+
 Rules:
-- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
+- Each question is a SUBSTANTIVE BUYING QUESTION of 25-45 words — count them; a 12-word question is a FAILURE and must be rewritten longer. In languages that pack more meaning per word than English (Turkish, Finnish, Hungarian) still write at least 20 words. Write it the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - The quiz must surface which trade-offs matter to the user, not ask generic shopping questions.
 - Ask EXACTLY ${count} questions — no more, no fewer — the ${count} most decisive trade-offs that determine which product fits best, whether comparing two products or several.
 - Cover real use moments, performance, quality, portability/ergonomics, durability, risk tolerance and long-term ownership.
@@ -281,8 +297,16 @@ their specific habits, preferences, and expectations.
 
 VARIATION — do not produce the same quiz twice: the user message carries a "variationSeed". Use it to choose a DIFFERENT set of decisive angles, a different opening scene and a different ordering than the most obvious default. Two runs on the same services must not share a question.
 
+WHAT A GOOD QUESTION LOOKS LIKE — copy this register, not these words:
+  BAD  (everyday, vague, teaches nothing): "How long does your battery need to last on a busy day?"
+  GOOD (names the trade-off AND its cost): "A bigger battery adds weight and thickness, and fast charging trades long-term cell health for convenience. Where do you sit between all-day endurance and a phone that stays light in the hand?"
+  BAD  option: "It matters that it lasts until I get home in the evening."
+  GOOD option: "Two full days off the charger, and I accept the extra 30-40 g and the slower charging that comes with it."
+The good question TEACHES why the trade-off exists; every good option names the gain AND the price paid.
+An option that only expresses a feeling is worthless — it cannot separate two products.
+
 Rules:
-- Each question is a SUBSTANTIVE BUYING QUESTION of about 25-45 words, written the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
+- Each question is a SUBSTANTIVE BUYING QUESTION of 25-45 words — count them; a 12-word question is a FAILURE and must be rewritten longer. In languages that pack more meaning per word than English (Turkish, Finnish, Hungarian) still write at least 20 words. Write it the way a category expert would interview a buyer: name the concrete trade-off at stake, add the technical or practical consequence that makes it matter, then ask which side the buyer falls on. Casual day-in-the-life vignettes are FORBIDDEN — "you wake up and reach for your phone" is not a question, it is filler. The reader must finish the question knowing something they did not know about the category.
 - Ask EXACTLY ${count} questions — no more, no fewer — the ${count} most decisive ones that determine which service fits best, whether analysing one service or comparing several.
 - Ask about real habits and moments: when/where/how they watch, listen, play, create or work, and what they care about (quality, variety, offline use, sharing, discovery, comfort, how often they use it).
 - HARD RULE — NEVER name, write, or hint at any of the selected services or brands (or their exact features/menus) in the questions OR in the options. Not even once. The user must NOT be able to tell which option belongs to which service. If a service name would appear, replace it with the neutral behavior instead.
