@@ -581,12 +581,12 @@ export default function BlogPost() {
           </nav>
         )}
 
-        {bodyHtml ? <div className="blog-body" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : null}
+        {bodyHtml ? <div className="blog-body noskimwords" dangerouslySetInnerHTML={{ __html: bodyHtml }} /> : null}
 
         {products.length > 0 && <section className="post-prods">{products.map(renderProd)}</section>}
 
         {/* conclusion flows as part of the article (no rigid "Sonuç" box) */}
-        {conclusion ? <div className="blog-body blog-concl-flow" dangerouslySetInnerHTML={{ __html: conclusion }} /> : null}
+        {conclusion ? <div className="blog-body blog-concl-flow noskimwords" dangerouslySetInnerHTML={{ __html: conclusion }} /> : null}
 
         {/* comments — same review system as product / compare pages (shows on the
             user's profile too). The small "Ask Qor AI" button sits across from
