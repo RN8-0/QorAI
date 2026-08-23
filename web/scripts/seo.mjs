@@ -27,6 +27,8 @@ import {
   analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
   analysisTitle, analysisUnified,
 } from '../src/lib/analysisRecord.js';
+// Tekrar agi: ON-RENDER ile SITE ayni modulu kosar (bkz. reportDedupe.js).
+import { dropRestated } from '../src/lib/reportDedupe.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
@@ -358,12 +360,16 @@ function anUrunGovde(rapor, tx) {
 
   g += anQuizEtkisi(p.quizInsights, tx);
 
-  const guclu = anDizi(p.strengths);
-  const zayif = anDizi(p.weaknesses);
+  // TEKRAR AGI — sayfadaki SIRAYLA cagrilir, olgu ilk gorundugu bolumde kalir.
+  // Site tarafi (AiReportView) ayni moduldeki ayni fonksiyonu kosuyor; aksi
+  // halde crawler'in gordugu HTML ile kullanicinin gordugu sayfa ayrisirdi.
+  const gorulen = [];
+  const guclu = dropRestated(anDizi(p.strengths), gorulen);
+  const zayif = dropRestated(anDizi(p.weaknesses), gorulen);
   if (guclu.length) { g += anH2(tx.strengths); g += anListe(guclu); }
   if (zayif.length) { g += anH2(tx.weaknesses); g += anListe(zayif); }
 
-  const kn = anBaslikliListe(p.criticalPoints);
+  const kn = anBaslikliListe(dropRestated(anDizi(p.criticalPoints), gorulen));
   if (kn) { g += anH2(tx.critical); g += kn; }
 
   g += anOzellikTablosu(p.featureMatches, tx);
@@ -374,8 +380,19 @@ function anUrunGovde(rapor, tx) {
     if (Number(c.satisfaction)) g += anSayi(`${tx.satisfaction}: ${Number(c.satisfaction)}/100`);
     if (c.summary) g += anPar(c.summary);
   }
-  // Artı/eksi YUKARIDA bir kez yazildi; burasi forum bulgulari.
-  g += anForumBulgulari(c.lovedFeatures || c.pros, c.chronicIssues || c.cons, tx);
+  // Arti/eksi YUKARIDA bir kez yazildi; burasi forum bulgulari.
+  //
+  // `c.pros` / `c.cons` geri donusu KALDIRILDI: eski semadaki o iki alan
+  // jenerik arti/eksi listesidir, yani `strengths`/`weaknesses` ile ayni
+  // maddeler. Geri donus onlari "sahiplerin sevdigi / kronik sorunlar" diye
+  // YENIDEN ETIKETLEYIP ayni cumleleri ikinci kez basiyordu (canli S23 Ultra
+  // kaydinda birebir boyleydi). Ayni kaldirma web/src/lib/reportAdapters.js
+  // icinde de yapildi — IKISI BIRDEN degismeli.
+  g += anForumBulgulari(
+    dropRestated(anDizi(c.lovedFeatures), gorulen),
+    dropRestated(anDizi(c.chronicIssues), gorulen),
+    tx,
+  );
 
   const alt = anDizi(rapor.alternatives).filter((x) => x && x.name);
   if (alt.length) {
@@ -410,10 +427,14 @@ function anLinkGovde(u, tx) {
 
   g += anQuizEtkisi(u.quizInsights, tx);
 
-  if (anDizi(u.prosForUser).length) { g += anH2(tx.strengths); g += anListe(u.prosForUser); }
-  if (anDizi(u.consForUser).length) { g += anH2(tx.weaknesses); g += anListe(u.consForUser); }
+  // Tekrar agi urun raporundaki gibi: SIRAYLA, olgu ilk bolumde kalir.
+  const gorulenU = [];
+  const arti = dropRestated(anDizi(u.prosForUser), gorulenU);
+  const eksi = dropRestated(anDizi(u.consForUser), gorulenU);
+  if (arti.length) { g += anH2(tx.strengths); g += anListe(arti); }
+  if (eksi.length) { g += anH2(tx.weaknesses); g += anListe(eksi); }
 
-  const kn = anBaslikliListe(u.criticalPoints);
+  const kn = anBaslikliListe(dropRestated(anDizi(u.criticalPoints), gorulenU));
   if (kn) { g += anH2(tx.critical); g += kn; }
 
   g += anOzellikTablosu(u.featureMatches, tx);
@@ -426,7 +447,11 @@ function anLinkGovde(u, tx) {
     if (Number(u.communityScore)) g += anSayi(`${tx.satisfaction}: ${Number(u.communityScore)}/100`);
     if (u.communityAnalysis) g += anPar(u.communityAnalysis);
   }
-  g += anForumBulgulari(u.lovedFeatures || u.praisePoints, u.chronicIssues || u.complaintPoints, tx);
+  g += anForumBulgulari(
+    dropRestated(anDizi(u.lovedFeatures || u.praisePoints), gorulenU),
+    dropRestated(anDizi(u.chronicIssues || u.complaintPoints), gorulenU),
+    tx,
+  );
 
   g += anFiyat(u.priceOutlook, tx);
 
@@ -803,7 +828,7 @@ function keySpecRows(keySpecs, limit = 16) {
 // pre-JS snapshot get real, unique text + internal links (category + siblings).
 // Internal links matter: Googlebot defers JS for hours-to-weeks, so the crawl
 // path and content must exist in the raw HTML, not only after the SPA renders.
-function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE, price = null) {
+function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang = SEO_DEFAULT_LOCALE, price = null, analiz = null) {
   const name = esc(localizedName(d, lang));
   const brand = d.brand ? esc(d.brand) : '';
   const score = Number(d.techScore) || 0;
@@ -843,6 +868,10 @@ function productBody(d, label, categoryUrl, related = [], keySpecs = null, lang 
     + `<p style="line-height:1.7;color:#334155">${tx.intro(name, highlights, lbl, specs)}</p>`
     + (items ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.specsH}</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0">${items}</ul>` : '')
     + (relLinks ? `<h2 style="font-size:18px;margin:22px 0 8px">${tx.relH(lbl)}</h2><ul style="line-height:1.8">${relLinks}</ul>` : '')
+    // Yayinlanmis analiz varsa ONA git. Analiz sayfasinin sitedeki TEK ic
+    // linki burasi; kategori CTA'sindan ONCE duruyor cunku okuyucu icin daha
+    // degerli (kendi urunu hakkinda derin icerik, listeye donmek degil).
+    + (analiz ? `<p style="margin-top:16px"><a href="${analiz.href}" style="color:#2563eb;font-weight:600">${analiz.text} →</a></p>` : '')
     + `<p style="margin-top:16px"><a href="${categoryUrl}" style="color:#2563eb;font-weight:600">${tx.cta(lbl)} →</a></p>`
     + `</main>`;
 }
@@ -2575,6 +2604,24 @@ async function main() {
     }
   }
 
+  // ANALIZLER KURASYONDAN ONCE cekilir, iki is icin:
+  //  1) Analizi olan urun kurasyona MUTLAKA girer (asagida). Olculdu: analizi
+  //     yayinlanan S23 Ultra 1TB, model-anahtari tekillestirmesinde 512GB
+  //     kardesine "kopya" diye eleniyordu; sitenin OZGUN icerik uretilmis tek
+  //     urunu ciplak SPA kabugu olarak kaliyordu (#root govdesi 0 karakter).
+  //  2) Urun sayfasi analize LINK verir. Onsuz /analiz/<slug> site icinde
+  //     hicbir yerden baglantisi olmayan bir ada: yalniz sitemap'ten kesfedilir.
+  const analyses = await fetchAnalyses();
+  const analizBySlug = new Map();
+  for (const a of analyses) {
+    if (!a.slug || !a.productSlug) continue;
+    // Dile gore ayri: bir dilde raporu olmayan analize O DILDE link verirsek
+    // okuyucuyu uretilmemis bir kabuga gonderiyoruz.
+    const diller = analysisRenderLangs(a, SEO_DEFAULT_LOCALE).filter((l) => SEO_LOCALES.includes(l));
+    if (!diller.length) continue;
+    analizBySlug.set(a.productSlug, { slug: a.slug, diller });
+  }
+
   // 2b) curated selection — pick the top-N de-duplicated, image-bearing models
   //     per category UP FRONT. This one list drives both the category landing
   //     page internal links (2c) and the per-product shells (2d). We bake a
@@ -2703,6 +2750,29 @@ async function main() {
       curatedTotal += 1;
     }
     if (picked.length) curatedByCat.set(cat, picked);
+  }
+
+  // ANALIZI OLAN URUN HER HALUKARDA KURASYONDA. Kota, spec esigi ve
+  // model-anahtari tekillestirmesi genel katalog icin dogru filtreler, ama
+  // analizi yayinlanmis urun tanimi geregi ince sayfa DEGIL: sitenin baska
+  // hicbir yerinde olmayan ozgun icerik ONA isaret ediyor. Elenirse hem o
+  // sayfa ciplak kabuk kalir hem de analize giden ic link hic uretilmez.
+  let zorunlu = 0;
+  if (analizBySlug.size) {
+    const kuratedeVar = new Set();
+    for (const p of curatedByCat.values()) for (const d of p) if (d?.slug) kuratedeVar.add(d.slug);
+    for (const d of products) {
+      if (!d?.slug || !analizBySlug.has(d.slug) || kuratedeVar.has(d.slug)) continue;
+      if (!d.id || !d.name) continue;
+      const cat = String(d.category || '').trim().toLowerCase();
+      if (!cat) continue;
+      if (!curatedByCat.has(cat)) curatedByCat.set(cat, []);
+      curatedByCat.get(cat).push(d);
+      kuratedeVar.add(d.slug);
+      curatedTotal += 1;
+      zorunlu += 1;
+    }
+    if (zorunlu) console.log(`[seo] kürasyona zorunlu eklenen (analizi olan ürün): ${zorunlu}`);
   }
   {
     const tumu = [...curatedByCat.values()].flat();
@@ -2863,12 +2933,21 @@ async function main() {
           // /tr/ ve kök ürün sayfaları arası hiç iç link olmuyor).
           related.push({ name: localizedName(r, lang), path: `${prefix}${productPath(r)}` });
         }
+        // Analiz linki YALNIZ o dilde raporu varsa: aksi halde uretilmemis bir
+        // kabuga link vermis olurduk.
+        const an = analizBySlug.get(d.slug);
+        const analiz = an && an.diller.includes(lang)
+          ? {
+            href: `${SITE}${prefix}/analiz/${an.slug}`,
+            text: lang === 'tr' ? `${localizedName(d, lang)} yapay zekâ analizini oku` : `Read the AI analysis of ${localizedName(d, lang)}`,
+          }
+          : null;
         writeHtml(
           `${prefix}${path}`.replace(/^\//, ''),
           renderPage(
             template,
             { ...productSeo(d, label, ks, lang, price), alternates, preloadImage: lcpVariant(d.imageUrl, 'full'), routeKey: 'product' },
-            localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang, price), lang),
+            localizeBodyLinks(productBody(d, label, categoryUrl, related, ks, lang, price, analiz), lang),
           ),
         );
       }
@@ -3058,7 +3137,8 @@ async function main() {
   // ve insanlarin arama kutusuna GERCEKTEN yazdigi sorulari hedefleyen
   // bloklardan gelir ("batarya omru nasil", "oyun icin uygun mu") — sayfa
   // basliklarinin tekrari degil. Uzun kuyruk trafigin girisi burasi.
-  const analyses = await fetchAnalyses();
+  // `analyses` YUKARIDA cekildi (urun kabuklari ona link verdigi icin) —
+  // burada ikinci kez cekmek ayni veriyi iki kez indirmek olurdu.
   const analizUrls = [];
   // ANALIZ KABUKLARINI DIL DIL SIL. Uretilmeyen agac kendiliginden SILINMEZ:
   // yayindan kaldirilan ya da bir dilde raporu olmayan analizin eski kabugu

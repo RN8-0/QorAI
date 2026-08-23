@@ -693,6 +693,11 @@
 }
 .pd-cmp-btn:hover { border-color: var(--accent-ring); }
 .pd-cmp-btn.on { background: var(--accent-soft); border-color: var(--accent-ring); color: var(--accent); }
+/* Yayinlanmis analize giden link. Karsilastir butonuyla AYNI kalipta —
+   yan yana duruyorlar ve iki farkli govde tutarsiz gorunurdu. Link
+   oldugu icin alti cizilmesin. */
+.pd-analiz-btn { text-decoration: none; }
+.pd-analiz-btn:hover { color: var(--accent); border-color: var(--accent-ring); }
 
 /* Detail flow below the hero: prices → variants → specs/AI tabs → reviews */
 .pd-detail-flow { margin-top: 32px; display: flex; flex-direction: column; gap: 32px; }

@@ -621,7 +621,12 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n' +
     '    "strengths": ["6 detailed strengths grounded in specs"],\n' +
     '    "weaknesses": ["5 detailed drawbacks a buyer can judge BEFORE paying — size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in. Failures, crashes, overheating, defects and support problems do NOT belong here; they go in community.chronicIssues"],\n' +
-    '    "reliabilityNotes": [{"title": "durability/support/warranty note", "detail": "1-2 sentences"}],\n' +
+    '    "reliabilityNotes": [{"title": "what the MANUFACTURER PROMISES: warranty term, official software-support window, service-network reach, spare-part or battery-replacement availability", "detail": "1-2 sentences"}],\n' +
+    // Bu alan bir ARIZA LISTESI DEGIL. Sinir yazilmadigi surece model buraya
+    // kronik sorunlari kopyaliyordu; okuyucu ayni olguyu ucuncu kez
+    // goruyordu ("Batarya ve Yapiskan Sorunlari" hem burada, hem
+    // chronicIssues, hem weaknesses icindeydi.)
+    '    NOTE on reliabilityNotes: state what the maker COMMITS TO (years of updates, warranty length, service coverage, parts availability). Never restate a defect here — defects belong to community.chronicIssues.\n' +
     '    "bestFor": "1-2 sentences describing the buyer this is perfect for",\n' +
     '    "notFor": "1-2 sentences describing who should skip it",\n' +
     '    "overallVerdict": "2-3 sentence closing verdict"\n' +
@@ -630,9 +635,9 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "satisfaction": <0-100>,\n' +
     '    "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>},\n' +
     '    "themes": [{"label": "recurring discussion topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}],\n' +
-    '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums, and specialist reviews; include uncertainty where needed",\n' +
+    '    "summary": "5-7 substantial paragraphs synthesizing Reddit, YouTube, retailer reviews, forums and specialist reviews. Explain HOW opinion is distributed and WHERE it splits — which kinds of buyer disagree and why, which claims are well-evidenced and which are anecdotal. Do NOT re-list the items already in lovedFeatures and chronicIssues; the reader has just read them.",\n' +
     '    "lovedFeatures": [{"title": "what owners single out as the best part", "detail": "1-2 sentences on WHY it keeps coming up"}],\n' +
-    '    "chronicIssues": [{"title": "recurring, well-documented problem", "detail": "1-2 sentences: what fails, when it shows up, whether there is a fix or workaround", "frequency": "widespread|common|occasional"}],\n' +
+    '    "chronicIssues": [{"title": "a recurring, well-documented FAILURE owners hit AFTER paying — a defect, a breakage, degradation over time, or a support breakdown. Size, weight, price, a missing accessory or a spec that merely falls short are NOT chronic issues; those belong in product.weaknesses", "detail": "1-2 sentences: what fails, when it shows up, whether there is a fix or workaround", "frequency": "widespread|common|occasional"}],\n' +
     '    "sources": ["Reddit", "<source type in requested language>", "<source type in requested language>"],\n' +
     '    "verificationNotes": ["what is directly grounded", "what remains uncertain"]\n' +
     '  },\n' +
@@ -656,6 +661,11 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // yazilmali.
     '- product.weaknesses must stay on the DECISION side: size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in — things a buyer can judge before paying. Do NOT list failures, crashes, overheating, defects or support problems there; those belong to community.chronicIssues and repeating them makes the report say the same thing twice.\n' +
     '- product.criticalPoints must include 4-6 things that genuinely change the decision (compatibility traps, hidden costs, ecosystem lock-in, missing accessories, service coverage) — not restated specs.\n' +
+    // TEK OLGU, TEK YER. Olculdu: bu sinir yokken model ayni 4-5 olguyu
+    // weaknesses + criticalPoints + reliabilityNotes + chronicIssues +
+    // summary icine kopyaliyordu, yani okuyucu ayni sikayeti BES KEZ
+    // goruyordu. Alan alan sinir yazmak yetmedi; birlestiren kural sart.
+    '- ONE FACT, ONE PLACE. product.strengths, product.weaknesses, product.criticalPoints, product.reliabilityNotes, community.lovedFeatures and community.chronicIssues must not share a single fact between them. Before writing an item, check whether another list already covers it; if it does, drop it or write the genuinely different angle. Each list answers its own question: strengths/weaknesses = what a buyer can judge BEFORE paying · criticalPoints = what would flip the decision itself · reliabilityNotes = what the maker promises · lovedFeatures/chronicIssues = what owners report AFTER living with it.\n' +
     '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product. Never invent an answer that was not given.\n' +
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +

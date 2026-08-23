@@ -78,16 +78,20 @@ function bodyToUnified(p = {}, community = {}, extra = {}) {
     sentimentBreakdown: c.sentimentBreakdown || c.sentiment_breakdown || null,
     communityThemes: arr(c.themes),
     communityAnalysis: String(c.summary || '').trim(),
-    // FORUM BULGULARI. `pros`/`cons` ESKI adlar — artik uretilmiyorlar ama
-    // eski kayitlar tasiyor, o yuzden geriye donuk okunuyorlar.
+    // FORUM BULGULARI — YALNIZCA yeni alanlardan okunur.
     //
-    // Neden yeniden adlandirildi: rapor ayni listeyi IKI KEZ basiyordu —
-    // once "sana uygun / dikkat et" (prosForUser/consForUser), sonra
-    // "kullanicilarin sevdigi / sikayeti" olarak neredeyse ayni maddeler.
-    // Ikinci blok artik farkli bir sey soyluyor: KRONIK sorun, yani spec
-    // sayfasindan okunamayan, sahiplik sonrasi tekrar eden ariza.
-    lovedFeatures: arr(c.lovedFeatures).length ? arr(c.lovedFeatures) : arr(c.pros),
-    chronicIssues: arr(c.chronicIssues).length ? arr(c.chronicIssues) : arr(c.cons),
+    // Burada `arr(c.pros)` / `arr(c.cons)` geri donusu VARDI ve tam da
+    // gidermeye calistigi tekrari URETIYORDU: eski semadaki `community.pros`
+    // ve `community.cons` jenerik arti/eksi listeleridir, yani
+    // `product.strengths` / `product.weaknesses` ile neredeyse ayni maddeler.
+    // Geri donus onlari "Sahiplerin en cok sevdigi" / "Kronik sorunlar" diye
+    // YENIDEN ETIKETLIYOR, okuyucu da ayni cumleleri iki bolumde goruyordu
+    // (canli S23 Ultra kaydinda birebir boyleydi: 6 ve 5 madde, ayni metin).
+    //
+    // Eski kayitta bu bolumun HIC cikmamasi, sahte bir bolum cikmasindan
+    // iyidir; kayit yeniden uretildiginde gercek forum bulgulariyla doner.
+    lovedFeatures: arr(c.lovedFeatures),
+    chronicIssues: arr(c.chronicIssues),
     sources: arr(c.sources),
     verificationNotes: arr(c.verificationNotes),
 

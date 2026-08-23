@@ -68,6 +68,33 @@
   color: var(--ink-blue); background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+/* Arama + tür çipleri aynı şeridde. Dar ekranda arama tam genişlik alır,
+   çipler altına sarar; 560px üstünde ikisi yan yana durur. */
+.an-tools {
+  display: flex; flex-wrap: wrap; gap: 10px 14px;
+  align-items: center; margin-bottom: 6px;
+}
+.an-search {
+  flex: 1 1 240px; min-width: 0;
+  padding: 8px 14px; border-radius: var(--r-pill, 999px);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 14px;
+  transition: border-color .12s ease-out;
+}
+.an-search::placeholder { color: var(--text-3); }
+.an-search:hover { border-color: var(--border-strong); }
+.an-search:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+.an-more { display: flex; justify-content: center; margin-top: 22px; }
+.an-more button {
+  padding: 9px 22px; border-radius: var(--r-pill, 999px); cursor: pointer;
+  border: 1px solid var(--border-strong); background: transparent; color: var(--text-2);
+  font: inherit; font-size: 14px; font-weight: 600;
+  transition: color .12s ease-out, border-color .12s ease-out;
+}
+.an-more button:hover:not(:disabled) { color: var(--text); border-color: var(--accent); }
+.an-more button:disabled { opacity: .55; cursor: default; }
+
 .an-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .an-filters button {
   padding: 6px 14px; border-radius: var(--r-pill, 999px); cursor: pointer;

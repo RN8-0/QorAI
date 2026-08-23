@@ -12,6 +12,7 @@ import { useAiAccess } from '../lib/useAiAccess';
 import {
   clearProductAnalysisJob, runProductAnalysisJob, startProductAnalysisJob, subscribeProductAnalysisJob,
 } from '../lib/productAnalysisJobs';
+import { pb } from '../lib/pocketbase';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
@@ -645,6 +646,23 @@ export default function ProductDetail() {
 
   const [similar, setSimilar] = useState([]);
   const [variants, setVariants] = useState([]);
+  // YAYINLANMIS ANALIZ. On-render'daki urun govdesi de bu linki tasiyor ama
+  // React devralinca o govde SILINIYOR: link yalnizca JS calistirmayan
+  // tarayiciya/crawler'a kaliyordu. Gercek okuyucunun gorebilmesi icin burada
+  // da aranir. Sorgu urun degistiginde tekrar kosar.
+  const [analizSlug, setAnalizSlug] = useState('');
+
+  useEffect(() => {
+    const s = p?.slug;
+    if (!s) { setAnalizSlug(''); return undefined; }
+    let live = true;
+    pb.collection('analyses')
+      .getFirstListItem(`productSlug="${String(s).replace(/"/g, '')}"`, { $autoCancel: false })
+      .then((r) => { if (live) setAnalizSlug(r?.slug || ''); })
+      // 404 = o urunun analizi yok; beklenen durum, sessizce gecilir.
+      .catch(() => { if (live) setAnalizSlug(''); });
+    return () => { live = false; };
+  }, [p?.slug]);
 
   useEffect(() => {
     const key = `${user?.id || ''}|${user?.quizCompleted === true ? '1' : '0'}`;
@@ -1096,6 +1114,25 @@ export default function ProductDetail() {
             {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
                 sekmeydi; burada ilk ekranda duruyor. */}
             <AnalyzeButton busy={aiFull.busy} onClick={analizeBaslat} />
+            {/* Yayinlanmis analiz VARSA okumaya git. AnalyzeButton kullaniciya
+                ozel bir analiz URETIR (quiz + Q Coin); bu ise hazir, yayinlanmis
+                yaziyi ACAR. Ikisi ayri islerdir, o yuzden ayri butonlar. */}
+            {/* Adreste dil oneki EKLENMEZ: BrowserRouter `basename` ile
+                kuruluyor (main.jsx), yani ic linkler zaten kendi dil agacinda
+                kaliyor; elle `/tr` eklemek `/tr/tr/...` uretirdi. */}
+            {analizSlug && (
+              <Link
+                to={`/analiz/${analizSlug}`}
+                className="pd-cmp-btn pd-analiz-btn"
+                title={L('Read the published AI analysis', 'Yayınlanmış yapay zekâ analizini oku')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z" />
+                  <path d="M9 8h6M9 12h6" />
+                </svg>
+                <span>{L('Read analysis', 'Analizi oku')}</span>
+              </Link>
+            )}
           </div>
         </nav>
 

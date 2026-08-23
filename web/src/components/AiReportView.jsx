@@ -12,6 +12,7 @@
 // `lib/reportAdapters.js` içindeki dönüştürücülerle bu şekle çevrilir.
 // ═══════════════════════════════════════════════════════════════════════════
 import AiText from './AiText.jsx';
+import { dropRestated } from '../lib/reportDedupe';
 import AmazonLogo from './AmazonLogo.jsx';
 import Gauge from './Gauge.jsx';
 import ProductImg from './ProductImg.jsx';
@@ -202,11 +203,21 @@ export default function AiReportView({
   const score = Math.round(data.enhancedScore || 0);
   // History entries saved by older builds may miss the array fields — guard so
   // opening them never crashes the page.
-  const pros = bullets(data.prosForUser);
-  const cons = bullets(data.consForUser);
+  //
+  // TEKRAR AGI. Rapor "bu üründe ne ters gidiyor" sorusunu DÖRT ayrı alana
+  // soruyor (weaknesses · criticalPoints · reliabilityNotes ·
+  // community.chronicIssues) ve bir de summary'de nesir olarak. Prompt'ta
+  // sınır yazılı ama model olasılıksal: kaydığında okuyucu aynı şikâyeti beş
+  // kez görüyor — canlı S23 Ultra kaydında tam olarak bu oldu. Sınır artık
+  // prompt'ta VAR, bu ise ikinci savunma: bir olgu sayfada bir kez çizilir,
+  // ilk göründüğü yerde kalır.
+  const gorulen = [];
+  const tekrarsiz = (liste) => dropRestated(liste, gorulen);
+  const pros = tekrarsiz(bullets(data.prosForUser));
+  const cons = tekrarsiz(bullets(data.consForUser));
   const alts = bullets(data.alternatives);
   const factors = Array.isArray(data.factors) ? data.factors : [];
-  const critical = Array.isArray(data.criticalPoints) ? data.criticalPoints : [];
+  const critical = tekrarsiz(Array.isArray(data.criticalPoints) ? data.criticalPoints : []);
   const insights = Array.isArray(data.quizInsights) ? data.quizInsights : [];
   const themes = Array.isArray(data.communityThemes) ? data.communityThemes : [];
   // FORUM BULGULARI — eski adlar (praise/complaint) geriye donuk okunuyor.
@@ -216,9 +227,9 @@ export default function AiReportView({
   // her alani DUSURUYOR ve kronik sorunun `frequency` degeri ("yaygin" /
   // "sik" / "ara sira") boylece kayboluyordu — rozetler bos ciziliyordu.
   // ForumFindings kendi normalizasyonunu yapiyor.
-  const loved = data.lovedFeatures || data.praisePoints;
-  const chronic = data.chronicIssues || data.complaintPoints;
-  const reliability = bullets(data.reliabilityNotes);
+  const loved = tekrarsiz(data.lovedFeatures || data.praisePoints);
+  const chronic = tekrarsiz(data.chronicIssues || data.complaintPoints);
+  const reliability = tekrarsiz(bullets(data.reliabilityNotes));
   const verification = bullets(data.verificationNotes);
   const features = Array.isArray(data.featureMatches) ? data.featureMatches : [];
   const base = data.base || {};
