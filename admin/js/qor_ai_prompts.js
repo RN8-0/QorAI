@@ -877,9 +877,13 @@ function groundedResearchSystemPrompt(lang) {
    cagrida uretilir; ayni dilde iki analizin ayni meta'yi tasimamasi icin
    `usedTitles` / `usedDescriptions` yasakli liste olarak gonderilir. */
 function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
+  // `compare` dali YOKTU ve karsilastirma "a product analysis" olarak
+  // tanitiliyordu: model tek urun basligi yaziyordu ("Samsung Galaxy S26 Ultra
+  // Alinir Mi?"), oysa sayfa IKI urunu karsilastiriyor.
   const kindWord = kind === 'link' ? 'a product-link analysis'
     : kind === 'subscription' ? 'a subscription analysis'
-      : 'a product analysis';
+      : kind === 'compare' ? 'a HEAD-TO-HEAD COMPARISON of several products'
+        : 'a product analysis';
   const usedT = arr(used.titles).slice(0, 60);
   const usedD = arr(used.descriptions).slice(0, 60);
   return (
@@ -891,6 +895,13 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
     '}\n\n' +
     'Rules:\n' +
     '- `tr` is Turkish, `en` is English. Keep official brand/product names as-is in both.\n' +
+    (kind === 'compare'
+      ? '- THIS IS A COMPARISON. The title and metaTitle must name the products being compared (or say '
+        + '"X vs Y"), and must state WHICH ONE WINS and for whom. A title naming only one of them is WRONG. '
+        + 'The lead must give the verdict in one sentence: which product, for which buyer, on what evidence. '
+        + 'FAQ questions must be comparison questions ("which one has the better camera", "is X worth the '
+        + 'extra over Y"), never single-product questions.\n'
+      : '') +
     '- title: the on-page H1. Max 70 characters. Must name the subject and say what the page decides, not just what it is. Never a bare product name.\n' +
     '- lead: 1-2 sentences, max 200 characters, the answer a reader came for. No marketing wording, no "in this article".\n' +
     '- metaTitle: max 60 characters INCLUDING spaces. Different wording from `title` — not a truncation of it.\n' +

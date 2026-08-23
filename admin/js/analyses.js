@@ -140,6 +140,15 @@
       '.an-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);font-size:12.5px;color:var(--text1)}',
       '.an-chip button{border:0;background:none;color:var(--text3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px}',
       '.an-chip button:hover{color:var(--text1)}',
+      /* Uretim ilerlemesi: cubuk + donen gosterge + sayan sure. */
+      '.an-bar-track{height:3px;border-radius:999px;background:var(--bg3);overflow:hidden;margin:2px 0 14px}',
+      '.an-bar-fill{height:100%;background:var(--accent,#7c5cff);transition:width .4s ease-out}',
+      '.an-spin{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent,#7c5cff);animation:anSpin .7s linear infinite}',
+      '@keyframes anSpin{to{transform:rotate(360deg)}}',
+      '.an-sure{margin-left:auto;font-size:11px;color:var(--text3);font-weight:600;font-variant-numeric:tabular-nums}',
+      '.an-prog > div{display:flex;align-items:center;gap:8px}',
+      /* Hareket azaltma tercihi: donmeyi durdur, durum yine okunur. */
+      '@media (prefers-reduced-motion: reduce){.an-spin{animation:none}.an-bar-fill{transition:none}}',
       '.an-pill{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap}',
       '.an-pill.pub{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
       '.an-pill.draft{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
@@ -383,7 +392,11 @@
   // (reportAdapters -> CompareResult). Eksik olan tek sey buradaki secim
   // ekraniydi, yani karsilastirma analizi URETILEMIYORDU.
   var _cmpSecili = [];
-  var CMP_MAX = 4;
+  // Motorun kendi olcekleme tablosu 5 urune kadar tasarlanmis
+  // (qor_ai_prompts.js: `big = n >= 4` -> her urune daha az paragraf) ve
+  // cikti tavani 16384 jetona cikarildi. 6 guvenli ust sinir; daha fazlasinda
+  // urun basina metin gorunur sekilde inceliyor.
+  var CMP_MAX = 6;
 
   function cmpSeciliSerit() {
     if (!_cmpSecili.length) {
@@ -399,6 +412,9 @@
       + (_cmpSecili.length >= 2
         ? '<button class="btn btn-primary" onclick="analysesCmpBasla()">'
           + _cmpSecili.length + ' ürünü karşılaştır →</button>'
+          + (_cmpSecili.length > 4
+            ? '<p class="an-hint">4 üründen sonra rapor ürün başına kısalır — motor toplam uzunluğu sabit tutar.</p>'
+            : '')
         : '<p class="an-hint">Bir ürün daha seç.</p>');
   }
 
@@ -788,20 +804,50 @@
     ['save', 'Taslak olarak kaydediliyor'],
   ];
 
+  // Gecen sure sayaci. Tek bir interval; her renderProgress cagrisinda
+  // yeniden baglanir cunku DOM bastan yaziliyor.
+  var _sureTimer = null;
+  var _sureBas = 0;
+
+  function sureBaslat() {
+    sureDurdur();
+    _sureBas = Date.now();
+    _sureTimer = setInterval(function () {
+      var el = $('anSure');
+      if (!el) return;
+      var sn = Math.floor((Date.now() - _sureBas) / 1000);
+      el.textContent = sn < 60 ? sn + ' sn' : Math.floor(sn / 60) + ' dk ' + (sn % 60) + ' sn';
+    }, 1000);
+  }
+
+  function sureDurdur() {
+    if (_sureTimer) { clearInterval(_sureTimer); _sureTimer = null; }
+  }
+
   function renderProgress(durum, hata) {
     var b = $('anNewBody');
     if (!b) return;
     var lang = _run ? _run.lang : 'tr';
     var liste = progAdimlari(lang).concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
+    var biten = liste.filter(function (p) { return durum[p[0]] === 'done'; }).length;
+    var yuzde = Math.round((biten / Math.max(1, liste.length)) * 100);
     b.innerHTML = adimlar(2)
       + '<div class="an-card"><h3>3 · ' + (lang === 'tr' ? 'Türkçe' : 'İngilizce')
       + ' rapor üretiliyor · ' + esc(runKonu(_run)) + '</h3>'
+      // Rapor 1-3 dakika surebiliyor. Sabit bir liste "asildi mi" sorusunu
+      // yanitlamiyor; cubuk + donen gosterge + sayan sure isin YASADIGINI
+      // gosteriyor.
+      + '<div class="an-bar-track"><div class="an-bar-fill" style="width:' + yuzde + '%"></div></div>'
       + '<div class="an-prog">'
       + liste.map(function (p) {
         var st = durum[p[0]] || '';
-        var ic = st === 'done' ? '✓' : st === 'run' ? '◐' : st === 'fail' ? '✕' : '·';
+        var ic = st === 'done' ? '<i>✓</i>'
+          : st === 'run' ? '<i class="an-spin" aria-hidden="true"></i>'
+            : st === 'fail' ? '<i>✕</i>' : '<i>·</i>';
         return '<div class="' + (st === 'run' ? 'on' : st === 'done' ? 'done' : st === 'fail' ? 'fail' : '') + '">'
-          + '<i>' + ic + '</i>' + esc(p[1]) + '</div>';
+          + ic + esc(p[1])
+          + (st === 'run' ? '<b id="anSure" class="an-sure"></b>' : '')
+          + '</div>';
       }).join('')
       + '</div>'
       + (hata
@@ -810,6 +856,9 @@
           + '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
         : '<p class="an-hint">Araştırma adımı başarısız olursa rapor yine üretilir — sadece "kanıt zayıf" olarak işaretlenir.</p>')
       + '</div>';
+    if (hata) sureDurdur();
+    else if ($('anSure')) { if (!_sureTimer) sureBaslat(); }
+    else sureDurdur();
   }
 
   function analysesBackToQuiz() { if (_run) renderQuiz(); }
@@ -1019,7 +1068,7 @@
     var b = $('anNewBody');
     b.innerHTML = ''
       + '<div class="an-tabbar" style="margin-bottom:14px">'
-      + Object.keys(KIND_LABEL).map(function (k) {
+      + Object.keys(KIND_LABEL).filter(function (k) { return !SITEDE_HARIC[k]; }).map(function (k) {
         return '<button class="' + (tur === k ? 'on' : '') + '" onclick="analysesSitede(\'' + k + '\')">' + KIND_LABEL[k] + '</button>';
       }).join('')
       + '</div><p class="an-empty">Yükleniyor…</p>';
@@ -1041,7 +1090,7 @@
 
     b.innerHTML = ''
       + '<div class="an-tabbar" style="margin-bottom:14px">'
-      + Object.keys(KIND_LABEL).map(function (k) {
+      + Object.keys(KIND_LABEL).filter(function (k) { return !SITEDE_HARIC[k]; }).map(function (k) {
         return '<button class="' + (tur === k ? 'on' : '') + '" onclick="analysesSitede(\'' + k + '\')">' + KIND_LABEL[k] + '</button>';
       }).join('')
       + '</div>'
@@ -1093,6 +1142,12 @@
         + (x.rapor.enhancedScore ? '<span>uyum <b>' + num(x.rapor.enhancedScore) + '</b>/100</span>' : ''),
     };
   }
+
+  // Sitede yapilan analizler TEK DILDE uretiliyor (ziyaretcinin dilinde);
+  // admin analizleri ise TR+EN. Karsilastirmayi buradan almak, iki dilli
+  // olmasi gereken bir kaydi tek dille yayina sokardi — o yuzden `compare`
+  // bu sekmede HIC listelenmez, adminde bastan uretilir.
+  var SITEDE_HARIC = { compare: true };
 
   function analysesSitede(tur) { renderSitedeSec(tur); }
 
@@ -1232,7 +1287,8 @@
       + (yayinda && kayitli
         ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + SITE + '/analiz/' + esc(a.slug) + '">Sitede aç</a>'
         : '')
-      + '<button class="btn btn-ghost" onclick="analysesMetaYenile()">Meta\'yı yeniden üret</button>'
+      + '<button class="btn btn-ghost" onclick="analysesMetaYenile()"'
+      + ' title="Raporu DEGISTIRMEZ. Yalniz yayin metnini (H1 baslik, ozet, arama basligi, arama aciklamasi ve SSS) rapordan yeniden yazar.">Meta\'yı yeniden üret</button>'
       + (yayinda
         ? '<button class="btn" onclick="analysesYayindanKaldir()">Yayından kaldır</button>'
         : '<button class="btn btn-primary" onclick="analysesYayinla()">Yayınla</button>')
@@ -1349,7 +1405,9 @@
       + satir('Adres', (a.slug || '') && (SITE + '/analiz/' + a.slug + '  ·  ' + SITE + '/tr/analiz/' + a.slug))
       + gorselKart(a)
       + raporOzeti(kind, rapor)
-      + '<div class="an-hint">Bu alanlar <strong>elle düzenlenmez</strong>. Rapor da, başlık/özet/meta/SSS de '
+      + '<div class="an-hint"><strong>Meta\'yı yeniden üret</strong>: raporu değiştirmeden yalnız '
+      + 'yukarıdaki yayın metnini (başlık, özet, arama başlığı/açıklaması, SSS) yeniden yazar. '
+      + 'Bu alanlar <strong>elle düzenlenmez</strong>. Rapor da, başlık/özet/meta/SSS de '
       + 'AI üretir ve SEO kurallarına göre kurulur; insanın işi onaylamak ya da '
       + '<strong>yeniden ürettirmek</strong>. Metin yanlışsa analizi yeniden üret.</div>'
       + '</div>';
