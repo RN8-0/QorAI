@@ -173,12 +173,18 @@
       /* Uretim ilerlemesi: cubuk + donen gosterge + sayan sure. */
       '.an-bar-track{height:3px;border-radius:999px;background:var(--bg3);overflow:hidden;margin:2px 0 14px}',
       '.an-bar-fill{height:100%;background:var(--accent,#7c5cff);transition:width .4s ease-out}',
-      '.an-spin{display:inline-block;width:11px;height:11px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent,#7c5cff);animation:anSpin .7s linear infinite}',
+      /* Asagidaki `.an-prog i` kurali (0,1,1) genislige 18px basiyor, yukseklik
+         11px kaliyordu -> gosterge daire degil ELIPS donuyordu. Bu yuzden
+         selektor ozgullukte onu YENMEK zorunda. Kare olcu + 2px yan bosluk,
+         isaretcilerin 18px sutununa hizali tutar. */
+      '.an-prog i.an-spin{display:inline-block;width:14px;height:14px;margin:0 2px;flex:0 0 14px;',
+      '  border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent,#7c5cff);',
+      '  animation:anSpin .7s linear infinite}',
       '@keyframes anSpin{to{transform:rotate(360deg)}}',
       '.an-sure{margin-left:auto;font-size:11px;color:var(--text3);font-weight:600;font-variant-numeric:tabular-nums}',
       '.an-prog > div{display:flex;align-items:center;gap:8px}',
       /* Hareket azaltma tercihi: donmeyi durdur, durum yine okunur. */
-      '@media (prefers-reduced-motion: reduce){.an-spin{animation:none}.an-bar-fill{transition:none}}',
+      '@media (prefers-reduced-motion: reduce){.an-prog i.an-spin{animation:none}.an-bar-fill{transition:none}}',
       '.an-pill{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:4px;white-space:nowrap}',
       '.an-pill.pub{color:var(--green);background:color-mix(in srgb,var(--green) 12%,transparent)}',
       '.an-pill.draft{color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}',
