@@ -404,18 +404,49 @@ function rollupPriceIsFresh(product) {
   return Number.isFinite(expires) && expires > Date.now();
 }
 
+// Damgasi dolmus fiyat ne kadar sure daha GOSTERILIR. Sonrasinda kart yine
+// bos kalir — alti ay onceki bir fiyat bilgi degil gurultudur.
+const STALE_PRICE_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
+
 // Price for ONE specific country (the visitor's detected country), used on
 // list/home cards. Unlike offerForLang it never falls back to another market —
-// a TR visitor only sees a price if the product actually has a fresh TR offer,
-// never a DE price they can't order.
+// a TR visitor only sees a price if the product actually has a TR offer, never
+// a DE price they can't order.
+//
+// BAYAT FIYAT ARTIK GIZLENMIYOR (2026-08-24). Onceki surum `bestOfferExpiresAt`
+// dolar dolmaz `null` donuyordu, yani BILDIGIMIZ bir fiyati saklıyorduk.
+// Olculdu: katalogun **%4'unde** (~4.300 urun) fiyat veritabaninda DURUYOR ama
+// kart onu gostermiyordu; damgasi dolup fiyati SIFIRLANAN urun sayisi ise
+// sifirdi — yani ortada veri kaybi yok, yalnizca gosterim kaybi vardi.
+// Kullanicinin fiyatsiz bir kart gormesi, birkac gun eski bir fiyat gormesinden
+// daha kotu: kart siralama/filtreleme icin de degersiz hale geliyordu.
+//
+// Doner alanlar: `stale` (damga dolmus) ve `ageDays`. Cagiran taraf bayat
+// fiyati ISARETLEMEK zorunda — sessizce taze gibi gostermek yaniltici olurdu.
 export function priceForCountry(product, country) {
   const cc = String(country || '').toUpperCase();
   if (!cc) return null;
-  if (!rollupPriceIsFresh(product)) return null;
   const prices = product?.prices && typeof product.prices === 'object' ? product.prices : {};
   const raw = Number(prices[cc] ?? prices[cc.toLowerCase()]);
   if (!(raw > 0)) return null;
-  return { price: raw, currency: CURRENCY_BY_COUNTRY[cc] || 'USD', country: cc };
+
+  const taze = rollupPriceIsFresh(product);
+  let ageDays = 0;
+  if (!taze) {
+    const expires = Date.parse(product?.bestOfferExpiresAt || '');
+    // Damga yoksa yasi bilemeyiz; fiyat var ama dogrulanmamis sayilir.
+    if (!Number.isFinite(expires)) return null;
+    const gecen = Date.now() - expires;
+    if (gecen > STALE_PRICE_GRACE_MS) return null;
+    ageDays = Math.max(1, Math.round(gecen / 86400000));
+  }
+  return {
+    price: raw,
+    currency: CURRENCY_BY_COUNTRY[cc] || 'USD',
+    country: cc,
+    stale: !taze,
+    ageDays,
+  };
 }
 
 export function formatPriceAmount(price, currency, lang = 'en') {

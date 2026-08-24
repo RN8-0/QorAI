@@ -132,6 +132,25 @@
   letter-spacing: -0.01em;
 }
 
+/* DOĞRULANMAMIŞ FİYAT — gizlenmiyor ama canlı fiyattan AYRIŞMALI.
+   Rakam ikincil metin rengine düşer (yeşil "canlı fiyat" anlamını taşır,
+   bayat olanda yanıltıcı olurdu) ve yanına yaşı yazılır. Yaş etiketi
+   `--text-3`: okunur ama fiyatın önüne geçmez. */
+.q-product-card-price.is-stale {
+  color: var(--text-2);
+  font-weight: 800;
+}
+
+.q-product-card-price.is-stale small {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Top-right + button: add this product to the compare pool (same category).
    Uses an SVG glyph so the icon is pixel-centered in the circle. */
 .q-product-card-cmp {

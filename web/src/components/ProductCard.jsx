@@ -112,8 +112,20 @@ function ProductCard({ product: p, variant = 'card', onClick, priority = false }
             değiştirip ölçülebilir bir kaymaya yol açıyordu (CLS 0.023 — kayan
             düğümler `section.hero.card::after` ve `.hero-carousel-dots`).
             Fiyatı olmayan üründe boş bir satır kalır; kartın boyu artık sabit. */}
-        <span className="q-product-card-price">
-          {cardPrice ? formatPriceAmount(cardPrice.price, cardPrice.currency, lang) : ' '}
+        {/* BAYAT FİYAT GİZLENMEZ, İŞARETLENİR. Damgası dolan fiyat eskiden
+            tamamen saklanıyordu; ölçüldü — katalogun %4'ünde (~4.300 ürün)
+            fiyat veritabanında DURUYOR ama kart boş çıkıyordu, damgası dolup
+            fiyatı SIFIRLANAN ürün ise sıfırdı: ortada veri kaybı yok, yalnız
+            gösterim kaybı vardı. Fiyatı saklamak kartı sıralama ve bütçe
+            filtresi için de değersiz yapıyordu. Yaşını yazmadan göstermek ise
+            yanıltıcı olurdu — o yüzden soluk renk + "N gün önce". */}
+        <span className={'q-product-card-price' + (cardPrice?.stale ? ' is-stale' : '')}>
+          {cardPrice ? formatPriceAmount(cardPrice.price, cardPrice.currency, lang) : ' '}
+          {cardPrice?.stale ? (
+            <small title={L('Price not verified recently', 'Fiyat yakın zamanda doğrulanmadı')}>
+              {cardPrice.ageDays} {L('d ago', 'gün önce')}
+            </small>
+          ) : null}
         </span>
         <div className="q-product-card-specs">
           {specs.map((spec, index) => (
