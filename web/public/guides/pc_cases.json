@@ -1,81 +1,81 @@
 {
   "category": "pc_cases",
   "label": "Kasa",
-  "title": "En İyi Bilgisayar Kasaları 2026: Seçim Rehberi",
-  "lead": "Yeni bir bilgisayar toplarken ya da mevcut sisteminizi yenilerken kasanın önemi çoğu zaman göz ardı edilir. Oysa doğru kasa seçimi, hem bileşenlerinizin ömrünü uzatır hem de kullanım deneyiminizi baştan aşağı değiştirir.",
+  "title": "En İyi Bilgisayar Kasaları 2024: Tam Kapsamlı Rehber",
+  "lead": "Bilgisayarınızın kalbi olan donanımları koruyan ve soğutan kasa, performansınızı doğrudan etkiler. Doğru kasa seçimi, hem sisteminizin ömrünü uzatır hem de estetik bir görünüm kazandırır.",
   "sections": [
     {
-      "h": "Kasanın Kalbi: Hava Akışı ve Soğutma",
-      "body": "Performanslı bileşenleriniz için etkili bir soğutma şarttır. İyi tasarlanmış bir kasa, yeterli hava akışı sağlayarak bileşenlerinizin aşırı ısınmasını engeller ve kararlı çalışmalarına olanak tanır. Ön, üst ve arka panellerdeki fan yuvaları ile toz filtreleri bu noktada büyük önem taşır."
+      "h": "Hava Akışı ve Soğutma",
+      "body": "İyi bir kasa, içerideki sıcak havayı dışarı atarken, serin havayı içeri alabilmelidir. Ön panelin mesh yapısı, fan destekleri ve radyatör uyumluluğu, sisteminizin stabil çalışması için hayati önem taşır. Bu, özellikle yüksek performanslı bileşenler kullanan oyuncular ve içerik üreticileri için kritik bir konudur."
     },
     {
-      "h": "Geleceğe Hazırlık: Uyumluluk ve Genişleme",
-      "body": "Kasa seçerken anakart boyutunuzdan (ATX, mATX vb.), ekran kartınızın uzunluğundan ve işlemci soğutucunuzun yüksekliğinden emin olun. İleride ekleyebileceğiniz depolama birimleri veya sıvı soğutma sistemleri için yeterli alana sahip olması da uzun vadede size avantaj sağlar. Kablo yönetimi için de arka panelde yeterli boşluklar olmasına dikkat edin."
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Kasa seçerken anakart boyutunuzu (ATX, Micro-ATX, Mini-ITX), ekran kartınızın uzunluğunu ve CPU soğutucunuzun yüksekliğini göz önünde bulundurmalısınız. Ayrıca, depolama birimleri için yeterli yuva, kablo yönetimi için alan ve genişleme slotlarının sayısı da önemli detaylardır."
     },
     {
-      "h": "Estetik ve Dayanıklılık: Tasarım ve Malzeme",
-      "body": "Bilgisayar kasası, masanızın önemli bir parçasıdır, bu yüzden gözünüze hitap etmesi önemlidir. Temperli cam paneller, RGB aydınlatma gibi detaylar estetiği artırırken, çelik veya alüminyum gibi kaliteli malzemeler dayanıklılık sunar. Tasarımın sadece görsel değil, aynı zamanda kullanım kolaylığını da etkilediğini unutmayın."
+      "h": "Estetik ve Kullanım Kolaylığı",
+      "body": "Şeffaf yan paneller, RGB aydınlatma seçenekleri ve minimalist tasarımlar kişisel zevkinize hitap edebilir. USB portlarının ve ses girişlerinin kolay erişilebilir konumda olması, toz filtrelerinin temizlenebilirliği ve genel montaj kolaylığı, uzun vadede kullanım keyfinizi artırır."
     },
     {
-      "h": "Kasa Seçerken Nelere Dikkat Etmeli?",
-      "body": "İlk olarak bütçenizi belirleyin ve bu bütçe dahilindeki seçeneklere odaklanın. Anakartınızın form faktörünü, ekran kartınızın uzunluğunu ve işlemci soğutucunuzun yüksekliğini kasanın desteklediğinden emin olun. Ayrıca, yeterli depolama alanı, iyi kablo yönetimi seçenekleri ve kolay temizlenebilir toz filtreleri sunup sunmadığını kontrol etmek, uzun vadeli memnuniyetiniz için kritik öneme sahiptir."
+      "h": "Entegre Güç Kaynağı Avantajı",
+      "body": "Bazı kasalar, genellikle fiyat/performans odaklı segmentte, dahili bir güç kaynağı ile gelir. Bu modeller, özellikle bütçe dostu sistemler kuranlar için ekstra bir maliyet kalemini ortadan kaldırır ve uyumluluk konusunda kolaylık sağlar. Ancak güç kaynağının kalitesi ve sertifikasyonu da göz ardı edilmemelidir."
     }
   ],
   "picks": [
     {
-      "name": "Arctic Xtender Bilgisayar Kasası",
-      "why": "Geniş iç hacmi ve optimize edilmiş hava akışı ile yüksek performanslı sistemler için ideal bir seçenektir.",
-      "id": "gqpoa9dxbzaxclt",
-      "slug": "arctic-xtender"
+      "name": "BitFenix DH50 850W Bilgisayar Kasası",
+      "why": "Yüksek watt'lı entegre güç kaynağı ile güçlü sistemler için pratik bir başlangıç sunar.",
+      "id": "ifbt0riqg27cryj",
+      "slug": "bitfenix-dh50-850w"
     },
     {
-      "name": "In-Win 309 Gaming Edition Bilgisayar Kasası",
-      "why": "Özgün ön panel tasarımı ve gelişmiş RGB aydınlatma yetenekleriyle oyun sistemlerine estetik bir dokunuş katıyor.",
-      "id": "7sy1x8yop6u57cw",
-      "slug": "in-win-309-gaming-edition"
+      "name": "NZXT H5 Flow Bilgisayar Kasası (CC-H52FB-01)",
+      "why": "Mükemmel hava akışı tasarımı ve şık minimalist görünümüyle öne çıkar.",
+      "id": "z2fxvbtkko8en52",
+      "slug": "nzxt-h5-flow-cc-h52fb-01"
     },
     {
-      "name": "Havn HS 420 DOOM: The Dark Ages Limited Edition Bilgisayar Kasası (HVN -HS420-05-DOOM)",
-      "why": "Oyuncular ve koleksiyonerler için özel olarak tasarlanmış bu model, tematik görünümüyle dikkat çekiyor.",
-      "id": "4bsq79ng9wfzvys",
-      "slug": "havn-hs-420-doom-the-dark-ages-limited-edition"
+      "name": "GameBooster Nyvra Alpha 750W Bilgisayar Kasası",
+      "why": "Fiyat/performans dengesiyle dikkat çeken, entegre güç kaynaklı popüler bir seçenektir.",
+      "id": "1r4mm8orlrv3z3s",
+      "slug": "gamebooster-nyvra-alpha-750w-siyah"
     },
     {
-      "name": "Gamemax Draco XD 650W Bilgisayar Kasası",
-      "why": "Dahili 650W güç kaynağı ve şık RGB detaylarıyla fiyat/performans dengesini başarıyla sunar.",
-      "id": "jketsq5anfcotq6",
-      "slug": "gamemax-draco-xd-650w"
+      "name": "Cooler Master Elite 502 750W Bilgisayar Kasası (E502-KGNN75-S00)",
+      "why": "Güvenilir bir markanın 750W güç kaynağı ile gelen, dengeli bir çözüm sunar.",
+      "id": "2w1h1kldc2d5a0s",
+      "slug": "cooler-master-elite-502-750w"
     },
     {
-      "name": "Inca Empousa EMG-17XN Bilgisayar Kasası",
-      "why": "Temperli cam yan panel ve modern görünümüyle giriş seviyesi sistemler için cazip bir başlangıç noktası sunar.",
-      "id": "sip5subfuie39jk",
-      "slug": "inca-empousa-emg-17xn"
+      "name": "Raijintek Agos Max MS4 Bilgisayar Kasası (0R20B00262)",
+      "why": "Geniş iç hacmi ve etkili soğutma potansiyeli arayanlar için idealdir.",
+      "id": "pp2z64no2fwcxag",
+      "slug": "raijintek-agos-max-ms4-0r20b00262"
     },
     {
-      "name": "Iromx Orenda 750W Bilgisayar Kasası",
-      "why": "Yüksek watt değerine sahip dahili güç kaynağı sayesinde güçlü bileşenleri besleyebilecek donanım sunar.",
-      "id": "nn9nd2igipzdam0",
-      "slug": "iromx-orenda-750w"
+      "name": "Fazeon F18 650W Bilgisayar Kasası (F18E650BBM)",
+      "why": "Bütçe dostu sistemler için 650W güç kaynağıyla birlikte gelen, kullanışlı bir alternatiftir.",
+      "id": "skfxglc818osajp",
+      "slug": "fazeon-f18-650w-f18e650bbm"
     }
   ],
   "faq": [
     {
-      "q": "Kasa içindeki hava akışını nasıl iyileştirebilirim?",
-      "a": "Fanların doğru yönlerde (ön ve alt giriş, üst ve arka çıkış) konumlandırılması, kablo yönetimine özen gösterilmesi ve toz filtrelerinin düzenli temizliği hava akışını önemli ölçüde artırır."
+      "q": "Kasa boyutu performansı etkiler mi?",
+      "a": "Doğrudan performansı etkilemez ancak büyük kasalar daha iyi hava akışı ve daha geniş bileşen uyumluluğu sunabilir."
     },
     {
-      "q": "Temperli cam yan panelin avantajları nelerdir?",
-      "a": "Temperli cam, sisteminizin iç bileşenlerini sergilemenize olanak tanıyan estetik bir görünüm sunar ve çizilmelere karşı daha dayanıklıdır."
+      "q": "Dahili güç kaynaklı kasalar tercih edilmeli mi?",
+      "a": "Bütçe odaklı sistemler için maliyeti düşürür; ancak güç kaynağının kalitesi ve gücü sisteminize uygun olmalıdır."
     },
     {
-      "q": "Bilgisayar kasası boyutları ne anlama gelir?",
-      "a": "Kasalar genellikle tam kule (full-tower), orta kule (mid-tower) ve mini kule (mini-tower) olarak ayrılır; bu boyutlar anakart uyumluluğunu, depolama ve genişleme alanını belirler."
+      "q": "RGB aydınlatma gerçekten gerekli mi?",
+      "a": "Tamamen kişisel tercihe bağlıdır, performansa bir etkisi yoktur, sadece estetik bir görünüm sağlar."
     },
     {
-      "q": "Dahili güç kaynaklı kasa almalı mıyım?",
-      "a": "Dahili güç kaynaklı kasalar genellikle fiyat/performans odaklıdır ve yeni başlayanlar için pratik bir çözüm sunabilir, ancak yükseltme esnekliği sınırlı olabilir."
+      "q": "Kasa içindeki kablo yönetimi neden önemli?",
+      "a": "Kablo yönetimi hem estetik görünümü iyileştirir hem de hava akışını engelleyerek soğutma performansını düşürmesini önler."
     }
   ],
-  "updatedAt": "2026-07-22T01:18:12.054Z"
+  "updatedAt": "2026-08-24T01:18:16.036Z"
 }

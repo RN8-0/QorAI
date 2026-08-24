@@ -1,77 +1,77 @@
 {
   "category": "mice",
   "label": "Mouse",
-  "title": "En İyi Mouse Seçimi: 2026 Rehberi",
-  "lead": "Bilgisayar deneyiminizin temelini oluşturan mouse, doğru seçildiğinde verimliliğinizi ve konforunuzu katlar. İster iş ister oyun için olsun, elinize en uygun fareyi bulmak düşündüğünüzden daha kritik.",
+  "title": "En İyi Oyuncu ve Ofis Mouseleri 2024 Rehberi",
+  "lead": "Bilgisayar deneyiminizin temel taşlarından biri olan mouse, doğru seçildiğinde verimliliğinizi ve konforunuzu doğrudan etkiler. İster oyun tutkunu olun ister uzun saatler masa başında çalışan bir profesyonel, ihtiyacınıza uygun mouse'u bulmak performansı artırır.",
   "sections": [
     {
-      "h": "Kullanım Amacınız Ne?",
-      "body": "Mouse seçerken ilk adım, onu ne için kullanacağınızı belirlemektir. Yoğun oyun seansları için düşük gecikmeli, yüksek DPI'lı bir model ararken, ofis ve genel kullanım için ergonomi ve pil ömrü ön plana çıkar. Tasarımcılar ve mühendisler ise özel tuşlara ve hassas takibe sahip farelere ihtiyaç duyar."
+      "h": "Ergonomi ve Kullanım Amacı",
+      "body": "Mouse seçerken ilk bakmanız gereken, elinize nasıl oturduğu ve kullanım amacınızdır. Uzun süreli kullanımlarda bilek ve kol ağrılarını önlemek için ergonomik tasarımlar büyük önem taşır. Oyuncular için hızlı tepki süresi ve programlanabilir tuşlar öne çıkarken, ofis kullanıcıları için sessizlik ve konfor daha belirleyici olabilir."
     },
     {
-      "h": "Ergonomi ve Konfor Önceliğiniz Olsun",
-      "body": "Saatler süren kullanımlarda el ve bilek sağlığınızı korumak için ergonomi hayati önem taşır. Elinizin büyüklüğüne ve tutuş şeklinize (palm, claw, fingertip) uygun bir mouse, uzun vadede oluşabilecek rahatsızlıkları engeller. Dikey fareler gibi özel tasarımlar, bilek pozisyonunu iyileştirerek fark yaratabilir."
+      "h": "Bağlantı ve Pil Ömrü",
+      "body": "Kablolu veya kablosuz mouse'lar arasında seçim yaparken kullanım senaryonuzu göz önünde bulundurun. Kablosuz modeller hareket özgürlüğü sunarken, pil ömrü ve bağlantı stabilitesi kritik faktörlerdir. Özellikle yoğun iş temposunda veya oyun maratonlarında pilin aniden bitmemesi için uzun ömürlü ve hızlı şarj olabilen modeller tercih edilebilir."
     },
     {
-      "h": "Bağlantı ve Ek Özellikler Neler Sunuyor?",
-      "body": "Kablosuz mouse'lar hareket özgürlüğü sunarken, bazı modellerde gecikme endişesi taşıyabilir. Bluetooth veya 2.4 GHz USB alıcılı modeller arasında seçim yaparken, pil ömrü ve şarj edilebilir olup olmaması da önemlidir. Programlanabilir tuşlar, ayarlanabilir DPI ve farklı yüzeylerde çalışma yeteneği gibi ek özellikler, kullanım deneyiminizi zenginleştirir."
+      "h": "Sensör Hassasiyeti ve Ek Özellikler",
+      "body": "DPI (dots per inch) değeri, mouse'un hassasiyetini belirler ve özellikle hassas çizimler yapan veya hızlı nişan alması gereken kullanıcılar için önemlidir. Yüksek DPI ayarlarına sahip sensörler, daha akıcı ve doğru hareketler sağlar. Ayrıca, makro atama tuşları, ayarlanabilir ağırlıklar veya dikey tasarımlar gibi ek özellikler, kullanıcı deneyimini zenginleştirebilir."
     }
   ],
   "picks": [
     {
       "name": "Razer Pro Click V2 Vertical Mouse (RZ01-05250100-R3G1)",
-      "why": "Ergonomik dikey tasarımı sayesinde bilek yorgunluğunu azaltırken, üst düzey hassasiyet sunar.",
+      "why": "Ergonomik dikey tasarımı sayesinde bilek yorgunluğunu minimuma indirerek uzun süreli kullanımlarda bile üst düzey konfor sunar.",
       "id": "e2lncy13mpckmk3",
       "slug": "razer-pro-click-v2-vertical"
     },
     {
       "name": "Logitech G604 Lightspeed Mouse (910-005650)",
-      "why": "Hem oyuncular hem de üretkenlik odaklı kullanıcılar için programlanabilir tuşları ve uzun pil ömrüyle öne çıkar.",
+      "why": "Oyuncular için tasarlanmış bu model, programlanabilir tuşları ve Lightspeed teknolojisiyle hem oyunlarda hem de çoklu görevlerde yüksek performans vadeder.",
       "id": "lcscqekionufyls",
       "slug": "logitech-g604-lightspeed"
     },
     {
       "name": "3Dconnexion CadMouse Pro Wireless Mouse (3DX-700116)",
-      "why": "CAD ve 3D tasarım profesyonelleri için özel olarak geliştirilmiş hassasiyet ve işlevsellik sunar.",
+      "why": "Profesyonel CAD uygulamaları için özel olarak geliştirilmiş hassas sensörü ve ergonomik yapısıyla tasarımcılara benzersiz bir deneyim sunar.",
       "id": "77l5mhenmhwbbqo",
       "slug": "3dconnexion-cadmouse-pro-wireless"
     },
     {
       "name": "Roccat Kone Air Mouse (ROC-11-452-05)",
-      "why": "Uzun pil ömrü ve konforlu tasarımıyla günlük kullanım ve hafif oyunlar için ideal bir kablosuz çözümdür.",
+      "why": "Uzun pil ömrü ve hafif yapısıyla hem oyuncular hem de günlük kullanıcılar için ideal, kablosuz bir deneyim sağlar.",
       "id": "6noiejiwcn4swxw",
       "slug": "roccat-kone-air"
     },
     {
-      "name": "Dareu A950 Pro 4K Mouse",
-      "why": "Hafif magnezyum kasası ve yüksek performansıyla özellikle e-spor oyuncularının beklentilerini karşılar.",
-      "id": "p9lk9znfwr2qc72",
-      "slug": "dareu-a950-pro-4k"
-    },
-    {
       "name": "Dell Premier MS900 Mouse (570-BBCB)",
-      "why": "Modern ofis ortamları için tasarlanmış, şık görünümü ve kullanışlı özellikleriyle dikkat çeken bir modeldir.",
+      "why": "Kurumsal kullanıma uygun şık tasarımı, güvenilir performansı ve uzun pil ömrüyle profesyonel ortamlarda öne çıkar.",
       "id": "qimhzublxhkaych",
       "slug": "dell-premier-ms900"
+    },
+    {
+      "name": "Dareu A950 Pro Magnesium Mouse",
+      "why": "Hafif magnezyum alaşımlı kasası ve yüksek performanslı sensörüyle özellikle rekabetçi oyuncular için üst düzey hız ve kontrol sunar.",
+      "id": "kls98a8uptwnv68",
+      "slug": "dareu-a950-pro-magnesium"
     }
   ],
   "faq": [
     {
-      "q": "DPI nedir ve benim için ne kadar önemli?",
-      "a": "DPI (dots per inch), mouse'un bir inçlik harekette imleci ekranda kaç piksel hareket ettirdiğini gösterir; yüksek DPI daha hızlı imleç hareketi anlamına gelir ve özellikle oyuncular için önemlidir."
-    },
-    {
       "q": "Kablolu mu, kablosuz mu mouse tercih etmeliyim?",
-      "a": "Kablosuz mouse'lar hareket özgürlüğü sunarken, kablolu modeller genellikle daha düşük gecikme süresi ve pil derdi olmamasıyla öne çıkar; seçim kullanım amacınıza ve önceliklerinize bağlıdır."
+      "a": "Kablolu mouse'lar gecikme olmadan daha istikrarlı bir bağlantı sunarken, kablosuz modeller masaüstünüzde daha fazla hareket özgürlüğü ve dağınıklıktan uzak bir görünüm sağlar."
     },
     {
-      "q": "Ergonomik mouse ne işe yarar?",
-      "a": "Ergonomik mouse'lar, el ve bileğin doğal pozisyonunu koruyarak uzun süreli kullanımlarda ağrı ve yorgunluğu azaltmaya yardımcı olur, özellikle uzun saatler bilgisayar başında olanlar için faydalıdır."
+      "q": "DPI değeri ne anlama geliyor ve benim için ne kadar önemli?",
+      "a": "DPI (dots per inch), mouse'un imleci ne kadar hassas hareket ettirdiğini gösterir; yüksek DPI özellikle büyük monitörlerde veya hassas işlerde daha az fiziksel hareketle imleci daha uzağa taşımanızı sağlar."
     },
     {
-      "q": "Mouse'umun pil ömrünü nasıl uzatırım?",
-      "a": "Mouse'unuzu kullanmadığınız zamanlarda kapatmak, enerji tasarrufu modlarını kullanmak ve yüksek performans ayarlarından kaçınmak pil ömrünü önemli ölçüde uzatır."
+      "q": "Ergonomik mouse kullanmak gerçekten fark yaratır mı?",
+      "a": "Evet, özellikle uzun saatler bilgisayar başında çalışıyorsanız, ergonomik bir mouse bilek ve kol ağrılarını azaltarak karpal tünel sendromu gibi rahatsızlıkların önüne geçebilir."
+    },
+    {
+      "q": "Oyun mouse'ları normal mouse'lardan ne farkı var?",
+      "a": "Oyun mouse'ları genellikle daha yüksek DPI sensörlere, daha hızlı tepki sürelerine, programlanabilir tuşlara ve dayanıklı switch'lere sahip olup, rekabetçi oyun deneyimi için optimize edilmiştir."
     }
   ],
-  "updatedAt": "2026-07-22T01:18:07.477Z"
+  "updatedAt": "2026-08-24T01:18:14.035Z"
 }
