@@ -34,8 +34,13 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$tasks = @('QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch')
+# QorAI-PriceDirect ARTIK KURULMUYOR — TR ve DIRECT tek görevde birleşti
+# (scripts\price_nightly.cmd). Kaldırma listesinde DURUYOR ki eski kurulumlarda
+# kalan görev temizlensin; iki ayrı görev aynı kilit için yarışıyordu.
+$tasks = @('QorAI-PriceRefresh', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch')
+$legacy = @('QorAI-PriceDirect')
 if ($IncludeFcm -or $Uninstall) { $tasks += 'QorAI-FCM-TokenRefresh' }
+if ($Uninstall) { $tasks += $legacy }
 
 if ($Uninstall) {
   foreach ($t in $tasks) {
@@ -73,17 +78,18 @@ function Install-QorTask {
   Write-Host "kuruldu: $Name"
 }
 
-# 03:10 — Epey→Amazon.com.tr TR zinciri (price_refresh.cmd)
+# 03:10 — GECE FIYAT ZINCIRI: önce TR (Epey→Amazon.com.tr), sonra DE/GB/US.
+# TEK GÖREV, sabit sıra. İki ayrı görev olduğunda hangisinin ortak kilidi önce
+# kaptığı tetiklenme sırasına kalıyordu ve PC gece uyursa ikisi de uyanışta
+# aynı anda fire ediyordu. 2026-08-24: DIRECT kilidi kaptı, TR 5 saat bekleyip
+# atlayacaktı — ölçüldü, TR koşu başına 25.258 teklif, DIRECT ~400.
 Install-QorTask -Name 'QorAI-PriceRefresh' `
-  -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\price_refresh.cmd`"") `
+  -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\price_nightly.cmd`"") `
   -Trigger (New-ScheduledTaskTrigger -Daily -At '03:10') `
   -TaskSettings $settings
 
-# 03:12 — Amazon.de/.co.uk/.com direct zinciri (price_refresh_direct.cmd)
-Install-QorTask -Name 'QorAI-PriceDirect' `
-  -Action  (New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$RepoPath\scripts\price_refresh_direct.cmd`"") `
-  -Trigger (New-ScheduledTaskTrigger -Daily -At '03:12') `
-  -TaskSettings $settings
+# Eski ayrı DIRECT görevi varsa kaldır (artık yukarıdaki zincirin parçası).
+try { Unregister-ScheduledTask -TaskName 'QorAI-PriceDirect' -Confirm:$false -ErrorAction Stop; Write-Host 'kaldirildi (birlesti): QorAI-PriceDirect' } catch {}
 
 # 23:20 — YENİ ÜRÜN KEŞFİ: Epey'e eklenen ürünler katalog + çeviri + puan
 # + fiyat olarak siteye kendiliğinden girer (scripts\product_discovery.cmd).

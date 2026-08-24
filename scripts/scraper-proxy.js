@@ -283,7 +283,14 @@ let priceJob = null; // { key, startedAt, proc, logFile }
 //
 //  Gorev adlari setup_price_tasks.ps1 ile AYNI olmali — orasi kurar, burasi
 //  raporlar; ayrisirsa panel "kurulu degil" der ama gorev calisiyor olur.
-const PRICE_TASKS = ['QorAI-PriceRefresh', 'QorAI-PriceDirect', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch'];
+// QorAI-PriceDirect ARTIK YOK: TR ve DE/GB/US zincirleri tek goreve birlesti
+// (scripts/price_nightly.cmd). Ikisi ayri gorevken AYNI kilit icin yarisiyor ve
+// PC gece uyursa uyanista ikisi birden fire ediyordu; sira garanti degildi.
+const PRICE_TASKS = ['QorAI-PriceRefresh', 'QorAI-ProductDiscovery', 'QorAI-EpeyWatch'];
+// Gorevin CAGIRDIGI betik de degisebilir (ornegin price_refresh.cmd ->
+// price_nightly.cmd birlesmesi). Yalnizca "gorev var mi" diye bakmak, eski
+// kurulumu sonsuza kadar eski betikte birakirdi.
+const PRICE_TASK_SCRIPT = { 'QorAI-PriceRefresh': 'price_nightly.cmd' };
 
 function runPowerShell(script, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
@@ -319,8 +326,9 @@ async function readScheduledTasks() {
     + `@(${PRICE_TASKS.map((t) => `'${t}'`).join(',')}) | ForEach-Object {`
     + ` $t = Get-ScheduledTask -TaskName $_ -ErrorAction SilentlyContinue;`
     + ` if ($t) { $i = $t | Get-ScheduledTaskInfo;`
-    + `   [pscustomobject]@{name=$_;state=[string]$t.State;last=$i.LastRunTime;next=$i.NextRunTime;result=$i.LastTaskResult} }`
-    + ` else { [pscustomobject]@{name=$_;state='missing';last=$null;next=$null;result=$null} } }`
+    + `   $a = ($t.Actions | ForEach-Object { "$($_.Execute) $($_.Arguments)" }) -join ' ';`
+    + `   [pscustomobject]@{name=$_;state=[string]$t.State;last=$i.LastRunTime;next=$i.NextRunTime;result=$i.LastTaskResult;action=$a} }`
+    + ` else { [pscustomobject]@{name=$_;state='missing';last=$null;next=$null;result=$null;action=$null} } }`
     + ` | ConvertTo-Json -Compress -Depth 3`;
   try {
     const out = (await runPowerShell(ps)).trim();
@@ -394,10 +402,24 @@ async function ensurePriceTasks() {
     }
     const tasks = await readScheduledTasks();
     const eksik = tasks.filter((t) => t.state === 'missing').map((t) => t.name);
-    if (eksik.length) {
-      console.log(`  ⏰ eksik zamanlanmis gorev: ${eksik.join(', ')} — kuruluyor…`);
+    // ESKI BETIGE BAKAN GOREV de eksik sayilir. Yalnizca varliga bakmak,
+    // price_refresh.cmd -> price_nightly.cmd gibi bir birlesmeden sonra eski
+    // kurulumu sonsuza kadar eski betikte birakirdi.
+    const eski = tasks.filter((t) => {
+      const beklenen = PRICE_TASK_SCRIPT[t.name];
+      return beklenen && t.state !== 'missing' && !String(t.action || '').includes(beklenen);
+    }).map((t) => t.name);
+    // KOSAN GOREVI YENIDEN KURMA: Unregister calisan ornegi OLDURUR ve
+    // saatlerdir suren bir fiyat kosusu bosa gider. Bir sonraki acilista
+    // zaten yakalanir.
+    const kosuyor = tasks.filter((t) => t.state === 'Running').map((t) => t.name);
+    const yenile = [...eksik, ...eski].filter((n) => !kosuyor.includes(n));
+    if (yenile.length) {
+      console.log(`  ⏰ kurulacak/guncellenecek gorev: ${yenile.join(', ')}…`);
       await installPriceTasks();
-      console.log('  ⏰ zamanlanmis gorevler kuruldu (setup_price_tasks.ps1)');
+      console.log('  ⏰ zamanlanmis gorevler guncellendi (setup_price_tasks.ps1)');
+    } else if (eksik.length || eski.length) {
+      console.log(`  ⏰ gorev guncellemesi ERTELENDI — su an kosuyor: ${kosuyor.join(', ')}`);
     } else {
       console.log(`  ⏰ zamanlanmis gorevler yerinde (${tasks.length})`);
     }

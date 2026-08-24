@@ -23,8 +23,7 @@ alındı** (silinmedi — geri almak tek satır).
 
 | Görev | Nerede | Zaman | Ne yapar |
 |---|---|---|---|
-| `QorAI-PriceRefresh` | **PC** (Task Scheduler) | 03:10 | **TR** — Epey → Amazon.com.tr + en ucuz 3 TR mağaza (`epey_amazon`). Tazeleme 9000 + keşif 6000 + yeni 800 + son çare 300 + TS backfill |
-| `QorAI-PriceDirect` | **PC** (Task Scheduler) | 03:12 | **DE/GB/US** — `amazon_direct`. Keşif 300 + yeniden deneme 250 + tazeleme 8000 + TS backfill |
+| `QorAI-PriceRefresh` | **PC** (Task Scheduler) | 03:10 | **GECE ZİNCİRİ** (`price_nightly.cmd`): önce **TR** (`epey_amazon` — 9000+6000+800+300), sonra **DE/GB/US** (`amazon_direct` — 300+250+1200). Her ikisi TS backfill ile biter |
 | `QorAI-EpeyWatch` | **PC** (Task Scheduler) | 15 dk'da bir | **Epey nabzı** — "Son Eklenen Ürünler"i TEK istekle okur; yeni ürün varsa anında çeker. Tarama yok |
 | `QorAI-ProductDiscovery` | **PC** (Task Scheduler) | 23:20 | Nabzın **emniyet ağı**: kategori bazlı en-yeni listesinden kaçanları toplar |
 | `QorAI-Weekly` | **PC** (Task Scheduler) | Pazar 02:00 | Haftalık bakım zinciri |
@@ -36,7 +35,33 @@ alındı** (silinmedi — geri almak tek satır).
 
 Görevler kaçırılan koşuyu telafi eder (`-StartWhenAvailable`), pil engel
 değildir ve üst üste tetiklenirse yenisi atlanır — yani **PC gece kapalıysa
-koşu açılışta çalışır**.
+koşu açılışta çalışır**. (Ölçüldü 2026-08-24: PC 01:26–11:24 uyudu, 03:10
+koşusu kaçtı ve 11:25'te uyanışta telafi edildi. `-WakeToRun` ayarı duruyor
+ama Windows uyandırma zamanlayıcıları kapalıysa PC uyanmaz — o durumda koşu
+uyanışa kadar bekler.)
+
+## NEDEN TEK GÖREV — açlık sorunu
+
+TR ve DE/GB/US **aynı kilidi** kullanıyor (`qorai_lock.cmd`; Epey oturumu
+yanmasın ve PB ağır sorguları çakışmasın diye). İki ayrı görev olarak
+kurulduklarında hangisinin kilidi önce kaptığı **tetiklenme sırasına** kalıyor
+ve PC gece uyursa ikisi de uyanışta aynı anda fire ediyor — sıra garanti değil.
+
+2026-08-24'te tam bu oldu: DIRECT kilidi kaptı, TR 5 saat bekleyip atlayacaktı.
+Ölçüm neden önemli olduğunu gösteriyor:
+
+| Zincir | Süre | Teklif | Verim |
+|---|---|---|---|
+| TR (`epey_amazon`) | ~16 sa | **25.258** | ~1.580/sa |
+| DIRECT (`amazon_direct`) | ~22 sa | ~400 | ~18/sa |
+
+İkisinin toplamı **38 saat/gün** — bir güne sığmıyordu. Yani 88 kat verimli
+olan zincir, marjinal olan yüzünden hiç koşmayabilirdi.
+
+Çözüm: **tek görev, sabit sıra** (`price_nightly.cmd` → önce TR, sonra DIRECT)
+ve DIRECT'in 3. pass kotası 8000 → **1200**. Toplam ~20 saate iner.
+DE/GB/US daha yavaş tazelenir; katalogun fiyatı zaten TR'de
+(TR 34.261 / DE 1.280 / GB 326 / US 297).
 
 ## İKİ PC ÇAKIŞMAZ — işçi kiralaması
 
