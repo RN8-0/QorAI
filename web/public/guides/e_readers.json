@@ -1,77 +1,81 @@
 {
   "category": "e_readers",
   "label": "E-Kitap Okuyucu",
-  "title": "2024'ün En İyi E-Kitap Okuyucuları: Seçim Rehberi",
-  "lead": "Dijital çağın rahatlığıyla kağıt hissiyatını birleştiren e-kitap okuyucular, okuma deneyiminizi bambaşka bir seviyeye taşıyor. Binlerce kitabı tek bir cihazda yanınızda taşımak ve göz yorgunluğu olmadan saatlerce okumak artık çok kolay.",
+  "title": "E-Kitap Okuyucu Rehberi: En İyi Seçimler 2024",
+  "lead": "Dijital dünyada kağıt hissini arayanlar için e-kitap okuyucular vazgeçilmez bir deneyim sunuyor. Göz yorgunluğunu azaltan ve binlerce kitabı cebinize sığdıran bu cihazlar, okuma alışkanlıklarınızı dönüştürebilir.",
   "sections": [
     {
-      "h": "Neden E-Kitap Okuyucu Almalısınız?",
-      "body": "E-Ink ekranları sayesinde e-kitap okuyucular, göz yorgunluğu yapmadan uzun süreli okumalar için idealdir. Ayarlanabilir yazı tipleri ve arka ışıklandırma seçenekleriyle kişiselleştirilmiş bir okuma konforu sunarlar. Ayrıca, hafif ve kompakt yapılarıyla binlerce kitabı yanınızda taşıma imkanı verirken, haftalarca süren pil ömrüyle de şarj derdini ortadan kaldırırlar."
+      "h": "Neden Bir E-Kitap Okuyucu Almalısınız?",
+      "body": "Uzun süreli okumalarda göz konforu, e-kitap okuyucuların en büyük avantajıdır. E-Ink ekran teknolojisi sayesinde doğrudan güneş ışığında bile yansıma yapmadan net bir görüntü sunar, tıpkı gerçek bir kitaptan okur gibi hissedersiniz. Ayrıca, tek bir cihazda yüzlerce hatta binlerce kitabı taşıyabilme özgürlüğü, kütüphanenizi her yere götürmenizi sağlar."
     },
     {
-      "h": "E-Kitap Okuyucu Seçerken Nelere Dikkat Etmeli?",
-      "body": "Ekran boyutu, depolama alanı ve pil ömrü gibi temel özellikler kadar, cihazın sunduğu dosya formatı desteği de önemlidir. Geniş format desteği sunan bir model, farklı kaynaklardan edindiğiniz kitapları sorunsuzca okumanızı sağlar. Eğer not alma, çizim yapma gibi ek özellikler arıyorsanız, kalem destekli ve daha güçlü işlemcili modellere yönelmeniz daha doğru olacaktır."
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Bir e-kitap okuyucu seçerken ekran boyutu, çözünürlük ve arka ışıklandırma önemli kriterlerdir. Not alma veya çizim yapma gibi ek özellikler arıyorsanız, kalem destekli modelleri değerlendirmelisiniz. Ayrıca, cihazın desteklediği dosya formatları ve pil ömrü de uzun vadeli kullanımınız için kritik faktörlerdir."
     },
     {
-      "h": "İşletim Sistemi ve Ek Özellikler",
-      "body": "Bazı e-kitap okuyucular kapalı bir ekosistem sunarken, Boyue Likebook veya Onyx Boox gibi Android tabanlı modeller üçüncü taraf uygulamaları yükleme esnekliği sağlar. Bu, farklı platformlardaki kütüphanelerinize erişmek veya daha gelişmiş not alma uygulamaları kullanmak isteyenler için önemli bir avantajdır. Su geçirmezlik veya fiziksel sayfa çevirme tuşları gibi küçük detaylar da kullanım konforunu artırabilir."
+      "h": "Ekran Boyutu ve Kullanım Amacı",
+      "body": "Küçük ekranlı (6-7 inç) modeller genellikle cebinize sığar ve temel okuma için idealdir. Daha büyük ekranlar (8 inç ve üzeri) ise özellikle PDF okuma, not alma veya akademik metinlerle çalışanlar için daha geniş bir çalışma alanı sunar. Örneğin, Onyx Boox Max Lumi 2 gibi büyük ekranlı cihazlar, dijital defter ve belge görüntüleyici olarak da işlev görebilir."
+    },
+    {
+      "h": "Yazılım ve Ekosistem",
+      "body": "Cihazın işletim sistemi ve ekosistemi de kullanıcı deneyimini doğrudan etkiler. Android tabanlı e-kitap okuyucular, üçüncü taraf uygulamaları yükleme esnekliği sunarken, kapalı sistemler genellikle daha basit ve odaklanmış bir okuma deneyimi sağlar. Huawei MatePad Paper gibi modeller, kendi ekosistemleriyle entegre çalışarak farklı bir deneyim sunar."
     }
   ],
   "picks": [
     {
       "name": "Boyue Likebook P10",
-      "why": "10 inçlik geniş ekranı ve Android işletim sistemiyle hem okuma hem de not alma deneyimini birleştiriyor.",
+      "why": "Geniş ekranı ve Android tabanlı yapısıyla uygulama çeşitliliği arayanlar için ideal bir denge sunar.",
       "id": "56dashqxeqnmoho",
       "slug": "boyue-likebook-p10"
     },
     {
       "name": "Huawei MatePad Paper",
-      "why": "E-mürekkep ekranı, güçlü donanımı ve ekosistem entegrasyonuyla profesyonel kullanıma hitap ediyor.",
+      "why": "Yenilikçi kalem desteği ve not alma özellikleriyle dijital defter deneyimini e-kitap okuyucuya taşıyor.",
       "id": "wdrdlltkuzsojmu",
       "slug": "huawei-matepad-paper"
     },
     {
       "name": "Lenovo Smart Paper 64GB ZAC00011TR",
-      "why": "Hem okuma hem de dijital not defteri olarak üstün performans sunan, dengeli bir cihaz.",
+      "why": "Hem okuma hem de not alma ihtiyacı olan kullanıcılar için uygun fiyatlı ve işlevsel bir çözüm sunar.",
       "id": "bpxqtugukrd6sxd",
       "slug": "lenovo-smart-paper-64gb-zac00011tr"
     },
     {
       "name": "PocketBook Era (64 GB)",
-      "why": "Kompakt tasarımı, su geçirmezliği ve geniş format desteğiyle her yere yanınızda götürebileceğiniz ideal bir seçenek.",
+      "why": "Kompakt boyutu, fiziksel tuşları ve su geçirmezlik özelliğiyle dış mekanda okuma sevenler için mükemmeldir.",
       "id": "a9512kdxajd03d6",
       "slug": "pocketbook-era-64-gb"
     },
     {
-      "name": "Onyx Boox Max3",
-      "why": "Büyük ekranı, Android işletim sistemi ve gelişmiş not alma özellikleriyle akademik ve profesyonel kullanıcılar için mükemmel bir tablet alternatifi.",
-      "id": "g3rluzp936bwig6",
-      "slug": "onyx-boox-max3"
-    },
-    {
       "name": "Kobo Forma 8",
-      "why": "Ergonomik tasarımı, fiziksel sayfa çevirme tuşları ve su geçirmezliği sayesinde konforlu bir okuma deneyimi sunar.",
+      "why": "Ayarlanabilir renk sıcaklığına sahip ekranı ve ergonomik tasarımıyla uzun okuma seanslarında konfor sağlar.",
       "id": "vfrgyu9kkf84yed",
       "slug": "kobo-forma-8"
+    },
+    {
+      "name": "Onyx Boox Max Lumi 2",
+      "why": "Geniş 13.3 inçlik ekranı ve güçlü donanımıyla profesyonel kullanıcılar ve PDF okuyucuları için üst düzey bir tercihtir.",
+      "id": "y7f1jfb97jyw672",
+      "slug": "onyx-boox-max-lumi-2"
     }
   ],
   "faq": [
     {
-      "q": "E-kitap okuyucular neden tabletlerden farklıdır?",
-      "a": "E-kitap okuyucular, göz yorgunluğunu minimize eden E-Ink ekran teknolojisi ve haftalarca süren pil ömrüyle sadece okuma deneyimine odaklanmıştır."
-    },
-    {
-      "q": "Hangi dosya formatlarını desteklerler?",
-      "a": "Genellikle EPUB, PDF, MOBI gibi popüler formatları desteklerler; bazı modeller ek olarak DOC, TXT, CBR gibi farklı formatlara da uyumludur."
+      "q": "E-kitap okuyucular tabletlerden farklı mı?",
+      "a": "Evet, e-kitap okuyucular E-Ink ekran teknolojisi kullanır, bu da tabletlerin aksine göz yorgunluğunu azaltır ve gerçek kağıt hissi verir."
     },
     {
       "q": "E-kitap okuyucularda renkli ekran var mı?",
-      "a": "Çoğu e-kitap okuyucu siyah beyaz E-Ink ekran kullanır; ancak yeni nesil bazı modellerde sınırlı renk paletine sahip Kaleido gibi teknolojiler mevcuttur."
+      "a": "Çoğu e-kitap okuyucu siyah beyaz E-Ink ekrana sahiptir, ancak bazı yeni modeller sınırlı sayıda renk gösterebilen Kaleido ekranlar kullanır."
     },
     {
-      "q": "Not almak için uygun mu?",
-      "a": "Kalem destekli ve not alma özellikleriyle öne çıkan Huawei MatePad Paper, Lenovo Smart Paper veya Onyx Boox serisi gibi modeller bu konuda oldukça başarılıdır."
+      "q": "E-kitap okuyucuda internete girebilir miyim?",
+      "a": "Evet, çoğu e-kitap okuyucuda temel web tarayıcısı bulunur, ancak E-Ink ekranın yavaş yenileme hızı nedeniyle internet deneyimi tabletler kadar akıcı değildir."
+    },
+    {
+      "q": "E-kitap okuyuculara her yerden kitap yükleyebilir miyim?",
+      "a": "Cihazın desteklediği formatlara (EPUB, PDF, MOBI vb.) uygun olarak bilgisayarınızdan veya bazı modellerde üçüncü taraf e-kitap mağazalarından kolayca kitap yükleyebilirsiniz."
     }
   ],
-  "updatedAt": "2026-07-24T01:17:17.511Z"
+  "updatedAt": "2026-08-25T01:19:24.186Z"
 }
