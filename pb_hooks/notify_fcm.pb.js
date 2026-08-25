@@ -152,17 +152,65 @@ onRecordAfterUpdateSuccess(function (e) {
       ? (isAdminMessage ? 'Qor AI Destek yeni mesaj gönderdi' : 'Qor AI Destek mesajınızı yanıtladı')
       : (isAdminMessage ? 'New message from Qor AI Support' : 'Qor AI Support replied to your message');
 
+    // PocketBase hands a json field to the JSVM as `types.JSONRaw` — a Go
+    // []byte — and Goja reports every Go slice as an array. So the old
+    // `Array.isArray(value) return value` branch was TRUE for the raw bytes and
+    // returned [123,34,114,...] as if it were the parsed thread. In the router
+    // below that byte array then got an object pushed onto it and handed back to
+    // `set()`, which answered `chatMessages: Must be a valid json value` — every
+    // follow-up message from a user died there with a 500. Decode by hand: the
+    // JSVM has no TextDecoder, and String.fromCharCode per byte mangles Turkish
+    // (ı = 0xC4 0xB1). Same trap, same fix as pb_hooks/typesense_lib.js.
+    // Defined inside the handler because PocketBase runs each one in an
+    // isolated scope — top-level helpers are not visible here.
+    const looksLikeBytes = (arr) => {
+      if (!arr.length) return false;
+      for (let i = 0; i < arr.length && i < 32; i++) {
+        const v = arr[i];
+        if (typeof v !== 'number' || v < 0 || v > 255 || (v | 0) !== v) return false;
+      }
+      return true;
+    };
+    const bytesToUtf8 = (arr) => {
+      let s = '';
+      for (let i = 0; i < arr.length; i++) {
+        const c = arr[i] & 0xFF;
+        if (c < 0x80) {
+          s += String.fromCharCode(c);
+        } else if (c >= 0xC0 && c < 0xE0) {
+          s += String.fromCharCode(((c & 0x1F) << 6) | (arr[++i] & 0x3F));
+        } else if (c >= 0xE0 && c < 0xF0) {
+          const b2 = arr[++i] & 0x3F, b3 = arr[++i] & 0x3F;
+          s += String.fromCharCode(((c & 0x0F) << 12) | (b2 << 6) | b3);
+        } else if (c >= 0xF0) {
+          const d2 = arr[++i] & 0x3F, d3 = arr[++i] & 0x3F, d4 = arr[++i] & 0x3F;
+          const cp = (((c & 0x07) << 18) | (d2 << 12) | (d3 << 6) | d4) - 0x10000;
+          s += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+        }
+      }
+      return s;
+    };
     const parseChatMessages = (value) => {
       try {
-        if (Array.isArray(value)) return value;
-        if (typeof value === 'string' && value.trim()) {
+        if (value == null) return [];
+        if (Array.isArray(value)) {
+          if (!looksLikeBytes(value)) {
+            // A genuine thread array. Copy it out of whatever backing store it
+            // came from so a later push() cannot hit a typed Go slice.
+            const out = [];
+            for (let i = 0; i < value.length; i++) out.push(value[i]);
+            return out;
+          }
+          const decoded = JSON.parse(bytesToUtf8(value));
+          return Array.isArray(decoded) ? decoded : [];
+        }
+        if (typeof value === 'string') {
+          if (!value.trim()) return [];
           const decoded = JSON.parse(value);
-          if (Array.isArray(decoded)) return decoded;
+          return Array.isArray(decoded) ? decoded : [];
         }
-        if (value != null) {
-          const decoded = JSON.parse(String(value));
-          if (Array.isArray(decoded)) return decoded;
-        }
+        const decoded = JSON.parse(String(value));
+        return Array.isArray(decoded) ? decoded : [];
       } catch (_) {}
       return [];
     };
@@ -175,7 +223,7 @@ onRecordAfterUpdateSuccess(function (e) {
       }
       const fallbackText = rec.getString('adminReply');
       if (!fallbackText) return null;
-      return { role: 'admin', text: fallbackText, ts: rec.getString('repliedAt') || rec.get('updated') || '' };
+      return { role: 'admin', text: fallbackText, ts: rec.getString('repliedAt') || rec.getString('updated') || '' };
     };
     const currentAdmin = lastAdminMessage(record);
     const previousAdmin = lastAdminMessage(e.originalRecord);
@@ -228,17 +276,65 @@ routerAdd('POST', '/api/support/contact', (e) => {
     const message = normalize(bodyModel.message || requestBody?.message);
     const now = new Date().toISOString();
 
+    // PocketBase hands a json field to the JSVM as `types.JSONRaw` — a Go
+    // []byte — and Goja reports every Go slice as an array. So the old
+    // `Array.isArray(value) return value` branch was TRUE for the raw bytes and
+    // returned [123,34,114,...] as if it were the parsed thread. In the router
+    // below that byte array then got an object pushed onto it and handed back to
+    // `set()`, which answered `chatMessages: Must be a valid json value` — every
+    // follow-up message from a user died there with a 500. Decode by hand: the
+    // JSVM has no TextDecoder, and String.fromCharCode per byte mangles Turkish
+    // (ı = 0xC4 0xB1). Same trap, same fix as pb_hooks/typesense_lib.js.
+    // Defined inside the handler because PocketBase runs each one in an
+    // isolated scope — top-level helpers are not visible here.
+    const looksLikeBytes = (arr) => {
+      if (!arr.length) return false;
+      for (let i = 0; i < arr.length && i < 32; i++) {
+        const v = arr[i];
+        if (typeof v !== 'number' || v < 0 || v > 255 || (v | 0) !== v) return false;
+      }
+      return true;
+    };
+    const bytesToUtf8 = (arr) => {
+      let s = '';
+      for (let i = 0; i < arr.length; i++) {
+        const c = arr[i] & 0xFF;
+        if (c < 0x80) {
+          s += String.fromCharCode(c);
+        } else if (c >= 0xC0 && c < 0xE0) {
+          s += String.fromCharCode(((c & 0x1F) << 6) | (arr[++i] & 0x3F));
+        } else if (c >= 0xE0 && c < 0xF0) {
+          const b2 = arr[++i] & 0x3F, b3 = arr[++i] & 0x3F;
+          s += String.fromCharCode(((c & 0x0F) << 12) | (b2 << 6) | b3);
+        } else if (c >= 0xF0) {
+          const d2 = arr[++i] & 0x3F, d3 = arr[++i] & 0x3F, d4 = arr[++i] & 0x3F;
+          const cp = (((c & 0x07) << 18) | (d2 << 12) | (d3 << 6) | d4) - 0x10000;
+          s += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+        }
+      }
+      return s;
+    };
     const parseChatMessages = (value) => {
       try {
-        if (Array.isArray(value)) return value;
-        if (typeof value === 'string' && value.trim()) {
+        if (value == null) return [];
+        if (Array.isArray(value)) {
+          if (!looksLikeBytes(value)) {
+            // A genuine thread array. Copy it out of whatever backing store it
+            // came from so a later push() cannot hit a typed Go slice.
+            const out = [];
+            for (let i = 0; i < value.length; i++) out.push(value[i]);
+            return out;
+          }
+          const decoded = JSON.parse(bytesToUtf8(value));
+          return Array.isArray(decoded) ? decoded : [];
+        }
+        if (typeof value === 'string') {
+          if (!value.trim()) return [];
           const decoded = JSON.parse(value);
-          if (Array.isArray(decoded)) return decoded;
+          return Array.isArray(decoded) ? decoded : [];
         }
-        if (value != null) {
-          const decoded = JSON.parse(String(value));
-          if (Array.isArray(decoded)) return decoded;
-        }
+        const decoded = JSON.parse(String(value));
+        return Array.isArray(decoded) ? decoded : [];
       } catch (_) {}
       return [];
     };
@@ -286,7 +382,7 @@ routerAdd('POST', '/api/support/contact', (e) => {
         const existingMessage = normalize(record.getString('message'));
         const existingReply = normalize(record.getString('adminReply'));
         if (existingMessage) {
-          chat.push({ role: 'user', text: existingMessage, ts: record.get('created') || now });
+          chat.push({ role: 'user', text: existingMessage, ts: record.getString('created') || now });
         }
         if (existingReply) {
           chat.push({ role: 'admin', text: existingReply, ts: record.getString('repliedAt') || now });

@@ -509,9 +509,15 @@ async function pbGetList(collection, page, perPage, options = {}) {
   const buildOpts = (withSort) => {
     const o = {
       filter: options.filter || '',
-      fields: options.fields || undefined,
       $autoCancel: false,
     };
+    // NEVER set `fields` to undefined: the SDK's query serializer only skips
+    // `null`, so `fields: undefined` goes on the wire as the literal
+    // `fields=undefined`. PocketBase then projects onto a column that does not
+    // exist and answers with `{"items":[{},{}]}` — every record an empty
+    // object. That is why callers omitting `fields` (support inbox, admin_logs,
+    // public_config…) rendered blank rows.
+    if (options.fields) o.fields = options.fields;
     if (withSort) o.sort = options.sort || 'id';
     if (options.skipTotal !== undefined) o.skipTotal = !!options.skipTotal;
     return o;
