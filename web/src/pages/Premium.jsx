@@ -13,7 +13,7 @@ const PRICES = {
   usd: { sym: '$', monthly: '7.99', yearly: '49.99' },
   eur: { sym: '€', monthly: '6.99', yearly: '49.99' },
   gbp: { sym: '£', monthly: '7.99', yearly: '44.99' },
-  try: { sym: '₺', monthly: '149,99', yearly: '1799,99' },
+  try: { sym: '₺', monthly: '149,99', yearly: '1499,99' },
 };
 const EURO_CC = ['DE', 'AT', 'BE', 'NL', 'FR', 'IT', 'ES', 'PT', 'IE', 'FI', 'GR',
   'SK', 'SI', 'EE', 'LV', 'LT', 'LU', 'MT', 'CY', 'HR'];
