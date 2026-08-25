@@ -1584,6 +1584,10 @@
   <url><loc>https://qorai.net/tr/product/apple-iphone-17</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/honor-robot-phone</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/honor-robot-phone</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/redmi-k100-pro</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/redmi-k100-pro</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/poco-f9-ultra</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/poco-f9-ultra</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-galaxy-s23-ultra-1tb</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-s23-ultra-1tb</loc><lastmod>2026-08-23</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/garmin-x310</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -8086,8 +8090,14 @@
   <url><loc>https://qorai.net/blog/best-ai-subscriptions-2026</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/blog/2026-en-iyi-amiral-gemisi-telefonlar</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/blog/best-flagship-phones-2026</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/analiz</loc><lastmod>2026-08-24</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/tr/analiz</loc><lastmod>2026-08-24</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/analiz</loc><lastmod>2026-08-25</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/tr/analiz</loc><lastmod>2026-08-25</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/asus-tuf-gaming-geforce-rtx-5090-32gb-gddr7</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/asus-tuf-gaming-geforce-rtx-5090-32gb-gddr7</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/redmi-k100-pro</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/redmi-k100-pro</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/poco-f9-ultra</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/poco-f9-ultra</loc><lastmod>2026-08-25</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/analiz/xiaomi-17-ultra</loc><lastmod>2026-08-24</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/analiz/xiaomi-17-ultra</loc><lastmod>2026-08-24</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/analiz/samsung-galaxy-z-fold8-ultra-512gb</loc><lastmod>2026-08-24</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
