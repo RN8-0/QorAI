@@ -1,77 +1,71 @@
 {
   "category": "gimbals",
   "label": "Gimbal",
-  "title": "Akıcı Çekimler İçin En İyi Gimbal Rehberi",
-  "lead": "Gimballer, video çekimlerinizdeki titremeyi ortadan kaldırarak profesyonel ve akıcı görüntüler elde etmenizi sağlayan vazgeçilmez ekipmanlardır. İster profesyonel bir kameraman olun isterse hobi olarak çekim yapın, doğru gimbal seçimi yaratıcılığınızın önünü açacaktır.",
+  "title": "En İyi Gimbal 2024: Titreşimsiz Çekim Rehberi",
+  "lead": "Akıcı, profesyonel videolar çekmek artık hayal değil. Doğru gimbal seçimiyle her anı sinematik bir deneyime dönüştürebilirsiniz.",
   "sections": [
     {
-      "h": "Neden Bir Gimbale İhtiyaç Duyarsınız?",
-      "body": "Gimballer, hareket halindeyken bile sarsıntısız ve sinematik çekimler yapmanızı mümkün kılar. Özellikle vlog, belgesel, kısa film veya etkinlik çekimlerinde, izleyiciye rahat bir deneyim sunmak için stabilizasyon kritik öneme sahiptir. Görüntülerinizin kalitesini bir üst seviyeye taşımak için güçlü bir yardımcıdır."
+      "h": "Gimbal Nedir ve Neden İhtiyacınız Var?",
+      "body": "Gimbal, kameralarınızdaki veya telefonlarınızdaki titremeleri dengeleyerek pürüzsüz ve profesyonel görüntüler elde etmenizi sağlayan motorlu bir sabitleyicidir. Özellikle hareketli çekimlerde, yürürken veya dinamik sahnelerde videolarınızın kalitesini anında artırır ve izleyiciye daha keyifli bir deneyim sunar. Bu cihazlar, çektiğiniz her kareye sinematik bir hava katarak içeriğinizin diğerlerinden ayrışmasına yardımcı olur."
     },
     {
-      "h": "Gimbal Seçerken Nelere Dikkat Etmeli?",
-      "body": "Gimbal seçimi yaparken öncelikle kullanacağınız kamera veya telefonun ağırlığını ve boyutunu göz önünde bulundurmalısınız. Taşıma kapasitesi, pil ömrü, kolay kurulum ve dengeleme özellikleri, ergonomi ve ek bağlantı noktaları gibi faktörler kararınızı etkileyecektir. Ayrıca, kullanacağınız çekim senaryolarına uygun mod ve kontrol seçenekleri de önemlidir."
+      "h": "Doğru Gimbal Seçerken Nelere Dikkat Etmeli?",
+      "body": "Gimbal alırken öncelikle kullanacağınız kamera veya telefonun ağırlığını göz önünde bulundurmalısınız; her gimbalın belirli bir taşıma kapasitesi vardır ve bu sınırı aşmamak kritik. Batarya ömrü, uzun çekimler için büyük önem taşırken, gimbalın ergonomik yapısı ve kullanım kolaylığı da çekim deneyiminizi doğrudan etkiler. Ayrıca, otomatik odaklama, akıllı takip ve mod çeşitliliği gibi ek özelliklerin sizin için ne kadar gerekli olduğunu değerlendirmelisiniz."
     },
     {
-      "h": "Farklı Kullanım Alanlarına Göre Gimbal Türleri",
-      "body": "Piyasada telefonlar için daha kompakt modellerden, profesyonel DSLR ve aynasız kameralar için tasarlanmış daha büyük ve güçlü gimbal sistemlerine kadar birçok seçenek bulunur. Hafif seyahat odaklı çekimler için taşınabilirliği yüksek modeller ideal iken, ağır ekipmanlarla çalışanlar daha yüksek taşıma kapasiteli ve gelişmiş dengeleme özelliklerine sahip gimbal'lara yönelmelidir. İhtiyaçlarınıza uygun türü belirlemek, uzun vadede memnuniyetinizi artıracaktır."
+      "h": "Farklı İhtiyaçlara Yönelik Gimbal Seçimleri",
+      "body": "Eğer ağır DSLR veya aynasız kamera setleriyle çalışıyorsanız, daha yüksek taşıma kapasitesine sahip, sağlam yapıdaki profesyonel gimbal modellerine yönelmelisiniz. Telefon veya küçük kompakt kameralar için ise daha hafif, taşınabilir ve pratik kullanıma sahip gimbal'lar ideal olacaktır. Seyahat eden veya tek başına içerik üretenler için kurulumu kolay, hızlı dengeleme imkanı sunan modeller, çekim süreçlerini oldukça basitleştirir."
     }
   ],
   "picks": [
     {
       "name": "DJI RS 4 Gimbal",
-      "why": "Yeni nesil stabilizasyon teknolojisi ve hafif yapısıyla hem profesyonellere hem de ileri seviye amatörlere hitap eden, dengelemeyi kolaylaştıran bir modeldir.",
+      "why": "Yeni nesil algoritmaları ve otomatik eksen kilitleriyle hem hızlı kurulum hem de olağanüstü dengeleme performansı sunar.",
       "id": "7vm95xvh59yow37",
       "slug": "dji-rs-4"
     },
     {
-      "name": "Moza AirCross 2 Gimbal",
-      "why": "Kompakt tasarımı, yüksek taşıma kapasitesi ve güçlü motorlarıyla birçok kamera modelini sorunsuz bir şekilde dengeleyebilir.",
-      "id": "tnqv2bsjr7qklww",
-      "slug": "moza-aircross-2"
-    },
-    {
       "name": "Zhiyun Crane M3 Pro Gimbal (Mikrofon)",
-      "why": "Özellikle aynasız kameralar ve akıllı telefonlar için tasarlanmış, entegre mikrofon özelliğiyle dikkat çeken çok yönlü bir gimbaldir.",
+      "why": "Kompakt boyutuyla aynasız ve telefon kullanıcıları için ideal olup, dahili mikrofon bağlantı noktasıyla ses kaydını da kolaylaştırır.",
       "id": "q0mv79znfrdw727",
       "slug": "zhiyun-crane-m3-pro"
     },
     {
+      "name": "DJI RS 3 Pro Gimbal",
+      "why": "Profesyonel film yapımcıları ve ağır kamera setleri için tasarlanmış olup, gelişmiş odaklama ve takip özellikleriyle üst düzey kontrol sağlar.",
+      "id": "wzuuxpbrby91ams",
+      "slug": "dji-rs-3-pro"
+    },
+    {
       "name": "Zhiyun Weebill 3S Gimbal",
-      "why": "Ergonomik tasarımı, geliştirilmiş tutuşu ve uzun pil ömrü sayesinde uzun süreli ve konforlu çekimler için ideal bir dengeleyicidir.",
+      "why": "Ergonomik L-şekilli tasarımı sayesinde uzun süreli çekimlerde bile bilek yorgunluğunu minimize ederek konforlu bir deneyim sunar.",
       "id": "j6t1rrj3y5xz3sr",
       "slug": "zhiyun-weebill-3s"
     },
     {
-      "name": "DJI RS 3 Pro Combo Gimbal (Otomatik Odaklama / Akıllı Takip)",
-      "why": "Ağır profesyonel kamera setupları için gelişmiş stabilizasyon, otomatik odaklama ve akıllı takip özellikleriyle fark yaratır.",
-      "id": "fhb94wjvjxh32qu",
-      "slug": "dji-rs-3-pro-combo"
-    },
-    {
-      "name": "DJI RSC 2 Gimbal",
-      "why": "Katlanabilir tasarımı ve güçlü taşıma kapasitesiyle hem taşınabilirlik hem de performans arayan içerik üreticileri için idealdir.",
-      "id": "yiivuywnbmyitrj",
-      "slug": "dji-rsc-2"
+      "name": "Moza AirCross 2 Gimbal",
+      "why": "Geniş kamera uyumluluğu ve güçlü motorlarıyla birçok farklı kamera setini rahatlıkla taşıyarak esneklik sağlar.",
+      "id": "tnqv2bsjr7qklww",
+      "slug": "moza-aircross-2"
     }
   ],
   "faq": [
     {
       "q": "Gimbal ve sabitleyici arasındaki fark nedir?",
-      "a": "Gimbal, motorlu eksenler sayesinde kamerayı otomatik olarak dengeleyen aktif bir sabitleyicidir; oysa sabitleyiciler (steadycam) genellikle mekanik denge prensibiyle çalışır."
-    },
-    {
-      "q": "Akıllı telefonum için gimbal almalı mıyım?",
-      "a": "Evet, telefonunuzla daha profesyonel ve titremesiz videolar çekmek, hareketli sahnelerde akıcılığı artırmak için telefon gimbal'ları harika bir yatırımdır."
+      "a": "Gimbal, motorlu ve elektronik dengeleme sağlayan daha gelişmiş bir sabitleyici türüdür; mekanik sabitleyiciler ise ağırlık dengesiyle çalışır."
     },
     {
       "q": "Gimbal kullanmak zor mu?",
-      "a": "Başlangıçta biraz pratik gerektirse de, modern gimbal'lar kullanıcı dostu arayüzler ve otomatik dengeleme özellikleri sayesinde oldukça kolay öğrenilebilir."
+      "a": "İlk başta biraz pratik gerektirse de, modern gimbal'lar kullanıcı dostu arayüzleri ve otomatik dengeleme özellikleriyle öğrenmeyi oldukça kolaylaştırır."
     },
     {
-      "q": "Gimbal'ın pil ömrü ne kadar olmalı?",
-      "a": "Çekim ihtiyaçlarınıza bağlı olarak değişir, ancak genel olarak 8-12 saatlik bir pil ömrü, çoğu günlük kullanım ve profesyonel çekim için yeterli kabul edilir."
+      "q": "Hangi kameralarla uyumlu?",
+      "a": "Çoğu gimbal, aynasız kameralar, DSLR'lar, aksiyon kameraları ve akıllı telefonlarla uyumludur; önemli olan cihazın ağırlık kapasitesine dikkat etmektir."
+    },
+    {
+      "q": "Batarya ömrü ne kadar önemli?",
+      "a": "Uzun çekimler yapıyorsanız veya yedek batarya taşıma imkanınız yoksa, gimbalın batarya ömrü kesintisiz bir çekim deneyimi için kritik bir faktördür."
     }
   ],
-  "updatedAt": "2026-07-23T01:19:05.338Z"
+  "updatedAt": "2026-08-26T01:17:21.471Z"
 }
