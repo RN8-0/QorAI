@@ -576,6 +576,28 @@ function anKarsilastirmaGovde(r, tx, quizGizle = false) {
     if (p.analysis) g += anPar(p.analysis);
     if (anDizi(p.pros).length) { g += anH3(tx.pros); g += anListe(p.pros); }
     if (anDizi(p.cons).length) { g += anH3(tx.cons); g += anListe(p.cons); }
+    // FORUM BULGULARI KARSILASTIRMADA DA CIZILIR.
+    //
+    // Bu dal urun basina yalnizca arti/eksi yaziyordu; `products[].community`
+    // dolu oldugu halde sevilen ozellikler ve KRONIK SORUNLAR on-render'a hic
+    // girmiyordu. Sitedeki karsilastirma raporu ise onlari GOSTERIYOR
+    // (CompareResult -> compareProductToUnified -> AiReportView), yani
+    // crawler'in gordugu HTML ile okuyucunun gordugu sayfa ayrisiyordu — bu
+    // dosyanin bastan beri kacinmaya calistigi seyin ta kendisi.
+    //
+    // Tekrar agi URUN BASINA ayri: olgu urune ait, iki urun ayni sorunu
+    // tasiyabilir ve ikisinde de yazilmali. Sira sayfadakiyle ayni olmali,
+    // o yuzden once arti/eksi beslenir.
+    const gorulenP = [];
+    dropRestated(anDizi(p.pros), gorulenP);
+    dropRestated(anDizi(p.cons), gorulenP);
+    const c = p.community || {};
+    g += anForumBulgulari(
+      dropRestated(anDizi(c.lovedFeatures), gorulenP),
+      dropRestated(anDizi(c.chronicIssues), gorulenP),
+      tx,
+      Boolean(r.researched) || anDizi(c.sources).length > 0 || anDizi(c.verificationNotes).length > 0,
+    );
   });
   return g;
 }

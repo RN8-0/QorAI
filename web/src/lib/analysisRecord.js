@@ -116,7 +116,23 @@ export function analysisReport(rec, lang) {
   return temizlenmis;
 }
 
-/** Hangi dillerde gercek rapor var? (admin ve on-render ikisi de sorar) */
+/**
+ * Hangi dillerde gercek rapor var? (admin ve on-render ikisi de sorar)
+ *
+ * TEST YALNIZCA VARLIGA BAKAR, ICERIGE DEGIL — ve bu bilerek boyle:
+ *
+ *  · ON-RENDER TOHUMU (web/scripts/seo.mjs -> analizTohumBlogu) "bu dilde
+ *    rapor var" isaretini BOS OBJE olarak yaziyor; liste rapor govdesini
+ *    okumuyor. `Object.keys().length` sarti eklemek tohumdaki her satiri
+ *    "hicbir dilde rapor yok" haline getirirdi.
+ *  · LISTE SAYFASI raporun tamamini indirmiyor (836 KB -> 14 KB); PB'den
+ *    yalnizca birkac alt anahtar isteniyor (bkz. pages/Analyses.jsx ->
+ *    LIST_FIELDS). Alan NULL ise PB `null` doner, dolayisiyla "yok" hali
+ *    zaten dogru ayrisiyor.
+ *
+ * Yani `{}` daima "var" demektir. Iki tarafi birden degistirmeden buraya
+ * icerik sarti EKLEME.
+ */
 export function analysisLangs(rec) {
   return ['tr', 'en'].filter((l) => obj(rec?.[`report_${l}`]));
 }
