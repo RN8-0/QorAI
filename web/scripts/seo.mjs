@@ -32,6 +32,10 @@ import { dropRestated } from '../src/lib/reportDedupe.js';
 // Urun adi temizligi TEK KAYNAK (admin/js/qor_ai_prompts.js). Web istemcisi de
 // ayni fonksiyonu cagiriyor; on-render ile SPA ayni adi gostermek zorunda.
 import { cleanProductName } from '../src/lib/productNames.js';
+// Puan kalibrasyonu + segment kunyesi TEK KAYNAK: sitede de ayni
+// fonksiyonlar kosuyor (lib/reportAdapters.js). Ayrisirsa crawler'in
+// gordugu puan ile okuyucunun gordugu puan farkli olur.
+import { calibratedScore, scoreBasisNote } from '../src/lib/aiPrompts.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
@@ -200,6 +204,7 @@ const ANALIZ_LISTE_TEXT = {
     // hangi turu okudugunu anlamiyor.
     kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
     quizTop: 'Answers this analysis was built on',
+    scoreBasis: 'How this score is calculated',
     loved: 'What owners keep praising', chronic: 'Chronic problems',
     chronicNone: 'The ownership search turned up no recurring failure for this model — no defect pattern, bad batch or firmware regression that owners keep reporting.',
     freqWidespread: 'widespread', freqCommon: 'common', freqOccasional: 'occasional',
@@ -229,6 +234,7 @@ const ANALIZ_LISTE_TEXT = {
     verdict: 'Sonuç',
     kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
     quizTop: 'Bu analiz şu cevaplara göre yapıldı',
+    scoreBasis: 'Bu puan nasıl hesaplanıyor',
     loved: 'Sahiplerin en çok sevdiği', chronic: 'Kronik sorunlar',
     chronicNone: 'Sahiplik taramasında bu modele ait tekrar eden bir arıza çıkmadı — sahiplerin sürekli bildirdiği bir kusur örüntüsü, hatalı parti ya da yazılım sorunu bulunamadı.',
     freqWidespread: 'yaygın', freqCommon: 'sık', freqOccasional: 'ara sıra',
@@ -396,7 +402,7 @@ function anFiyat(pf, tx) {
 }
 
 // ── URUN raporu (`product_full_report`) ───────────────────────────────────
-function anUrunGovde(rapor, tx, quizGizle = false) {
+function anUrunGovde(rapor, tx, quizGizle = false, techScore = 0, lang = 'tr') {
   const p = rapor.product || {};
   let g = '';
   if (p.headline) {
@@ -404,9 +410,18 @@ function anUrunGovde(rapor, tx, quizGizle = false) {
   }
   const kararBits = [];
   if (p.decision) kararBits.push(`${tx.decision}: ${p.decision}`);
-  if (Number(p.matchScore)) kararBits.push(`${tx.match}: ${p.matchScore}/100`);
+  // GOSTERILEN PUAN kalibre edilmis puandir (0.60 x katalog teknik puani +
+  // 0.40 x ham uyum puani) — sitedeki ile AYNI sayi olmak zorunda.
+  const puan = calibratedScore(p.matchScore, techScore);
+  if (puan) kararBits.push(`${tx.match}: ${puan}/100`);
   if (Number(p.confidence)) kararBits.push(`${tx.confidence}: ${p.confidence}/100`);
   if (kararBits.length) g += anSayi(kararBits.join(' · '));
+  // PUANIN NEYI OLCTUGUNU SOYLE. Okuyucunun sorusu: "bu telefon nasil iPhone
+  // ile yakin puan aldi". Sitede ayni metin puanin altinda duruyor.
+  if (puan) {
+    g += `<p style="line-height:1.7;color:#475569;margin:0 0 14px;max-width:68ch;font-size:14px">`
+      + `<strong>${esc(tx.scoreBasis)}:</strong> ${esc(scoreBasisNote(techScore, lang))}</p>`;
+  }
   if (p.matchComment) g += anPar(p.matchComment);
   if (p.analysis) { g += anH2(tx.detail); g += anPar(p.analysis); }
 
@@ -681,7 +696,7 @@ function analizBody(a, lang) {
 
   let govde = '';
   if (ham) {
-    if (kind === 'product' && ham.product) govde = anUrunGovde(ham, tx, quizGizle);
+    if (kind === 'product' && ham.product) govde = anUrunGovde(ham, tx, quizGizle, a.techScore, lang);
     else if (kind === 'subscription') govde = anAbonelikGovde(ham, tx, quizGizle);
     else if (Array.isArray(ham.products)) govde = anKarsilastirmaGovde(ham, tx, quizGizle);
     else {

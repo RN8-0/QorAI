@@ -252,7 +252,6 @@ button.cmp-more {
 .cmp-reviews-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .cmp-reviews-head h2 { font-size: 19px; font-weight: 850; margin: 0; }
 .cmp-reviews-sub { font-size: 12.5px; color: var(--text3); font-weight: 650; }
-.cmp-reviews-note { font-size: 12.5px; color: var(--text3); margin: 0 0 14px; line-height: 1.5; }
 
 .cmp-price-card-legacy { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
 .cmp-price-name { font-size: 14px; font-weight: 700; line-height: 1.3; }

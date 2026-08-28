@@ -30,7 +30,46 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 function transientStatus(s) { return s === 404 || s === 429 || s === 500 || s === 502 || s === 503 || s === 504; }
 function retryableStatus(s) { return s === 500 || s === 502 || s === 503 || s === 504; }
 
+/* ── KOTA PENCERESI ────────────────────────────────────────────────────────
+   AI proxy'si kullanici basina 60 istek / 5 dakika veriyor
+   (pb_hooks/gemini.pb.js: LIMIT_AUTH = 60, WIN_MS = 5 dk).
+
+   OLCULDU 2026-08-28 — 12 urunluk bir karsilastirma:
+     dil basina 1 arastirma + 12 urun raporu + 1 hukum = 14
+     iki dil                                            = 28
+     iki quiz + yayin metasi                            = 31
+     urun raporu basina bir YENIDEN DENEME hakki        = 55 (en kotu)
+   Yani tavan pratikte ASILIYOR. Asildiginda proxy 429 donuyor, `askRaw`
+   429'u "ayni saglayiciyi tekrar deneme" diye isaretledigi icin DOGRUDAN
+   DeepSeek'e dusuyor — ve DeepSeek bakiyesi bitmis durumda. Sonuc: kosunun
+   ortasinda her cagri patliyor, kullanicinin gordugu sey "sistem cokuyor".
+
+   Iki savunma: (1) burada, tavana varmadan BEKLE; (2) askRaw icinde 429'u
+   uzun backoff ile AYNI saglayicida tekrar dene. */
+var RL_WINDOW_MS = 5 * 60 * 1000;
+// 60 degil 52: proxy sayaci sunucuda, biz istemcide sayiyoruz; ag gecikmesi
+// ve olasi paralel bir sekme icin pay birakiliyor.
+var RL_MAX = 52;
+var _rlHits = [];
+// Bekleme sirasinda kullaniciya haber vermek icin (analyses.js bunu bagliyor).
+var _onThrottle = null;
+
+async function rlAcquire() {
+  for (;;) {
+    var now = Date.now();
+    _rlHits = _rlHits.filter(function (t) { return now - t < RL_WINDOW_MS; });
+    if (_rlHits.length < RL_MAX) { _rlHits.push(now); return; }
+    var bekle = Math.max(1000, RL_WINDOW_MS - (now - _rlHits[0]) + 250);
+    var parca = Math.min(bekle, 5000);
+    if (_onThrottle) {
+      try { _onThrottle(Math.round(bekle / 1000)); } catch (_) { /* bildirim isi bozmaz */ }
+    }
+    await sleep(parca);
+  }
+}
+
 async function post(path, body, timeoutMs) {
+  await rlAcquire();
   var ctrl = new AbortController();
   var timer = setTimeout(function () { ctrl.abort(); }, timeoutMs || 90000);
   try {
@@ -62,6 +101,9 @@ async function geminiOnce(o) {
     var e = new Error('gemini ' + res.status);
     e.transient = transientStatus(res.status);
     e.retryable = retryableStatus(res.status);
+    // 429 AYRI ISARETLENIR: DeepSeek'e dusmek cozum degil (bakiye bitti),
+    // dogru davranis beklemek. Bkz. askRaw.
+    e.rateLimited = res.status === 429;
     throw e;
   }
   var data = await res.json();
@@ -98,14 +140,36 @@ async function deepseekOnce(o) {
   return String(c).trim();
 }
 
-// Gemini -> DeepSeek. 429/404'te AYNI saglayici tekrar DENENMEZ: ucretsiz
-// Gemini anahtari sik 429 veriyor ve beklemek bosuna gecikme demek.
+// Gemini -> DeepSeek.
+//
+// 429 ARTIK BEKLENIYOR. Onceki kural "429'da ayni saglayiciyi tekrar deneme,
+// dogrudan DeepSeek'e gec" idi ve tek tek cagrilarda mantikliydi. Ama uzun
+// kosularda (karsilastirma, cok servisli abonelik) kota penceresi DOLUYOR ve
+// o anda DeepSeek'e dusmek KOSUYU BITIRIYOR: bakiye bitmis durumda, yani
+// yedek diye gidilen yol da kapali. Pencere 5 dakikada kendini yeniliyor;
+// beklemek, raporu kaybetmekten iyidir.
+var RL_BACKOFF_MS = [20000, 45000, 90000];
+
 async function askRaw(o) {
   var opt = Object.assign({ maxOutputTokens: 4096, temperature: 0.7, jsonMode: false, timeoutMs: 90000 }, o);
   var lastErr;
-  for (var i = 0; i < 2; i++) {
+  var kota = 0;
+  for (var i = 0; i < 6; i++) {
     try { return await geminiOnce(opt); }
-    catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
+    catch (e) {
+      lastErr = e;
+      if (e.rateLimited && kota < RL_BACKOFF_MS.length) {
+        var ms = RL_BACKOFF_MS[kota];
+        kota += 1;
+        if (_onThrottle) {
+          try { _onThrottle(Math.round(ms / 1000)); } catch (_) { /* bildirim isi bozmaz */ }
+        }
+        await sleep(ms);
+        continue;
+      }
+      if (e.retryable && i < 5) { await sleep(1200); continue; }
+      break;
+    }
   }
   for (var j = 0; j < 2; j++) {
     try { return await deepseekOnce(opt); }
@@ -137,7 +201,12 @@ async function askGrounded(prompt, lang, maxOutputTokens) {
         jsonMode: false,
         timeoutMs: 35000,
       });
-    } catch (e) { lastErr = e; if (!e.transient || i === 2) break; await sleep(700 + i * 500); }
+    } catch (e) {
+      lastErr = e;
+      if (!e.transient || i === 2) break;
+      // Kota hatasinda kisa backoff ise yaramaz; pencere dakikalarla olculuyor.
+      await sleep(e.rateLimited ? 20000 : (700 + i * 500));
+    }
   }
   throw lastErr || new Error('grounded search failed');
 }
@@ -267,76 +336,70 @@ function katalogAra(ad) {
 
 // ── akis ───────────────────────────────────────────────────────────────────
 
-/** Quiz — sitedeki generateQuiz() ile AYNI prompt, ayni soru sayisi. */
-async function generateQuiz(product, lang) {
-  var count = P.productQuizCount(product.category);
-  var ks = product.keySpecs && typeof product.keySpecs === 'object'
-    ? 'Key specs: ' + Object.entries(product.keySpecs).slice(0, 10).map(function (kv) { return kv[0] + ': ' + kv[1]; }).join('; ')
-    : '';
-  var res = await askJson({
-    system: P.quizGenerationPrompt(lang, count),
-    user: JSON.stringify({
-      category: product.category || 'unknown',
-      productTitle: P.displayProductName(product, lang),
-      url: P.productPath(product),
-      store: '',
-      productContext: [
-        product.brand ? 'Brand: ' + product.brand : '',
-        product.category ? 'Category: ' + product.category : '',
-        ks,
-      ].filter(Boolean).join(' · ').slice(0, 1200),
-      userProfile: {},
-      variationSeed: P.variationSeed(),
-    }),
-    maxOutputTokens: 3072,
-    temperature: 0.95,
-  });
-  return (Array.isArray(res.questions) ? res.questions : [])
-    .map(function (q, i) {
-      return {
-        id: 'q' + i,
-        text: String(q.question || ''),
-        options: Array.isArray(q.options) ? q.options.map(String) : [],
-      };
-    })
-    .filter(function (q) { return q.text && q.options.length >= 2; })
-    .slice(0, count);
+/* ── QUIZ: MOTORUN KENDISI KOSAR, IKINCI BIR KOPYA YOK ─────────────────────
+   Buradaki iki fonksiyon ONCEDEN quizi KENDI basina uretiyordu (kendi
+   payload'i, kendi jeton tavani). Sitenin quizi ise motordan geliyordu
+   (admin/js/qor_ai_link.js -> generateQuiz / generateCompareQuiz). Iki
+   uygulama kacinilmaz olarak ayristi; olculdu 2026-08-28:
+
+     · KARSILASTIRMA QUIZI TAVANI  admin 3072 jeton / motor 8192. Alti
+       secenekli, 25-45 kelimelik Turkce sorular 3072'ye SIGMIYOR: JSON
+       yarida kesiliyor, `parseAiJson` null donuyor ve akis "Quiz
+       üretilemedi" ile duruyordu. Kullanicinin "birden fazla urun eklenince
+       sistem cokuyor" dedigi seyin bir bacagi buydu.
+     · SORU SAYISI  admin `compareQuizCount(products.length)` cagiriyordu —
+       fonksiyon DIZI bekliyor. Sayi gelince `Array.isArray` false donuyor,
+       liste bos sayiliyor ve sonuc DAIMA 5 oluyordu; site ayni uründe 6
+       soru soruyordu.
+     · BAGLAM  admin karsilastirmada yalnizca ad/marka/kategori/puan
+       gonderiyordu. Model spec gormeyince kategorinin genel sablonuna
+       duser — "hep ayni sorular" sikayetinin kaynagi.
+
+   Artik ikisi de motoru cagiriyor; parite tanim geregi saglaniyor. */
+
+// Katalog urununden motorun bekledigi baglam metni. Spec'ler SART: model
+// "bu urunde ne kritik" sorusunu ancak gercek degerleri gorunce sorabiliyor.
+function quizBaglami(product, lang) {
+  var specs = P.productSpecsContext(product, 14);
+  return [
+    product.brand ? 'Brand: ' + product.brand : '',
+    product.category ? 'Category: ' + product.category : '',
+    product.techScore ? 'Qor AI tech score: ' + product.techScore + '/100' : '',
+    specs ? 'Key specs: ' + specs : '',
+  ].filter(Boolean).join(' · ').slice(0, 1200);
 }
 
-/**
- * KARSILASTIRMA QUIZI — 2+ urun icin. Tek urun quizinden ayri bir prompt
- * kullanir (`compareQuizGenerationPrompt`): sorular "hangisi sana uygun"
- * ekseninde kurulmali, "bu urun sana uygun mu" ekseninde degil.
- */
-async function generateCompareQuiz(products, lang) {
-  var count = P.compareQuizCount ? P.compareQuizCount(products.length) : 5;
-  var res = await askJson({
-    system: P.compareQuizGenerationPrompt(lang, count),
-    user: JSON.stringify({
-      products: (products || []).map(function (p) {
-        return {
-          name: P.displayProductName(p, lang),
-          brand: p.brand || '',
-          category: p.category || '',
-          techScore: p.techScore || 0,
-        };
-      }),
-      userProfile: {},
-      variationSeed: P.variationSeed(),
-    }),
-    maxOutputTokens: 3072,
-    temperature: 0.95,
+/** Quiz — SITEDEKI ILE AYNI FONKSIYON (QorAiLink.generateQuiz). */
+async function generateQuiz(product, lang) {
+  return root.QorAiLink.generateQuiz({
+    category: product.category || '',
+    productTitle: P.displayProductName(product, lang),
+    url: P.productPath(product),
+    language: lang,
+    userProfile: {},
+    productContext: quizBaglami(product, lang),
+    siteName: '',
   });
-  return (Array.isArray(res.questions) ? res.questions : [])
-    .map(function (q, i) {
+}
+
+/** Karsilastirma quizi — SITEDEKI ILE AYNI FONKSIYON. */
+async function generateCompareQuiz(products, lang) {
+  return root.QorAiLink.generateCompareQuiz({
+    products: (products || []).map(function (p) {
       return {
-        id: 'q' + i,
-        text: String(q.question || ''),
-        options: Array.isArray(q.options) ? q.options.map(String) : [],
+        title: P.displayProductName(p, lang),
+        url: P.productPath(p),
+        category: p.category || '',
+        score: p.techScore || 0,
+        // Motor bunu `productContext` diye okuyor. Site burada urunun
+        // `description` alanini veriyor ve katalog urunlerinde o alan
+        // cogunlukla BOS; spec ozeti hem daha dolu hem daha ayirt edici.
+        analysis: quizBaglami(p, lang),
       };
-    })
-    .filter(function (q) { return q.text && q.options.length >= 2; })
-    .slice(0, count);
+    }),
+    language: lang,
+    userProfile: {},
+  });
 }
 
 // N istegi ayni anda degil, en fazla `limit` tanesi kosar — sitedeki
@@ -411,7 +474,10 @@ async function runCompareReport(o) {
     }).then(function (txt) { return P.parseAiJson(txt); }, function () { return null; });
   }
 
-  var raporlar = await mapWithConcurrency(products, 5, async function (p) {
+  // ESZAMANLILIK 5 -> 2. Bes paralel istek kota penceresini bir anda
+  // tuketip 429 dalgasi uretiyordu; ikili akis toplam sureyi cok az uzatir
+  // (asil maliyet modelin yazma suresi, kuyruk degil) ama tavani zorlamaz.
+  var raporlar = await mapWithConcurrency(products, 2, async function (p) {
     // TEK SEFER YENIDEN DENE. Site tek deneme yapip basarisiz urunu sessizce
     // DUSURUYOR; orada bir ziyaretci bekliyor. Adminde ise dusurulen urun,
     // "6 urun karsilastirdim" diye yayinlanan bir sayfanin 5 urun icermesi
@@ -425,6 +491,9 @@ async function runCompareReport(o) {
       name: parsed.name || P.displayProductName(p, lang),
       imageUrl: p.imageUrl || parsed.imageUrl || '',
       url: P.productPath(p),
+      // Her urun KENDI katalog puaniyla kalibre edilir (bkz. calibratedScore);
+      // kayit yalnizca ilk urunun techScore'unu tutuyor.
+      techScore: Number(p.techScore) || 0,
     });
   });
 
@@ -518,6 +587,9 @@ async function runProductReport(o) {
       lang: lang,
     });
   } catch (_) { /* eslestirme raporu bozmaz */ }
+  // KATALOG PUANI RAPORA YAZILIR: gosterilen puan okuma aninda
+  // 0.60 x techScore + 0.40 x uyum olarak hesaplaniyor.
+  data.techScore = Number(product && product.techScore) || 0;
   return { data: data, researched: Boolean(research) };
 }
 
@@ -700,6 +772,9 @@ async function publishMeta(o) {
 }
 
 root.QorAiRun = {
+  // AI kotasi dolunca beklerken haber ver (analyses.js ilerleme panelinde
+  // gosteriyor). Kullanici "takildi mi?" diye dusunmesin.
+  setThrottleNotice: function (fn) { _onThrottle = typeof fn === 'function' ? fn : null; },
   askRaw: askRaw,
   askJson: askJson,
   askGrounded: askGrounded,

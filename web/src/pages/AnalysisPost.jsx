@@ -261,7 +261,7 @@ export default function AnalysisPost() {
             yani crawler saglam sayfayi, okuyucu bozugunu goruyordu. */}
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
-            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
+            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} techScore={a.techScore} />
           ) : kind === 'subscription' && Array.isArray(ham?.services) ? (
             <SubscriptionReportView
               result={ham}

@@ -467,8 +467,13 @@ function AlternativeCards({ alternatives = [], L }) {
 // `export`: /analiz/<slug> sayfasi da AYNI bileseni cizer. Yayinlanan analiz,
 // urun sayfasinda calisan analizin BIREBIR AYNISI gorunmek zorunda — ikinci bir
 // gorunum yazmak iki tasarimin ayrismasi demek.
-export function ProductFullReport({ data, L, lang, hideQuiz = false }) {
-  const unified = productReportToUnified(data);
+export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore = 0 }) {
+  // `lang` ve `techScore` KALIBRASYONA gidiyor: gosterilen puan
+  // 0.60 x katalog teknik puani + 0.40 x ham uyum puani, segment etiketi ve
+  // gerekce metni de dile gore yaziliyor (bkz. reportAdapters).
+  // `techScore` propu YAYINLANMIS ESKI KAYITLAR icin sart: onlarin rapor
+  // JSON'unda bu alan yok, deger kaydin kendisinde duruyor.
+  const unified = productReportToUnified(data, { lang, techScore: techScore || data?.techScore });
   const alternatives = arr(data.alternatives);
   return (
     <AiReportView

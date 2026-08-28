@@ -27,7 +27,7 @@ import { productReportToUnified } from './reportAdapters.js';
 // okuyor. Ikisini ayri temizlemek, crawler'in gordugu baslik ile okuyucunun
 // gordugu basligi ayristirirdi.
 import { cleanProductName } from './productNames.js';
-import { cleanProductCodes } from './aiPrompts.js';
+import { calibratedScore, cleanProductCodes } from './aiPrompts.js';
 
 export const ANALYSIS_KINDS = ['product', 'compare', 'link', 'subscription'];
 
@@ -45,6 +45,42 @@ const temiz = (v) => {
   if (!ham) return '';
   return cleanProductName(ham) || ham;
 };
+
+/* ── BASLIKTAKI BAYAT YUZDELIK ────────────────────────────────────────────
+   Gosterilen puan artik kalibre ediliyor (0.60 x katalog teknik puani +
+   0.40 x ham uyum puani, bkz. reportAdapters). Ama admin, basligi ve ozeti
+   AI'a YAZDIRIYOR ve AI oraya o gunku HAM puani gomuyordu:
+
+     "Samsung Galaxy A07 5G Analizi | %75 Skorla Değerlendirin"   (yeni: 58)
+     "Samsung Galaxy A17 5G ... %88 skorla 'satın al' kararı"     (yeni: 78)
+
+   Yani okuyucu basligta bir sayi, puan halkasinda baskasini goruyordu.
+   Prompt artik metne sayi yazmayi YASAKLIYOR (yeni kayitlar temiz gelir);
+   bu ise YAYINDAKI 14 kayit icin okuma anindaki onarim. Yalnizca HAM PUANA
+   BIREBIR ESIT sayi degistirilir ve yalnizca yuzde/`/100` bicimindeyken —
+   metindeki baska bir yuzdelige (batarya, memnuniyet) dokunulmaz. */
+function raporHamPuan(rec, lang) {
+  const raw = analysisReport(rec, lang);
+  const p = raw && raw.product;
+  const n = Number((p && (p.matchScore ?? p.overallScore)) ?? (raw && raw.enhancedScore));
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+}
+
+function puanTazele(text, rec, lang) {
+  const s = String(text || '');
+  if (!s || !/\d/.test(s)) return s;
+  const ham = raporHamPuan(rec, lang);
+  if (!ham) return s;
+  const yeni = calibratedScore(ham, rec && rec.techScore);
+  if (!yeni || yeni === ham) return s;
+  // `%88` · `88%` · `88/100` — uc bicim de gecti (TR ve EN metinlerde).
+  const re = new RegExp(`(%\\s?)${ham}\\b|\\b${ham}(\\s?%)|\\b${ham}(/100)\\b`, 'g');
+  return s.replace(re, (tam, onEk, sonEk, yuz) => {
+    if (onEk) return `${onEk}${yeni}`;
+    if (sonEk) return `${yeni}${sonEk}`;
+    return `${yeni}${yuz}`;
+  });
+}
 
 // Temizlenmis rapor kopyalarinin onbellegi. `analysisReport` bir sayfa
 // cizilirken defalarca cagriliyor (baslik, ozet, quiz, govde, JSON-LD) ve
@@ -102,7 +138,10 @@ export function analysisUnified(rec, lang) {
   const raw = analysisReport(rec, lang);
   if (!raw) return null;
   if (analysisKind(rec) === 'product') {
-    return raw.product ? productReportToUnified(raw) : null;
+    // KAYDIN katalog puani geciyor: gosterilen puan okuma aninda
+    // kalibre ediliyor (bkz. reportAdapters.bodyToUnified), boylece daha
+    // once yayinlanmis analizler yeniden uretilmeden duzeliyor.
+    return raw.product ? productReportToUnified(raw, { techScore: rec.techScore, lang }) : null;
   }
   // Link/abonelik: `enhanced` objesi dogrudan cizilir.
   return raw.enhancedScore != null || raw.base ? raw : null;
@@ -167,7 +206,7 @@ export function analysisKindShort(rec, lang) {
 export function analysisTitle(rec, lang) {
   // Admin basligi AI'a yazdiriyor ve AI urun adini AYNEN aliyor — kod dahil.
   // Olculdu: 22 kaydin 3'unun `title_tr` alaninda SKU vardi.
-  const stored = temiz(rec?.[`title_${lang}`]);
+  const stored = puanTazele(temiz(rec?.[`title_${lang}`]), rec, lang);
   if (stored) return stored;
   const subject = analysisSubject(rec, lang);
   const label = kindLabel(rec, lang);
@@ -182,7 +221,7 @@ export function analysisTitle(rec, lang) {
  * abonelikte kazananin gerekcesi, karsilastirmada oneri metni.
  */
 export function analysisLead(rec, lang) {
-  const stored = temiz(rec?.[`lead_${lang}`]);
+  const stored = puanTazele(temiz(rec?.[`lead_${lang}`]), rec, lang);
   if (stored) return stored;
   const raw = analysisReport(rec, lang);
   if (!raw) return '';
@@ -207,12 +246,12 @@ export function analysisLead(rec, lang) {
 
 /** <title> — admin metaTitle yazdiysa o, yoksa sayfa basligi. */
 export function analysisMetaTitle(rec, lang) {
-  return temiz(rec?.[`metaTitle_${lang}`]) || analysisTitle(rec, lang);
+  return puanTazele(temiz(rec?.[`metaTitle_${lang}`]), rec, lang) || analysisTitle(rec, lang);
 }
 
 /** meta description — admin yazdiysa o, yoksa ozet. */
 export function analysisMetaDescription(rec, lang) {
-  return temiz(rec?.[`metaDescription_${lang}`]) || analysisLead(rec, lang);
+  return puanTazele(temiz(rec?.[`metaDescription_${lang}`]), rec, lang) || analysisLead(rec, lang);
 }
 
 /**

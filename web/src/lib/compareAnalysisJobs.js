@@ -250,6 +250,9 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
           name: parsed.name || displayProductName(p, lang),
           imageUrl: p.imageUrl || parsed.imageUrl || '',
           url: productPath(p),
+          // Her urun KENDI katalog puaniyla kalibre edilir; karsilastirmada
+          // tek bir techScore yok (kayit yalnizca ilkini tutuyor).
+          techScore: Number(p.techScore) || 0,
         };
       });
       const okReports = reports.filter(Boolean);

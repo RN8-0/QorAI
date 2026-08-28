@@ -172,6 +172,13 @@
       '.an-sub-add input:focus{outline:2px solid var(--accent);outline-offset:1px}',
       /* Uretim ilerlemesi: cubuk + donen gosterge + sayan sure. */
       '.an-bar-track{height:3px;border-radius:999px;background:var(--bg3);overflow:hidden;margin:2px 0 14px}',
+      /* AI kota beklemesi. Motor 429'da bekleyip TEKRAR DENIYOR; kullanici
+         bunu gormezse duran ilerleme cubugunu "cokme" saniyor. */
+      '.an-kota:empty{display:none}',
+      /* "Yayinda analizi var" rozeti — ayni konunun ikinci analizi uretilmesin. */
+      '.an-var{background:rgba(16,185,129,.14);color:#047857;font-weight:700}',
+      '.an-kota{margin:10px 0 0;padding:8px 11px;border-radius:8px;font-size:13px;font-weight:700;',
+      '  background:rgba(245,158,11,.12);color:#b45309}',
       '.an-bar-fill{height:100%;background:var(--accent,#7c5cff);transition:width .4s ease-out}',
       /* Asagidaki `.an-prog i` kurali (0,1,1) genislige 18px basiyor, yukseklik
          11px kaliyordu -> gosterge daire degil ELIPS donuyordu. Bu yuzden
@@ -534,12 +541,34 @@
   // dil basina 1 arastirma + N urun raporu + 1 hukum, ustune 2 quiz ve 1 meta.
   function cmpCagriSayisi(n) { return 2 * (2 + n) + 1; }
 
+  /* ── TEK KATEGORI KURALI ─────────────────────────────────────────────────
+     Sitede bu kural VAR (web/src/lib/compare.js -> tryAdd, reason:'category'
+     ve pages/Compare.jsx -> pick): havuzdaki ilk urun kategoriyi KILITLER,
+     baska kategoriden urun eklenemez. Admin panelinde yoktu; yalnizca
+     "farkli kategoriler karsilastirilabilir ama rapor zayiflar" diyen bir
+     ipucu vardi. Bir tablet ile bir telefonu karsilastiran rapor anlamli
+     degil: `buildCompareVerdictPrompt` iki urunu ayni faktor matrisinde
+     puanliyor ve o matris kategoriye ozgu. */
+  function cmpKilitliKategori() {
+    for (var i = 0; i < _cmpSecili.length; i += 1) {
+      var c = String(_cmpSecili[i].category || '').trim();
+      if (c) return c;
+    }
+    return '';
+  }
+  function cmpKategoriUyar(cat) {
+    var kilit = cmpKilitliKategori();
+    toast('Karşılaştırma tek kategoriden yapılır. Havuz “' + (kilit || '—')
+      + '” kategorisinde; “' + (cat || '—') + '” eklenemez.', 'w');
+  }
+
   function cmpSeciliSerit() {
     if (!_cmpSecili.length) {
-      return '<p class="an-hint">En az 2 ürün seç. Aynı kategoriden seçmek en anlamlı '
-        + 'karşılaştırmayı verir; farklı kategoriler karşılaştırılabilir ama rapor zayıflar.</p>';
+      return '<p class="an-hint">En az 2 ürün seç. <b>Tek kategori kuralı:</b> ilk seçtiğin '
+        + 'ürün kategoriyi kilitler — tablet ile telefon karşılaştırılamaz (sitedeki kuralın aynısı).</p>';
     }
     var n = _cmpSecili.length;
+    var kilit = cmpKilitliKategori();
     return '<div class="an-chips">'
       + _cmpSecili.map(function (p, i) {
         return '<span class="an-chip">'
@@ -548,6 +577,10 @@
           + '<button onclick="analysesCmpCikar(' + i + ')" title="Çıkar">×</button></span>';
       }).join('')
       + '</div>'
+      + (kilit
+        ? '<p class="an-hint">Kategori kilitli: <b>' + esc(kilit) + '</b>. '
+          + 'Başka kategoriden ürün eklenemez — hepsini çıkarınca kilit açılır.</p>'
+        : '')
       + (n >= 2
         ? '<div class="an-go"><button class="btn btn-primary" onclick="analysesCmpBasla()">'
           + n + ' ürünü karşılaştır →</button>'
@@ -561,6 +594,7 @@
     if (!b) return;
     var secili = {};
     _cmpSecili.forEach(function (p) { secili[p.id] = true; });
+    var kilitliKat = cmpKilitliKategori();
     b.innerHTML = ''
       + '<div class="an-card">'
       + '<h3>1 · Karşılaştırılacak ürünler <em>(' + _cmpSecili.length + '/' + CMP_MAX + ')</em></h3>'
@@ -584,9 +618,12 @@
             + '</div></div>'
             + (var_
               ? '<button class="btn btn-ghost" disabled>Seçildi</button>'
-              : '<button class="btn btn-primary" onclick="analysesCmpEkle(' + i + ')"'
-                + (_cmpSecili.length >= CMP_MAX ? ' disabled title="En fazla ' + CMP_MAX + ' ürün"' : '')
-                + '>Ekle</button>')
+              : (kilitliKat && String(p.category || '') !== kilitliKat
+                ? '<button class="btn btn-ghost" disabled title="Havuz “' + esc(kilitliKat)
+                  + '” kategorisinde">Farklı kategori</button>'
+                : '<button class="btn btn-primary" onclick="analysesCmpEkle(' + i + ')"'
+                  + (_cmpSecili.length >= CMP_MAX ? ' disabled title="En fazla ' + CMP_MAX + ' ürün"' : '')
+                  + '>Ekle</button>'))
             + '</div>';
         }).join('') + '</div>'
         : (hits ? '<p class="an-empty">Sonuç yok.</p>' : ''))
@@ -614,6 +651,14 @@
     var hit = (window.__anCmpHits || [])[i];
     if (!hit || _cmpSecili.length >= CMP_MAX) return;
     if (_cmpSecili.some(function (p) { return p.id === hit.id; })) return;
+    // SON KAPI. Buton zaten kilitli kategoride devre disi ama arama sonucu
+    // eskimis olabilir (havuz bu arada degistiyse); abonelik akisindaki
+    // ayni desen.
+    var kilit = cmpKilitliKategori();
+    if (kilit && String(hit.category || '') !== kilit) {
+      cmpKategoriUyar(hit.category);
+      return;
+    }
     try {
       // TAM PB kaydi: Typesense dokumaninda specSections yok ve prompt'un
       // tasidigi en degerli baglam o (urun akisiyla ayni gerekce).
@@ -634,6 +679,20 @@
 
   async function analysesCmpBasla() {
     if (_cmpSecili.length < 2) return;
+    // Karisik kategori buraya kadar gelemez, ama gelirse rapor anlamsiz
+    // olurdu: faktor matrisi kategoriye ozgu.
+    var kilit = cmpKilitliKategori();
+    var karisik = _cmpSecili.filter(function (p) {
+      return String(p.category || '') && String(p.category || '') !== kilit;
+    });
+    if (karisik.length) {
+      toast('Karşılaştırma tek kategoriden yapılır: ' + karisik.map(function (p) {
+        return p.name;
+      }).join(', ') + ' farklı kategoride.', 'e');
+      return;
+    }
+    var cmpEngel = uretimKapisi('compare', { products: _cmpSecili });
+    if (cmpEngel) { toast(cmpEngel, 'e'); return; }
     var b = $('anKaynak');
     b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
       + '<p class="an-empty">Karşılaştırma quizi hazırlanıyor…</p></div>';
@@ -664,6 +723,9 @@
       + (yukleniyor ? '<p class="an-empty">Aranıyor…</p>' : '')
       + (hits && hits.length
         ? '<div class="an-grid">' + hits.map(function (p, i) {
+          // ZATEN YAYINDA MI? Uretim kapisi (uretimKapisi) nasil olsa
+          // reddedecek, ama bunu aramada gormek bir tikla ogrenmekten iyidir.
+          var mevcut = konuCakismasi('product:' + p.id, null, true);
           return ''
             + '<div class="an-row' + (p.imageUrl ? '' : ' noimg') + '">'
             + (p.imageUrl ? '<img src="' + esc(p.imageUrl) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '')
@@ -672,8 +734,11 @@
             + (p.brand ? '<span>' + esc(p.brand) + '</span>' : '')
             + (p.category ? '<span>' + esc(p.category) + '</span>' : '')
             + (p.techScore ? '<span>Qor AI <b>' + num(p.techScore) + '</b>/100</span>' : '')
+            + (mevcut ? '<span class="an-var">Yayında analizi var</span>' : '')
             + '</div></div>'
-            + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Seç</button>'
+            + (mevcut
+              ? '<button class="btn btn-ghost" onclick="analysesEdit(&quot;' + mevcut.id + '&quot;)">Mevcudu aç</button>'
+              : '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Seç</button>')
             + '</div>';
         }).join('') + '</div>'
         : (hits ? '<p class="an-empty">Sonuç yok.</p>' : '<p class="an-hint">Katalogda arama Typesense üzerinden yapılır — sitedeki aramanın aynısı.</p>'))
@@ -724,6 +789,8 @@
       if (bases.length < hepsi.length) {
         toast((hepsi.length - bases.length) + ' adres ürün değil, atlandı', 'i');
       }
+      var linkEngel = uretimKapisi('link', { bases: bases });
+      if (linkEngel) { renderLinkGiris(linkEngel); return; }
       var q = await QorAiRun.linkQuiz(bases, 'tr');
       if (!q.length) throw new Error('Quiz üretilemedi');
       // KATALOG ESLESMESI burada aranir: kayit kurulurken (kayitKur) async
@@ -950,6 +1017,8 @@
       renderAbonelikGiris('Servisler aynı türden olmalı (ör. hepsi video ya da hepsi müzik).');
       return;
     }
+    var subEngel = uretimKapisi('subscription', { names: names });
+    if (subEngel) { renderAbonelikGiris(subEngel); return; }
     var b = $('anKaynak');
     b.innerHTML = '<div class="an-card"><h3>1 · Quiz hazırlanıyor</h3>'
       + '<p class="an-empty">' + esc(names.join(' · ')) + '</p></div>';
@@ -994,6 +1063,8 @@
     var hit = (window.__anHits || [])[i];
     if (!hit) return;
     var b = $('anKaynak');
+    var engel = uretimKapisi('product', { product: hit });
+    if (engel) { toast(engel, 'e'); return; }
     b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
       + '<p class="an-empty">Ürün yükleniyor ve quiz hazırlanıyor…</p></div>';
     try {
@@ -1010,6 +1081,27 @@
         + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Tekrar dene</button> '
         + '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Başka ürün</button></div>';
     }
+  }
+
+  /**
+   * URETIME BASLAMADAN ONCEKI MUKERRER KAPISI.
+   *
+   * Yayin aninda da bir kapi var (kaydet -> konuCakismasi) ama orada is
+   * bitmis oluyor: iki dilde arastirma + rapor + meta, yani onlarca AI
+   * cagrisi ve dakikalar. Ayni konunun ikinci analizini URETMEDEN once
+   * soylemek hem kotayi hem zamani koruyor.
+   *
+   * Taslak da uyarir ama ENGELLEMEZ: yarim kalmis bir taslagi yeniden
+   * uretmek mesru bir is. Engel yalnizca YAYINDA olan icin.
+   */
+  function uretimKapisi(kind, kaynak) {
+    var anahtar = runKonuAnahtari(kind, kaynak);
+    var yayinda = konuCakismasi(anahtar, null, true);
+    if (yayinda) {
+      return 'Bu konunun yayında analizi zaten var: “' + (subjectOf(yayinda) || yayinda.slug)
+        + '”. Yeniden üretmek yerine mevcut kaydı düzenle ya da önce onu yayından kaldır.';
+    }
+    return '';
   }
 
   // Uretim durumu. `lang` HANGI DILDE oldugumuz; iki dil bagimsiz kosuyor,
@@ -1176,6 +1268,29 @@
     if (_sureTimer) { clearInterval(_sureTimer); _sureTimer = null; }
   }
 
+  // AI KOTASI DOLUNCA BEKLIYORUZ, ASILMIYORUZ. Proxy kullanici basina
+  // 60 istek / 5 dk veriyor (pb_hooks/gemini.pb.js) ve 12 urunluk bir
+  // karsilastirma iki dilde bu tavani zorluyor. Motor artik bekleyip tekrar
+  // deniyor; kullanici ekranda bunu GORMEZSE "sistem cokmus" saniyor.
+  var _kotaBeklemeSn = 0;
+  var _kotaTimer = null;
+  function kotaBildir(saniye) {
+    _kotaBeklemeSn = Math.max(1, Number(saniye) || 0);
+    var el = $('anKota');
+    if (el) el.textContent = 'AI kotası doldu — ' + _kotaBeklemeSn + ' sn bekleniyor…';
+    if (_kotaTimer) clearInterval(_kotaTimer);
+    _kotaTimer = setInterval(function () {
+      _kotaBeklemeSn -= 1;
+      var e2 = $('anKota');
+      if (_kotaBeklemeSn <= 0) {
+        clearInterval(_kotaTimer); _kotaTimer = null;
+        if (e2) e2.textContent = '';
+        return;
+      }
+      if (e2) e2.textContent = 'AI kotası doldu — ' + _kotaBeklemeSn + ' sn bekleniyor…';
+    }, 1000);
+  }
+
   function renderProgress(durum, hata) {
     var b = $('anNewBody');
     if (!b) return;
@@ -1208,6 +1323,7 @@
           + '<button class="btn btn-primary" onclick="analysesRunReport()">Tekrar dene</button> '
           + '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
         : '<p class="an-hint">Araştırma adımı başarısız olursa rapor yine üretilir — sadece "kanıt zayıf" olarak işaretlenir.</p>')
+      + '<p id="anKota" class="an-kota"></p>'
       + '</div>';
     if (hata) sureDurdur();
     else if ($('anSure')) { if (!_sureTimer) sureBaslat(); }
@@ -1781,6 +1897,70 @@
     return carp;
   }
 
+  /* ── AYNI KONU IKINCI KEZ YAYINLANMAZ ────────────────────────────────────
+     Slug catismasi kontrolu VARDI ama yalnizca ADRESE bakiyordu. Ayni urun
+     iki farkli baslikla ("iPhone 16 Analizi" / "iPhone 16 İncelemesi") iki
+     ayri slug uretir, catisma denetimine takilmaz ve sitede AYNI URUN icin
+     iki analiz sayfasi yayina girer. Google icin bu iki ince, birbirinin
+     kopyasi sayfa demek; okuyucu icin hangisinin guncel oldugu belirsiz.
+
+     Kimlik ADRESTEN degil KONUDAN turetilir:
+       urun         -> katalog kaydinin id'si (en guvenilir)
+       digerleri    -> normalize edilmis, siralanmis konu adlari
+     Karsilastirmada sira onemsiz: "A vs B" ile "B vs A" AYNI analizdir. */
+  function konuNormal(x) {
+    return String(x || '')
+      .toLocaleLowerCase('tr')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+  function adlarAnahtari(kind, names) {
+    var liste = (names || []).map(konuNormal).filter(Boolean).sort();
+    return liste.length ? kind + ':' + liste.join('|') : '';
+  }
+  /** Yayin kaydindan konu anahtari. */
+  function kayitKonuAnahtari(rec) {
+    if (!rec) return '';
+    var kind = String(rec.kind || 'product');
+    if (kind === 'product') {
+      if (rec.productId) return 'product:' + rec.productId;
+      return adlarAnahtari('product', [rec.productName]);
+    }
+    var adlar = Array.isArray(rec.subjectNames) && rec.subjectNames.length
+      ? rec.subjectNames
+      : [rec.productName];
+    return adlarAnahtari(kind, adlar);
+  }
+  /** Uretim akisindan (henuz kayit yokken) konu anahtari. */
+  function runKonuAnahtari(kind, kaynak) {
+    if (kind === 'product') {
+      var p = kaynak.product || {};
+      return p.id ? 'product:' + p.id : adlarAnahtari('product', [p.name]);
+    }
+    if (kind === 'compare') {
+      return adlarAnahtari('compare', (kaynak.products || []).map(function (x) { return x.name; }));
+    }
+    if (kind === 'subscription') return adlarAnahtari('subscription', kaynak.names || []);
+    return adlarAnahtari('link', (kaynak.bases || []).map(function (b) { return b.title; }));
+  }
+  /**
+   * Ayni konuya ait BASKA kayit. `yalnizYayinda` true ise taslaklar sayilmaz.
+   * `_items` tum kayitlari tasiyor (loadAnalysesAdmin -> getFullList), yani
+   * ek bir PB istegi gerekmiyor.
+   */
+  function konuCakismasi(anahtar, haricId, yalnizYayinda) {
+    if (!anahtar) return null;
+    for (var i = 0; i < _items.length; i += 1) {
+      var o = _items[i];
+      if (haricId && o.id === haricId) continue;
+      if (yalnizYayinda && o.status !== 'published') continue;
+      if (kayitKonuAnahtari(o) === anahtar) return o;
+    }
+    return null;
+  }
+
   function slugCakismasi(a) {
     // Ayni slug ikinci bir kayitta olursa /analiz/<slug> hangisini cizecegi
     // BELIRSIZ olur ve on-render iki kaydi ayni dosyaya yazip birini ezer.
@@ -1877,6 +2057,15 @@
     }
     if (durum === 'published') {
       if (!reportOf(a, 'tr')) { toast('Rapor verisi olmayan analiz yayınlanamaz', 'e'); return false; }
+      // MUKERRER YAYIN KAPISI. Slug catismasi yalnizca adrese bakiyor; ayni
+      // urun farkli bir baslikla farkli bir slug uretip bu denetimi
+      // gecebiliyordu. Kimlik KONUDAN turetiliyor (bkz. konuCakismasi).
+      var ayniKonu = konuCakismasi(kayitKonuAnahtari(a), a.id, true);
+      if (ayniKonu) {
+        toast('Bu konunun yayında analizi zaten var: “' + (subjectOf(ayniKonu) || ayniKonu.slug)
+          + '”. Önce onu yayından kaldır ya da bunu taslak bırak.', 'e');
+        return false;
+      }
       var carp = metaCakismasi(a);
       if (carp.length) {
         toast('Yinelenen meta: ' + carp[0] + ' — düzeltmeden yayınlanamaz', 'e');
@@ -1934,6 +2123,9 @@
   }
 
   window.loadAnalysesAdmin = loadAnalysesAdmin;
+  // Motor kota beklemesine girdiginde ilerleme panelinde goster.
+  if (window.QorAiRun && QorAiRun.setThrottleNotice) QorAiRun.setThrottleNotice(kotaBildir);
+
   window.analysesNew = analysesNew;
   window.analysesUretTur = analysesUretTur;
   window.analysesProdSearch = analysesProdSearch;

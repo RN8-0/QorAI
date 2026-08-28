@@ -296,7 +296,19 @@ export default function AiReportView({
           <Gauge value={score} size={104} stroke={9} color={scoreColor(score)} fontSize={30} />
           <div className="la-hero-main">
             <div className="la-hero-band" style={{ color: scoreColor(score) }}>{bandLabel(score, L)}</div>
-            <div className="la-score-sub">{L('Personalized match score', 'Kişiselleştirilmiş uyum skoru')}</div>
+            <div className="la-score-sub">
+              {L('Personalized match score', 'Kişiselleştirilmiş uyum skoru')}
+              {/* SEGMENT KUNYESI. Okuyucu "bu telefon nasil iPhone ile yakin
+                  puan aldi" diye soruyordu; puanin neyi olctugu artik
+                  puanin YANINDA yaziyor (bkz. reportAdapters -> scoreBasis). */}
+              {data.segmentLabel ? <span className="la-seg">{data.segmentLabel}</span> : null}
+            </div>
+            {data.scoreBasis && (
+              <details className="la-score-basis">
+                <summary>{L('How is this score calculated?', 'Bu puan nasıl hesaplanıyor?')}</summary>
+                <p>{data.scoreBasis}</p>
+              </details>
+            )}
             {headline && <p className="la-hero-line">{headline}</p>}
             <div className="la-hero-badges">
               <DecisionBadge score={data.decision === 'buy' ? 80 : data.decision === 'skip' ? 30 : data.decision === 'consider' ? 60 : score} L={L} />

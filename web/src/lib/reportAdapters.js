@@ -9,6 +9,8 @@
 
 // Urun kodu ekrana cikmaz — temizlik TEK KAYNAK (admin/js/qor_ai_prompts.js).
 import { cleanProductName } from './productNames.js';
+// Puan kalibrasyonu TEK KAYNAK (admin/js/qor_ai_prompts.js).
+import { calibratedScore, scoreBasisNote, segmentTier } from './aiPrompts.js';
 const int = (v) => {
   const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? Math.round(n) : 0;
@@ -46,10 +48,26 @@ export function forecastToOutlook(f = {}) {
 // Bir ürün gövdesi (ürün raporundaki `product`, karşılaştırmadaki bir products[]
 // girdisi) + topluluk bloğu → ortak şekil.
 function bodyToUnified(p = {}, community = {}, extra = {}) {
-  const score = int(p.matchScore || p.overallScore || p.score);
+  // HAM AI PUANI. Depoda duran deger bu; asagida kalibre ediliyor.
+  const rawScore = int(p.matchScore || p.overallScore || p.score);
+  // Katalog puani: kayittan (extra.techScore) ya da raporun icinden.
+  const techScore = int(extra.techScore ?? p.techScore ?? 0);
+  // GOSTERILEN PUAN = 0.60 x techScore + 0.40 x ham AI puani.
+  // Olculdu 2026-08-28: ham puan 14 raporun hepsinde 75-95 arasina sikismis
+  // ve yer yer TERSINE donmustu (tech 66 -> 92, tech 89 -> 75). Katalog puani
+  // mutlak donanim seviyesini olcuyor ve iyi dagilmis; bilesim hem siralamayi
+  // duzeltiyor hem araligi aciyor. Gerekce ve olcum: qor_ai_prompts.js.
+  const score = calibratedScore(rawScore, techScore) ?? rawScore;
   const c = community && typeof community === 'object' ? community : {};
+  const lang = extra.lang || 'tr';
   return {
     enhancedScore: score,
+    // Puanin NE OLDUGUNU sayfada soylemek icin — okuyucu "bu telefon nasil
+    // iPhone ile yakin puan aldi" diye sormasin.
+    rawScore,
+    techScore,
+    segmentLabel: (segmentTier(techScore, lang) || {}).label || '',
+    scoreBasis: scoreBasisNote(techScore, lang),
     decision: decisionOf(score, p.decision),
     headline: String(p.headline || '').trim() || firstSentence(p.matchComment),
     researched: !!extra.researched,
@@ -110,6 +128,9 @@ export function productReportToUnified(data = {}, extra = {}) {
   const p = data.product || {};
   return bodyToUnified(p, data.community, {
     ...extra,
+    // Katalog puani rapora uretim aninda yaziliyor; yayinlanmis ESKI
+    // kayitlarda yok, orada `analysisUnified` kaydin techScore'unu geciyor.
+    techScore: extra.techScore ?? data.techScore,
     title: extra.title || data.name,
     researched: extra.researched ?? !!data.researched,
     priceForecast: data.priceForecast,
@@ -120,6 +141,7 @@ export function productReportToUnified(data = {}, extra = {}) {
 export function compareProductToUnified(entry = {}, extra = {}) {
   return bodyToUnified(entry, entry.community, {
     ...extra,
+    techScore: extra.techScore ?? entry.techScore,
     url: extra.url || entry.url,
     priceForecast: entry.priceForecast,
   });

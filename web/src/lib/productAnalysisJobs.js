@@ -223,6 +223,10 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       // Urun kodu rapor METNINDEN de duser: model urun adini cumlelerin
       // icine yaziyor. Yayinlanan analizlerde ayni kapi analysisRecord'da.
       data = cleanProductCodes(data);
+      // KATALOG PUANI RAPORA YAZILIR. Gosterilen puan okuma aninda
+      // 0.60 x techScore + 0.40 x uyum olarak hesaplaniyor; rapor kendi
+      // basina (gecmis kaydinda, paylasilan analizde) da dogru cizilebilsin.
+      data.techScore = Number(product?.techScore) || 0;
       setJob({ data, phase: 'result', stage: null });
       try { await saveProductAnalysisHistory({ product, analysis: txt }); } catch { /* geçmiş yazımı analizi bozmasın */ }
     } catch {

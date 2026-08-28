@@ -78,11 +78,6 @@ export default function CompareReviews({ productIds, productNames }) {
           <span className="pd-rev-avg"><Stars value={Math.round(avg)} /> {avg.toFixed(1)} · {reviews.length}</span>
         )}
       </div>
-      <p className="cmp-reviews-note">
-        {L('Reviews are shared for this exact comparison — across web and the app.',
-           'Yorumlar tam olarak bu karşılaştırma için ortak — web ve uygulamada görünür.')}
-      </p>
-
       <form className="pd-rev-form" onSubmit={submit}>
         {user ? (
           <>
@@ -105,9 +100,8 @@ export default function CompareReviews({ productIds, productNames }) {
         )}
       </form>
 
-      {reviews.length === 0 ? (
-        <div className="pd-note">{L('No reviews yet — be the first to review this comparison.', 'Henüz yorum yok — bu karşılaştırmayı ilk değerlendiren sen ol.')}</div>
-      ) : (
+      {/* Bos durumda metin yok — bkz. Reviews.jsx */}
+      {reviews.length === 0 ? null : (
         <div className="pd-rev-list">
           {reviews.map((r) => {
             const mine = user && r.likedBy.includes(user.id) ? 'like' : user && r.dislikedBy.includes(user.id) ? 'dislike' : '';

@@ -293,9 +293,9 @@ export default function Reviews({ productId, productName, lang, headerSlot = nul
         )}
       </form>
 
-      {reviews.length === 0 ? (
-        <div className="pd-note">{t('pd.revNone')}</div>
-      ) : (
+      {/* Bos durumda hicbir sey cizilmez: yorum varsa listelenir, yoksa
+          bolum sadece form ile biter (davet metni istenmedi). */}
+      {reviews.length === 0 ? null : (
         <>
           <div className="pd-rev-sort">
             <button className={sortMode === 'new' ? 'on' : ''} onClick={() => setSortMode('new')}>{t('pd.revSortNew')}</button>

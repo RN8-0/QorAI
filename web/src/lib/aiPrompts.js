@@ -77,6 +77,14 @@ export const resolveCatalogAlternatives = API.resolveCatalogAlternatives;
 // Rapor GOVDESINDEKI urun kodu temizligi (baslik temizligi analysisRecord'da).
 export const cleanProductCodes = API.cleanProductCodes;
 
+// ── puan kalibrasyonu + segment kunyesi ───────────────────────────────────
+// Gosterilen puan OKUMA ANINDA hesaplanir (bkz. reportAdapters). Depoda ham
+// AI puani durur; boylece daha once yayinlanmis analizler de yeniden
+// uretilmeden duzelir ve agirliklar tek yerden degisir.
+export const calibratedScore = API.calibratedScore;
+export const segmentTier = API.segmentTier;
+export const scoreBasisNote = API.scoreBasisNote;
+
 // ── rapor promptlari ──────────────────────────────────────────────────────
 export const buildDeepPrompt = API.buildDeepPrompt;
 export const buildAltPrompt = API.buildAltPrompt;

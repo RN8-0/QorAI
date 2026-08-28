@@ -784,6 +784,114 @@ function cleanProductCodes(value, derinlik = 0) {
   return out;
 }
 
+/* ── PUAN KALIBRASYONU + SEGMENT KUNYESI ───────────────────────────────────
+   OLCULDU 2026-08-28, canli PB'deki 14 urun analizi (katalog techScore -> AI
+   matchScore):
+
+     Apple iPhone 17 Pro (512 GB)      100 -> 92
+     Samsung Galaxy S23 Ultra (1 TB)    66 -> 92   <-- ayni puan
+     Samsung Galaxy A17 5G              71 -> 88
+     Samsung Galaxy S24 Ultra (512)     81 -> 88   <-- ayni puan
+     Honor Robot Phone                  89 -> 75
+     Samsung Galaxy A07 5G              46 -> 75   <-- ayni puan
+
+   Iki sorun birden: (1) AI puani pratikte 75-95 bandina SIKISIYOR, yani
+   aralarinda daglar olan cihazlar birkac puan farkla cikiyor; (2) siralama
+   yer yer TERSINE donuyor (tech 66 -> 92, tech 89 -> 75). Okuyucunun
+   "bu telefon nasil iPhone ile ayni puani aldi" demesi hakli.
+
+   Kok neden: `matchScore` bir UYGUNLUK puani (quiz cevaplarina gore) ama
+   sayfada MUTLAK bir kalite puani gibi okunuyor. Ikisi ayri sey ve ikisi de
+   gerekli. Cozum, gosterilen puani ikisinin AGIRLIKLI BILESIMI yapmak:
+
+     gosterilen = 0.60 x techScore  +  0.40 x matchScore
+
+   `techScore` katalogun mutlak donanim puani (segment bagimsiz, iyi
+   dagilmis: A17 45 / RTX 5090 98), `matchScore` ise kisiye uygunluk. Ayni
+   veriyle sonuc: 97, 97, 84, 83, 78, 76, 68, 58 — siralama dogru ve aralik
+   genis.
+
+   KALIBRASYON OKUMA ANINDA YAPILIR, uretim aninda degil. Boylece daha once
+   yayinlanmis kayitlar da yeniden uretilmeden duzelir; agirliklar
+   degistiginde tek yerden degisir. Depoda ham AI puani durur (iki kez
+   kalibre etme riski yok). */
+const SCORE_TECH_WEIGHT = 0.60;
+const SCORE_AI_WEIGHT = 0.40;
+
+/**
+ * Gosterilecek puan. Katalog puani YOKSA (abonelik, link analizi) AI puani
+ * oldugu gibi doner — orada mutlak bir donanim olcusu yok.
+ */
+function calibratedScore(aiScore, techScore) {
+  const ai = Number(aiScore);
+  if (!Number.isFinite(ai) || ai <= 0) return null;
+  const tech = Number(techScore);
+  if (!Number.isFinite(tech) || tech <= 0) return Math.max(0, Math.min(100, Math.round(ai)));
+  return Math.max(1, Math.min(100, Math.round(SCORE_TECH_WEIGHT * tech + SCORE_AI_WEIGHT * ai)));
+}
+
+// Segment esikleri katalog techScore'una gore. Sinirlar katalogun gercek
+// dagilimindan secildi (2026-08-28: A07 5G 46, MacBook Neo 61, A17 5G 71,
+// S24 Ultra 81, iPhone 17 90, RTX 5090 98).
+const SEGMENT_TIERS = [
+  { key: 'flagship', min: 88, tr: 'Amiral gemisi sınıfı', en: 'Flagship class' },
+  { key: 'upper', min: 75, tr: 'Üst orta segment', en: 'Upper-mid segment' },
+  { key: 'mid', min: 58, tr: 'Orta segment', en: 'Mid segment' },
+  { key: 'entry', min: 0, tr: 'Giriş segmenti', en: 'Entry segment' },
+];
+
+function segmentTier(techScore, lang) {
+  const t = Number(techScore);
+  if (!Number.isFinite(t) || t <= 0) return null;
+  const row = SEGMENT_TIERS.find((x) => t >= x.min) || SEGMENT_TIERS[SEGMENT_TIERS.length - 1];
+  return { key: row.key, label: String(lang || 'en').slice(0, 2).toLowerCase() === 'tr' ? row.tr : row.en };
+}
+
+/**
+ * Puanin NE OLDUGUNU soyleyen tek cumle. Okuyucu "bu telefon nasil iPhone
+ * ile yakin puan aldi" diye sormasin diye sayfada puanin YANINDA duruyor.
+ */
+function scoreBasisNote(techScore, lang) {
+  const tr = String(lang || 'en').slice(0, 2).toLowerCase() === 'tr';
+  const tier = segmentTier(techScore, lang);
+  if (!tier) {
+    return tr
+      ? 'Bu puan, verdiğin quiz cevaplarıyla uyumu ölçer — mutlak bir kalite notu değildir.'
+      : 'This score measures the fit with your quiz answers — it is not an absolute quality grade.';
+  }
+  const pct = `${Math.round(SCORE_TECH_WEIGHT * 100)}/${Math.round(SCORE_AI_WEIGHT * 100)}`;
+  return tr
+    // Ek cekimi YOK: "orta segmentnda" gibi bozuk birlesimler cikiyordu.
+    // Segment iki nokta ustuste ile ayri bir cumlecik olarak veriliyor.
+    ? `Bu puan iki şeyi birleştirir: ürünün mutlak donanım seviyesi (Qor AI Teknik Puanı ${Math.round(Number(techScore))}/100) ve quiz cevaplarınla uyumu — ${pct} ağırlıkla. Ürünün segmenti: ${tier.label}. Kendi segmentinde çok iyi olan bir cihaz bile bir üst segmentin puanına çıkmaz.`
+    : `This score combines two things: the product's absolute hardware level (Qor AI Tech Score ${Math.round(Number(techScore))}/100) and how well it fits your quiz answers — weighted ${pct}. Product segment: ${tier.label}. A device that is excellent for its own class still will not reach the score of a higher tier.`;
+}
+
+/**
+ * Modele yazilan puanlama kurali. Kalibrasyon sayiyi ZATEN duzeltiyor ama
+ * modelin ham puani da anlamli olmali: 75-95 bandina sikisan bir girdi,
+ * bilesimin uygunluk yarisini ise yaramaz hale getirir.
+ */
+function scoreScaleGate(product) {
+  const tech = Number(product?.techScore) || 0;
+  const tier = segmentTier(tech, 'en');
+  return (
+    'SCORING SCALE — USE THE WHOLE RANGE. matchScore is how well THIS product fits THIS buyer, '
+    + 'on this scale: 90-100 = a rare, near-perfect fit; 75-89 = strong fit with minor compromises; '
+    + '60-74 = workable but with real trade-offs; 40-59 = poor fit, several needs unmet; below 40 = wrong product. '
+    + 'Measured failure to avoid: across 14 published reports every score landed between 75 and 95, so devices '
+    + 'that differ enormously came out a few points apart. If your first instinct is a number in the 80s, justify '
+    + 'it against the scale above or move it. '
+    + (tech
+      ? `Absolute hardware context: this product scores ${tech}/100 on the Qor AI Tech Score and sits in the ${tier ? tier.label.toLowerCase() : 'unknown tier'}. `
+      + 'Do NOT inflate the fit score to compensate for a modest tier, and do NOT deflate it because the tier is high — '
+      + 'score the FIT honestly; the published number already accounts for the hardware level separately. '
+      : '')
+    + 'NEVER WRITE THE SCORE AS A NUMBER IN PROSE. Do not put "88%", "scores 88/100" or any figure into headline, matchComment, analysis, overallVerdict or any other text field. The published number is computed separately (it combines this fit score with the catalog hardware score), so a number written into the prose contradicts the number the reader sees next to it — that exact contradiction was shipped and had to be patched at read time. Describe the verdict in words instead. '
+    + 'Also return "scoreReasoning": one sentence naming the two or three answers that moved the score most.'
+  );
+}
+
 function languageGate(lang) {
   return (
     `LANGUAGE HARD GATE: Every user-facing sentence, label, list item, source description, button-like value, and explanation must be fully written in ${langName(lang)}. ` +
@@ -1073,6 +1181,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
     `- ${segmentGate(p)}\n` +
+    `- ${scoreScaleGate(p)}\n` +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +
@@ -1286,6 +1395,7 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
         + 'FAQ questions must be comparison questions ("which one has the better camera", "is X worth the '
         + 'extra over Y"), never single-product questions.\n'
       : '') +
+    '- NEVER PUT A SCORE NUMBER IN title, lead, metaTitle OR metaDescription ("%88 skorla", "scores 88/100"). The published score is computed from the report separately, so a figure baked into the title goes stale the moment the scoring changes — this already happened and had to be rewritten at read time. Say the verdict in words.\n' +
     '- title: the on-page H1. Max 70 characters. Must name the subject and say what the page decides, not just what it is. Never a bare product name.\n' +
     '- lead: 1-2 sentences, max 200 characters, the answer a reader came for. No marketing wording, no "in this article".\n' +
     '- metaTitle: max 60 characters INCLUDING spaces. Different wording from `title` — not a truncation of it.\n' +
@@ -1323,6 +1433,9 @@ root.QorAiPrompts = {
   pickCatalogMatch, resolveCatalogAlternatives,
   // rapor metninden urun kodu temizligi
   cleanProductCodes,
+  // puan kalibrasyonu + segment kunyesi
+  calibratedScore, segmentTier, scoreBasisNote, scoreScaleGate,
+  SCORE_TECH_WEIGHT, SCORE_AI_WEIGHT,
   // rapor promptlari
   buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt,
   buildForumPrompt, buildProductResearchPrompt, buildCompareResearchPrompt,

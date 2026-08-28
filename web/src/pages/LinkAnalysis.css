@@ -322,6 +322,41 @@
 .la-score-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
 .la-score-band { font-size: 20px; font-weight: 850; }
 .la-score-sub { color: var(--text2); font-size: 13px; font-weight: 600; margin-top: 2px; }
+/* SEGMENT KUNYESI + PUANIN GEREKCESI.
+   Okuyucunun sorusu: "bu telefon nasil iPhone ile yakin puan aldi". Puan artik
+   0.60 x katalog teknik puani + 0.40 x uyum bilesimi (bkz. reportAdapters) ve
+   segment etiketi puanin yaninda duruyor; ayrinti katlanmis satirda. */
+.la-seg {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  vertical-align: 1px;
+}
+.la-score-basis { margin-top: 8px; max-width: 62ch; }
+.la-score-basis > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  list-style: none;
+}
+.la-score-basis > summary::-webkit-details-marker { display: none; }
+.la-score-basis > summary::before { content: '▸ '; }
+.la-score-basis[open] > summary::before { content: '▾ '; }
+.la-score-basis > summary:hover { color: var(--text); }
+.la-score-basis p {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
 .la-score-site { color: var(--text3); font-size: 12px; font-weight: 700; margin-top: 4px; }
 .la-store-ctas {
   margin-left: auto;

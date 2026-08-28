@@ -26,10 +26,18 @@ const ICONS = {
       <rect x="2" y="5" width="20" height="14" rx="2.5" /><path d="M2 10h20" />
     </svg>
   ),
+  // Analizler: cubuk grafik + taban cizgisi. Kart/dikdortgen govde YOK —
+  // abonelik ikonu zaten bir kart ve 22 px'te ikisi birbirine karisiyordu.
+  analyses: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 20h16" /><path d="M7.5 20v-5.5M12 20V6M16.5 20v-8.5" />
+    </svg>
+  ),
 };
 
 const ITEMS = [
   { to: '/', key: 'nav.home', end: true, icon: ICONS.home },
+  { to: '/analiz', key: 'nav.analyses', icon: ICONS.analyses },
   { to: '/link-analysis', key: 'nav.linkAnalysis', icon: ICONS.link },
   { to: '/subscriptions', key: 'nav.subscriptions', icon: ICONS.subs },
 ];
