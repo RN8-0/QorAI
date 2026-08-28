@@ -192,23 +192,77 @@ async function loadProduct(id) {
   return pb().collection('products').getOne(id, { $autoCancel: false });
 }
 
-// Rapordaki "akilli alternatifler" blogu icin ayni kategoriden en yuksek
-// puanli urunler. Site de analize AYNI baglami veriyor (ProductDetail'deki
-// `similar`); vermezsek model katalog disi urun uyduruyor.
+// Rapordaki "akilli alternatifler" blogunun ADAY HAVUZU.
+//
+// ONCEDEN: ayni kategoriden `techScore:desc` ilk 8 urun. Olculdu 2026-08-28
+// (`category:=smartphones`): ilk dokuz sonucun HEPSI 100 puan ve 1500-5000
+// USD. Yani 286 USD'lik Galaxy A07 5G analiz edilirken de modele ayni dokuz
+// amiral gemisi veriliyordu — kullanicinin bildirdigi "hep pahali cihaz
+// oneriyor" hatasinin kaynagi prompt degil BU SORGUYDU.
+//
+// ARTIK: fiyat + puan bandi (P.peerFilterExpr) ve hedefe YAKINLIGA gore
+// siralama (P.rankPeerCandidates). Bant kurali site ile ORTAK
+// (admin/js/qor_ai_prompts.js), yoksa admin'de yayinlanan analiz ile sitede
+// canli kosan analiz farkli alternatifler uretirdi.
 async function similarProducts(product, limit) {
   var cat = String((product && product.category) || '').trim();
   if (!cat) return [];
-  try {
+  var n = limit || 8;
+  async function cek(wide) {
+    var filter = P.peerFilterExpr(product, wide);
+    if (!filter) return [];
     var r = await window.TsClient.search('*', {
-      perPage: (limit || 8) + 1,
-      filterBy: 'category:=' + JSON.stringify(cat),
+      // Havuz genis: bandi Typesense uygular, siralamayi (hedefe yakinlik,
+      // varyant ve marka tekrarinin kirpilmasi) JS yapar.
+      perPage: 40,
+      filterBy: filter,
       sortBy: 'techScore:desc',
       includeFields: LEAN,
     });
-    return (r.hits || []).map(function (h) { return h.document; })
-      .filter(function (d) { return d.id !== product.id; })
-      .slice(0, limit || 8);
+    return (r.hits || []).map(function (h) { return h.document; });
+  }
+  // HAVUZ LEAN, SECILENLER ZENGIN. `_raw` (kayit basina onlarca KB) 40
+  // dokumanlik havuz icin cekilemez; secilen adaylar icin ISE SART, cunku
+  // `cleanProductForPrompt` spec satirlarini oradan okuyor ve spec'siz aday
+  // modelin "keySpecs"i hafizadan uydurmasi demek.
+  async function zenginlestir(list) {
+    var ids = list.map(function (d) { return d.id; }).filter(Boolean);
+    if (!ids.length) return list;
+    var r = await window.TsClient.search('*', {
+      perPage: ids.length,
+      // TERS TIRNAK, cift tirnak DEGIL. Olculdu 2026-08-28: `id:["<id>"]`
+      // canli indekste 0 sonuc donduruyor, `id:[`<id>`]` dogru calisiyor.
+      // (`category:="..."` ise cift tirnakla sorunsuz — kural alana gore.)
+      filterBy: 'id:[' + ids.map(function (id) { return '`' + String(id).replace(/`/g, '') + '`'; }).join(',') + ']',
+      includeFields: 'id,_raw',
+    });
+    var ham = {};
+    (r.hits || []).forEach(function (h) {
+      var d = h.document || {};
+      if (!d.id || !d._raw) return;
+      try { ham[d.id] = JSON.parse(d._raw); } catch (_) { /* bozuk kayit atlanir */ }
+    });
+    return list.map(function (d) {
+      var full = ham[d.id];
+      // Indekslenmis alanlar KAZANIR: `_raw` son tam upsert'te donmus olabilir.
+      return full ? Object.assign({}, full, d) : d;
+    });
+  }
+
+  try {
+    var havuz = await cek(false);
+    // Dar bant 3 adaydan az verdiyse (nis kategori, fiyati bilinmeyen urun)
+    // genis bantla tamamla.
+    if (havuz.length < 3) havuz = havuz.concat(await cek(true));
+    var secilen = P.rankPeerCandidates(product, havuz, n);
+    try { return await zenginlestir(secilen); } catch (_) { return secilen; }
   } catch (_) { return []; }
+}
+
+// AI'in adini verdigi alternatifi katalogta arayan geri cagirim. Ad gercekten
+// katalogdaysa kartin gorseli ve `/product/<slug>` adresi oradan gelir.
+function katalogAra(ad) {
+  return searchProducts(ad, 8);
 }
 
 // ── akis ───────────────────────────────────────────────────────────────────
@@ -455,6 +509,15 @@ async function runProductReport(o) {
     } catch (_) { /* ilk rapor duruyor */ }
   }
   if (!data || typeof data !== 'object' || !data.product) throw new Error('Rapor çözülemedi (' + lang + ')');
+  // Alternatif adi katalogda varsa gorsel + adres oradan yazilir; kayit
+  // YAYINLANIRKEN sabitlenir, boylece yayinlanan sayfa da tiklanabilir olur.
+  try {
+    data.alternatives = await P.resolveCatalogAlternatives(data.alternatives, {
+      search: katalogAra,
+      category: product && product.category,
+      lang: lang,
+    });
+  } catch (_) { /* eslestirme raporu bozmaz */ }
   return { data: data, researched: Boolean(research) };
 }
 
@@ -518,6 +581,17 @@ async function runLinkReport(o) {
   if (!data || typeof data !== 'object') throw new Error('Rapor çözülemedi (' + lang + ')');
   if (bases.length > 1 && !(Array.isArray(data.products) && data.products.length >= 2)) {
     throw new Error('Karşılaştırma raporu eksik (' + lang + ')');
+  }
+  // Tek linkli raporda alternatif listesi var; katalogda bulunani gorselli ve
+  // tiklanabilir yap. Karsilastirma raporunda boyle bir liste yok.
+  if (bases.length === 1) {
+    try {
+      data.alternatives = await P.resolveCatalogAlternatives(data.alternatives, {
+        search: katalogAra,
+        category: bases[0] && bases[0].category,
+        lang: lang,
+      });
+    } catch (_) { /* eslestirme raporu bozmaz */ }
   }
   return { data: data, researched: Boolean(research) };
 }

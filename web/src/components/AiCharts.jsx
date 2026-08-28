@@ -649,7 +649,17 @@ export function VerdictBanner({ score, decision, headline, confidence, L = (en) 
  * Yayginlik rozeti (`frequency`) bunun icin var: "yaygin" ile "ara sira" ayni
  * agirlikta okunmamali.
  */
-export function ForumFindings({ loved = [], chronic = [], L = (en) => en }) {
+/**
+ * Forum bulgulari — sevilenler + KRONIK sorunlar.
+ *
+ * `researched`: rapor gercekten canli arama yaptiysa true. BOS KRONIK LISTE
+ * SESSIZCE BOLUMU SILEMEZ — okuyucu "bu urunde kronik sorun yok" ile "bu
+ * bolum hic yok"u ayirt edemiyordu. Olculdu 2026-08-25: TR raporlarinda
+ * laptop/ekran karti kayitlarinin kronik listesi bostu (MacBook Neo 0, RTX
+ * 5090 0) ve sayfada hicbir iz kalmiyordu; ayni urunun EN raporunda 2-3 madde
+ * vardi. Arastirma kosmadiysa "sorun bulunamadi" DEMEYIZ — o bir iddia olurdu.
+ */
+export function ForumFindings({ loved = [], chronic = [], L = (en) => en, researched = false }) {
   const norm = (v) => (Array.isArray(v) ? v : [])
     .map((x) => (typeof x === 'string'
       ? { title: x, detail: '', frequency: '' }
@@ -658,6 +668,7 @@ export function ForumFindings({ loved = [], chronic = [], L = (en) => en }) {
   const iyi = norm(loved);
   const kotu = norm(chronic);
   if (!iyi.length && !kotu.length) return null;
+  const kronikBos = researched && !kotu.length;
   const siklik = {
     widespread: L('widespread', 'yaygın'),
     common: L('common', 'sık'),
@@ -676,6 +687,17 @@ export function ForumFindings({ loved = [], chronic = [], L = (en) => en }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {kronikBos && (
+        <div className="aic-forum-col chronic">
+          <h4>🩺 {L('Chronic problems', 'Kronik sorunlar')}</h4>
+          <p className="aic-forum-none">
+            {L(
+              'The ownership search turned up no recurring failure for this model — no defect pattern, bad batch or firmware regression that owners keep reporting.',
+              'Sahiplik taramasında bu modele ait tekrar eden bir arıza çıkmadı — sahiplerin sürekli bildirdiği bir kusur örüntüsü, hatalı parti ya da yazılım sorunu bulunamadı.',
+            )}
+          </p>
         </div>
       )}
       {kotu.length > 0 && (

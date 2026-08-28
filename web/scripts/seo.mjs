@@ -201,6 +201,7 @@ const ANALIZ_LISTE_TEXT = {
     kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
     quizTop: 'Answers this analysis was built on',
     loved: 'What owners keep praising', chronic: 'Chronic problems',
+    chronicNone: 'The ownership search turned up no recurring failure for this model — no defect pattern, bad batch or firmware regression that owners keep reporting.',
     freqWidespread: 'widespread', freqCommon: 'common', freqOccasional: 'occasional',
     services: 'Services compared', winner: 'Best match', decisive: 'What actually decides it',
     fit: 'Overall fit', featuresSec: 'Features and content', ux: 'Experience',
@@ -229,6 +230,7 @@ const ANALIZ_LISTE_TEXT = {
     kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
     quizTop: 'Bu analiz şu cevaplara göre yapıldı',
     loved: 'Sahiplerin en çok sevdiği', chronic: 'Kronik sorunlar',
+    chronicNone: 'Sahiplik taramasında bu modele ait tekrar eden bir arıza çıkmadı — sahiplerin sürekli bildirdiği bir kusur örüntüsü, hatalı parti ya da yazılım sorunu bulunamadı.',
     freqWidespread: 'yaygın', freqCommon: 'sık', freqOccasional: 'ara sıra',
     services: 'Karşılaştırılan servisler', winner: 'En iyi eşleşme', decisive: 'Kararı belirleyen farklar',
     fit: 'Genel uyum', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
@@ -263,6 +265,53 @@ function analizListeBody(analyses, lang) {
 function kindLabel(a, tx) {
   const k = analysisKind(a);
   return k === 'link' ? tx.kindLink : k === 'subscription' ? tx.kindSub : tx.kindProduct;
+}
+
+// -- /analiz LISTESININ TOHUMU --------------------------------------------
+//
+// SORUN (olculdu 2026-08-28): sayfanin on-render govdesi TAM listeyi tasiyor
+// ama React devralinca `.seo-prerender` gizleniyor ve liste PocketBase'den
+// YENIDEN cekilene kadar ekranda yalnizca "Yükleniyor…" duruyor. Canli PB
+// olcumu: TTFB 0,5-1,4 sn (22 kayit, 22 KB) — SPA acilisinin ustune binince
+// okuyucunun gordugu sey saniyelerce suren bir bekleme; istek takilirsa hic
+// bitmeyen bir bekleme.
+//
+// COZUM: ayni veri sayfanin head'ine JSON olarak da gomulur. React ilk karede
+// listeyi TOHUMDAN cizer, PB'yi arka planda dogrular. PB dususe gecerse
+// okuyucu yine listeyi gorur.
+//
+// SEKIL UYUMU SART: tohum, `analysisTitle` / `analysisLead` /
+// `analysisKindShort` / `analysisRenderLangs` fonksiyonlarinin okudugu ALAN
+// ADLARINI tasir, yani site tarafinda hicbir dallanma gerekmez. `report_*`
+// yalnizca VARLIK isaretidir (bos obje) — liste rapor govdesini okumuyor.
+//
+// OLCEK: yalnizca ILK SAYFA (24 kayit) gomulur; gerisi "Daha fazla" ile
+// PB'den gelir. Liste buyudukce tohum buyumez.
+const ANALIZ_TOHUM_LIMIT = 24;
+
+function analizTohumBlogu(analyses) {
+  const rows = analyses.filter((a) => a.slug).slice(0, ANALIZ_TOHUM_LIMIT).map((a) => {
+    const row = {
+      id: a.id,
+      slug: a.slug,
+      kind: analysisKind(a),
+      productName: cleanProductName(a.productName || '') || a.productName || '',
+      productBrand: a.productBrand || '',
+      productImage: /^https?:\/\//i.test(a.productImage || '') ? a.productImage : '',
+      techScore: a.techScore || 0,
+      title_tr: analysisTitle(a, 'tr'),
+      title_en: analysisTitle(a, 'en'),
+      lead_tr: truncate(analysisLead(a, 'tr'), 200),
+      lead_en: truncate(analysisLead(a, 'en'), 200),
+    };
+    // Hangi dilde GERCEKTEN rapor var: liste, raporu olmayan dile link
+    // vermiyor (bkz. analysisRenderLangs). Bos obje = "bu dilde rapor var".
+    analysisRenderLangs(a, SEO_DEFAULT_LOCALE).forEach((l) => { row[`report_${l}`] = {}; });
+    return row;
+  });
+  // JSON icinde gecen bir `</script>` dizisi bloku ERKEN kapatirdi.
+  const json = JSON.stringify(rows).replace(/<\/(script)/gi, '<\\/$1');
+  return `<script type="application/json" id="qor-analiz-seed">${json}</script>`;
 }
 
 // ── ON-RENDER GOVDESI ─────────────────────────────────────────────────────
@@ -395,12 +444,25 @@ function anUrunGovde(rapor, tx, quizGizle = false) {
     dropRestated(anDizi(c.lovedFeatures), gorulen),
     dropRestated(anDizi(c.chronicIssues), gorulen),
     tx,
+    // `researched` yayinlanan ESKI kayitlarda yok (admin saklamiyordu,
+    // 2026-08-25'te duzeltildi); topluluk blogunun kendi kanitindan turetilir.
+    Boolean(rapor.researched) || anDizi(c.sources).length > 0 || anDizi(c.verificationNotes).length > 0,
   );
 
   const alt = anDizi(rapor.alternatives).filter((x) => x && x.name);
   if (alt.length) {
     g += anH2(tx.alternatives);
-    g += `<ul style="margin:0 0 16px;padding-left:20px">${alt.map((x) => `<li style="line-height:1.7;margin:8px 0;color:#334155"><strong>${esc(x.name)}</strong>${x.difference ? ` — ${esc(x.difference)}` : ''}</li>`).join('')}</ul>`;
+    // Katalogda BULUNAN alternatif LINK olur. Adres `localizeBodyLinks` ile
+    // dil onekini alir (bkz. MULTILANG_LINK_RE), yani Turkce sayfadaki link
+    // /tr/product/... olur. Bulunamayan alternatif duz metin kalir: uydurma
+    // bir adrese baglamak, hic baglamamaktan kotudur.
+    g += `<ul style="margin:0 0 16px;padding-left:20px">${alt.map((x) => {
+      const ad = esc(cleanProductName(x.name) || x.name);
+      const bas = /^\/product\//.test(String(x.url || ''))
+        ? `<a href="${esc(x.url)}" style="color:#0f172a;font-weight:700;text-decoration:none">${ad}</a>`
+        : `<strong>${ad}</strong>`;
+      return `<li style="line-height:1.7;margin:8px 0;color:#334155">${bas}${x.difference ? ` — ${esc(x.difference)}` : ''}</li>`;
+    }).join('')}</ul>`;
   }
 
   g += anFiyat(rapor.priceForecast, tx);
@@ -454,6 +516,7 @@ function anLinkGovde(u, tx, quizGizle = false) {
     dropRestated(anDizi(u.lovedFeatures || u.praisePoints), gorulenU),
     dropRestated(anDizi(u.chronicIssues || u.complaintPoints), gorulenU),
     tx,
+    Boolean(u.researched) || anDizi(u.sources).length > 0 || anDizi(u.verificationNotes).length > 0,
   );
 
   g += anFiyat(u.priceOutlook, tx);
@@ -534,7 +597,10 @@ function anAbonelikGovde(r, tx, quizGizle = false) {
     if (anDizi(s.cons).length) { g += anH3(tx.cons); g += anListe(s.cons); }
     // Forum bulgulari: yukaridaki artı/eksi plan sayfasindan okunabilen
     // takaslar, bunlar aylar sonra cikan ve tekrar eden sorunlar.
-    g += anForumBulgulari(s.lovedFeatures, s.chronicIssues, tx);
+    g += anForumBulgulari(
+      s.lovedFeatures, s.chronicIssues, tx,
+      Boolean(r.researched) || anDizi(s.sources).length > 0,
+    );
   });
 
   const d = r.detailed || {};
@@ -551,7 +617,7 @@ function anAbonelikGovde(r, tx, quizGizle = false) {
 // Forum bulgulari — sahiplerin sevdigi + KRONIK sorunlar. Rapordaki artı/eksi
 // listesinden AYRI: orada urunun ozelliklerinden turetilen takaslar var,
 // burada spec sayfasindan okunamayan, sahiplik sonrasi tekrar eden sorunlar.
-function anForumBulgulari(loved, chronic, tx) {
+function anForumBulgulari(loved, chronic, tx, researched = false) {
   const dizi = (v) => (Array.isArray(v) ? v : [])
     .map((x) => (typeof x === 'string'
       ? { title: x, detail: '', frequency: '' }
@@ -560,6 +626,10 @@ function anForumBulgulari(loved, chronic, tx) {
   const iyi = dizi(loved);
   const kotu = dizi(chronic);
   if (!iyi.length && !kotu.length) return '';
+  // BOS KRONIK LISTE SESSIZCE BOLUMU SILEMEZ. Ayni kural sitede de var
+  // (web/src/components/AiCharts.jsx -> ForumFindings); ikisi ayrisirsa
+  // crawler'in gordugu HTML ile okuyucunun gordugu sayfa ayrisir.
+  const kronikBos = researched && !kotu.length;
   const siklik = { widespread: tx.freqWidespread, common: tx.freqCommon, occasional: tx.freqOccasional };
   const blok = (baslik, items, renk) => (items.length
     ? anH2(baslik) + `<ul style="margin:0 0 16px;padding-left:20px">${items.map((x) => {
@@ -570,7 +640,10 @@ function anForumBulgulari(loved, chronic, tx) {
         + (x.detail ? `<br><span style="color:#475569">${esc(x.detail)}</span>` : '') + `</li>`;
     }).join('')}</ul>`
     : '');
-  return blok(tx.loved, iyi, '#047857') + blok(tx.chronic, kotu, '#b91c1c');
+  const bosBlok = kronikBos
+    ? anH2(tx.chronic) + `<p style="line-height:1.75;margin:0 0 16px;color:#475569">${esc(tx.chronicNone)}</p>`
+    : '';
+  return blok(tx.loved, iyi, '#047857') + blok(tx.chronic, kotu, '#b91c1c') + bosBlok;
 }
 
 function anQuizKunye(quiz, tx) {
@@ -671,6 +744,10 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const products = Array.isArray(a.products) ? a.products.filter((p) => p && p.id && p.name) : [];
   const IMG_H = { s: 190, m: 290, l: 420 };
   const blocks = products.map((p, i) => {
+    // Urun kodu blog govdesinde de gorunmez. Olculdu 2026-08-28: dort blog
+    // sayfasi "Apple MacBook Neo (MHFE4TU/A)" ve "Galaxy Tab S11 ... (SM-X930)"
+    // basliklariyla yayindaydi. Ayni temizlik BlogPost.jsx'te de var.
+    const pAd = cleanProductName(p.name) || p.name;
     const slug = slugifyProduct(p.slug || p.name);
     const href = slug ? `/product/${slug}` : `/product/${p.id}`;
     const d1 = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
@@ -684,7 +761,7 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
     const layout = p.layout || 'split';
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
-    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(p.name)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a>` : '';
+    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(pAd)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a>` : '';
     let inner;
     if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
     else if (layout === 'top') inner = imgEl + dEl(d1) + dEl(d2);
@@ -697,7 +774,7 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
       + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
       + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${shownPrice ? `<b style="color:#0f172a">${esc(shownPrice)}</b>` : ''}</a>`
       + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`;
-    const titleHtml = `<a href="${href}" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">${i + 1}.</span> ${esc(p.name)}</a>`;
+    const titleHtml = `<a href="${href}" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">${i + 1}.</span> ${esc(pAd)}</a>`;
     return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
       + `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px">${titleHtml}${btnsHtml}</div>`
       + inner
@@ -2018,6 +2095,10 @@ function renderPage(template, seo, bodyHtml) {
   // kritik paketin onune gecmesin.
   const rp = routePreloadTags(seo.routeKey || '');
   if (rp.length) out = out.replace('</head>', () => `  ${rp.join('\n  ')}\n</head>`);
+  // Rotaya ozel head icerigi (bugun yalnizca /analiz listesinin TOHUMU).
+  // #root govdesine DOKUNMAZ: seo-audit'in siniri `</div>` ile ilk <script>
+  // arasidir, bu blok ise head'de duruyor.
+  if (seo.headExtra) out = out.replace('</head>', () => `  ${seo.headExtra}\n</head>`);
   return out;
 }
 
@@ -3190,6 +3271,7 @@ async function main() {
           '@context': 'https://schema.org', '@type': 'CollectionPage',
           '@id': `${url}#page`, url, name: tx.h1,
         },
+        headExtra: analizTohumBlogu(analyses),
       }, localizeBodyLinks(analizListeBody(analyses, lang), lang)));
       analizUrls.push({
         loc: url, lastmod: listLastmod, changefreq: 'weekly',

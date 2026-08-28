@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { productPath, articlePath, articleSlug } from '../lib/routes';
 import { amazonGoPath } from '../lib/format';
+import { cleanProductName } from '../lib/productNames';
 import { useGeoCountry } from '../lib/geo';
 import { getSimilar } from '../lib/typesense';
 import { usePageContext } from '../lib/pageContext';
@@ -307,7 +308,10 @@ export default function BlogPost() {
   const conclusion = pick(post, 'conclusion');
   // Custom items have a per-language name (name_tr/en/de); products/subscriptions
   // use their single catalog name. Resolve to the active language with fallbacks.
-  const itemName = (p) => p[`name_${postLang}`] || p.name_tr || p.name_en || p.name || '';
+  // `cleanProductName`: katalog adlarinin bir kismi satici SKU'su tasiyor
+  // ("(SM-X930)", "(MHFE4TU/A)") ve blog urun bloklari ADI ham basiyordu.
+  // Ayni temizlik on-render'da da var (web/scripts/seo.mjs -> pAd).
+  const itemName = (p) => cleanProductName(p[`name_${postLang}`] || p.name_tr || p.name_en || p.name || '');
   const products = Array.isArray(post?.products) ? post.products.filter((p) => p && p.id && itemName(p)) : [];
   const cover = post?.cover || (post?.coverFile ? fileUrl(post, post.coverFile) : (products[0]?.image || products[0]?.imageUrl || ''));
   const url = `${SITE_URL}/blog/${slug}`;

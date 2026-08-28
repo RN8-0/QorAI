@@ -506,15 +506,282 @@ function productLine(p, lang) {
 
 function cleanProductForPrompt(p, lang) {
   const name = displayProductName(p, lang);
+  // `priceUSD` EKLENDI (2026-08-28). Katalog alternatifleri modele FIYATSIZ
+  // gidiyordu, yani model "ayni segmentte kal" kuralini uygulayacak veriye
+  // sahip degildi — elindeki tek sayi techScore idi ve o da eski amiral
+  // gemilerinde dusuk. Segment kapisinin prompt tarafi bu alana dayanir.
   return {
     name,
     brand: p?.brand || '',
     category: p?.category || '',
     techScore: Number(p?.techScore) || 0,
+    priceUSD: Math.round(segmentPriceUSD(p)) || null,
     url: productPath(p),
     imageUrl: p?.imageUrl || (Array.isArray(p?.images) ? p.images[0] : ''),
     specs: productSpecsContext(p, 18),
   };
+}
+
+/* -- ALTERNATIF SEGMENT KAPISI --------------------------------------------
+   OLCULDU 2026-08-28, canli Typesense (`category:=smartphones`,
+   `sort_by=techScore:desc` — o gune kadarki aday sorgusunun kendisi):
+
+     100 / 4147 USD  Samsung Galaxy Z Fold8 Ultra (12 GB / 512 GB)
+     100 / 5000 USD  Samsung Galaxy Z Fold8 Ultra (16 GB / 1 TB)
+     100 / 3324 USD  Apple iPhone 17 Pro (512 GB)
+     ... ilk dokuz sonucun HEPSI 100 puan, 1500-5000 USD
+
+   Yani hangi telefon analiz edilirse edilsin modele verilen "QOR CATALOG
+   ALTERNATIVES" listesi AYNI dokuz amiral gemisiydi: 286 USD'lik Galaxy
+   A07 5G icin de, 2574 USD'lik iPhone 16 icin de. Model listeden secince
+   butce telefonuna 4000 USD'lik katlanabilir onerdi. Kullanicinin
+   bildirdigi hatanin kaynagi PROMPT DEGIL, SORGUYDU.
+
+   Kapi iki tarafli: fiyat bandi + puan bandi. Yalniz puan bandi yetmiyor
+   (olculdu: eski amiral gemileri dusuk techScore tasiyor — "Vivo X90 Pro+"
+   54 puan), yalniz fiyat bandi da yetmiyor (fiyati olan urun katalogun
+   yalnizca %26'si). Ikisi birlikte uygulanir; fiyati bilinmeyen aday
+   ELENMEZ, yalnizca siralamada cezalandirilir. */
+const PEER_PRICE_LO = 0.6;
+const PEER_PRICE_HI = 1.35;
+const PEER_SCORE_LO = 20;
+const PEER_SCORE_HI = 10;
+// Ayni markadan en fazla bu kadar aday. Olculdu (laptops, 41..71 puan /
+// 772..1737 USD bandi): bant dogru calisiyordu ama ilk 12 sonucun 9'u
+// "Casper Nirvana S100.255H-..." idi — ayni makinenin SKU varyantlari.
+const PEER_MAX_PER_BRAND = 2;
+
+/** Segment matematigi icin fiyat. TAZELIK ARANMAZ: bir urunun segmenti
+ *  teklifin son kullanma tarihiyle degismez. Prompt'a YAZILAN fiyat hala
+ *  `productLine` icindeki tazelik kapisindan geciyor. */
+function segmentPriceUSD(p) {
+  const usd = Number(p?.lowestPriceUSD) || 0;
+  return usd > 0 ? usd : 0;
+}
+
+/**
+ * Aday havuzunun Typesense `filter_by` ifadesi. Admin ve site AYNI ifadeyi
+ * kullanir; ayrisirsa iki taraf farkli alternatif uretir.
+ * @param {boolean} wide  ilk havuz 3 adaydan az dondugunde bandi genislet.
+ */
+function peerFilterExpr(product, wide = false) {
+  const cat = String(product?.category || '').trim().toLowerCase();
+  if (!cat) return '';
+  const parts = ['category:=' + JSON.stringify(cat)];
+  const score = Number(product?.techScore) || 0;
+  const price = segmentPriceUSD(product);
+  const k = wide ? 2 : 1;
+  if (score > 0) {
+    const lo = Math.max(0, Math.round(score - PEER_SCORE_LO * k));
+    const hi = Math.min(100, Math.round(score + PEER_SCORE_HI * k));
+    parts.push(`techScore:[${lo}..${hi}]`);
+  }
+  if (price > 0) {
+    const lo = Math.max(1, Math.floor(price * (wide ? PEER_PRICE_LO / 1.8 : PEER_PRICE_LO)));
+    const hi = Math.ceil(price * (wide ? PEER_PRICE_HI * 1.8 : PEER_PRICE_HI));
+    parts.push(`lowestPriceUSD:[${lo}..${hi}]`);
+  }
+  return parts.join(' && ');
+}
+
+/** Ad -> "model anahtari": varyant parantezleri ve noktalama atilir, boylece
+ *  `Apple iPhone 16 (512 GB)` ile `Apple iPhone 16 (256 GB)` AYNI anahtari
+ *  tasir. Bir urunun kendi depolama varyanti alternatif degildir. */
+function peerModelKey(name) {
+  return cleanProductName(name)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[([（][^)\]）]*[)\]）]/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Havuzu segment yakinligina gore siralar, varyant ve marka tekrarini kirpar.
+ * Typesense siralamasi `techScore:desc` oldugu icin havuzun BASI daima bandin
+ * TAVANI olurdu; oysa istenen HEDEFE EN YAKIN olanlar.
+ */
+function rankPeerCandidates(product, candidates, limit = 8) {
+  const hedefPuan = Number(product?.techScore) || 0;
+  const hedefFiyat = segmentPriceUSD(product);
+  const hedefAnahtar = peerModelKey(product?.name || '');
+  const hedefId = product?.id;
+  const puanli = (Array.isArray(candidates) ? candidates : [])
+    .filter((d) => d && d.id && d.id !== hedefId)
+    .filter((d) => peerModelKey(d.name || '') !== hedefAnahtar)
+    .map((d) => {
+      const fiyat = segmentPriceUSD(d);
+      const dPuan = hedefPuan ? Math.abs((Number(d.techScore) || 0) - hedefPuan) / 100 : 0.2;
+      // Fiyati bilinmeyen aday elenmez ama sabit ceza alir: katalogda fiyati
+      // olan urun gercekten satin alinabiliyor, digeri belki artik satilmiyor.
+      const dFiyat = (hedefFiyat > 0 && fiyat > 0)
+        ? Math.abs(Math.log(fiyat / hedefFiyat))
+        : 0.45;
+      return { d, w: dFiyat * 1.6 + dPuan };
+    })
+    .sort((a, b) => a.w - b.w);
+  const gorulen = new Set();
+  const markaSayaci = new Map();
+  const out = [];
+  for (let i = 0; i < puanli.length && out.length < limit; i += 1) {
+    const d = puanli[i].d;
+    const anahtar = peerModelKey(d.name || '');
+    if (gorulen.has(anahtar)) continue;
+    const marka = String(d.brand || '').toLowerCase();
+    const n = markaSayaci.get(marka) || 0;
+    if (marka && n >= PEER_MAX_PER_BRAND) continue;
+    gorulen.add(anahtar);
+    markaSayaci.set(marka, n + 1);
+    out.push(d);
+  }
+  return out;
+}
+
+/** Modele yazilan segment kurali — sorgu kapisinin PROMPT karsiligi. Katalog
+ *  listesi zaten filtreli, ama model HARICI bir urun de onerebiliyor. */
+function segmentGate(product) {
+  const price = segmentPriceUSD(product);
+  const score = Number(product?.techScore) || 0;
+  const satirlar = [
+    'SEGMENT HARD GATE FOR ALTERNATIVES. An alternative only helps a reader who can actually buy it.',
+  ];
+  if (price > 0) {
+    satirlar.push(
+      `This product sits at roughly ${Math.round(price)} USD, so every alternative must land between `
+      + `${Math.round(price * PEER_PRICE_LO)} and ${Math.round(price * PEER_PRICE_HI)} USD.`,
+    );
+  }
+  if (score > 0) {
+    satirlar.push(
+      `Its Qor AI tech score is ${score}/100, so alternatives must stay between `
+      + `${Math.max(0, score - PEER_SCORE_LO)} and ${Math.min(100, score + PEER_SCORE_HI)}.`,
+    );
+  }
+  satirlar.push(
+    'Answering a budget or mid-range product with a flagship is a reporting error, not an upsell: '
+    + 'never name a model that costs two or three times as much, and never reach for the best-known '
+    + 'halo product of the category when the analysed product is not in that tier.',
+    'The QOR CATALOG ALTERNATIVES list below is ALREADY filtered to this segment — prefer it and copy '
+    + 'name/imageUrl/url from it exactly. An external alternative must sit in the same window; state its '
+    + 'rough price level so the reader can check it.',
+    'At least one alternative must be CHEAPER than the analysed product, and none may be a storage/RAM '
+    + 'variant of the analysed product itself.',
+  );
+  return satirlar.join(' ');
+}
+
+/* -- AI'IN ADINI VERDIGI ALTERNATIFI KATALOGDA BULMA ----------------------
+   Model harici bir urun onerdiginde kart gorselsiz ve linksiz kaliyordu.
+   Oysa o ad katalogda gercekten varsa okuyucunun urune GITMESI gerekir.
+   Eslesme MUHAFAZAKAR: yanlis urune link vermek, hic link vermemekten
+   kotudur. */
+// Model niteleyicileri. AI "Xiaomi 15" dediyse katalogtaki "Xiaomi 15 Ultra"
+// ESLESMEZ — aksi halde her taban model bir ust modeline baglanirdi.
+const MODEL_QUALIFIERS = new Set([
+  'pro', 'max', 'ultra', 'plus', 'mini', 'lite', 'se', 'edge', 'fe', 'air',
+  'turbo', 'gt', 'note', 'prime', 'power', 'fold', 'flip', 'xl', 'neo', 'super',
+]);
+
+function matchTokens(value) {
+  return cleanProductName(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    // "+" AYRI BIR JETON OLMALI. Aksi halde noktalama temizliginde eriyor ve
+    // "Redmi Note 15 Pro" katalogtaki "Redmi Note 15 Pro+" ile ESLESIYORDU
+    // (olculdu 2026-08-28) — ust modele link vermek yanlis urune yollamaktir.
+    .replace(/\+/g, ' plus ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean);
+}
+
+/**
+ * Ada en iyi uyan katalog kaydi, yoksa null.
+ * Kural: AI adindaki TUM jetonlar katalog adinda gecmeli, katalog adinda
+ * FAZLADAN bir model niteleyicisi olmamali, fazlaligi en az olan kazanir.
+ */
+function pickCatalogMatch(name, docs, { category = '' } = {}) {
+  const want = matchTokens(name);
+  // Tek jetonlu ad ("Netflix", "Spotify") bir urun modeli degil; eslesmesi
+  // guvenilmez — abonelik raporlarinda tam olarak boyle adlar geliyor.
+  if (want.length < 2) return null;
+  const wantSet = new Set(want);
+  const kat = String(category || '').trim().toLowerCase();
+  let best = null;
+  (Array.isArray(docs) ? docs : []).forEach((d) => {
+    if (!d || !d.id) return;
+    if (kat && String(d.category || '').trim().toLowerCase() !== kat) return;
+    const have = matchTokens(`${d.brand ? `${d.brand} ` : ''}${d.name || ''}`);
+    const haveSet = new Set(have);
+    if (!want.every((t) => haveSet.has(t))) return;
+    const fazla = have.filter((t) => !wantSet.has(t));
+    if (fazla.some((t) => MODEL_QUALIFIERS.has(t))) return;
+    const w = fazla.length;
+    const puan = Number(d.techScore) || 0;
+    if (!best || w < best.w || (w === best.w && puan > best.puan)) best = { d, w, puan };
+  });
+  return best ? best.d : null;
+}
+
+/**
+ * Rapordaki alternatif listesini katalogla eslestirir: bulunan urunun ADI,
+ * GORSELI ve ADRESI kaydin icine yazilir (`source: 'qor_catalog'`), boylece
+ * kart gorselli cizilir ve tiklaninca urun sayfasina gider.
+ *
+ * `search(ad)` DISARIDAN verilir — bu dosya AGA CIKMAZ (admin `TsClient`,
+ * site `lib/typesense` ile cagirir). Ayni desen `configure()` ile
+ * qor_ai_link.js'te de kullaniliyor.
+ */
+async function resolveCatalogAlternatives(alternatives, { search, category = '', lang = 'en' } = {}) {
+  const list = Array.isArray(alternatives) ? alternatives : [];
+  if (!list.length || typeof search !== 'function') return list;
+  return Promise.all(list.map(async (a) => {
+    if (!a || typeof a !== 'object') return a;
+    const ad = String(a.name || a.title || '').trim();
+    if (!ad) return a;
+    let docs = [];
+    try { docs = await search(ad); } catch (_) { docs = []; }
+    const hit = pickCatalogMatch(ad, docs, { category });
+    if (!hit) return a;
+    const katalogAdi = displayProductName(hit, lang) || ad;
+    return Object.assign({}, a, {
+      name: a.name ? katalogAdi : a.name,
+      title: a.title ? katalogAdi : a.title,
+      imageUrl: hit.imageUrl || a.imageUrl || '',
+      url: productPath(hit),
+      productId: hit.id,
+      source: 'qor_catalog',
+    });
+  }));
+}
+
+/* -- RAPOR METNINDEKI URUN KODU ---------------------------------------------
+   Baslik/ozet temizligi (analysisRecord.js) yetmiyor: model urun adini
+   CUMLENIN ICINE de yaziyor. Olculdu 2026-08-28, yeni uretilen `website/`
+   agacinda: iki analiz sayfasinda "Samsung Galaxy S23 Ultra (12 GB / 1 TB)
+   (SM-S918B)" yedi ayri PARAGRAFTA geciyordu — headline, analysis, topluluk
+   ozeti, fiyat tahmini.
+
+   Bu yuzden rapor NESNESI okunurken butun dizeler tek tek temizlenir.
+   `cleanProductName` nesir uzerinde guvenli: yalnizca bosluksuz, buyuk
+   harfli, rakamli ve alti karakterden uzun parantez jetonlarini duser —
+   "(512 GB)", "(RTX 5090)", "(120Hz)", "(Wi-Fi 6E)", "(IP68)" hepsi kalir. */
+function cleanProductCodes(value, derinlik = 0) {
+  if (typeof value === 'string') return cleanProductName(value);
+  if (derinlik > 8 || !value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((x) => cleanProductCodes(x, derinlik + 1));
+  const out = {};
+  Object.keys(value).forEach((k) => {
+    // URL / gorsel alanlarina DOKUNMA: `cleanProductName` adres icindeki
+    // "/product/mhfe4tu-a" gibi bir parcayi da silebilirdi.
+    out[k] = /^(url|imageUrl|image|href|slug|productImage|sourceUrl)$/i.test(k)
+      ? value[k]
+      : cleanProductCodes(value[k], derinlik + 1);
+  });
+  return out;
 }
 
 function languageGate(lang) {
@@ -522,6 +789,57 @@ function languageGate(lang) {
     `LANGUAGE HARD GATE: Every user-facing sentence, label, list item, source description, button-like value, and explanation must be fully written in ${langName(lang)}. ` +
     'Only brand names, official product/model names, source names such as Reddit/YouTube/Amazon, and technical standards such as Thunderbolt, Wi-Fi, RTX, macOS may remain as-is. ' +
     'Do not output English UI labels such as "quiz answers", "similar products", "retailer reviews", "buy", "wait", "source types", "best time", or "community/review research" when the requested language is not English.'
+  );
+}
+
+/* ── ARASTIRMANIN DILI ile RAPORUN DILI AYRI SEYLER ────────────────────────
+   Olculdu 2026-08-25, canli `analyses` kayitlarindaki kronik sorun sayilari:
+
+     laptops         MacBook Neo          TR 0 · EN 2
+     graphics_cards  RTX 5090 TUF         TR 0 · EN 3
+     smartphones     iPhone 17            TR 4 · EN 1
+     smartphones     Xiaomi 17 Ultra      TR 3 · EN 4
+
+   Iki dil IKI AYRI grounded arastirma kosuyor ve `languageGate` arastirma
+   prompt'una da uygulaniyordu: model Turkce cevap verecegi icin Turkce kaynak
+   ariyordu. Telefonda Turkce sahiplik tartismasi bol (DonanimHaber, Technopat,
+   Sikayetvar); laptop / ekran karti / TV / kulaklikta yok denecek kadar az.
+   Sonuc: "kronik sorunlar" bolumu pratikte YALNIZ telefonlarda ciciyor ve
+   okuyucu bunun "bu urunun sorunu yok" demek oldugunu saniyor.
+
+   Kural: ARAMA dilden bagimsiz yapilir, CEVAP istenen dilde yazilir. */
+function researchSourceGate(lang) {
+  return (
+    'SEARCH LANGUAGE IS NOT THE REPLY LANGUAGE. Search in whichever languages actually hold the evidence — '
+    + 'English first (it carries the deepest ownership discussion for laptops, GPUs, TVs, audio, appliances and components), '
+    + 'then Turkish for local retail, warranty and service reality (DonanimHaber, Technopat, Sikayetvar, Eksi Sozluk), '
+    + 'then the maker\'s home-market language when that is where owners gather. '
+    + 'Never limit the search to one language because of the reply language, and never treat "no Turkish-language thread about it" as "no problem exists". '
+    + `Only the WRITTEN ANSWER must be in ${langName(lang)}; translate what you found instead of dropping it.`
+  );
+}
+
+/* Kronik sorun ARANMAZSA cikmiyor. Genel "yorumlari tara" talimati spec
+   sayfasindan da okunabilen eksileri getiriyor; sahiplik sonrasi ariza ancak
+   kategorinin kendi ariza bicimleri tek tek sorulursa yuzeye cikiyor. Liste
+   KATEGORIYE GORE DOSYA URETMEZ — modelden once kategorinin ariza bicimlerini
+   adlandirmasi, sonra her birini bu model icin aramasi isteniyor. */
+function chronicResearchGate(category) {
+  const kat = String(category || '').replace(/[_-]+/g, ' ').trim();
+  return (
+    'SEARCH SEPARATELY FOR CHRONIC PROBLEMS — this is a required step for EVERY category, not only phones. '
+    + `First name the 4-6 failure modes the ${kat || 'product'} category is known for, then search each one against this exact model. `
+    + 'Category anchors: laptops -> hinge cracking, battery swelling, thermal throttling, display-cable/flexgate, keyboard or trackpad failure, coating wear, fan noise; '
+    + 'graphics cards -> coil whine, driver crashes and black screens, power-connector melting, fan bearing noise, VRAM/hotspot temperatures, sag; '
+    + 'TVs -> panel uniformity and banding, firmware updates that broke a feature, HDMI/eARC handshake, burn-in, backlight failure; '
+    + 'audio -> battery ageing, pairing drops, driver rattle, hinge or ear-tip cracking, firmware regressions; '
+    + 'phones -> throttling, battery ageing, modem/signal, camera firmware, screen defects; '
+    + 'appliances and components -> seals, pumps, bearings, recurring error codes, RMA experience. '
+    + 'Also search: owner threads at 6/12/24 months of use, known bad batches or revisions, warranty and RMA experience, '
+    + 'a firmware or driver update that broke something and whether it was ever fixed, and class-action or recall notices. '
+    + 'For each finding note what fails, how far into ownership it appears, whether a workaround or fix exists, and how widespread it is. '
+    + 'If after all of that there is genuinely no recurring problem, say so explicitly and say which searches you ran — '
+    + 'that is a real finding, but an empty search is not.'
   );
 }
 
@@ -635,12 +953,10 @@ function buildProductResearchPrompt(p, lang, context = {}) {
     `Research the product "${name}" by ${brand || 'unknown'} for a Qor AI purchase report.\n` +
     `Category: ${category || '-'}\nTech score in catalog: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\n\n` +
     `MARKET STATUS CONTEXT:\n${availabilityContextForProduct(p)}\n\n` +
-    `${freshnessRules()}\n${languageGate(lang)}\n\n` +
+    `${freshnessRules()}\n${languageGate(lang)}\n${researchSourceGate(lang)}\n\n` +
     'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. '
-    // KRONIK SORUN AYRI BIR ARAMA. Genel "yorumlari tara" talimati spec
-    // sayfasindan da okunabilen eksileri getiriyor; sahiplik sonrasi tekrar
-    // eden arizalar ancak ozellikle aranirsa cikiyor.
-    + 'SEARCH SEPARATELY FOR CHRONIC PROBLEMS: failures owners report after months of use, threads about a defect or a bad batch, warranty/RMA experiences, a firmware or driver update that broke something and whether it was fixed. For each note what fails, how far into ownership it appears, whether a workaround exists, and how widespread it is. Also note what owners bring up unprompted as the best part. If there is genuinely no recurring problem, say so — that is a real finding. ' +
+    + `${chronicResearchGate(category)} `
+    + 'Also note what owners bring up unprompted as the best part. ' +
     'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
     `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
@@ -656,8 +972,12 @@ function buildCompareResearchPrompt(products, lang, context = {}) {
     'Research these products for a Qor AI comparison report.\n\n' +
     `${lines}\n\n` +
     `MARKET STATUS CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
-    `${freshnessRules()}\n${languageGate(lang)}\n\n` +
-    'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. ' +
+    `${freshnessRules()}\n${languageGate(lang)}\n${researchSourceGate(lang)}\n\n` +
+    'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. '
+    // Karsilastirmada da kronik sorun ARANMAK zorunda: `buildCompareProductPrompt`
+    // her urun icin `community.chronicIssues` istiyor ve arastirma notlarinda
+    // yoksa liste bos donuyor.
+    + `${chronicResearchGate((products || []).map((p) => p?.category).find(Boolean))} ` +
     'Then note the decisive differences that matter for a buyer choosing one. Do not invent quotes, exact counts, or exact live prices.\n\n' +
     `Comparison quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
@@ -729,7 +1049,13 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // ("pahali", "agir"); kronik sorun ancak SAHIPLIK sonrasi ortaya cikar ve
     // forumlarda TEKRAR EDER. Ikisini ayni sey saymak raporda ayni listeyi
     // iki kez basiyordu.
-    '- community.chronicIssues: 3-5 problems owners keep reporting AFTER living with it — failures that appear over months, a batch with a known defect, a firmware/driver issue that keeps returning, support that keeps disappointing. NOT a restatement of product.weaknesses: a weakness is visible on the spec sheet, a chronic issue only shows up in ownership. If research covers none, return an empty array and say so in verificationNotes — do NOT invent one and do NOT downgrade a spec-sheet drawback into this list.\n' +
+    '- community.chronicIssues: 3-5 problems owners keep reporting AFTER living with it — failures that appear over months, a batch with a known defect, a firmware/driver issue that keeps returning, support that keeps disappointing. NOT a restatement of product.weaknesses: a weakness is visible on the spec sheet, a chronic issue only shows up in ownership. If research covers none, return an empty array and say so in verificationNotes — do NOT invent one and do NOT downgrade a spec-sheet drawback into this list.\n'
+    // Olculdu 2026-08-25: arastirma notlarinda ariza ANLATILDIGI halde liste
+    // bos donebiliyordu (MacBook Neo TR 0 / EN 2, ayni urun). Notlarda gecen
+    // bir ariza listeye girmek ZORUNDA; "bos birak" izni yalnizca arama
+    // gercekten bos dondugunde gecerli.
+    + '- If the research notes name ANY recurring failure, defect, RMA pattern, firmware regression or degradation, it MUST appear in community.chronicIssues. Leaving it out because it reads like a minor problem, because it is only documented in another language, or because the section feels negative is a reporting error. The empty array is permitted only when the research itself reports that it searched and found nothing.\n'
+    + '- This applies to EVERY category. A laptop, a graphics card, a TV, a pair of headphones and a washing machine all have ownership failure modes; only the phone category has a large Turkish-language forum trail. Never conclude "no chronic issues" from the absence of Turkish-language threads.\n' +
     '- community.lovedFeatures: 3-5 things owners single out unprompted as the best part. Same rule: what OWNERS keep saying, not what the spec sheet implies.\n' +
     // TEK YONLU KURAL YETMIYOR. Olculdu (iPhone 16 Pro Max, 2026-08-22):
     // kronik sorunlar temizdi ama zayif yanlar listesine "yazilimsal hatalar
@@ -746,6 +1072,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
+    `- ${segmentGate(p)}\n` +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +
@@ -919,6 +1246,11 @@ function groundedResearchSystemPrompt(lang) {
     `You are Qor AI's web research assistant. Current date: ${today}. ` +
     'You MUST use the provided Google Search grounding tool for product status, official specs, market availability, review/community sentiment, and price-cycle signals. ' +
     'Do not answer from model memory for launch status or availability. If search evidence is thin, say exactly what is uncertain instead of guessing. ' +
+    // Arastirmanin dili cevabin diline BAGLI DEGIL — bkz. researchSourceGate().
+    // Bu satir olmadan Turkce kosan her arastirma yalnizca Turkce kaynak
+    // tariyordu ve telefon disindaki kategorilerde eli bos donuyordu.
+    'Issue your search queries in whichever language holds the evidence (English first, then Turkish, then the local market language); '
+    + 'the reply language does not restrict which sources you may read. ' +
     `Reply in ${langName(lang)}. Summarize evidence, source types, current market status, and uncertainty. ` +
     'Do not invent quotes, exact prices, or review counts.'
   );
@@ -984,7 +1316,13 @@ root.QorAiPrompts = {
   // rapor baglami
   availabilityContextForProduct, freshnessRules, hasStaleAvailabilityClaims,
   withFreshnessRetryInstruction, productSpecsContext, productLine,
-  cleanProductForPrompt, languageGate, quizLines, promptContext,
+  cleanProductForPrompt, languageGate, researchSourceGate, chronicResearchGate,
+  quizLines, promptContext,
+  // alternatif segment kapisi + katalog eslestirme
+  segmentPriceUSD, peerFilterExpr, peerModelKey, rankPeerCandidates, segmentGate,
+  pickCatalogMatch, resolveCatalogAlternatives,
+  // rapor metninden urun kodu temizligi
+  cleanProductCodes,
   // rapor promptlari
   buildDeepPrompt, buildAltPrompt, buildAdvisorPrompt, buildPredictionPrompt,
   buildForumPrompt, buildProductResearchPrompt, buildCompareResearchPrompt,

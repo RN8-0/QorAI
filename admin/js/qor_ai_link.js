@@ -449,17 +449,25 @@ async function generateSubscriptionQuiz({ subscriptionNames, language, userProfi
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Yorum taraması her yerde aynı şeyi istesin diye tek yerde duruyor.
-function communityResearchChecklist(langName) {
+//
+// `category` VERİLMEZSE kronik sorun araması kategori çapasız kalır. Ölçüldü
+// (2026-08-25, canlı `analyses`): kategori çapası olmayan aramada kronik sorun
+// listesi telefon dışındaki kategorilerde boş dönüyordu — bkz.
+// admin/js/qor_ai_prompts.js -> chronicResearchGate().
+function communityResearchChecklist(langName, category) {
+  const kat = String(category || '').replace(/[_-]+/g, ' ').trim();
   return `Cover ALL of the following, as compact notes:
 1) IDENTITY: what this exactly is (edition/variant), current market status, and the headline specs or plan details that actually matter.
 2) COMMUNITY SENTIMENT — THE MAIN JOB: scan real user discussion (Reddit threads, YouTube review takeaways and their comment sections, retailer review patterns such as Amazon/Trendyol/Best Buy, specialist review sites, forums, app-store reviews). Extract the RECURRING THEMES, not one-off opinions. For each theme note: the theme, whether it is praise / complaint / mixed, and roughly how dominant it is (e.g. "mentioned in most threads" vs "occasional").
 3) CHRONIC PROBLEMS — SEARCH FOR THESE ON PURPOSE: the failures owners report AFTER months of use, not the drawbacks visible on the spec sheet. Look for threads titled around a defect, "is anyone else having…", warranty/RMA experiences, a batch or production run with a known fault, a firmware/driver/app update that broke something and whether it was fixed. For each: what fails, how long into ownership it appears, whether a fix or workaround exists, and roughly how widespread it is (widespread / common / occasional). If you genuinely find none, say so — an absent problem is a real finding, an invented one is not.
+3b) THIS STEP IS REQUIRED FOR EVERY CATEGORY, NOT ONLY PHONES. First name the 4-6 failure modes the ${kat || 'product'} category is known for, then search each one against this exact model or service. Category anchors: laptops -> hinge, battery swelling, thermal throttling, display cable, keyboard/trackpad, coating wear; graphics cards -> coil whine, driver crashes and black screens, power-connector melting, fan bearing, hotspot temperatures; TVs -> panel uniformity and banding, firmware regressions, HDMI/eARC handshake, burn-in, backlight; audio -> battery ageing, pairing drops, driver rattle, hinge cracking; subscriptions and apps -> price hikes, catalogue removals, ad-tier changes, sharing/device limits, app crashes on one platform, billing and cancellation problems, support that goes nowhere.
 4) OTHER COMPLAINTS: the remaining repeated negatives, regrets and after-sales/support problems, and whether they hit everyone or only a specific use case. Never soften them.
 5) MOST-LOVED FEATURES: what owners bring up unprompted as the best part, and why it keeps coming up.
 6) WHO LOVES IT vs WHO REGRETS IT: the usage profiles behind each side.
 7) DEAL-BREAKERS: the things a buyer would be angry about not knowing beforehand.
 8) ALTERNATIVES people actually compare it against, and why they switch.
 9) VALUE / TIMING signal: discount cadence, a newer model or plan change on the horizon, or long-term cost drift. No invented exact prices.
+SEARCH LANGUAGE IS NOT THE REPLY LANGUAGE. Run your queries in whichever languages hold the evidence — English first (it carries the deepest ownership discussion outside phones), then Turkish for local retail, warranty and service reality (DonanimHaber, Technopat, Sikayetvar, Eksi Sozluk), then the maker's home-market language. Never treat "no Turkish-language thread about it" as "no problem exists"; translate what you found instead of dropping it.
 Write in ${langName}. Do NOT invent direct quotes, exact review counts, or exact prices. Where evidence is thin, say plainly that it is thin.`;
 }
 
@@ -474,7 +482,7 @@ async function researchProductCommunity({ title, category, url, siteName, langua
       `Research the product "${name}"${category ? ` (category: ${category})` : ''} for a Qor AI buyer report.\n`
       + (url ? `Product URL: ${url}\n` : '')
       + (siteName ? `Store: ${siteName}\n` : '')
-      + `\n${communityResearchChecklist(langName)}`,
+      + `\n${communityResearchChecklist(langName, category)}`,
       { language, maxOutputTokens: 3072, timeoutMs: 45000 },
     );
   } catch {
@@ -494,7 +502,7 @@ async function researchProductsCommunity({ bases = [], language }) {
   try {
     return await askQorAiGrounded(
       `Research these products for a Qor AI head-to-head comparison report:\n${list}\n\n`
-      + `${communityResearchChecklist(langName)}\n\n`
+      + `${communityResearchChecklist(langName, rows.map((b) => b.category).find(Boolean))}\n\n`
       + `8) HEAD-TO-HEAD: after covering each product, state the decisive real-world differences between them and which owner profile ends up happier with which one.`,
       { language, maxOutputTokens: 4096, timeoutMs: 50000 },
     );
@@ -512,7 +520,7 @@ async function researchSubscriptionsCommunity({ names = [], language }) {
   try {
     return await askQorAiGrounded(
       `Research these subscription services for a Qor AI subscription report: ${rows.join(', ')}.\n\n`
-      + `${communityResearchChecklist(langName)}\n\n`
+      + `${communityResearchChecklist(langName, 'subscription service')}\n\n`
       + `8) SUBSCRIPTION SPECIFICS: recent catalogue/feature/plan changes, ad tiers, sharing and device limits, regional content gaps, app quality and reliability complaints, support quality, and the most common reasons people cancel or come back.`
       + `\n9) If several services are listed, end with the decisive differences between them for everyday use.`,
       { language, maxOutputTokens: 4096, timeoutMs: 50000 },
@@ -849,6 +857,7 @@ RULES:
 - "themes" are the topics people keep coming back to (battery, noise, sizing, support, ads, price hikes…), NOT one-off opinions. "strength" is roughly how dominant that theme is in the discussion (0-100).
 - "chronicIssues" are what owners keep reporting AFTER living with it: failures that appear over months, a batch with a known defect, a firmware/driver issue that keeps returning, support that keeps disappointing. They are NOT the drawbacks anyone can read off the spec sheet or the price — those belong to the decision half of the report. If the research shows no recurring problem, return an empty array and say so in verificationNotes rather than promoting a spec-sheet drawback into this list.
 - Sentiment percentages must be realistic and consistent with the themes: if half the themes are complaints, the split cannot be 90% positive.
+- ALTERNATIVES STAY IN THE SAME SEGMENT. An alternative only helps a reader who can actually buy it. Use the product's own price (the payload price field, or the price level the research notes report) as the anchor and keep every alternative within roughly 0.6x-1.35x of it. Answering a budget or mid-range product with the category's halo flagship is a reporting error, not an upsell. At least one alternative must be CHEAPER than the analysed product, and none may be another storage/RAM variant of the same model. If you cannot establish the price level, match the tier implied by the specs instead of reaching for the best-known model.
 
 Return valid JSON (all text in ${langName}):
 {
@@ -860,7 +869,7 @@ Return valid JSON (all text in ${langName}):
   "chronicIssues": [{"title": "recurring, well-documented problem", "detail": "1 sentence: what fails, when it shows up, whether there is a fix or workaround", "frequency": "widespread|common|occasional"}, "... 3-5 items, or an empty array when the research genuinely shows none"],
   "reliabilityNotes": ["1 sentence each in ${langName} on durability, failures, warranty/support experience — 2-3 items"],
   "sources": [{"name": "source or source type (Reddit, YouTube reviews, retailer reviews, specialist sites…)", "note": "what it contributed"}, "... 4-6 items — only source TYPES you actually relied on"],
-  "alternatives": [{"name": "exact competing product name", "why": "1 sentence on who should take this instead"}, "... 3 items"],
+  "alternatives": [{"name": "exact competing product name IN THE SAME PRICE TIER", "why": "1 sentence on who should take this instead"}, "... 3 items"],
   "priceOutlook": {"trend": "up|down|stable|unknown", "bestTime": "when it is smart to buy, in ${langName}", "note": "1-2 sentences on discount cadence, refresh cycle or long-term cost — no invented exact prices"},
   "verificationNotes": ["1 sentence each in ${langName}: what is well-evidenced vs what stayed uncertain — 2-3 items"]
 }`;
@@ -906,6 +915,11 @@ async function enhancedAnalysis({ base, answers, language, userProfile = {}, res
     title: base.title,
     category: base.category,
     siteName: base.siteName,
+    // FIYAT EKLENDI (2026-08-28). Alternatif listesi bu payload'dan uretiliyor
+    // ama fiyat yoktu: model hangi segmentte oldugunu bilmeden "en iyi rakip"
+    // diye amiral gemisi yaziyordu. `base.price` sayfadan cikarilan metin
+    // ("24.999 TL" gibi), bilinmiyorsa null.
+    price: base.price || null,
     initialScore: base.score,
     initialAnalysis: base.analysis,
   };

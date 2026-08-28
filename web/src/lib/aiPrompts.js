@@ -58,8 +58,24 @@ export const productSpecsContext = API.productSpecsContext;
 export const productLine = API.productLine;
 export const cleanProductForPrompt = API.cleanProductForPrompt;
 export const languageGate = API.languageGate;
+export const researchSourceGate = API.researchSourceGate;
+export const chronicResearchGate = API.chronicResearchGate;
 export const quizLines = API.quizLines;
 export const promptContext = API.promptContext;
+
+// ── alternatif segment kapisi + katalog eslestirme ────────────────────────
+// Aday sorgusunun bandi ve AI'in adini verdigi urunu katalogta bulma kurali
+// admin ile ORTAK: ayrisirsa admin'de yayinlanan analiz ile sitede canli
+// kosan analiz farkli alternatifler uretir.
+export const segmentPriceUSD = API.segmentPriceUSD;
+export const peerFilterExpr = API.peerFilterExpr;
+export const peerModelKey = API.peerModelKey;
+export const rankPeerCandidates = API.rankPeerCandidates;
+export const segmentGate = API.segmentGate;
+export const pickCatalogMatch = API.pickCatalogMatch;
+export const resolveCatalogAlternatives = API.resolveCatalogAlternatives;
+// Rapor GOVDESINDEKI urun kodu temizligi (baslik temizligi analysisRecord'da).
+export const cleanProductCodes = API.cleanProductCodes;
 
 // ── rapor promptlari ──────────────────────────────────────────────────────
 export const buildDeepPrompt = API.buildDeepPrompt;

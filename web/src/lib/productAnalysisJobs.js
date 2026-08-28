@@ -3,6 +3,8 @@
 // tutulduğu sürece kullanıcı başka sayfaya geçtiğinde iş kayboluyordu.
 // Artık iş burada koşar; sayfa yalnızca anlık görüntüyü çizer.
 import { askQorAiGrounded, askQorAiRaw } from './ai';
+import { attachCatalogAlternatives } from './catalogAlternatives';
+import { cleanProductCodes } from './aiPrompts';
 import { generateQuiz } from './linkAnalysis';
 import { saveProductAnalysisHistory } from './pbHistory';
 import { getRecentProducts } from './recentViewed';
@@ -156,6 +158,19 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
         buildFullPrompt, buildProductResearchPrompt, hasStaleAvailabilityClaims,
         parseAiJson, withFreshnessRetryInstruction,
       } = await aiHelpers();
+      // ADAY LISTESI BURADA CEKILIR, sayfa acilisinda degil: fiyat/puan bandi
+      // sorgusu + secilen adaylarin `_raw` govdesi ancak analiz gercekten
+      // kostugunda gerekiyor. Ray listesi ("Benzer Urunler") bu is icin
+      // KULLANILMAZ — o kategorinin en yuksek puanlilarini gosterir ve
+      // butce urununun raporuna amiral gemisi sokuyordu.
+      let peers = Array.isArray(similar) ? similar : [];
+      if (!peers.length) {
+        try {
+          const { getPeerAlternatives } = await import('./typesense');
+          peers = await getPeerAlternatives(product, 8);
+        } catch { peers = []; }
+      }
+      if (!activeJob || activeJob.id !== job.id) return;
       let research = '';
       try {
         if (activeJob && activeJob.id === job.id) setJob({ stage: 'research' });
@@ -168,7 +183,7 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       setJob({ stage: 'report' });
 
       const prompt = buildFullPrompt(product, lang, aiUserProfile(user), {
-        quizAnswers: answers, research, similarProducts: similar, offers,
+        quizAnswers: answers, research, similarProducts: peers, offers,
       });
       let txt = await askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
@@ -197,6 +212,17 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       if (!data || typeof data !== 'object') throw new Error('parse');
       if (!activeJob || activeJob.id !== job.id) return;
       setJob({ stage: 'composing' });
+      // AI'in adini verdigi alternatif katalogda varsa gorseli ve adresi
+      // oradan gelir; okuyucu karta tiklayinca urun sayfasina gider.
+      // Eslesme basarisiz olursa rapor AYNEN cizilir.
+      try {
+        data.alternatives = await attachCatalogAlternatives(data.alternatives, {
+          category: product?.category, lang,
+        });
+      } catch { /* katalog eslestirmesi raporu bozmaz */ }
+      // Urun kodu rapor METNINDEN de duser: model urun adini cumlelerin
+      // icine yaziyor. Yayinlanan analizlerde ayni kapi analysisRecord'da.
+      data = cleanProductCodes(data);
       setJob({ data, phase: 'result', stage: null });
       try { await saveProductAnalysisHistory({ product, analysis: txt }); } catch { /* geçmiş yazımı analizi bozmasın */ }
     } catch {

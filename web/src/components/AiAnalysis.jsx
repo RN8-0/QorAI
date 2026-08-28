@@ -5,6 +5,7 @@
 //  advisor and price prediction. Shared by the product detail + compare pages.
 // ─────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
@@ -440,7 +441,16 @@ function AlternativeCards({ alternatives = [], L }) {
             </div>
           </article>
         );
-        return a.url ? <a key={`${a.name}-${i}`} href={a.url} className="ai-alt-link">{content}</a> : <div key={`${a.name}-${i}`}>{content}</div>;
+        // KATALOG URUNU ROTA ILE ACILIR. `<a href>` tam sayfa yenilemesi
+        // yapiyordu ve BrowserRouter `basename` ile kurulu oldugu icin
+        // Turkce sayfadaki bir alternatif Ingilizce agaca dusuyordu
+        // (`/product/...` != `/tr/product/...`). Harici adres (http...)
+        // eskisi gibi <a> ile acilir.
+        const key = `${a.name}-${i}`;
+        if (a.url && a.url.startsWith('/')) {
+          return <Link key={key} to={a.url} className="ai-alt-link">{content}</Link>;
+        }
+        return a.url ? <a key={key} href={a.url} className="ai-alt-link" target="_blank" rel="noreferrer">{content}</a> : <div key={key}>{content}</div>;
       })}
     </div>
   );

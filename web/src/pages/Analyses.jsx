@@ -13,15 +13,61 @@ import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, hreflangAlternates } from '../lib/seo';
 import {
-  analysisKind, analysisKindShort, analysisLead, analysisRenderLangs, analysisTitle,
+  analysisKind, analysisKindShort, analysisLead, analysisRenderLangs, analysisSubject,
+  analysisTitle,
 } from '../lib/analysisRecord';
 import './Analyses.css';
+
+// ── ON-RENDER TOHUMU ──────────────────────────────────────────────────────
+//
+// /analiz sayfasi ON-RENDER EDILIYOR (web/scripts/seo.mjs -> analizListeBody)
+// ve liste HTML'in icinde hazir geliyor. Ama React devralinca `.seo-prerender`
+// blogu gizleniyor (index.html, `.js-ready`), yani ekranda kalan tek sey PB
+// istegi donene kadar suren "Yükleniyor…" oluyordu.
+//
+// OLCULDU 2026-08-28, canli PB, ilk sayfa (22 kayit / 22 KB):
+//   TTFB 0,5-1,4 sn — ustune SPA acilisi binince okuyucu saniyelerce bos
+//   sayfa goruyor, istek takilirsa "yükleniyor" HIC bitmiyordu.
+//
+// seo.mjs ayni veriyi head'e JSON olarak da gomuyor; burada okunup ILK
+// state olarak kullaniliyor. Tohum, `analysisTitle`/`analysisLead`/
+// `analysisRenderLangs` fonksiyonlarinin okudugu alan adlarini tasidigi icin
+// asagida hicbir dallanma yok: kayit PB'den mi tohumdan mi geldi, sayfanin
+// umurunda degil.
+let _tohum = null;
+function analizTohumu() {
+  if (_tohum) return _tohum;
+  _tohum = [];
+  try {
+    const el = typeof document !== 'undefined' && document.getElementById('qor-analiz-seed');
+    if (el) {
+      const v = JSON.parse(el.textContent || '[]');
+      if (Array.isArray(v)) _tohum = v;
+    }
+  } catch { _tohum = []; }
+  return _tohum;
+}
+
+// PB istegi ASILI KALABILIR (tek host, soguk baslangic). Fetch'in kendi zaman
+// asimi yok; korumasiz birakilinca `finally` hic kosmuyor ve sayfa sonsuza
+// dek "yükleniyor" diyor. Bu, kullanicinin bildirdigi "hiç yüklenmiyor"
+// halinin ta kendisiydi.
+const PB_TIMEOUT_MS = 12000;
+function zamanAsimli(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, red) => { setTimeout(() => red(new Error('timeout')), PB_TIMEOUT_MS); }),
+  ]);
+}
 
 export default function Analyses() {
   const { lang } = useI18n();
   const L = (en, tr) => (lang === 'tr' ? tr : en);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const tohum = analizTohumu();
+  const [items, setItems] = useState(tohum);
+  // Tohum varsa "yükleniyor" HIC gorunmez: liste ilk karede cizilir, PB
+  // dogrulamasi arka planda kosar.
+  const [loading, setLoading] = useState(tohum.length === 0);
   // Uc tur ayni listede durur; filtre yalnizca gorunumu daraltir (ayri rota
   // acmak dizine ince, neredeyse bos sayfalar eklerdi).
   const [tur, setTur] = useState('');
@@ -36,6 +82,11 @@ export default function Analyses() {
   const [sayfa, setSayfa] = useState(1);
   const [devam, setDevam] = useState(false);
   const [yukleniyorDaha, setYukleniyorDaha] = useState(false);
+  // BOS LISTE ile BASARISIZ ISTEK ayni sey degil. Eskiden `catch` items'i
+  // bosaltiyordu ve sayfa "Henüz yayınlanmış analiz yok" diyordu — okuyucuya
+  // yanlis bilgi, ve tekrar denemenin tek yolu sayfayi yenilemekti.
+  const [hata, setHata] = useState(false);
+  const [tekrar, setTekrar] = useState(0);
 
   useSeo({
     title: L('AI Product Analyses — Qor AI', 'Yapay Zekâ Ürün Analizleri — Qor AI'),
@@ -55,25 +106,56 @@ export default function Analyses() {
     },
   });
 
+  // ── LISTE ALANLARI ────────────────────────────────────────────────────────
+  //
+  // OLCULDU 2026-08-25, canli PB, 24 kayitlik ilk sayfa:
+  //   `fields` YOK  ->  836 KB / 631 ms
+  //   asagidaki set ->   14 KB / 128 ms
+  //
+  // Fark tamamen `report_tr` + `report_en`: kayit basina ~45 KB'lik rapor
+  // JSON'u indiriliyordu ve liste ondan TEK BIR SEY okuyor — "bu dilde rapor
+  // var mi". Sayfa "yükleniyor da kalıyor" sikayetinin kaynagi buydu; yavas
+  // baglantida 836 KB'lik istegin zaman asimi da yok.
+  //
+  // `report_*.type` / `.researched` / `.confidence` NOKTA YOLLARI: PB JSON
+  // alaninin ALT ANAHTARINI dondurebiliyor. Uc anahtar birden isteniyor cunku
+  // tek bir anahtar dort rapor seklinin hepsinde yok — urun/karsilastirma
+  // `type` tasir, link/abonelik `researched` + `confidence` tasir. Alan
+  // NULL ise PB `null` doner (bos obje degil), yani varlik testi guvenli.
+  const LIST_FIELDS = [
+    'id', 'slug', 'kind', 'category', 'productName', 'productBrand', 'productImage',
+    'techScore', 'publishedAt', 'views', 'likes',
+    'title_tr', 'title_en', 'lead_tr', 'lead_en', 'subjectNames',
+    'report_tr.type', 'report_tr.researched', 'report_tr.confidence',
+    'report_en.type', 'report_en.researched', 'report_en.confidence',
+  ].join(',');
+
   useEffect(() => {
     let live = true;
-    pb.collection('analyses')
-      .getList(1, SAYFA, { sort: '-publishedAt', $autoCancel: false })
+    // Ekranda gosterilecek bir sey varsa (tohum ya da onceki deneme) beklemeye
+    // dusmeyiz: liste durur, tazelenmesi sessizce arkada olur.
+    setLoading((onceki) => (items.length ? false : onceki || true));
+    setHata(false);
+    zamanAsimli(pb.collection('analyses')
+      .getList(1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, $autoCancel: false }))
       .then((r) => {
         if (!live) return;
         setItems(r.items || []);
         setDevam(r.page < r.totalPages);
       })
-      .catch(() => { if (live) setItems([]); })
+      // TOHUM SILINMEZ. Istek dustugunde elde duran listeyi bosaltmak,
+      // okuyucuya "hic analiz yok" demek olurdu.
+      .catch(() => { if (live) setHata(true); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tekrar]);
 
   const dahaGetir = () => {
     if (yukleniyorDaha) return;
     setYukleniyorDaha(true);
     pb.collection('analyses')
-      .getList(sayfa + 1, SAYFA, { sort: '-publishedAt', $autoCancel: false })
+      .getList(sayfa + 1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, $autoCancel: false })
       .then((r) => {
         setItems((o) => [...o, ...(r.items || [])]);
         setSayfa(r.page);
@@ -130,7 +212,19 @@ export default function Analyses() {
       </header>
 
       {loading && <p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}
-      {!loading && !items.length && (
+      {/* BOS LISTE ile BASARISIZ ISTEK ayni sey degil. Istek dustugunde
+          "Henüz yayınlanmış analiz yok" yazmak okuyucuya YANLIS bilgi verir
+          ve tekrar denemenin tek yolu sayfayi yenilemek olurdu. */}
+      {!loading && !items.length && hata && (
+        <p className="an-empty">
+          {L('The analyses could not be loaded.', 'Analizler yüklenemedi.')}
+          {' '}
+          <button type="button" className="an-retry" onClick={() => setTekrar((n) => n + 1)}>
+            {L('Try again', 'Tekrar dene')}
+          </button>
+        </p>
+      )}
+      {!loading && !items.length && !hata && (
         <p className="an-empty">{L('No analyses published yet.', 'Henüz yayınlanmış analiz yok.')}</p>
       )}
 
@@ -173,8 +267,10 @@ export default function Analyses() {
           const sinif = `an-item${a.productImage ? '' : ' an-item-noimg'}`;
           const govde = (
             <>
+              {/* alt metni de KODSUZ: `productName` ham katalog adini tasiyor,
+                  `analysisSubject` ise urun kodundan arindirilmis hali. */}
               {a.productImage ? (
-                <img src={a.productImage} alt={a.productName || ''} loading="lazy" />
+                <img src={a.productImage} alt={analysisSubject(a, lang)} loading="lazy" />
               ) : null}
               <div>
                 <h2>{analysisTitle(a, lang)}</h2>

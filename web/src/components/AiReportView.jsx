@@ -113,6 +113,23 @@ export function bullets(v) {
     .filter((x) => x.title || x.detail);
 }
 
+// ALTERNATIFLER icin AYRI normalizer. `bullets()` yalnizca {title, detail}
+// birakiyor; katalog eslesmesinden gelen `url` ve `imageUrl` orada
+// DUSUYORDU, yani AI'in adini verdigi urun katalogda bulunsa bile kart
+// gorselsiz ve tiklanamaz kaliyordu (bkz. lib/catalogAlternatives.js).
+export function altBullets(v) {
+  return (Array.isArray(v) ? v : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: x, detail: '', url: '', imageUrl: '' }
+      : {
+        title: String(x?.title || x?.name || ''),
+        detail: String(x?.detail || x?.why || x?.shortComment || ''),
+        url: String(x?.url || ''),
+        imageUrl: String(x?.imageUrl || ''),
+      }))
+    .filter((x) => x.title || x.detail);
+}
+
 export function list(v) {
   return Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()) : [];
 }
@@ -215,7 +232,7 @@ export default function AiReportView({
   const tekrarsiz = (liste) => dropRestated(liste, gorulen);
   const pros = tekrarsiz(bullets(data.prosForUser));
   const cons = tekrarsiz(bullets(data.consForUser));
-  const alts = bullets(data.alternatives);
+  const alts = altBullets(data.alternatives);
   const factors = Array.isArray(data.factors) ? data.factors : [];
   const critical = tekrarsiz(Array.isArray(data.criticalPoints) ? data.criticalPoints : []);
   const insights = Array.isArray(data.quizInsights) ? data.quizInsights : [];
@@ -233,6 +250,16 @@ export default function AiReportView({
   const verification = bullets(data.verificationNotes);
   const features = Array.isArray(data.featureMatches) ? data.featureMatches : [];
   const base = data.base || {};
+  // Kronik sorun listesi bos oldugunda "arandi, bulunamadi" diyebilmek icin
+  // arastirmanin GERCEKTEN kostugunu bilmek gerekiyor. `researched` bayragi
+  // yayinlanan eski kayitlarda YOK (admin onu saklamiyordu, 2026-08-25'te
+  // duzeltildi), o yuzden topluluk blogunun kendi kanitindan da turetiliyor:
+  // kaynak listesi ya da dogrulama notu varsa o blok gercekten arastirmadan
+  // yazilmistir. Bu `data.researched`'i EZMEZ — basliktaki "Yorumlar tarandi"
+  // rozeti kendi bayragina bakmaya devam eder.
+  const toplulukArandi = Boolean(data.researched)
+    || bullets(data.sources).length > 0
+    || verification.length > 0;
   // Grafikler: topluluk sentiment donutu + faktör dengesi + radar profili.
   // sentimentBreakdown yoksa communityScore/score'dan türetilir.
   const sentiment = normalizeSentiment(
@@ -317,7 +344,7 @@ export default function AiReportView({
                 farklı bir şey duruyor: forumlardan gelen KRONIK sorunlar ve
                 sahiplerin en çok övdüğü yanlar. Eskiden burası ikinci bir
                 artı/eksi listesiydi ve neredeyse birebir aynısını basıyordu. */}
-            <ForumFindings loved={loved} chronic={chronic} L={L} />
+            <ForumFindings loved={loved} chronic={chronic} L={L} researched={toplulukArandi} />
             {data.communityAnalysis && (
               <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu')}
                 meta={data.communityScore ? `${Math.round(data.communityScore)}/100` : ''}>
@@ -371,12 +398,25 @@ export default function AiReportView({
         {altNode || (alts.length > 0 && (
           <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler')}>
             <div className="la-alt-grid">
-              {alts.map((a, i) => (
-                <div className="la-alt-card" key={i}>
-                  <strong>{a.title}</strong>
-                  {a.detail && <span>{a.detail}</span>}
-                </div>
-              ))}
+              {alts.map((a, i) => {
+                const govde = (
+                  <>
+                    {a.imageUrl
+                      ? <span className="la-alt-media"><ProductImg src={a.imageUrl} alt={a.title} size="thumb" /></span>
+                      : null}
+                    <span className="la-alt-body">
+                      <strong>{a.title}</strong>
+                      {a.detail && <span>{a.detail}</span>}
+                    </span>
+                  </>
+                );
+                // Katalog urunu ROTA ile acilir: `<a href>` tam sayfa
+                // yenilemesi yapar ve BrowserRouter basename'i yuzunden
+                // Turkce sayfadaki link Ingilizce agaca duserdi.
+                return a.url && a.url.startsWith('/')
+                  ? <Link className="la-alt-card la-alt-card-link" key={i} to={a.url}>{govde}</Link>
+                  : <div className="la-alt-card" key={i}>{govde}</div>;
+              })}
             </div>
           </Sec>
         ))}

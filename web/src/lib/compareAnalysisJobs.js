@@ -17,6 +17,7 @@ import { saveComparisonAnalysisHistory } from './pbHistory';
 import { getRecentProducts } from './recentViewed';
 import { aiUserProfile } from './qorCoins';
 import { displayProductName } from './productNames';
+import { cleanProductCodes } from './aiPrompts';
 import { productPath } from './routes';
 import {
   buildCompareProductPrompt,
@@ -262,7 +263,11 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
         )) || {};
       } catch { verdict = {}; }
 
-      const text = JSON.stringify({ type: 'compare_full_report', products: okReports, comparison: verdict });
+      // Urun kodu rapor metninden duser (bkz. cleanProductCodes): model urun
+      // adini cumlelerin icine de yaziyor, baslik temizligi yetmiyor.
+      const text = JSON.stringify(cleanProductCodes({
+        type: 'compare_full_report', products: okReports, comparison: verdict,
+      }));
       if (!activeJob || activeJob.id !== job.id) return;
       setJob({ stage: 'composing' });
       setJob({ text, phase: 'result', stage: null });

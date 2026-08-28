@@ -7,6 +7,8 @@
 // indirir, böylece dört akış da `components/AiReportView.jsx` ile render edilir.
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Urun kodu ekrana cikmaz — temizlik TEK KAYNAK (admin/js/qor_ai_prompts.js).
+import { cleanProductName } from './productNames.js';
 const int = (v) => {
   const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, ''));
   return Number.isFinite(n) ? Math.round(n) : 0;
@@ -53,7 +55,10 @@ function bodyToUnified(p = {}, community = {}, extra = {}) {
     researched: !!extra.researched,
     confidence: int(p.confidence),
     base: {
-      title: String(p.name || extra.title || '').trim(),
+      // Hero basligi rapordaki HAM urun adini basiyordu; katalog adlarinin
+      // bir kismi satici SKU'su tasiyor (`(SM-A175F)`, `(MHFE4TU/A)`).
+      // Ayni temizlik urun kartinda ve analiz listesinde de var.
+      title: cleanProductName(String(p.name || extra.title || '').trim()),
       siteName: String(extra.siteName || '').trim(),
       url: String(extra.url || p.url || '').trim(),
     },
@@ -130,7 +135,7 @@ export function compareVerdictToUnified(cmp = {}, entries = [], extra = {}) {
     decision: decisionOf(score),
     headline: firstSentence(cmp.recommendation || cmp.headToHead),
     researched: !!extra.researched,
-    base: { title: String(cmp.winner || winner.name || '').trim(), siteName: '' },
+    base: { title: cleanProductName(String(cmp.winner || winner.name || '').trim()), siteName: '' },
     factors: arr(cmp.factorMatrix)
       .map((row) => {
         const scores = arr(row.scores);

@@ -6,6 +6,9 @@
 
 import { productImageList } from './imageUrl';
 import { cardKeySpecs, invalidateCardChips } from './categoryFilters';
+// Alternatif aday bandi TEK KAYNAK (admin/js/qor_ai_prompts.js): admin paneli
+// de ayni ifadeyi uretiyor.
+import { peerFilterExpr, rankPeerCandidates } from './aiPrompts';
 
 const TS_URL = 'https://lg9nuw99z1qojgv21dlemdrb.46.225.95.201.sslip.io';
 // Search-only scoped key (actions: documents:search,get on `products` only).
@@ -1024,6 +1027,94 @@ export async function getSimilar(category, _techScore, excludeId, limit = 12) {
   } catch (err) {
     console.warn('[catalog] similar failed', err);
     return [];
+  }
+}
+
+// ── AI ALTERNATIFLERININ ADAY HAVUZU ──────────────────────────────────────
+//
+// `getSimilar()` DEGIL. O, urun sayfasindaki "Benzer Urunler" rayini besler ve
+// bilerek `techScore:desc` siralar — ray kategorinin en iyilerini gostermek
+// icin var. Ama AYNI liste analiz prompt'una "QOR CATALOG ALTERNATIVES" diye
+// gidiyordu ve olculdu (2026-08-28): `category:=smartphones` + techScore:desc
+// ilk dokuz sonucun HEPSI 100 puanli, 1500-5000 USD'lik amiral gemisi. Yani
+// 286 USD'lik Galaxy A07 5G analiz edilirken de modele ayni dokuz cihaz
+// veriliyordu; kullanicinin bildirdigi "hep pahali telefon oneriyor" hatasinin
+// kokeni bu sorguydu.
+//
+// Bant ve siralama kurali admin ile ORTAK (lib/aiPrompts -> peerFilterExpr,
+// rankPeerCandidates): admin'de yayinlanan analiz ile sitede canli kosan
+// analiz ayni alternatifleri gormek zorunda.
+export async function getPeerAlternatives(product, limit = 8) {
+  const cat = String(product?.category || '').trim();
+  if (!cat) return [];
+  const cek = async (wide) => {
+    const filter = peerFilterExpr(product, wide);
+    if (!filter) return [];
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      filter_by: filter,
+      sort_by: 'techScore:desc',
+      // Havuz genis tutulur: siralamayi JS yapiyor (hedefe YAKINLIK), Typesense
+      // yalnizca bandi uyguluyor.
+      per_page: 40,
+      include_fields: LIST_FIELDS_LEAN,
+    });
+    return docs(data)
+      .map(docToProduct)
+      .filter((p) => productMatchesRequestedCategory(p, cat));
+  };
+  try {
+    let havuz = await cek(false);
+    // Dar bant 3 adaydan az verdiyse (nis kategori, fiyati bilinmeyen urun)
+    // genis bantla tekrar dene — alternatifsiz rapor, segment disi rapordan
+    // daha kotu degil ama gereksiz.
+    if (havuz.length < 3) havuz = havuz.concat(await cek(true));
+    const secilen = rankPeerCandidates(product, havuz, limit);
+    // HAVUZ LEAN, SECILENLER ZENGIN. Havuz 40 dokuman; `_raw` ile cekilseydi
+    // ~2,7 MB olurdu (kayit basina onlarca KB). Onun yerine bant sorgusu lean
+    // koser, YALNIZCA secilen adaylar icin `_raw` istenir — prompt'a giden
+    // katalog alternatifleri spec'siz kalmasin (cleanProductForPrompt.specs).
+    //
+    // `enrichThinCards` BURADA ISE YARAMAZ: o yalnizca KART ETIKETI eksik
+    // olanlari zenginlestiriyor ve lean dokuman `keySpecsText`ten dort etiketi
+    // zaten uretebildigi icin adaylari "dolu" sayip atliyordu (olculdu:
+    // sekiz adayin sekizi de spec'siz kaldi).
+    return hydrateProducts(secilen);
+  } catch (err) {
+    console.warn('[catalog] peer alternatives failed', err);
+    return [];
+  }
+}
+
+// Verilen urunlerin TAM PocketBase kaydini (`_raw`) tek istekte cekip birlestirir.
+// Liste sorgulari lean koser (payload), ama prompt'a giden urunun spec'leri
+// `_raw` icinde. Indekslenmis alanlar KAZANIR: `_raw` son tam upsert'te donmus
+// olabilir, fiyat rollup'i ise kismi upsert'lerle guncelleniyor (bkz.
+// docToProduct'taki ayni gerekce).
+async function hydrateProducts(list) {
+  const ids = (list || []).map((p) => p && p.id).filter(Boolean);
+  if (!ids.length) return list || [];
+  try {
+    const data = await searchDocs({
+      q: '*',
+      query_by: 'name',
+      filter_by: `id:[${ids.map(lit).join(',')}]`,
+      per_page: ids.length,
+      include_fields: 'id,_raw',
+    });
+    const ham = new Map();
+    for (const d of docs(data)) {
+      if (!d.id || !d._raw) continue;
+      try { ham.set(d.id, JSON.parse(d._raw)); } catch { /* bozuk kayit atlanir */ }
+    }
+    return list.map((p) => {
+      const full = ham.get(p.id);
+      return full ? { ...full, ...p } : p;
+    });
+  } catch (err) {
+    console.warn('[catalog] hydrate failed', err);
+    return list;
   }
 }
 

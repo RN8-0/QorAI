@@ -13,6 +13,21 @@
 //  daima "istenen dil -> oteki dil -> tek dilli eski `report` alani".
 // ═══════════════════════════════════════════════════════════════════════════
 import { productReportToUnified } from './reportAdapters.js';
+// URUN KODU EKRANDA GORUNMEZ. Katalog adlarinin bir kismi satici/bolge SKU'su
+// tasiyor (`(SM-A175F)`, `(MHFE4TU/A)`, `(TUF-RTX5090-32G-GAMING)`) ve analiz
+// basliklari bu ADIN UZERINE yaziliyor. Olculdu 2026-08-28, canli PB'deki 22
+// yayinlanmis analiz: 7 kaydin `productName` alani, 3 kaydin `title_tr` alani
+// kod tasiyordu; canli `/tr/analiz/samsung-galaxy-a17` sayfasinda ayni kod
+// 14 kez geciyordu (h1, <title>, JSON-LD headline, breadcrumb, img alt...).
+// Urun sayfalari temizdi cunku onlar `displayProductName`den geciyor —
+// eksik olan tek yer analiz kaydiydi.
+//
+// Temizlik BURADA, cunku hem site (pages/Analyses.jsx, pages/AnalysisPost.jsx)
+// hem ON-RENDER (web/scripts/seo.mjs) basligi/ozeti bu fonksiyonlardan
+// okuyor. Ikisini ayri temizlemek, crawler'in gordugu baslik ile okuyucunun
+// gordugu basligi ayristirirdi.
+import { cleanProductName } from './productNames.js';
+import { cleanProductCodes } from './aiPrompts.js';
 
 export const ANALYSIS_KINDS = ['product', 'compare', 'link', 'subscription'];
 
@@ -23,12 +38,36 @@ export function analysisKind(rec) {
 }
 
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
+/** Ekrana cikan her metinden urun kodunu duser. Bos girdi bos doner; temizlik
+ *  metni tamamen yiyecek olursa (teorik) ham deger korunur. */
+const temiz = (v) => {
+  const ham = String(v || '').trim();
+  if (!ham) return '';
+  return cleanProductName(ham) || ham;
+};
 
-/** Istenen dildeki HAM rapor (yoksa oteki dil, yoksa eski tek dilli alan). */
+// Temizlenmis rapor kopyalarinin onbellegi. `analysisReport` bir sayfa
+// cizilirken defalarca cagriliyor (baslik, ozet, quiz, govde, JSON-LD) ve
+// rapor ~45 KB'lik bir nesne — her cagrida derin kopya cikarmak israf olurdu.
+const _temizRapor = new WeakMap();
+
+/**
+ * Istenen dildeki rapor (yoksa oteki dil, yoksa eski tek dilli alan).
+ *
+ * URUN KODU BURADA DUSER. Baslik/ozet temizligi yetmiyordu: model urun adini
+ * cumlelerin icine de yaziyor ve on-render'da yedi ayri paragrafta
+ * "(SM-S918B)" cikiyordu. Bu fonksiyon hem siteyi (AnalysisPost, Analyses)
+ * hem ON-RENDER'i (web/scripts/seo.mjs) besledigi icin tek kapi burasi.
+ */
 export function analysisReport(rec, lang) {
   if (!rec) return null;
   const other = lang === 'tr' ? 'en' : 'tr';
-  return obj(rec[`report_${lang}`]) || obj(rec[`report_${other}`]) || obj(rec.report);
+  const ham = obj(rec[`report_${lang}`]) || obj(rec[`report_${other}`]) || obj(rec.report);
+  if (!ham) return null;
+  if (_temizRapor.has(ham)) return _temizRapor.get(ham);
+  const temizlenmis = cleanProductCodes(ham);
+  _temizRapor.set(ham, temizlenmis);
+  return temizlenmis;
 }
 
 /** Hangi dillerde gercek rapor var? (admin ve on-render ikisi de sorar) */
@@ -73,16 +112,16 @@ export function analysisUnified(rec, lang) {
 export function analysisSubject(rec, lang) {
   if (!rec) return '';
   const names = Array.isArray(rec.subjectNames) ? rec.subjectNames.filter(Boolean) : [];
-  if (names.length) return names.join(' · ');
-  if (rec.productName) return rec.productName;
+  if (names.length) return names.map(temiz).filter(Boolean).join(' · ');
+  if (rec.productName) return temiz(rec.productName);
   const raw = analysisReport(rec, lang);
   if (!raw) return '';
   // Uc sekil, uc yer: ortak sekil `base.title`, urun raporu `product.name`,
   // abonelik `services[].name`, karsilastirma `products[].name`.
   const fromList = (list) => (Array.isArray(list) ? list.map((x) => x?.name).filter(Boolean).join(' · ') : '');
-  return String(
+  return temiz(
     raw.base?.title || raw.product?.name || fromList(raw.services) || fromList(raw.products) || '',
-  ).trim();
+  );
 }
 
 // Iki uzunluk, iki is: UZUN ad basligi tamamlar ("iPhone 16 — Yapay Zeka
@@ -126,7 +165,9 @@ export function analysisKindShort(rec, lang) {
  * basligi tasimamasi seo-audit kapisiyla korunur.
  */
 export function analysisTitle(rec, lang) {
-  const stored = String(rec?.[`title_${lang}`] || '').trim();
+  // Admin basligi AI'a yazdiriyor ve AI urun adini AYNEN aliyor — kod dahil.
+  // Olculdu: 22 kaydin 3'unun `title_tr` alaninda SKU vardi.
+  const stored = temiz(rec?.[`title_${lang}`]);
   if (stored) return stored;
   const subject = analysisSubject(rec, lang);
   const label = kindLabel(rec, lang);
@@ -141,7 +182,7 @@ export function analysisTitle(rec, lang) {
  * abonelikte kazananin gerekcesi, karsilastirmada oneri metni.
  */
 export function analysisLead(rec, lang) {
-  const stored = String(rec?.[`lead_${lang}`] || '').trim();
+  const stored = temiz(rec?.[`lead_${lang}`]);
   if (stored) return stored;
   const raw = analysisReport(rec, lang);
   if (!raw) return '';
@@ -166,12 +207,12 @@ export function analysisLead(rec, lang) {
 
 /** <title> — admin metaTitle yazdiysa o, yoksa sayfa basligi. */
 export function analysisMetaTitle(rec, lang) {
-  return String(rec?.[`metaTitle_${lang}`] || '').trim() || analysisTitle(rec, lang);
+  return temiz(rec?.[`metaTitle_${lang}`]) || analysisTitle(rec, lang);
 }
 
 /** meta description — admin yazdiysa o, yoksa ozet. */
 export function analysisMetaDescription(rec, lang) {
-  return String(rec?.[`metaDescription_${lang}`] || '').trim() || analysisLead(rec, lang);
+  return temiz(rec?.[`metaDescription_${lang}`]) || analysisLead(rec, lang);
 }
 
 /**

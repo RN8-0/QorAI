@@ -1389,7 +1389,18 @@
           if (stage === 'progress') { _cmpIlerleme = bilgi; renderProgress(durum); }
           if (stage === 'verdict') { mark(lang + '-report', 'done'); mark(lang + '-verdict', 'run'); }
         });
-        r.out[lang] = res.data;
+        // `researched` BAYRAGI KAYDA GIRMELI. Motor bunu her turde donduruyor
+        // ama eskiden yalnizca `res.data` saklaniyordu; yayinlanan kayitta iz
+        // kalmiyor, sayfa da "canli arama yapildi mi" sorusunu yanitlayamiyordu.
+        // Kronik sorun listesi BOS dondugunde bu bayrak tek ayirt edici:
+        // "arandi, bulunamadi" ile "hic aranmadi" ayni goruntu degil.
+        // URUN KODU RAPOR METNINDEN DUSER. Baslik temizligi yetmiyor: model
+        // urun adini cumlelerin icine de yaziyor (olculdu: tek analizde yedi
+        // paragrafta "(SM-S918B)"). Okuma tarafinda da bir kapi var
+        // (analysisRecord.analysisReport) ama kayda temiz girmesi daha iyi.
+        r.out[lang] = (res.data && typeof res.data === 'object')
+          ? QorAiPrompts.cleanProductCodes(Object.assign({}, res.data, { researched: Boolean(res.researched) }))
+          : res.data;
         // Karsilastirmada bir urunun raporu iki denemede de gelmediyse motor
         // onu DUSURUYOR. Sessiz kalmak, 6 urun sectigim halde 5 urunlu bir
         // sayfa yayinlamak demek — kayit da rapordan okundugu icin (kayitKur)

@@ -4,6 +4,7 @@ import {
   researchSubscriptionsCommunity,
   subscriptionAnalysis,
 } from './linkAnalysis';
+import { cleanProductCodes } from './aiPrompts';
 import { saveSubscriptionHistory } from './pbHistory';
 
 const STORAGE_KEY = 'qor.subscriptionAnalysis.activeJob';
@@ -106,13 +107,15 @@ async function completeSubscription(job, answers = []) {
   if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'report', researched: Boolean(research) });
   try {
-    const data = await subscriptionAnalysis({
+    const ham = await subscriptionAnalysis({
       subscriptionNames: job.services,
       answers,
       language: job.language,
       userProfile: job.userProfile,
       research,
     });
+    // Urun/servis kodu rapor metninden duser (bkz. cleanProductCodes).
+    const data = cleanProductCodes(ham);
     if (!data.services.length) throw new Error('empty analysis');
     const analysis = data.recommendation
       || data?.winner?.recommendation

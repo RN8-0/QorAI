@@ -97,7 +97,7 @@ function ScoreChart({ services, L }) {
 // Bir servisin rapor BÖLÜMLERİ. Tek tek kart olarak da, karşılaştırmada
 // satır satır hizalı ızgara olarak da aynı parçalar kullanılır — böylece iki
 // servis yan yanayken "biri yukarıda biri aşağıda" kalmaz.
-function serviceSections(s, L) {
+function serviceSections(s, L, researched = false) {
   const score = Math.round(s.score || 0);
   const factors = list(s.factors);
   const pros = bullets(s.pros);
@@ -137,7 +137,7 @@ function serviceSections(s, L) {
       />
     ) : null,
     critical: critical.length ? <CriticalPoints items={critical} L={L} /> : null,
-    forum: <ForumFindings loved={loved} chronic={chronic} L={L} />,
+    forum: <ForumFindings loved={loved} chronic={chronic} L={L} researched={researched} />,
     forwho: (s.bestFor || s.notFor) ? (
       <div className="subs-forwho">
         {s.bestFor && <p className="subs-forwho-good">🎯 <b>{L('Great for', 'Tam uygun')}:</b> {s.bestFor}</p>}
@@ -200,8 +200,8 @@ function ServiceHeader({ s, isWinner, L }) {
   );
 }
 
-function ServiceCard({ s, isWinner, L }) {
-  const sec = serviceSections(s, L);
+function ServiceCard({ s, isWinner, L, researched = false }) {
+  const sec = serviceSections(s, L, researched);
   return (
     <div className={'subs-svc' + (isWinner ? ' winner' : '')}>
       <ServiceHeader s={s} isWinner={isWinner} L={L} />
@@ -269,7 +269,13 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
 
       <div className="subs-svc-grid">
         {services.map((s) => (
-          <ServiceCard key={s.name} s={s} isWinner={services.length === 1 || s.name === winnerName} L={L} />
+          <ServiceCard
+            key={s.name}
+            s={s}
+            isWinner={services.length === 1 || s.name === winnerName}
+            L={L}
+            researched={Boolean(result.researched)}
+          />
         ))}
       </div>
 

@@ -11,6 +11,8 @@ import {
   researchProductsCommunity,
 } from './linkAnalysis';
 import { saveLinkAnalysisHistory } from './pbHistory';
+import { attachCatalogAlternatives } from './catalogAlternatives';
+import { cleanProductCodes } from './aiPrompts';
 
 const STORAGE_KEY = 'qor.linkAnalysis.activeJob';
 const listeners = new Set();
@@ -176,6 +178,14 @@ async function completeSingle(job, answers = []) {
     return;
   }
   if (!activeJob || activeJob.id !== job.id) return;
+  // Alternatif adi katalogda varsa gorsel + `/product/<slug>` adresi oradan
+  // gelir (bkz. lib/catalogAlternatives.js). Basarisiz olursa rapor aynen kalir.
+  try {
+    data.alternatives = await attachCatalogAlternatives(data.alternatives, {
+      category: base?.category, lang: job.language,
+    });
+  } catch { /* katalog eslestirmesi raporu bozmaz */ }
+  if (!activeJob || activeJob.id !== job.id) return;
   setJob({ stage: 'saving' });
   const saved = await saveLinkAnalysisHistory({
     urls: [base.url],
@@ -185,7 +195,8 @@ async function completeSingle(job, answers = []) {
   });
   setJob({
     phase: 'result',
-    enhanced: { ...data, catalogMatch: activeJob?.catalogMatch || null },
+    // Urun kodu rapor metninden duser (bkz. cleanProductCodes).
+    enhanced: { ...cleanProductCodes(data), catalogMatch: activeJob?.catalogMatch || null },
     compareText: '',
     savedAt: new Date().toISOString(),
     savedId: saved?.id || '',

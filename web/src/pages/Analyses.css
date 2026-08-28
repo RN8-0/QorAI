@@ -22,6 +22,19 @@
 .an-head p { margin: 0; color: var(--text-2); line-height: 1.6; max-width: 62ch; }
 
 .an-empty { color: var(--text-3); padding: 28px 0; }
+/* "Tekrar dene" — istek dustugunde sayfayi yenilemeden yeniden denemek icin.
+   Cumlenin icinde durdugu icin baglantiya benzer, butona degil. */
+.an-retry {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.an-retry:hover { color: var(--text); }
 
 /* ── liste ───────────────────────────────────────────────── */
 .an-list { display: flex; flex-direction: column; }

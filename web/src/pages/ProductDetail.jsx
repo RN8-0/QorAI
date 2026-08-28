@@ -807,10 +807,14 @@ export default function ProductDetail() {
     if (!p || aiFull.data) return;
     // Ucret quiz adiminda alindi — burada TEKRAR ALINMAZ.
     runProductAnalysisJob({
-      product: p, lang, user, answers, similar, offers,
+      // `similar` GONDERILMEZ. Rapordaki alternatiflerin aday listesi
+      // "Benzer Urunler" rayi DEGIL, ayni segmentten secilen ayri bir liste;
+      // isi baslatan taraf onu kendisi cekiyor (bkz. getPeerAlternatives).
+      // Sayfa acilisinda cekmek her urun sayfasina iki bosuna sorgu eklerdi.
+      product: p, lang, user, answers, offers,
       productTitle: localizedProductName(p, lang),
     });
-  }, [p, lang, user, aiFull.data, similar, offers]);
+  }, [p, lang, user, aiFull.data, offers]);
 
   // ARKA PLANDAKI ISIN ANLIK GORUNTUSU -> bilesen state'i.
   // Akıştan çıkış: koşan işi bırak, panel baştaki "analizi başlat" hâline dönsün.
