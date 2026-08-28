@@ -438,3 +438,28 @@ body{background:#07080a;color:var(--text);letter-spacing:.01em}
 
 /* ── CATEGORY COUNT BADGE ── */
 .cat-count-badge{background:var(--surface-2,#1a1a1a);color:var(--text2);font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:6px;border:1px solid var(--border)}
+
+/* ── Marka görselleri (elle yükleme) ───────────────────────────────────────
+   Panelin kendi tokenlarını kullanır; yeni bir renk ya da yarıçap ölçeği
+   getirmez. Ayrım gölgeyle değil 1px çizgiyle yapılır. */
+.brandlogo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.brandlogo-card{display:flex;align-items:center;gap:12px;padding:10px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2)}
+.brandlogo-thumb{flex:0 0 48px;width:48px;height:48px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.brandlogo-thumb img{max-width:38px;max-height:38px;object-fit:contain}
+.brandlogo-empty{color:var(--text3);font-size:18px}
+.brandlogo-meta{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.brandlogo-meta strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Anahtar bir VERİ değeri: eşleşmeyi gözle doğrulayabilmek için mono. */
+.brandlogo-meta code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brandlogo-meta small{font-size:11px;color:var(--text3)}
+.brandlogo-actions{flex:0 0 auto;display:flex;flex-direction:column;gap:6px}
+@media (max-width:520px){
+  .brandlogo-grid{grid-template-columns:1fr}
+  .brandlogo-card{flex-wrap:wrap}
+  .brandlogo-actions{flex-direction:row;width:100%}
+}

@@ -7,6 +7,15 @@
 //
 // Bu test iki dosyayi OKUR ve kritik kurallarin ikisinde de ayni yonde
 // oldugunu dogrular. Web prompt'u degisirse ve app guncellenmezse KIRILIR.
+//
+// 2026-08-28 — TESTIN KENDISI OLMUSTU. Quiz prompt'lari
+// `web/src/lib/linkAnalysis.js`ten `admin/js/qor_ai_prompts.js`e TASINDI
+// (site ve admin ayni motoru kossun diye); test eski yolu okumaya devam etti,
+// aradigi metni bulamadi ve iki iddiada birden kirmizi kaldi. Kirmizi kalan
+// bir parite testi, kopmayi yakalamayan bir parite testidir: olculdu, uc
+// gercek kaynakta da kural YERINDEYDI, yani test aylardir bos yere
+// bagirıyordu. Yol duzeltildi; dosya adi bir daha degisirse `_read` acikca
+// patlar (sessizce gecmez).
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,7 +30,9 @@ void main() {
   late final String gemini;
   late final String deepseek;
   setUpAll(() {
-    web = _read('web/src/lib/linkAnalysis.js');
+    // Quiz prompt'larinin TEK KAYNAGI. Site bunu derlemede ice aktariyor
+    // (web/src/lib/aiPrompts.js), admin ayni dosyayi <script> ile kosuyor.
+    web = _read('admin/js/qor_ai_prompts.js');
     gemini = _read('lib/services/gemini_service.dart');
     deepseek = _read('lib/services/deepseek_service.dart');
   });

@@ -482,9 +482,10 @@ async function researchProductCommunity({ title, category, url, siteName, langua
       `Research the product "${name}"${category ? ` (category: ${category})` : ''} for a Qor AI buyer report.\n`
       + (url ? `Product URL: ${url}\n` : '')
       + (siteName ? `Store: ${siteName}\n` : '')
+      + `\n${P.modelIdentityGate(name, language)}\n`
       + `\n${communityResearchChecklist(langName, category)}`,
       { language, maxOutputTokens: 3072, timeoutMs: 45000 },
-    );
+    ).then((notlar) => P.scrubSiblingResearch(notlar, name, language));
   } catch {
     return '';
   }
@@ -502,10 +503,11 @@ async function researchProductsCommunity({ bases = [], language }) {
   try {
     return await askQorAiGrounded(
       `Research these products for a Qor AI head-to-head comparison report:\n${list}\n\n`
+      + `${P.modelIdentityGate(rows.map((b) => b.title), language)}\n\n`
       + `${communityResearchChecklist(langName, rows.map((b) => b.category).find(Boolean))}\n\n`
       + `8) HEAD-TO-HEAD: after covering each product, state the decisive real-world differences between them and which owner profile ends up happier with which one.`,
       { language, maxOutputTokens: 4096, timeoutMs: 50000 },
-    );
+    ).then((notlar) => P.scrubSiblingResearch(notlar, rows.map((b) => b.title), language));
   } catch {
     return '';
   }
@@ -1106,8 +1108,9 @@ Return ONLY valid JSON:
 
 async function compareAnalysis({ bases, answers, language, userProfile = {}, research = '' }) {
   const langName = languageName(language);
-  const factorLabels = compareFactorLabels(language);
-  const factorEmojis = ['🎯', '⚡', '⭐', '🧩', '🧭', '🛡', '🌐', '🚀'];
+  // `factorLabels` / `factorEmojis` BURADAN KALDIRILDI: tek kullanicilari,
+  // AI faktor dondurmediginde her faktore urunun genel puanini yazan yedek
+  // listeydi. O yedek uydurma uretiyordu (bkz. asagidaki gerekce), kalkti.
   const qaPairs = (answers || [])
     .filter((a) => a.answer != null)
     .map((a) => ({ question: a.question, answer: a.answer }));
@@ -1152,18 +1155,15 @@ async function compareAnalysis({ bases, answers, language, userProfile = {}, res
     .map((p, i) => {
       const base = (bases || [])[i] || {};
       const score = num(p.score) || num(base.score) || 50;
-      const rawFactors = Array.isArray(p.factors) ? p.factors.map((f) => ({
+      // Abonelik tarafiyla AYNI kural: puani olmayan faktor DUSER, urunun
+      // genel puaniyla doldurulmaz. Yedek liste kaldirildi — bkz. yukarida
+      // `subscriptionAnalysis` icindeki gerekce.
+      const factors = Array.isArray(p.factors) ? p.factors.map((f) => ({
         label: String(f?.label || ''),
         score: num(f?.score ?? f?.value),
         emoji: String(f?.emoji || '📊'),
         detail: String(f?.detail || ''),
-      })).filter((f) => f.label) : [];
-      const factors = rawFactors.length ? rawFactors : factorLabels.map((label, j) => ({
-        label,
-        score,
-        emoji: factorEmojis[j] || '📊',
-        detail: '',
-      }));
+      })).filter((f) => f.label && Number.isFinite(f.score) && f.score > 0) : [];
       const specHighlights = Array.isArray(p.specHighlights) ? p.specHighlights.map((s) => ({
         label: String(s?.label || ''),
         value: String(s?.value || ''),
@@ -1229,8 +1229,39 @@ async function compareAnalysis({ bases, answers, language, userProfile = {}, res
 // schema (subscriptions / winner / recommendation). The app runs a googleSearch
 // research pass first; the web proxy can't ground, so we analyze directly and
 // let the model lean on its own knowledge.
+/* Servis sayisi arttikca AYRINTI AZALIR ki JSON TAMAMLANSIN.
+   Olculdu 2026-08-28: sabit ayrinti + sabit 12288 jeton, 5 servislik
+   karsilastirmada cikti kirpilmasina yol aciyor, eksik kalan servisler
+   `d = {}` olarak donuyor ve faktor tablosu uydurma yedege dusuyordu.
+   Urun tarafinda ayni ders `buildComparePrompt` icinde zaten odenmisti. */
+function subscriptionVerbosity(count) {
+  const big = count >= 4;
+  const mid = count === 3;
+  return {
+    pros: big ? '2-3' : mid ? '3' : '3-4',
+    cons: big ? '2' : '3',
+    risks: big ? '2' : '2-3',
+    critical: big ? '2' : '2-3',
+    features: big ? '3-4' : '4-6',
+    commPara: big ? '1 short paragraph' : mid ? '2 short paragraphs' : '3 short paragraphs',
+    themes: big ? '3-4' : '4-6',
+    sources: big ? '3' : '3-5',
+    cancel: big ? '2' : '2-3',
+    loved: big ? '2-3' : '3-4',
+    chronic: big ? '2-3' : '2-4',
+  };
+}
+
+/** Servis karti istegi icin jeton butcesi. Gemini 65k'ya kadar cikabiliyor;
+ *  DeepSeek zaten tasima katmaninda 8192'ye kirpiliyor, bu yuzden asil koruma
+ *  yukaridaki ayrinti olceklemesi. */
+function subscriptionMaxTokens(count) {
+  return Math.min(32768, 8192 + count * 3072);
+}
+
 function subscriptionAnalysisPrompt(names, count, isCompare, qaPairs, language) {
   const langName = languageName(language);
+  const v = subscriptionVerbosity(count);
   const factorDefs = subscriptionFactorDefinitions(language);
   const factorSchema = factorDefs
     .map((f) => `        "${f.key}": {"score": "integer 0-100", "detail": "1 evidence-based sentence in ${langName} explaining this ${f.label} score"}`)
@@ -1250,7 +1281,7 @@ CRITICAL RULES:
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user${isCompare ? '. Two services must NEVER get the same score.' : ''}
-- factors are 0-100 integers and MUST include every factor key shown in the schema, each with a one-sentence "detail" that explains the score with evidence — never a restatement of the label
+- factors are REQUIRED and must be 0-100 integers covering every factor key in the schema (a missing or zero factor is DROPPED and its chart is not drawn at all — there is no default), each with a one-sentence "detail" that explains the score with evidence — never a restatement of the label
 - ANTI-INFLATION: do NOT cluster factor scores near the top. Each service has real weak spots — at least 2 factors per service should fall below 65, and reserve 85+ only for genuine standout strengths. Identical high scores across factors are unrealistic.
 
 VENDOR NEUTRALITY — HARD RULE (this analysis runs on a model that may BE one of the compared services, or be made by the company that owns one):
@@ -1275,18 +1306,18 @@ Return ONLY valid JSON (no markdown fences, no commentary) matching this exact s
       "rank": "integer starting at 1",
       "compatibility_score": "integer 0-100",
       "compatibility_explanation": "string - 3 sentences on why this score, tied to the quiz answers",
-      "pros": [{"title": "short strength", "detail": "1 sentence on what it changes in everyday use"}, "... 3-4 items"],
-      "cons": [{"title": "short weakness", "detail": "1 sentence on the real-world impact"}, "... 3 items"],
-      "risks": ["2-3 churn/ownership risk sentences in ${langName}"],
-      "critical_points": [{"severity": "high|medium|low", "title": "what they must know before subscribing", "detail": "1-2 sentences"}, "... 2-3 items"],
-      "notable_features": [{"label": "short feature label", "value": "short feature detail"}, "... 4-6 items"],
-      "community_sentiment": "string - 3 short paragraphs of Reddit/forum/reviewer/app-store synthesis: reception, then the recurring complaints plainly, then what long-term subscribers say",
-      "community_themes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": "integer 0-100", "detail": "1 sentence"}, "... 4-6 themes with a realistic positive/negative mix"],
+      "pros": [{"title": "short strength", "detail": "1 sentence on what it changes in everyday use"}, "... ${v.pros} items"],
+      "cons": [{"title": "short weakness", "detail": "1 sentence on the real-world impact"}, "... ${v.cons} items"],
+      "risks": ["${v.risks} churn/ownership risk sentences in ${langName}"],
+      "critical_points": [{"severity": "high|medium|low", "title": "what they must know before subscribing", "detail": "1-2 sentences"}, "... ${v.critical} items"],
+      "notable_features": [{"label": "short feature label", "value": "short feature detail"}, "... ${v.features} items"],
+      "community_sentiment": "string - ${v.commPara} of Reddit/forum/reviewer/app-store synthesis: reception, then the recurring complaints plainly, then what long-term subscribers say",
+      "community_themes": [{"label": "theme in ${langName}", "sentiment": "positive|negative|mixed", "strength": "integer 0-100", "detail": "1 sentence"}, "... ${v.themes} themes with a realistic positive/negative mix"],
       "sentiment_breakdown": {"positive": "int", "neutral": "int", "negative": "int"},
-      "sources": [{"name": "source type you relied on", "note": "what it contributed"}, "... 3-5 items"],
-      "cancel_reasons": ["2-3 one-sentence reasons people actually cancel this, in ${langName}"],
-      "loved_features": [{"title": "what subscribers single out unprompted as the best part", "detail": "1 sentence on why it keeps coming up"}, "... 3-4 items"],
-      "chronic_issues": [{"title": "recurring, well-documented problem", "detail": "1 sentence: what keeps breaking or disappointing, and whether support fixes it", "frequency": "widespread|common|occasional"}, "... 2-4 items, or an empty array when the research genuinely shows none"],
+      "sources": [{"name": "source type you relied on", "note": "what it contributed"}, "... ${v.sources} items"],
+      "cancel_reasons": ["${v.cancel} one-sentence reasons people actually cancel this, in ${langName}"],
+      "loved_features": [{"title": "what subscribers single out unprompted as the best part", "detail": "1 sentence on why it keeps coming up"}, "... ${v.loved} items"],
+      "chronic_issues": [{"title": "recurring, well-documented problem", "detail": "1 sentence: what keeps breaking or disappointing, and whether support fixes it", "frequency": "widespread|common|occasional"}, "... ${v.chronic} items, or an empty array when the research genuinely shows none"],
       "best_for": "string - 2 sentences on the ideal subscriber and usage context",
       "not_for": "string - 1-2 sentences on who should skip it",
       "factors": {
@@ -1368,7 +1399,7 @@ async function subscriptionAnalysis({ subscriptionNames, answers, language, user
         subscriptionAnalysisPrompt(names, subscriptionNames.length, isCompare, qaPairs, language),
       )) + researchBlock(research, langName),
       user: userJson,
-      maxOutputTokens: 12288,
+      maxOutputTokens: subscriptionMaxTokens(subscriptionNames.length),
     }))(),
     (async () => {
       try {
@@ -1396,22 +1427,23 @@ async function subscriptionAnalysis({ subscriptionNames, answers, language, user
         // Şema artık {score, detail} nesnesi istiyor; eski düz sayı formatı da
         // (ve admin panelinden gelen eski prompt override'ı da) çalışmaya devam eder.
         const obj = v && typeof v === 'object' ? v : null;
+        // `|| score` KALDIRILDI: puani okunamayan faktor, servisin genel
+        // puaniyla DOLDURULMAZ — dusurulur (asagida elenir). Aksi halde tek
+        // bir sayi sekiz ayri olcum gibi gorunuyordu.
+        const puan = num(obj ? (obj.score ?? obj.value) : v);
         return {
           key,
           label: def.label || String(key).replace(/_/g, ' '),
           emoji: def.emoji || '📊',
-          score: num(obj ? (obj.score ?? obj.value) : v) || score,
+          score: puan,
           detail: obj ? String(obj.detail || obj.comment || '') : '',
+          gecerli: Number.isFinite(puan) && puan > 0,
         };
-      })
+      }).filter((f) => f.gecerli).map(({ gecerli, ...f }) => f)
       : [];
-    const factors = rawFactors.length ? rawFactors : factorDefs.map((f) => ({
-      key: f.key,
-      label: f.label,
-      emoji: f.emoji,
-      score,
-      detail: '',
-    }));
+    // YEDEK YOK. AI faktor dondurmediyse liste BOS kalir ve grafik cizilmez;
+    // sekiz faktore genel puani yazmak okuyucuya olcum diye uydurma sunardi.
+    const factors = rawFactors;
     const features = Array.isArray(d?.notable_features) ? d.notable_features.map((x) => ({
       label: String(x?.label || ''),
       value: String(x?.value || ''),

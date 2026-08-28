@@ -157,6 +157,7 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
       const {
         buildFullPrompt, buildProductResearchPrompt, hasStaleAvailabilityClaims,
         parseAiJson, withFreshnessRetryInstruction,
+        scrubSiblingResearch, crossModelLeaks, withModelIdentityRetryInstruction,
       } = await aiHelpers();
       // ADAY LISTESI BURADA CEKILIR, sayfa acilisinda degil: fiyat/puan bandi
       // sorgusu + secilen adaylarin `_raw` govdesi ancak analiz gercekten
@@ -179,6 +180,13 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
           { language: lang, maxOutputTokens: 2048 },
         );
       } catch { research = ''; }
+      // ARASTIRMA NOTU TEMIZLIGI. Grounded arama seri adiyla kosuyor ve basin
+      // amiral gemisini yaziyor: "Galaxy S26" sorgusu S26 Ultra'nin kronik
+      // sorununu, fiyatini ve Ultra'ya OZEL ozelligini geri getiriyordu
+      // (olculdu 2026-08-28). Notlar dahili baglamdir, kullaniciya hic
+      // gosterilmez; kardesten baska bir sey anlatmayan cumleyi ATMAK, onun
+      // rapora gecmesini beklemekten ucuz.
+      research = scrubSiblingResearch(research, product, lang);
       if (!activeJob || activeJob.id !== job.id) return;
       setJob({ stage: 'report' });
 
@@ -207,6 +215,31 @@ export function runProductAnalysisJob({ product, lang, user, answers = [], simil
         if (retryData && typeof retryData === 'object' && !hasStaleAvailabilityClaims(retry)) {
           txt = retry;
           data = retryData;
+        }
+      }
+      // MODEL KIMLIK TEKRARI — tazelik tekrariyla ayni desen. Kapi uretimi
+      // azaltir, temizlik notu suzer; bu ucuncu katman ikisinden de kacani
+      // yakalar. Yalniz KENDI urununu anlatmasi gereken bolumler taranir.
+      if (data && typeof data === 'object') {
+        const leaks = crossModelLeaks(data, product, lang);
+        if (leaks.length && Date.now() - startedAt < 115000) {
+          try {
+            const fix = await askQorAiRaw({
+              system: `You are Qor AI. Return only valid JSON in language code ${lang}. This is a model-identity retry; every claim must belong to the named product itself.`,
+              user: withModelIdentityRetryInstruction(prompt, product, lang, leaks),
+              maxOutputTokens: 16384,
+              temperature: 0.25,
+              jsonMode: true,
+            });
+            const fixData = parseAiJson(fix);
+            // Sifir sart DEGIL: daha az sizintili rapor kabul edilir, cunku
+            // reddedince elde kalan ESKI rapor daha kirli.
+            if (fixData && typeof fixData === 'object'
+              && crossModelLeaks(fixData, product, lang).length < leaks.length) {
+              txt = fix;
+              data = fixData;
+            }
+          } catch { /* ilk rapor duruyor */ }
         }
       }
       if (!data || typeof data !== 'object') throw new Error('parse');

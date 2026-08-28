@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { localLogoFor as sharedLocalLogoFor } from '../lib/subLogos';
+import { loadBrandLogos, brandLogoOverride } from '../lib/brandLogos';
 
 // Port of the app's SubscriptionLogoWidget (lib/presentation/widgets/
 // subscription_logo_widget.dart): known service -> crisp SVG logo,
@@ -233,11 +234,24 @@ function domainFor(name, website = '') {
 
 export default function SubLogo({ name, website = '', logo = '', slug = '', size = 40, radius = 10 }) {
   const wordmark = wordmarkFor(name);
+  // ELLE YÜKLENEN GÖRSEL. Admin panelinden bir ada görsel atandıysa o her
+  // şeyin ÖNÜNE geçer — tablo da Simple Icons da onu ezmemeli, çünkü bu
+  // katmanın tek varlık sebebi ötekilerin yanlış ya da eksik kalması.
+  // Harita bir kez çekilir (10 dk önbellek); gelene kadar bileşen normal
+  // sırayla çizer, geldiğinde `override` değişir ve `urls` yeniden kurulur.
+  const [override, setOverride] = useState(() => brandLogoOverride(name));
+  useEffect(() => {
+    let live = true;
+    loadBrandLogos().then(() => { if (live) setOverride(brandLogoOverride(name)); }).catch(() => {});
+    return () => { live = false; };
+  }, [name]);
+
   const urls = useMemo(() => {
     const iconSlug = slug || simpleIconSlug(name);
     const localLogo = localLogoFor(name);
     const list = [];
     const hiRes = Math.max(160, Math.ceil(size * 4));
+    if (override) list.push(override);
     // An explicit slug (passed by the quiz) wins: crisp brand-coloured SVG from
     // Simple Icons, no broken hot-linked logos.
     if (slug && !SIMPLEICONS_YOK.has(slug)) list.push(`https://cdn.simpleicons.org/${slug}`);
@@ -253,9 +267,11 @@ export default function SubLogo({ name, website = '', logo = '', slug = '', size
       if (domain) list.push(`https://logo.clearbit.com/${domain}?size=${hiRes}`);
     }
     return [...new Set(list)];
-  }, [name, website, logo, slug, size]);
+  }, [name, website, logo, slug, size, override]);
   const [idx, setIdx] = useState(0);
-  useEffect(() => { setIdx(0); }, [name, website, logo, slug]);
+  // `override` sonradan gelince aday listesi başa sarmalı; kullanıcı zaten bir
+  // sonraki adaya geçmişse elle yüklenen görsel hiç denenmezdi.
+  useEffect(() => { setIdx(0); }, [name, website, logo, slug, override]);
 
   const letter = String(name || '?').trim().charAt(0).toUpperCase() || '?';
   const color = AVATAR_COLORS[(letter.charCodeAt(0) || 0) % AVATAR_COLORS.length];

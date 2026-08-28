@@ -96,6 +96,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <span>Bildirimler</span>
         </a>
+        <a class="nav-link" data-view="brandlogos" onclick="showView('brandlogos')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <span>Marka görselleri</span>
+        </a>
         <a class="nav-link" data-view="support" onclick="showView('support')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           <span>İletişim <span class="count-badge" id="supportBadge" style="display:none"></span></span>
@@ -239,6 +243,18 @@
           </div>
         </div>
         <div id="analysesAdminRoot"></div>
+      </section>
+
+      <!-- Karsilastirilan urun/abonelik icin ELLE gorsel yukleme. Gerekce ve
+           olcum: admin/js/brand_logos.js dosya basi. -->
+      <section id="brandlogosView" class="view">
+        <div class="view-header">
+          <h1>Marka görselleri</h1>
+          <div class="view-actions">
+            <button class="btn btn-ghost" onclick="brandLogosLoad()">Yenile</button>
+          </div>
+        </div>
+        <div id="brandLogosRoot"></div>
       </section>
 
       <section id="usersView" class="view">
@@ -1334,6 +1350,9 @@
         // derlemede ice aktariyor (web/src/lib/subLogos.js). analyses.js
         // abonelik kaydinin gorselini bundan dolduruyor -> ONDAN ONCE.
         'js/sub_logos.js',
+        // Marka gorseli gecersiz kilma ekrani — sub_logos.js'in normalize ve
+        // adres yardimcilarina bagli, o yuzden ONDAN SONRA.
+        'js/brand_logos.js',
         'js/analyses.js',
 
         'js/app.js',

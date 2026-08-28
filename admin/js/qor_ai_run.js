@@ -456,6 +456,7 @@ async function runCompareReport(o) {
       lang, 2048
     );
   } catch (_) { research = ''; }
+  research = P.scrubSiblingResearch(research, products, lang);
 
   stage('report', lang);
   var peerNames = products.map(function (p) { return P.displayProductName(p, lang); });
@@ -542,6 +543,9 @@ async function runProductReport(o) {
       lang, 2048
     );
   } catch (_) { research = ''; }
+  // Kardes varyant temizligi — seri adiyla kosan grounded arama amiral
+  // gemisinin malzemesini getiriyor. Gerekce ve olcum: qor_ai_prompts.js.
+  research = P.scrubSiblingResearch(research, product, lang);
 
   stage('report', lang);
   // 16384 jeton: 8192 DeepSeek'in siniriydi ve DeepSeek'e giden istek zaten
@@ -576,6 +580,25 @@ async function runProductReport(o) {
       var rd = P.parseAiJson(retry);
       if (rd && typeof rd === 'object' && !P.hasStaleAvailabilityClaims(retry)) { txt = retry; data = rd; }
     } catch (_) { /* ilk rapor duruyor */ }
+  }
+  // MODEL KIMLIK TEKRARI — tazelik tekrariyla ayni desen.
+  if (data && typeof data === 'object') {
+    var leaks = P.crossModelLeaks(data, product, lang);
+    if (leaks.length && Date.now() - startedAt < 115000) {
+      stage('identity', lang);
+      try {
+        var fix = await askRaw({
+          system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. This is a model-identity retry; every claim must belong to the named product itself.',
+          user: P.withModelIdentityRetryInstruction(prompt, product, lang, leaks),
+          maxOutputTokens: 16384,
+          temperature: 0.25,
+          jsonMode: true,
+        });
+        var fd = P.parseAiJson(fix);
+        if (fd && typeof fd === 'object'
+          && P.crossModelLeaks(fd, product, lang).length < leaks.length) { txt = fix; data = fd; }
+      } catch (_) { /* ilk rapor duruyor */ }
+    }
   }
   if (!data || typeof data !== 'object' || !data.product) throw new Error('Rapor çözülemedi (' + lang + ')');
   // Alternatif adi katalogda varsa gorsel + adres oradan yazilir; kayit

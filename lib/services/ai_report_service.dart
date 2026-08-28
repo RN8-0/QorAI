@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qor_ai/core/constants.dart';
 import 'package:qor_ai/domain/entities/product_entity.dart';
+import 'package:qor_ai/services/model_identity_gate.dart';
 import 'package:qor_ai/presentation/providers/providers.dart';
 
 const _langNames = <String, String>{
@@ -194,6 +195,15 @@ class AiReportService {
         'Do not output English UI labels such as "quiz answers", "similar products", "retailer reviews", "buy", "wait", "source types", "best time", or "community/review research" when the requested language is not English.';
   }
 
+  /// MODEL KIMLIK KAPISI — kardes varyant sizintisi. Kural ve olcum tek
+  /// yerde: lib/services/model_identity_gate.dart (JS esi
+  /// admin/js/qor_ai_prompts.js -> modelIdentityGate).
+  static String _identityGate(ProductEntity p, String lang) =>
+      ModelIdentityGate.gate(<String>[p.nameForLanguage(lang)]);
+
+  static String _identityGateAll(List<ProductEntity> ps, String lang) =>
+      ModelIdentityGate.gate(ps.map((p) => p.nameForLanguage(lang)).toList());
+
   // ── Research prompts (grounded, text reply) ───────────────────────────────
 
   static String buildProductResearchPrompt(
@@ -205,6 +215,7 @@ class AiReportService {
     return 'Research the product "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} for a Qor AI purchase report.\n'
         'Category: ${l.category}\nTech score in catalog: ${l.score}/100\nApprox catalog price: ${l.price}\nCatalog specs: ${l.ks}\n\n'
         'MARKET STATUS CONTEXT:\n${_availabilityContext(p)}\n\n'
+        '${_identityGate(p, lang)}\n\n'
         '${_freshnessRules()}\n${_languageGate(lang)}\n\n'
         'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. '
         'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n'
@@ -231,6 +242,7 @@ class AiReportService {
     return 'Research these products for a Qor AI comparison report.\n\n'
         '${lines.join('\n')}\n\n'
         'MARKET STATUS CONTEXT:\n${marketCtx.join('\n\n')}\n\n'
+        '${_identityGateAll(products, lang)}\n\n'
         '${_freshnessRules()}\n${_languageGate(lang)}\n\n'
         'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. '
         'Then note the decisive differences that matter for a buyer choosing one. Do not invent quotes, exact counts, or exact live prices.\n\n'
@@ -253,6 +265,7 @@ class AiReportService {
     final catalogAlts = _catalogAlternatives(similarProducts, lang);
     return 'You are Qor AI\'s senior product analyst and product advisor. Analyse "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}). '
         'Use the product name exactly as given. Do not replace it with a similar model.\n\n'
+        '${_identityGate(p, lang)}\n\n'
         '${_languageGate(lang)}\n\n'
         'CRITICAL OUTPUT ORDER: one single continuous report: match/advisor/deep analysis first, internet/community sentiment second, smart alternatives third, price forecast last.\n'
         '${_freshnessRules()}\n'
@@ -348,6 +361,7 @@ class AiReportService {
     return 'You are Qor AI\'s senior product analyst and product advisor. Analyse "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}). '
         'Produce the PERSONAL DECISION half of a comprehensive match report. '
         'Use the product name exactly as given. Do not replace it with a similar model.\n\n'
+        '${_identityGate(p, lang)}\n\n'
         '${_languageGate(lang)}\n\n'
         '${_freshnessRules()}\n'
         'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n'
@@ -394,6 +408,7 @@ class AiReportService {
     final l = _productLine(p, lang);
     return 'You are Qor AI\'s community-research and market analyst. For "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}), '
         'produce the COMMUNITY & MARKET half of the report. The personal-decision half is written separately — do NOT repeat it.\n\n'
+        '${_identityGate(p, lang)}\n\n'
         '${_languageGate(lang)}\n\n'
         '${_freshnessRules()}\n'
         'Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n\n'
@@ -422,6 +437,7 @@ class AiReportService {
     final prof = _profileString(profile);
     final peers = peerNames.where((n) => n.isNotEmpty && n != l.name).toList();
     return 'You are Qor AI\'s senior product analyst. Produce ONE product\'s section of a multi-product comparison report. Evaluate ONLY "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}), but judge it in the CONTEXT of being compared against: ${peers.isEmpty ? 'the other selected products' : peers.join(', ')}.\n\n'
+        '${_identityGate(product, lang)}\n\n'
         '${_languageGate(lang)}\n\n${_freshnessRules()}\n\n'
         'Use catalog specs and quiz answers as verified inputs; use research notes only when they support a claim. Write like a professional buyer lab report: concrete, decisive, detailed. Never invent direct quotes, exact review counts, or exact live prices.\n\n'
         'Return ONLY one valid JSON object for THIS product with this exact structure:\n'
@@ -702,10 +718,16 @@ class AiReportService {
         return cached.data!;
       }
     } catch (_) {}
-    final research = await _askGrounded(
-      ref,
-      buildProductResearchPrompt(product, lang, quizAnswers),
-      lang,
+    // Kardes varyant temizligi: seri adiyla kosan grounded arama amiral
+    // gemisinin kronik sorununu/fiyatini getiriyor (olculdu 2026-08-28).
+    // Notlar dahili baglamdir, kullaniciya hic gosterilmez.
+    final research = ModelIdentityGate.scrub(
+      await _askGrounded(
+        ref,
+        buildProductResearchPrompt(product, lang, quizAnswers),
+        lang,
+      ),
+      <String>[product.nameForLanguage(lang)],
     );
     if (research.isNotEmpty) {
       try {
@@ -834,6 +856,33 @@ class AiReportService {
         if (p != null) data['product'] = p;
       }
     }
+
+    // MODEL KİMLİK KAPISI — tazelik kapısıyla aynı desen. Prompt kapısı üretimi
+    // azaltır, araştırma temizliği kaynağı süzer; bu üçüncü katman ikisinden de
+    // kaçanı yakalar. Yalnız KENDİ ürününü anlatması gereken bölümler taranır
+    // (alternatifler hariç: orada başka model adı doğrudur).
+    final names = <String>[product.nameForLanguage(lang)];
+    final found = ModelIdentityGate.leaks(data, names);
+    if (found.isNotEmpty &&
+        DateTime.now().difference(startedAt).inSeconds < 115) {
+      final fix = await _askJson(
+        ref,
+        ModelIdentityGate.retryInstruction(prompt, names, found),
+        lang,
+        maxTokens: 8192,
+        temperature: 0.25,
+        deadline: deadline,
+      );
+      // Sıfır şart DEĞİL: daha az sızıntılı bölüm kabul edilir, çünkü
+      // reddedince elde kalan ESKİ bölüm daha kirli. Tazelik kapısıyla aynı
+      // gerekçeyle yalnız KARAR yarısı değiştirilir.
+      if (fix != null && fix['product'] != null) {
+        final aday = <String, dynamic>{...data, 'product': fix['product']};
+        if (ModelIdentityGate.leaks(aday, names).length < found.length) {
+          data['product'] = fix['product'];
+        }
+      }
+    }
     data['type'] = 'product_full_report';
     return data;
   }
@@ -851,11 +900,14 @@ class AiReportService {
     if (products.length < 2) return null;
     onStage?.call(AiReportStage.prep);
     onStage?.call(AiReportStage.research);
-    final research = await _askGrounded(
-      ref,
-      buildCompareResearchPrompt(products, lang, quizAnswers),
-      lang,
-      maxTokens: 2048,
+    final research = ModelIdentityGate.scrub(
+      await _askGrounded(
+        ref,
+        buildCompareResearchPrompt(products, lang, quizAnswers),
+        lang,
+        maxTokens: 2048,
+      ),
+      products.map((p) => p.nameForLanguage(lang)).toList(),
     );
     onStage?.call(AiReportStage.report);
 

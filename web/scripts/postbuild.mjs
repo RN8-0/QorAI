@@ -5,7 +5,7 @@
 // /product/<slug>-<id> paths; uncurated product deep links fall back to the
 // host's SPA rewrite (serves index.html, then the SPA renders the product).
 
-import { mkdirSync, copyFileSync, existsSync } from 'fs';
+import { mkdirSync, copyFileSync, existsSync, readdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -55,48 +55,25 @@ for (const prefix of LANG_PREFIXES) {
 
 copyFileSync(indexHtml, join(site, '404.html'));
 
-const SUBSCRIPTION_LOGOS = [
-  'netflix.svg',
-  'disney_plus.png',
-  'prime_video.png',
-  'apple_tv_plus.svg',
-  'max.svg',
-  'youtube_premium.svg',
-  'crunchyroll.svg',
-  'spotify.svg',
-  'apple_music.svg',
-  'youtube_music.svg',
-  'tidal.svg',
-  'chatgpt_plus.png',
-  'claude.svg',
-  'gemini.svg',
-  'perplexity.svg',
-  'midjourney.png',
-  'game_pass.png',
-  'ps_plus.svg',
-  // 2026-08-08: abonelik seçicisine eklenen 5 yeni varsayılan servis
-  'amazon_music.png',
-  'deezer.svg',
-  'geforce_now.svg',
-  'switch_online.png',
-  'dropbox.svg',
-  'microsoft_365.png',
-  'google_one.png',
-  'icloud.svg',
-  'adobe_cc.png',
-  'notion.svg',
-  'canva.png',
-];
+/* ABONELIK LOGOLARI — DIZININ KENDISI LISTEDIR.
+   Onceden burada ELLE yazilmis 29 dosyalik bir dizi vardi. Olculdu
+   2026-08-28: `assets/icons/quiz_logos/` icinde 103 dosya var, yani 74 logo
+   hicbir zaman yayina cikmiyordu. Ayni ada `admin/js/sub_logos.js` eslesme
+   verse bile dosya 404 donuyor ve arayuz harf/kelime rozetine dusuyordu —
+   kullanicinin bildirdigi "bazi aboneliklerde logo yok" bunun bir ayagi.
+   Tum dizin 498 KB; secmenin bir kazanci yok, ayrisma maliyeti var. */
 const logoSourceDir = join(root, 'assets', 'icons', 'quiz_logos');
 const logoTargetDir = join(site, 'assets', 'subscriptions');
 mkdirSync(logoTargetDir, { recursive: true });
+const SUBSCRIPTION_LOGOS = existsSync(logoSourceDir)
+  ? readdirSync(logoSourceDir).filter((f) => /\.(?:svg|png|jpg|jpeg|webp)$/i.test(f))
+  : [];
+if (!SUBSCRIPTION_LOGOS.length) {
+  console.error(`[postbuild] no subscription logo assets under ${logoSourceDir}`);
+  process.exit(1);
+}
 for (const file of SUBSCRIPTION_LOGOS) {
-  const src = join(logoSourceDir, file);
-  if (!existsSync(src)) {
-    console.error(`[postbuild] missing subscription logo asset: ${src}`);
-    process.exit(1);
-  }
-  copyFileSync(src, join(logoTargetDir, file));
+  copyFileSync(join(logoSourceDir, file), join(logoTargetDir, file));
 }
 
 console.log(`[postbuild] wrote ${ROUTES.length * LANG_PREFIXES.length + LANG_PREFIXES.length - 1} route shells (${LANG_PREFIXES.length} dil) + 404.html + ${SUBSCRIPTION_LOGOS.length} subscription logos`);

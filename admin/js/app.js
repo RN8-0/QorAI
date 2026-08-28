@@ -176,6 +176,7 @@ function showView(name){
   if(name==='scraper'){checkProxy();ensureProxyPolling();populateScraperCategories().catch(()=>{});if(typeof renderCustomCategoriesList==='function')renderCustomCategoriesList();if(typeof updateResumeUI==='function')updateResumeUI();if(typeof offersLoadConfig==='function')offersLoadConfig();}
   if(name==='activitylog')loadActivityLog();
   if(name==='notifications')loadNotificationsView();
+  if(name==='brandlogos'&&typeof brandLogosLoad==='function')brandLogosLoad();
   if(name==='support')initSupportInbox({ forceReload: true });
 }
 

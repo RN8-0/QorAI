@@ -60,6 +60,12 @@ export const cleanProductForPrompt = API.cleanProductForPrompt;
 export const languageGate = API.languageGate;
 export const researchSourceGate = API.researchSourceGate;
 export const chronicResearchGate = API.chronicResearchGate;
+// Model kimlik kapisi — kardes varyant sizintisi (S26 raporunda S26 Ultra'nin
+// kronik sorunu). Olcum ve gerekce: admin/js/qor_ai_prompts.js.
+export const modelIdentityGate = API.modelIdentityGate;
+export const scrubSiblingResearch = API.scrubSiblingResearch;
+export const crossModelLeaks = API.crossModelLeaks;
+export const withModelIdentityRetryInstruction = API.withModelIdentityRetryInstruction;
 export const quizLines = API.quizLines;
 export const promptContext = API.promptContext;
 

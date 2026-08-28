@@ -946,8 +946,331 @@ function chronicResearchGate(category) {
     + 'Also search: owner threads at 6/12/24 months of use, known bad batches or revisions, warranty and RMA experience, '
     + 'a firmware or driver update that broke something and whether it was ever fixed, and class-action or recall notices. '
     + 'For each finding note what fails, how far into ownership it appears, whether a workaround or fix exists, and how widespread it is. '
-    + 'If after all of that there is genuinely no recurring problem, say so explicitly and say which searches you ran — '
+    // CAPA BULGU DEGILDIR. Olculdu 2026-08-25: capa listesi verilince model
+    // capanin KENDISINI bulguymus gibi yaziyor — MacBook Neo icin "pil sismesi"
+    // ve "mentese gurultusu" cikti, oysa notlar ikisi icin de "bu modele ozgu
+    // kanit yok" diyordu. Ayrim KAYNAKTA yapilir, sonradan temizlenemez.
+    + 'LABEL EVERY CANDIDATE. Prefix each one with [MODEL-SPECIFIC] when the evidence names this exact model or its production run, '
+    + 'and [CATEGORY-GENERAL] when it is a known trait of the category, standard advice, or a possibility you could not tie to this model. '
+    + 'A searched-and-not-found anchor is [CATEGORY-GENERAL], never a finding. '
+    + 'If after all of that there is genuinely no [MODEL-SPECIFIC] problem, say so explicitly and list which searches you ran — '
     + 'that is a real finding, but an empty search is not.'
+  );
+}
+
+/* ── MODEL KIMLIK KAPISI ───────────────────────────────────────────────────
+   OLCULDU 2026-08-28, canli grounded arastirma (gemini-2.5-flash +
+   googleSearch), urun `samsung-galaxy-s26-512gb` = "Samsung Galaxy S26
+   (512 GB)", dil TR. Donen arastirma notlarindan AYNEN:
+
+     "Bazi kullanicilar, Galaxy S26 Ultra'da isinma, gecikme ve pil tuketimi
+      sorunlari yasadiklarini belirtmislerdir."          <- ULTRA'nin sorunu
+     "Galaxy S26 Ultra'da bazi kullanicilar ekranin ortasinda kirmizimsi bir
+      leke ... bildirmistir."                            <- ULTRA'nin sorunu
+     "Turkiye'deki perakendecilerde Samsung Galaxy S26 Ultra 512 GB ...
+      83.999 TL ile 131.999 TL arasinda degismektedir."  <- ULTRA'nin fiyati
+     "Gizlilik Ekrani ozelligi (S26 Ultra'ya ozel)."     <- ARTILAR listesinde
+
+   Sonuncusu en agiri: kardes modele OZEL oldugu cumlenin KENDISINDE yazan bir
+   ozellik, temel modelin artisi diye raporlandi.
+
+   KOK NEDEN prompt'un ne dedigi degil NE DEMEDIGI: modele yalnizca ad
+   veriliyordu. Katalogda ayni seriden sekiz kayit var (S26, S26+, S26 Ultra
+   x3, S26 FE) ve web aramasinda seri adi Ultra icerigini getiriyor — teknoloji
+   basini tabani degil amiral gemisini yazar. Model "Galaxy S26 Ultra" baslikli
+   kaynagi "Galaxy S26" sanip aktariyor.
+
+   UC KATMAN, cunku tek katman yetmez:
+     1) KAPI      — prompt'a hangi adlarin BASKA URUN oldugu tek tek yazilir.
+     2) TEMIZLIK  — arastirma notlarindan kardes-only cumleler ATILIR. Kapi
+                    uretimi azaltir, temizlik kacani rapora GECIRMEZ. Notlar
+                    dahili baglamdir, kullaniciya hicbir zaman gosterilmez.
+     3) DENETIM   — rapor ayristirildiktan sonra yalniz KENDI urununu anlatan
+                    bolumler taranir; sizinti varsa tazelik kapisiyla ayni
+                    desende tekrar istenir.
+
+   Kapi LEKSIK calisir, KATALOG SORGUSU YAPMAZ: prompt ureticileri senkron ve
+   web + admin + app ucu birden cagiriyor. */
+
+// "Pro Max" once gelmeli: eslesince "Pro" ve "Max" ayri ayri sayilmasin.
+// "Ti" / "XT" ekran karti kademesidir ve her zaman AYRI token olarak gecer.
+const VARIANT_WORDS = [
+  'Pro Max', 'Ultra', 'Pro', 'Max', 'Plus', 'Edge', 'FE', 'SE',
+  'Mini', 'Air', 'Lite', 'Neo', 'Turbo', 'Super', 'Ti', 'XT',
+];
+
+/** Adin KENDI tasidigi varyant isaretcileri. Bunlar yasak listesine girmez. */
+function variantMarkersIn(name) {
+  let rest = ` ${String(name || '').replace(/[()/,]/g, ' ').replace(/\s{2,}/g, ' ')} `;
+  const found = [];
+  for (const w of VARIANT_WORDS) {
+    const re = new RegExp(`\\s${w.replace(/ /g, '\\s+')}\\s`, 'i');
+    if (re.test(rest)) { found.push(w); rest = rest.replace(re, ' '); }
+  }
+  if (/\+/.test(String(name || ''))) found.push('Plus');
+  return [...new Set(found)];
+}
+
+/** Seri capasi: "Samsung Galaxy S26 (512 GB)" -> stem "Samsung Galaxy S26",
+ *  prefix "S", num 26. Kapasite/birim ("32GB") ve sebeke kusagi ("5G") ELENIR:
+ *  ikisi de nesil sayisi degildir. */
+function seriesAnchor(name) {
+  const cleaned = String(name || '').replace(/\([^)]*\)/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  const toks = cleaned.split(/\s+/);
+  for (let i = toks.length - 1; i >= 0; i--) {
+    const t = toks[i].replace(/[^\w+]/g, '');
+    if (!t) continue;
+    if (/\d\s*(?:GB|TB|MB|W|Wh|mAh|Hz|nm|MP|K)$/i.test(t)) continue;
+    const m = t.match(/^([A-Za-z]{0,2})(\d{2,4})([A-Za-z+]{0,3})$/);
+    if (!m) continue;
+    const num = Number(m[2]);
+    if (num < 10) continue;                       // "5G", "4G" nesil degil
+    return { index: i, prefix: m[1], num, token: t, stem: toks.slice(0, i + 1).join(' ') };
+  }
+  return null;
+}
+
+/** KOMSU NESIL adimi urun sinifina gore degisir. Telefon/laptop kusagi birer
+ *  birer sayilir (S26 -> S25/S27, iPhone 17 -> 16/18). Ekran karti dort haneli
+ *  ve KADEME ile ilerler: 5090'in komsusu 5089 degil 5080'dir. */
+function generationSteps(num) {
+  if (num >= 1000) return num % 10 === 0 ? [-10, 10] : [];
+  return [-1, 1];
+}
+
+/** Metinde urunu ARAYAN capa. Marka cogu kaynakta dusuyor ("Samsung Galaxy S26
+ *  Ultra" yerine yalnizca "Galaxy S26 Ultra" ya da "S26 Ultra"), bu yuzden tam
+ *  ad ARANMAZ — ayirt edici KUYRUK aranir. Capa harf onekliyse ("S26", "K100")
+ *  tek token yeter; saf sayiysa ("17", "5090") onundeki token da alinir, yoksa
+ *  "17" her yerde eslesir. */
+function anchorTail(name) {
+  const a = seriesAnchor(name);
+  if (!a) return '';
+  const toks = a.stem.split(/\s+/);
+  return a.prefix ? toks[a.index] : toks.slice(Math.max(0, a.index - 1), a.index + 1).join(' ');
+}
+
+function reEsc(v) {
+  return String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+}
+
+/** Bu urunle KARISTIRILABILECEK ad listesi — PROMPT ICIN, insan okur.
+ *  Ayni serinin obur varyantlari + komsu nesiller. Urunun kendi varyanti varsa
+ *  TABAN MODEL de kardestir. */
+function siblingModelNames(name) {
+  const anchor = seriesAnchor(name);
+  if (!anchor) return [];
+  const own = variantMarkersIn(name);
+  const out = [];
+  for (const w of VARIANT_WORDS) {
+    if (own.includes(w)) continue;
+    out.push(`${anchor.stem} ${w}`);
+  }
+  if (own.length) out.push(anchor.stem);          // taban model de BASKA urun
+  const head = anchor.stem.split(/\s+/).slice(0, anchor.index).join(' ');
+  for (const d of generationSteps(anchor.num)) {
+    const n = anchor.num + d;
+    if (n < 1) continue;
+    out.push(`${head} ${anchor.prefix}${n}`.trim());
+  }
+  return [...new Set(out)];
+}
+
+/** Konuyu ADIYLA yakalayan regex — kardes adinin ICINDE eslesmez.
+ *  "S26" kalibi "S26 Ultra" cumlesini KONU saymaz. */
+function subjectNameRegex(name) {
+  const tail = anchorTail(name) || cleanProductName(name);
+  if (!tail) return null;
+  const own = variantMarkersIn(name);
+  const tabu = VARIANT_WORDS.filter((w) => !own.includes(w)).map((w) => w.replace(/ /g, '\\s+'));
+  if (!own.includes('Plus')) tabu.push('\\+');
+  return new RegExp(`${reEsc(tail)}(?!\\s*(?:${tabu.join('|')}))`, 'i');
+}
+
+/** "oncekine gore", "compared to" — cumlenin KONUYU anlattigini, komsu neslin
+ *  yalnizca olcut oldugunu gosteren ipuclari. */
+const COMPARATIVE_CUE = /(?:\bgöre\b|kıyas|kıyasla|\bkarşın\b|selef|önceki\s+nesil|bir önceki|\bcompared\b|\bcompares\b|\bversus\b|\bvs\.?\b|\bthan\b|predecessor|previous\s+generation|\bupgrade\s+from\b|\bover\s+the\b)/i;
+
+/** Kardesi metinde ARAYAN regexler — IKI EKSEN AYRI.
+ *   varyantRe : capa + BASKA varyant ("S26 Ultra", "RTX 5090 Ti"). Kosulsuz.
+ *   nesilRe   : komsu nesil capasi ("S25", "S27", "RTX 5080"). Yalnizca
+ *               karsilastirma ipucu YOKKEN kardes sayilir.
+ *  Taban modelin CIPLAK capasi BILEREK aranmaz: kaynaklar "S26 Ultra"yi kisaca
+ *  "S26" diye yazar ve ciplak capayi kardes saymak gercek icerigi siler. */
+function siblingDetectParts(name) {
+  const anchor = seriesAnchor(name);
+  if (!anchor) return null;
+  const tail = anchorTail(name);
+  if (!tail) return null;
+  const own = variantMarkersIn(name);
+  const tabu = VARIANT_WORDS.filter((w) => !own.includes(w)).map((w) => w.replace(/ /g, '\\s+'));
+  if (!own.includes('Plus')) tabu.push('\\+');
+  const varyantRe = new RegExp(`${reEsc(tail)}\\s*(?:${tabu.join('|')})\\b`, 'i');
+  const tailHead = tail.split(/\s+/).slice(0, -1).join(' ');
+  const nesil = [];
+  for (const d of generationSteps(anchor.num)) {
+    const n = anchor.num + d;
+    if (n < 1) continue;
+    nesil.push(`\\b${reEsc(`${tailHead} ${anchor.prefix}${n}`.trim())}\\b`);
+  }
+  return { varyantRe, nesilRe: nesil.length ? new RegExp(`(?:${nesil.join('|')})`, 'i') : null };
+}
+
+/** Cumle bu urunun KARDESINDEN baska bir sey anlatmiyor mu? */
+function sentenceIsSiblingOnly(sent, parts) {
+  if (!parts) return false;
+  if (parts.varyantRe.test(sent)) return true;
+  if (parts.nesilRe && parts.nesilRe.test(sent)) return !COMPARATIVE_CUE.test(sent);
+  return false;
+}
+function subjectNamesOf(subjects, lang) {
+  return (Array.isArray(subjects) ? subjects : [subjects])
+    .filter(Boolean)
+    .map((s) => (typeof s === 'string' ? cleanProductName(s) : displayProductName(s, lang)))
+    .filter(Boolean);
+}
+
+/** Prompt kapisi. Tek urun de liste de kabul eder — karsilastirmada TUM
+ *  urunler konudur, birbirlerinin kardesi SAYILMAZ. */
+function modelIdentityGate(subjects, lang) {
+  const names = subjectNamesOf(subjects, lang);
+  if (!names.length) return '';
+  // Seri capasi YOKSA kapi SUSAR. Abonelik ("Netflix") ve sayisiz urun
+  // ("Honor Robot Phone") adlarinda varyant ekseni yok; yine de metin
+  // basmak modele "taban modelsin" diye olmayan bir eksen ogretirdi.
+  if (!names.some((n) => seriesAnchor(n))) return '';
+  const konu = new Set(names.map((n) => n.toLowerCase()));
+  const rows = names.map((n) => {
+    const own = variantMarkersIn(n);
+    const sibs = siblingModelNames(n).filter((s) => !konu.has(s.toLowerCase()));
+    const stand = own.length
+      ? `this is the ${own.join(' ')} version — NOT the base model and not any other suffix`
+      : 'this is the BASE model of its line — it carries no Ultra/Pro/Max/Plus/FE suffix';
+    return `- "${n}": ${stand}.`
+      + (sibs.length ? ` Different products that will surface in the same searches: ${sibs.join(', ')}.` : '');
+  }).join('\n');
+  return (
+    'MODEL IDENTITY HARD GATE — measured as the most common failure in these reports.\n'
+    + `The subject${names.length > 1 ? 's are' : ' is'} EXACTLY: ${names.map((n) => `"${n}"`).join(', ')}.\n`
+    + `${rows}\n`
+    + '- A defect, complaint, price, benchmark, camera or battery result, or feature that a source attributes to one of those other models is NOT evidence about the subject. Never carry it over, not even as "likely applies here too".\n'
+    + '- NEVER list a feature among the strengths when the source says it belongs to another model. A sentence that itself names a different model disqualifies that claim.\n'
+    + '- Pin every search query to the exact model. Review titles and press coverage default to the flagship of a line, so a page carrying the series name is usually about the top variant — read it before attributing anything.\n'
+    + '- If a section has no subject-specific evidence, say so plainly. An honest gap is a correct report; a sibling’s material is a wrong one.\n'
+    + '- You may mention another model only for explicit contrast, named in full, and stated to be a different product.'
+  );
+}
+
+/** ARASTIRMA NOTU TEMIZLIGI — kapinin kacirdigini rapora GECIRMEZ.
+ *  Kural: kardes modeli anan ama konuyu ANMAYAN cumle atilir. Iki adi birden
+ *  gecen cumle KALIR (o bilincli bir karsilastirmadir). */
+function scrubSiblingResearch(notes, subjects, lang) {
+  const text = String(notes || '');
+  if (!text.trim()) return text;
+  const names = subjectNamesOf(subjects, lang);
+  if (!names.length) return text;
+  const subjectRes = names.map(subjectNameRegex).filter(Boolean);
+  const sibParts = names.map(siblingDetectParts).filter(Boolean);
+  if (!sibParts.length) return text;
+
+  let dropped = 0;
+  const out = text.split(/\r?\n/).map((line) => {
+    if (!line.trim()) return line;
+    // Markdown basligi / kalin etiket satiri: iddia tasimaz, dokunma.
+    if (/^\s*(?:#{1,6}\s|\*\*[^*]+\*\*\s*:?\s*$)/.test(line)) return line;
+    const lead = (line.match(/^\s*(?:[-*•]\s*|\d+[.)]\s*)?/) || [''])[0];
+    const body = line.slice(lead.length);
+    const kept = body.split(/(?<=[.!?])\s+/).filter((s) => {
+      if (!sibParts.some((pr) => sentenceIsSiblingOnly(s, pr))) return true;
+      if (subjectRes.some((re) => re.test(s))) return true;   // konu da var
+      dropped += 1;
+      return false;
+    });
+    if (!kept.length) return null;
+    return lead + kept.join(' ');
+  }).filter((l) => l !== null).join('\n');
+
+  return dropped
+    ? `${out}\n\n[Qor AI note] ${dropped} sentence(s) about a DIFFERENT model in the same product line were removed from these notes. Do not reconstruct them.`
+    : out;
+}
+
+/** RAPOR DENETIMI — yalniz KENDI urununu anlatmasi gereken bolumler.
+ *  `alternatives` ve `priceForecast` DISARIDA: orada baska model adi dogru. */
+const OWN_SUBJECT_KEYS = {
+  product: ['strengths', 'weaknesses', 'criticalPoints', 'reliabilityNotes', 'factors',
+    'featureMatches', 'analysis', 'headline', 'overallVerdict', 'pros', 'cons',
+    'bestFor', 'notFor', 'matchComment'],
+  community: ['chronicIssues', 'lovedFeatures', 'summary', 'themes'],
+};
+
+function collectStrings(node, out = []) {
+  if (typeof node === 'string') out.push(node);
+  else if (Array.isArray(node)) node.forEach((v) => collectStrings(v, out));
+  else if (node && typeof node === 'object') Object.values(node).forEach((v) => collectStrings(v, out));
+  return out;
+}
+
+function leaksInEntry(entry, name) {
+  const parts = siblingDetectParts(name);
+  if (!parts || !entry || typeof entry !== 'object') return [];
+  const subjRe = subjectNameRegex(name);
+  const found = [];
+  const scan = (bag, keys, label) => {
+    if (!bag || typeof bag !== 'object') return;
+    for (const k of keys) {
+      if (bag[k] == null) continue;
+      for (const s of collectStrings(bag[k])) {
+        for (const sent of String(s).split(/(?<=[.!?])\s+/)) {
+          if (!sentenceIsSiblingOnly(sent, parts)) continue;
+          if (subjRe && subjRe.test(sent)) continue;
+          found.push({ path: `${label}.${k}`, text: sent.trim().slice(0, 180) });
+        }
+      }
+    }
+  };
+  // Tek urun raporu: { product: {...}, community: {...} }
+  // Karsilastirma girdisi: alanlar DUZ durur, `community` ic ictedir.
+  scan(entry.product || entry, OWN_SUBJECT_KEYS.product, 'product');
+  scan(entry.community || (entry.product && entry.product.community), OWN_SUBJECT_KEYS.community, 'community');
+  return found;
+}
+
+/** Rapordaki kardes-model sizintilari. Bos dizi = temiz. */
+function crossModelLeaks(report, subjects, lang) {
+  if (!report || typeof report !== 'object') return [];
+  const names = subjectNamesOf(subjects, lang);
+  if (!names.length) return [];
+  if (Array.isArray(report.products)) {
+    const out = [];
+    for (const entry of report.products) {
+      const nm = names.find((n) => String(entry?.name || '').toLowerCase().includes(String(n).toLowerCase()))
+        || (entry?.name ? cleanProductName(entry.name) : names[0]);
+      if (!nm) continue;
+      // Karsilastirmada obur KONU urunu kardes degil: onu anan cumle mesru.
+      // Alt-dize ARANMAZ — kaynak markayi dusurur ("Galaxy S26 Ultra"), tam ad
+      // hicbir zaman tutmaz; obur konunun KENDI capa regexi kullanilir.
+      const others = names.filter((n) => n !== nm).map(subjectNameRegex).filter(Boolean);
+      for (const f of leaksInEntry(entry, nm)) {
+        if (others.some((re) => re.test(f.text))) continue;
+        out.push({ product: nm, ...f });
+      }
+    }
+    return out;
+  }
+  return leaksInEntry(report, names[0]).map((f) => ({ product: names[0], ...f }));
+}
+
+function withModelIdentityRetryInstruction(prompt, subjects, lang, leaks = []) {
+  const names = subjectNamesOf(subjects, lang);
+  const ornek = leaks.slice(0, 5).map((l) => `- ${l.path}: "${l.text}"`).join('\n');
+  return (
+    `${prompt}\n\nMODEL IDENTITY RETRY:\n`
+    + 'The previous answer was rejected: it attributed material from a DIFFERENT model in the same product line to the subject. Rewrite the JSON from scratch.\n'
+    + (ornek ? `Rejected sentences:\n${ornek}\n` : '')
+    + `${modelIdentityGate(subjects, lang)}\n`
+    + (names.length ? `Subject names that must stay exact: ${names.join(', ')}\n` : '')
+    + 'Drop every claim you cannot tie to the subject itself. A shorter honest section is required; a sibling’s material is not acceptable.'
   );
 }
 
@@ -986,6 +1309,7 @@ function buildDeepPrompt(p, lang) {
   return (
     `You are a senior tech product analyst. The product name is exactly "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
     'Do NOT assume any typo in the product name — use it exactly as given.\n\n' +
+    `${modelIdentityGate(p, lang)}\n\n` +
     `IMPORTANT: Return ONLY valid JSON. ALL text fields, list items, and the verdict MUST be fully written in ${langName(lang)}.\n\n` +
     'Return a JSON object with this EXACT structure:\n' +
     '{\n  "overallScore": <number 0-100>,\n  "strengths": [{"name": "<aspect>", "score": <0-100>, "detail": "<1 sentence>"}],\n' +
@@ -1042,6 +1366,7 @@ function buildForumPrompt(p, lang) {
     `You are Qor AI analysing public community sentiment for "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
     'Base it on widely-known discussions across public forums and communities (e.g. Reddit, XDA, dedicated enthusiast forums, large retailer review sections). ' +
     'Do NOT invent specific quotes or fake numbers — give a grounded synthesis.\n\n' +
+    `${modelIdentityGate(p, lang)}\n\n` +
     `IMPORTANT: Return ONLY valid JSON. ALL text MUST be written in ${langName(lang)} (keep forum/site names as-is).\n\n` +
     'Return a JSON object with this EXACT structure:\n' +
     '{\n  "satisfaction": <number 0-100, overall % of owners who seem satisfied>,\n' +
@@ -1061,6 +1386,7 @@ function buildProductResearchPrompt(p, lang, context = {}) {
     `Research the product "${name}" by ${brand || 'unknown'} for a Qor AI purchase report.\n` +
     `Category: ${category || '-'}\nTech score in catalog: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\n\n` +
     `MARKET STATUS CONTEXT:\n${availabilityContextForProduct(p)}\n\n` +
+    `${modelIdentityGate(p, lang)}\n\n` +
     `${freshnessRules()}\n${languageGate(lang)}\n${researchSourceGate(lang)}\n\n` +
     'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. '
     + `${chronicResearchGate(category)} `
@@ -1080,6 +1406,7 @@ function buildCompareResearchPrompt(products, lang, context = {}) {
     'Research these products for a Qor AI comparison report.\n\n' +
     `${lines}\n\n` +
     `MARKET STATUS CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
+    `${modelIdentityGate(products, lang)}\n\n` +
     `${freshnessRules()}\n${languageGate(lang)}\n${researchSourceGate(lang)}\n\n` +
     'Use current web search. For each product, gather current availability/status, public sentiment from Reddit, YouTube, specialist reviews, retailer reviews, official spec pages, and price-cycle signals. '
     // Karsilastirmada da kronik sorun ARANMAK zorunda: `buildCompareProductPrompt`
@@ -1102,6 +1429,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
   return (
     `You are Qor AI's senior product analyst and product advisor. Analyse "${name}" by ${brand || 'unknown'} (category: ${category}). ` +
     'Use the product name exactly as given. Do not replace it with a similar model.\n\n' +
+    `${modelIdentityGate(p, lang)}\n\n` +
     `${languageGate(lang)}\n\n` +
     'CRITICAL OUTPUT ORDER: one single continuous report: match/advisor/deep analysis first, internet/community sentiment second, smart alternatives third, price forecast last.\n' +
     `${freshnessRules()}\n` +
@@ -1163,7 +1491,8 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // bir ariza listeye girmek ZORUNDA; "bos birak" izni yalnizca arama
     // gercekten bos dondugunde gecerli.
     + '- If the research notes name ANY recurring failure, defect, RMA pattern, firmware regression or degradation, it MUST appear in community.chronicIssues. Leaving it out because it reads like a minor problem, because it is only documented in another language, or because the section feels negative is a reporting error. The empty array is permitted only when the research itself reports that it searched and found nothing.\n'
-    + '- This applies to EVERY category. A laptop, a graphics card, a TV, a pair of headphones and a washing machine all have ownership failure modes; only the phone category has a large Turkish-language forum trail. Never conclude "no chronic issues" from the absence of Turkish-language threads.\n' +
+    + '- This applies to EVERY category. A laptop, a graphics card, a TV, a pair of headphones and a washing machine all have ownership failure modes; only the phone category has a large Turkish-language forum trail. Never conclude "no chronic issues" from the absence of Turkish-language threads.\n'
+    + '- ONLY the findings the research marks [MODEL-SPECIFIC] belong in this list. Anything the research marks [CATEGORY-GENERAL] — a known trait of the category, standard advice, or a failure mode that was searched and not tied to this model — must be left out. "Laptops can have battery swelling" is not a chronic issue of THIS laptop.\n' +
     '- community.lovedFeatures: 3-5 things owners single out unprompted as the best part. Same rule: what OWNERS keep saying, not what the spec sheet implies.\n' +
     // TEK YONLU KURAL YETMIYOR. Olculdu (iPhone 16 Pro Max, 2026-08-22):
     // kronik sorunlar temizdi ama zayif yanlar listesine "yazilimsal hatalar
@@ -1228,6 +1557,7 @@ function buildComparePrompt(products, lang, profile = {}, context = {}) {
   };
   return (
     'You are Qor AI\'s senior product comparison analyst. Evaluate every listed product separately using the same system as product detail, then give a final recommendation.\n\n' +
+    `${modelIdentityGate(products, lang)}\n\n` +
     `${languageGate(lang)}\n\n` +
     `${freshnessRules()}\n\n` +
     'Return ONLY one valid JSON object with this exact structure:\n' +
@@ -1427,6 +1757,10 @@ root.QorAiPrompts = {
   availabilityContextForProduct, freshnessRules, hasStaleAvailabilityClaims,
   withFreshnessRetryInstruction, productSpecsContext, productLine,
   cleanProductForPrompt, languageGate, researchSourceGate, chronicResearchGate,
+  // model kimlik kapisi — kardes varyant sizintisi
+  modelIdentityGate, scrubSiblingResearch, crossModelLeaks,
+  withModelIdentityRetryInstruction, siblingModelNames, variantMarkersIn,
+  siblingDetectParts, sentenceIsSiblingOnly,
   quizLines, promptContext,
   // alternatif segment kapisi + katalog eslestirme
   segmentPriceUSD, peerFilterExpr, peerModelKey, rankPeerCandidates, segmentGate,

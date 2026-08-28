@@ -42,7 +42,8 @@ export {
   buildForumPrompt, buildProductResearchPrompt, buildCompareResearchPrompt,
   buildFullPrompt, buildComparePrompt, buildCompareProductPrompt,
   buildCompareVerdictPrompt, parseAiJson, hasStaleAvailabilityClaims,
-  withFreshnessRetryInstruction,
+  withFreshnessRetryInstruction, scrubSiblingResearch, crossModelLeaks,
+  withModelIdentityRetryInstruction,
 } from '../lib/aiPrompts.js';
 import { arr, firstSentences } from '../lib/aiPrompts.js';
 

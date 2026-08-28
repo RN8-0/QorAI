@@ -17,7 +17,10 @@ import { saveComparisonAnalysisHistory } from './pbHistory';
 import { getRecentProducts } from './recentViewed';
 import { aiUserProfile } from './qorCoins';
 import { displayProductName } from './productNames';
-import { cleanProductCodes } from './aiPrompts';
+import {
+  cleanProductCodes, scrubSiblingResearch, crossModelLeaks,
+  withModelIdentityRetryInstruction,
+} from './aiPrompts';
 import { productPath } from './routes';
 import {
   buildCompareProductPrompt,
@@ -227,6 +230,9 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
           { language: lang, maxOutputTokens: 2048 },
         );
       } catch { research = ''; }
+      // Karsilastirmada TUM urunler konudur: birbirlerinin kardesi sayilmaz,
+      // ama listede olmayan varyant (S26 raporunda S26 Ultra) yine atilir.
+      research = scrubSiblingResearch(research, products, lang);
       if (!activeJob || activeJob.id !== job.id) return;
       setJob({ stage: 'report' });
 
@@ -245,6 +251,20 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
         let parsed = null;
         try { parsed = parseAiJson(await askJson(prompt, 8192)); } catch { parsed = null; }
         if (!parsed || typeof parsed !== 'object') return null;
+        // Kardes sizintisi varsa O URUNUN bolumu bir kez yeniden istenir.
+        // Yalniz kusurlu bolum tekrarlanir, tum karsilastirma degil.
+        const leaks = crossModelLeaks({ products: [parsed] }, products, lang);
+        if (leaks.length) {
+          try {
+            const fixed = parseAiJson(await askJson(
+              withModelIdentityRetryInstruction(prompt, p, lang, leaks), 8192, 0.25,
+            ));
+            if (fixed && typeof fixed === 'object'
+              && crossModelLeaks({ products: [fixed] }, products, lang).length < leaks.length) {
+              parsed = fixed;
+            }
+          } catch { /* ilk bolum duruyor */ }
+        }
         return {
           ...parsed,
           name: parsed.name || displayProductName(p, lang),
