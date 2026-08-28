@@ -69,12 +69,22 @@ function raporHamPuan(rec, lang) {
 function puanTazele(text, rec, lang) {
   const s = String(text || '');
   if (!s || !/\d/.test(s)) return s;
-  const ham = raporHamPuan(rec, lang);
-  if (!ham) return s;
-  const yeni = calibratedScore(ham, rec && rec.techScore);
-  if (!yeni || yeni === ham) return s;
+  const yeni = calibratedScore(raporHamPuan(rec, lang), rec && rec.techScore);
+  if (!yeni) return s;
+  // ARANACAK SAYILAR IKI DILDEN DE GELIR. Admin yayin metasini (baslik +
+  // ozet, HER IKI DIL) TEK cagriyla ve TURKCE rapordan uretiyor
+  // (analyses.js -> metaUret(..., r.out.tr)); yani Ingilizce basliktaki sayi
+  // Ingilizce raporun degil TURKCE raporun ham puani. Olculdu: A07 5G'nin
+  // EN basligi "Consider with 75% Score" diyor, EN raporunun ham puani ise
+  // 85. Yalnizca o dilin ham puanini arasaydik bu satir hic duzelmezdi.
+  // Hangi ham puandan gelmis olursa olsun, dogru karsilik O DILIN gosterilen
+  // puanidir.
+  const adaylar = [...new Set([raporHamPuan(rec, 'tr'), raporHamPuan(rec, 'en')])]
+    .filter((n) => n > 0 && n !== yeni);
+  if (!adaylar.length) return s;
   // `%88` · `88%` · `88/100` — uc bicim de gecti (TR ve EN metinlerde).
-  const re = new RegExp(`(%\\s?)${ham}\\b|\\b${ham}(\\s?%)|\\b${ham}(/100)\\b`, 'g');
+  const grup = adaylar.join('|');
+  const re = new RegExp(`(%\\s?)(?:${grup})\\b|\\b(?:${grup})(\\s?%)|\\b(?:${grup})(/100)\\b`, 'g');
   return s.replace(re, (tam, onEk, sonEk, yuz) => {
     if (onEk) return `${onEk}${yeni}`;
     if (sonEk) return `${yeni}${sonEk}`;
