@@ -193,8 +193,25 @@ async function findUnknown(base, token, urls) {
   return unknown;
 }
 
+// BEKLEYEN KUYRUK — 2026-08-28 ölçümü.
+// Ana sayfanın "Son Eklenen" bloğu yalnız ~54 adres taşır ve kayan bir
+// penceredir. Nabız 15 dk'da bir koşar AMA ortak kilit meşgulken atlanır:
+// ölçüldü, 27.08'de 15:15 → 23:45 arası ONDÖRT tur üst üste atlandı (gece
+// fiyat koşusu kilidi 16 saat tuttu). O pencerede Epey'e eklenen ürünler
+// blokdan kayıp gidiyor ve nabız onları BİR DAHA görmüyordu.
+// Çözüm: nabız artık kilitsiz koşuyor ve gördüğü bilinmeyen adresleri
+// buraya yazıyor; ağır yol (auto_discover) kilidi ne zaman alırsa kuyruğu
+// da işliyor. Böylece adres ana sayfadan düşse bile kaybolmuyor.
+const PENDING_TTL_MS = 14 * 24 * 3600 * 1000;
+const PENDING_MAX = 60;
+
 function loadState() {
-  try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch (_) { return { tried: {} }; }
+  try {
+    const s = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+    if (!s.tried) s.tried = {};
+    if (!s.pending) s.pending = {};
+    return s;
+  } catch (_) { return { tried: {}, pending: {} }; }
 }
 function saveState(s) {
   try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch (_) { /* önemsiz */ }
@@ -247,22 +264,49 @@ function saveState(s) {
   unknown = fresh;
 
   log(`katalogda olmayan: ${unknown.length}${suppressed ? ` (+${suppressed} yakın zamanda denendi, atlandı)` : ''}`);
-  if (!unknown.length) { log('yeni ürün yok — hiçbir şey başlatılmadı'); process.exit(0); }
-  for (const u of unknown.slice(0, 20)) log(`  • ${u.replace('https://www.epey.com', '')}`);
 
-  if (DRY) { log('--dry-run: çekme atlandı'); process.exit(0); }
+  // 4) BEKLEYEN KUYRUĞU birleştir. Bu turda görülenler kuyruğa eklenir; süresi
+  //    dolmuş veya artık `tried` listesine düşmüş kayıtlar atılır.
+  const pending = {};
+  for (const [u, at] of Object.entries(state.pending || {})) {
+    if (!tried[u] && now - Number(at || 0) < PENDING_TTL_MS) pending[u] = Number(at);
+  }
+  for (const u of unknown) if (!pending[u]) pending[u] = now;
+  state.pending = pending;
 
-  // 4) Yalnız bu adresler için ağır boru hattını uyandır
-  for (const u of unknown) {
+  const queue = Object.keys(pending).slice(0, PENDING_MAX);
+  const carried = queue.filter((u) => !unknown.includes(u)).length;
+  if (carried) log(`kuyrukta bekleyen (önceki turlardan): ${carried}`);
+  if (!queue.length) {
+    saveState(state);
+    log('yeni ürün yok — hiçbir şey başlatılmadı');
+    process.exit(0);
+  }
+  for (const u of queue.slice(0, 20)) log(`  • ${u.replace('https://www.epey.com', '')}`);
+
+  // Nabız (--dry-run) kilit ALMADAN koşar: tek HTTPS isteği + tek PB sorgusu.
+  // Çekilecek iş varsa 10 ile çıkar, .cmd o zaman kilidi alıp gerçek koşuyu
+  // başlatır. Kuyruk burada da yazılır ki kilit meşgulse bile adres kaybolmasın.
+  if (DRY) { saveState(state); log(`--dry-run: ${queue.length} adres kuyrukta, çekme atlandı`); process.exit(10); }
+
+  // 5) Yalnız bu adresler için ağır boru hattını uyandır
+  for (const u of queue) {
     const prev = state.tried[u];
     state.tried[u] = { at: now, n: (prev && prev.n ? prev.n : 0) + 1 };
+    delete state.pending[u];
   }
   saveState(state);
-  log(`auto_discover --urls ile ${unknown.length} ürün çekiliyor…`);
+  log(`auto_discover --urls ile ${queue.length} ürün çekiliyor…`);
   const child = spawn(process.execPath, [
     path.join(rootDir, 'scripts', 'auto_discover.js'),
-    `--urls=${unknown.join(',')}`,
-    '--max-hours=1',
+    `--urls=${queue.join(',')}`,
+    // 1 SAAT YETMİYORDU. Ölçüldü 2026-08-28: 9 yeni ürün 40 saniyede çekildi
+    // ama ardından gelen teknik puan adımı KATEGORİNİN TAMAMINI yeniden
+    // puanlıyor (puan kategori içinde göreli, bu yüzden kısmi puanlama yanlış
+    // olurdu) — laptops 10.350 ürün. Koşu 4.800'de 1 saat sınırına çarpıp
+    // kesildi ve o gün gelen 6 laptop techScore=0 kaldı. Katalogda hâlâ 357
+    // böyle ürün var. 3 saat = gece keşfiyle aynı bütçe.
+    '--max-hours=3',
   ], { cwd: rootDir, stdio: 'inherit', windowsHide: true });
   child.on('exit', (code) => process.exit(code || 0));
 })().catch((e) => { log(`HATA: ${e.message}`); process.exit(1); });
