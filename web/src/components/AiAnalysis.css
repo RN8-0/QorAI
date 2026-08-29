@@ -40,6 +40,16 @@
 .ai-verdict .aic-prose-lead { color: var(--text); }
 
 /* Alternatives */
+.ai-alt-price {
+  display: inline-block;
+  margin: 2px 0 6px;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--price);
+}
+
 .ai-alts { display: flex; flex-direction: column; gap: 12px; }
 .ai-alt { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--surface-2); }
 .ai-alt-name { font-size: 15px; font-weight: 850; color: var(--text); }

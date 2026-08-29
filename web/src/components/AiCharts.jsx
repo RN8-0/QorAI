@@ -919,6 +919,31 @@ export function proseBlocks(text) {
   return blocks;
 }
 
+/* KONU CUMLESININ TONU. Kullanici "pozitif yazilar yesil olacak, siyah degil"
+   dedi ve haklı: rapor bir HUKUM veriyor, hukmun yonu tipografiden okunmali.
+   Ton, cumlenin kendi kelimelerinden cikar — model'den ek alan istemiyoruz,
+   yayinlanmis eski kayitlar da renklenir.
+
+   Sinir: kelime SAYIMI yapiyoruz, duygu analizi degil. Bir cumlede hem
+   olumlu hem olumsuz isaret varsa (cok yaygin: "guclu, ancak pahali")
+   NOTR birakilir — yanlis renk, renksiz olmaktan kotudur. */
+// KELIME BASI SINIRI SART. Ilk surumde yoktu ve "periskop" icindeki "risk"
+// pozitif bir cumleyi KIRMIZI boyuyordu (olculdu: iPhone 16 Pro Max kamera
+// paragrafi). Turkce ekler yuzunden SON sinir konulamaz ("sorun" ->
+// "sorunlar" eslesmeye devam etmeli), bas sinir yeterli.
+const TONE_HEAD = '(?<![A-Za-zğüşıöçĞÜŞİÖÇ])';
+const TONE_POS = new RegExp(TONE_HEAD + '(yüksek memnuniyet|memnuniyetle|övgü|beğeni|başarılı|güçlü|mükemmel|etkileyici|üstün|avantaj|olumlu|takdir|lider|rakipsiz|ideal|zirve|öne çıkı|tavsiye|iyi bir|en iyi|praise|excellent|outstanding|strong|impressive|leading|recommend|great|best)', 'i');
+const TONE_NEG = new RegExp(TONE_HEAD + '(sorun|şikayet|kusur|arıza|hayal kırıklığı|zayıf|düşük|eksik|geride kal|dezavantaj|risk|olumsuz|başarısız|yetersiz|pahalı|problem|complaint|issue|weak|poor|lacks|disappoint|drawback|fails|expensive)', 'i');
+
+function leadTone(text) {
+  const t = String(text || '');
+  const pos = TONE_POS.test(t);
+  const neg = TONE_NEG.test(t);
+  if (pos && !neg) return 'pos';
+  if (neg && !pos) return 'neg';
+  return '';
+}
+
 // Paragrafın konu cümlesi: ilk cümle, makul uzunluktaysa.
 //
 // NOKTA HER ZAMAN CÜMLE SONU DEĞİL. Ölçüldü: "…detay ve F1.4 diyafram
@@ -976,7 +1001,11 @@ export function RichProse({ text, clamp = 3, L = (en) => en }) {
     const [lead, rest] = splitLead(b.text);
     return (
       <p className={`aic-prose-p${hid ? ' hid' : ''}`} key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
-        {lead ? <strong className="aic-prose-lead">{proseParts(lead, `pl${i}`)}</strong> : null}
+        {lead ? (
+          <strong className={`aic-prose-lead${leadTone(lead) ? ` ${leadTone(lead)}` : ''}`}>
+            {proseParts(lead, `pl${i}`)}
+          </strong>
+        ) : null}
         {lead ? ' ' : null}
         {proseParts(rest, `pr${i}`)}
       </p>
@@ -1076,7 +1105,8 @@ function monthIndexIn(text, lang) {
 export function PriceProjection({
   outlook = {}, price = 0, currency = '', lang = 'en', L = (en) => en,
 }) {
-  const p = useDrawProgress({ duration: 950 });
+  const p = useDrawProgress({ duration: 1100 });
+  const [hover, setHover] = useState(-1);
   const trend = ['up', 'down', 'stable'].includes(outlook.trend) ? outlook.trend : '';
   const parsed = parseChangeRange(outlook.expectedChange || outlook.note);
   if (!trend && !parsed) return null;
@@ -1095,28 +1125,56 @@ export function PriceProjection({
   // Eğri: ilk aylar yavaş, sonra hızlanır (kampanya/model döngüsü etkisi).
   const ease = (i) => Math.pow(i / (N - 1), 0.82);
   const curve = (pct) => Array.from({ length: N }, (_, i) => 100 + pct * ease(i));
-  // SABİT = DÜZ ÇİZGİ DEĞİL. İlk sürümde `trend: stable` olduğunda üç eğri de
-  // tam 100'e oturuyordu: başlıkta "±2–8%" yazarken grafik dümdüz ve bomboş
-  // çiziliyordu (ölçüldü — bu kayıtta tam olarak öyleydi). Sabit trend bir
-  // KORİDORDUR: orta çizgi 100'de kalır, bant iki yana açılır.
+  // SABİT = DÜZ ÇİZGİ DEĞİL: orta çizgi 100'de kalır, bant iki yana açılır.
   const mid = curve(sign * ((lo + hi) / 2));
   const band = sign === 0
     ? { lo: curve(-hi), hi: curve(hi) }
     : { lo: curve(sign > 0 ? lo : -hi), hi: curve(sign > 0 ? hi : -lo) };
 
-  const W = 560;
-  const H = 150;
-  const padX = 40;
-  const padTop = 14;
-  const padBottom = 28;
+  // Genislik/yukseklik ORANI kabin oranina yakin olmali: viewBox 620x230
+  // iken SVG kapta ortalaniyor ve iki yanda genis bosluk kaliyordu (grafik
+  // "ortada asili" duruyordu). 980x210 ~4.7 orani, 1100px'lik rapor
+  // kolonuna neredeyse tam oturuyor.
+  const W = 980;
+  const H = 210;
+  const padL = 76;
+  const padR = 26;
+  const padTop = 18;
+  const padBottom = 34;
   const all = [...band.lo, ...band.hi, 100];
-  const pad = Math.max(1.5, (Math.max(...all) - Math.min(...all)) * 0.18);
+  const pad = Math.max(1.5, (Math.max(...all) - Math.min(...all)) * 0.22);
   const minV = Math.min(...all) - pad;
   const maxV = Math.max(...all) + pad;
-  const x = (i) => padX + (i * (W - padX * 2)) / (N - 1);
+  const x = (i) => padL + (i * (W - padL - padR)) / (N - 1);
   const y = (v) => padTop + (1 - (v - minV) / Math.max(1, maxV - minV)) * (H - padTop - padBottom);
-  const lineOf = (vals) => vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
-  const areaPath = `${lineOf(band.hi)} L${x(N - 1).toFixed(1)},${y(band.lo[N - 1]).toFixed(1)} ${band.lo.slice().reverse().map((v, i) => `L${x(N - 1 - i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')} Z`;
+
+  // YUMUŞAK EĞRİ. Kırık çizgi bir "tahmin"den çok bir ölçüm gibi duruyordu;
+  // Catmull-Rom → kübik Bézier, uçlarda taşma yapmayan klasik dönüşüm.
+  const smooth = (vals) => {
+    const pts = vals.map((v, i) => [x(i), y(v)]);
+    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i += 1) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  };
+  // Alan yolu: ust kenar soldan saga, alt kenar sagdan sola. `smooth` her
+  // zaman soldan saga uretiyor, o yuzden alan duz cizgiyle kapatilir —
+  // dolgu zaten %30 opakliktan asagi, kenar farki goze carpmiyor.
+  const areaPath2 = (() => {
+    const top = band.hi.map((v, i) => [x(i), y(v)]);
+    const bot = band.lo.map((v, i) => [x(i), y(v)]).reverse();
+    const line = (pts) => pts.map((q, i) => `${i ? 'L' : ''}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
+    return `M${line(top)} L${line(bot)} Z`;
+  })();
 
   const col = sign < 0 ? CHART_COLORS.strong : sign > 0 ? CHART_COLORS.weak : CHART_COLORS.balanced;
   const bestIdx = monthIndexIn(outlook.bestTime, lang);
@@ -1129,6 +1187,9 @@ export function PriceProjection({
       }).format(abs);
     } catch { return `${abs}`; }
   };
+  // Y ekseni: üç referans çizgisi (üst bant, bugün=100, alt bant).
+  const ticks = [...new Set([maxV - pad, 100, minV + pad].map((v) => Math.round(v * 10) / 10))]
+    .sort((a, b) => b - a);
   const dir = sign < 0
     ? L('Prices are expected to ease', 'Fiyatların gerilemesi bekleniyor')
     : sign > 0
@@ -1138,6 +1199,8 @@ export function PriceProjection({
   const waitLabel = wait === 'buy' ? L('Buy now', 'Şimdi al')
     : wait === 'wait' ? L('Wait', 'Bekle')
       : wait === 'watch' ? L('Keep watching', 'Takip et') : '';
+  const gid = `aicPrice-${sign}-${Math.round(lo)}-${Math.round(hi)}`;
+  const active = hover >= 0 ? hover : -1;
 
   return (
     <div className="aic-price">
@@ -1153,34 +1216,64 @@ export function PriceProjection({
         {waitLabel && <span className={`aic-price-cta ${wait}`}>{waitLabel}</span>}
       </div>
 
-      <svg className="aic-price-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-        role="img" aria-label={L('Estimated price trajectory', 'Tahmini fiyat seyri')}>
-        <line className="aic-price-base" x1={padX} x2={W - padX} y1={y(100)} y2={y(100)} />
-        <path className="aic-price-band" d={areaPath} fill={col}
-          style={{ opacity: 0.14 * p }} />
-        <path className="aic-price-line" d={lineOf(mid)} stroke={col} fill="none"
-          strokeDasharray="1000" strokeDashoffset={1000 * (1 - p)} />
+      <svg className="aic-price-svg" viewBox={`0 0 ${W} ${H}`}
+        role="img" aria-label={L('Estimated price trajectory', 'Tahmini fiyat seyri')}
+        onMouseLeave={() => setHover(-1)}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={col} stopOpacity="0.30" />
+            <stop offset="100%" stopColor={col} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        {/* Izgara + y ekseni: grafiğin "ne kadar" sorusuna cevap veren kısmı.
+            İlk sürümde hiç yoktu; çizgi boşlukta asılı duruyordu. */}
+        {ticks.map((v) => (
+          <g key={`t-${v}`}>
+            <line className={`aic-price-grid${Math.abs(v - 100) < 0.6 ? ' base' : ''}`}
+              x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} />
+            <text className="aic-price-y" x={padL - 8} y={y(v) + 4} textAnchor="end">{money(v)}</text>
+          </g>
+        ))}
+
+        <path d={areaPath2} fill={`url(#${gid})`} style={{ opacity: p }} />
+        <path className="aic-price-edge" d={smooth(band.hi)} stroke={col} fill="none" style={{ opacity: 0.5 * p }} />
+        <path className="aic-price-edge" d={smooth(band.lo)} stroke={col} fill="none" style={{ opacity: 0.5 * p }} />
+        <path className="aic-price-line" d={smooth(mid)} stroke={col} fill="none"
+          strokeDasharray="1400" strokeDashoffset={1400 * (1 - p)} />
+
         {bestIdx >= 0 && (
           <g className="aic-price-mark" style={{ opacity: p }}>
             <line x1={x(bestIdx)} x2={x(bestIdx)} y1={padTop} y2={H - padBottom} />
-            <circle cx={x(bestIdx)} cy={y(mid[bestIdx])} r="5" fill={col} />
+            <circle cx={x(bestIdx)} cy={y(mid[bestIdx])} r="6" fill={col} className="aic-price-best" />
           </g>
         )}
+
+        {/* Nokta + fare bölgesi: her ay okunabilir bir değer taşır. */}
         {mid.map((v, i) => (
-          <text key={`x-${i}`} className="aic-price-x" x={x(i)} y={H - 10} textAnchor="middle">
+          <g key={`d-${i}`} onMouseEnter={() => setHover(i)}>
+            <rect x={x(i) - 22} y={padTop} width="44" height={H - padTop - padBottom} fill="transparent" />
+            <circle className={`aic-price-dot${active === i ? ' on' : ''}`}
+              cx={x(i)} cy={y(v)} r={active === i ? 5.5 : 3.5} fill={col}
+              style={{ opacity: p, transitionDelay: `${i * 70}ms` }} />
+          </g>
+        ))}
+        {active >= 0 && (
+          <g className="aic-price-tip" style={{ pointerEvents: 'none' }}>
+            <line x1={x(active)} x2={x(active)} y1={padTop} y2={H - padBottom} />
+            <text x={Math.min(W - padR - 4, Math.max(padL + 4, x(active)))} y={Math.max(padTop + 12, y(mid[active]) - 14)}
+              textAnchor={active > N - 3 ? 'end' : active < 2 ? 'start' : 'middle'}>
+              {money(mid[active])}
+            </text>
+          </g>
+        )}
+
+        {mid.map((v, i) => (
+          <text key={`x-${i}`} className={`aic-price-x${active === i ? ' on' : ''}`}
+            x={x(i)} y={H - 12} textAnchor="middle">
             {fmtMonth(i)}
           </text>
         ))}
-        <text className="aic-price-y" x={padX} y={y(100) - 8}>
-          {price > 0 ? money(100) : L('today', 'bugün')}
-        </text>
-        {/* Bant SINIRI da çizilir: %14 opaklıktaki dolgu tek başına açık
-            temada neredeyse görünmüyordu. */}
-        <path className="aic-price-edge" d={lineOf(band.hi)} stroke={col} fill="none" style={{ opacity: 0.45 * p }} />
-        <path className="aic-price-edge" d={lineOf(band.lo)} stroke={col} fill="none" style={{ opacity: 0.45 * p }} />
-        {/* Bitiş aralığı SVG'DE DEĞİL, altındaki olgu şeridinde. İki uç
-            etiketi (üst/alt bant) ay satırının üstüne düşüp çakışıyordu ve
-            sağ kenar boşluğu "2.350 – 2.560 ₺" gibi bir metne yetmiyor. */}
       </svg>
 
       <div className="aic-price-facts">

@@ -9,7 +9,8 @@ import { Link } from 'react-router-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
-import { priceForCountry } from '../lib/format';
+import { formatPrice, formatPriceAmount, priceForCountry } from '../lib/format';
+import { getProduct } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
 import { displayProductName, cleanProductName } from '../lib/productNames';
 import {
@@ -411,8 +412,50 @@ function CommunityBlock({ data = {}, L }) {
   );
 }
 
-function AlternativeCards({ alternatives = [], L }) {
+// Alternatif kartinin fiyat satiri. Once secili ulkenin fiyati, yoksa USD
+// yedek; ikisi de yoksa NULL (satir cizilmez — sifir yazmak yaniltici olur).
+function altPrice(a, geoCountry, lang, canli) {
+  const kaynak = canli || a;
+  const pc = priceForCountry(kaynak, geoCountry);
+  if (pc && pc.price > 0) {
+    return <span className="ai-alt-price">{formatPriceAmount(pc.price, pc.currency, lang)}</span>;
+  }
+  if (Number(kaynak?.lowestPriceUSD) > 0) {
+    return <span className="ai-alt-price">{formatPrice(kaynak.lowestPriceUSD)}</span>;
+  }
+  return null;
+}
+
+/* KATALOG ALTERNATIFLERININ FIYATI. Yeni uretilen raporlar fiyati kaydin
+   icinde tasiyor (qor_ai_prompts.js -> resolveCatalogAlternatives), ama
+   YAYINLANMIS eski kayitlarda yalnizca `productId` var. Onlar icin fiyat
+   okuma aninda cekilir: en fazla 3 id, Typesense istemcisi zaten onbellekli. */
+function useAlternativePrices(list) {
+  const [map, setMap] = useState({});
+  const ids = arr(list).map((a) => String(a?.productId || '')).filter(Boolean).join(',');
+  useEffect(() => {
+    if (!ids) { setMap({}); return undefined; }
+    let live = true;
+    const eksik = ids.split(',').filter((id) => !arr(list).some(
+      (a) => String(a.productId) === id && a.prices && typeof a.prices === 'object',
+    ));
+    if (!eksik.length) return undefined;
+    Promise.all(eksik.slice(0, 4).map((id) => getProduct(id).catch(() => null)))
+      .then((rows) => {
+        if (!live) return;
+        const next = {};
+        rows.forEach((r) => { if (r && r.id) next[r.id] = r; });
+        setMap(next);
+      });
+    return () => { live = false; };
+  }, [ids]);
+  return map;
+}
+
+function AlternativeCards({ alternatives = [], L, lang = 'en' }) {
+  const geoCountry = useGeoCountry();
   const list = arr(alternatives);
+  const canliFiyat = useAlternativePrices(list);
   if (!list.length) return null;
   return (
     <div className="ai-alt-cards">
@@ -428,6 +471,11 @@ function AlternativeCards({ alternatives = [], L }) {
                 <b>{cleanProductName(a.name)}</b>
                 <small>{a.source === 'qor_catalog' ? L('Qor catalog', 'Qor kataloğu') : L('External', 'Harici')}</small>
               </div>
+              {/* FIYAT. Katalogda eslesen alternatif fiyatsiz ciziliyordu;
+                  okuyucu "bu alternatif ne kadar" icin urun sayfasina
+                  gitmek zorundaydi. PB'de fiyat YOKSA satir hic cizilmez —
+                  sifir ya da "-" yazmak yaniltici olurdu. */}
+              {altPrice(a, geoCountry, lang, canliFiyat[String(a.productId || '')])}
               {a.shortComment && <p>{a.shortComment}</p>}
               {a.difference && <p className="ai-alt-diff">{a.difference}</p>}
               {specs.length > 0 && (
@@ -485,7 +533,7 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
       heroExtra={null}
       altNode={alternatives.length > 0 ? (
         <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler')}>
-          <AlternativeCards alternatives={alternatives} L={L} />
+          <AlternativeCards alternatives={alternatives} L={L} lang={lang} />
         </Sec>
       ) : null}
       tailNode={arr(data.product?.reviewedInputs).length > 0 ? (

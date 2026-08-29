@@ -741,6 +741,10 @@
   color: var(--text);
   font-weight: 750;
 }
+/* Hukmun YONU renkten okunur. `--ink-*` metin-guvenli tonlar (dolgu yesili
+   acik zeminde AA'yi gecmiyor — bkz. CLAUDE.md). */
+.aic-prose-lead.pos { color: var(--ink-green); }
+.aic-prose-lead.neg { color: var(--ink-red); }
 .aic-prose-head {
   margin: 16px 0 8px;
   font-size: 13px;
@@ -771,15 +775,20 @@
    adının içindeki "(12 GB / 512 GB)" üç kutuya bölününce cümle parça parça
    okunuyordu. Vurgu artık yalnızca YAZI TİPİ ve RENK — sayı yine ayrışıyor,
    cümle ise bütün kalıyor. */
+/* SAYI, CUMLENIN BIR PARCASI. Ilk surumde .93em ve mavi idi: cumlenin icinde
+   "kucuk mavi" bir yabanci gibi duruyordu. Ayni punto, daha KALIN, ana metin
+   rengi — belirgin ama cumleyi bolmuyor. Tabular figur korunuyor ki alt alta
+   gelen sayilar hizali kalsin. */
 .aic-num {
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: .93em;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  color: var(--ink-blue);
+  font-size: 1em;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--text);
   white-space: nowrap;
 }
+.aic-prose-lead .aic-num { color: inherit; }
 .aic-prose-more {
   display: inline-flex;
   align-items: center;
@@ -890,21 +899,54 @@
 .aic-price-cta.wait { color: var(--ink-amber); border-color: color-mix(in srgb, var(--amber) 42%, transparent); }
 .aic-price-cta.watch { color: var(--ink-blue); border-color: color-mix(in srgb, var(--brand-blue) 42%, transparent); }
 
-.aic-price-svg { display: block; width: 100%; height: 150px; overflow: visible; }
-.aic-price-edge { stroke-width: 1.2; stroke-dasharray: 4 4; }
-.aic-price-base { stroke: var(--border-strong, var(--border)); stroke-width: 1; stroke-dasharray: 3 4; }
-.aic-price-line { stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.aic-price-mark line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 2 4; }
+.aic-price-svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+}
+/* Izgara: grafigin "ne kadar" sorusuna cevap veren kismi. Ilk surumde hic
+   yoktu, cizgi boslukta asili duruyordu. */
+.aic-price-grid { stroke: var(--border); stroke-width: 1; }
+.aic-price-grid.base { stroke: var(--border-strong, var(--border)); stroke-dasharray: 4 4; }
+.aic-price-line {
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / .10));
+}
+.aic-price-edge { stroke-width: 1.2; stroke-dasharray: 5 5; }
+.aic-price-mark line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 3 4; }
+.aic-price-best { animation: aicPulse 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes aicPulse {
+  0%, 100% { r: 6; opacity: 1; }
+  50% { r: 8; opacity: .72; }
+}
+.aic-price-dot { transition: r .14s ease-out, opacity .5s ease-out; }
+.aic-price-tip line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 2 3; }
+.aic-price-tip text {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-2);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
 .aic-price-x {
   fill: var(--text3);
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: 11.5px;
+  font-weight: 750;
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  transition: fill .12s ease-out;
 }
+.aic-price-x.on { fill: var(--text); font-weight: 900; }
 .aic-price-y {
-  fill: var(--text2);
+  fill: var(--text3);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 750;
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
@@ -938,11 +980,12 @@
 @media (max-width: 640px) {
   .aic-prose { font-size: 14px; line-height: 1.68; }
   .aic-price { padding: 12px 13px 10px; }
-  .aic-price-svg { height: 138px; }
+  .aic-price-svg { height: 200px; }
   .aic-meter { max-width: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .aic-prose-p { animation: none; }
   .aic-price-line { stroke-dashoffset: 0 !important; }
+  .aic-price-best { animation: none; }
 }

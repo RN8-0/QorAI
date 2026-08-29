@@ -19,6 +19,9 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
+import { getProduct } from '../lib/typesense';
+import { priceForCountry } from '../lib/format';
+import { useGeoCountry } from '../lib/geo';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, SEO_DEFAULT_LOCALE, truncate } from '../lib/seo';
 import AiAnalysisView, { ProductFullReport } from '../components/AiAnalysis.jsx';
@@ -95,6 +98,27 @@ export default function AnalysisPost() {
     const onek = hedefDil === SEO_DEFAULT_LOCALE ? '' : `/${hedefDil}`;
     window.location.replace(`${onek}/analiz/${slug || ''}`);
   }, [dilYok, hedefDil, slug, onizlemeId]);
+
+  // PB'DE FIYAT VARSA RAPORDA DA GORUNSUN. Analiz kaydi fiyat tasimiyor
+  // (yalniz `productId`); urunun kendisi Typesense'te. Tek ek istek, yalnizca
+  // urun analizinde ve yalnizca id varsa. Fiyat yoksa hicbir sey cizilmez.
+  const [fiyat, setFiyat] = useState(null);
+  const geoCountry = useGeoCountry();
+  useEffect(() => {
+    let live = true;
+    const pid = a && a.productId ? String(a.productId) : '';
+    if (!pid || !geoCountry) { setFiyat(null); return undefined; }
+    getProduct(pid)
+      .then((p) => {
+        if (!live || !p) return;
+        const pc = priceForCountry(p, geoCountry);
+        if (pc && pc.price > 0) setFiyat(pc);
+        else if (Number(p.lowestPriceUSD) > 0) setFiyat({ price: Number(p.lowestPriceUSD), currency: 'USD' });
+        else setFiyat(null);
+      })
+      .catch(() => { if (live) setFiyat(null); });
+    return () => { live = false; };
+  }, [a && a.productId, geoCountry]);
 
   const kind = a ? analysisKind(a) : 'product';
   const ham = a ? analysisReport(a, lang) : null;
@@ -261,7 +285,7 @@ export default function AnalysisPost() {
             yani crawler saglam sayfayi, okuyucu bozugunu goruyordu. */}
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
-            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} techScore={a.techScore} />
+            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} techScore={a.techScore} priceInfo={fiyat} />
           ) : kind === 'subscription' && Array.isArray(ham?.services) ? (
             <SubscriptionReportView
               result={ham}

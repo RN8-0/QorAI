@@ -283,15 +283,15 @@ export default function AiReportView({
   // biliyor). Fiyat yoksa grafik "bugun = 100" endeksine duser.
   const outlookPrice = (() => {
     if (priceInfo && Number(priceInfo.price) > 0) {
-      return { price: Number(priceInfo.price), currency: priceInfo.currency || '' };
+      return { price: Number(priceInfo.price), currency: priceInfo.currency || '', stale: !!priceInfo.stale };
     }
     const m = data.catalogMatch;
     if (m) {
       const pc = priceForCountry(m, geoCountry);
-      if (pc && pc.price > 0) return { price: pc.price, currency: pc.currency || '' };
-      if (m.lowestPriceUSD > 0) return { price: m.lowestPriceUSD, currency: 'USD' };
+      if (pc && pc.price > 0) return { price: pc.price, currency: pc.currency || '', stale: !!pc.stale };
+      if (m.lowestPriceUSD > 0) return { price: m.lowestPriceUSD, currency: 'USD', stale: false };
     }
-    return { price: 0, currency: '' };
+    return { price: 0, currency: '', stale: false };
   })();
   return (
     <div className="la-result fade-up">
@@ -340,6 +340,16 @@ export default function AiReportView({
 
         <StatTiles items={[
           { icon: '🎯', label: L('Match', 'Uyum'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
+          // FIYAT KUTUSU. PB'de fiyat VARSA gosterilir; yoksa kutu hic
+          // cizilmez (sifir/"-" yazmak yaniltici olurdu). Kaynak: cagirandan
+          // gelen `priceInfo` ya da katalog eslesmesi.
+          outlookPrice.price > 0 ? {
+            icon: '🏷',
+            label: L('Price', 'Fiyat'),
+            value: formatPriceAmount(outlookPrice.price, outlookPrice.currency, lang) || formatPrice(outlookPrice.price),
+            color: 'var(--price)',
+            hint: outlookPrice.stale ? L('may be a few days old', 'birkaç gün eski olabilir') : L('catalog price', 'katalog fiyatı'),
+          } : null,
           data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
           data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
           data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı') : L('model knowledge', 'model bilgisi') } : null,

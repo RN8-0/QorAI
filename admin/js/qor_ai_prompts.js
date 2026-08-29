@@ -753,6 +753,14 @@ async function resolveCatalogAlternatives(alternatives, { search, category = '',
       imageUrl: hit.imageUrl || a.imageUrl || '',
       url: productPath(hit),
       productId: hit.id,
+      // FIYAT DA TASINIR. Alternatif kartlari katalogda eslesse bile fiyatsiz
+      // ciziliyordu; okuyucu "bu alternatif ne kadar" sorusunu yanitlamak icin
+      // urun sayfasina gitmek zorunda kaliyordu. `priceForCountry` bu iki alani
+      // istiyor (web/src/lib/format.js), `lowestPriceUSD` de yedek.
+      prices: hit.prices || null,
+      bestOfferExpiresAt: hit.bestOfferExpiresAt || '',
+      lowestPriceUSD: Number(hit.lowestPriceUSD) || 0,
+      techScore: Number(hit.techScore) || 0,
       source: 'qor_catalog',
     });
   }));
