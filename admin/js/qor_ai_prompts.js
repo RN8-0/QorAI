@@ -1522,6 +1522,304 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
   );
 }
 
+/* ── 7.5) KARSILASTIRMA FAKTOR EKSENI · TEK ORTAK EKSEN ────────────────────
+
+   KOK NEDEN (olculdu 2026-08-29, canli kayit "S26 Ultra vs iPhone 17 Pro Max
+   vs Xiaomi 17 Ultra"): karsilastirma raporu her urunu KENDI cagrisinda
+   uretiyor (buildCompareProductPrompt) ve her cagri kendi faktor ETIKETLERINI
+   uyduruyordu — Samsung "Islemci Performansi", iPhone "Performans", Xiaomi
+   "Kamera Performansi". Site tarafindaki faktor matrisi etiketlerin BIRLESIMINI
+   aliyor, dolayisiyla her urun kendi etiketlerinde puan aliyor, otekilerde
+   0 goruunuyordu: 14 satirlik tablonun 42 hucresinden 28'i sifirdi. Okuyucu
+   bunu "iPhone'un islemcisi 0 puan" diye okuyor.
+
+   COZUM: eksen ARTIK MODELDEN GELMIYOR. Kategoriden deterministik olarak
+   secilir, butun urun cagrilarina AYNI liste AYNI SIRAYLA verilir ve donen
+   cikti tekrar bu eksene hizalanir (alignFactorsToAxis). Ek AI istegi YOK —
+   eksen veriden turuyor, yani hem bedava hem de iki dilde ayni.
+
+   Link karsilastirmasi bu deseni zaten kullaniyordu (qor_ai_link.js ->
+   compareFactorLabels); orada 8 sabit jenerik etiket var. Urun tarafinda
+   kategoriye gore uyarlanmis eksen kullaniyoruz: "Kamera Kalitesi" bir
+   telefonda anlamli, bir ekran kartinda degil. */
+
+// Slot sirasi SABIT (emoji de oyle) cunku radar grafigi ve isi matrisi satir
+// sirasini bu listeden aliyor.
+const COMPARE_AXIS_EMOJI = ['⚡', '📸', '🖥', '🔋', '🧩', '🛡', '🌐', '💰'];
+
+const COMPARE_AXIS = {
+  phone: {
+    en: ['Performance', 'Camera', 'Display', 'Battery and charging', 'Software support', 'Build and durability', 'Ecosystem and connectivity', 'Value for money'],
+    tr: ['Performans', 'Kamera', 'Ekran', 'Pil ve şarj', 'Yazılım desteği', 'Yapı ve dayanıklılık', 'Ekosistem ve bağlantı', 'Fiyat/performans'],
+  },
+  computer: {
+    en: ['Processor performance', 'Graphics performance', 'Display quality', 'Battery and thermals', 'Memory and storage', 'Build and keyboard', 'Ports and expandability', 'Value for money'],
+    tr: ['İşlemci performansı', 'Grafik performansı', 'Ekran kalitesi', 'Pil ve ısınma', 'Bellek ve depolama', 'Yapı ve klavye', 'Bağlantı ve genişletme', 'Fiyat/performans'],
+  },
+  screen: {
+    en: ['Picture quality', 'Panel and refresh rate', 'HDR and colour', 'Sound', 'Smart platform', 'Gaming latency', 'Connectivity', 'Value for money'],
+    tr: ['Görüntü kalitesi', 'Panel ve yenileme hızı', 'HDR ve renk', 'Ses', 'Akıllı platform', 'Oyun gecikmesi', 'Bağlantı', 'Fiyat/performans'],
+  },
+  audio: {
+    en: ['Sound quality', 'Noise cancelling', 'Battery life', 'Comfort and fit', 'Microphone and calls', 'Connectivity', 'Build quality', 'Value for money'],
+    tr: ['Ses kalitesi', 'Gürültü engelleme', 'Pil ömrü', 'Konfor ve oturma', 'Mikrofon ve arama', 'Bağlantı', 'Yapı kalitesi', 'Fiyat/performans'],
+  },
+  component: {
+    en: ['Raw performance', 'Power efficiency', 'Thermals and noise', 'Compatibility', 'Feature set', 'Build quality', 'Longevity and support', 'Value for money'],
+    tr: ['Ham performans', 'Enerji verimliliği', 'Isı ve gürültü', 'Uyumluluk', 'Özellik seti', 'Yapı kalitesi', 'Uzun ömür ve destek', 'Fiyat/performans'],
+  },
+  wearable: {
+    en: ['Everyday performance', 'Health and sensors', 'Display', 'Battery life', 'App ecosystem', 'Comfort and build', 'Phone compatibility', 'Value for money'],
+    tr: ['Günlük performans', 'Sağlık ve sensörler', 'Ekran', 'Pil ömrü', 'Uygulama ekosistemi', 'Konfor ve yapı', 'Telefon uyumluluğu', 'Fiyat/performans'],
+  },
+  console: {
+    en: ['Gaming performance', 'Game library', 'Storage', 'Online services', 'Controller and comfort', 'Noise and thermals', 'Media features', 'Value for money'],
+    tr: ['Oyun performansı', 'Oyun kütüphanesi', 'Depolama', 'Çevrim içi servisler', 'Kumanda ve konfor', 'Gürültü ve ısınma', 'Medya özellikleri', 'Fiyat/performans'],
+  },
+  home: {
+    en: ['Core performance', 'Energy efficiency', 'Capacity', 'Noise level', 'Smart features', 'Build quality', 'Service and parts', 'Value for money'],
+    tr: ['Temel performans', 'Enerji verimliliği', 'Kapasite', 'Gürültü seviyesi', 'Akıllı özellikler', 'Yapı kalitesi', 'Servis ve yedek parça', 'Fiyat/performans'],
+  },
+  generic: {
+    en: ['Usage fit', 'Performance', 'Build quality', 'Feature set', 'Ergonomics and portability', 'Reliability and risk', 'Community signal', 'Long-term value'],
+    tr: ['Kullanım uyumu', 'Performans', 'Yapı kalitesi', 'Özellik seti', 'Ergonomi ve taşınabilirlik', 'Güvenilirlik ve risk', 'Topluluk sinyali', 'Uzun vadeli değer'],
+  },
+};
+
+// Katalog kategorisi -> eksen ailesi. Eslesmeyen her sey `generic`e duser
+// (eksen yine ORTAK kalir, yalnizca etiketler jeneriklesir).
+const COMPARE_AXIS_FAMILY = {
+  smartphones: 'phone', feature_phones: 'phone', tablets: 'phone', e_readers: 'phone',
+  laptops: 'computer', desktops: 'computer', mini_pcs: 'computer', all_in_one: 'computer',
+  monitors: 'screen', tvs: 'screen', projectors: 'screen',
+  headphones: 'audio', earbuds: 'audio', earphones: 'audio', speakers: 'audio',
+  soundbars: 'audio', microphones: 'audio',
+  graphics_cards: 'component', cpus: 'component', motherboards: 'component',
+  ram: 'component', ssd: 'component', ssds: 'component', storage: 'component',
+  psu: 'component', psus: 'component', cases: 'component', coolers: 'component',
+  flash_drives: 'component', keyboards: 'component', mice: 'component',
+  smartwatches: 'wearable', fitness_trackers: 'wearable', smart_bands: 'wearable',
+  gaming_consoles: 'console', consoles: 'console',
+  vacuum_cleaners: 'home', washing_machines: 'home', refrigerators: 'home',
+  dishwashers: 'home', air_conditioners: 'home', ovens: 'home', coffee_machines: 'home',
+  air_purifiers: 'home',
+};
+
+function compareAxisFamily(category) {
+  const key = String(category || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+  if (COMPARE_AXIS_FAMILY[key]) return COMPARE_AXIS_FAMILY[key];
+  // Kategori adi katalogdakiyle birebir tutmayabilir (link analizinden gelen
+  // serbest metin). Kelime bazli ikinci kapi.
+  if (/phone|telefon|tablet/.test(key)) return 'phone';
+  if (/laptop|notebook|desktop|bilgisayar/.test(key)) return 'computer';
+  if (/tv|televizyon|monitor|projeksiyon|projector/.test(key)) return 'screen';
+  if (/kulak|headphone|earbud|speaker|hoparlor/.test(key)) return 'audio';
+  if (/gpu|ekran_karti|cpu|islemci|ram|ssd|anakart|motherboard|psu/.test(key)) return 'component';
+  if (/watch|saat|band|bileklik/.test(key)) return 'wearable';
+  if (/konsol|console|playstation|xbox/.test(key)) return 'console';
+  if (/supurge|camasir|bulasik|buzdolabi|klima|firin/.test(key)) return 'home';
+  return 'generic';
+}
+
+/**
+ * Karsilastirmadaki BUTUN urunlerin uzerinde puanlanacagi ortak eksen.
+ * Urunler farkli ailelerdense jenerik eksene duser — yarim ortak eksen
+ * (kimisinde kamera, kimisinde yok) tam da duzeltmeye calistigimiz hatayi
+ * uretir.
+ *
+ * @returns [{key, label, emoji}] — 8 slot, SABIT sirada.
+ */
+function compareFactorAxis(products, lang) {
+  const list = Array.isArray(products) ? products : [products];
+  const families = [...new Set(list.filter(Boolean).map((p) => compareAxisFamily(p && p.category)))];
+  const family = families.length === 1 ? families[0] : 'generic';
+  const code = String(lang || 'en').slice(0, 2).toLowerCase();
+  const table = COMPARE_AXIS[family] || COMPARE_AXIS.generic;
+  const labels = table[code === 'tr' ? 'tr' : 'en'];
+  return labels.map((label, i) => ({
+    key: family + '_' + i,
+    label: label,
+    emoji: COMPARE_AXIS_EMOJI[i] || '📊',
+  }));
+}
+
+// Etiket eslestirme icin normalizasyon: aksan, noktalama ve dolgu kelimeleri
+// duser. "Ekran Parlakligi ve Kalitesi" ile "Ekran" ayni slota dusmeli.
+const AXIS_STOPWORDS = new Set([
+  've', 'ile', 'and', 'or', 'the', 'of', 'for', 'a', 'an', 'ya', 'veya',
+]);
+
+// AYNI SEYIN IKINCI ADI. Yalnizca gercekten es anlamli olanlar; "islemci"
+// -> "performans" gibi genisletmeler yanlis slota dusurur.
+const AXIS_SYNONYM = {
+  batarya: 'pil', aku: 'pil', battery: 'pil',
+  saglamlik: 'dayaniklilik', dayanim: 'dayaniklilik',
+  goruntu: 'ekran', display: 'ekran', panel: 'ekran',
+  fotograf: 'kamera', camera: 'kamera',
+  hiz: 'performans', performance: 'performans',
+  gpu: 'graphics', grafik: 'graphics',
+  cpu: 'processor', islemci: 'processor',
+  yazilim: 'yazilim', guncelleme: 'yazilim', guncellik: 'yazilim',
+  deger: 'fiyat', value: 'fiyat', maliyet: 'fiyat', price: 'fiyat',
+};
+
+function axisTokens(label) {
+  return String(label || '')
+    .replace(/[İI]/g, 'i').replace(/[şŞ]/g, 's').replace(/[ğĞ]/g, 'g')
+    .replace(/[üÜ]/g, 'u').replace(/[öÖ]/g, 'o').replace(/[çÇ]/g, 'c')
+    .replace(/ı/g, 'i')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t && !AXIS_STOPWORDS.has(t))
+    .map((t) => AXIS_SYNONYM[t] || t);
+}
+
+// Kok eslesmesi: "performans" ~ "performansi", "kamera" ~ "kameralar".
+function axisTokenHit(t, tokens) {
+  return tokens.some((u) => u === t
+    || (u.length > 4 && t.length > 4 && u.slice(0, 5) === t.slice(0, 5)));
+}
+
+/**
+ * `a` = eksen slotu, `b` = modelin yazdigi etiket. Simetrik DEGIL: asil soru
+ * "modelin etiketi bu slotun kavramini KAPSIYOR mu". "Ekran" slotu ile
+ * "Ekran Parlakligi ve Kalitesi" ayni seydir; simetrik olcum bunu 0.33'e
+ * dusurup eslesmeyi kaciriyordu (olculdu: canli S26 kaydinin etiketleri).
+ *
+ * Bas kelime bonusu, "Kamera Performansi"nin `Performans` slotuna degil
+ * `Kamera` slotuna dusmesini saglar — Turkce'de tamlamanin BASI konuyu verir.
+ */
+function axisSimilarity(a, b) {
+  const ta = axisTokens(a);
+  const tb = axisTokens(b);
+  if (!ta.length || !tb.length) return 0;
+  const cover = ta.filter((t) => axisTokenHit(t, tb)).length / ta.length;
+  const back = tb.filter((t) => axisTokenHit(t, ta)).length / tb.length;
+  const head = (ta[0] && tb[0] && axisTokenHit(ta[0], [tb[0]])) ? 0.15 : 0;
+  return Math.min(1, cover * 0.7 + back * 0.3 + head);
+}
+
+/**
+ * Eksen slotlari ile satirlari EN IYI CIFTTEN baslayarak eslestirir.
+ * Slot-slot ilerleyen aç gözlü eşleştirme ilk slotun en iyi adayi calmasina
+ * yol aciyordu ("Performans" slotu "Kamera Performansi"ni aliyordu).
+ * @returns Map<slotIndex, rowIndex>
+ */
+function axisGreedyPairs(axis, rows, threshold = 0.5) {
+  const pairs = [];
+  axis.forEach((slot, si) => {
+    rows.forEach((row, ri) => {
+      const s = axisSimilarity(slot.label, row.label);
+      if (s >= threshold) pairs.push({ si, ri, s });
+    });
+  });
+  pairs.sort((x, y) => y.s - x.s || x.si - y.si);
+  const bySlot = new Map();
+  const takenRow = new Set();
+  pairs.forEach((p) => {
+    if (bySlot.has(p.si) || takenRow.has(p.ri)) return;
+    bySlot.set(p.si, p.ri);
+    takenRow.add(p.ri);
+  });
+  return bySlot;
+}
+
+/**
+ * Modelin donderdigi faktorleri ORTAK eksene oturtur.
+ *
+ * · Once birebir/benzer etiket eslestirilir (esik 0.5).
+ * · Eslesmeyen slot ATLANIR — 0 YAZILMAZ. Sifir "bu urun bu konuda kotu"
+ *   demektir ve tam da duzeltmeye calistigimiz yalani uretir.
+ * · Eksene hic uymayan ekstra faktorler SONA `offAxis` isaretiyle eklenir
+ *   (bilgi kaybi olmasin); isi matrisi yalnizca ortak satirlari cizer.
+ */
+function alignFactorsToAxis(factors, axis) {
+  const rows = (Array.isArray(factors) ? factors : []).filter((f) => f && f.label);
+  if (!Array.isArray(axis) || !axis.length) return rows;
+  const bySlot = axisGreedyPairs(axis, rows);
+  const used = new Set(bySlot.values());
+  const out = [];
+  axis.forEach((slot, si) => {
+    if (!bySlot.has(si)) return;
+    const f = rows[bySlot.get(si)];
+    out.push({
+      label: slot.label,
+      emoji: f.emoji || slot.emoji,
+      score: Math.max(0, Math.min(100, Math.round(Number(f.score) || 0))),
+      detail: String(f.detail || ''),
+    });
+  });
+  rows.forEach((f, i) => {
+    if (used.has(i)) return;
+    out.push({
+      label: String(f.label),
+      emoji: f.emoji || '📊',
+      score: Math.max(0, Math.min(100, Math.round(Number(f.score) || 0))),
+      detail: String(f.detail || ''),
+      offAxis: true,
+    });
+  });
+  return out;
+}
+
+/** Hukum cagrisinin donderdigi factorMatrix'i ayni eksene oturtur. */
+function alignFactorMatrixToAxis(matrix, axis, names) {
+  const rows = (Array.isArray(matrix) ? matrix : []).filter((r) => r && r.label);
+  if (!rows.length) return rows;
+  const wanted = (Array.isArray(names) ? names : []).filter(Boolean);
+  const normName = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const fix = (row) => ({
+    label: row.label,
+    scores: (Array.isArray(row.scores) ? row.scores : [])
+      .map((s) => ({ name: s && s.name, score: Math.max(0, Math.min(100, Math.round(Number(s && s.score) || 0))) }))
+      .filter((s) => s.name),
+  });
+  const slots = Array.isArray(axis) ? axis : [];
+  const bySlot = axisGreedyPairs(slots, rows);
+  const seen = new Set(bySlot.values());
+  const out = [];
+  slots.forEach((slot, si) => {
+    if (!bySlot.has(si)) return;
+    const fixed = fix(rows[bySlot.get(si)]);
+    fixed.label = slot.label;
+    out.push(fixed);
+  });
+  rows.forEach((r, i) => { if (!seen.has(i)) out.push(fix(r)); });
+  // Her satir HER urunu tasimali; eksik kalan satir yarim tablo demektir.
+  return wanted.length
+    ? out.filter((r) => wanted.every((n) => r.scores.some((s) => normName(s.name) === normName(n))))
+    : out;
+}
+
+/** Prompt'a yazilan eksen sozlesmesi — hem urun hem hukum cagrisi kullanir. */
+function factorAxisContract(axis) {
+  const rows = (Array.isArray(axis) ? axis : []);
+  if (!rows.length) return '';
+  return (
+    'SHARED FACTOR AXIS (mandatory). Every compared product is scored on the SAME '
+    + rows.length + ' factors, in THIS exact order, with THESE exact labels:\n'
+    + rows.map((s, i) => (i + 1) + '. ' + s.label).join('\n') + '\n'
+    + '- Do NOT rename, translate differently, merge, split, reorder, add or drop a factor. '
+    + 'The comparison table places these labels side by side; a renamed label lands in a '
+    + 'different row and the product reads as scoring zero there.\n'
+    + '- Every one of the ' + rows.length + ' factors MUST carry a real 0-100 score. Never omit one, '
+    + 'never write 0 as a placeholder for "not measured".\n'
+    // MUTLAK TABAN DAYATMA YOK. Ilk surumde "en az 2 faktor 65'in altinda"
+    // yaziyordu; amiral gemisi karsilastirmasinda bu, olmayan bir zaafi
+    // UYDURMAK demek — kullanicinin "sacma sapan puanlama" dedigi seyin ta
+    // kendisi. Istenen sey mutlak dusuk puan degil AYRISMA.
+    + '- ANTI-INFLATION: the eight scores must SPREAD. Highest minus lowest must be at least 25 '
+    + 'points; a flat 85-95 profile is a reporting failure, not a compliment. Find the genuinely '
+    + 'weakest of the eight for THIS buyer and score it honestly instead of inventing a fault that '
+    + 'does not exist. Reserve 90+ for a real class leader.\n'
+    + '- Every factor score must be defensible from the specs, the quiz answers or the research '
+    + 'notes. If the evidence for a factor is thin, say so in its detail and keep the score mid-range '
+    + 'rather than guessing high.\n'
+  );
+}
+
 // Compare prompt — same single-report system as product detail, repeated per
 // product and ending with a charted final recommendation.
 function buildComparePrompt(products, lang, profile = {}, context = {}) {
@@ -1568,7 +1866,8 @@ function buildComparePrompt(products, lang, profile = {}, context = {}) {
     '  ],\n' +
     `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
-    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must include ${v.factorN} factor scores and ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
+    `${factorAxisContract(compareFactorAxis(products, lang))}\n` +
+    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must be scored on the SHARED FACTOR AXIS above (same labels, same order) and include ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
     `PRODUCTS:\n${lines}\n\nPRODUCT PAYLOAD:\n${JSON.stringify(productPayload, null, 2)}\n\n` +
     `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
@@ -1586,11 +1885,21 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
   const { name, brand, category, score, price, ks } = productLine(product, lang);
   const ctx = promptContext(context, lang);
   const peers = (context.peerNames || []).filter((nm) => nm && nm !== name);
+  // ORTAK EKSEN. Cagiran genelde eksen verir (butun urunler icin BIR kez
+  // hesaplanir); vermediyse bu urunun kategorisinden turetilir — o durumda
+  // bile ayni kategorideki iki urun ayni ekseni alir.
+  const axis = Array.isArray(context.factorAxis) && context.factorAxis.length
+    ? context.factorAxis
+    : compareFactorAxis([product], lang);
+  const axisSchema = axis
+    .map((s) => `{"label": "${s.label}", "emoji": "${s.emoji}", "score": <0-100>, "detail": "2 evidence-based sentences"}`)
+    .join(', ');
   const prof = Object.entries(profile).filter(([, val]) => val != null && val !== '' && (!Array.isArray(val) || val.length))
     .map(([k, val]) => `${k}: ${Array.isArray(val) ? val.join(', ') : JSON.stringify(val)}`).slice(0, 18).join('; ');
   return (
     `You are Qor AI's senior product analyst. Produce ONE product's section of a multi-product comparison report. Evaluate ONLY "${name}" by ${brand || 'unknown'} (category: ${category}), but judge it in the CONTEXT of being compared against: ${peers.join(', ') || 'the other selected products'}.\n\n` +
     `${languageGate(lang)}\n\n${freshnessRules()}\n\n` +
+    `${factorAxisContract(axis)}\n` +
     'Use catalog specs and quiz answers as verified inputs; use research notes only when they support a claim. Write like a professional buyer lab report: concrete, decisive, detailed. Never invent direct quotes, exact review counts, or exact live prices.\n\n' +
     'Return ONLY one valid JSON object for THIS product with this exact structure:\n' +
     '{\n' +
@@ -1600,7 +1909,7 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     '  "confidence": <0-100>,\n' +
     '  "headline": "one decisive sentence",\n' +
     '  "matchComment": "5-6 detailed sentences on fit, trade-offs and who should care, relative to the other compared products",\n' +
-    '  "factors": [{"label": "factor", "score": <0-100>, "detail": "2 evidence-based sentences"}],\n' +
+    `  "factors": [${axisSchema}],\n` +
     '  "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}],\n' +
     '  "quizInsights": [{"topic": "topic", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences"}],\n' +
     '  "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 evidence-based sentences"}],\n' +
@@ -1613,7 +1922,7 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "lovedFeatures": [{"title": "what owners single out", "detail": "1 sentence"}], "chronicIssues": [{"title": "recurring ownership problem", "detail": "1 sentence", "frequency": "widespread|common|occasional"}], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
-    'Rules:\n- Include 8-10 factor scores and 8-10 feature matches so the UI can render charts and spec-fit grids.\n- Include 4-6 criticalPoints, 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product), and 4-6 community.themes with varied sentiment.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n' +
+    `Rules:\n- factors: EXACTLY the ${axis.length} shared-axis entries listed above, same labels, same order. 8-10 feature matches so the UI can render spec-fit grids.\n- Include 4-6 criticalPoints, 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product), and 4-6 community.themes with varied sentiment.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(product)}\n\n` +
     `PRODUCT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nFull payload: ${JSON.stringify(cleanProductForPrompt(product, lang))}\n\n` +
     `COMPARED AGAINST: ${peers.join(', ') || '-'}\n\n` +
@@ -1628,6 +1937,9 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
 function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, context = {}) {
   const ctx = promptContext(context, lang);
   const names = (products || []).map((p) => productLine(p, lang).name);
+  const axis = Array.isArray(context.factorAxis) && context.factorAxis.length
+    ? context.factorAxis
+    : compareFactorAxis(products, lang);
   const summaries = (reports || []).map((r) => ({
     name: r?.name,
     matchScore: r?.matchScore,
@@ -1652,7 +1964,8 @@ function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, c
     '  "headToHead": "5-7 substantial paragraphs",\n' +
     '  "recommendation": "5-7 substantial paragraphs explaining which one to buy and why"\n' +
     '}\n\n' +
-    `Rules:\n- chart must include EVERY product (${names.length} total) by exact name.\n- factorMatrix: 6-8 shared factors, each scored for every product by exact name.\n- winner MUST be one of the listed names exactly.\n- Be decisive and concrete; ground it in the per-product summaries, quiz answers and research.\n- Stay within the counts so the JSON is COMPLETE and valid.\n\n` +
+    `${factorAxisContract(axis)}\n` +
+    `Rules:\n- chart must include EVERY product (${names.length} total) by exact name.\n- factorMatrix: EXACTLY the ${axis.length} shared-axis factors above, in that order, each scored for EVERY product by exact name (${names.length} entries per row, no product missing).\n- winner MUST be one of the listed names exactly.\n- Be decisive and concrete; ground it in the per-product summaries, quiz answers and research.\n- Stay within the counts so the JSON is COMPLETE and valid.\n\n` +
     `PRODUCTS (in column order): ${names.join(', ')}\n\n` +
     `PER-PRODUCT REVIEW SUMMARIES:\n${JSON.stringify(summaries, null, 2)}\n\n` +
     `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
@@ -1775,6 +2088,9 @@ root.QorAiPrompts = {
   buildForumPrompt, buildProductResearchPrompt, buildCompareResearchPrompt,
   buildFullPrompt, buildComparePrompt, buildCompareProductPrompt,
   buildCompareVerdictPrompt,
+  // karsilastirma faktor ekseni — butun urunler AYNI 8 faktorde puanlanir
+  compareFactorAxis, compareAxisFamily, alignFactorsToAxis, alignFactorMatrixToAxis,
+  factorAxisContract, axisSimilarity,
   // yayin metasi
   groundedResearchSystemPrompt, buildPublishMetaPrompt,
   // ayristirma

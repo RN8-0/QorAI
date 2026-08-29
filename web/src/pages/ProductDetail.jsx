@@ -16,7 +16,7 @@ import { pb } from '../lib/pocketbase';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
-import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, countryDisplayName, keySpecChips } from '../lib/format';
+import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, countryDisplayName, keySpecChips, priceForCountry } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import OfferList, { sortedOffers } from '../components/OfferList.jsx';
@@ -1379,7 +1379,8 @@ export default function ProductDetail() {
                           </button>
                         </div>
                       )}
-                      <AiAnalysisView kind="productFull" data={aiFull.data} lang={lang} />
+                      <AiAnalysisView kind="productFull" data={aiFull.data} lang={lang}
+                        priceInfo={priceForCountry(p, geoCountry)} />
                     </div>
                   ) : aiFull.phase === 'quiz' && aiFull.questions.length > 0 ? (
                     <QuizFlow

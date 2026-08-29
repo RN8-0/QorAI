@@ -7,6 +7,9 @@
 // ─────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
 import './AiCharts.css';
+// Faktor tablosunun satir kumesi TEK KAYNAK — on-render (Node) da ayni
+// modulu kosar; bkz. lib/factorRows.js.
+import { factorColumnAverages, factorColumnWins, factorMatrixRows } from '../lib/factorRows.js';
 
 export const CHART_COLORS = {
   strong: '#22c55e',
@@ -548,40 +551,79 @@ export function StatTiles({ items = [] }) {
 }
 
 // ── (J) Karşılaştırma ısı matrisi — hangi ürün hangi faktörde önde ────────
-export function HeatMatrix({ products = [], L = (en) => en, labelOf = (p) => p.name }) {
-  const rows = Array.isArray(products) ? products.filter((p) => p && p.name) : [];
-  const labels = [...new Set(rows.flatMap((p) => (Array.isArray(p.factors) ? p.factors : []).map((f) => f?.label).filter(Boolean)))];
-  if (!labels.length || rows.length < 2) return null;
-  // Eski hâli düz renk bloklarından oluşuyordu: sütunlar içeriğe göre farklı
-  // genişlikte, sayı kocaman bir bloğun ortasında kayboluyor, büyüklük farkı
-  // hiç okunmuyordu ("fazla çirkin"). Artık her hücre HİZALI bir mini çubuk:
-  // dolgu uzunluğu = puan, renk = güç bandı, kazanan işaretli.
+//
+// SIFIR BİR VERİ DEĞİL. Ölçüldü 2026-08-29 (canlı kayıt: S26 Ultra vs
+// iPhone 17 Pro Max vs Xiaomi 17 Ultra): rapor her ürünü KENDİ AI çağrısında
+// üretiyor ve her çağrı kendi faktör etiketlerini uyduruyordu — Samsung
+// "İşlemci Performansı", iPhone "Performans". Bu tablo etiketlerin
+// BİRLEŞİMİNİ alıp eşleşmeyen hücreye 0 yazıyordu: 14 satırın 42
+// hücresinden 28'i sıfırdı ve okuyucu bunu "iPhone'un işlemcisi 0 puan"
+// diye okuyordu.
+//
+// Üretim tarafı artık ortak eksende puanlıyor (qor_ai_prompts.js §7.5), ama
+// YAYINLANMIŞ ESKİ KAYITLAR düzelmez. Bu yüzden çizim de savunma yapar:
+//   1. AI'ın kendi ortak matrisi (comparison.factorMatrix) varsa O kullanılır.
+//   2. Yoksa ürün faktörleri etiket benzerliğine göre KÜMELENİR.
+//   3. Bir satır ancak ürünlerin çoğunda ölçülmüşse çizilir; ölçülmeyen
+//      hücre "—" olur — asla 0.
+// Kumeleme ve satir secimi ARTIK BURADA DEGIL: `lib/factorRows.js` icinde,
+// cunku ON-RENDER (Node) da ayni satirlari cizmek zorunda ve JSX dosyasini
+// import edemiyor. Gerekce ve olcum o dosyanin basinda.
+
+export function HeatMatrix({ products = [], matrix = null, L = (en) => en, labelOf = (p) => p.name }) {
+  const cols = Array.isArray(products) ? products.filter((p) => p && p.name) : [];
+  if (cols.length < 2) return null;
+  const rows = factorMatrixRows(cols, matrix);
+  if (!rows.length) return null;
+
+  const partial = rows.some((r) => r.filled < cols.length);
+  // Ürün başına ortalama — sütun altındaki tek sayı, "kim genel olarak önde".
+  const avg = factorColumnAverages(rows, cols.length);
+  const wins = factorColumnWins(rows, cols.length);
+
   return (
     <section className="aic-heat">
       <div className="aic-card-title">🧭 {L('Factor by factor', 'Faktör faktör karşılaştırma')}</div>
       <div className="aic-heat-scroll">
-        <table className="aic-heat-table" style={{ '--cols': rows.length }}>
+        <table className="aic-heat-table" style={{ '--cols': cols.length }}>
           <thead>
             <tr>
               <th className="aic-heat-corner" />
-              {rows.map((p) => (
-                <th key={p.name} className="aic-heat-col"><span>{labelOf(p)}</span></th>
+              {cols.map((p, i) => (
+                <th key={`${p.name}-${i}`} className="aic-heat-col">
+                  <span>{labelOf(p)}</span>
+                  {wins[i] > 0 && (
+                    <em className="aic-heat-wins">
+                      {wins[i]} {L('leads', 'faktörde önde')}
+                    </em>
+                  )}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {labels.map((label) => {
-              const vals = rows.map((p) => Number((p.factors || []).find((f) => f?.label === label)?.score) || 0);
-              const best = Math.max(...vals);
+            {rows.map((row, ri) => {
+              const vals = row.values.filter((v) => v != null);
+              const best = vals.length ? Math.max(...vals) : 0;
               const tied = vals.filter((v) => v === best).length > 1;
               return (
-                <tr key={label}>
-                  <th scope="row" className="aic-heat-label">{label}</th>
-                  {vals.map((v, i) => {
+                <tr key={`${row.label}-${ri}`}>
+                  <th scope="row" className="aic-heat-label">{row.label}</th>
+                  {row.values.map((v, i) => {
+                    if (v == null) {
+                      return (
+                        <td key={`${row.label}-${i}`}>
+                          <span className="aic-heat-cell empty"
+                            title={L('Not measured for this product', 'Bu ürün için ölçülmedi')}>
+                            <b>—</b>
+                          </span>
+                        </td>
+                      );
+                    }
                     const col = scoreColor(v);
-                    const isBest = !tied && v === best && best > 0;
+                    const isBest = !tied && v === best && best > 0 && vals.length > 1;
                     return (
-                      <td key={`${label}-${i}`}>
+                      <td key={`${row.label}-${i}`}>
                         {/* Dolgu genişliği VERİDİR; animasyona bağlanmaz (arka
                             plandaki sekmede transition donunca boş kalıyordu). */}
                         <span className={'aic-heat-cell' + (isBest ? ' best' : '')}>
@@ -596,8 +638,28 @@ export function HeatMatrix({ products = [], L = (en) => en, labelOf = (p) => p.n
               );
             })}
           </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" className="aic-heat-label">{L('Average', 'Ortalama')}</th>
+              {avg.map((v, i) => (
+                <td key={`avg-${i}`}>
+                  <span className="aic-heat-avg" style={v != null ? { color: scoreColor(v) } : undefined}>
+                    {v == null ? '—' : v}
+                  </span>
+                </td>
+              ))}
+            </tr>
+          </tfoot>
         </table>
       </div>
+      {partial && (
+        <p className="aic-heat-note">
+          {L(
+            '“—” means that factor was not scored for that product — it is not a zero.',
+            '“—” o faktörün o ürün için ölçülmediğini gösterir; sıfır puan demek değildir.',
+          )}
+        </p>
+      )}
     </section>
   );
 }
@@ -759,6 +821,377 @@ export function ProConList({ pros = [], cons = [], L = (en) => en, titles = null
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   OKUMA KATMANI (2026-08-29)
+
+   Raporun BAŞI iyi okunuyordu (skor halkası, KPI kutuları, faktör çubukları),
+   ama "Topluluk yorumu", "Tam değerlendirme", "Sana uyumu" ve "Zamanlama ve
+   değer" bölümleri 5-7 paragraflık DÜZ METİN duvarıydı: aynı 14.5px, aynı
+   renk, aynı ağırlık, hiç tutamak yok. Kullanıcı metinlerin İYİ olduğunu ama
+   OKUNMADIĞINI söyledi — yani sorun içerikte değil, tipografide.
+
+   Metinden tek kelime kısılmadı. Değişen şey okuma yolu:
+     · her paragrafın İLK CÜMLESİ konu cümlesi olarak öne çıkar (gazete
+       tekniği: göz cümleleri tarar, ilgisini çekeni okur),
+     · SAYILAR mono + tabular figürle vurgulanır — proje kuralı zaten bu
+       (~/.claude/CLAUDE.md: "her sayı mono, tabular"), rapor metni tek
+       istisnaydı,
+     · üçten uzun bölümler kademeli açılır; metin SİLİNMEZ, katlanır.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+// SAYI VURGUSU — yalnız BIRIMLI/YUZDELI/PARA BIRIMLI sayılar. Model kodundaki
+// çıplak sayı ("iPhone 17") vurgulanmaz; vurgulanırsa vurgu anlamını yitirir.
+// `\b` TÜRKÇE HARFTE ÇALIŞMIYOR: `\w` yalnız ASCII sayar. Ölçüldü — "2026
+// yılında" içindeki "yıl" birim sanılıp vurgulanıyor, "6.9 inç" ise hiç
+// vurgulanmıyordu. Kelime sonu elde tanımlanıyor.
+const WORD_END = '(?![A-Za-z0-9ğüşıöçĞÜŞİÖÇ])';
+
+const PROSE_NUM_RE = new RegExp(
+  '('
+  + '%\\s?\\d[\\d.,]*'                                   // %15
+  + '|[₺$€£]\\s?\\d[\\d.,]*'                             // ₺45.000
+  + '|\\d[\\d.,]*\\s?/\\s?100'                           // 89/100
+  + '|\\d[\\d.,]*\\s?(?:%|mAh|GB|TB|MB|MP|GHz|MHz|Hz|nit|nits|Wh|W|mm|cm|kg|inç|inch|fps|dB|ms|TL|USD|EUR)' + WORD_END
+  + '|\\d[\\d.,]*\\s?(?:yıl|yil|ay|gün|gun|saat|year|years|month|months|day|days|hour|hours)' + WORD_END
+  + ')',
+  'gi',
+);
+
+const PROSE_NUM_TEST = new RegExp(`^(?:${PROSE_NUM_RE.source.slice(1, -1)})$`, 'i');
+
+function proseParts(text, keyPrefix) {
+  const out = [];
+  String(text || '').split(/(\*\*[^*]+\*\*)/g).forEach((seg, si) => {
+    if (seg.startsWith('**') && seg.endsWith('**') && seg.length > 4) {
+      out.push(<strong key={`${keyPrefix}-b${si}`}>{seg.slice(2, -2)}</strong>);
+      return;
+    }
+    seg.split(PROSE_NUM_RE).forEach((piece, pi) => {
+      if (!piece) return;
+      // `g` bayrakli regex'te `.test()` lastIndex'i ILERLETIR ve sonraki
+      // parca yanlis sonuc alir; test icin bayraksiz ikizi kullaniliyor.
+      if (PROSE_NUM_TEST.test(piece)) {
+        out.push(<b className="aic-num" key={`${keyPrefix}-n${si}-${pi}`}>{piece}</b>);
+      } else {
+        out.push(<span key={`${keyPrefix}-t${si}-${pi}`}>{piece}</span>);
+      }
+    });
+  });
+  return out;
+}
+
+// Model bazen tek blok, bazen boş satırlı paragraf, bazen "### başlık" yazıyor.
+// Üçünü de aynı şekle indir: [{kind, text}].
+export function proseBlocks(text) {
+  const raw = String(text || '').replace(/```[a-z]*\s*/gi, '').trim();
+  if (!raw) return [];
+  const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const blocks = [];
+  lines.forEach((line) => {
+    if (/^#{1,6}\s+/.test(line)) {
+      blocks.push({ kind: 'head', text: line.replace(/^#{1,6}\s+/, '').replace(/[:：]\s*$/, '') });
+      return;
+    }
+    if (/^[-•*]\s+/.test(line)) {
+      blocks.push({ kind: 'bullet', text: line.replace(/^[-•*]\s+/, '') });
+      return;
+    }
+    blocks.push({ kind: 'p', text: line.replace(/^>\s+/, '') });
+  });
+  // TEK NEFESTE YAZILMIŞ METİN. Model kimi zaman 600 kelimeyi tek satırda
+  // döndürüyor; o hâlde paragraf ritmi diye bir şey kalmıyor. Cümlelere böl,
+  // üçerli paragraflara topla.
+  if (blocks.length === 1 && blocks[0].kind === 'p' && blocks[0].text.length > 640) {
+    const sents = blocks[0].text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const packed = [];
+    for (let i = 0; i < sents.length; i += 3) packed.push({ kind: 'p', text: sents.slice(i, i + 3).join(' ') });
+    return packed;
+  }
+  return blocks;
+}
+
+// Paragrafın konu cümlesi: ilk cümle, makul uzunluktaysa.
+//
+// NOKTA HER ZAMAN CÜMLE SONU DEĞİL. Ölçüldü: "…detay ve F1.4 diyafram
+// açıklığı…" cümlesi "F1."den bölünüyor, konu cümlesi ürünün ortasında
+// kesiliyordu. Cümle sonu sayılması için noktadan sonra BOŞLUK + BÜYÜK HARF
+// gelmeli ve noktadan önceki jeton tek harf + rakam (F1, v2, M4) olmamalı.
+const SENT_END_RE = /[.!?]+(?=\s)/g;
+const ABBR_TAIL_RE = /(?:^|[\s(])[A-Za-zÇĞİÖŞÜ]\d+$/;
+
+function splitLead(text) {
+  const s = String(text || '').trim();
+  SENT_END_RE.lastIndex = 0;
+  let m = SENT_END_RE.exec(s);
+  while (m) {
+    const end = m.index + m[0].length;
+    const next = s.slice(end).replace(/^\s+/, '').charAt(0);
+    const okNext = next && (next === next.toLocaleUpperCase('tr') && /[A-Za-zÇĞİÖŞÜ"“(]/.test(next));
+    if (end >= 20 && end <= 190 && okNext && !ABBR_TAIL_RE.test(s.slice(0, m.index))) {
+      const lead = s.slice(0, end);
+      const rest = s.slice(end).trim();
+      return rest.length > 40 ? [lead, rest] : [null, s];
+    }
+    if (end > 190) break;
+    m = SENT_END_RE.exec(s);
+  }
+  return [null, s];
+}
+
+/**
+ * ZENGİN RAPOR METNİ — `AiText` + okuma katmanı.
+ *
+ * @param text     ham AI metni
+ * @param clamp    kaç paragraf açık başlasın (0 = hepsi). Gerisi katlanır.
+ */
+export function RichProse({ text, clamp = 3, L = (en) => en }) {
+  const [open, setOpen] = useState(false);
+  const blocks = proseBlocks(text);
+  if (!blocks.length) return null;
+  const limit = clamp > 0 && !open ? clamp : blocks.length;
+  const shown = blocks.slice(0, limit);
+  const hidden = blocks.length - shown.length;
+
+  const draw = (b, i) => {
+    if (b.kind === 'head') {
+      return <h5 className="aic-prose-head" key={`h-${i}`}>{proseParts(b.text, `h${i}`)}</h5>;
+    }
+    if (b.kind === 'bullet') {
+      return <li className="aic-prose-li" key={`l-${i}`}>{proseParts(b.text, `l${i}`)}</li>;
+    }
+    const [lead, rest] = splitLead(b.text);
+    return (
+      <p className="aic-prose-p" key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
+        {lead ? <strong className="aic-prose-lead">{proseParts(lead, `pl${i}`)}</strong> : null}
+        {lead ? ' ' : null}
+        {proseParts(rest, `pr${i}`)}
+      </p>
+    );
+  };
+
+  return (
+    <div className={`aic-prose${open ? ' open' : ''}`}>
+      {shown.map(draw)}
+      {hidden > 0 && (
+        <button type="button" className="aic-prose-more" onClick={() => setOpen(true)}>
+          {L(`Read the rest (${hidden} more paragraphs)`, `Devamını oku (${hidden} paragraf daha)`)}
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+            strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Bölüm başlığındaki ölçü — sayı yerine OKUNAN bir çubuk ────────────────
+// "Topluluk yorumu · 89/100" satırındaki 89 tek başına ölçeksizdi. Aynı sayı
+// artık bandın neresinde olduğunu da gösteriyor.
+export function ScoreMeter({ value, label = '', L = (en) => en, hint = '' }) {
+  const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  const shown = useCountUp(v, { duration: 850 });
+  const { drawn, reduced } = useDrawn();
+  const col = scoreColor(v);
+  if (!Number.isFinite(v) || v <= 0) return null;
+  return (
+    <div className="aic-meter">
+      <div className="aic-meter-top">
+        {label ? <span>{label}</span> : <span />}
+        <b style={{ color: col }}>{Math.round(shown)}<i>/100</i></b>
+      </div>
+      <div className="aic-meter-track" role="img" aria-label={`${v}/100`}>
+        <span className="aic-meter-tick" style={{ left: '50%' }} />
+        <span className="aic-meter-tick" style={{ left: '70%' }} />
+        <i style={{
+          width: `${drawn ? v : 0}%`,
+          background: col,
+          transition: reduced ? 'none' : 'width .8s cubic-bezier(.22,.61,.36,1)',
+        }} />
+      </div>
+      {hint ? <small className="aic-meter-hint">{hint}</small> : <small className="aic-meter-hint">
+        {v >= 70 ? L('strong', 'güçlü') : v >= 50 ? L('mixed', 'karışık') : L('weak', 'zayıf')}
+      </small>}
+    </div>
+  );
+}
+
+/* ── FİYAT PROJEKSİYONU ────────────────────────────────────────────────────
+   "Zamanlama ve değer" bölümü üç metin satırı + bir paragraf yığınıydı:
+   yön (yükseliş/düşüş), beklenen değişim ("%5-10") ve en iyi alım penceresi
+   hep CÜMLE içinde saklıydı. Aynı üç veri bir eğri olarak tek bakışta okunur.
+
+   VERİ UYDURULMUYOR: eğri yalnızca raporun KENDİ alanlarından türer —
+   `trend` yönü verir, `expectedChange` içindeki yüzde büyüklüğü, `bestTime`
+   içindeki ay adı işareti. Yüzde yazmıyorsa yönün tipik büyüklüğü kullanılır
+   ve kart bunu "tahmin" diye ETİKETLER. Fiyat biliniyorsa eksende gerçek para
+   birimi, bilinmiyorsa bugün = 100 endeksi gösterilir. */
+
+const MONTHS_TR = ['ocak', 'şubat', 'mart', 'nisan', 'mayıs', 'haziran', 'temmuz', 'ağustos', 'eylül', 'ekim', 'kasım', 'aralık'];
+const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+
+function parseChangeRange(text) {
+  const s = String(text || '').replace(/–|—/g, '-');
+  const both = s.match(/%\s?(\d{1,2})\s?-\s?(\d{1,2})|(\d{1,2})\s?-\s?(\d{1,2})\s?%/);
+  if (both) {
+    const a = Number(both[1] ?? both[3]);
+    const b = Number(both[2] ?? both[4]);
+    if (Number.isFinite(a) && Number.isFinite(b)) return [Math.min(a, b), Math.max(a, b)];
+  }
+  const one = s.match(/%\s?(\d{1,2})|(\d{1,2})\s?%/);
+  if (one) {
+    const a = Number(one[1] ?? one[2]);
+    if (Number.isFinite(a) && a > 0) return [Math.max(1, a - 3), a + 3];
+  }
+  return null;
+}
+
+function monthIndexIn(text, lang) {
+  const s = String(text || '').toLocaleLowerCase(lang === 'tr' ? 'tr' : 'en');
+  const table = lang === 'tr' ? MONTHS_TR : MONTHS_EN;
+  const now = new Date().getMonth();
+  for (let i = 0; i < 12; i += 1) {
+    if (s.includes(table[i].slice(0, 4))) {
+      const diff = (i - now + 12) % 12;
+      if (diff <= 5) return diff;
+    }
+  }
+  return -1;
+}
+
+export function PriceProjection({
+  outlook = {}, price = 0, currency = '', lang = 'en', L = (en) => en,
+}) {
+  const p = useDrawProgress({ duration: 950 });
+  const trend = ['up', 'down', 'stable'].includes(outlook.trend) ? outlook.trend : '';
+  const parsed = parseChangeRange(outlook.expectedChange || outlook.note);
+  if (!trend && !parsed) return null;
+  const sign = trend === 'up' ? 1 : trend === 'down' ? -1 : 0;
+  // Yüzde yazmıyorsa yönün tipik büyüklüğü: yükseliş dar, düşüş geniş
+  // (elektronikte fiyat aşağı doğru daha hızlı hareket eder), sabit ±2.
+  const [lo, hi] = parsed || (sign > 0 ? [2, 6] : sign < 0 ? [4, 12] : [1, 3]);
+  const N = 7;
+  const now = new Date();
+  const fmtMonth = (i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    try {
+      return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', { month: 'short' }).format(d);
+    } catch { return String(d.getMonth() + 1); }
+  };
+  // Eğri: ilk aylar yavaş, sonra hızlanır (kampanya/model döngüsü etkisi).
+  const ease = (i) => Math.pow(i / (N - 1), 0.82);
+  const curve = (pct) => Array.from({ length: N }, (_, i) => 100 + pct * ease(i));
+  // SABİT = DÜZ ÇİZGİ DEĞİL. İlk sürümde `trend: stable` olduğunda üç eğri de
+  // tam 100'e oturuyordu: başlıkta "±2–8%" yazarken grafik dümdüz ve bomboş
+  // çiziliyordu (ölçüldü — bu kayıtta tam olarak öyleydi). Sabit trend bir
+  // KORİDORDUR: orta çizgi 100'de kalır, bant iki yana açılır.
+  const mid = curve(sign * ((lo + hi) / 2));
+  const band = sign === 0
+    ? { lo: curve(-hi), hi: curve(hi) }
+    : { lo: curve(sign > 0 ? lo : -hi), hi: curve(sign > 0 ? hi : -lo) };
+
+  const W = 560;
+  const H = 150;
+  const padX = 40;
+  const padTop = 14;
+  const padBottom = 28;
+  const all = [...band.lo, ...band.hi, 100];
+  const pad = Math.max(1.5, (Math.max(...all) - Math.min(...all)) * 0.18);
+  const minV = Math.min(...all) - pad;
+  const maxV = Math.max(...all) + pad;
+  const x = (i) => padX + (i * (W - padX * 2)) / (N - 1);
+  const y = (v) => padTop + (1 - (v - minV) / Math.max(1, maxV - minV)) * (H - padTop - padBottom);
+  const lineOf = (vals) => vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const areaPath = `${lineOf(band.hi)} L${x(N - 1).toFixed(1)},${y(band.lo[N - 1]).toFixed(1)} ${band.lo.slice().reverse().map((v, i) => `L${x(N - 1 - i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')} Z`;
+
+  const col = sign < 0 ? CHART_COLORS.strong : sign > 0 ? CHART_COLORS.weak : CHART_COLORS.balanced;
+  const bestIdx = monthIndexIn(outlook.bestTime, lang);
+  const money = (v) => {
+    if (!(price > 0)) return `${Math.round(v)}`;
+    const abs = Math.round((price * v) / 100);
+    try {
+      return new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
+        style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0,
+      }).format(abs);
+    } catch { return `${abs}`; }
+  };
+  const dir = sign < 0
+    ? L('Prices are expected to ease', 'Fiyatların gerilemesi bekleniyor')
+    : sign > 0
+      ? L('Prices are expected to climb', 'Fiyatların yükselmesi bekleniyor')
+      : L('Prices look flat', 'Fiyat yatay görünüyor');
+  const wait = String(outlook.buyOrWait || '').toLowerCase();
+  const waitLabel = wait === 'buy' ? L('Buy now', 'Şimdi al')
+    : wait === 'wait' ? L('Wait', 'Bekle')
+      : wait === 'watch' ? L('Keep watching', 'Takip et') : '';
+
+  return (
+    <div className="aic-price">
+      <div className="aic-price-top">
+        <div className="aic-price-dir" style={{ color: col }}>
+          <span aria-hidden="true">{sign < 0 ? '↘' : sign > 0 ? '↗' : '→'}</span>
+          <strong>{dir}</strong>
+          <em>
+            {sign === 0 ? '±' : sign < 0 ? '−' : '+'}
+            {lo === hi ? `${lo}%` : `${lo}–${hi}%`} · {L('next 6 months', 'önümüzdeki 6 ay')}
+          </em>
+        </div>
+        {waitLabel && <span className={`aic-price-cta ${wait}`}>{waitLabel}</span>}
+      </div>
+
+      <svg className="aic-price-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+        role="img" aria-label={L('Estimated price trajectory', 'Tahmini fiyat seyri')}>
+        <line className="aic-price-base" x1={padX} x2={W - padX} y1={y(100)} y2={y(100)} />
+        <path className="aic-price-band" d={areaPath} fill={col}
+          style={{ opacity: 0.14 * p }} />
+        <path className="aic-price-line" d={lineOf(mid)} stroke={col} fill="none"
+          strokeDasharray="1000" strokeDashoffset={1000 * (1 - p)} />
+        {bestIdx >= 0 && (
+          <g className="aic-price-mark" style={{ opacity: p }}>
+            <line x1={x(bestIdx)} x2={x(bestIdx)} y1={padTop} y2={H - padBottom} />
+            <circle cx={x(bestIdx)} cy={y(mid[bestIdx])} r="5" fill={col} />
+          </g>
+        )}
+        {mid.map((v, i) => (
+          <text key={`x-${i}`} className="aic-price-x" x={x(i)} y={H - 10} textAnchor="middle">
+            {fmtMonth(i)}
+          </text>
+        ))}
+        <text className="aic-price-y" x={padX} y={y(100) - 8}>
+          {price > 0 ? money(100) : L('today', 'bugün')}
+        </text>
+        {/* Bant SINIRI da çizilir: %14 opaklıktaki dolgu tek başına açık
+            temada neredeyse görünmüyordu. */}
+        <path className="aic-price-edge" d={lineOf(band.hi)} stroke={col} fill="none" style={{ opacity: 0.45 * p }} />
+        <path className="aic-price-edge" d={lineOf(band.lo)} stroke={col} fill="none" style={{ opacity: 0.45 * p }} />
+        {/* Bitiş aralığı SVG'DE DEĞİL, altındaki olgu şeridinde. İki uç
+            etiketi (üst/alt bant) ay satırının üstüne düşüp çakışıyordu ve
+            sağ kenar boşluğu "2.350 – 2.560 ₺" gibi bir metne yetmiyor. */}
+      </svg>
+
+      <div className="aic-price-facts">
+        <span className="aic-price-range">
+          <i aria-hidden="true">🎯</i>{L('In 6 months', '6 ay sonra')}
+          <b style={{ color: col }}>{`${money(band.lo[N - 1])} – ${money(band.hi[N - 1])}`}</b>
+        </span>
+        {outlook.bestTime && (
+          <span><i aria-hidden="true">🗓</i>{L('Best window', 'En iyi pencere')}<b>{outlook.bestTime}</b></span>
+        )}
+        {outlook.expectedChange && (
+          <span><i aria-hidden="true">📉</i>{L('Expected change', 'Beklenen değişim')}<b>{outlook.expectedChange}</b></span>
+        )}
+      </div>
+      <p className="aic-price-note">
+        {price > 0
+          ? L('Modelled from the current catalog price. An AI estimate, not a price guarantee.',
+            'Güncel katalog fiyatı üzerinden modellendi. AI tahminidir, fiyat garantisi değildir.')
+          : L('Indexed to today = 100. An AI estimate, not a price guarantee.',
+            'Bugün = 100 endekslenmiştir. AI tahminidir, fiyat garantisi değildir.')}
+      </p>
     </div>
   );
 }

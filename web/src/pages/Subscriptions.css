@@ -822,8 +822,10 @@
 .subs-result { max-width: none; }
 .subs-reco-body,
 .subs-sec > .la-prose,
+.subs-sec > .aic-prose,
 .subs-svc-exp { max-width: 900px; }
-.subs-sec > .la-prose { margin: 0 auto; }
+.subs-sec > .la-prose,
+.subs-sec > .aic-prose { margin: 0 auto; }
 
 /* SubLogo logo bulamadığında kelime-işareti (servis adının kendisi) çiziyor;
    yanındaki metinle birlikte ad İKİ KEZ görünüyordu. Grafik satırında ve

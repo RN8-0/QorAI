@@ -647,6 +647,9 @@
   border-radius: 12px;
   background: var(--bg3);
 }
+/* Karsilastirma karti ozeti artik `RichProse` ciziyor (`.aic-prose`); eski
+   `.la-prose` olcusu burada da gecerli kalsin. */
+.la-cmp-summary .aic-prose { font-size: 13.5px; }
 .la-cmp-factors {
   display: grid;
   grid-template-columns: 1fr;
@@ -900,6 +903,35 @@
   font-weight: 800;
   color: var(--text3);
 }
+/* BOLUM RENK KODU. Rapor kartlarinin hepsi ayni beyaz kutuydu; okuyucu
+   "hangi bolumdeyim" sorusunu yalnizca basligi okuyarak yanitlayabiliyordu.
+   Renk KUTUYU DEGIL kenari boyar (hiyerarsi hairline'dan gelir) ve metin-guvenli
+   `--ink-*` tonlarini kullanir — dolgu tonlari acik temada AA'yi gecmiyor. */
+.la-result-body > .la-sec.tone-factors,
+.la-community > .la-sec.tone-factors { border-left: 3px solid color-mix(in srgb, var(--ink-blue) 62%, transparent); }
+.la-result-body > .la-sec.tone-community,
+.la-community > .la-sec.tone-community { border-left: 3px solid color-mix(in srgb, var(--ink-cyan) 62%, transparent); }
+.la-result-body > .la-sec.tone-verdict,
+.la-community > .la-sec.tone-verdict { border-left: 3px solid color-mix(in srgb, var(--text3) 55%, transparent); }
+.la-result-body > .la-sec.tone-persona,
+.la-community > .la-sec.tone-persona { border-left: 3px solid color-mix(in srgb, var(--ink-green) 62%, transparent); }
+.la-result-body > .la-sec.tone-timing,
+.la-community > .la-sec.tone-timing { border-left: 3px solid color-mix(in srgb, var(--ink-amber) 62%, transparent); }
+.la-result-body > .la-sec.tone-reliability,
+.la-community > .la-sec.tone-reliability { border-left: 3px solid color-mix(in srgb, var(--text3) 40%, transparent); }
+.la-result-body > .la-sec.tone-alts,
+.la-community > .la-sec.tone-alts { border-left: 3px solid color-mix(in srgb, var(--ink-blue) 30%, transparent); }
+/* Baslik da renk kodunu tasir. YALNIZ DORT bolum renkli: faktorler, topluluk,
+   sana uyumu, zamanlama. "Tam degerlendirme" ve "Guvenilirlik" notr kalir —
+   hepsini boyamak renk kodu degil gokkusagi olurdu. */
+.la-sec.tone-factors h4 { color: var(--ink-blue); }
+.la-sec.tone-community h4 { color: var(--ink-cyan); }
+.la-sec.tone-persona h4 { color: var(--ink-green); }
+.la-sec.tone-timing h4 { color: var(--ink-amber); }
+.la-sec.tone-community h4 em { color: var(--ink-cyan); }
+.la-sec.tone-persona h4 em { color: var(--ink-green); }
+.la-sec.tone-timing h4 em { color: var(--ink-amber); }
+
 .la-sec-final {
   border-color: color-mix(in srgb, var(--brand-cyan) 34%, var(--border)) !important;
   background:

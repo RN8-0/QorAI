@@ -25,6 +25,7 @@ import {
   ProConList,
   QuizImpact,
   RadarChart,
+  RichProse,
   SentimentDonut,
   StatTiles,
   normalizeSentiment,
@@ -102,7 +103,7 @@ function CompareProductCard({ product, isWinner, L, lang }) {
       </div>
       <StoreCta url={product.url || product.link} lang={lang} L={L} compact />
       {product.bestFor && <p className="la-cmp-bestfor"><b>{L('Best for', 'Kime uygun')}:</b> {product.bestFor}</p>}
-      {product.summary && <div className="la-prose la-cmp-summary"><AiText text={product.summary} /></div>}
+      {product.summary && <div className="la-cmp-summary"><RichProse text={product.summary} L={L} clamp={0} /></div>}
 
       {factors.length >= 3 && (
         <div className="aic-row la-cmp-charts">
@@ -142,7 +143,7 @@ function CompareProductCard({ product, isWinner, L, lang }) {
 
       {product.community && (
         <Sec icon="🌐" title={L('Community signal', 'Topluluk sinyali')}>
-          <div className="la-prose"><AiText text={product.community} /></div>
+          <RichProse text={product.community} L={L} clamp={3} />
         </Sec>
       )}
     </article>
@@ -197,7 +198,7 @@ export function CompareResult({ data, L, lang, hideQuiz = false }) {
               </a>
             ) : <strong>{best.name}</strong>}
             {(data?.winner?.reason || data?.recommendation) && (
-              <div className="la-prose"><AiText text={data.winner?.reason || data.recommendation} /></div>
+              <RichProse text={data.winner?.reason || data.recommendation} L={L} clamp={0} />
             )}
             {data?.winner?.runnerUpCase && (
               <p className="la-cmp-runnerup">🔁 {data.winner.runnerUpCase}</p>
@@ -237,27 +238,27 @@ export function CompareResult({ data, L, lang, hideQuiz = false }) {
 
         {detailed.fit && (
           <Sec icon="🎯" title={L('Quiz-based fit', 'Quiz bazlı uyum')}>
-            <div className="la-prose"><AiText text={detailed.fit} /></div>
+            <RichProse text={detailed.fit} L={L} clamp={3} />
           </Sec>
         )}
         {detailed.performance && (
           <Sec icon="⚡" title={L('Performance and specs', 'Performans ve özellikler')}>
-            <div className="la-prose"><AiText text={detailed.performance} /></div>
+            <RichProse text={detailed.performance} L={L} clamp={3} />
           </Sec>
         )}
         {detailed.ownership && (
           <Sec icon="🛡" title={L('Long-term ownership', 'Uzun vadeli kullanım')}>
-            <div className="la-prose"><AiText text={detailed.ownership} /></div>
+            <RichProse text={detailed.ownership} L={L} clamp={3} />
           </Sec>
         )}
         {detailed.community && (
           <Sec icon="🌐" title={L('What owners of each report', 'Kullanıcılar ne diyor')}>
-            <div className="la-prose"><AiText text={detailed.community} /></div>
+            <RichProse text={detailed.community} L={L} clamp={3} />
           </Sec>
         )}
         {(detailed.recommendation || data?.recommendation) && (
           <Sec icon="🏁" title={L('Final recommendation', 'Nihai öneri')} tone="la-sec-final">
-            <div className="la-prose"><AiText text={detailed.recommendation || data.recommendation} /></div>
+            <RichProse text={detailed.recommendation || data.recommendation} L={L} clamp={0} />
           </Sec>
         )}
       </div>

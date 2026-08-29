@@ -460,6 +460,10 @@ async function runCompareReport(o) {
 
   stage('report', lang);
   var peerNames = products.map(function (p) { return P.displayProductName(p, lang); });
+  // ORTAK FAKTOR EKSENI — BIR KEZ hesaplanir, her urun cagrisina AYNI liste
+  // gider. Eksen olmadan her cagri kendi etiketlerini uyduruyordu ve
+  // karsilastirma tablosu sifirla doluyordu (bkz. qor_ai_prompts.js §7.5).
+  var factorAxis = P.compareFactorAxis(products, lang);
   var biten = 0;
   stage('progress', lang, { done: 0, total: products.length });
 
@@ -468,6 +472,7 @@ async function runCompareReport(o) {
       system: sistem,
       user: P.buildCompareProductPrompt(p, lang, {}, {
         quizAnswers: answers, research: research, peerNames: peerNames,
+        factorAxis: factorAxis,
       }),
       maxOutputTokens: 8192,
       temperature: 0.42,
@@ -489,6 +494,9 @@ async function runCompareReport(o) {
     stage('progress', lang, { done: biten, total: products.length });
     if (!parsed || typeof parsed !== 'object') return null;
     return Object.assign({}, parsed, {
+      // Model ekseni yine de kaydirabilir (etiketi cevirir, ikiye boler).
+      // Ikinci savunma: cikti eksene YENIDEN oturtulur.
+      factors: P.alignFactorsToAxis(parsed.factors, factorAxis),
       name: parsed.name || P.displayProductName(p, lang),
       imageUrl: p.imageUrl || parsed.imageUrl || '',
       url: P.productPath(p),
@@ -509,13 +517,16 @@ async function runCompareReport(o) {
     verdict = P.parseAiJson(await askRaw({
       system: sistem,
       user: P.buildCompareVerdictPrompt(products, ok, lang, {}, {
-        quizAnswers: answers, research: research,
+        quizAnswers: answers, research: research, factorAxis: factorAxis,
       }),
       maxOutputTokens: 6144,
       temperature: 0.4,
       jsonMode: true,
     })) || {};
   } catch (_) { verdict = {}; }
+  verdict.factorMatrix = P.alignFactorMatrixToAxis(
+    verdict.factorMatrix, factorAxis, ok.map(function (r) { return r.name; }),
+  );
 
   return {
     data: { type: 'compare_full_report', products: ok, comparison: verdict },

@@ -104,6 +104,15 @@ export const buildComparePrompt = API.buildComparePrompt;
 export const buildCompareProductPrompt = API.buildCompareProductPrompt;
 export const buildCompareVerdictPrompt = API.buildCompareVerdictPrompt;
 
+// ── karsilastirma faktor ekseni ───────────────────────────────────────────
+// Karsilastirmadaki BUTUN urunler AYNI 8 faktorde puanlanir. Eksen olmadan
+// her urun cagrisi kendi etiketlerini uyduruyor, tablo da sifirla doluyordu
+// (kok neden ve olcum: admin/js/qor_ai_prompts.js §7.5).
+export const compareFactorAxis = API.compareFactorAxis;
+export const alignFactorsToAxis = API.alignFactorsToAxis;
+export const alignFactorMatrixToAxis = API.alignFactorMatrixToAxis;
+export const axisSimilarity = API.axisSimilarity;
+
 // ── yayin metasi ──────────────────────────────────────────────────────────
 export const groundedResearchSystemPrompt = API.groundedResearchSystemPrompt;
 export const buildPublishMetaPrompt = API.buildPublishMetaPrompt;

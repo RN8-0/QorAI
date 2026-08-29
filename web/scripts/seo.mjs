@@ -36,6 +36,11 @@ import { cleanProductName } from '../src/lib/productNames.js';
 // fonksiyonlar kosuyor (lib/reportAdapters.js). Ayrisirsa crawler'in
 // gordugu puan ile okuyucunun gordugu puan farkli olur.
 import { calibratedScore, scoreBasisNote } from '../src/lib/aiPrompts.js';
+// Faktor tablosunun satir kumesi TEK KAYNAK: site (AiCharts -> HeatMatrix)
+// ve on-render AYNI moduldeki kumelemeyi kosar. Ayrisirsa crawler'in
+// gordugu tablo ile okuyucunun gordugu tablo farkli olur; ustelik eski
+// kayitlarda 'olculmedi' hucresi 0 puan gibi okunuyordu (bkz. factorRows.js).
+import { factorColumnAverages, factorColumnWins, factorMatrixRows } from '../src/lib/factorRows.js';
 import { loadAdminSandbox } from '../../scripts/_spec_sandbox.mjs';
 
 const SITE = 'https://qorai.net';
@@ -213,6 +218,8 @@ const ANALIZ_LISTE_TEXT = {
     risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
     score: 'Score', pros: 'What works', cons: 'What does not',
     headToHead: 'Head to head', products: 'Products compared',
+    factorTable: 'Factor by factor', average: 'Average', leads: 'factors ahead',
+    notMeasured: '“—” means that factor was not scored for that product — it is not a zero.',
   },
   tr: {
     h1: 'Yapay Zekâ Ürün Analizleri',
@@ -243,6 +250,8 @@ const ANALIZ_LISTE_TEXT = {
     risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
     score: 'Puan', pros: 'İyi yanları', cons: 'Zayıf yanları',
     headToHead: 'Karşı karşıya', products: 'Karşılaştırılan ürünler',
+    factorTable: 'Faktör faktör karşılaştırma', average: 'Ortalama', leads: 'faktörde önde',
+    notMeasured: '“—” o faktörün o ürün için ölçülmediğini gösterir; sıfır puan demek değildir.',
   },
 };
 
@@ -546,6 +555,49 @@ function anLinkGovde(u, tx, quizGizle = false) {
 }
 
 // ── LINK raporu — karsilastirma (`products[]` + `comparison`) ─────────────
+// FAKTOR FAKTOR TABLOSU — sitedeki `HeatMatrix`in on-render karsiligi.
+//
+// Bu tablo on-render'da HIC YOKTU: crawler kazananla farklari okuyor ama
+// karsilastirmanin en yogun VERISINI hic gormuyordu. Satir kumesi sitedeki
+// tabloyla AYNI modulden gelir (lib/factorRows.js), dolayisiyla iki taraf ayni
+// satirlari ayni sirada gosterir ve "olculmedi" hucresi burada da 0 degil
+// "—" olarak yazilir.
+function anFaktorMatrisi(products, matrix, tx) {
+  const cols = anDizi(products).filter((p) => p && p.name).map((p) => ({
+    name: cleanProductName(String(p.name)),
+    factors: anDizi(p.factors),
+  }));
+  if (cols.length < 2) return '';
+  const rows = factorMatrixRows(cols, matrix, 10);
+  if (!rows.length) return '';
+  const avg = factorColumnAverages(rows, cols.length);
+  const wins = factorColumnWins(rows, cols.length);
+  const eksik = rows.some((r) => r.filled < cols.length);
+  const td = 'padding:7px 12px;border-top:1px solid #e2e8f0';
+  const mono = 'font-family:ui-monospace,Consolas,monospace;text-align:right';
+  return anH2(tx.factorTable)
+    + '<table style="border-collapse:collapse;width:100%;max-width:760px;margin:0 0 10px">'
+    + '<thead><tr><th style="' + td + ';text-align:left;color:#64748b;font-size:13px"></th>'
+    + cols.map((c, i) => '<th style="' + td + ';text-align:left;font-size:13px">' + esc(c.name)
+      + (wins[i] > 0 ? '<br><span style="color:#1565C0;font-weight:600">' + wins[i] + ' ' + esc(tx.leads) + '</span>' : '')
+      + '</th>').join('')
+    + '</tr></thead><tbody>'
+    + rows.map((r) => {
+      const vals = r.values.filter((v) => v != null);
+      const best = vals.length ? Math.max(...vals) : 0;
+      const tek = vals.filter((v) => v === best).length === 1;
+      return '<tr><td style="' + td + ';color:#475569">' + esc(r.label) + '</td>'
+        + r.values.map((v) => '<td style="' + td + ';' + mono + '">'
+          + (v == null ? '—' : (Math.round(v) + (tek && v === best && vals.length > 1 ? ' ★' : '')))
+          + '</td>').join('')
+        + '</tr>';
+    }).join('')
+    + '</tbody><tfoot><tr><td style="' + td + ';color:#64748b;font-weight:600">' + esc(tx.average) + '</td>'
+    + avg.map((v) => '<td style="' + td + ';' + mono + ';font-weight:700">' + (v == null ? '—' : v) + '</td>').join('')
+    + '</tr></tfoot></table>'
+    + (eksik ? '<p style="font-size:12px;color:#64748b;margin:0 0 16px">' + esc(tx.notMeasured) + '</p>' : '');
+}
+
 function anKarsilastirmaGovde(r, tx, quizGizle = false) {
   const cmp = r.comparison || {};
   const urunler = anDizi(r.products);
@@ -564,6 +616,8 @@ function anKarsilastirmaGovde(r, tx, quizGizle = false) {
         + `</tr>`).join('')
       + `</table>`;
   }
+
+  g += anFaktorMatrisi(urunler, cmp.factorMatrix, tx);
 
   const farklar = anBaslikliListe(cmp.decisiveDifferences);
   if (farklar) { g += anH2(tx.decisive); g += farklar; }
@@ -621,6 +675,11 @@ function anAbonelikGovde(r, tx, quizGizle = false) {
         + `</tr>`).join('')
       + `</table>`;
   }
+
+  // Abonelik karsilastirmasi da AYNI faktor tablosunu alir; servislerin
+  // faktorleri sabit anahtarli (qor_ai_link.js -> factorByKey) oldugu icin
+  // satirlar birebir hizalanir.
+  g += anFaktorMatrisi(servisler, null, tx);
 
   const farklar = anBaslikliListe(r.decisiveDifferences);
   if (farklar) { g += anH2(tx.decisive); g += farklar; }

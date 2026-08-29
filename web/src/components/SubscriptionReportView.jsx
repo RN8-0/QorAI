@@ -14,7 +14,6 @@
 //  `onReset` yalnizca CANLI akista verilir; yayinlanmis sayfada "Yeni analiz"
 //  butonu yoktur.
 // ═══════════════════════════════════════════════════════════════════════════
-import AiText from './AiText.jsx';
 import Gauge from './Gauge.jsx';
 import SubLogo from './SubLogo.jsx';
 import {
@@ -27,6 +26,7 @@ import {
   FactorList,
   ForumFindings,
   HeatMatrix,
+  RichProse,
   ProConList,
   QuizImpact,
   RadarChart,
@@ -152,7 +152,7 @@ function serviceSections(s, L, researched = false) {
     ) : null,
     community: s.community ? (
       <Sec icon="🌐" title={L('What subscribers say', 'Aboneler ne diyor')}>
-        <div className="la-prose"><AiText text={s.community} /></div>
+        <RichProse text={s.community} L={L} clamp={3} />
       </Sec>
     ) : null,
     cancel: cancelReasons.length ? (
@@ -231,7 +231,7 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
             <strong>{best.name}</strong>
             {(result?.winner?.reason || result?.winner?.recommendation || result?.recommendation) && (
               <div className="subs-hero-text">
-                <AiText text={result.winner?.reason || result.winner?.recommendation || result.recommendation} />
+                <RichProse text={result.winner?.reason || result.winner?.recommendation || result.recommendation} L={L} clamp={0} />
               </div>
             )}
             {result?.winner?.runnerUpCase && (
@@ -284,31 +284,31 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
           {result.detailed.fit && (
             <section>
               <h4>🎯 {L('Overall fit', 'Genel uyum')}</h4>
-              <AiText text={result.detailed.fit} />
+              <RichProse text={result.detailed.fit} L={L} clamp={3} />
             </section>
           )}
           {result.detailed.features && (
             <section>
               <h4>🧩 {L('Features and content', 'Özellikler ve içerik')}</h4>
-              <AiText text={result.detailed.features} />
+              <RichProse text={result.detailed.features} L={L} clamp={3} />
             </section>
           )}
           {result.detailed.ux && (
             <section>
               <h4>✨ {L('Experience', 'Deneyim')}</h4>
-              <AiText text={result.detailed.ux} />
+              <RichProse text={result.detailed.ux} L={L} clamp={3} />
             </section>
           )}
           {result.detailed.community && (
             <section>
               <h4>🌐 {L('Community and risk', 'Topluluk ve risk')}</h4>
-              <AiText text={result.detailed.community} />
+              <RichProse text={result.detailed.community} L={L} clamp={3} />
             </section>
           )}
           {result.detailed.plan && (
             <section className="subs-plan">
               <h4>🗺 {L('Your usage plan', 'Kullanım planın')}</h4>
-              <AiText text={result.detailed.plan} />
+              <RichProse text={result.detailed.plan} L={L} clamp={0} />
             </section>
           )}
         </div>
@@ -317,7 +317,7 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
       {result.recommendation && (
         <div className="subs-reco">
           <div className="subs-reco-head">{t('subs.resultHead')}</div>
-          <div className="subs-reco-body"><AiText text={result.recommendation} /></div>
+          <div className="subs-reco-body"><RichProse text={result.recommendation} L={L} clamp={0} /></div>
         </div>
       )}
 

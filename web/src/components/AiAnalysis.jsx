@@ -9,6 +9,8 @@ import { Link } from 'react-router-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
+import { priceForCountry } from '../lib/format';
+import { useGeoCountry } from '../lib/geo';
 import { displayProductName, cleanProductName } from '../lib/productNames';
 import {
   BarFill,
@@ -16,6 +18,7 @@ import {
   DecisionBadge,
   DistributionBar,
   HeatMatrix,
+  RichProse,
   SentimentDonut,
   factorDistribution,
   useCountUp,
@@ -336,24 +339,12 @@ function ForumView({ data, L }) {
 }
 
 // ─── FULL REPORTS ──────────────────────────────────────────────────────────
-function Paragraphs({ text }) {
-  const raw = String(text || '').trim();
-  let parts = raw
-    .split(/\n{2,}/g)
-    .map((x) => x.trim())
-    .filter(Boolean);
-  if (parts.length <= 1) {
-    const sentences = raw
-      .split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9])/g)
-      .map((x) => x.trim())
-      .filter(Boolean);
-    parts = [];
-    for (let i = 0; i < sentences.length; i += 2) {
-      parts.push(sentences.slice(i, i + 2).join(' '));
-    }
-  }
-  if (!parts.length) return null;
-  return <div className="ai-report-prose">{parts.map((p, i) => <p key={i}>{p}</p>)}</div>;
+// Rapor nesri TEK YOLDAN çizilir: `RichProse` (konu cümlesi vurgusu, mono
+// sayılar, kademeli açılma). Burada eskiden kendi paragraf bölücüsü vardı ve
+// karşılaştırma raporundaki metinler ortak şablondakilerden FARKLI
+// görünüyordu — kullanıcının "analiz sistemi standart olmalı" dediği yer.
+function Paragraphs({ text, L = (en) => en, clamp = 4 }) {
+  return <RichProse text={text} L={L} clamp={clamp} />;
 }
 
 function BulletList({ items, tone = 'neutral' }) {
@@ -401,7 +392,7 @@ function CommunityBlock({ data = {}, L }) {
           <span>{L('Reddit, YouTube, retailer reviews and specialist sources are synthesized together.', 'Reddit, YouTube, alışveriş yorumları ve uzman kaynaklar birlikte özetlenir.')}</span>
         </div>
       </div>
-      <Paragraphs text={data.summary} />
+      <Paragraphs text={data.summary} L={L} />
       <div className="ai-procon-row">
         <ProCon icon="✓" title={L('Common positives', 'Öne çıkan artılar')} items={arr(data.pros).map(String)} color="#22c55e" />
         <ProCon icon="✕" title={L('Common negatives', 'Öne çıkan eksiler')} items={arr(data.cons).map(String)} color="#f43f5e" />
@@ -472,7 +463,7 @@ function AlternativeCards({ alternatives = [], L }) {
 // `export`: /analiz/<slug> sayfasi da AYNI bileseni cizer. Yayinlanan analiz,
 // urun sayfasinda calisan analizin BIREBIR AYNISI gorunmek zorunda — ikinci bir
 // gorunum yazmak iki tasarimin ayrismasi demek.
-export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore = 0 }) {
+export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore = 0, priceInfo = null }) {
   // `lang` ve `techScore` KALIBRASYONA gidiyor: gosterilen puan
   // 0.60 x katalog teknik puani + 0.40 x ham uyum puani, segment etiketi ve
   // gerekce metni de dile gore yaziliyor (bkz. reportAdapters).
@@ -487,6 +478,7 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
       lang={lang}
       showHead={false}
       hideQuiz={hideQuiz}
+      priceInfo={priceInfo}
       heroExtra={null}
       altNode={alternatives.length > 0 ? (
         <Sec icon="🔀" title={L('Smart alternatives', 'Akıllı alternatifler')}>
@@ -527,26 +519,6 @@ function CompareScoreChartFull({ chart = [], L }) {
   );
 }
 
-function FactorMatrix({ rows = [] }) {
-  const list = arr(rows).filter((x) => x?.label && Array.isArray(x.scores));
-  if (!list.length) return null;
-  return (
-    <div className="ai-factor-matrix">
-      {list.map((row, i) => (
-        <div className="ai-factor-matrix-row" key={`${row.label}-${i}`}>
-          <b>{row.label}</b>
-          <div>
-            {row.scores.map((s, j) => {
-              const score = toInt(s.score);
-              return <span key={`${s.name}-${j}`}><small>{cleanProductName(s.name)}</small><i style={{ width: `${Math.max(4, score)}%`, background: scoreColor(score) }} /><strong>{score}</strong></span>;
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ── Compare report — the AI overall comparison is shown first, then one
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
@@ -578,13 +550,17 @@ function ComparisonOverview({ cmp = {}, L }) {
         </div>
       )}
       <CompareScoreChartFull chart={cmp.chart} L={L} />
-      <FactorMatrix rows={cmp.factorMatrix} />
+      {/* FAKTÖR MATRİSİ BURADAN KALKTI. Aynı veri sayfada İKİ KEZ çiziliyordu:
+          burada `FactorMatrix` (ürün adı + çubuk), hemen altında `HeatMatrix`
+          (hizalı tablo). İkisi de `comparison.factorMatrix` / ürün
+          faktörlerinden besleniyordu. Tek çizim yolu HeatMatrix; AI'ın ortak
+          matrisi artık ona `matrix` prop'uyla giriyor. */}
       {(arr(cmp.decisiveDifferences).length > 0 || String(cmp.headToHead || '').trim() || String(cmp.recommendation || '').trim()) && (
         <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz')}`}>
           <BulletList items={cmp.decisiveDifferences} tone="notes" />
-          <Paragraphs text={cmp.headToHead} />
+          <Paragraphs text={cmp.headToHead} L={L} />
           {String(cmp.recommendation || '').trim() && (
-            <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} /></div></div>
+            <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} L={L} clamp={0} /></div></div>
           )}
         </Collapsible>
       )}
@@ -594,8 +570,9 @@ function ComparisonOverview({ cmp = {}, L }) {
 
 // One product's complete review — the SAME template the product-detail, link
 // and subscription reports use, rendered inside the compare detail modal.
-function CompareProductDetail({ data = {}, L, lang, hideQuiz = false }) {
-  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false} hideQuiz={hideQuiz} />;
+function CompareProductDetail({ data = {}, L, lang, hideQuiz = false, priceInfo = null }) {
+  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false}
+    hideQuiz={hideQuiz} priceInfo={priceInfo} />;
 }
 
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
@@ -613,7 +590,12 @@ function CompareProductDetail({ data = {}, L, lang, hideQuiz = false }) {
 // Artık: kazanan hükmü + tek bir hizalı faktör karşılaştırması (HeatMatrix),
 // ardından HER ÜRÜNÜN tam raporu kart içinde ALT ALTA — abonelikteki
 // `subs-svc-grid` düzeninin birebir karşılığı. Modal ve tıklama kalktı.
-function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
+// Capa kimligi: id/ad degisken oldugu icin SIRA numarasi da girer, boylece
+// ayni adli iki sutun ayni capayi paylasmaz.
+const cmpAnchor = (key, i) => `cmp-report-${i + 1}-${String(key).replace(/[^a-zA-Z0-9]+/g, '-').slice(0, 40)}`;
+
+function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, priceInfo = null }) {
+  const geoCountry = useGeoCountry();
   const aiProducts = arr(data.products);
   const cmp = data.comparison || {};
 
@@ -624,7 +606,7 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
     if (products.length) {
       const name = displayProductName(item, lang);
       const ai = aiProducts.find((ap) => norm(ap.name) === norm(name)) || aiProducts[i] || {};
-      return { ai, image: item.imageUrl || ai.imageUrl || '', name, key: item.id || `${name}-${i}` };
+      return { ai, image: item.imageUrl || ai.imageUrl || '', name, key: item.id || `${name}-${i}`, product: item };
     }
     const name = cleanProductName(item.name || '');
     return { ai: item, image: item.imageUrl || '', name, key: `${name}-${i}` };
@@ -635,21 +617,41 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
   // factorMatrix döndürdüyse onu da aynı şekle çeviririz (tek çizim yolu).
   const heatProducts = columns.map((c) => ({
     name: c.name,
-    factors: arr(c.ai?.factors).map((f) => ({ label: f?.label, score: toInt(f?.score) })),
-  })).filter((p) => p.factors.length > 0);
+    factors: arr(c.ai?.factors)
+      .filter((f) => f && f.label && Number.isFinite(Number(f.score)))
+      .map((f) => ({ label: f.label, score: toInt(f.score) })),
+  }));
 
   return (
     <div className="ai-report ai-report-compare">
       <ComparisonOverview cmp={cmp} L={L} />
 
-      {heatProducts.length >= 2 && <HeatMatrix products={heatProducts} L={L} />}
+      {heatProducts.length >= 2 && (
+        <HeatMatrix products={heatProducts} matrix={cmp.factorMatrix} L={L} />
+      )}
 
       {columns.length > 0 && (
         <div className="ai-cmp-reports">
+          {/* SIRALI RAPORLARA ATLAMA. Uc urunlu bir karsilastirmada sayfa
+              ~25 bolum uzunlugunda; okuyucu ikinci urunun raporuna ulasmak
+              icin birincinin tamamini kaydiriyordu. Kisayol modal DEGIL —
+              raporlar alt alta acik kalir, bu yalnizca bir capa. */}
+          {columns.length > 1 && (
+            <nav className="ai-cmp-jump" aria-label={L('Jump to a review', 'Bir incelemeye atla')}>
+              <span>{L('Jump to', 'Şuraya atla')}</span>
+              {columns.map((c, i) => (
+                <a key={`jump-${c.key}`} href={`#${cmpAnchor(c.key, i)}`}
+                  className={winnerNorm && norm(c.name) === winnerNorm ? 'win' : ''}>
+                  {winnerNorm && norm(c.name) === winnerNorm ? '★ ' : `${i + 1}. `}{c.name}
+                </a>
+              ))}
+            </nav>
+          )}
           {columns.map((c, i) => {
             const isWin = winnerNorm && norm(c.name) === winnerNorm;
             return (
-              <section className={'ai-cmp-report' + (isWin ? ' winner' : '')} key={c.key}>
+              <section id={cmpAnchor(c.key, i)}
+                className={'ai-cmp-report' + (isWin ? ' winner' : '')} key={c.key}>
                 <header className="ai-cmp-report-head">
                   {isWin && <span className="ai-cmp-report-win">★ {L('AI pick', 'AI seçimi')}</span>}
                   <span className="ai-cmp-report-no">{i + 1}</span>
@@ -659,7 +661,8 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
                     <b>{c.name}</b>
                   </div>
                 </header>
-                <CompareProductDetail data={c.ai} L={L} lang={lang} hideQuiz={hideQuiz} />
+                <CompareProductDetail data={c.ai} L={L} lang={lang} hideQuiz={hideQuiz}
+                  priceInfo={c.product ? priceForCountry(c.product, geoCountry) : priceInfo} />
               </section>
             );
           })}
@@ -672,13 +675,13 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false }) {
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
 // kind: 'deep' | 'alts' | 'advisor' | 'pred'. Returns null when JSON is unusable
 // so the caller can fall back to plain text.
-export default function AiAnalysisView({ kind, raw, data: dataProp, lang, products, hideQuiz = false }) {
+export default function AiAnalysisView({ kind, raw, data: dataProp, lang, products, hideQuiz = false, priceInfo = null }) {
   const data = dataProp && typeof dataProp === 'object' ? dataProp : parseAiJson(raw);
   if (!data || typeof data !== 'object') return null;
   const code = String(lang || 'en').slice(0, 2).toLowerCase();
   const L = (en, tr) => (code === 'tr' ? tr : en);
-  if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} lang={lang} />;
-  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} hideQuiz={hideQuiz} />;
+  if (kind === 'productFull' || data.type === 'product_full_report') return <ProductFullReport data={data} L={L} lang={lang} priceInfo={priceInfo} />;
+  if (kind === 'compareFull' || data.type === 'compare_full_report') return <CompareFullReport data={data} L={L} lang={lang} products={products} hideQuiz={hideQuiz} priceInfo={priceInfo} />;
   if (kind === 'deep') return <DeepView data={data} L={L} />;
   if (kind === 'alts') return <AltView data={data} L={L} />;
   if (kind === 'advisor') return <AdvisorView data={data} L={L} />;

@@ -11,7 +11,6 @@
 // Veri sözleşmesi (link analizi şeması): ürün ve karşılaştırma raporları
 // `lib/reportAdapters.js` içindeki dönüştürücülerle bu şekle çevrilir.
 // ═══════════════════════════════════════════════════════════════════════════
-import AiText from './AiText.jsx';
 import { dropRestated } from '../lib/reportDedupe';
 import AmazonLogo from './AmazonLogo.jsx';
 import Gauge from './Gauge.jsx';
@@ -26,9 +25,12 @@ import {
   DistributionBar,
   FactorList,
   ForumFindings,
+  PriceProjection,
   ProConList,
   QuizImpact,
   RadarChart,
+  RichProse,
+  ScoreMeter,
   SentimentDonut,
   SourceChips,
   StatTiles,
@@ -215,8 +217,9 @@ export function FeatureMatchTable({ rows = [], L }) {
  */
 export default function AiReportView({
   data = {}, L, lang, headerNode = null, heroExtra = null, altNode = null, tailNode = null,
-  showHead = true, hideQuiz = false,
+  showHead = true, hideQuiz = false, priceInfo = null,
 }) {
+  const geoCountry = useGeoCountry();
   const score = Math.round(data.enhancedScore || 0);
   // History entries saved by older builds may miss the array fields — guard so
   // opening them never crashes the page.
@@ -275,6 +278,21 @@ export default function AiReportView({
   };
   const outlook = data.priceOutlook || {};
   const drivers = bullets(outlook.drivers);
+  // Fiyat projeksiyonu GERCEK para birimiyle cizilebilsin diye: katalog
+  // eslesmesi varsa oradan, yoksa cagirandan (urun sayfasi kendi fiyatini
+  // biliyor). Fiyat yoksa grafik "bugun = 100" endeksine duser.
+  const outlookPrice = (() => {
+    if (priceInfo && Number(priceInfo.price) > 0) {
+      return { price: Number(priceInfo.price), currency: priceInfo.currency || '' };
+    }
+    const m = data.catalogMatch;
+    if (m) {
+      const pc = priceForCountry(m, geoCountry);
+      if (pc && pc.price > 0) return { price: pc.price, currency: pc.currency || '' };
+      if (m.lowestPriceUSD > 0) return { price: m.lowestPriceUSD, currency: 'USD' };
+    }
+    return { price: 0, currency: '' };
+  })();
   return (
     <div className="la-result fade-up">
       {showHead && (
@@ -337,7 +355,7 @@ export default function AiReportView({
         </div>
 
         {factors.length > 0 && (
-          <Sec icon="📊" title={L('Factor by factor', 'Faktör faktör')}>
+          <Sec icon="📊" title={L('Factor by factor', 'Faktör faktör')} tone="tone-factors">
             <FactorList factors={factors} />
           </Sec>
         )}
@@ -358,13 +376,16 @@ export default function AiReportView({
                 artı/eksi listesiydi ve neredeyse birebir aynısını basıyordu. */}
             <ForumFindings loved={loved} chronic={chronic} L={L} researched={toplulukArandi} />
             {data.communityAnalysis && (
-              <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu')}
-                meta={data.communityScore ? `${Math.round(data.communityScore)}/100` : ''}>
-                <div className="la-prose"><AiText text={data.communityAnalysis} /></div>
+              <Sec icon="🌐" title={L('Community reception', 'Topluluk yorumu')} tone="tone-community">
+                {/* Sayı artık başlıkta DEĞİL: 89 tek başına ölçeksizdi.
+                    Ölçü çubuğu bandı da gösteriyor (≥70 güçlü / ≥50 karışık). */}
+                <ScoreMeter value={data.communityScore}
+                  label={L('Owner satisfaction', 'Kullanıcı memnuniyeti')} L={L} />
+                <RichProse text={data.communityAnalysis} L={L} clamp={3} />
               </Sec>
             )}
             {reliability.length > 0 && (
-              <Sec icon="🛠" title={L('Reliability and support', 'Güvenilirlik ve destek')}>
+              <Sec icon="🛠" title={L('Reliability and support', 'Güvenilirlik ve destek')} tone="tone-reliability">
                 <ul className="la-notes">{reliability.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
               </Sec>
             )}
@@ -372,15 +393,16 @@ export default function AiReportView({
         )}
 
         {data.verdict && (
-          <Sec icon="📋" title={L('The full picture', 'Tam değerlendirme')}>
-            <div className="la-prose"><AiText text={data.verdict} /></div>
+          <Sec icon="📋" title={L('The full picture', 'Tam değerlendirme')} tone="tone-verdict">
+            <RichProse text={data.verdict} L={L} clamp={4} />
           </Sec>
         )}
 
         {data.personaAnalysis && (
-          <Sec icon="👤" title={L('How it fits you', 'Sana uyumu')}
-            meta={data.personaScore ? `${Math.round(data.personaScore)}/100` : ''}>
-            <div className="la-prose"><AiText text={data.personaAnalysis} /></div>
+          <Sec icon="👤" title={L('How it fits you', 'Sana uyumu')} tone="tone-persona">
+            <ScoreMeter value={data.personaScore} label={L('Fit for you', 'Sana uygunluk')}
+              hint={bandLabel(Math.round(data.personaScore || 0), L)} L={L} />
+            <RichProse text={data.personaAnalysis} L={L} clamp={3} />
           </Sec>
         )}
 
@@ -408,7 +430,7 @@ export default function AiReportView({
         )}
 
         {altNode || (alts.length > 0 && (
-          <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler')}>
+          <Sec icon="🔀" title={L('Alternatives worth a look', 'Bakmaya değer alternatifler')} tone="tone-alts">
             <div className="la-alt-grid">
               {alts.map((a, i) => {
                 const govde = (
@@ -435,10 +457,13 @@ export default function AiReportView({
 
         {(outlook.note || outlook.bestTime || drivers.length > 0) && (
           <Sec icon="⏱" title={L('Timing and value', 'Zamanlama ve değer')}
-            meta={trendLabel[outlook.trend] || ''}>
-            {outlook.bestTime && <p className="la-timing">🗓 {outlook.bestTime}</p>}
-            {outlook.expectedChange && <p className="la-timing">📉 {outlook.expectedChange}</p>}
-            {outlook.note && <div className="la-prose"><AiText text={outlook.note} /></div>}
+            meta={trendLabel[outlook.trend] || ''} tone="tone-timing">
+            {/* Yön + beklenen değişim + en iyi pencere ARTIK BİR EĞRİ.
+                Üçü de cümlenin içinde saklıydı; grafik aynı üç veriden
+                türüyor, yeni veri uydurmuyor (bkz. AiCharts → PriceProjection). */}
+            <PriceProjection outlook={outlook} price={outlookPrice.price}
+              currency={outlookPrice.currency} lang={lang} L={L} />
+            {outlook.note && <RichProse text={outlook.note} L={L} clamp={3} />}
             {drivers.length > 0 && (
               <ul className="la-notes">{drivers.map((x, i) => <li key={i}>{x.title}{x.detail ? ` — ${x.detail}` : ''}</li>)}</ul>
             )}
@@ -447,7 +472,7 @@ export default function AiReportView({
 
         {data.overallVerdict && (
           <Sec icon="🏁" title={L('Final verdict', 'Son karar')} tone="la-sec-final">
-            <div className="la-prose"><AiText text={data.overallVerdict} /></div>
+            <RichProse text={data.overallVerdict} L={L} clamp={0} />
           </Sec>
         )}
 

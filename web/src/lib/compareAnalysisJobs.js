@@ -20,6 +20,7 @@ import { displayProductName } from './productNames';
 import {
   cleanProductCodes, scrubSiblingResearch, crossModelLeaks,
   withModelIdentityRetryInstruction,
+  compareFactorAxis, alignFactorsToAxis, alignFactorMatrixToAxis,
 } from './aiPrompts';
 import { productPath } from './routes';
 import {
@@ -238,6 +239,10 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
 
       const profile = aiUserProfile(user);
       const peerNames = products.map((p) => displayProductName(p, lang));
+      // ORTAK FAKTOR EKSENI — BIR KEZ hesaplanir, her urun cagrisina AYNI
+      // liste gider. Eksensiz her cagri kendi etiketlerini uyduruyor,
+      // karsilastirma tablosu sifirla doluyordu (admin/js/qor_ai_prompts.js §7.5).
+      const factorAxis = compareFactorAxis(products, lang);
       const askJson = (userPrompt, maxTokens, temperature = 0.42) => askQorAiRaw({
         system: `You are Qor AI. Return only valid JSON in language code ${lang}. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.`,
         user: userPrompt,
@@ -247,7 +252,9 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
       });
 
       const reports = await mapWithConcurrency(products, 5, async (p) => {
-        const prompt = buildCompareProductPrompt(p, lang, profile, { quizAnswers: answers, research, peerNames });
+        const prompt = buildCompareProductPrompt(p, lang, profile, {
+          quizAnswers: answers, research, peerNames, factorAxis,
+        });
         let parsed = null;
         try { parsed = parseAiJson(await askJson(prompt, 8192)); } catch { parsed = null; }
         if (!parsed || typeof parsed !== 'object') return null;
@@ -267,6 +274,9 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
         }
         return {
           ...parsed,
+          // Model ekseni yine kaydirabilir (etiketi cevirir/boler). Ikinci
+          // savunma: cikti eksene YENIDEN oturtulur.
+          factors: alignFactorsToAxis(parsed.factors, factorAxis),
           name: parsed.name || displayProductName(p, lang),
           imageUrl: p.imageUrl || parsed.imageUrl || '',
           url: productPath(p),
@@ -281,10 +291,15 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
       let verdict = {};
       try {
         verdict = parseAiJson(await askJson(
-          buildCompareVerdictPrompt(products, okReports, lang, profile, { quizAnswers: answers, research }),
+          buildCompareVerdictPrompt(products, okReports, lang, profile, {
+            quizAnswers: answers, research, factorAxis,
+          }),
           6144, 0.4,
         )) || {};
       } catch { verdict = {}; }
+      verdict.factorMatrix = alignFactorMatrixToAxis(
+        verdict.factorMatrix, factorAxis, okReports.map((r) => r.name),
+      );
 
       // Urun kodu rapor metninden duser (bkz. cleanProductCodes): model urun
       // adini cumlelerin icine de yaziyor, baslik temizligi yetmiyor.

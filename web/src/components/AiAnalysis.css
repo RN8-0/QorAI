@@ -499,54 +499,6 @@
   font-size: 11.5px;
   line-height: 1.35;
 }
-.ai-factor-matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 12px 0;
-}
-.ai-factor-matrix-row {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-.ai-factor-matrix-row > b {
-  color: var(--text);
-  font-size: 12.5px;
-  font-weight: 900;
-  line-height: 1.3;
-}
-.ai-factor-matrix-row > div {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.ai-factor-matrix-row span {
-  display: grid;
-  grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) 38px;
-  gap: 8px;
-  align-items: center;
-}
-.ai-factor-matrix-row small {
-  min-width: 0;
-  color: var(--text3);
-  font-size: 11.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ai-factor-matrix-row i {
-  height: 6px;
-  border-radius: 999px;
-  display: block;
-}
-.ai-factor-matrix-row strong {
-  color: var(--text);
-  font-size: 12px;
-  text-align: right;
-}
-
 @media (max-width: 760px) {
   .ai-feature-grid,
   .ai-alt-cards,
@@ -567,13 +519,47 @@
   .ai-compare-chart-row small {
     grid-column: 1 / -1;
   }
-  .ai-factor-matrix-row {
-    grid-template-columns: 1fr;
-  }
-  .ai-factor-matrix-row span {
-    grid-template-columns: minmax(80px, 130px) minmax(0, 1fr) 34px;
-  }
 }
+
+/* Rapor kisayolu — uc urunlu karsilastirmada ikinci raporu bulmak icin
+   birincinin tamamini kaydirmak gerekmesin. */
+.ai-cmp-jump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.ai-cmp-jump > span {
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.ai-cmp-jump a {
+  max-width: 260px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text2);
+  font-size: 12.5px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color .12s ease-out, color .12s ease-out;
+}
+.ai-cmp-jump a:hover { border-color: var(--accent); color: var(--accent); }
+.ai-cmp-jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ai-cmp-jump a.win {
+  border-color: color-mix(in srgb, var(--brand-cyan) 48%, var(--border));
+  color: var(--ink-blue);
+}
+/* Kart ustundeki sabit baslik capayi yemesin. */
+.ai-cmp-report { scroll-margin-top: calc(var(--header-h, 68px) + 14px); }
 
 /* ── Compare: overall comparison first, then clickable per-product columns ── */
 .ai-cmp-overview {
