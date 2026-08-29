@@ -68,18 +68,16 @@
     if(st!=='dark'&&st!=='light'){st='light'}
     d.setAttribute('data-theme',st);
     var tc=document.querySelector('meta[name="theme-color"]'); if(tc)tc.setAttribute('content',st==='dark'?'#000000':'#F8FAFC');
-    /* ACILIS DILI. Kabuktaki hero metni bu isarete gore secilir.
-       Kurallar i18n/index.jsx -> detectLang() ile AYNI olmak ZORUNDA:
-       once /tr|/de|/en oneki, sonra tarayici dili, TR->tr, DE->de, geri kalan
-       her sey ->en. Ayrisirlarsa kullanici once bir dilde baslik gorup sonra
-       digerine donusunu izler (ilk denemede tam olarak bu oldu: kok adres SEO
-       icin Ingilizce ama gercek ziyaretcinin dili tarayicidan geliyor). */
-    var pl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
-    var bl=pl;
-    if(!bl){var nv=(navigator.languages||[navigator.language||'en']);
-      for(var i=0;i<nv.length;i++){var c=String(nv[i]).slice(0,2).toLowerCase();
-        if(c==='tr'){bl='tr';break}if(c==='en'){bl='en';break}}
-      if(!bl)bl='en';}
+    /* ACILIS DILI = ADRESIN DILI. i18n/index.jsx ile BIREBIR ayni kural
+       olmak ZORUNDA: /tr oneki -> tr, onek yok -> en.
+       TARAYICI TESPITI KALDIRILDI (2026-08-30). Onceden burada da,
+       LangProvider'da da tarayici diline bakiliyordu; sonucu oneksiz kok
+       adresin kendini <html lang="en"> + Ingilizce <title> ile ilan edip
+       Turkce tarayicida TURKCE render etmesiydi. Google icin `/` ile `/tr/`
+       render sonrasi ayni sayfa oluyor ve Ingilizce kanonik adres Turkce
+       pazarda Turkce gorunuyordu. Artik sunulan HTML ile render edilen DOM
+       her adreste ayni dili konusuyor. */
+    var bl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'en';
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
@@ -278,18 +276,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-Bz6W3Jsw.js"></script>
+  <script type="module" crossorigin src="/spa/index-DH4--fdg.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DO39775F.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ygKcuY1H.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-D5G6UhNp.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-W2Lbhi5u.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-B5N7VKj4.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Caf1cP9T.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-wJubyQAr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-LuPQqgdU.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLJy-XlG.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CZ0VtPC9.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DZQnopnX.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-scd_xW70.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D33K6-j_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-25nRE4pz.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C8usmV4Y.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-D7dLRVCd.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -332,7 +330,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tvs">TVs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TCL 65C7K Ultra HD (4K) TV</h1><p style="color:#475569;margin:0 0 12px">TCL · TVs · Qor AI tech score 83/100</p><img src="https://resim.epey.com/1017424/m_tcl-65c7k-9.jpg" alt="TCL 65C7K Ultra HD (4K) TV" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TCL 65C7K Ultra HD (4K) TV key features: internal wi-fi Yes, display LED, screen size 65 inches. Review TCL 65C7K Ultra HD (4K) TV's 70 technical specs, its Qor AI tech score and how it compares with similar models in tvs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Internal Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Display:</span> <strong>LED</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>65 inches</strong></li><li><span style="color:#64748b">HD Satellite Receiver (DVB-S2):</span> <strong>Yes</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">SDR energy consumption class (a-g):</span> <strong>F</strong></li><li><span style="color:#64748b">Audio Output Power (RMS):</span> <strong>60 W</strong></li><li><span style="color:#64748b">Smart TV:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Subwoofer:</span> <strong>Yes</strong></li><li><span style="color:#64748b">The resolution standard:</span> <strong>Ultra HD (4K)</strong></li><li><span style="color:#64748b">Release Year:</span> <strong>2025</strong></li><li><span style="color:#64748b">Operating system:</span> <strong>Android tvs</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in TVs</h2><ul style="line-height:1.8"><li><a href="/product/tcl-65p8l" style="color:#2563eb">TCL 65P8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75c8l" style="color:#2563eb">TCL 75C8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-65c8l" style="color:#2563eb">TCL 65C8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75c7k" style="color:#2563eb">TCL 75C7K Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75p8l" style="color:#2563eb">TCL 75P8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-85c7k" style="color:#2563eb">TCL 85C7K Ultra HD (4K) TV</a></li><li><a href="/product/grundig-43-gjq-9200" style="color:#2563eb">Grundig 43 GJQ 9200 A Ultra HD (4K) TV</a></li><li><a href="/product/grundig-55-gjq-9200" style="color:#2563eb">Grundig 55 GJQ 9200 A Ultra HD (4K) TV</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tvs" style="color:#2563eb;font-weight:600">Compare all TVs →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/tvs">TVs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TCL 65C7K Ultra HD (4K) TV</h1><p style="color:#475569;margin:0 0 12px">TCL · TVs · Qor AI tech score 83/100</p><img src="https://resim.epey.com/1017424/m_tcl-65c7k-9.jpg" alt="TCL 65C7K Ultra HD (4K) TV" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TCL 65C7K Ultra HD (4K) TV key features: internal wi-fi Yes, display LED, screen size 65 inches. Review TCL 65C7K Ultra HD (4K) TV's 70 technical specs, its Qor AI tech score and how it compares with similar models in tvs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Internal Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Display:</span> <strong>LED</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>65 inches</strong></li><li><span style="color:#64748b">HD Satellite Receiver (DVB-S2):</span> <strong>Yes</strong></li><li><span style="color:#64748b">HDR:</span> <strong>Yes</strong></li><li><span style="color:#64748b">SDR energy consumption class (a-g):</span> <strong>F</strong></li><li><span style="color:#64748b">Audio Output Power (RMS):</span> <strong>60 W</strong></li><li><span style="color:#64748b">Smart TV:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Subwoofer:</span> <strong>Yes</strong></li><li><span style="color:#64748b">The resolution standard:</span> <strong>Ultra HD (4K)</strong></li><li><span style="color:#64748b">Release Year:</span> <strong>2025</strong></li><li><span style="color:#64748b">Operating system:</span> <strong>Android tvs</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in TVs</h2><ul style="line-height:1.8"><li><a href="/product/tcl-65p8l" style="color:#2563eb">TCL 65P8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75c8l" style="color:#2563eb">TCL 75C8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-65c8l" style="color:#2563eb">TCL 65C8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75c7k" style="color:#2563eb">TCL 75C7K Ultra HD (4K) TV</a></li><li><a href="/product/tcl-75p8l" style="color:#2563eb">TCL 75P8L Ultra HD (4K) TV</a></li><li><a href="/product/tcl-85c7k" style="color:#2563eb">TCL 85C7K Ultra HD (4K) TV</a></li><li><a href="/product/grundig-43-gjq-9200" style="color:#2563eb">Grundig 43 GJQ 9200 A Ultra HD (4K) TV</a></li><li><a href="/product/grundig-55-gjq-9200" style="color:#2563eb">Grundig 55 GJQ 9200 A Ultra HD (4K) TV</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/tvs" style="color:#2563eb;font-weight:600">Compare all TVs →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

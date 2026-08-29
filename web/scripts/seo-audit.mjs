@@ -341,6 +341,36 @@ function main() {
     + `(canlida BEYAZ EKRAN): ${kirikKabuklar.slice(0, 10).join(' | ')}`,
   );
 
+  // ── BLOG LINKI ROUTER'DAN GECMEMELI ────────────────────────────────────
+  // Blog i18n'i SLUG tabanli, bu yuzden yazilar yalnizca /blog/<slug> altina
+  // on-render ediliyor. Ama SPA `/tr` altinda BrowserRouter'i
+  // basename="/tr" ile kuruyor: her `<Link to={articlePath(...)}>`
+  // tarayiciya /tr/blog/<slug> olarak cikiyor, orada on-render dosyasi yok ve
+  // sunucu 200 + noindex 404 kabugu donuyor. Googlebot JS'i calistirip bu
+  // linkleri izliyor ve sitenin TEK ozgun uzun-form icerigini "noindex" diye
+  // isaretliyor (olculdu 2026-08-29, GSC). Kaynak duzeyinde tutulur: yazi
+  // linkleri `<a href>` olmali.
+  const srcRoot = join(here, '..', 'src');
+  const linkIhlali = [];
+  const srcGez = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) { srcGez(full); continue; }
+      if (!/\.jsx?$/.test(e.name)) continue;
+      const kod = readFileSync(full, 'utf8');
+      for (const m of kod.matchAll(/<Link\b[^>]*\bto=\{articlePath\(/g)) {
+        const satir = kod.slice(0, m.index).split(String.fromCharCode(10)).length;
+        linkIhlali.push(`${relative(srcRoot, full)}:${satir}`);
+      }
+    }
+  };
+  if (existsSync(srcRoot)) srcGez(srcRoot);
+  assert(
+    linkIhlali.length === 0,
+    `blog yazisi linki <Link to={articlePath()}> ile veriliyor -> /tr onekli `
+    + `YUMUSAK 404 (200 + noindex). <a href> kullan: ${linkIhlali.join(', ')}`,
+  );
+
   console.log(`[seo-audit] ok: ${files.length} sitemap file(s), ${total} urls, ${product} products, ${category} categories, ${checked} unique-body samples, kirik kabuk 0`);
 }
 

@@ -3,7 +3,12 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.QorAiSpecCanonical = api;
 })(typeof window !== 'undefined' ? window : globalThis, function() {
-  const VERSION = '20260710-spec-canonical-epey';
+  // 20260829: eslestirici duzeltildi (ters substring -> tam kelime + en uzun
+  // eslesme, kategori/birim kapisi). Surum ilerletildi ki `canonicalSpecsVersion`
+  // alanina bakan her yer kayitlarin YENIDEN kanoniklestirilmesi gerektigini
+  // gorsun -- eski surumle yazilmis kayitlar "Battery capacity: 512 GB" gibi
+  // yanlis anahtarlar tasiyor.
+  const VERSION = '20260829-spec-canonical-epey';
 
   function norm(text) {
     return String(text || '')
@@ -57,11 +62,40 @@
     ['CPU frequency', ['processor frequency', 'cpu frequency', 'base frequency', 'taktfrequenz', 'prozessortakt', 'cpu takt', 'islemci frekansi']],
     ['Chipset', ['chipset', 'soc', 'yonga seti']],
     ['GPU', ['gpu', 'graphics processor', 'graphics card', 'gpu model', 'grafik islemcisi gpu', 'ekran karti']],
+    // "Graphics Processor (GPU)" ile "Graphics Processor (GPU) Frequency"
+    // ikisi de 'GPU'ya dusuyordu; model adi ile frekans tek satirda birlesiyordu.
+    ['GPU frequency', ['gpu frequency', 'graphics processor gpu frequency', 'gpu clock', 'gpu takt', 'gpu frekansi', 'grafik islemci frekansi']],
 
-    ['RAM', ['ram', 'memory ram', 'internal memory', 'arbeitsspeicher', 'hauptspeicher', 'bellek ram', 'memory capacity']],
+    ['RAM', ['ram', 'memory ram', 'internal memory', 'arbeitsspeicher', 'hauptspeicher', 'bellek ram', 'memory capacity', 'bellek kapasitesi']],
     ['RAM type', ['ram type', 'memory type', 'internal memory type', 'speichertyp ram', 'bellek tipi']],
     ['Storage', ['storage', 'internal storage', 'total storage capacity', 'interner speicher', 'speicherplatz', 'gesamtspeicher', 'flash speicher', 'ssd', 'ssd size', 'sabit disk ssd boyutu', 'dahili hafiza', 'depolama']],
-    ['Storage type', ['storage media', 'storage type', 'disk type', 'speicherart', 'depolama tipi']],
+    // 'depolama teknolojisi' BURAYA ait, 'depolama' (Storage) kuraline degil:
+    // degeri kapasite degil TEKNOLOJI ("NAND", "3D NAND"). Eski bulanik
+    // esleme onu 'Storage' yapiyordu ve bir SSD'nin kapasitesiyle ayni
+    // slotta carpisiyordu (olculdu: keySpecs {"Storage":"NAND"}).
+    ['Storage type', ['storage media', 'storage type', 'disk type', 'speicherart', 'depolama tipi', 'depolama teknolojisi', 'storage technology', 'nand yongasi', 'nand type', 'nand tipi']],
+    // ON BELLEK (cache) RAM DEGILDIR. 'bellek tipi' takma adi "on bellek
+    // tipi" icinde de gectigi icin SSD'nin SLC on bellegi 'RAM type' olarak
+    // kaydediliyordu; en-uzun-eslesme sayesinde artik bu kural kazanir.
+    ['Cache type', ['cache type', 'cache memory type', 'on bellek tipi', 'onbellek tipi', 'on bellek turu', 'onbellek turu']],
+    // L1/L2/L3 AYRI ANAHTARLAR OLMAK ZORUNDA. Uculu de yalin 'Cache'e
+    // duserse mergeValue onlari tek satirda birlestiriyor
+    // ("7.5 MB / 96 MB / 384 MB") ve hangi seviyenin hangisi oldugu
+    // KAYBOLUYOR (ilk denemede olculdu: 179 CPU kaydi). En-uzun-eslesme
+    // sayesinde bu kurallar yalin 'onbellek'i yener.
+    ['L1 cache', ['l1 cache', 'onbellek l1', 'on bellek l1', 'cache l1', 'l1 onbellek']],
+    ['L2 cache', ['l2 cache', 'onbellek l2', 'on bellek l2', 'cache l2', 'l2 onbellek']],
+    ['L3 cache', ['l3 cache', 'onbellek l3', 'on bellek l3', 'cache l3', 'l3 onbellek']],
+    // "On Bellek: Var" (VARLIK) ile "On Bellek Kapasitesi: 8 GB" (BOYUT) ayni
+    // anahtara dusmemeli; dustuklerinde mergeValue "Var / 8 GB" diye tek
+    // satirda birlestiriyordu (olculdu: 37 SSD).
+    ['Cache size', ['cache size', 'cache capacity', 'on bellek kapasitesi', 'onbellek kapasitesi']],
+    ['Cache', ['cache', 'cache memory', 'on bellek', 'onbellek']],
+    // Yalin "Kapasite": KATEGORI + DEGERIN BIRIMI ile cozulur (kapasiteCoz).
+    // Once bu kural YOKTU; yalin "Kapasite" hicbir kurala tam eslesmiyor ve
+    // 'batarya kapasitesi' takma adinin ICINDE gectigi icin 'Battery
+    // capacity'ye dusuyordu.
+    ['Capacity', ['capacity', 'kapasite', 'kapasitesi', 'kapazitat']],
 
     ['Main camera', ['main camera', 'main camera resolution', 'rear camera', 'camera resolution', 'kamera hinten', 'ruckkamera', 'rueckkamera', 'hauptkamera', 'arka kamera', 'ana kamera']],
     ['Front camera', ['front camera', 'front camera resolution', 'selfie camera', 'kamera vorne', 'frontkamera', 'selfie kamera', 'on kamera']],
@@ -94,6 +128,79 @@
     for (const alias of aliases) exactKeyMap.set(norm(alias), canonical);
   }
 
+  // BULANIK ESLESME: TAM KELIME + EN UZUN TAKMA AD.
+  //
+  // Eskiden her takma ad icin su deneniyordu:
+  //     a.length > 3 && (k === a || k.includes(a) || a.includes(k))
+  //
+  // Ucuncu kosul YONU TERS CEVIRIYOR: kisa bir anahtar, UZUN bir takma adin
+  // ICINDE gectigi icin esleseiyordu. KEY_RULES'un ILK kurali
+  // 'Battery capacity' oldugundan sonuc su oldu (olculdu 2026-08-29):
+  //     canonicalKey('Kapasite') -> 'Battery capacity'
+  //       cunku norm('batarya kapasitesi').includes('kapasite')
+  // Yani "Kapasite" yazan HER Epey etiketi -- SSD, RAM, powerbank, flash
+  // bellek farketmeksizin -- PIL KAPASITESI olarak kaydedildi. Canli kanit
+  // (Acer FA100 SSD, PB kaydi): keySpecs = {"Battery capacity": "512 GB"},
+  // ve urun sayfasindaki varyant karti bu yuzden "512 GB / Pil" yaziyordu.
+  // Ayni sinif hata daha once kategori cozumlemesinde de vardi
+  // (`entry.key.contains(cat)` yuzunden "gaming" -> 'consoles').
+  //
+  // Ikinci kosul (`k.includes(a)`) de HARF bazliydi, kelime ortasindan
+  // gecebiliyordu. Artik esleme KELIME SINIRINDA aranir.
+  //
+  // Ve artik KEY_RULES sirasi degil EN UZUN (= en ozgul) takma ad kazanir:
+  // "depolama teknolojisi" icin 'depolama' (Storage) yerine
+  // 'depolama teknolojisi' (Storage type) secilir.
+  // YALNIZ-TAM-ESLESME TAKMA ADLARI. "kapasite" Turkce'de her seyin sonuna
+  // gelen bir kelime: "ADF Kapasitesi" (yazici tepsisi, 50 sayfa),
+  // "Isi Yayma Kapasitesi (TDP)" (55 W), "Veri Tasima Kapasitesi" (256 QAM).
+  // Bunlarin hicbiri depolama ya da batarya degil. Bu takma adlar bulanik
+  // esleseye girerse o etiketlerin hepsi 'Capacity'ye dusuyor ve anlamlarini
+  // KAYBEDIYOR (ilk denemede olculdu: 171 urun boyle bozuldu). Bu yuzden
+  // yalniz anahtarin TAMAMI bunlardan biriyse eslesirler -- o durumda da
+  // kategori/birim kapisi neyin kapasitesi oldugunu belirler.
+  const FUZZY_HARIC = new Set(['capacity', 'kapasite', 'kapasitesi', 'kapazitat']);
+  const FUZZY_ALIASES = [];
+  for (const [canonical, aliases] of KEY_RULES) {
+    for (const alias of aliases) {
+      const a = norm(alias);
+      // 3 harften kisa takma ad bulanik eslesmeye GIRMEZ ('en' -> Width gibi
+      // kazalar boyle onlenir); tam eslesmeyi exactKeyMap zaten yakaliyor.
+      if (a.length > 3 && !FUZZY_HARIC.has(a)) FUZZY_ALIASES.push({ canonical, a });
+    }
+  }
+  // Kararli siralama: esit uzunlukta KEY_RULES sirasi korunur.
+  FUZZY_ALIASES.sort((x, y) => y.a.length - x.a.length);
+
+  // Kelime siniri: normalize edilmis metin bosluklarla ayrilmis jetonlardan
+  // olusur, bu yuzden iki tarafi bosluga sarmak yeterli.
+  function kelimeIceriyor(hay, needle) {
+    return ` ${hay} `.includes(` ${needle} `);
+  }
+
+  // "KAPASITE" NEYIN KAPASITESI? KATEGORI + BIRIM KARAR VERIR.
+  // Telefonda mAh, SSD'de GB, RAM cubugunda yine GB ama anlami RAM. Anahtarin
+  // kendisi ayirt etmiyor; etiketten anlam cikarmaya calismak bizi tam da bu
+  // hataya dusurdu. Kategori ve birim ise deterministik.
+  // Kapi YALNIZ kapasite ailesindeki anahtarlara uygulanir.
+  const CAPACITY_BY_CATEGORY = {
+    ssd: 'Storage', ssds: 'Storage', storage: 'Storage', hdd: 'Storage',
+    flash_drives: 'Storage', memory_cards: 'Storage',
+    ram: 'RAM',
+    powerbanks: 'Battery capacity', chargers: 'Battery capacity',
+  };
+  function kapasiteCoz(canonical, value, category) {
+    if (canonical !== 'Battery capacity' && canonical !== 'Capacity') return canonical;
+    const v = String(value == null ? '' : value);
+    // Birim NET ise son sozu birim soyler -- kategori tablosu eksik olabilir
+    // ama "5000 mAh" her kategoride bataryadir.
+    if (/\d[\d.,]*\s*(mah|wh|whr)\b/i.test(v)) return 'Battery capacity';
+    const kat = CAPACITY_BY_CATEGORY[norm(category).replace(/ /g, '_')];
+    if (/\d[\d.,]*\s*[gtmp]b\b/i.test(v)) return kat === 'RAM' ? 'RAM' : 'Storage';
+    if (kat) return kat;
+    return canonical;
+  }
+
   function titleCase(raw) {
     const s = String(raw || '').replace(/:$/, '').replace(/\s+/g, ' ').trim();
     return s || 'Specification';
@@ -107,7 +214,25 @@
     return titleCase(section) || 'General';
   }
 
-  function canonicalKey(key, value) {
+  // `category` OPSIYONEL ve GERIYE UYUMLU: yalniz kapasite ailesini
+  // cozerken kullanilir, verilmezse birim tek basina karar verir.
+  // "Storage" ANAHTARI KAPASITE TASIR, TEKNOLOJI DEGIL.
+  // Katalogun bir kismi ZATEN bozuk kanonik bicimde duruyor:
+  //   {"Battery capacity": "512 GB", "Storage": "NAND"}
+  // Kaynak etiket ("Kapasite" / "Depolama Teknolojisi") onceki
+  // kanoniklestirmede silindigi icin ANAHTARDAN geri getirilemez -- ama
+  // DEGERDEN getirilebilir: "NAND" bir kapasite degildir. Bu kapi olmadan
+  // ikisi de 'Storage'a dusup "512 GB / NAND" diye birlesiyordu
+  // (olculdu: 60 SSD + 60 flash bellek).
+  const DEPOLAMA_TEKNOLOJISI = /^(3d[\s-]*)?(nand|tlc|mlc|slc|qlc|emmc|ufs|nvme|v[\s-]*nand|flash)\b/i;
+  function depolamaTuruMu(canonical, value) {
+    if (canonical !== 'Storage') return canonical;
+    const v = String(value == null ? '' : value).trim();
+    if (/\d[\d.,]*\s*[gtmp]b\b/i.test(v)) return 'Storage';
+    return DEPOLAMA_TEKNOLOJISI.test(v) ? 'Storage type' : canonical;
+  }
+
+  function canonicalKey(key, value, category) {
     const raw = titleCase(key);
     const k = norm(raw);
     const v = norm(value);
@@ -118,16 +243,13 @@
     if (k.includes('usb type c charging port') && /^(yes|no|var|yok|true|false)$/i.test(String(value || '').trim())) {
       return 'USB-C charging';
     }
-    if (exactKeyMap.has(k)) return exactKeyMap.get(k);
+    if (exactKeyMap.has(k)) return depolamaTuruMu(kapasiteCoz(exactKeyMap.get(k), value, category), value);
     if (k === 'charging' || k === 'charge') {
       if (/\b(usb|type c|typec|lightning|micro usb)\b/.test(v)) return 'Charging port';
       return 'Charging';
     }
-    for (const [canonical, aliases] of KEY_RULES) {
-      if (aliases.some(alias => {
-        const a = norm(alias);
-        return a.length > 3 && (k === a || k.includes(a) || a.includes(k));
-      })) return canonical;
+    for (const { canonical, a } of FUZZY_ALIASES) {
+      if (kelimeIceriyor(k, a)) return depolamaTuruMu(kapasiteCoz(canonical, value, category), value);
     }
     return raw;
   }
@@ -156,17 +278,17 @@
     return lines.join('\n');
   }
 
-  function addSpec(flat, sections, section, key, value) {
+  function addSpec(flat, sections, section, key, value, category) {
     const v = cleanValue(value);
     if (!v || v === '?' || v.toLowerCase() === 'null') return;
-    const canonical = canonicalKey(key, v);
+    const canonical = canonicalKey(key, v, category);
     const group = canonicalSection(section, canonical);
     flat[canonical] = mergeValue(flat[canonical], v);
     if (!sections[group]) sections[group] = {};
     sections[group][canonical] = mergeValue(sections[group][canonical], v);
   }
 
-  function canonicalizeMaps(specs, specSections) {
+  function canonicalizeMaps(specs, specSections, category) {
     const flat = {};
     const sections = {};
     for (const [section, body] of Object.entries(specSections || {})) {
@@ -174,10 +296,10 @@
         for (const [key, value] of Object.entries(body)) {
           if (value && typeof value === 'object' && !Array.isArray(value)) {
             for (const [subKey, subValue] of Object.entries(value)) {
-              addSpec(flat, sections, section, subKey, subValue);
+              addSpec(flat, sections, section, subKey, subValue, category);
             }
           } else {
-            addSpec(flat, sections, section, key, value);
+            addSpec(flat, sections, section, key, value, category);
           }
         }
       }
@@ -185,30 +307,31 @@
     for (const [key, value] of Object.entries(specs || {})) {
       const v = cleanValue(value);
       if (!v || v === '?' || v.toLowerCase() === 'null') continue;
-      const canonical = canonicalKey(key, v);
+      const canonical = canonicalKey(key, v, category);
       if (Object.prototype.hasOwnProperty.call(flat, canonical)) {
         flat[canonical] = mergeValue(flat[canonical], v);
       } else {
-        addSpec(flat, sections, 'General', key, value);
+        addSpec(flat, sections, 'General', key, value, category);
       }
     }
     return { specs: flat, specSections: sections };
   }
 
-  function canonicalizeKeySpecs(keySpecs) {
+  function canonicalizeKeySpecs(keySpecs, category) {
     const out = {};
     for (const [key, value] of Object.entries(keySpecs || {})) {
       const v = cleanValue(value);
       if (!v) continue;
-      const canonical = canonicalKey(key, v);
+      const canonical = canonicalKey(key, v, category);
       out[canonical] = mergeValue(out[canonical], v);
     }
     return out;
   }
 
   function canonicalizeProduct(product) {
-    const maps = canonicalizeMaps(product?.specs || {}, product?.specSections || {});
-    const keySpecs = canonicalizeKeySpecs(product?.keySpecs || {});
+    const kategori = product?.category || '';
+    const maps = canonicalizeMaps(product?.specs || {}, product?.specSections || {}, kategori);
+    const keySpecs = canonicalizeKeySpecs(product?.keySpecs || {}, kategori);
     // 2026-05-29: keep the ORIGINAL specSections structure (source-language
     // section names + original spec keys). The canonicalised re-bucketing
     // was dropping whole sections — e.g. Epey CPU products lost TEMEL

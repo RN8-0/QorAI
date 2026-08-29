@@ -15,20 +15,35 @@ const CODES = AVAILABLE.map((l) => l.code);
 const RTL = new Set(['ar']);
 const LANG_KEY = 'qor.lang';
 
-function detectLang() {
-  // Site dili YALNIZCA tarayıcı diline göre (kullanıcı isteği): TR→tr,
-  // desteklenmeyen her dil → EN. Sitede dil seçici YOK (setLang çağrılmıyor);
-  // eski sürümden kalan `qor.lang` localStorage değeri artık DİKKATE ALINMAZ —
-  // aksi halde tarayıcı İngilizce olsa bile eski 'tr' takılıp kalıyordu.
-  const nav = (navigator.languages || [navigator.language || 'en'])
-    .map((l) => String(l).slice(0, 2).toLowerCase());
-
-  for (const l of nav) {
-    if (l === 'tr') return 'tr';
-    if (l === 'en') return 'en';
-  }
-  return 'en';
-}
+// ADRESİN DİLİ SON SÖZDÜR — TARAYICI DEĞİL.
+//
+// 2026-08-30'a kadar dil YALNIZCA tarayıcıdan geliyordu. Sonuç, öneksiz
+// adreste bir UYUŞMAZLIKTI ve ölçüldü:
+//
+//   GET https://qorai.net/
+//     <html lang="en">
+//     <title>Qor AI — AI Product & Subscription Advisor</title>
+//     <link rel="canonical" href="https://qorai.net/" />
+//     <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/" />
+//
+//   ...ama Türkçe bir tarayıcıda hidrasyondan SONRA aynı adres Türkçe
+//   render ediyor, `applyDocLang` de <html lang>'i 'tr' yapıyordu.
+//
+// Yani `/` kendini İngilizce ilan edip Türkçe içerik gösteriyordu; `/tr/`
+// zaten Türkçeydi. Google için bu iki şey demek: (1) İngilizce kanonik
+// adres Türkçe pazarda Türkçe göründüğü için hreflang çifti tutarsız,
+// (2) `/` ile `/tr/` render sonrası AYNI içerik — kopya. Kullanıcının
+// gördüğü belirti tam olarak buydu: "ana dil İngilizce ama Google'da
+// aratınca Türkçe versiyon çıkıyor".
+//
+// KURAL: dili ADRES belirler. `/tr/...` → tr, önek yok → en (kök adres
+// CLAUDE.md'de de İngilizce kanonik olarak tanımlı). Böylece sunulan HTML
+// ile render edilen DOM her adreste AYNI dili konuşur.
+//
+// Tarayıcı tespiti KALDIRILDI, gizlenmedi: Türkçe kullanıcı Türkçeye
+// hreflang üzerinden (Google onu `/tr/`ye yollar) ve sitedeki `/tr/`
+// linkleriyle ulaşır.
+const URL_DEFAULT_LANG = 'en';
 
 function applyDocLang(code) {
   document.documentElement.lang = code;
@@ -38,19 +53,16 @@ function applyDocLang(code) {
 const LangCtx = createContext(null);
 
 export function LangProvider({ children, initialLang }) {
-  // A URL language prefix (/en, /tr) wins for THIS page load but is NOT persisted,
-  // so it never overwrites the user's saved Settings choice. Falls back to normal
-  // detection (saved pref → browser) when there is no prefix.
+  // `initialLang` adresteki dil önekidir (main.jsx `/tr` görürse 'tr' geçer).
+  // Önek yoksa dil İngilizcedir — öneksiz adres İngilizce kanoniktir.
   const [lang, setLangState] = useState(
-    () => (initialLang && STRINGS[initialLang] ? initialLang : detectLang()),
+    () => (initialLang && STRINGS[initialLang] ? initialLang : URL_DEFAULT_LANG),
   );
 
   useEffect(() => { applyDocLang(lang); }, [lang]);
-  useEffect(() => {
-    const onLanguageChange = () => setLangState(detectLang());
-    window.addEventListener('languagechange', onLanguageChange);
-    return () => window.removeEventListener('languagechange', onLanguageChange);
-  }, []);
+  // `languagechange` dinleyicisi KALDIRILDI: tarayıcı dili değişince
+  // indekslenmiş bir adresin dili altından değişiyordu. Adres değişmediyse
+  // dil de değişmez.
 
   const setLang = useCallback((code) => {
     if (!CODES.includes(code)) return;
