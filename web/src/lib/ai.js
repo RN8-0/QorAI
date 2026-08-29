@@ -149,9 +149,22 @@ async function geminiOnce({ system, messages, maxOutputTokens, temperature, tool
   if (Array.isArray(tools) && tools.length) body.tools = tools;
   const res = await fetchJson(GEMINI_URL, body, timeoutMs);
   if (!res.ok) {
-    const err = new Error(`gemini ${res.status}`);
-    err.transient = transientStatus(res.status);
-    err.retryable = retryableStatus(res.status);
+    /* IKI FARKLI 429. Hiz siniri BEKLEYINCE gecer; PROJE HARCAMA TAVANI
+       ("exceeded its monthly spending cap") gecmez — tavan yukseltilene kadar
+       her istek 429 doner. Olculdu 2026-08-29: tavan dolmustu, kod DeepSeek'e
+       dusuyordu, DeepSeek'in de bakiyesi bittigi icin ekranda "deepseek 402"
+       yaziyordu. Yani kullaniciya YANLIS saglayicinin YANLIS hatasi
+       gosteriliyordu ve teshis saatler aldi. */
+    let govde = null;
+    try { govde = await res.json(); } catch (_) { govde = null; }
+    const mesaj = String(govde?.error?.message || govde?.error || '');
+    const spendCap = res.status === 429 && /spending cap|spend cap|billing|quota exceeded/i.test(mesaj);
+    const err = new Error(spendCap
+      ? 'gemini spend-cap: proje aylık harcama tavanı doldu (ai.studio/spend)'
+      : `gemini ${res.status}${mesaj ? `: ${mesaj.slice(0, 160)}` : ''}`);
+    err.transient = !spendCap && transientStatus(res.status);
+    err.retryable = !spendCap && retryableStatus(res.status);
+    err.spendCap = spendCap;
     throw err;
   }
   const data = await res.json();
@@ -226,7 +239,13 @@ async function aiRequest({
         system, messages, maxOutputTokens, temperature, jsonMode,
         timeoutMs: Math.min(timeoutMs, left()),
       });
-    } catch (e) { lastErr = e; if (!e.retryable || i === 1) break; await sleep(1200); }
+    } catch (e) {
+      // Gemini'nin HARCAMA TAVANI hatasi daha bilgilendirici: DeepSeek 402
+      // yalnizca "yedegin de bakiyesi yok" demek ve asil nedeni gizler.
+      if (!lastErr?.spendCap) lastErr = e;
+      if (!e.retryable || i === 1) break;
+      await sleep(1200);
+    }
   }
   throw lastErr || new Error('AI failed');
 }

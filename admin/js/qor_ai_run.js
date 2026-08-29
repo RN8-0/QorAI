@@ -98,12 +98,29 @@ async function geminiOnce(o) {
   if (o.tools && o.tools.length) body.tools = o.tools;
   var res = await post('/api/ai/gemini', body, o.timeoutMs);
   if (!res.ok) {
-    var e = new Error('gemini ' + res.status);
-    e.transient = transientStatus(res.status);
-    e.retryable = retryableStatus(res.status);
-    // 429 AYRI ISARETLENIR: DeepSeek'e dusmek cozum degil (bakiye bitti),
-    // dogru davranis beklemek. Bkz. askRaw.
-    e.rateLimited = res.status === 429;
+    /* IKI FARKLI 429 VAR ve karistirilmalari 2026-08-29'da bir teshisi
+       saatlerce geciktirdi:
+
+         · HIZ SINIRI  — dakikalik kota doldu. BEKLEMEK cozer.
+         · HARCAMA TAVANI — projenin aylik spend cap'i doldu
+           ("exceeded its monthly spending cap"). Beklemek COZMEZ; ay
+           bitene ya da tavan yukseltilene kadar HER istek 429 doner.
+
+       Eskiden ikisi de `rateLimited` sayiliyordu: kod 20s + 45s + 90s
+       bekliyor, yine 429 aliyor, DeepSeek'e dusuyor, DeepSeek'in bakiyesi
+       de bittigi icin 402 donuyor ve kullaniciya "deepseek 402" yaziliyordu.
+       Yani ekranda YANLIS saglayicinin YANLIS hatasi vardi. */
+    var govde = null;
+    try { govde = await res.json(); } catch (_) { govde = null; }
+    var mesaj = (govde && govde.error && (govde.error.message || govde.error)) || '';
+    var tavan = res.status === 429 && /spending cap|spend cap|billing|quota exceeded/i.test(String(mesaj));
+    var e = new Error(tavan
+      ? 'Gemini harcama tavanı doldu — ai.studio/spend adresinden proje tavanını yükseltin'
+      : 'gemini ' + res.status + (mesaj ? ': ' + String(mesaj).slice(0, 160) : ''));
+    e.transient = !tavan && transientStatus(res.status);
+    e.retryable = !tavan && retryableStatus(res.status);
+    e.rateLimited = res.status === 429 && !tavan;
+    e.spendCap = tavan;
     throw e;
   }
   var data = await res.json();
@@ -171,9 +188,19 @@ async function askRaw(o) {
       break;
     }
   }
+  // HARCAMA TAVANINDA YEDEGE DUSULMEZ. DeepSeek'in bakiyesi bitmis durumda;
+  // oraya dusmek yalnizca hatanin ADINI degistiriyor ("deepseek 402") ve
+  // gercek nedeni gizliyor. Tavan hatasi OLDUGU GIBI yukari cikar.
+  if (lastErr && lastErr.spendCap) throw lastErr;
   for (var j = 0; j < 2; j++) {
     try { return await deepseekOnce(opt); }
-    catch (e2) { lastErr = e2; if (!e2.retryable || j === 1) break; await sleep(1200); }
+    catch (e2) {
+      // Gemini'nin hatasi daha bilgilendiriciyse onu koru: DeepSeek 402
+      // "bakiye yok" demek ve asil sorun neredeyse her zaman Gemini'de.
+      if (!lastErr || !lastErr.spendCap) lastErr = e2;
+      if (!e2.retryable || j === 1) break;
+      await sleep(1200);
+    }
   }
   throw lastErr || new Error('AI failed');
 }
