@@ -5,11 +5,13 @@
 //  Renk dili: güçlü/pozitif #22c55e, orta/nötr #f59e0b, zayıf/negatif #f43f5e,
 //  marka mavi #3b82f6. prefers-reduced-motion'a saygı gösterir.
 // ─────────────────────────────────────────────────────────────────────────
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import './AiCharts.css';
 // Faktor tablosunun satir kumesi TEK KAYNAK — on-render (Node) da ayni
 // modulu kosar; bkz. lib/factorRows.js.
 import { factorColumnAverages, factorColumnWins, factorMatrixRows } from '../lib/factorRows.js';
+// Recharts ~136 KB gzip: fiyat grafigi cizilmeyen sayfalar bunu INDIRMEZ.
+const PriceChart = lazy(() => import('./PriceChart.jsx'));
 
 export const CHART_COLORS = {
   strong: '#22c55e',
@@ -919,29 +921,61 @@ export function proseBlocks(text) {
   return blocks;
 }
 
-/* KONU CUMLESININ TONU. Kullanici "pozitif yazilar yesil olacak, siyah degil"
-   dedi ve haklı: rapor bir HUKUM veriyor, hukmun yonu tipografiden okunmali.
-   Ton, cumlenin kendi kelimelerinden cikar — model'den ek alan istemiyoruz,
-   yayinlanmis eski kayitlar da renklenir.
+/* KONU CUMLESININ TONU — SIYAH KALAN CUMLE YOK.
+   Kural basit: iyi yazilan sey YESIL, elestiri/olumsuzluk KIRMIZI.
 
-   Sinir: kelime SAYIMI yapiyoruz, duygu analizi degil. Bir cumlede hem
-   olumlu hem olumsuz isaret varsa (cok yaygin: "guclu, ancak pahali")
-   NOTR birakilir — yanlis renk, renksiz olmaktan kotudur. */
-// KELIME BASI SINIRI SART. Ilk surumde yoktu ve "periskop" icindeki "risk"
-// pozitif bir cumleyi KIRMIZI boyuyordu (olculdu: iPhone 16 Pro Max kamera
-// paragrafi). Turkce ekler yuzunden SON sinir konulamaz ("sorun" ->
-// "sorunlar" eslesmeye devam etmeli), bas sinir yeterli.
+   Ilk surumde TAM KELIME araniyordu ve Turkce'de bu calismiyor: "guclu"
+   listede vardi ama cumlede "guclendirilmis" geciyordu, eslesmedi ve cumle
+   SIYAH kaldi. Artik KOK araniyor ("gucl" -> guclu, guclendirilmis) ve iki
+   taraf da SAYILIYOR; agir basan taraf rengi belirler.
+
+   Berabere kalinca bile siyah birakilmaz: cumlede bir DONUS baglaci varsa
+   ("ancak", "fakat") hukum olumsuza doner, yoksa olumlu sayilir. Boylece
+   her konu cumlesi bir yon tasir. */
 const TONE_HEAD = '(?<![A-Za-zğüşıöçĞÜŞİÖÇ])';
-const TONE_POS = new RegExp(TONE_HEAD + '(yüksek memnuniyet|memnuniyetle|övgü|beğeni|başarılı|güçlü|mükemmel|etkileyici|üstün|avantaj|olumlu|takdir|lider|rakipsiz|ideal|zirve|öne çıkı|tavsiye|iyi bir|en iyi|praise|excellent|outstanding|strong|impressive|leading|recommend|great|best)', 'i');
-const TONE_NEG = new RegExp(TONE_HEAD + '(sorun|şikayet|kusur|arıza|hayal kırıklığı|zayıf|düşük|eksik|geride kal|dezavantaj|risk|olumsuz|başarısız|yetersiz|pahalı|problem|complaint|issue|weak|poor|lacks|disappoint|drawback|fails|expensive)', 'i');
+const POS_KOK = [
+  'memnuniyet', 'övgü', 'ovgu', 'beğen', 'begen', 'başarı', 'basari', 'gücl', 'gucl',
+  'mükemmel', 'mukemmel', 'etkileyici', 'üstün', 'ustun', 'avantaj', 'olumlu', 'takdir',
+  'lider', 'rakipsiz', 'ideal', 'zirve', 'öne çık', 'one cik', 'tavsiye', 'iyi',
+  'yeterli', 'akıcı', 'akici', 'sorunsuz', 'kolaylık', 'kolaylik', 'geniş', 'genis',
+  'yüksek', 'yuksek', 'uzun ömür', 'uzun omur', 'sağlam', 'saglam', 'dayanıklı',
+  'dayanikli', 'hızlı', 'hizli', 'zengin', 'premium', 'şık', 'net ',
+  'praise', 'excellent', 'outstanding', 'strong', 'impressive', 'leading',
+  'recommend', 'great', 'best', 'smooth', 'reliable', 'durable', 'fast',
+];
+const NEG_KOK = [
+  'sorun', 'şikayet', 'sikayet', 'kusur', 'arıza', 'ariza', 'hayal kırık', 'hayal kirik',
+  'zayıf', 'zayif', 'düşük', 'dusuk', 'eksik', 'geride kal', 'dezavantaj', 'risk',
+  'olumsuz', 'başarısız', 'basarisiz', 'yetersiz', 'pahalı', 'pahali', 'kısıt', 'kisit',
+  'sınırl', 'sinirl', 'ısınma', 'isinma', 'donma', 'gecikme', 'şarj kayb', 'sarj kayb',
+  'hata', 'çökme', 'cokme', 'bozul', 'aşınma', 'asinma', 'endişe', 'endise',
+  'problem', 'complaint', 'issue', 'weak', 'poor', 'lacks', 'disappoint',
+  'drawback', 'fail', 'expensive', 'limited', 'overheat', 'defect',
+];
+const TONE_DONUS = new RegExp(TONE_HEAD + '(ancak|fakat|ama |ne var ki|buna karşın|buna karsin|rağmen|ragmen|however|but |although|yet )', 'i');
+// Kok listesindeki tek ozel karakter bosluk; yine de kacis guvenligi icin
+// regex-anlamli karakterler kacisliyor.
+const ESC = /[.*+?^${}()|[\]\\]/g;
+const kokRe = (list) => new RegExp(`${TONE_HEAD}(?:${list.map((w) => w.replace(ESC, '\\$&')).join('|')})`, 'gi');
+const POS_RE = kokRe(POS_KOK);
+const NEG_RE = kokRe(NEG_KOK);
+
+function sayKok(re, text) {
+  re.lastIndex = 0;
+  let n = 0;
+  while (re.exec(text)) n += 1;
+  re.lastIndex = 0;
+  return n;
+}
 
 function leadTone(text) {
   const t = String(text || '');
-  const pos = TONE_POS.test(t);
-  const neg = TONE_NEG.test(t);
-  if (pos && !neg) return 'pos';
-  if (neg && !pos) return 'neg';
-  return '';
+  if (!t) return '';
+  const pos = sayKok(POS_RE, t);
+  const neg = sayKok(NEG_RE, t);
+  if (pos > neg) return 'pos';
+  if (neg > pos) return 'neg';
+  return TONE_DONUS.test(t) ? 'neg' : 'pos';
 }
 
 // Paragrafın konu cümlesi: ilk cümle, makul uzunluktaysa.
@@ -1105,8 +1139,7 @@ function monthIndexIn(text, lang) {
 export function PriceProjection({
   outlook = {}, price = 0, currency = '', lang = 'en', L = (en) => en,
 }) {
-  const p = useDrawProgress({ duration: 1100 });
-  const [hover, setHover] = useState(-1);
+  const reduced = usePrefersReducedMotion();
   const trend = ['up', 'down', 'stable'].includes(outlook.trend) ? outlook.trend : '';
   const parsed = parseChangeRange(outlook.expectedChange || outlook.note);
   if (!trend && !parsed) return null;
@@ -1116,7 +1149,7 @@ export function PriceProjection({
   const [lo, hi] = parsed || (sign > 0 ? [2, 6] : sign < 0 ? [4, 12] : [1, 3]);
   const N = 7;
   const now = new Date();
-  const fmtMonth = (i) => {
+  const ayAdi = (i) => {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     try {
       return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', { month: 'short' }).format(d);
@@ -1124,68 +1157,20 @@ export function PriceProjection({
   };
   // Eğri: ilk aylar yavaş, sonra hızlanır (kampanya/model döngüsü etkisi).
   const ease = (i) => Math.pow(i / (N - 1), 0.82);
-  const curve = (pct) => Array.from({ length: N }, (_, i) => 100 + pct * ease(i));
-  // SABİT = DÜZ ÇİZGİ DEĞİL: orta çizgi 100'de kalır, bant iki yana açılır.
-  const mid = curve(sign * ((lo + hi) / 2));
-  const band = sign === 0
-    ? { lo: curve(-hi), hi: curve(hi) }
-    : { lo: curve(sign > 0 ? lo : -hi), hi: curve(sign > 0 ? hi : -lo) };
-
-  // Genislik/yukseklik ORANI kabin oranina yakin olmali: viewBox 620x230
-  // iken SVG kapta ortalaniyor ve iki yanda genis bosluk kaliyordu (grafik
-  // "ortada asili" duruyordu). 980x210 ~4.7 orani, 1100px'lik rapor
-  // kolonuna neredeyse tam oturuyor.
-  const W = 980;
-  const H = 190;
-  const padL = 62;
-  const padR = 24;
-  const padTop = 18;
-  const padBottom = 34;
-  const all = [...band.lo, ...band.hi, 100];
-  const pad = Math.max(1.5, (Math.max(...all) - Math.min(...all)) * 0.22);
-  const minV = Math.min(...all) - pad;
-  const maxV = Math.max(...all) + pad;
-  const x = (i) => padL + (i * (W - padL - padR)) / (N - 1);
-  const y = (v) => padTop + (1 - (v - minV) / Math.max(1, maxV - minV)) * (H - padTop - padBottom);
-
-  // YUMUŞAK EĞRİ. Kırık çizgi bir "tahmin"den çok bir ölçüm gibi duruyordu;
-  // Catmull-Rom → kübik Bézier, uçlarda taşma yapmayan klasik dönüşüm.
-  const smooth = (vals) => {
-    const pts = vals.map((v, i) => [x(i), y(v)]);
-    let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i += 1) {
-      const p0 = pts[i - 1] || pts[i];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[i + 2] || p2;
-      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-    }
-    return d;
-  };
-  // Alan yolu: ust kenar soldan saga, alt kenar sagdan sola. `smooth` her
-  // zaman soldan saga uretiyor, o yuzden alan duz cizgiyle kapatilir —
-  // dolgu zaten %30 opakliktan asagi, kenar farki goze carpmiyor.
-  const areaPath2 = (() => {
-    const top = band.hi.map((v, i) => [x(i), y(v)]);
-    const bot = band.lo.map((v, i) => [x(i), y(v)]).reverse();
-    const line = (pts) => pts.map((q, i) => `${i ? 'L' : ''}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ');
-    return `M${line(top)} L${line(bot)} Z`;
-  })();
+  // SABİT = DÜZ ÇİZGİ DEĞİL: orta çizgi %0'da kalır, bant iki yana açılır.
+  const data = Array.from({ length: N }, (_, i) => {
+    const k = ease(i);
+    const orta = sign * ((lo + hi) / 2) * k;
+    const bant = sign === 0
+      ? [-hi * k, hi * k]
+      : sign > 0 ? [lo * k, hi * k] : [-hi * k, -lo * k];
+    return { ay: ayAdi(i), orta, bant };
+  });
 
   const col = sign < 0 ? CHART_COLORS.strong : sign > 0 ? CHART_COLORS.weak : CHART_COLORS.balanced;
   const bestIdx = monthIndexIn(outlook.bestTime, lang);
-  /* AYLIK TUTAR UYDURMAK YOK. Onceki surum her ay icin `fiyat * endeks / 100`
-     hesaplayip "₺112.417" gibi bir rakam basiyordu; rapor o rakamlarin HICBIRINI
-     soylememisti — grafik, olmayan bir kesinlik iddia ediyordu. Eksen artik
-     raporun gercekten verdigi seyi gosteriyor: YUZDE DEGISIM. Bilinen tek
-     gercek tutar (bugunku katalog fiyati) grafigin altinda bir kez, referans
-     olarak yaziliyor. */
-  const pct = (v) => {
-    const d = Math.round((v - 100) * 10) / 10;
+  const yuzde = (v) => {
+    const d = Math.round(v * 10) / 10;
     if (Math.abs(d) < 0.05) return '0%';
     return `${d > 0 ? '+' : '−'}%${Math.abs(d) % 1 === 0 ? Math.abs(d) : Math.abs(d).toFixed(1)}`;
   };
@@ -1198,9 +1183,6 @@ export function PriceProjection({
       } catch { return `${Math.round(price)}`; }
     })()
     : '';
-  // Y ekseni: üç referans çizgisi (üst bant, bugün=100, alt bant).
-  const ticks = [...new Set([maxV - pad, 100, minV + pad].map((v) => Math.round(v * 10) / 10))]
-    .sort((a, b) => b - a);
   const dir = sign < 0
     ? L('Prices are expected to ease', 'Fiyatların gerilemesi bekleniyor')
     : sign > 0
@@ -1210,8 +1192,7 @@ export function PriceProjection({
   const waitLabel = wait === 'buy' ? L('Buy now', 'Şimdi al')
     : wait === 'wait' ? L('Wait', 'Bekle')
       : wait === 'watch' ? L('Keep watching', 'Takip et') : '';
-  const gid = `aicPrice-${sign}-${Math.round(lo)}-${Math.round(hi)}`;
-  const active = hover >= 0 ? hover : -1;
+  const son = data[N - 1];
 
   return (
     <div className="aic-price">
@@ -1227,79 +1208,16 @@ export function PriceProjection({
         {waitLabel && <span className={`aic-price-cta ${wait}`}>{waitLabel}</span>}
       </div>
 
-      <svg className="aic-price-svg" viewBox={`0 0 ${W} ${H}`}
-        role="img" aria-label={L('Estimated price trajectory', 'Tahmini fiyat seyri')}
-        onMouseLeave={() => setHover(-1)}>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={col} stopOpacity="0.42" />
-            <stop offset="100%" stopColor={col} stopOpacity="0.04" />
-          </linearGradient>
-        </defs>
-
-        {/* Izgara + y ekseni: grafiğin "ne kadar" sorusuna cevap veren kısmı.
-            İlk sürümde hiç yoktu; çizgi boşlukta asılı duruyordu. */}
-        {ticks.map((v) => (
-          <g key={`t-${v}`}>
-            <line className={`aic-price-grid${Math.abs(v - 100) < 0.6 ? ' base' : ''}`}
-              x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} />
-            <text className="aic-price-y" x={padL - 10} y={y(v) + 4} textAnchor="end">{pct(v)}</text>
-          </g>
-        ))}
-
-        <path d={areaPath2} fill={`url(#${gid})`} style={{ opacity: p }} />
-        <path className="aic-price-edge" d={smooth(band.hi)} stroke={col} fill="none" style={{ opacity: 0.5 * p }} />
-        <path className="aic-price-edge" d={smooth(band.lo)} stroke={col} fill="none" style={{ opacity: 0.5 * p }} />
-        <path className="aic-price-line" d={smooth(mid)} stroke={col} fill="none"
-          strokeDasharray="1400" strokeDashoffset={1400 * (1 - p)} />
-
-        {bestIdx >= 0 && (
-          <g className="aic-price-mark" style={{ opacity: p }}>
-            <line x1={x(bestIdx)} x2={x(bestIdx)} y1={padTop} y2={H - padBottom} />
-            <circle cx={x(bestIdx)} cy={y(mid[bestIdx])} r="6" fill={col} className="aic-price-best" />
-          </g>
-        )}
-
-        {/* Nokta + fare bölgesi: her ay okunabilir bir değer taşır. */}
-        {mid.map((v, i) => {
-          const son = i === N - 1;
-          return (
-            <g key={`d-${i}`} onMouseEnter={() => setHover(i)}>
-              <rect x={x(i) - 24} y={padTop} width="48" height={H - padTop - padBottom} fill="transparent" />
-              <circle className={`aic-price-dot${active === i ? ' on' : ''}${son ? ' son' : ''}`}
-                cx={x(i)} cy={y(v)} r={active === i ? 6 : son ? 5.5 : 3.6} fill={col}
-                style={{ opacity: p, transitionDelay: `${i * 70}ms` }} />
-            </g>
-          );
-        })}
-        {/* Son degeri her zaman yazili: grafigi okumak icin uzerine gelmek
-            gerekmesin. */}
-        <text className="aic-price-end" x={x(N - 1)} y={y(mid[N - 1]) - 14} textAnchor="end"
-          fill={col} style={{ opacity: p }}>
-          {pct(mid[N - 1])}
-        </text>
-        {active >= 0 && (
-          <g className="aic-price-tip" style={{ pointerEvents: 'none' }}>
-            <line x1={x(active)} x2={x(active)} y1={padTop} y2={H - padBottom} />
-            <text x={Math.min(W - padR - 4, Math.max(padL + 4, x(active)))} y={Math.max(padTop + 12, y(mid[active]) - 14)}
-              textAnchor={active > N - 3 ? 'end' : active < 2 ? 'start' : 'middle'}>
-              {pct(mid[active])}
-            </text>
-          </g>
-        )}
-
-        {mid.map((v, i) => (
-          <text key={`x-${i}`} className={`aic-price-x${active === i ? ' on' : ''}`}
-            x={x(i)} y={H - 12} textAnchor="middle">
-            {fmtMonth(i)}
-          </text>
-        ))}
-      </svg>
+      {/* Grafik TEMBEL: recharts yalnizca fiyat grafigi gercekten cizilen
+          sayfalarda inar (bkz. components/PriceChart.jsx). */}
+      <Suspense fallback={<div className="aic-rc aic-rc-loading" aria-hidden="true" />}>
+        <PriceChart data={data} color={col} bestIndex={bestIdx} L={L} reduced={reduced} />
+      </Suspense>
 
       <div className="aic-price-facts">
         <span className="aic-price-range">
           <i aria-hidden="true">🎯</i>{L('In 6 months', '6 ay sonra')}
-          <b style={{ color: col }}>{`${pct(band.lo[N - 1])} … ${pct(band.hi[N - 1])}`}</b>
+          <b style={{ color: col }}>{`${yuzde(son.bant[0])} … ${yuzde(son.bant[1])}`}</b>
         </span>
         {outlook.bestTime && (
           <span><i aria-hidden="true">🗓</i>{L('Best window', 'En iyi pencere')}<b>{outlook.bestTime}</b></span>
