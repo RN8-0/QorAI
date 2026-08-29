@@ -8,6 +8,7 @@ import { trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
 import { useCompare } from './lib/compare.js';
 import AiFab, { hasActiveAnalysis } from './components/AiFab.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
 
 // Home stays eager so the landing page paints on the first request (no extra
@@ -130,6 +131,12 @@ export default function App() {
         <main><div className="route-fallback"><div className="spinner" /></div></main>
       )}>
       <main>
+        {/* Rota sınırı. Tek bir sayfanın hatası (en sık: bayat chunk'ın
+            dinamik import'unun reddedilmesi) ÖNCEDEN kökü söküp siteyi
+            komple beyaz bırakıyordu. Sınır burada olduğu için Header,
+            Footer ve BottomNav ayakta kalır; `resetKey` ile kullanıcı başka
+            bir sayfaya geçince sınır kendini toparlar. */}
+        <ErrorBoundary resetKey={loc.pathname} wrap={false}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<Search />} />
@@ -159,6 +166,7 @@ export default function App() {
           <Route path="/faq" element={<LegalPage kind="faq" />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </ErrorBoundary>
         <BootDone />
       </main>
       <Footer />

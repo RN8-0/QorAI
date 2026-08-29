@@ -1750,8 +1750,14 @@
   <url><loc>https://qorai.net/tr/product/xiaomi-mi-note-10-lite-128gb</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-iphone-17</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-iphone-17</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/apple-iphone-16-pro-max</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/apple-iphone-16-pro-max</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/apple-iphone-16-pro-256gb</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/apple-iphone-16-pro-256gb</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/redmi-k100-pro</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/redmi-k100-pro</loc><lastmod>2026-08-26</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/apple-iphone-16-256gb</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/apple-iphone-16-256gb</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/garmin-x310</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/garmin-x310</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ae-dc8312-c6s</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -8082,8 +8088,18 @@
   <url><loc>https://qorai.net/blog/best-ai-subscriptions-2026</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/blog/2026-en-iyi-amiral-gemisi-telefonlar</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/blog/best-flagship-phones-2026</loc><lastmod>2026-08-22</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/analiz</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/tr/analiz</loc><lastmod>2026-08-28</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/analiz</loc><lastmod>2026-08-29</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/tr/analiz</loc><lastmod>2026-08-29</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/apple-iphone-16-pro-max</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/apple-iphone-16-pro-max</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/apple-iphone-16-pro-256gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/apple-iphone-16-pro-256gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/apple-iphone-16-256gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/apple-iphone-16-256gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/apple-iphone-17-pro-max-512gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/apple-iphone-17-pro-max-512gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://qorai.net/tr/analiz/apple-iphone-17-pro-512gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://qorai.net/analiz/apple-iphone-17-pro-512gb</loc><lastmod>2026-08-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/analiz/apple-iphone-17</loc><lastmod>2026-08-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/analiz/apple-iphone-17</loc><lastmod>2026-08-28</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/analiz/samsung-galaxy-s26-ultra-512gb</loc><lastmod>2026-08-28</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>

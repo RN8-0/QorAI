@@ -5,6 +5,7 @@ import App from './App.jsx';
 import { AuthProvider } from './lib/auth.jsx';
 import { LangProvider } from './i18n/index.jsx';
 import { initAnalytics } from './lib/analytics.js';
+import ErrorBoundary, { isChunkError, reloadOnce } from './components/ErrorBoundary.jsx';
 import './styles/global.css';
 
 initAnalytics();
@@ -14,6 +15,28 @@ initAnalytics();
 // at a bundle URL that a CDN edge may have negatively cached, avoiding stale-asset
 // white-screens after a deploy.
 if (typeof window !== 'undefined') window.__qorBuild = '20260706-a';
+
+// BAYAT CHUNK KURTARMASI — sınırın önündeki ilk kapı.
+// Vite, `modulepreload`'u düşen bir chunk için `vite:preloadError` fırlatır.
+// Varsayılan davranış hatayı yeniden atmak; o hata React'in dışında oluştuğu
+// için hiçbir error boundary yakalayamaz. Burada yakalayıp bir kez sert
+// yenileme yapıyoruz: yenileme taze HTML + taze hash getirdiği için chunk yine
+// aynı adresten istenmez. `preventDefault` olmadan hata yine de konsola düşer
+// ve kullanıcı beyaz ekranda kalırdı.
+// Not: yenileme SESSION başına bir kez (ErrorBoundary.reloadOnce) — sunucu
+// gerçekten bozuksa sonsuz yenileme döngüsü kullanıcıyı sayfaya hiç
+// sokmayacağı için sınırın hata ekranı devreye girer.
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', (e) => {
+    e.preventDefault();
+    reloadOnce();
+  });
+  // Yakalanmamış promise reddi: rota chunk'ı React'in render yolunun DIŞINDA
+  // (ön-yükleme, prefetch) istendiğinde hata buradan çıkar.
+  window.addEventListener('unhandledrejection', (e) => {
+    if (isChunkError(e.reason)) reloadOnce();
+  });
+}
 
 // Language URL-prefix for SEO: en is the canonical root (no prefix); /tr lives
 // under /tr so each language has a distinct, hreflang-linked URL Google can
@@ -33,14 +56,20 @@ const PATH_LANG = (() => {
   } catch { return null; }
 })();
 
+// KÖK SINIR. App'in içindeki rota sınırı sayfa hatalarını tutuyor; bu sınır
+// onun ULAŞAMADIĞI yeri kapatıyor: Header, Footer, BottomNav ve sağlayıcıların
+// (LangProvider / AuthProvider) kendisi. Buradaki bir hata da kökü söküp
+// sayfayı beyaz bırakırdı.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename={PATH_LANG ? `/${PATH_LANG}` : undefined}>
-      <LangProvider initialLang={PATH_LANG}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </LangProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter basename={PATH_LANG ? `/${PATH_LANG}` : undefined}>
+        <LangProvider initialLang={PATH_LANG}>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </LangProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

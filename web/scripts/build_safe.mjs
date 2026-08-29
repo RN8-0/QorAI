@@ -23,6 +23,12 @@
 import { execSync } from 'child_process';
 
 const ADIMLAR = [
+  // Eksik import denetimi EN BASTA — website/ daha yikilmadan. Vite bagsiz bir
+  // tanimlayiciyi global sanip sessizce derliyor, hata ancak tarayicida
+  // ReferenceError olarak cikiyor ve React kokunu sokerek sayfayi BEYAZ
+  // birakiyor. 2026-08-29'da canlida iki ornegi vardi (ProductDetail
+  // getProduct, AiAnalysis parseAiJson); bu kapi olmadan tekrar edecek.
+  ['eksik import denetimi', 'node scripts/undef_audit.mjs'],
   ['i18n denetimi', 'node scripts/i18n_audit.mjs'],
   ['prebuild', 'node scripts/prebuild.mjs'],
   ['vite', 'vite build'],

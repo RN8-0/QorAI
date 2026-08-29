@@ -45,7 +45,11 @@ export {
   withFreshnessRetryInstruction, scrubSiblingResearch, crossModelLeaks,
   withModelIdentityRetryInstruction,
 } from '../lib/aiPrompts.js';
-import { arr, firstSentences } from '../lib/aiPrompts.js';
+// `parseAiJson` YUKARIDAKI re-export bloğunda da geçiyor ama oradan gelmiyor:
+// `export { x } from 'y'` yerel bir bağ OLUŞTURMAZ, adı yalnızca dışarı taşır.
+// Bu yüzden ayrıca burada import ediliyor — eksikken `raw` metinle çağrılan her
+// rapor `ReferenceError: parseAiJson is not defined` ile sayfayı boşaltıyordu.
+import { arr, firstSentences, parseAiJson } from '../lib/aiPrompts.js';
 
 function localizeAiText(value, L) {
   const raw = String(value || '').trim();

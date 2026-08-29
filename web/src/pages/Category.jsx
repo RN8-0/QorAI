@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { IconX } from '../components/GlyphIcons.jsx';
-import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigationType, useParams, useSearchParams } from 'react-router-dom';
 import { getCategoryPage } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
 import { catMeta, categoryLabel } from '../lib/format';
@@ -43,6 +43,55 @@ const COLLAPSED = 8;
 function facetCounts(facets, field) {
   const f = (facets || []).find((x) => x.field_name === field);
   return f ? f.counts : [];
+}
+
+/* ── GERİ DÖNÜŞTE SAYFAYI OLDUĞU GİBİ BIRAKMA ────────────────────────────────
+   Filtreler, sıralama, yüklenmiş liste ve kaydırma konumu bileşenin YEREL
+   state'inde duruyordu; bir ürüne tıklayıp geri gelen kullanıcı her şeyi
+   sıfırlanmış buluyordu — 10 sayfa "Daha fazla" yükleyip 4 filtre seçtikten
+   sonra bu, işin tamamını çöpe atmak demek.
+   Görünüm sekme ömrü boyunca (sessionStorage) kategori başına saklanır ve
+   YALNIZCA geri/ileri (POP) gezinmesinde geri yüklenir: menüden kategoriye
+   yeniden girmek tertemiz bir sayfa vermeye devam eder.
+
+   NEDEN sessionStorage, adres çubuğu DEĞİL: filtreleri sorgu dizesine taşımak
+   kaydırma konumunu ve "kaçıncı sayfaya kadar yüklendiğini" TAŞIMAZ — asıl
+   şikâyet buydu. Ayrıca /category/<cat> adresleri ön-render ediliyor ve
+   indeksleniyor; her filtre kombinasyonunu taranabilir bir adrese çevirmek
+   ince içerikli sonsuz varyant üretirdi. */
+const GORUNUM_ANAHTAR = (cat) => `qor:catview:${cat}`;
+// Sekme ömrü zaten sınırlı; bu üst sınır "sabahtan kalma" bir listeyi geri
+// yüklememek için. Fiyat ve puanlar gün içinde değişiyor.
+const GORUNUM_TTL_MS = 30 * 60 * 1000;
+// Saklanan kart sayısı üst sınırı. 10 sayfa geri yüklenip kullanıcı kaldığı
+// yerden devam edebiliyor; sınırsız bırakmak sessionStorage kotasını
+// (~5 MB/origin) tek kategoriyle doldurabilirdi.
+const GORUNUM_MAX_KART = PER_PAGE * 10;
+
+function gorunumOku(cat, aktif) {
+  if (!aktif || !cat) return null;
+  try {
+    const ham = sessionStorage.getItem(GORUNUM_ANAHTAR(cat));
+    if (!ham) return null;
+    const g = JSON.parse(ham);
+    if (!g || g.v !== 1 || g.cat !== cat) return null;
+    if (Date.now() - Number(g.t || 0) > GORUNUM_TTL_MS) return null;
+    return g;
+  } catch { return null; }
+}
+
+function gorunumYaz(cat, g) {
+  if (!cat) return;
+  const kirp = { ...g, v: 1, cat, t: Date.now() };
+  try {
+    sessionStorage.setItem(GORUNUM_ANAHTAR(cat), JSON.stringify(kirp));
+  } catch {
+    // Kota dolduysa listeyi düşürüp filtre + kaydırmayı yine de sakla: kısmi
+    // geri yükleme (liste ilk sayfadan gelir) hiç geri yüklememekten iyidir.
+    try {
+      sessionStorage.setItem(GORUNUM_ANAHTAR(cat), JSON.stringify({ ...kirp, items: [], page: 1, hasMore: true }));
+    } catch { /* sessionStorage tamamen kapalı olabilir (özel mod) */ }
+  }
 }
 
 export default function Category() {
@@ -105,22 +154,41 @@ export default function Category() {
     },
   });
 
-  const [q, setQ] = useState('');
+  // Geri/ileri gezinmesi mi? Yalnız o durumda önceki görünüm geri yüklenir.
+  // Aynı sekmede sert yenileme de POP sayılır ve bu İSTENEN davranış: kullanıcı
+  // için "aynı sayfaya geri dönmek" ikisinde de aynı şey.
+  const navTipi = useNavigationType();
+  // KATEGORİ BAŞINA bir kez okunur. Her render'da yeniden okumak state'i geri
+  // sarardı (snapshot'ı biz yazıyoruz); tek sefer okuyup önbelleklemek de
+  // yetmez, çünkü bu bileşen kategori değişiminde YENİDEN MOUNT OLMUYOR —
+  // /category/laptops'tan /category/tvs'e geçince eski kategorinin snapshot'ı
+  // elde kalır ve yanlış kaydırma konumu geri yazılırdı.
+  const gorunumRef = useRef({ cat: null, veri: null });
+  if (gorunumRef.current.cat !== cat) {
+    gorunumRef.current = { cat, veri: gorunumOku(cat, navTipi === 'POP') };
+  }
+  const gorunum = gorunumRef.current.veri;
+
+  const [q, setQ] = useState(() => gorunum?.q || '');
   const paramSort = params.get('sort') || '';
-  const [sort, setSort] = useState(() => (SORTS.some((s) => s.id === paramSort) ? paramSort : 'score'));
-  const [score, setScore] = useState('all');
-  const [brands, setBrands] = useState([]);
-  const [segments, setSegments] = useState([]);
-  const [tokens, setTokens] = useState([]);
-  const [rangeFilters, setRangeFilters] = useState({});
+  const [sort, setSort] = useState(() => {
+    if (gorunum?.sort && SORTS.some((s) => s.id === gorunum.sort)) return gorunum.sort;
+    return SORTS.some((s) => s.id === paramSort) ? paramSort : 'score';
+  });
+  const [score, setScore] = useState(() => gorunum?.score || 'all');
+  const [brands, setBrands] = useState(() => gorunum?.brands || []);
+  const [segments, setSegments] = useState(() => gorunum?.segments || []);
+  const [tokens, setTokens] = useState(() => gorunum?.tokens || []);
+  const [rangeFilters, setRangeFilters] = useState(() => gorunum?.rangeFilters || {});
   const [brandQuery, setBrandQuery] = useState('');
-  const [brandsOpen, setBrandsOpen] = useState(false);
+  const [brandsOpen, setBrandsOpen] = useState(() => !!gorunum?.brandsOpen);
   const [drawer, setDrawer] = useState(false);
 
-  const [items, setItems] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => gorunum?.items || []);
+  const [page, setPage] = useState(() => gorunum?.page || 1);
+  const [hasMore, setHasMore] = useState(() => !!gorunum?.hasMore);
+  // Geri yüklenmiş listede iskelet göstermek yanıp sönmeye yol açar.
+  const [loading, setLoading] = useState(() => !(gorunum?.items?.length));
   const [more, setMore] = useState(false);
   // The full facet universe for the category — stable option list.
   const [universe, setUniverse] = useState([]);
@@ -211,7 +279,21 @@ export default function Category() {
     return () => { live = false; };
   }, [cat]);
 
+  /* Sıfırlayıcı efektler DURUMA bakarak korunuyor, "ilk koşuyu atla" sayacıyla
+     DEĞİL. Sayaç yaklaşımı denendi ve dev'de sessizce bozuluyordu: StrictMode
+     efektleri mount → unmount → mount diye iki kez koşturuyor, sayaç ilk
+     koşuda tükeniyor ve İKİNCİ koşu geri yüklenen filtreleri siliyordu.
+     Buradaki karşılaştırmalar idempotent — kaç kez koşarsa koşsun aynı sonuç. */
+  // Filtreler yalnızca kategori GERÇEKTEN değişince sıfırlanır. Mount'ta zaten
+  // sıfırlanacak bir şey yok (state ya boş ya da bilerek geri yüklenmiş).
+  const sifirlananCat = useRef(cat);
+  // Adresteki ?sort= yalnızca MOUNT SONRASI değişirse uygulanır; mount anındaki
+  // değer geri yüklenen sıralamayı ezmemeli.
+  const ilkSortParam = useRef(params.get('sort') || '');
+
   useEffect(() => {
+    if (sifirlananCat.current === cat) return;
+    sifirlananCat.current = cat;
     setQ('');
     setBrands([]);
     setSegments([]);
@@ -222,18 +304,35 @@ export default function Category() {
   }, [cat]);
 
   useEffect(() => {
+    // `universe` ASENKRON geliyor; boşken `tokenGroups` da boş oluyor ve bu
+    // efekt geri yüklenen token'ların HEPSİNİ siliyordu. Evren yüklenmeden
+    // görünürlük kararı verilemez.
+    if (!universe.length) return;
     const visible = new Set(Object.values(tokenGroups).flat());
     setTokens((prev) => prev.filter((tk) => visible.has(tk)));
-  }, [tokenGroups]);
+  }, [tokenGroups, universe.length]);
 
   useEffect(() => {
     const next = params.get('sort') || '';
+    if (gorunum && next === ilkSortParam.current) return;
     if (SORTS.some((s) => s.id === next)) setSort(next);
-  }, [params]);
+  }, [gorunum, params]);
 
   // Query the first page on any filter change.
+  // Geri yüklenen listenin AİT OLDUĞU filtre anahtarı. Anahtar değişmediği
+  // sürece sorgu atlanır: liste zaten elimizde ve yeniden sormak kullanıcıyı
+  // 1. sayfaya geri sarardı — şikâyetin ta kendisi. Anahtar bir kez değişince
+  // işaret düşürülür, yani aynı filtreye geri dönülürse taze sorgu atılır.
+  const geriYuklenenAnahtar = useRef(
+    gorunum && gorunum.items && gorunum.items.length ? null : false,
+  );
   useEffect(() => {
     if (!cat) return;
+    if (geriYuklenenAnahtar.current !== false) {
+      if (geriYuklenenAnahtar.current === null) geriYuklenenAnahtar.current = filterKey;
+      if (geriYuklenenAnahtar.current === filterKey) return;
+      geriYuklenenAnahtar.current = false;
+    }
     let live = true;
     setLoading(true);
     setPage(1);
@@ -267,6 +366,63 @@ export default function Category() {
     } catch { /* keep current list */ }
     finally { setMore(false); }
   }
+
+  // ── Görünümü sakla / kaydırmayı geri koy ──────────────────────────────────
+  // Anlık durumun aynası: unmount temizliğinde state'in SON hâli okunabilsin.
+  const durumRef = useRef(null);
+  durumRef.current = { q, sort, score, brands, segments, tokens, rangeFilters, brandsOpen, items, page, hasMore };
+
+  // Kaydırma konumu AYRI takip ediliyor. Unmount anında `window.scrollY`
+  // okumak güvenilir değil: App rota değişiminde sayfayı başa sarıyor ve o
+  // çağrı bu bileşenin temizliğiyle aynı commit'e düşebiliyor.
+  const scrollRef = useRef(0);
+  // "Hiç kaydırılmadı" ile "en başa kaydırıldı" AYNI ŞEY DEĞİL: ikisini de 0
+  // saymak, listeyi başa sarıp ilk ürüne giren kullanıcıyı geri dönüşte eski
+  // konuma atardı. Ayrı bir işaret bu ikisini ayırıyor.
+  const kaydirildi = useRef(false);
+  useEffect(() => {
+    const kaydir = () => { kaydirildi.current = true; scrollRef.current = window.scrollY; };
+    window.addEventListener('scroll', kaydir, { passive: true });
+    return () => window.removeEventListener('scroll', kaydir);
+  }, []);
+
+  useEffect(() => () => {
+    const d = durumRef.current;
+    if (!d || !cat) return;
+    // Kart sayısı sınırı aşıyorsa liste kırpılır VE sayfa sayacı kırpılan
+    // uzunluğa çekilir: yoksa "Daha fazla" kırpılan aralığı atlayıp listede
+    // delik bırakırdı.
+    const kirpik = d.items.length > GORUNUM_MAX_KART;
+    gorunumYaz(cat, {
+      ...d,
+      items: kirpik ? d.items.slice(0, GORUNUM_MAX_KART) : d.items,
+      page: kirpik ? GORUNUM_MAX_KART / PER_PAGE : d.page,
+      hasMore: kirpik ? true : d.hasMore,
+      // Kullanıcı bu ziyarette HİÇ kaydırmadıysa geri yüklenen konum korunur.
+      // Sıfır yazmak, ürüne girip hemen geri dönen kullanıcıyı sayfanın başına
+      // atardı (dev'de StrictMode'un sahte unmount'u da tam bunu yapıyordu).
+      scrollY: kaydirildi.current ? scrollRef.current : Number(gorunum?.scrollY || 0),
+    });
+  }, [cat, gorunum]);
+
+  useEffect(() => {
+    const y = Number(gorunum?.scrollY || 0);
+    if (!y || !gorunum?.items?.length) return undefined;
+    // İKİ kare bekleniyor. App rota değişiminde `scrollTo(0)` çağırıyor;
+    // efektler çocuktan ebeveyne koştuğu için o çağrı BİZDEN SONRA çalışır ve
+    // aynı commit'te yapılan geri koymayı ezerdi.
+    let kare2 = 0;
+    const kare1 = requestAnimationFrame(() => {
+      kare2 = requestAnimationFrame(() => window.scrollTo({ top: y, left: 0, behavior: 'instant' }));
+    });
+    // Kartların yüksekliği geç oturursa (görsel yükleme, content-visibility)
+    // sayfa başta kalabiliyor. TEK bir düzeltme denemesi — ve yalnızca hâlâ
+    // en üstteysek, yani kullanıcı bu arada kendisi kaydırmadıysa.
+    const zaman = setTimeout(() => {
+      if (window.scrollY < 8) window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+    }, 250);
+    return () => { cancelAnimationFrame(kare1); cancelAnimationFrame(kare2); clearTimeout(zaman); };
+  }, []); // yalnız mount
 
   const hasFilters = q.trim() || brands.length || segments.length || tokens.length || hasActiveRange || score !== 'all';
   function clearFilters() {

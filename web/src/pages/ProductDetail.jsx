@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useHref, useLocation, useParams, useSearchParams, Link } from 'react-router-dom';
-import { getSimilar, getVariants, resolveProduct } from '../lib/typesense';
+import { getProduct, getSimilar, getVariants, resolveProduct } from '../lib/typesense';
 import { askQorAiGrounded, askQorAiRaw } from '../lib/ai';
 import { generateQuiz } from '../lib/linkAnalysis';
 import { useCompare, COMPARE_MAX } from '../lib/compare';
