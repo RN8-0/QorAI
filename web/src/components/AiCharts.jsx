@@ -666,6 +666,46 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
   );
 }
 
+/* ── (J2) KARARI BELİRLEYEN FARKLAR — paylaşılan kart ızgarası ─────────────
+
+   Karşılaştırma raporunun en yoğun bilgisi buradaydı ve üç akışın üçünde de
+   FARKLI çiziliyordu: ürün karşılaştırması düz madde listesi (`BulletList`),
+   link karşılaştırması `la-diffs`, abonelik `subs-diffs`. Ürün tarafındaki
+   liste ayrıca "Detaylı analiz" bloğunun içinde, başlıksız, hemen ardından
+   gelen nesirle İÇ İÇE görünüyordu — kullanıcının "yazılar iç içe geçmiş"
+   dediği yer tam olarak orası.
+
+   Artık üçü de bu bileşeni çiziyor: her fark KENDİ kartında, numaralı, ürün
+   adları vurgulu, sayılar mono. Kartlar bir ızgara olduğu için göz farkları
+   tek tek tarayabiliyor — düz metinde bu mümkün değildi.
+
+   `names`: metinde geçen ürün/servis adları. Vurgulanınca okuyucu "bu fark
+   hangi ürün hakkında" sorusunu paragrafı okumadan yanıtlıyor. */
+export function DecisiveDifferences({ items = [], names = null, L = (en) => en, title = '' }) {
+  const rows = (Array.isArray(items) ? items : [])
+    .map((x) => (typeof x === 'string'
+      ? { title: '', detail: x }
+      : { title: String(x?.title || ''), detail: String(x?.detail || x?.why || '') }))
+    .filter((x) => x.title || x.detail);
+  if (!rows.length) return null;
+  return (
+    <section className="aic-diffs">
+      <div className="aic-card-title">⚔️ {title || L('What actually decides it', 'Kararı belirleyen farklar')}</div>
+      <div className="aic-diff-grid">
+        {rows.map((x, i) => (
+          <article className="aic-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
+            <span className="aic-diff-no">{i + 1}</span>
+            <div className="aic-diff-body">
+              {x.title && <strong>{proseParts(x.title, `dt${i}`, names)}</strong>}
+              {x.detail && <p>{proseParts(x.detail, `dd${i}`, names)}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── (K) Karar afişi — büyük, tek bakışta okunan sonuç ─────────────────────
 export function VerdictBanner({ score, decision, headline, confidence, L = (en) => en }) {
   const kind = decision === 'buy' || decision === 'consider' || decision === 'skip'
@@ -870,7 +910,24 @@ const PROSE_NUM_RE = new RegExp(
 
 const PROSE_NUM_TEST = new RegExp(`^(?:${PROSE_NUM_RE.source.slice(1, -1)})$`, 'i');
 
-function proseParts(text, keyPrefix) {
+/* URUN ADI VURGUSU. Karsilastirma metninde uc urun adi duz metin icinde
+   kayboluyordu; okuyucu "hangi urun hakkinda konusuyor" sorusunu ancak
+   cumleyi bastan okuyarak yanitlayabiliyordu. Adlar artik kalin ve koyu —
+   goz paragraflari TARAYARAK ilgilendigi urunu bulabiliyor. */
+function highlightNames(node, names, keyPrefix) {
+  if (!names || !names.length || typeof node !== 'string' || !node) return [node];
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(${names.map(esc).join('|')})`, 'gi');
+  const parcalar = node.split(re);
+  if (parcalar.length === 1) return [node];
+  return parcalar.filter(Boolean).map((piece, i) => (
+    names.some((n) => n.toLowerCase() === piece.toLowerCase())
+      ? <b className="aic-name" key={`${keyPrefix}-nm${i}`}>{piece}</b>
+      : piece
+  ));
+}
+
+function proseParts(text, keyPrefix, names) {
   const out = [];
   String(text || '').split(/(\*\*[^*]+\*\*)/g).forEach((seg, si) => {
     if (seg.startsWith('**') && seg.endsWith('**') && seg.length > 4) {
@@ -884,7 +941,11 @@ function proseParts(text, keyPrefix) {
       if (PROSE_NUM_TEST.test(piece)) {
         out.push(<b className="aic-num" key={`${keyPrefix}-n${si}-${pi}`}>{piece}</b>);
       } else {
-        out.push(<span key={`${keyPrefix}-t${si}-${pi}`}>{piece}</span>);
+        out.push(
+          <span key={`${keyPrefix}-t${si}-${pi}`}>
+            {highlightNames(piece, names, `${keyPrefix}-${si}-${pi}`)}
+          </span>,
+        );
       }
     });
   });
@@ -1012,7 +1073,7 @@ function splitLead(text) {
  * @param text     ham AI metni
  * @param clamp    kaç paragraf açık başlasın (0 = hepsi). Gerisi katlanır.
  */
-export function RichProse({ text, clamp = 3, L = (en) => en }) {
+export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
   const [open, setOpen] = useState(false);
   const blocks = proseBlocks(text);
   if (!blocks.length) return null;
@@ -1027,21 +1088,21 @@ export function RichProse({ text, clamp = 3, L = (en) => en }) {
   const draw = (b, i) => {
     const hid = i >= limit;
     if (b.kind === 'head') {
-      return <h5 className={`aic-prose-head${hid ? ' hid' : ''}`} key={`h-${i}`}>{proseParts(b.text, `h${i}`)}</h5>;
+      return <h5 className={`aic-prose-head${hid ? ' hid' : ''}`} key={`h-${i}`}>{proseParts(b.text, `h${i}`, names)}</h5>;
     }
     if (b.kind === 'bullet') {
-      return <li className={`aic-prose-li${hid ? ' hid' : ''}`} key={`l-${i}`}>{proseParts(b.text, `l${i}`)}</li>;
+      return <li className={`aic-prose-li${hid ? ' hid' : ''}`} key={`l-${i}`}>{proseParts(b.text, `l${i}`, names)}</li>;
     }
     const [lead, rest] = splitLead(b.text);
     return (
       <p className={`aic-prose-p${hid ? ' hid' : ''}`} key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
         {lead ? (
           <strong className={`aic-prose-lead${leadTone(lead) ? ` ${leadTone(lead)}` : ''}`}>
-            {proseParts(lead, `pl${i}`)}
+            {proseParts(lead, `pl${i}`, names)}
           </strong>
         ) : null}
         {lead ? ' ' : null}
-        {proseParts(rest, `pr${i}`)}
+        {proseParts(rest, `pr${i}`, names)}
       </p>
     );
   };

@@ -69,6 +69,25 @@ export function articlePath(article, lang) {
   return s ? `/blog/${s}` : '/blog';
 }
 
+// BLOG YAZISI LINKI `<Link>` ILE VERILEMEZ — DIL ONEKI YAPISTIRIR.
+//
+// main.jsx `/tr` altinda BrowserRouter'i `basename="/tr"` ile kuruyor, yani
+// her `<Link to="/blog/x">` tarayiciya `href="/tr/blog/x"` olarak cikiyor.
+// Blog i18n'i ONEK degil SLUG tabanli (slug_tr / slug_en), bu yuzden seo.mjs
+// yazilari YALNIZ `/blog/<slug>` altina on-render ediyor. Sonuc olculdu
+// 2026-08-29, GSC "URL Google'da yok":
+//   GET /tr/blog/okula-donus-2026-en-iyi-ogrenci-laptoplari
+//     -> HTTP 200, <title>Page not found</title>, robots: noindex, follow
+// Yani yumusak 404. Googlebot JS'i calistirinca /tr/blog listesinde bu
+// linkleri buluyor, izliyor ve her Turkce yaziyi "noindex" diye isaretliyor —
+// sitedeki TEK uzun-form ozgun icerik indeks disi kaliyor.
+//
+// Cozum: yazi linkleri router'in DISINDA, mutlak yol olarak verilir. Tam sayfa
+// yuklemesi olur (10 yazi icin kabul edilebilir bedel) ama tarayici da,
+// Googlebot da her zaman on-render edilmis kanonik adrese gider.
+// Halihazirda indekste duran /tr/blog/* adresleri icin nginx'te 301 var
+// (docs/nginx_website.conf).
+
 // Karsilastirma adresi: /compare/<slugA>-vs-<slugB>.
 //
 // 2026-08-22: kayit ID'leri adresten CIKARILDI. Urun adresinde ayni temizlik

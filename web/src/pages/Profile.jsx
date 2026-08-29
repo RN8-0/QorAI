@@ -593,11 +593,11 @@ function LikedTab({ t }) {
           <h3 className="pf-liked-head">📝 {L('Articles', 'Yazılar')}</h3>
           <div className="pf-list">
             {articles.map((a) => (
-              <Link key={a.id} to={articlePath(a, lang)} className="pf-liked">
+              <a key={a.id} href={articlePath(a, lang)} className="pf-liked">
                 {coverOf(a) ? <img className="pf-liked-img" src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /> : null}
                 <span className="pf-liked-title">{pick(a, 'title')}</span>
                 <span className="pf-liked-go">→</span>
-              </Link>
+              </a>
             ))}
           </div>
         </div>

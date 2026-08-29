@@ -18,6 +18,7 @@ import {
   Collapsible,
   DecisionBadge,
   DistributionBar,
+  DecisiveDifferences,
   HeatMatrix,
   RichProse,
   SentimentDonut,
@@ -574,7 +575,7 @@ function CompareScoreChartFull({ chart = [], L }) {
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
 // the long per-product report stays out of the way until the user asks for it.
-function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0 }) {
+function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names = null }) {
   const hasContent = cmp.winner || arr(cmp.chart).length || arr(cmp.factorMatrix).length
     || arr(cmp.decisiveDifferences).length || String(cmp.headToHead || '').trim()
     || String(cmp.recommendation || '').trim();
@@ -603,21 +604,35 @@ function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0 }) {
       <CompareScoreChartFull chart={chart || cmp.chart} L={L} />
       {/* FAKTÖR MATRİSİ BURADAN KALKTI. Aynı veri sayfada İKİ KEZ çiziliyordu:
           burada `FactorMatrix` (ürün adı + çubuk), hemen altında `HeatMatrix`
-          (hizalı tablo). İkisi de `comparison.factorMatrix` / ürün
-          faktörlerinden besleniyordu. Tek çizim yolu HeatMatrix; AI'ın ortak
-          matrisi artık ona `matrix` prop'uyla giriyor. */}
-      {/* VARSAYILAN ACIK. Bu blok raporun ODULU: hangi urunu almali ve neden.
-          Kapali accordion'un arkasinda duruyordu; okuyucu sayfanin en onemli
-          metnini gormeden ayriliyordu. Uzun metin artik RichProse ile kademeli
-          aciliyor, yani "cok uzun" gerekcesi de ortadan kalkti. */}
-      {(arr(cmp.decisiveDifferences).length > 0 || String(cmp.headToHead || '').trim() || String(cmp.recommendation || '').trim()) && (
-        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz')}`} defaultOpen>
-          <BulletList items={cmp.decisiveDifferences} tone="notes" />
-          <Paragraphs text={cmp.headToHead} L={L} />
-          {String(cmp.recommendation || '').trim() && (
-            <div className="ai-verdict"><span>✓</span><div><Paragraphs text={cmp.recommendation} L={L} clamp={0} /></div></div>
-          )}
-        </Collapsible>
+          (hizalı tablo). Tek çizim yolu HeatMatrix. */}
+
+      {/* ÜÇ AYRI SORU, ÜÇ AYRI BLOK.
+          Eskiden üçü de tek bir "Detaylı analiz" accordion'unun içinde,
+          başlıksız, arka arkaya akıyordu: madde listesi bitiyor, hemen
+          ardından nesir başlıyor, onun ardından öneri geliyordu — hepsi aynı
+          punto, aynı renk. Kullanıcının "yazılar iç içe geçmiş" dediği yer
+          tam burasıydı. Artık her biri kendi başlığı ve kendi görsel biçimi
+          ile ayrılıyor:
+            farklar   -> numaralı kart ızgarası (taranabilir)
+            karşı karşıya -> zengin nesir (ürün adları vurgulu)
+            öneri     -> vurgulu karar kutusu */}
+      <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
+
+      {String(cmp.headToHead || '').trim() && (
+        <section className="ai-cmp-block">
+          <div className="aic-card-title">🥊 {L('Head to head', 'Karşı karşıya')}</div>
+          <RichProse text={cmp.headToHead} L={L} clamp={4} names={names} />
+        </section>
+      )}
+
+      {String(cmp.recommendation || '').trim() && (
+        <section className="ai-cmp-block">
+          <div className="aic-card-title">🏁 {L('Which one to buy', 'Hangisini almalı')}</div>
+          <div className="ai-verdict">
+            <span>✓</span>
+            <div><RichProse text={cmp.recommendation} L={L} clamp={0} names={names} /></div>
+          </div>
+        </section>
       )}
     </section>
   );
@@ -696,7 +711,8 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
 
   return (
     <div className="ai-report ai-report-compare">
-      <ComparisonOverview cmp={cmp} L={L} chart={chart} winnerScore={winnerPuan} />
+      <ComparisonOverview cmp={cmp} L={L} chart={chart} winnerScore={winnerPuan}
+        names={columns.map((c) => c.name).filter(Boolean)} />
 
       {heatProducts.length >= 2 && (
         <HeatMatrix products={heatProducts} matrix={cmp.factorMatrix} L={L} />

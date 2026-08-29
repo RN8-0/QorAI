@@ -25,6 +25,7 @@ import {
   DistributionBar,
   FactorList,
   ForumFindings,
+  DecisiveDifferences,
   HeatMatrix,
   RichProse,
   ProConList,
@@ -252,18 +253,8 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
       {services.length > 1 && <ScoreChart services={services} L={L} />}
       <HeatMatrix products={services} L={L} />
 
-      {diffs.length > 0 && (
-        <Sec icon="⚔️" title={L('What actually decides it', 'Kararı belirleyen farklar')}>
-          <div className="subs-diffs">
-            {diffs.map((d, i) => (
-              <div className="subs-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
-                <strong>{d.title}</strong>
-                {d.detail && <p>{d.detail}</p>}
-              </div>
-            ))}
-          </div>
-        </Sec>
-      )}
+      {/* Farklar ORTAK bilesen — urun/link/abonelik ayni kart izgarasi. */}
+      <DecisiveDifferences items={diffs} names={services.map((s2) => s2.name).filter(Boolean)} L={L} />
 
       {!hideQuiz && <QuizImpact items={insights} L={L} />}
 

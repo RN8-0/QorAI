@@ -613,13 +613,13 @@ export default function BlogPost() {
                 const mp = Array.isArray(m.products) ? m.products : [];
                 const mcover = m.cover || (m.coverFile ? fileUrl(m, m.coverFile) : (mp[0]?.image || mp[0]?.imageUrl || ''));
                 return (
-                  <Link key={m.slug} to={articlePath(m, postLang)} className="blog-simrow">
+                  <a key={m.slug} href={articlePath(m, postLang)} className="blog-simrow">
                     {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
                     <div className="blog-simrow-body">
                       <h3>{pick(m, 'title')}</h3>
                       {pick(m, 'lead') ? <p>{pick(m, 'lead')}</p> : null}
                     </div>
-                  </Link>
+                  </a>
                 );
               })}
             </div>

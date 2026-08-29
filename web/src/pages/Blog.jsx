@@ -92,7 +92,7 @@ export default function Blog() {
           {posts
             .filter((a) => !tag || String(pick(a, 'tags') || a.tags || '').toLowerCase().split(',').map((s) => s.trim()).includes(tag))
             .map((a) => (
-            <Link key={a.slug} to={articlePath(a, lang)} className="blog-row">
+            <a key={a.slug} href={articlePath(a, lang)} className="blog-row">
               {coverOf(a) ? <div className="blog-row-img"><img src={coverOf(a)} alt={pick(a, 'title')} loading="lazy" /></div> : null}
               <div className="blog-row-body">
                 <h2>{pick(a, 'title')}</h2>
@@ -104,7 +104,7 @@ export default function Blog() {
                 <p>{pick(a, 'lead')}</p>
                 <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →')}</span>
               </div>
-            </Link>
+            </a>
           ))}
         </div>
       )}

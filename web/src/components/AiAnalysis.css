@@ -539,6 +539,15 @@
   }
 }
 
+/* Karşılaştırma özetinin ALT BLOKLARI. Üçü de tek bir accordion içinde
+   başlıksız akıyordu; artık her biri kendi başlığı ve hairline ayıracıyla. */
+.ai-cmp-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.ai-cmp-block > .aic-card-title { margin-bottom: 10px; }
+
 /* Rapor kisayolu — uc urunlu karsilastirmada ikinci raporu bulmak icin
    birincinin tamamini kaydirmak gerekmesin. */
 .ai-cmp-jump {

@@ -716,6 +716,53 @@
   color: var(--text3);
 }
 
+/* ── Kararı belirleyen farklar — numaralı kart ızgarası ────────────────── */
+.aic-diffs { margin: 4px 0; }
+.aic-diff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.aic-diff {
+  display: flex;
+  gap: 11px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--ink-blue) 55%, transparent);
+  border-radius: 14px;
+  background: var(--surface-2);
+  animation: aicRise .4s cubic-bezier(.22,.61,.36,1) both;
+}
+.aic-diff-no {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink-blue) 12%, transparent);
+  color: var(--ink-blue);
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 12px;
+  font-weight: 900;
+}
+.aic-diff-body { min-width: 0; }
+.aic-diff-body strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 13.5px;
+  font-weight: 850;
+  color: var(--text);
+}
+.aic-diff-body p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-soft, var(--text2));
+}
+/* Ürün adı: gözün paragrafı tarayıp ilgilendiği ürünü bulmasını sağlar. */
+.aic-name { font-weight: 850; color: var(--text); }
+
 /* ── OKUMA KATMANI ────────────────────────────────────────────────────────
    Uzun rapor metinleri. Hiyerarşi tipografiden gelir: konu cümlesi ağırlıkla,
    sayılar mono figürle, paragraf aralığı boşlukla ayrılır. Kutu ve gölge YOK. */
