@@ -27,6 +27,9 @@ import {
 // Ürün ve karşılaştırma raporları da link/abonelik ile AYNI şablonu kullanır.
 import AiReportView, { Sec } from './AiReportView.jsx';
 import { compareProductToUnified, productReportToUnified } from '../lib/reportAdapters';
+// Kalibrasyon TEK KAYNAK (admin/js/qor_ai_prompts.js). Karsilastirma seridi
+// ile urun kartinin AYNI sayiyi gostermesinin garantisi ayni fonksiyon.
+import { calibratedScore } from '../lib/aiPrompts.js';
 
 
 // ─── Prompt'lar ve ad/adres yardimcilari: TEK KAYNAK ────────────────────────
@@ -523,7 +526,7 @@ function CompareScoreChartFull({ chart = [], L }) {
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
 // the long per-product report stays out of the way until the user asks for it.
-function ComparisonOverview({ cmp = {}, L }) {
+function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0 }) {
   const hasContent = cmp.winner || arr(cmp.chart).length || arr(cmp.factorMatrix).length
     || arr(cmp.decisiveDifferences).length || String(cmp.headToHead || '').trim()
     || String(cmp.recommendation || '').trim();
@@ -541,15 +544,15 @@ function ComparisonOverview({ cmp = {}, L }) {
               Skoru" (teknik puan) ile de karışıyordu — bunlar FARKLI şeyler:
               teknik puan üründen gelir, bu ise quiz cevaplarına göre hesaplanan
               SANA UYGUNLUK puanıdır. Artık adı yazıyor. */}
-          {toInt(cmp.winnerScore) > 0 && (
+          {toInt(winnerScore || cmp.winnerScore) > 0 && (
             <div className="ai-cmp-winner-score">
-              <strong>{toInt(cmp.winnerScore)}</strong>
+              <strong>{toInt(winnerScore || cmp.winnerScore)}</strong>
               <small>{L('fit for you', 'sana uygunluk')}</small>
             </div>
           )}
         </div>
       )}
-      <CompareScoreChartFull chart={cmp.chart} L={L} />
+      <CompareScoreChartFull chart={chart || cmp.chart} L={L} />
       {/* FAKTÖR MATRİSİ BURADAN KALKTI. Aynı veri sayfada İKİ KEZ çiziliyordu:
           burada `FactorMatrix` (ürün adı + çubuk), hemen altında `HeatMatrix`
           (hizalı tablo). İkisi de `comparison.factorMatrix` / ürün
@@ -620,6 +623,20 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
   }).filter((c) => c.name || (c.ai && Object.keys(c.ai).length));
 
   const winnerNorm = norm(cmp.winner || '');
+  // TEK URUN, TEK PUAN. Kazanan seridindeki sayilar HUKUM cagrisinin ham
+  // puanlariydi (92/88/88), urunun kendi kartindaki sayi ise kalibre edilmis
+  // puan (95/94/...). Ayni urun icin sayfada IKI FARKLI puan goruunuyordu ve
+  // okuyucu bunu "puanlar tutarsiz" diye okuyor. Serit artik urunlerin KENDI
+  // kalibre puanindan turuyor (bkz. reportAdapters -> calibratedScore); hukum
+  // cagrisindan yalnizca kisa GEREKCE metni aliniyor.
+  const chart = columns.map((c) => {
+    const ham = toInt(c.ai?.matchScore);
+    const tech = toInt(c.ai?.techScore);
+    const puan = calibratedScore(ham, tech) ?? ham;
+    const satir = arr(cmp.chart).find((x) => norm(x?.name) === norm(c.name));
+    return { name: c.name, score: puan, reason: satir?.reason || c.ai?.headline || '' };
+  }).filter((x) => x.score > 0);
+  const winnerPuan = (chart.find((x) => norm(x.name) === winnerNorm) || {}).score || 0;
   // HeatMatrix her ürünün kendi faktörlerinden beslenir; AI ayrıca bir
   // factorMatrix döndürdüyse onu da aynı şekle çeviririz (tek çizim yolu).
   const heatProducts = columns.map((c) => ({
@@ -631,7 +648,7 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
 
   return (
     <div className="ai-report ai-report-compare">
-      <ComparisonOverview cmp={cmp} L={L} />
+      <ComparisonOverview cmp={cmp} L={L} chart={chart} winnerScore={winnerPuan} />
 
       {heatProducts.length >= 2 && (
         <HeatMatrix products={heatProducts} matrix={cmp.factorMatrix} L={L} />

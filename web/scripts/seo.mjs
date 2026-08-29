@@ -2208,8 +2208,19 @@ function writeTextFile(file, body, { optional = false } = {}) {
   for (let attempt = 1; attempt <= 8; attempt += 1) {
     try {
       writeFileSync(tmp, body);
-      try { rmSync(file, { force: true }); } catch (_) {}
-      renameSync(tmp, file);
+      // HEDEFI ONCEDEN SILME. Eskiden burada `rmSync(file)` vardi ve
+      // arkasindan `rename` geliyordu: rename kilide takilirsa dosya ARTIK
+      // YOKTU. Olculdu 2026-08-29 — ana sayfa boyle kaybolunca 403 supurmesi
+      // yerine bos noindex kabuk yazdi ve build denetimde durdu. `rename`
+      // Windows'ta da var olan dosyanin USTUNE yazar (MoveFileEx replace);
+      // silme yalnizca rename gercekten reddedilirse, SON CARE olarak.
+      try {
+        renameSync(tmp, file);
+      } catch (renameErr) {
+        if (!['EEXIST', 'EPERM', 'EACCES'].includes(renameErr?.code)) throw renameErr;
+        rmSync(file, { force: true });
+        renameSync(tmp, file);
+      }
       return true;
     } catch (err) {
       lastErr = err;
@@ -3590,6 +3601,20 @@ async function main() {
       const entries = readdirSync(dir, { withFileTypes: true });
       const subdirs = entries.filter((e) => e.isDirectory() && !skip.has(e.name));
       const hasIndex = entries.some((e) => e.isFile() && e.name === 'index.html');
+      // KOK DIZIN BU SUPURMENIN KONUSU DEGIL. Buraya yazilan kabuk BOS GOVDELI
+      // ve `noindex`; ana sayfa icin bu felaket olurdu ve sessizce olurdu.
+      // Olculdu 2026-08-29: `writeTextFile` hedefi once `rmSync` ile siliyor,
+      // sonra `rename` ediyor — Windows'ta o dosyada kilit hatasi gorulmustu
+      // (`UNKNOWN: unknown error, open 'website/index.html'`). Dosya o kisa
+      // pencerede yoksa supurme ana sayfayi bos noindex kabukla EZIYOR;
+      // seo-audit "homepage #root prerender body is missing" diye build'i
+      // durdurdu. Ana sayfa 1. adimda yaziliyor; yoksa bu bir HATA'dir,
+      // ustunu ortmek degil gormek gerekir.
+      if (dir === site) {
+        if (!hasIndex) throw new Error('[seo] website/index.html kayboldu — ana sayfa kabugu yazilamadi');
+        for (const s of subdirs) sweep(join(dir, s.name));
+        return;
+      }
       if (subdirs.length && !hasIndex) {
         const rel = dir.slice(site.length).replace(/\\/g, '/').replace(/^\//, '');
         const lang = SEO_LOCALES.find((l) => rel === l || rel.startsWith(`${l}/`)) || SEO_DEFAULT_LOCALE;

@@ -849,14 +849,19 @@ export function ProConList({ pros = [], cons = [], L = (en) => en, titles = null
 // yılında" içindeki "yıl" birim sanılıp vurgulanıyor, "6.9 inç" ise hiç
 // vurgulanmıyordu. Kelime sonu elde tanımlanıyor.
 const WORD_END = '(?![A-Za-z0-9ğüşıöçĞÜŞİÖÇ])';
+// Sayi SON KARAKTERI rakam olmali: `[\d.,]*` cumle sonundaki virgulu de
+// yutuyordu ("₺89.999," mono kutuda virgulle birlikte cikiyordu).
+// ARALIK TEK PARÇA. "3-6 ay" ilk sürümde "3-" düz + "6 ay" mono diye ikiye
+// bölünüyordu; okuyucu yarım bir sayı görüyordu.
+const RANGE = '(?:\\d[\\d.,]*\\s?[-–—]\\s?)?';
 
 const PROSE_NUM_RE = new RegExp(
   '('
-  + '%\\s?\\d[\\d.,]*'                                   // %15
-  + '|[₺$€£]\\s?\\d[\\d.,]*'                             // ₺45.000
+  + '%\\s?\\d(?:[.,]?\\d)*'                              // %15
+  + '|[₺$€£]\\s?\\d(?:[.,]?\\d)*'                        // ₺45.000
   + '|\\d[\\d.,]*\\s?/\\s?100'                           // 89/100
-  + '|\\d[\\d.,]*\\s?(?:%|mAh|GB|TB|MB|MP|GHz|MHz|Hz|nit|nits|Wh|W|mm|cm|kg|inç|inch|fps|dB|ms|TL|USD|EUR)' + WORD_END
-  + '|\\d[\\d.,]*\\s?(?:yıl|yil|ay|gün|gun|saat|year|years|month|months|day|days|hour|hours)' + WORD_END
+  + '|' + RANGE + '\\d[\\d.,]*\\s?(?:%|mAh|GB|TB|MB|MP|GHz|MHz|Hz|nit|nits|Wh|W|mm|cm|kg|inç|inch|fps|dB|ms|TL|USD|EUR)' + WORD_END
+  + '|' + RANGE + '\\d[\\d.,]*\\s?(?:yıl|yil|ay|gün|gun|saat|year|years|month|months|day|days|hour|hours)' + WORD_END
   + ')',
   'gi',
 );

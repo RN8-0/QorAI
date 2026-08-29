@@ -941,6 +941,9 @@
 
 .la-community { display: flex; flex-direction: column; gap: 14px; }
 .la-notes { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+/* "Devaminin oku" dugmesi ile surucu listesi bitisikti; dugme listeye ait
+   gibi okunuyordu. */
+.aic-prose + .la-notes { margin-top: 16px; }
 .la-notes li {
   position: relative;
   padding-left: 16px;
