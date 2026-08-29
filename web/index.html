@@ -72,7 +72,40 @@
        render sonrasi ayni sayfa oluyor ve Ingilizce kanonik adres Turkce
        pazarda Turkce gorunuyordu. Artik sunulan HTML ile render edilen DOM
        her adreste ayni dili konusuyor. */
-    var bl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'en';
+    var qp=location.pathname;
+    var qpre=(qp.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
+    /* TARAYICI TURKCE ISE TURKCE ADRESE TASI (2026-08-30).
+       Iki sart AYNI ANDA tutulmak zorunda:
+         (a) sitenin ANA dili Ingilizce -- Google'da cikan surum Ingilizce
+             olmali, yani `/` HER ZAMAN Ingilizce servis etmeli;
+         (b) Turkce tarayicili gercek ziyaretci siteyi Turkce gormeli.
+       Bunlari birlestirmenin tek dogru yolu icerigi adresin ALTINDAN
+       degistirmek DEGIL, ziyaretciyi Turkce ADRESE tasimaktir. Onceki hal
+       (a)'yi kiriyordu: `/` head'de <html lang="en"> + Ingilizce <title> +
+       canonical=/ deyip Turkce tarayicida Turkce render ediyordu; Google
+       icin `/` ile `/tr/` render sonrasi AYNI sayfa (kopya) ve hreflang
+       cifti tutarsizdi. Artik adres ile icerik her zaman ayni dili konusur.
+
+       NEDEN INDEKSI BOZMAZ: Googlebot en-US ile tarar; asagidaki kosul
+       yalnizca 'tr' icin calisir, yani bot `/` adresini ISTISNASIZ
+       Ingilizce gorur. Turkce surume hreflang uzerinden ulasir.
+
+       DONGU KAPISI -- /blog/<slug> HARIC. Blog i18n'i onek degil SLUG
+       tabanli; /tr/blog/<slug> nginx'te /blog/<slug>'a 301 doner.
+       Yonlendirseydik 301 <-> replace sonsuz dongusune girerdi. */
+    if(!qpre){
+      var qnv=(navigator.languages||[navigator.language||'']);
+      var qtr=false;
+      for(var qi=0;qi<qnv.length;qi++){
+        var qc=String(qnv[qi]).slice(0,2).toLowerCase();
+        if(qc==='tr'){qtr=true;break}
+        if(qc==='en'){break}
+      }
+      if(qtr&&!/^\/blog\/.+/.test(qp)){
+        location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
+      }
+    }
+    var bl=qpre||'en';
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */

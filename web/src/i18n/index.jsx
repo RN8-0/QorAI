@@ -40,9 +40,15 @@ const LANG_KEY = 'qor.lang';
 // CLAUDE.md'de de İngilizce kanonik olarak tanımlı). Böylece sunulan HTML
 // ile render edilen DOM her adreste AYNI dili konuşur.
 //
-// Tarayıcı tespiti KALDIRILDI, gizlenmedi: Türkçe kullanıcı Türkçeye
-// hreflang üzerinden (Google onu `/tr/`ye yollar) ve sitedeki `/tr/`
-// linkleriyle ulaşır.
+// Türkçe tarayıcılı gerçek ziyaretçi yine Türkçe görür — ama içerik `/`
+// adresinin ALTINDAN değişerek değil, ziyaretçi `/tr/` ADRESİNE taşınarak
+// (yönlendirme `web/index.html` açılış scriptinde, SPA yüklenmeden önce).
+// Böylece her iki şart da tutar: `/` her zaman İngilizce servis edilir
+// (Google'da çıkan sürüm İngilizce), Türk kullanıcı Türkçe sitede olur ve
+// adres ile içerik hiçbir zaman ayrışmaz.
+//
+// Googlebot en-US ile tarar, yönlendirme yalnız 'tr' için çalışır → bot `/`
+// adresini istisnasız İngilizce görür.
 const URL_DEFAULT_LANG = 'en';
 
 function applyDocLang(code) {

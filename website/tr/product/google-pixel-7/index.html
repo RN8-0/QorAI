@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Google Pixel 7 Özellikleri ve Karşılaştırma | Qor AI</title>
-  <meta name="description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği: Var, 5G: Var, Batarya Kapasitesi (Tipik): 4355 mAh, Bellek (RAM): 8 GB. Qor AI teknik skoru 59/100…" />
+  <meta name="description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği:: Var, 5G:: Var, Batarya Kapasitesi (Tipik):: 4355 mAh, Bellek (RAM):: 8 GB. Qor AI teknik skoru…" />
   <link rel="canonical" href="https://qorai.net/tr/product/google-pixel-7" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/google-pixel-7" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/google-pixel-7" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Google Pixel 7 Özellikleri ve Karşılaştırma | Qor AI" />
-  <meta property="og:description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği: Var, 5G: Var, Batarya Kapasitesi (Tipik): 4355 mAh, Bellek (RAM): 8 GB. Qor AI teknik skoru 59/100…" />
+  <meta property="og:description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği:: Var, 5G:: Var, Batarya Kapasitesi (Tipik):: 4355 mAh, Bellek (RAM):: 8 GB. Qor AI teknik skoru…" />
   <link rel="preload" as="image" href="https://resim.epey.com/811647/m_google-pixel-7-16.png" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/811647/m_google-pixel-7-16.png" />
   <meta property="og:image:alt" content="Google Pixel 7" />
   <meta property="og:url" content="https://qorai.net/tr/product/google-pixel-7" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Google Pixel 7 Özellikleri ve Karşılaştırma | Qor AI" />
-  <meta name="twitter:description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği: Var, 5G: Var, Batarya Kapasitesi (Tipik): 4355 mAh, Bellek (RAM): 8 GB. Qor AI teknik skoru 59/100…" />
+  <meta name="twitter:description" content="Google Pixel 7 (Google) — Akıllı Telefon. 4.5G Desteği:: Var, 5G:: Var, Batarya Kapasitesi (Tipik):: 4355 mAh, Bellek (RAM):: 8 GB. Qor AI teknik skoru…" />
   <meta name="twitter:image" content="https://resim.epey.com/811647/m_google-pixel-7-16.png" />
   <meta name="twitter:image:alt" content="Google Pixel 7" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/tr/product/google-pixel-7#webpage","url":"https://qorai.net/tr/product/google-pixel-7","name":"Google Pixel 7 Özellikleri ve Karşılaştırma | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/811647/m_google-pixel-7-16.png"},{"@type":"BreadcrumbList","@id":"https://qorai.net/tr/product/google-pixel-7#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/tr/"},{"@type":"ListItem","position":2,"name":"Akıllı Telefon","item":"https://qorai.net/tr/category/smartphones"},{"@type":"ListItem","position":3,"name":"Google Pixel 7","item":"https://qorai.net/tr/product/google-pixel-7"}]}]}</script>
@@ -77,7 +77,40 @@
        render sonrasi ayni sayfa oluyor ve Ingilizce kanonik adres Turkce
        pazarda Turkce gorunuyordu. Artik sunulan HTML ile render edilen DOM
        her adreste ayni dili konusuyor. */
-    var bl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'en';
+    var qp=location.pathname;
+    var qpre=(qp.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
+    /* TARAYICI TURKCE ISE TURKCE ADRESE TASI (2026-08-30).
+       Iki sart AYNI ANDA tutulmak zorunda:
+         (a) sitenin ANA dili Ingilizce -- Google'da cikan surum Ingilizce
+             olmali, yani `/` HER ZAMAN Ingilizce servis etmeli;
+         (b) Turkce tarayicili gercek ziyaretci siteyi Turkce gormeli.
+       Bunlari birlestirmenin tek dogru yolu icerigi adresin ALTINDAN
+       degistirmek DEGIL, ziyaretciyi Turkce ADRESE tasimaktir. Onceki hal
+       (a)'yi kiriyordu: `/` head'de <html lang="en"> + Ingilizce <title> +
+       canonical=/ deyip Turkce tarayicida Turkce render ediyordu; Google
+       icin `/` ile `/tr/` render sonrasi AYNI sayfa (kopya) ve hreflang
+       cifti tutarsizdi. Artik adres ile icerik her zaman ayni dili konusur.
+
+       NEDEN INDEKSI BOZMAZ: Googlebot en-US ile tarar; asagidaki kosul
+       yalnizca 'tr' icin calisir, yani bot `/` adresini ISTISNASIZ
+       Ingilizce gorur. Turkce surume hreflang uzerinden ulasir.
+
+       DONGU KAPISI -- /blog/<slug> HARIC. Blog i18n'i onek degil SLUG
+       tabanli; /tr/blog/<slug> nginx'te /blog/<slug>'a 301 doner.
+       Yonlendirseydik 301 <-> replace sonsuz dongusune girerdi. */
+    if(!qpre){
+      var qnv=(navigator.languages||[navigator.language||'']);
+      var qtr=false;
+      for(var qi=0;qi<qnv.length;qi++){
+        var qc=String(qnv[qi]).slice(0,2).toLowerCase();
+        if(qc==='tr'){qtr=true;break}
+        if(qc==='en'){break}
+      }
+      if(qtr&&!/^\/blog\/.+/.test(qp)){
+        location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
+      }
+    }
+    var bl=qpre||'en';
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
@@ -276,18 +309,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DH4--fdg.js"></script>
+  <script type="module" crossorigin src="/spa/index-DbEdohmx.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLJy-XlG.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CZ0VtPC9.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DZQnopnX.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-scd_xW70.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D33K6-j_.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-25nRE4pz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C8usmV4Y.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-D7dLRVCd.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D6TWeiqn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-rFBN3uw_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DJ2LLwy6.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-BSSqWwXE.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D2FniRq3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-h17NLkZ-.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-D5a3g9B0.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-Sazu9EOW.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -330,7 +363,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartphones">Akıllı Telefon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Google Pixel 7</h1><p style="color:#475569;margin:0 0 12px">Google · Akıllı Telefon · Qor AI teknik skoru 59/100</p><img src="https://resim.epey.com/811647/m_google-pixel-7-16.png" alt="Google Pixel 7" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Google Pixel 7 öne çıkan özellikleri: 4.5g desteği Var, 5g Var, batarya kapasitesi (tipik) 4355 mAh. Google Pixel 7 81 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı telefon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">4.5G Desteği:</span> <strong>Var</strong></li><li><span style="color:#64748b">5G:</span> <strong>Var</strong></li><li><span style="color:#64748b">Batarya Kapasitesi (Tipik):</span> <strong>4355 mAh</strong></li><li><span style="color:#64748b">Bellek (RAM):</span> <strong>8 GB</strong></li><li><span style="color:#64748b">CPU Frekansı:</span> <strong>2.85 GHz</strong></li><li><span style="color:#64748b">CPU Çekirdeği:</span> <strong>8 Çekirdek</strong></li><li><span style="color:#64748b">Dahili Depolama:</span> <strong>128 GB</strong></li><li><span style="color:#64748b">Ekran:</span> <strong>LED</strong></li><li><span style="color:#64748b">Ekran / Gövde Oranı:</span> <strong>83.86 %</strong></li><li><span style="color:#64748b">Ekran Boyutu:</span> <strong>6.3 İnç</strong></li><li><span style="color:#64748b">Ekran Çözünürlüğü:</span> <strong>1080x2400 (FHD+) Piksel</strong></li><li><span style="color:#64748b">Hat Sayısı:</span> <strong>Çift Hat</strong></li><li><span style="color:#64748b">Hızlı Şarj:</span> <strong>Var</strong></li><li><span style="color:#64748b">Hızlı Şarj Gücü (Maks.):</span> <strong>30 W</strong></li><li><span style="color:#64748b">Kablosuz Şarj:</span> <strong>Var</strong></li><li><span style="color:#64748b">Kamera Çözünürlüğü:</span> <strong>50 MP</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Telefon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/oneplus-10-pro-256gb" style="color:#2563eb">OnePlus 10 Pro (12 GB)</a></li><li><a href="/tr/product/huawei-nova-11-se" style="color:#2563eb">Huawei Nova 11 SE</a></li><li><a href="/tr/product/oppo-a5-pro-4g" style="color:#2563eb">Oppo A5 Pro</a></li><li><a href="/tr/product/oppo-a5" style="color:#2563eb">Oppo A5 (8 GB / 256 GB)</a></li><li><a href="/tr/product/samsung-galaxy-s22" style="color:#2563eb">Samsung Galaxy S22</a></li><li><a href="/tr/product/samsung-galaxy-s22-ultra-256gb" style="color:#2563eb">Samsung Galaxy S22 Ultra (256 GB)</a></li><li><a href="/tr/product/honor-600-lite" style="color:#2563eb">Honor 600 Lite</a></li><li><a href="/tr/product/apple-iphone-14-plus-512gb" style="color:#2563eb">Apple iPhone 14 Plus (512 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartphones" style="color:#2563eb;font-weight:600">Tüm Akıllı Telefon modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/smartphones">Akıllı Telefon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Google Pixel 7</h1><p style="color:#475569;margin:0 0 12px">Google · Akıllı Telefon · Qor AI teknik skoru 59/100</p><img src="https://resim.epey.com/811647/m_google-pixel-7-16.png" alt="Google Pixel 7" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Google Pixel 7 öne çıkan özellikleri: 4.5g desteği: Var, 5g: Var, batarya kapasitesi (tipik): 4355 mAh. Google Pixel 7 81 teknik özelliğini, Qor AI teknik skorunu ve benzer akıllı telefon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">4.5G Desteği::</span> <strong>Var</strong></li><li><span style="color:#64748b">5G::</span> <strong>Var</strong></li><li><span style="color:#64748b">Batarya Kapasitesi (Tipik)::</span> <strong>4355 mAh</strong></li><li><span style="color:#64748b">Bellek (RAM)::</span> <strong>8 GB</strong></li><li><span style="color:#64748b">CPU Frekansı::</span> <strong>2.85 GHz</strong></li><li><span style="color:#64748b">CPU Çekirdeği::</span> <strong>8 Çekirdek</strong></li><li><span style="color:#64748b">Dahili Depolama::</span> <strong>128 GB</strong></li><li><span style="color:#64748b">Ekran:</span> <strong>LED</strong></li><li><span style="color:#64748b">Ekran / Gövde Oranı::</span> <strong>83.86 %</strong></li><li><span style="color:#64748b">Ekran Boyutu::</span> <strong>6.3 İnç</strong></li><li><span style="color:#64748b">Ekran Çözünürlüğü::</span> <strong>1080x2400 (FHD+) Piksel</strong></li><li><span style="color:#64748b">Hat Sayısı::</span> <strong>Çift Hat</strong></li><li><span style="color:#64748b">Hızlı Şarj Gücü (Maks.)::</span> <strong>30 W</strong></li><li><span style="color:#64748b">Hızlı Şarj::</span> <strong>Var</strong></li><li><span style="color:#64748b">Kablosuz Şarj::</span> <strong>Var</strong></li><li><span style="color:#64748b">Kamera Çözünürlüğü::</span> <strong>50 MP</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Akıllı Telefon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/oneplus-10-pro-256gb" style="color:#2563eb">OnePlus 10 Pro (12 GB)</a></li><li><a href="/tr/product/huawei-nova-11-se" style="color:#2563eb">Huawei Nova 11 SE</a></li><li><a href="/tr/product/oppo-a5-pro-4g" style="color:#2563eb">Oppo A5 Pro</a></li><li><a href="/tr/product/oppo-a5" style="color:#2563eb">Oppo A5 (8 GB / 256 GB)</a></li><li><a href="/tr/product/samsung-galaxy-s22" style="color:#2563eb">Samsung Galaxy S22</a></li><li><a href="/tr/product/samsung-galaxy-s22-ultra-256gb" style="color:#2563eb">Samsung Galaxy S22 Ultra (256 GB)</a></li><li><a href="/tr/product/honor-600-lite" style="color:#2563eb">Honor 600 Lite</a></li><li><a href="/tr/product/apple-iphone-14-plus-512gb" style="color:#2563eb">Apple iPhone 14 Plus (512 GB)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/smartphones" style="color:#2563eb;font-weight:600">Tüm Akıllı Telefon modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Apple iPhone 17 (512 GB) Specs &amp; Comparison | Qor AI</title>
-  <meta name="description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G support: Yes, 5G: Yes, Battery capacity (typical): 3692 mAh, Memory (RAM): 8 GB. Qor AI tech score…" />
+  <meta name="description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G Support:: Yes, 5G:: Yes, Battery capacity (typical):: 3692 mAh, Memory (RAM):: 8 GB. Qor AI tech score…" />
   <link rel="canonical" href="https://qorai.net/product/apple-iphone-17-512gb" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/apple-iphone-17-512gb" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/apple-iphone-17-512gb" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Apple iPhone 17 (512 GB) Specs &amp; Comparison | Qor AI" />
-  <meta property="og:description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G support: Yes, 5G: Yes, Battery capacity (typical): 3692 mAh, Memory (RAM): 8 GB. Qor AI tech score…" />
+  <meta property="og:description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G Support:: Yes, 5G:: Yes, Battery capacity (typical):: 3692 mAh, Memory (RAM):: 8 GB. Qor AI tech score…" />
   <link rel="preload" as="image" href="https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png" />
   <meta property="og:image:alt" content="Apple iPhone 17 (512 GB)" />
   <meta property="og:url" content="https://qorai.net/product/apple-iphone-17-512gb" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Apple iPhone 17 (512 GB) Specs &amp; Comparison | Qor AI" />
-  <meta name="twitter:description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G support: Yes, 5G: Yes, Battery capacity (typical): 3692 mAh, Memory (RAM): 8 GB. Qor AI tech score…" />
+  <meta name="twitter:description" content="Apple iPhone 17 (512 GB) (Apple) — Smartphones. 4.5G Support:: Yes, 5G:: Yes, Battery capacity (typical):: 3692 mAh, Memory (RAM):: 8 GB. Qor AI tech score…" />
   <meta name="twitter:image" content="https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png" />
   <meta name="twitter:image:alt" content="Apple iPhone 17 (512 GB)" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/apple-iphone-17-512gb#webpage","url":"https://qorai.net/product/apple-iphone-17-512gb","name":"Apple iPhone 17 (512 GB) Specs & Comparison | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/apple-iphone-17-512gb#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Smartphones","item":"https://qorai.net/category/smartphones"},{"@type":"ListItem","position":3,"name":"Apple iPhone 17 (512 GB)","item":"https://qorai.net/product/apple-iphone-17-512gb"}]}]}</script>
@@ -77,7 +77,40 @@
        render sonrasi ayni sayfa oluyor ve Ingilizce kanonik adres Turkce
        pazarda Turkce gorunuyordu. Artik sunulan HTML ile render edilen DOM
        her adreste ayni dili konusuyor. */
-    var bl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'en';
+    var qp=location.pathname;
+    var qpre=(qp.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
+    /* TARAYICI TURKCE ISE TURKCE ADRESE TASI (2026-08-30).
+       Iki sart AYNI ANDA tutulmak zorunda:
+         (a) sitenin ANA dili Ingilizce -- Google'da cikan surum Ingilizce
+             olmali, yani `/` HER ZAMAN Ingilizce servis etmeli;
+         (b) Turkce tarayicili gercek ziyaretci siteyi Turkce gormeli.
+       Bunlari birlestirmenin tek dogru yolu icerigi adresin ALTINDAN
+       degistirmek DEGIL, ziyaretciyi Turkce ADRESE tasimaktir. Onceki hal
+       (a)'yi kiriyordu: `/` head'de <html lang="en"> + Ingilizce <title> +
+       canonical=/ deyip Turkce tarayicida Turkce render ediyordu; Google
+       icin `/` ile `/tr/` render sonrasi AYNI sayfa (kopya) ve hreflang
+       cifti tutarsizdi. Artik adres ile icerik her zaman ayni dili konusur.
+
+       NEDEN INDEKSI BOZMAZ: Googlebot en-US ile tarar; asagidaki kosul
+       yalnizca 'tr' icin calisir, yani bot `/` adresini ISTISNASIZ
+       Ingilizce gorur. Turkce surume hreflang uzerinden ulasir.
+
+       DONGU KAPISI -- /blog/<slug> HARIC. Blog i18n'i onek degil SLUG
+       tabanli; /tr/blog/<slug> nginx'te /blog/<slug>'a 301 doner.
+       Yonlendirseydik 301 <-> replace sonsuz dongusune girerdi. */
+    if(!qpre){
+      var qnv=(navigator.languages||[navigator.language||'']);
+      var qtr=false;
+      for(var qi=0;qi<qnv.length;qi++){
+        var qc=String(qnv[qi]).slice(0,2).toLowerCase();
+        if(qc==='tr'){qtr=true;break}
+        if(qc==='en'){break}
+      }
+      if(qtr&&!/^\/blog\/.+/.test(qp)){
+        location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
+      }
+    }
+    var bl=qpre||'en';
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
@@ -276,18 +309,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DH4--fdg.js"></script>
+  <script type="module" crossorigin src="/spa/index-DbEdohmx.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLJy-XlG.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CZ0VtPC9.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DZQnopnX.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-scd_xW70.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D33K6-j_.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-25nRE4pz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C8usmV4Y.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-D7dLRVCd.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D6TWeiqn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-rFBN3uw_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DJ2LLwy6.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-BSSqWwXE.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D2FniRq3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-h17NLkZ-.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-D5a3g9B0.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-Sazu9EOW.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -330,7 +363,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartphones">Smartphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Apple iPhone 17 (512 GB)</h1><p style="color:#475569;margin:0 0 12px">Apple · Smartphones · Qor AI tech score 90/100</p><img src="https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png" alt="Apple iPhone 17 (512 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Apple iPhone 17 (512 GB) key features: 4.5g support Yes, 5g Yes, battery capacity (typical) 3692 mAh. Review Apple iPhone 17 (512 GB)'s 94 technical specs, its Qor AI tech score and how it compares with similar models in smartphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">4.5G support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">5G:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Battery capacity (typical):</span> <strong>3692 mAh</strong></li><li><span style="color:#64748b">Memory (RAM):</span> <strong>8 GB</strong></li><li><span style="color:#64748b">CPU frequency:</span> <strong>4.26 GHz</strong></li><li><span style="color:#64748b">CPU cores:</span> <strong>6 cores</strong></li><li><span style="color:#64748b">Internal storage:</span> <strong>512 GB</strong></li><li><span style="color:#64748b">Display-to-body ratio:</span> <strong>90.04 %</strong></li><li><span style="color:#64748b">Screen size:</span> <strong>6.3 inches</strong></li><li><span style="color:#64748b">Display resolution:</span> <strong>1206x2622 (FHD+) pixels</strong></li><li><span style="color:#64748b">Number of SIMs:</span> <strong>Dual SIM</strong></li><li><span style="color:#64748b">Fast charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Fast charging power (max.):</span> <strong>40 W</strong></li><li><span style="color:#64748b">Wireless charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera resolution:</span> <strong>48 MP</strong></li><li><span style="color:#64748b">SAR value 10g (head):</span> <strong>1.49 W/kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartphones</h2><ul style="line-height:1.8"><li><a href="/product/samsung-galaxy-s25-ultra-1tb" style="color:#2563eb">Samsung Galaxy S25 Ultra (1 TB)</a></li><li><a href="/product/honor-magic8-pro" style="color:#2563eb">Honor Magic8 Pro</a></li><li><a href="/product/apple-iphone-16-pro-max-512gb" style="color:#2563eb">Apple iPhone 16 Pro Max (512 GB)</a></li><li><a href="/product/vivo-x300" style="color:#2563eb">Vivo X300 (V2515)</a></li><li><a href="/product/oppo-find-x9-pro" style="color:#2563eb">Oppo Find X9 Pro</a></li><li><a href="/product/google-pixel-11-pro-xl" style="color:#2563eb">Google Pixel 11 Pro XL</a></li><li><a href="/product/apple-iphone-17e" style="color:#2563eb">Apple iPhone 17e</a></li><li><a href="/product/vivo-x300-pro" style="color:#2563eb">Vivo X300 Pro (V2514)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartphones" style="color:#2563eb;font-weight:600">Compare all Smartphones →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartphones">Smartphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Apple iPhone 17 (512 GB)</h1><p style="color:#475569;margin:0 0 12px">Apple · Smartphones · Qor AI tech score 90/100</p><img src="https://resim.epey.com/1027094/m_apple-iphone-17-512gb-2.png" alt="Apple iPhone 17 (512 GB)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Apple iPhone 17 (512 GB) key features: 4.5g support: Yes, 5g: Yes, battery capacity (typical): 3692 mAh. Review Apple iPhone 17 (512 GB)'s 94 technical specs, its Qor AI tech score and how it compares with similar models in smartphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">4.5G Support::</span> <strong>Yes</strong></li><li><span style="color:#64748b">5G::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Battery capacity (typical)::</span> <strong>3692 mAh</strong></li><li><span style="color:#64748b">Memory (RAM)::</span> <strong>8 GB</strong></li><li><span style="color:#64748b">CPU frequency::</span> <strong>4.26 GHz</strong></li><li><span style="color:#64748b">The core of the CPU::</span> <strong>6 cores</strong></li><li><span style="color:#64748b">Internal storage::</span> <strong>512 GB</strong></li><li><span style="color:#64748b">Screen / body location::</span> <strong>90.04 %</strong></li><li><span style="color:#64748b">Screen size::</span> <strong>6.3 inches</strong></li><li><span style="color:#64748b">Screen resolution::</span> <strong>1206x2622 (FHD+) pixels</strong></li><li><span style="color:#64748b">Line number::</span> <strong>Dual SIM</strong></li><li><span style="color:#64748b">Fast charging power (max)::</span> <strong>40 W</strong></li><li><span style="color:#64748b">Fast charging::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wireless charging::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera resolution::</span> <strong>48 MP</strong></li><li><span style="color:#64748b">SAR Value 10g (Head)::</span> <strong>1.49 W/kg</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartphones</h2><ul style="line-height:1.8"><li><a href="/product/samsung-galaxy-s25-ultra-1tb" style="color:#2563eb">Samsung Galaxy S25 Ultra (1 TB)</a></li><li><a href="/product/honor-magic8-pro" style="color:#2563eb">Honor Magic8 Pro</a></li><li><a href="/product/apple-iphone-16-pro-max-512gb" style="color:#2563eb">Apple iPhone 16 Pro Max (512 GB)</a></li><li><a href="/product/vivo-x300" style="color:#2563eb">Vivo X300 (V2515)</a></li><li><a href="/product/oppo-find-x9-pro" style="color:#2563eb">Oppo Find X9 Pro</a></li><li><a href="/product/google-pixel-11-pro-xl" style="color:#2563eb">Google Pixel 11 Pro XL</a></li><li><a href="/product/apple-iphone-17e" style="color:#2563eb">Apple iPhone 17e</a></li><li><a href="/product/vivo-x300-pro" style="color:#2563eb">Vivo X300 Pro (V2514)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartphones" style="color:#2563eb;font-weight:600">Compare all Smartphones →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

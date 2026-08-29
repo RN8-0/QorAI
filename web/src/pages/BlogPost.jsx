@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb, currentUser, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
-import { productPath, articlePath, articleSlug } from '../lib/routes';
+import { productPath, articlePath } from '../lib/routes';
 import { amazonGoPath } from '../lib/format';
 import { cleanProductName } from '../lib/productNames';
 import { useGeoCountry } from '../lib/geo';
@@ -186,16 +186,32 @@ export default function BlogPost() {
   const readSent = useRef(false);
   const likeEventId = useRef(null);
 
-  // Makale dili = SİTE dili = TARAYICI dili (TR→tr, DE→de, diğerleri→en).
-  // Sitenin tamamı bu kural üzerine kurulu: ziyaretçi hangi slug'a girerse
-  // girsin kendi dilinde okur, manuel dil seçimi YOKTUR.
-  // SEO tarafı bundan bağımsız çalışır — web/scripts/seo.mjs her makaleyi dil
-  // başına AYRI adreste ön-üretir (slug_tr/en/de), her sayfaya kendi
-  // <html lang> değerini, canonical'ını ve hreflang alternatiflerini yazar;
-  // arama motoru böylece her dil için doğru adresi indeksler.
-  const postLang = lang;
+  // MAKALE DİLİNİ SLUG BELİRLER (2026-08-30).
+  //
+  // Blog i18n'i önek tabanlı DEĞİL: her yazının dil başına ayrı slug'ı var
+  // (`slug_tr` / `slug_en`) ve seo.mjs her birini kendi adresine, kendi
+  // <html lang>'i, canonical'ı ve hreflang'leriyle ön-render ediyor. Yani
+  // adres zaten dili söylüyor — `/blog/okula-donus-...` Türkçe,
+  // `/blog/best-student-laptops-...` İngilizce.
+  //
+  // Önceden burada `postLang = lang` (site dili) yazıyordu ve aşağıdaki
+  // efekt adresi site diline ÇEVİRİYORDU. Site dili tarayıcıdan geldiği
+  // sürece bu tutarlı görünüyordu; dil adrese bağlanınca (2026-08-30)
+  // öneksiz `/blog/...` her zaman İngilizce sayılıp Türkçe yazı İngilizce
+  // yazıya atlar oldu — ölçüldü:
+  //   /blog/okula-donus-2026-en-iyi-ogrenci-laptoplari
+  //     -> /blog/best-student-laptops-back-to-school-2026
+  // Bu hem ziyaretçiyi istemediği yazıya götürüyor hem de sitemap'te kendi
+  // hreflang'iyle duran bir adresi kendi kendine yönlendiriyordu.
+  //
+  // Artık dil, adresteki slug'ın HANGİ dil alanıyla eşleştiğinden türetilir;
+  // eşleşme yoksa (kanonik `slug` ile girilmişse) site diline düşer.
+  const slugLang = post
+    ? (post.slug_tr && post.slug_tr === slug ? 'tr'
+      : (post.slug_en && post.slug_en === slug ? 'en' : ''))
+    : '';
+  const postLang = slugLang || lang;
   const L = (en, tr) => (postLang === 'tr' ? tr : en);
-  const navigate = useNavigate();
   const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
   useEffect(() => {
@@ -263,25 +279,15 @@ export default function BlogPost() {
     return () => { live = false; };
   }, [slug, previewId]);
 
-  // ADRES SITE DILINE ESITLENIR. Icerik zaten tarayici diline gore gosteriliyor;
-  // ziyaretci baska bir dilin slug'ina girdiyse (ornegin Ingilizce tarayiciyla
-  // /blog/2026-en-iyi-tabletler) adres o dilin slug'iyla degistirilir
-  // (/blog/best-tablets-2026). Boylece adres ile icerik hep ayni dilde olur ve
-  // paylasilan/kaydedilen baglanti dogru dilin adresi olur.
-  // replace: geri tusu kirilmasin. Onizlemede (previewId) dokunulmaz.
-  useEffect(() => {
-    if (!post || previewId) return;
-    // KRİTİK: `post` HENÜZ adresteki makale olmayabilir. Kullanıcı "Benzer
-    // rehberler"den başka bir yazıya tıkladığında `slug` anında değişir ama
-    // yeni kayıt gelene kadar `post` ÖNCEKİ yazıdır. O anda burada
-    // navigate(eski slug) çalışıyordu → adres eski yazıya geri dönüyor, sayfa
-    // değişmiyor ve sadece en başa kayıyordu (bildirilen hata).
-    // Bu yüzden dil eşitlemesi YALNIZCA post gerçekten bu adrese aitse yapılır.
-    const ownSlugs = [post.slug, post.slug_tr, post.slug_en].filter(Boolean);
-    if (!ownSlugs.includes(slug)) return;
-    const want = articleSlug(post, lang);
-    if (want && want !== slug) navigate(`/blog/${want}`, { replace: true });
-  }, [post, lang, slug, previewId, navigate]);
+  // ADRESİ DİLE ÇEVİREN EFEKT KALDIRILDI (2026-08-30).
+  //
+  // Eskiden ziyaretçi başka dilin slug'ına girdiyse adres site dilinin
+  // slug'ıyla değiştiriliyordu. Dil artık adresten türediği için bunun
+  // yapacak bir işi yok — üstelik zararı vardı: öneksiz `/blog/...` her
+  // zaman İngilizce sayıldığından her Türkçe yazı adresi İngilizce yazıya
+  // yönleniyordu. Adres neyse yazı odur; dili yukarıdaki `slugLang`
+  // belirler. Türkçe okuyucu Türkçe slug'a `/tr/blog` listesinden ve
+  // Google'ın hreflang ile verdiği adresten ulaşır.
 
   const canonKey = post?.slug || slug;
 

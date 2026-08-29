@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>MSI Pro AP222T 14MA-607XEU Specs &amp; Comparison | Qor AI</title>
-  <meta name="description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Keyboard &amp; mouse: Yes, Purpose of use: Office. Qor AI tech score 65/100…" />
+  <meta name="description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Yes: Yes, Office: Office. Qor AI tech score 65/100. 46 technical specs…" />
   <link rel="canonical" href="https://qorai.net/product/msi-pro-ap222t-14ma-607xeu" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/msi-pro-ap222t-14ma-607xeu" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/msi-pro-ap222t-14ma-607xeu" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="MSI Pro AP222T 14MA-607XEU Specs &amp; Comparison | Qor AI" />
-  <meta property="og:description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Keyboard &amp; mouse: Yes, Purpose of use: Office. Qor AI tech score 65/100…" />
+  <meta property="og:description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Yes: Yes, Office: Office. Qor AI tech score 65/100. 46 technical specs…" />
   <link rel="preload" as="image" href="https://resim.epey.com/1038090/m_msi-pro-ap222t-6.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/1038090/msi-pro-ap222t-6.jpg" />
   <meta property="og:image:alt" content="MSI Pro AP222T 14MA-607XEU" />
   <meta property="og:url" content="https://qorai.net/product/msi-pro-ap222t-14ma-607xeu" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="MSI Pro AP222T 14MA-607XEU Specs &amp; Comparison | Qor AI" />
-  <meta name="twitter:description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Keyboard &amp; mouse: Yes, Purpose of use: Office. Qor AI tech score 65/100…" />
+  <meta name="twitter:description" content="MSI Pro AP222T 14MA-607XEU (MSI) — Desktop PCs. Memory (RAM): 16 GB, Display: Yes, Yes: Yes, Office: Office. Qor AI tech score 65/100. 46 technical specs…" />
   <meta name="twitter:image" content="https://resim.epey.com/1038090/msi-pro-ap222t-6.jpg" />
   <meta name="twitter:image:alt" content="MSI Pro AP222T 14MA-607XEU" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/msi-pro-ap222t-14ma-607xeu#webpage","url":"https://qorai.net/product/msi-pro-ap222t-14ma-607xeu","name":"MSI Pro AP222T 14MA-607XEU Specs & Comparison | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/1038090/msi-pro-ap222t-6.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/msi-pro-ap222t-14ma-607xeu#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Desktop PCs","item":"https://qorai.net/category/desktops"},{"@type":"ListItem","position":3,"name":"MSI Pro AP222T 14MA-607XEU","item":"https://qorai.net/product/msi-pro-ap222t-14ma-607xeu"}]}]}</script>
@@ -77,7 +77,40 @@
        render sonrasi ayni sayfa oluyor ve Ingilizce kanonik adres Turkce
        pazarda Turkce gorunuyordu. Artik sunulan HTML ile render edilen DOM
        her adreste ayni dili konusuyor. */
-    var bl=(location.pathname.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'en';
+    var qp=location.pathname;
+    var qpre=(qp.match(/^\/(en|tr)(?:\/|$)/)||[])[1]||'';
+    /* TARAYICI TURKCE ISE TURKCE ADRESE TASI (2026-08-30).
+       Iki sart AYNI ANDA tutulmak zorunda:
+         (a) sitenin ANA dili Ingilizce -- Google'da cikan surum Ingilizce
+             olmali, yani `/` HER ZAMAN Ingilizce servis etmeli;
+         (b) Turkce tarayicili gercek ziyaretci siteyi Turkce gormeli.
+       Bunlari birlestirmenin tek dogru yolu icerigi adresin ALTINDAN
+       degistirmek DEGIL, ziyaretciyi Turkce ADRESE tasimaktir. Onceki hal
+       (a)'yi kiriyordu: `/` head'de <html lang="en"> + Ingilizce <title> +
+       canonical=/ deyip Turkce tarayicida Turkce render ediyordu; Google
+       icin `/` ile `/tr/` render sonrasi AYNI sayfa (kopya) ve hreflang
+       cifti tutarsizdi. Artik adres ile icerik her zaman ayni dili konusur.
+
+       NEDEN INDEKSI BOZMAZ: Googlebot en-US ile tarar; asagidaki kosul
+       yalnizca 'tr' icin calisir, yani bot `/` adresini ISTISNASIZ
+       Ingilizce gorur. Turkce surume hreflang uzerinden ulasir.
+
+       DONGU KAPISI -- /blog/<slug> HARIC. Blog i18n'i onek degil SLUG
+       tabanli; /tr/blog/<slug> nginx'te /blog/<slug>'a 301 doner.
+       Yonlendirseydik 301 <-> replace sonsuz dongusune girerdi. */
+    if(!qpre){
+      var qnv=(navigator.languages||[navigator.language||'']);
+      var qtr=false;
+      for(var qi=0;qi<qnv.length;qi++){
+        var qc=String(qnv[qi]).slice(0,2).toLowerCase();
+        if(qc==='tr'){qtr=true;break}
+        if(qc==='en'){break}
+      }
+      if(qtr&&!/^\/blog\/.+/.test(qp)){
+        location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
+      }
+    }
+    var bl=qpre||'en';
     d.setAttribute('data-boot-lang',bl);
     /* Kabuktaki hero YALNIZCA ana sayfada gosterilir; baska rotada ana sayfanin
        basligini gostermek hem yanlis hem de kabuk kalkinca goze batardi. */
@@ -276,18 +309,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DH4--fdg.js"></script>
+  <script type="module" crossorigin src="/spa/index-DbEdohmx.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-CLJy-XlG.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-CZ0VtPC9.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DZQnopnX.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-scd_xW70.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D33K6-j_.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-25nRE4pz.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-C8usmV4Y.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-D7dLRVCd.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D6TWeiqn.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-rFBN3uw_.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DJ2LLwy6.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-BSSqWwXE.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-D2FniRq3.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-h17NLkZ-.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-D5a3g9B0.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-Sazu9EOW.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -330,7 +363,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/desktops">Desktop PCs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">MSI Pro AP222T 14MA-607XEU</h1><p style="color:#475569;margin:0 0 12px">MSI · Desktop PCs · Qor AI tech score 65/100</p><img src="https://resim.epey.com/1038090/msi-pro-ap222t-6.jpg" alt="MSI Pro AP222T 14MA-607XEU" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">MSI Pro AP222T 14MA-607XEU key features: memory (ram) 16 GB, display Yes, keyboard &amp; mouse Yes. Review MSI Pro AP222T 14MA-607XEU's 45 technical specs, its Qor AI tech score and how it compares with similar models in desktop pcs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory (RAM):</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Display:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Keyboard &amp; mouse:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Purpose of use:</span> <strong>Office</strong></li><li><span style="color:#64748b">The size of the hard drive:</span> <strong>512 GB</strong></li><li><span style="color:#64748b">Processor Model (CPU):</span> <strong>Intel Core i5-14400</strong></li><li><span style="color:#64748b">Processor based frequency:</span> <strong>2.5 GHz</strong></li><li><span style="color:#64748b">Operating system:</span> <strong>DOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Desktop PCs</h2><ul style="line-height:1.8"><li><a href="/product/msi-mpg-infinite-x3-ai-2nvz9-028eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVZ9-028</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nuf7-01seu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NUF7-01SEU</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvp7-640eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVP7-640</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvv7-643eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVV7-643</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvr7-655eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVR7-655</a></li><li><a href="/product/lenovo-thinkcentre-neo-50a-12sc000ktr09" style="color:#2563eb">Lenovo ThinkCentre Neo 50a</a></li><li><a href="/product/asus-expertcenter-pn64-bb3012md" style="color:#2563eb">Asus ExpertCenter PN64-BB3012MD</a></li><li><a href="/product/hp-proone-240-g10-8t2w7es" style="color:#2563eb">HP ProOne 240 G10 8T2W7ES</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/desktops" style="color:#2563eb;font-weight:600">Compare all Desktop PCs →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/desktops">Desktop PCs</a></nav><h1 style="font-size:26px;margin:12px 0 4px">MSI Pro AP222T 14MA-607XEU</h1><p style="color:#475569;margin:0 0 12px">MSI · Desktop PCs · Qor AI tech score 65/100</p><img src="https://resim.epey.com/1038090/msi-pro-ap222t-6.jpg" alt="MSI Pro AP222T 14MA-607XEU" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">MSI Pro AP222T 14MA-607XEU key features: memory (ram) 16 GB, display Yes, yes Yes. Review MSI Pro AP222T 14MA-607XEU's 46 technical specs, its Qor AI tech score and how it compares with similar models in desktop pcs below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory (RAM):</span> <strong>16 GB</strong></li><li><span style="color:#64748b">Display:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Yes:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Office:</span> <strong>Office</strong></li><li><span style="color:#64748b">Hard disk (SSD) Size:</span> <strong>512 GB</strong></li><li><span style="color:#64748b">Intel Core i5-14400:</span> <strong>Intel Core i5-14400</strong></li><li><span style="color:#64748b">Processor Base Frequency:</span> <strong>2.5 GHz</strong></li><li><span style="color:#64748b">Operating system:</span> <strong>DOS</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Desktop PCs</h2><ul style="line-height:1.8"><li><a href="/product/msi-mpg-infinite-x3-ai-2nvz9-028eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVZ9-028</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nuf7-01seu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NUF7-01SEU</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvp7-640eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVP7-640</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvv7-643eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVV7-643</a></li><li><a href="/product/msi-mpg-infinite-x3-ai-2nvr7-655eu" style="color:#2563eb">MSI MPG Infinite X3 AI 2NVR7-655</a></li><li><a href="/product/lenovo-thinkcentre-neo-50a-12sc000ktr09" style="color:#2563eb">Lenovo ThinkCentre Neo 50a</a></li><li><a href="/product/asus-expertcenter-pn64-bb3012md" style="color:#2563eb">Asus ExpertCenter PN64-BB3012MD</a></li><li><a href="/product/hp-proone-240-g10-8t2w7es" style="color:#2563eb">HP ProOne 240 G10 8T2W7ES</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/desktops" style="color:#2563eb;font-weight:600">Compare all Desktop PCs →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
