@@ -619,12 +619,15 @@ function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names 
             öneri     -> vurgulu karar kutusu */}
       <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
 
-      {String(cmp.headToHead || '').trim() && (
+      {(arr(cmp.headToHeadByProduct).length > 0 || String(cmp.headToHead || '').trim()) && (
         <section className="ai-cmp-block">
           <div className="aic-card-title">🥊 {L('Head to head', 'Karşı karşıya')}</div>
-          {/* ÜRÜN ÜRÜN. Metin tek blok akıyordu ve hangi paragrafın hangi
-              ürüne ait olduğu ancak dikkatlice okuyarak anlaşılıyordu. */}
-          <HeadToHead text={cmp.headToHead} names={names} L={L} />
+          {/* YENİ kayıtlar ürün başına yapı taşır (headToHeadByProduct) ve
+              başlıklı bloklar hâlinde çizilir. ESKİ kayıtlarda yalnız düz
+              nesir var; o BÖLÜNMEDEN gösterilir — paragrafı "içinde ilk geçen
+              ürün adına" atamak yanlış atıf üretiyordu (bkz. HeadToHead). */}
+          <HeadToHead text={cmp.headToHead} rows={cmp.headToHeadByProduct}
+            names={names} L={L} />
         </section>
       )}
 

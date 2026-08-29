@@ -1969,11 +1969,31 @@ function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, c
     '  "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}],\n' +
     '  "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}],\n' +
     '  "decisiveDifferences": ["5-6 detailed differences"],\n' +
-    '  "headToHead": "5-7 substantial paragraphs",\n' +
-    '  "recommendation": "5-7 substantial paragraphs explaining which one to buy and why"\n' +
+    // ONCEDEN DUZ NESIRDI ("headToHead": 5-7 paragraf) ve okunmuyordu.
+    // Olculdu 2026-08-30 (canli S26/iPhone/Xiaomi kaydi): metin urun urun
+    // yazilmiyor — her paragraf iki-uc urunu birden konusuyor ve cumleler
+    // birbirine bagli ("on the other hand", "however"). Site tarafi o metni
+    // urun basliklarina bolmeye calisinca YANLIS ATIF uretti: iPhone
+    // basliginin altindaki ilk paragraf Samsung'u anlatiyordu. Nesre olmayan
+    // bir yapi dayatilamaz; yapi BURADA, uretim aninda istenir.
+    '  "headToHeadByProduct": [{"name": "exact product name", "case": "2-3 sentences on what genuinely argues FOR this product against the others", "against": "1-2 sentences on what argues AGAINST it"}],\n' +
+    '  "recommendation": "4-5 substantial paragraphs explaining which one to buy and why"\n' +
     '}\n\n' +
     `${factorAxisContract(axis)}\n` +
-    `Rules:\n- chart must include EVERY product (${names.length} total) by exact name.\n- factorMatrix: EXACTLY the ${axis.length} shared-axis factors above, in that order, each scored for EVERY product by exact name (${names.length} entries per row, no product missing).\n- winner MUST be one of the listed names exactly.\n- Be decisive and concrete; ground it in the per-product summaries, quiz answers and research.\n- Stay within the counts so the JSON is COMPLETE and valid.\n\n` +
+    `Rules:\n- chart must include EVERY product (${names.length} total) by exact name.\n- factorMatrix: EXACTLY the ${axis.length} shared-axis factors above, in that order, each scored for EVERY product by exact name (${names.length} entries per row, no product missing).\n- headToHeadByProduct: one entry per product (${names.length} total), names EXACTLY as listed. Each entry is about THAT product only — never open an entry with a sentence about the previous product and never carry a thought across entries. The reader sees these as separate, headed blocks.\n- winner MUST be one of the listed names exactly.\n- Be decisive and concrete; ground it in the per-product summaries, quiz answers and research.\n`
+    /* TEK OLGU, TEK BOLUM. Olculdu 2026-08-30: ayni olgu ("asiri isinma ->
+       throttling -> batarya yipranmasi") tek sayfada BES kez geciyordu —
+       decisiveDifferences'ta iki madde, headToHead'de bir paragraf,
+       recommendation'da iki paragraf. Okunma olasiligini dusuren sey uzunluk
+       degil TEKRAR: okuyucu ayni cumleyi ikinci kez gorunce gerisini atliyor.
+       Ayni sinir urun raporunda VAR (ONE FACT, ONE PLACE), hukum cagrisinda
+       yoktu. */
+    + '- ONE FACT, ONE SECTION. The three prose blocks answer DIFFERENT questions and must not repeat each other:\n'
+    + '  · decisiveDifferences = the head-to-head FACTS that separate the products (specs, measured behaviour).\n'
+    + '  · headToHeadByProduct = what each product is LIKE to live with, on its own terms.\n'
+    + '  · recommendation = the DECISION and who each product is for — it may name a fact once to justify the call, never to re-explain it.\n'
+    + '  Before writing an item, check whether another block already carries it; if it does, drop it or write the genuinely different angle. Repeating one fact across all three is the most common failure here.\n'
+    + '- Stay within the counts so the JSON is COMPLETE and valid.\n\n' +
     `PRODUCTS (in column order): ${names.join(', ')}\n\n` +
     `PER-PRODUCT REVIEW SUMMARIES:\n${JSON.stringify(summaries, null, 2)}\n\n` +
     `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +

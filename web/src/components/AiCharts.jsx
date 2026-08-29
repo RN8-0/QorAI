@@ -708,78 +708,59 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
 
 /* ── (J3) KARŞI KARŞIYA — ÜRÜN ÜRÜN ─────────────────────────────────────────
 
-   Metin tek bir blok hâlinde akıyordu ve hangi paragrafın hangi ürüne ait
-   olduğu ancak DİKKATLİCE OKUYARAK anlaşılıyordu — kullanıcı tam olarak bunu
-   söyledi. Oysa metnin kendisi zaten ürün ürün ilerliyor: her paragraf bir
-   ürün adıyla açılıyor.
+   ÖNCE YANLIŞ YAPILDI, DERSİ BURADA DURUYOR. İlk sürüm düz `headToHead`
+   nesrini paragraf paragraf bölüp her paragrafı "içinde ilk geçen ürün adına"
+   atıyordu. Ölçüldü (canlı S26/iPhone/Xiaomi kaydı): "Apple iPhone 17 Pro Max"
+   başlığının altındaki İLK paragraf Samsung'u anlatıyordu — çünkü paragraf
+   bir önceki ürünün cümlesiyle açılıyor ("However, recurring display
+   issues... detract from ITS otherwise premium experience"). Sonuç: başlıksız
+   karışık metin, YANLIŞ BAŞLIKLI metne dönüştü. Yanlış atıf, atıfsızlıktan
+   kötüdür.
 
-   Bu bileşen o yapıyı GÖRÜNÜR kılıyor: paragrafı, içinde EN ÖNDE geçen ürün
-   adına atar, ardışık aynı ürünün paragraflarını gruplar ve her gruba o
-   ürünün başlığını koyar. Hiçbir ürün adı geçmeyen paragraf bir öncekinin
-   devamı sayılır (nesir böyle akar). Metne DOKUNULMAZ, yalnızca bölünür. */
-export function HeadToHead({ text, names = [], L = (en) => en }) {
-  const blocks = proseBlocks(text);
-  if (!blocks.length) return null;
+   Kök neden: `headToHead` ürün ürün YAZILMIYOR. Model onu akışkan
+   karşılaştırmalı nesir olarak yazıyor; her paragraf iki-üç ürünü birden
+   konuşuyor. O metne olmayan bir yapı dayatılamaz.
+
+   ÇÖZÜM VERİDE: prompt artık ürün başına yapı istiyor
+   (`headToHeadByProduct: [{name, case, against}]`, bkz.
+   admin/js/qor_ai_prompts.js). Bu bileşen O YAPIYI çizer. Yapı yoksa (eski
+   kayıtlar) metin BÖLÜNMEDEN, olduğu gibi gösterilir — uydurma başlık yok. */
+export function HeadToHead({ text, rows = null, names = [], L = (en) => en }) {
   const isim = (Array.isArray(names) ? names : []).filter(Boolean);
-  if (isim.length < 2) return <RichProse text={text} L={L} clamp={0} names={isim} />;
+  const yapi = (Array.isArray(rows) ? rows : [])
+    .map((r) => ({
+      name: String(r?.name || '').trim(),
+      lehine: String(r?.case || r?.for || '').trim(),
+      aleyhine: String(r?.against || '').trim(),
+    }))
+    .filter((r) => r.name && (r.lehine || r.aleyhine));
 
-  /* Her urun icin BIRDEN COK arama anahtari. Model tam adi her cumlede
-     tekrarlamaz: "Apple iPhone 17 Pro Max" bir kez gecer, sonraki
-     paragraflarda "iPhone 17 Pro Max" ya da "Samsung Galaxy S26 Ultra"
-     (parantezsiz) diye gecer. Tek anahtarla arayinca o paragraflar
-     eslesmiyor ve YANLIS urunun basligi altinda kaliyordu. */
-  const anahtarlar = isim.map((n) => {
-    const tam = n.toLowerCase();
-    const parantezsiz = tam.replace(/\s*\([^)]*\)\s*$/, '').trim();
-    const markasiz = parantezsiz.split(' ').slice(1).join(' ').trim();
-    return [...new Set([tam, parantezsiz, markasiz].filter((x) => x && x.length >= 6))];
-  });
-  // Paragrafi, icinde EN ONCE gecen urun anahtarina ata.
-  const sahip = (t) => {
-    const alt = t.toLowerCase();
-    let best = -1;
-    let idx = Infinity;
-    anahtarlar.forEach((liste, i) => {
-      liste.forEach((k) => {
-        const at = alt.indexOf(k);
-        if (at >= 0 && at < idx) { idx = at; best = i; }
-      });
-    });
-    return best;
-  };
-  /* URUN BASINA TEK BOLUM. Metin ilerledikce ayni urune GERI DONUYOR
-     (karsilastirmali nesir boyle akar) ve sirayi oldugu gibi korursak ayni
-     urun iki-uc kez baslik aliyordu. Paragraflar sirayla ait olduklari urunun
-     bolumune toplaniyor: her urun BIR kez basliklaniyor, paragrafin kendi
-     sirasi urun icinde korunuyor. */
-  const kova = isim.map(() => []);
-  const bassiz = [];
-  let aktif = -1;
-  blocks.forEach((b) => {
-    const s2 = sahip(b.text);
-    if (s2 >= 0) aktif = s2;
-    if (aktif >= 0) kova[aktif].push(b);
-    else bassiz.push(b);
-  });
-  const gruplar = [
-    ...(bassiz.length ? [{ urun: -1, blocks: bassiz }] : []),
-    ...kova.map((blocks2, i) => ({ urun: i, blocks: blocks2 })).filter((g) => g.blocks.length),
-  ];
-  // Hicbir urun tespit edilemediyse bolmenin anlami yok.
-  if (!gruplar.some((g) => g.urun >= 0)) {
-    return <RichProse text={text} L={L} clamp={0} names={isim} />;
+  // Yapilandirilmis veri YOKSA metni oldugu gibi ver. Bolmek yanlis atif uretir.
+  if (!yapi.length) {
+    return String(text || '').trim()
+      ? <RichProse text={text} L={L} clamp={0} names={isim} />
+      : null;
   }
   return (
     <div className="aic-h2h">
-      {gruplar.map((g, i) => (
-        <section className="aic-h2h-item" key={i}>
-          {g.urun >= 0 && (
-            <header className="aic-h2h-head">
-              <span className="aic-h2h-no">{g.urun + 1}</span>
-              <b>{isim[g.urun]}</b>
-            </header>
+      {yapi.map((r, i) => (
+        <section className="aic-h2h-item" key={`${r.name}-${i}`}>
+          <header className="aic-h2h-head">
+            <span className="aic-h2h-no">{i + 1}</span>
+            <b>{r.name}</b>
+          </header>
+          {r.lehine && (
+            <div className="aic-h2h-side for">
+              <span className="aic-h2h-tag">✓ {L('In its favour', 'Lehine')}</span>
+              <RichProse text={r.lehine} L={L} clamp={0} names={isim} />
+            </div>
           )}
-          <RichProse text={g.blocks.map((b) => b.text).join('\n')} L={L} clamp={0} names={isim} />
+          {r.aleyhine && (
+            <div className="aic-h2h-side against">
+              <span className="aic-h2h-tag">⚠ {L('Against it', 'Aleyhine')}</span>
+              <RichProse text={r.aleyhine} L={L} clamp={0} names={isim} />
+            </div>
+          )}
         </section>
       ))}
     </div>
