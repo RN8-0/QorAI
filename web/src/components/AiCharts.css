@@ -696,15 +696,19 @@
   letter-spacing: .04em;
   color: var(--text3);
 }
+/* ORTALAMA satırı tablonun ÖZETİ; soluk gri bir çip olarak duruyordu ve
+   sütunun altında kaybolup gidiyordu. Artık okunabilir bir özet: sayı büyük,
+   renk skor bandından, zemin hafifçe renkli. */
 .aic-heat-avg {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  height: 26px;
+  justify-content: center;
+  height: 32px;
   padding: 0 10px;
-  border-radius: 9px;
-  background: var(--surface-3);
-  font-size: 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, currentColor 10%, var(--surface-3));
+  border: 1px solid color-mix(in srgb, currentColor 26%, transparent);
+  font-size: 17px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
@@ -762,6 +766,30 @@
 }
 /* Ürün adı: gözün paragrafı tarayıp ilgilendiği ürünü bulmasını sağlar. */
 .aic-name { font-weight: 850; color: var(--text); }
+
+/* ── Karşı karşıya — ürün ürün ────────────────────────────────────────── */
+.aic-h2h { display: grid; gap: 18px; }
+.aic-h2h-item + .aic-h2h-item { padding-top: 16px; border-top: 1px solid var(--border); }
+.aic-h2h-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+}
+.aic-h2h-no {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ink-blue) 12%, transparent);
+  color: var(--ink-blue);
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 900;
+}
+.aic-h2h-head b { font-size: 14.5px; font-weight: 900; color: var(--text); }
 
 /* ── OKUMA KATMANI ────────────────────────────────────────────────────────
    Uzun rapor metinleri. Hiyerarşi tipografiden gelir: konu cümlesi ağırlıkla,

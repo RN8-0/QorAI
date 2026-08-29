@@ -19,6 +19,7 @@ import {
   DecisionBadge,
   DistributionBar,
   DecisiveDifferences,
+  HeadToHead,
   HeatMatrix,
   RichProse,
   SentimentDonut,
@@ -621,7 +622,9 @@ function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names 
       {String(cmp.headToHead || '').trim() && (
         <section className="ai-cmp-block">
           <div className="aic-card-title">🥊 {L('Head to head', 'Karşı karşıya')}</div>
-          <RichProse text={cmp.headToHead} L={L} clamp={4} names={names} />
+          {/* ÜRÜN ÜRÜN. Metin tek blok akıyordu ve hangi paragrafın hangi
+              ürüne ait olduğu ancak dikkatlice okuyarak anlaşılıyordu. */}
+          <HeadToHead text={cmp.headToHead} names={names} L={L} />
         </section>
       )}
 

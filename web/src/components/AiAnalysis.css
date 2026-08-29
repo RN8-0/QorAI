@@ -554,6 +554,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* ORTALANIR. Sola yapışıkken üç üründe şeridin sağ yarısı boş kalıyordu;
+     ürün sayısı arttıkça denge kendiliğinden korunsun. */
+  justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
 }
