@@ -23,13 +23,21 @@
 .ai-procon li span { font-weight: 900; flex-shrink: 0; }
 @media (max-width: 560px) { .ai-procon-row { grid-template-columns: 1fr; } }
 
+/* KARAR BLOGU. Iki sey duzeltildi:
+   1. Rengi mor (#8b5cf6) idi. Mor bu projede YALNIZ premium'a ait
+      (bkz. CLAUDE.md -> --violet "premium only"); burada "Qor Premium" gibi
+      okunuyordu. Artik ortak sablondaki "Son karar" ile ayni marka tonu.
+   2. Metni 12.5px ITALIKTI. Bu blok sayfanin en onemli metni — hangi urunu
+      almali ve neden — ve italik uzun nesirde en zor okunan bicim. */
 .ai-verdict {
-  display: flex; gap: 9px; margin-top: 14px; padding: 12px 14px; border-radius: 10px;
-  background: color-mix(in srgb, #8b5cf6 7%, transparent);
-  border: 1px solid color-mix(in srgb, #8b5cf6 18%, transparent);
+  display: flex; gap: 10px; margin-top: 14px; padding: 14px 16px; border-radius: 12px;
+  background: color-mix(in srgb, var(--brand-cyan) 7%, var(--surface-2));
+  border: 1px solid color-mix(in srgb, var(--brand-cyan) 30%, var(--border));
 }
-.ai-verdict span { font-size: 16px; }
-.ai-verdict p { margin: 0; font-size: 12.5px; line-height: 1.55; font-style: italic; color: var(--text); }
+.ai-verdict > span { font-size: 16px; color: var(--ink-cyan); flex: none; }
+.ai-verdict p { margin: 0 0 11px; font-size: 13.5px; line-height: 1.68; color: var(--text-soft, var(--text2)); }
+.ai-verdict p:last-child { margin-bottom: 0; }
+.ai-verdict .aic-prose-lead { color: var(--text); }
 
 /* Alternatives */
 .ai-alts { display: flex; flex-direction: column; gap: 12px; }

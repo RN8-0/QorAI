@@ -555,8 +555,12 @@ function ComparisonOverview({ cmp = {}, L }) {
           (hizalı tablo). İkisi de `comparison.factorMatrix` / ürün
           faktörlerinden besleniyordu. Tek çizim yolu HeatMatrix; AI'ın ortak
           matrisi artık ona `matrix` prop'uyla giriyor. */}
+      {/* VARSAYILAN ACIK. Bu blok raporun ODULU: hangi urunu almali ve neden.
+          Kapali accordion'un arkasinda duruyordu; okuyucu sayfanin en onemli
+          metnini gormeden ayriliyordu. Uzun metin artik RichProse ile kademeli
+          aciliyor, yani "cok uzun" gerekcesi de ortadan kalkti. */}
       {(arr(cmp.decisiveDifferences).length > 0 || String(cmp.headToHead || '').trim() || String(cmp.recommendation || '').trim()) && (
-        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz')}`}>
+        <Collapsible label={`📖 ${L('Detailed analysis', 'Detaylı analiz')}`} defaultOpen>
           <BulletList items={cmp.decisiveDifferences} tone="notes" />
           <Paragraphs text={cmp.headToHead} L={L} />
           {String(cmp.recommendation || '').trim() && (
@@ -570,9 +574,12 @@ function ComparisonOverview({ cmp = {}, L }) {
 
 // One product's complete review — the SAME template the product-detail, link
 // and subscription reports use, rendered inside the compare detail modal.
-function CompareProductDetail({ data = {}, L, lang, hideQuiz = false, priceInfo = null }) {
-  return <AiReportView data={compareProductToUnified(data)} L={L} lang={lang} showHead={false}
-    hideQuiz={hideQuiz} priceInfo={priceInfo} />;
+function CompareProductDetail({ data = {}, L, lang, hideQuiz = false, priceInfo = null, researched = false }) {
+  // `researched` KAYDIN KOKUNDE duruyor (admin/js/analyses.js), urun
+  // girdisinde degil. Gecirilmezse "Kanit gucu" kutusu arastirma kosmus bir
+  // raporda bile "model bilgisi" yaziyordu — okuyucuya YANLIS bilgi.
+  return <AiReportView data={compareProductToUnified(data, { researched })} L={L} lang={lang}
+    showHead={false} hideQuiz={hideQuiz} priceInfo={priceInfo} />;
 }
 
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
@@ -662,6 +669,7 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
                   </div>
                 </header>
                 <CompareProductDetail data={c.ai} L={L} lang={lang} hideQuiz={hideQuiz}
+                  researched={Boolean(data.researched)}
                   priceInfo={c.product ? priceForCountry(c.product, geoCountry) : priceInfo} />
               </section>
             );

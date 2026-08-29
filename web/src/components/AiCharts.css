@@ -730,6 +730,11 @@
   animation-delay: calc(var(--i, 0) * 45ms);
 }
 .aic-prose-p:last-child { margin-bottom: 0; }
+/* Katlanan paragraf DOM'DA KALIR (SEO: gizli metin indekslenir, hic
+   basilmayan metin indekslenemez); yalnizca gorunumu kapanir. */
+.aic-prose-p.hid,
+.aic-prose-head.hid,
+.aic-prose-li.hid { display: none; }
 /* Konu cümlesi: gözün paragrafı 0,3 saniyede tarayıp geçmesini sağlayan tek
    tutamak. Renk DEĞİL ağırlık kullanır — renk vurgusu sayılara ayrıldı. */
 .aic-prose-lead {

@@ -953,19 +953,24 @@ export function RichProse({ text, clamp = 3, L = (en) => en }) {
   const blocks = proseBlocks(text);
   if (!blocks.length) return null;
   const limit = clamp > 0 && !open ? clamp : blocks.length;
-  const shown = blocks.slice(0, limit);
-  const hidden = blocks.length - shown.length;
+  const hidden = Math.max(0, blocks.length - limit);
 
+  // KATLANAN PARAGRAFLAR DOM'DA KALIR, yalnizca `display` kapanir. Ilk surum
+  // onlari hic render ETMIYORDU; bu, tam da indekslenmeye calisan /analiz
+  // sayfalarinin metninin dortte ucunu JS calistiran crawler'dan saklamak
+  // demekti. Gizli metin DOM'da oldugu surece indekslenir; hic basilmayan
+  // metin indekslenemez.
   const draw = (b, i) => {
+    const hid = i >= limit;
     if (b.kind === 'head') {
-      return <h5 className="aic-prose-head" key={`h-${i}`}>{proseParts(b.text, `h${i}`)}</h5>;
+      return <h5 className={`aic-prose-head${hid ? ' hid' : ''}`} key={`h-${i}`}>{proseParts(b.text, `h${i}`)}</h5>;
     }
     if (b.kind === 'bullet') {
-      return <li className="aic-prose-li" key={`l-${i}`}>{proseParts(b.text, `l${i}`)}</li>;
+      return <li className={`aic-prose-li${hid ? ' hid' : ''}`} key={`l-${i}`}>{proseParts(b.text, `l${i}`)}</li>;
     }
     const [lead, rest] = splitLead(b.text);
     return (
-      <p className="aic-prose-p" key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
+      <p className={`aic-prose-p${hid ? ' hid' : ''}`} key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
         {lead ? <strong className="aic-prose-lead">{proseParts(lead, `pl${i}`)}</strong> : null}
         {lead ? ' ' : null}
         {proseParts(rest, `pr${i}`)}
@@ -975,7 +980,7 @@ export function RichProse({ text, clamp = 3, L = (en) => en }) {
 
   return (
     <div className={`aic-prose${open ? ' open' : ''}`}>
-      {shown.map(draw)}
+      {blocks.map(draw)}
       {hidden > 0 && (
         <button type="button" className="aic-prose-more" onClick={() => setOpen(true)}>
           {L(`Read the rest (${hidden} more paragraphs)`, `Devamını oku (${hidden} paragraf daha)`)}
