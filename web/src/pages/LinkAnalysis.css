@@ -915,8 +915,12 @@
 .la-community > .la-sec.tone-verdict { border-left: 3px solid color-mix(in srgb, var(--text3) 55%, transparent); }
 .la-result-body > .la-sec.tone-persona,
 .la-community > .la-sec.tone-persona { border-left: 3px solid color-mix(in srgb, var(--ink-green) 62%, transparent); }
+/* KEHRIBAR KENAR KALDIRILDI. `--ink-amber` (#92400E) acik temada kahverengi
+   bir cizgi olarak cikiyordu ve kartin yaninda kirli duruyordu. Zamanlama
+   bolumunun rengi zaten GRAFIGIN kendisinden geliyor (dusus yesil, yukselis
+   kirmizi); kenarin ayrica renk tasimasina gerek yok. */
 .la-result-body > .la-sec.tone-timing,
-.la-community > .la-sec.tone-timing { border-left: 3px solid color-mix(in srgb, var(--ink-amber) 62%, transparent); }
+.la-community > .la-sec.tone-timing { border-left: 3px solid var(--border-strong, var(--border)); }
 .la-result-body > .la-sec.tone-reliability,
 .la-community > .la-sec.tone-reliability { border-left: 3px solid color-mix(in srgb, var(--text3) 40%, transparent); }
 .la-result-body > .la-sec.tone-alts,
@@ -927,10 +931,10 @@
 .la-sec.tone-factors h4 { color: var(--ink-blue); }
 .la-sec.tone-community h4 { color: var(--ink-cyan); }
 .la-sec.tone-persona h4 { color: var(--ink-green); }
-.la-sec.tone-timing h4 { color: var(--ink-amber); }
+.la-sec.tone-timing h4 { color: var(--text); }
 .la-sec.tone-community h4 em { color: var(--ink-cyan); }
 .la-sec.tone-persona h4 em { color: var(--ink-green); }
-.la-sec.tone-timing h4 em { color: var(--ink-amber); }
+.la-sec.tone-timing h4 em { color: var(--text3); }
 
 .la-sec-final {
   border-color: color-mix(in srgb, var(--brand-cyan) 34%, var(--border)) !important;

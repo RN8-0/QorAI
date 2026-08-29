@@ -741,10 +741,22 @@
   color: var(--text);
   font-weight: 750;
 }
-/* Hukmun YONU renkten okunur. `--ink-*` metin-guvenli tonlar (dolgu yesili
-   acik zeminde AA'yi gecmiyor — bkz. CLAUDE.md). */
-.aic-prose-lead.pos { color: var(--ink-green); }
-.aic-prose-lead.neg { color: var(--ink-red); }
+/* Hukmun YONU renkten okunur ve ton USTTEKI KARTLARLA ayni okunmali
+   ("Sahiplerin en cok sevdigi" / "Kronik sorunlar"). `--ink-green` (#047857)
+   yaninda SOLUK kaliyordu; emerald-600 / red-600 gozle o kartlarin canli
+   yesil-kirmizisina yakin ve 14.5px BOLD metinde AA'yi geciyor
+   (4.0:1 ve 4.5:1) — dolgu tonlarini (#10B981 / #EF4444) dogrudan metin
+   yapmak 2.5:1'e dusurup okunmaz kilardi. */
+:root {
+  --lead-pos: #059669;
+  --lead-neg: #DC2626;
+}
+:root[data-theme='dark'] {
+  --lead-pos: #34D399;
+  --lead-neg: #F87171;
+}
+.aic-prose-lead.pos { color: var(--lead-pos); }
+.aic-prose-lead.neg { color: var(--lead-neg); }
 .aic-prose-head {
   margin: 16px 0 8px;
   font-size: 13px;
@@ -785,9 +797,11 @@
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
-  color: var(--text);
+  color: var(--lead-pos);
   white-space: nowrap;
 }
+/* Konu cumlesinin ICINDEKI sayi cumlenin rengini alir — kirmizi bir hukmun
+   ortasinda yesil bir sayi hukmu boler. */
 .aic-prose-lead .aic-num { color: inherit; }
 .aic-prose-more {
   display: inline-flex;
@@ -902,7 +916,7 @@
 .aic-price-svg {
   display: block;
   width: 100%;
-  height: 220px;
+  height: 200px;
   overflow: visible;
 }
 /* Izgara: grafigin "ne kadar" sorusuna cevap veren kismi. Ilk surumde hic
@@ -923,6 +937,17 @@
   50% { r: 8; opacity: .72; }
 }
 .aic-price-dot { transition: r .14s ease-out, opacity .5s ease-out; }
+.aic-price-dot.son { stroke: var(--surface-2); stroke-width: 2.5; }
+.aic-price-end {
+  font-size: 15px;
+  font-weight: 900;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  paint-order: stroke;
+  stroke: var(--surface-2);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
 .aic-price-tip line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 2 3; }
 .aic-price-tip text {
   fill: var(--text);

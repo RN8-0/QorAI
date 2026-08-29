@@ -1136,9 +1136,9 @@ export function PriceProjection({
   // "ortada asili" duruyordu). 980x210 ~4.7 orani, 1100px'lik rapor
   // kolonuna neredeyse tam oturuyor.
   const W = 980;
-  const H = 210;
-  const padL = 76;
-  const padR = 26;
+  const H = 190;
+  const padL = 62;
+  const padR = 24;
   const padTop = 18;
   const padBottom = 34;
   const all = [...band.lo, ...band.hi, 100];
@@ -1178,15 +1178,26 @@ export function PriceProjection({
 
   const col = sign < 0 ? CHART_COLORS.strong : sign > 0 ? CHART_COLORS.weak : CHART_COLORS.balanced;
   const bestIdx = monthIndexIn(outlook.bestTime, lang);
-  const money = (v) => {
-    if (!(price > 0)) return `${Math.round(v)}`;
-    const abs = Math.round((price * v) / 100);
-    try {
-      return new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
-        style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0,
-      }).format(abs);
-    } catch { return `${abs}`; }
+  /* AYLIK TUTAR UYDURMAK YOK. Onceki surum her ay icin `fiyat * endeks / 100`
+     hesaplayip "₺112.417" gibi bir rakam basiyordu; rapor o rakamlarin HICBIRINI
+     soylememisti — grafik, olmayan bir kesinlik iddia ediyordu. Eksen artik
+     raporun gercekten verdigi seyi gosteriyor: YUZDE DEGISIM. Bilinen tek
+     gercek tutar (bugunku katalog fiyati) grafigin altinda bir kez, referans
+     olarak yaziliyor. */
+  const pct = (v) => {
+    const d = Math.round((v - 100) * 10) / 10;
+    if (Math.abs(d) < 0.05) return '0%';
+    return `${d > 0 ? '+' : '−'}%${Math.abs(d) % 1 === 0 ? Math.abs(d) : Math.abs(d).toFixed(1)}`;
   };
+  const bugunFiyat = price > 0
+    ? (() => {
+      try {
+        return new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
+          style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0,
+        }).format(Math.round(price));
+      } catch { return `${Math.round(price)}`; }
+    })()
+    : '';
   // Y ekseni: üç referans çizgisi (üst bant, bugün=100, alt bant).
   const ticks = [...new Set([maxV - pad, 100, minV + pad].map((v) => Math.round(v * 10) / 10))]
     .sort((a, b) => b - a);
@@ -1221,8 +1232,8 @@ export function PriceProjection({
         onMouseLeave={() => setHover(-1)}>
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={col} stopOpacity="0.30" />
-            <stop offset="100%" stopColor={col} stopOpacity="0.02" />
+            <stop offset="0%" stopColor={col} stopOpacity="0.42" />
+            <stop offset="100%" stopColor={col} stopOpacity="0.04" />
           </linearGradient>
         </defs>
 
@@ -1232,7 +1243,7 @@ export function PriceProjection({
           <g key={`t-${v}`}>
             <line className={`aic-price-grid${Math.abs(v - 100) < 0.6 ? ' base' : ''}`}
               x1={padL} x2={W - padR} y1={y(v)} y2={y(v)} />
-            <text className="aic-price-y" x={padL - 8} y={y(v) + 4} textAnchor="end">{money(v)}</text>
+            <text className="aic-price-y" x={padL - 10} y={y(v) + 4} textAnchor="end">{pct(v)}</text>
           </g>
         ))}
 
@@ -1250,20 +1261,29 @@ export function PriceProjection({
         )}
 
         {/* Nokta + fare bölgesi: her ay okunabilir bir değer taşır. */}
-        {mid.map((v, i) => (
-          <g key={`d-${i}`} onMouseEnter={() => setHover(i)}>
-            <rect x={x(i) - 22} y={padTop} width="44" height={H - padTop - padBottom} fill="transparent" />
-            <circle className={`aic-price-dot${active === i ? ' on' : ''}`}
-              cx={x(i)} cy={y(v)} r={active === i ? 5.5 : 3.5} fill={col}
-              style={{ opacity: p, transitionDelay: `${i * 70}ms` }} />
-          </g>
-        ))}
+        {mid.map((v, i) => {
+          const son = i === N - 1;
+          return (
+            <g key={`d-${i}`} onMouseEnter={() => setHover(i)}>
+              <rect x={x(i) - 24} y={padTop} width="48" height={H - padTop - padBottom} fill="transparent" />
+              <circle className={`aic-price-dot${active === i ? ' on' : ''}${son ? ' son' : ''}`}
+                cx={x(i)} cy={y(v)} r={active === i ? 6 : son ? 5.5 : 3.6} fill={col}
+                style={{ opacity: p, transitionDelay: `${i * 70}ms` }} />
+            </g>
+          );
+        })}
+        {/* Son degeri her zaman yazili: grafigi okumak icin uzerine gelmek
+            gerekmesin. */}
+        <text className="aic-price-end" x={x(N - 1)} y={y(mid[N - 1]) - 14} textAnchor="end"
+          fill={col} style={{ opacity: p }}>
+          {pct(mid[N - 1])}
+        </text>
         {active >= 0 && (
           <g className="aic-price-tip" style={{ pointerEvents: 'none' }}>
             <line x1={x(active)} x2={x(active)} y1={padTop} y2={H - padBottom} />
             <text x={Math.min(W - padR - 4, Math.max(padL + 4, x(active)))} y={Math.max(padTop + 12, y(mid[active]) - 14)}
               textAnchor={active > N - 3 ? 'end' : active < 2 ? 'start' : 'middle'}>
-              {money(mid[active])}
+              {pct(mid[active])}
             </text>
           </g>
         )}
@@ -1279,7 +1299,7 @@ export function PriceProjection({
       <div className="aic-price-facts">
         <span className="aic-price-range">
           <i aria-hidden="true">🎯</i>{L('In 6 months', '6 ay sonra')}
-          <b style={{ color: col }}>{`${money(band.lo[N - 1])} – ${money(band.hi[N - 1])}`}</b>
+          <b style={{ color: col }}>{`${pct(band.lo[N - 1])} … ${pct(band.hi[N - 1])}`}</b>
         </span>
         {outlook.bestTime && (
           <span><i aria-hidden="true">🗓</i>{L('Best window', 'En iyi pencere')}<b>{outlook.bestTime}</b></span>
@@ -1289,11 +1309,10 @@ export function PriceProjection({
         )}
       </div>
       <p className="aic-price-note">
-        {price > 0
-          ? L('Modelled from the current catalog price. An AI estimate, not a price guarantee.',
-            'Güncel katalog fiyatı üzerinden modellendi. AI tahminidir, fiyat garantisi değildir.')
-          : L('Indexed to today = 100. An AI estimate, not a price guarantee.',
-            'Bugün = 100 endekslenmiştir. AI tahminidir, fiyat garantisi değildir.')}
+        {bugunFiyat
+          ? `${L('Today', 'Bugün')}: ${bugunFiyat} · ${L('the curve shows percentage change, not a per-month price.', 'eğri yüzde değişimi gösterir, aylık fiyat değil.')} `
+          : ''}
+        {L('An AI estimate, not a price guarantee.', 'AI tahminidir, fiyat garantisi değildir.')}
       </p>
     </div>
   );
