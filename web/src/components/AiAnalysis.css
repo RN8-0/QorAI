@@ -37,7 +37,12 @@
 .ai-verdict > span { font-size: 16px; color: var(--ink-cyan); flex: none; }
 .ai-verdict p { margin: 0 0 11px; font-size: 13.5px; line-height: 1.68; color: var(--text-soft, var(--text2)); }
 .ai-verdict p:last-child { margin-bottom: 0; }
-.ai-verdict .aic-prose-lead { color: var(--text); }
+/* HUKUM RENGINI EZME. Bu satir `color: var(--text)` diyordu ve ayni
+   ozgulluk (0-2-0) + sonra yuklenen dosya olmasi yuzunden
+   `.aic-prose-lead.pos/.neg` kurallarini yeniyordu: "Kararin gerekcesi"
+   kutusundaki BUTUN konu cumleleri siyah cikiyordu — sinif dogru (`pos`/
+   `neg`), renk yanlis. Olculdu 2026-08-30 canli sayfada: dort lead de
+   rgb(15,23,42). Ton rengi buradaki tek dogru renktir, ezilmemeli. */
 
 /* Alternatives */
 .ai-alt-price {

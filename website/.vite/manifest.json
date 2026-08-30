@@ -1,14 +1,14 @@
 {
   "_AiAnalysis-!~{00H}~.js": {
-    "file": "spa/AiAnalysis-Bz6jAAQK.css",
+    "file": "spa/AiAnalysis-CAPhV22C.css",
     "src": "_AiAnalysis-!~{00H}~.js"
   },
   "_AiCharts-!~{00I}~.js": {
-    "file": "spa/AiCharts-Bp7jt7-4.css",
+    "file": "spa/AiCharts-BIT2a03x.css",
     "src": "_AiCharts-!~{00I}~.js"
   },
-  "_AiCharts-LqvCRzww.js": {
-    "file": "spa/AiCharts-LqvCRzww.js",
+  "_AiCharts-kXm4MM2f.js": {
+    "file": "spa/AiCharts-kXm4MM2f.js",
     "name": "AiCharts",
     "imports": [
       "index.html",
@@ -19,18 +19,18 @@
       "src/components/PriceChart.jsx"
     ],
     "css": [
-      "spa/AiCharts-Bp7jt7-4.css"
+      "spa/AiCharts-BIT2a03x.css"
     ]
   },
-  "_AiReportView-C_uUjx13.js": {
-    "file": "spa/AiReportView-C_uUjx13.js",
+  "_AiReportView-C5ojamK8.js": {
+    "file": "spa/AiReportView-C5ojamK8.js",
     "name": "AiReportView",
     "imports": [
       "_aitext-qQJmgM3E.js",
       "_AmazonLogo-DttRUBP6.js",
       "index.html",
       "_vendor-DzEykzq0.js",
-      "_AiCharts-LqvCRzww.js"
+      "_AiCharts-kXm4MM2f.js"
     ]
   },
   "_AmazonLogo-DttRUBP6.js": {
@@ -44,11 +44,11 @@
     "file": "spa/Analyses-VGw7Sell.css",
     "src": "_Analyses-!~{00S}~.js"
   },
-  "_Analyses-DO03fC8o.js": {
-    "file": "spa/Analyses-DO03fC8o.js",
+  "_Analyses-4lQjKiqB.js": {
+    "file": "spa/Analyses-4lQjKiqB.js",
     "name": "Analyses",
     "imports": [
-      "_reportAdapters-BKxR4S77.js",
+      "_reportAdapters-CsKpqxiM.js",
       "index.html"
     ],
     "css": [
@@ -88,15 +88,15 @@
     "file": "spa/PageHero-CiFBXeZl.css",
     "src": "_PageHero-!~{00L}~.js"
   },
-  "_PageHero-BGwJwJqC.js": {
-    "file": "spa/PageHero-BGwJwJqC.js",
+  "_PageHero-BYTr3bWD.js": {
+    "file": "spa/PageHero-BYTr3bWD.js",
     "name": "PageHero",
     "imports": [
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
-      "_pbHistory-C4lvRYKC.js",
+      "_pbHistory-daPAV0Xk.js",
       "index.html",
-      "_SubLogo-CxSauLrH.js"
+      "_SubLogo-D-P3cKma.js"
     ],
     "css": [
       "spa/PageHero-CiFBXeZl.css"
@@ -114,8 +114,8 @@
       "_vendor-DzEykzq0.js"
     ]
   },
-  "_SubLogo-CxSauLrH.js": {
-    "file": "spa/SubLogo-CxSauLrH.js",
+  "_SubLogo-D-P3cKma.js": {
+    "file": "spa/SubLogo-D-P3cKma.js",
     "name": "SubLogo",
     "imports": [
       "_aitext-qQJmgM3E.js",
@@ -130,8 +130,8 @@
       "_vendor-DzEykzq0.js"
     ]
   },
-  "_catalogAlternatives-DI5lz4h2.js": {
-    "file": "spa/catalogAlternatives-DI5lz4h2.js",
+  "_catalogAlternatives-C_akMhEe.js": {
+    "file": "spa/catalogAlternatives-C_akMhEe.js",
     "name": "catalogAlternatives",
     "imports": [
       "index.html"
@@ -140,33 +140,33 @@
       "index.html"
     ]
   },
-  "_compareAnalysisJobs-CRwebthi.js": {
-    "file": "spa/compareAnalysisJobs-CRwebthi.js",
+  "_compareAnalysisJobs-BQCpcMm-.js": {
+    "file": "spa/compareAnalysisJobs-BQCpcMm-.js",
     "name": "compareAnalysisJobs",
     "imports": [
-      "_useAiAccess-mntowEQw.js",
-      "_pbHistory-C4lvRYKC.js",
+      "_useAiAccess-CNLsVlOg.js",
+      "_pbHistory-daPAV0Xk.js",
       "index.html",
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
-      "_AiCharts-LqvCRzww.js"
+      "_AiCharts-kXm4MM2f.js"
     ],
     "css": [
-      "spa/AiAnalysis-Bz6jAAQK.css"
+      "spa/AiAnalysis-CAPhV22C.css"
     ]
   },
-  "_linkAnalysisJobs-COhFJLFb.js": {
-    "file": "spa/linkAnalysisJobs-COhFJLFb.js",
+  "_linkAnalysisJobs-Dd65ZypA.js": {
+    "file": "spa/linkAnalysisJobs-Dd65ZypA.js",
     "name": "linkAnalysisJobs",
     "imports": [
       "index.html",
-      "_useAiAccess-mntowEQw.js",
-      "_pbHistory-C4lvRYKC.js",
-      "_catalogAlternatives-DI5lz4h2.js"
+      "_useAiAccess-CNLsVlOg.js",
+      "_pbHistory-daPAV0Xk.js",
+      "_catalogAlternatives-C_akMhEe.js"
     ]
   },
-  "_offers-BBiJsmJ9.js": {
-    "file": "spa/offers-BBiJsmJ9.js",
+  "_offers-BNj-Jqs6.js": {
+    "file": "spa/offers-BNj-Jqs6.js",
     "name": "offers",
     "imports": [
       "src/lib/pocketbase.js",
@@ -180,22 +180,22 @@
       "_vendor-DzEykzq0.js"
     ]
   },
-  "_pbHistory-C4lvRYKC.js": {
-    "file": "spa/pbHistory-C4lvRYKC.js",
+  "_pbHistory-daPAV0Xk.js": {
+    "file": "spa/pbHistory-daPAV0Xk.js",
     "name": "pbHistory",
     "imports": [
       "src/lib/pocketbase.js",
       "index.html"
     ]
   },
-  "_productAnalysisJobs-BjssYR_j.js": {
-    "file": "spa/productAnalysisJobs-BjssYR_j.js",
+  "_productAnalysisJobs-Dkn-HKZl.js": {
+    "file": "spa/productAnalysisJobs-Dkn-HKZl.js",
     "name": "productAnalysisJobs",
     "imports": [
       "index.html",
-      "_useAiAccess-mntowEQw.js",
-      "_catalogAlternatives-DI5lz4h2.js",
-      "_pbHistory-C4lvRYKC.js"
+      "_useAiAccess-CNLsVlOg.js",
+      "_catalogAlternatives-C_akMhEe.js",
+      "_pbHistory-daPAV0Xk.js"
     ],
     "dynamicImports": [
       "src/components/AiAnalysis.jsx",
@@ -206,37 +206,37 @@
     "file": "spa/profileMatch-CQsxW33c.css",
     "src": "_profileMatch-!~{00z}~.js"
   },
-  "_profileMatch-Dc0W1vTX.js": {
-    "file": "spa/profileMatch-Dc0W1vTX.js",
+  "_profileMatch-3G8xRnXQ.js": {
+    "file": "spa/profileMatch-3G8xRnXQ.js",
     "name": "profileMatch",
     "imports": [
       "_aitext-qQJmgM3E.js",
       "_AmazonLogo-DttRUBP6.js",
-      "_offers-BBiJsmJ9.js",
+      "_offers-BNj-Jqs6.js",
       "index.html"
     ],
     "css": [
       "spa/profileMatch-CQsxW33c.css"
     ]
   },
-  "_reportAdapters-BKxR4S77.js": {
-    "file": "spa/reportAdapters-BKxR4S77.js",
+  "_reportAdapters-CsKpqxiM.js": {
+    "file": "spa/reportAdapters-CsKpqxiM.js",
     "name": "reportAdapters",
     "imports": [
       "index.html"
     ]
   },
-  "_subscriptionAnalysisJobs-B70X__au.js": {
-    "file": "spa/subscriptionAnalysisJobs-B70X__au.js",
+  "_subscriptionAnalysisJobs-CiSiJKyK.js": {
+    "file": "spa/subscriptionAnalysisJobs-CiSiJKyK.js",
     "name": "subscriptionAnalysisJobs",
     "imports": [
-      "_useAiAccess-mntowEQw.js",
+      "_useAiAccess-CNLsVlOg.js",
       "index.html",
-      "_pbHistory-C4lvRYKC.js"
+      "_pbHistory-daPAV0Xk.js"
     ]
   },
-  "_useAiAccess-mntowEQw.js": {
-    "file": "spa/useAiAccess-mntowEQw.js",
+  "_useAiAccess-CNLsVlOg.js": {
+    "file": "spa/useAiAccess-CNLsVlOg.js",
     "name": "useAiAccess",
     "imports": [
       "index.html",
@@ -256,7 +256,7 @@
     "name": "vendor"
   },
   "index.html": {
-    "file": "spa/index-cNZZkq0w.js",
+    "file": "spa/index-wLDDWVej.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -294,7 +294,7 @@
     ]
   },
   "src/components/AiAnalysis.jsx": {
-    "file": "spa/AiAnalysis-DmUtaSW9.js",
+    "file": "spa/AiAnalysis-BFMNRCo0.js",
     "name": "AiAnalysis",
     "src": "src/components/AiAnalysis.jsx",
     "isDynamicEntry": true,
@@ -302,17 +302,17 @@
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
       "index.html",
-      "_AiCharts-LqvCRzww.js",
-      "_AiReportView-C_uUjx13.js",
-      "_reportAdapters-BKxR4S77.js",
+      "_AiCharts-kXm4MM2f.js",
+      "_AiReportView-C5ojamK8.js",
+      "_reportAdapters-CsKpqxiM.js",
       "_AmazonLogo-DttRUBP6.js"
     ],
     "css": [
-      "spa/AiAnalysis-Bz6jAAQK.css"
+      "spa/AiAnalysis-CAPhV22C.css"
     ]
   },
   "src/components/AiBubble.jsx": {
-    "file": "spa/AiBubble-8a_XBMsz.js",
+    "file": "spa/AiBubble-DvSyYSWq.js",
     "name": "AiBubble",
     "src": "src/components/AiBubble.jsx",
     "isDynamicEntry": true,
@@ -320,21 +320,21 @@
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
       "_GlyphIcons-D_EiYjNO.js",
-      "_useAiAccess-mntowEQw.js",
+      "_useAiAccess-CNLsVlOg.js",
       "index.html",
-      "_linkAnalysisJobs-COhFJLFb.js",
-      "_subscriptionAnalysisJobs-B70X__au.js",
-      "_compareAnalysisJobs-CRwebthi.js",
-      "_productAnalysisJobs-BjssYR_j.js",
+      "_linkAnalysisJobs-Dd65ZypA.js",
+      "_subscriptionAnalysisJobs-CiSiJKyK.js",
+      "_compareAnalysisJobs-BQCpcMm-.js",
+      "_productAnalysisJobs-Dkn-HKZl.js",
       "_pageContext-BthrEKoK.js",
       "src/lib/pocketbase.js",
-      "_pbHistory-C4lvRYKC.js",
-      "_catalogAlternatives-DI5lz4h2.js",
-      "_AiCharts-LqvCRzww.js"
+      "_pbHistory-daPAV0Xk.js",
+      "_catalogAlternatives-C_akMhEe.js",
+      "_AiCharts-kXm4MM2f.js"
     ],
     "css": [
       "spa/AiBubble-rvJUfS9O.css",
-      "spa/AiAnalysis-Bz6jAAQK.css"
+      "spa/AiAnalysis-CAPhV22C.css"
     ]
   },
   "src/components/AiWorkboard.jsx": {
@@ -351,7 +351,7 @@
     ]
   },
   "src/components/AuthModal.jsx": {
-    "file": "spa/AuthModal-KCd5pyP3.js",
+    "file": "spa/AuthModal-BKnCmx9y.js",
     "name": "AuthModal",
     "src": "src/components/AuthModal.jsx",
     "isDynamicEntry": true,
@@ -367,7 +367,7 @@
     ]
   },
   "src/components/CompareBar.jsx": {
-    "file": "spa/CompareBar-Bs1gjnlC.js",
+    "file": "spa/CompareBar-iNI2fRPT.js",
     "name": "CompareBar",
     "src": "src/components/CompareBar.jsx",
     "isDynamicEntry": true,
@@ -392,7 +392,7 @@
     ]
   },
   "src/components/QuizFlow.jsx": {
-    "file": "spa/QuizFlow-z-wGgOKu.js",
+    "file": "spa/QuizFlow-BfPZOGjJ.js",
     "name": "QuizFlow",
     "src": "src/components/QuizFlow.jsx",
     "isDynamicEntry": true,
@@ -406,7 +406,7 @@
     ]
   },
   "src/components/Reviews.jsx": {
-    "file": "spa/Reviews-Ce0h-KKv.js",
+    "file": "spa/Reviews-CI5vww_M.js",
     "name": "Reviews",
     "src": "src/components/Reviews.jsx",
     "isDynamicEntry": true,
@@ -422,15 +422,15 @@
     ]
   },
   "src/components/SubscriptionReportView.jsx": {
-    "file": "spa/SubscriptionReportView-BcM-4nyB.js",
+    "file": "spa/SubscriptionReportView-n8aQ-AfN.js",
     "name": "SubscriptionReportView",
     "src": "src/components/SubscriptionReportView.jsx",
     "isDynamicEntry": true,
     "imports": [
       "_aitext-qQJmgM3E.js",
       "index.html",
-      "_SubLogo-CxSauLrH.js",
-      "_AiCharts-LqvCRzww.js",
+      "_SubLogo-D-P3cKma.js",
+      "_AiCharts-kXm4MM2f.js",
       "_vendor-DzEykzq0.js",
       "src/lib/pocketbase.js"
     ],
@@ -439,7 +439,7 @@
     ]
   },
   "src/lib/pocketbase.js": {
-    "file": "spa/pocketbase-YqZ6yUYh.js",
+    "file": "spa/pocketbase-DlzXGSBX.js",
     "name": "pocketbase",
     "src": "src/lib/pocketbase.js",
     "isDynamicEntry": true,
@@ -450,7 +450,7 @@
     ]
   },
   "src/pages/AiChat.jsx": {
-    "file": "spa/AiChat-GYLN8MVx.js",
+    "file": "spa/AiChat-BciMxCEK.js",
     "name": "AiChat",
     "src": "src/pages/AiChat.jsx",
     "isDynamicEntry": true,
@@ -464,7 +464,7 @@
     ]
   },
   "src/pages/Analyses.jsx": {
-    "file": "spa/Analyses-CJ3pKJpA.js",
+    "file": "spa/Analyses-CuMYEv3q.js",
     "name": "Analyses",
     "src": "src/pages/Analyses.jsx",
     "isDynamicEntry": true,
@@ -473,12 +473,12 @@
       "_vendor-DzEykzq0.js",
       "src/lib/pocketbase.js",
       "index.html",
-      "_Analyses-DO03fC8o.js",
-      "_reportAdapters-BKxR4S77.js"
+      "_Analyses-4lQjKiqB.js",
+      "_reportAdapters-CsKpqxiM.js"
     ]
   },
   "src/pages/AnalysisPost.jsx": {
-    "file": "spa/AnalysisPost-ghxm3ieg.js",
+    "file": "spa/AnalysisPost-CaaZ1pIV.js",
     "name": "AnalysisPost",
     "src": "src/pages/AnalysisPost.jsx",
     "isDynamicEntry": true,
@@ -488,10 +488,10 @@
       "_vendor-DzEykzq0.js",
       "src/lib/pocketbase.js",
       "src/components/AiAnalysis.jsx",
-      "_AiReportView-C_uUjx13.js",
-      "_Analyses-DO03fC8o.js",
-      "_AiCharts-LqvCRzww.js",
-      "_reportAdapters-BKxR4S77.js",
+      "_AiReportView-C5ojamK8.js",
+      "_Analyses-4lQjKiqB.js",
+      "_AiCharts-kXm4MM2f.js",
+      "_reportAdapters-CsKpqxiM.js",
       "_AmazonLogo-DttRUBP6.js"
     ],
     "dynamicImports": [
@@ -500,11 +500,11 @@
     ],
     "css": [
       "spa/LinkAnalysis-BEqZtxQM.css",
-      "spa/AiAnalysis-Bz6jAAQK.css"
+      "spa/AiAnalysis-CAPhV22C.css"
     ]
   },
   "src/pages/Blog.jsx": {
-    "file": "spa/Blog-2FVcd9ER.js",
+    "file": "spa/Blog-CCJxwnMi.js",
     "name": "Blog",
     "src": "src/pages/Blog.jsx",
     "isDynamicEntry": true,
@@ -519,7 +519,7 @@
     ]
   },
   "src/pages/BlogPost.jsx": {
-    "file": "spa/BlogPost-FhQcLxxa.js",
+    "file": "spa/BlogPost-Vi0CgeFs.js",
     "name": "BlogPost",
     "src": "src/pages/BlogPost.jsx",
     "isDynamicEntry": true,
@@ -538,7 +538,7 @@
     ]
   },
   "src/pages/Category.jsx": {
-    "file": "spa/Category-D5a1U19W.js",
+    "file": "spa/Category-XFow4UTf.js",
     "name": "Category",
     "src": "src/pages/Category.jsx",
     "isDynamicEntry": true,
@@ -554,7 +554,7 @@
     ]
   },
   "src/pages/Compare.jsx": {
-    "file": "spa/Compare-C0ZUi-sN.js",
+    "file": "spa/Compare-BEwFlIZf.js",
     "name": "Compare",
     "src": "src/pages/Compare.jsx",
     "isDynamicEntry": true,
@@ -563,12 +563,12 @@
       "_vendor-DzEykzq0.js",
       "_GlyphIcons-D_EiYjNO.js",
       "index.html",
-      "_profileMatch-Dc0W1vTX.js",
-      "_offers-BBiJsmJ9.js",
-      "_pbHistory-C4lvRYKC.js",
+      "_profileMatch-3G8xRnXQ.js",
+      "_offers-BNj-Jqs6.js",
+      "_pbHistory-daPAV0Xk.js",
       "src/lib/pocketbase.js",
-      "_useAiAccess-mntowEQw.js",
-      "_compareAnalysisJobs-CRwebthi.js",
+      "_useAiAccess-CNLsVlOg.js",
+      "_compareAnalysisJobs-BQCpcMm-.js",
       "src/components/AiAnalysis.jsx",
       "src/components/QuizFlow.jsx",
       "src/components/AiWorkboard.jsx",
@@ -576,18 +576,18 @@
       "_pageContext-BthrEKoK.js",
       "_useReviewAnchor-CGU2xSxu.js",
       "_AmazonLogo-DttRUBP6.js",
-      "_AiCharts-LqvCRzww.js",
-      "_AiReportView-C_uUjx13.js",
-      "_reportAdapters-BKxR4S77.js"
+      "_AiCharts-kXm4MM2f.js",
+      "_AiReportView-C5ojamK8.js",
+      "_reportAdapters-CsKpqxiM.js"
     ],
     "css": [
       "spa/Compare-AwKeXF9g.css",
       "spa/LinkAnalysis-BEqZtxQM.css",
-      "spa/AiAnalysis-Bz6jAAQK.css"
+      "spa/AiAnalysis-CAPhV22C.css"
     ]
   },
   "src/pages/Go.jsx": {
-    "file": "spa/Go-D7-OdSX7.js",
+    "file": "spa/Go-CbbN4IM6.js",
     "name": "Go",
     "src": "src/pages/Go.jsx",
     "isDynamicEntry": true,
@@ -596,14 +596,14 @@
       "_vendor-DzEykzq0.js",
       "index.html",
       "src/lib/pocketbase.js",
-      "_offers-BBiJsmJ9.js"
+      "_offers-BNj-Jqs6.js"
     ],
     "css": [
       "spa/Placeholder-A71kbAJv.css"
     ]
   },
   "src/pages/Legal.jsx": {
-    "file": "spa/Legal-BD5sFw8a.js",
+    "file": "spa/Legal-B3Sh14nG.js",
     "name": "Legal",
     "src": "src/pages/Legal.jsx",
     "isDynamicEntry": true,
@@ -617,7 +617,7 @@
     ]
   },
   "src/pages/LinkAnalysis.jsx": {
-    "file": "spa/LinkAnalysis-DI4WRh0i.js",
+    "file": "spa/LinkAnalysis-BtY636Lc.js",
     "name": "LinkAnalysis",
     "src": "src/pages/LinkAnalysis.jsx",
     "isDynamicEntry": true,
@@ -626,18 +626,18 @@
       "_vendor-DzEykzq0.js",
       "_GlyphIcons-D_EiYjNO.js",
       "index.html",
-      "_useAiAccess-mntowEQw.js",
-      "_PageHero-BGwJwJqC.js",
-      "_linkAnalysisJobs-COhFJLFb.js",
-      "_AiCharts-LqvCRzww.js",
+      "_useAiAccess-CNLsVlOg.js",
+      "_PageHero-BYTr3bWD.js",
+      "_linkAnalysisJobs-Dd65ZypA.js",
+      "_AiCharts-kXm4MM2f.js",
       "src/components/QuizFlow.jsx",
       "src/components/AiWorkboard.jsx",
       "_AnalysisExitBar-WF-pbhrx.js",
-      "_AiReportView-C_uUjx13.js",
+      "_AiReportView-C5ojamK8.js",
       "src/lib/pocketbase.js",
-      "_pbHistory-C4lvRYKC.js",
-      "_SubLogo-CxSauLrH.js",
-      "_catalogAlternatives-DI5lz4h2.js",
+      "_pbHistory-daPAV0Xk.js",
+      "_SubLogo-D-P3cKma.js",
+      "_catalogAlternatives-C_akMhEe.js",
       "_AmazonLogo-DttRUBP6.js"
     ],
     "css": [
@@ -645,7 +645,7 @@
     ]
   },
   "src/pages/NotFound.jsx": {
-    "file": "spa/NotFound-Bx8h7yTi.js",
+    "file": "spa/NotFound-uM-pPquq.js",
     "name": "NotFound",
     "src": "src/pages/NotFound.jsx",
     "isDynamicEntry": true,
@@ -659,7 +659,7 @@
     ]
   },
   "src/pages/Premium.jsx": {
-    "file": "spa/Premium-VmKS_D5s.js",
+    "file": "spa/Premium-BMdOvK91.js",
     "name": "Premium",
     "src": "src/pages/Premium.jsx",
     "isDynamicEntry": true,
@@ -674,7 +674,7 @@
     ]
   },
   "src/pages/ProductDetail.jsx": {
-    "file": "spa/ProductDetail-CoiD4fJG.js",
+    "file": "spa/ProductDetail-eZZNRQ7I.js",
     "name": "ProductDetail",
     "src": "src/pages/ProductDetail.jsx",
     "isDynamicEntry": true,
@@ -683,16 +683,16 @@
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
       "src/lib/pocketbase.js",
-      "_useAiAccess-mntowEQw.js",
-      "_productAnalysisJobs-BjssYR_j.js",
-      "_pbHistory-C4lvRYKC.js",
-      "_offers-BBiJsmJ9.js",
-      "_profileMatch-Dc0W1vTX.js",
+      "_useAiAccess-CNLsVlOg.js",
+      "_productAnalysisJobs-Dkn-HKZl.js",
+      "_pbHistory-daPAV0Xk.js",
+      "_offers-BNj-Jqs6.js",
+      "_profileMatch-3G8xRnXQ.js",
       "_GlyphIcons-D_EiYjNO.js",
       "_AnalysisExitBar-WF-pbhrx.js",
       "_pageContext-BthrEKoK.js",
       "_ScrollRail-DyG7C8u_.js",
-      "_catalogAlternatives-DI5lz4h2.js",
+      "_catalogAlternatives-C_akMhEe.js",
       "_AmazonLogo-DttRUBP6.js"
     ],
     "dynamicImports": [
@@ -708,7 +708,7 @@
     ]
   },
   "src/pages/Profile.jsx": {
-    "file": "spa/Profile-pawQTFaC.js",
+    "file": "spa/Profile-BoMr8pQU.js",
     "name": "Profile",
     "src": "src/pages/Profile.jsx",
     "isDynamicEntry": true,
@@ -717,14 +717,14 @@
       "_vendor-DzEykzq0.js",
       "index.html",
       "src/lib/pocketbase.js",
-      "_pbHistory-C4lvRYKC.js"
+      "_pbHistory-daPAV0Xk.js"
     ],
     "css": [
       "spa/Profile-DgSwkHQf.css"
     ]
   },
   "src/pages/Quiz.jsx": {
-    "file": "spa/Quiz-lxbLvQOs.js",
+    "file": "spa/Quiz-B9G0qKA-.js",
     "name": "Quiz",
     "src": "src/pages/Quiz.jsx",
     "isDynamicEntry": true,
@@ -733,14 +733,14 @@
       "_vendor-DzEykzq0.js",
       "index.html",
       "src/lib/pocketbase.js",
-      "_SubLogo-CxSauLrH.js"
+      "_SubLogo-D-P3cKma.js"
     ],
     "css": [
       "spa/Quiz-Y5jkpTkk.css"
     ]
   },
   "src/pages/Search.jsx": {
-    "file": "spa/Search-DPOtK5zH.js",
+    "file": "spa/Search-DYi8HJ_X.js",
     "name": "Search",
     "src": "src/pages/Search.jsx",
     "isDynamicEntry": true,
@@ -754,25 +754,25 @@
     ]
   },
   "src/pages/Subscriptions.jsx": {
-    "file": "spa/Subscriptions-EruIBDrs.js",
+    "file": "spa/Subscriptions-B0TJ_TyH.js",
     "name": "Subscriptions",
     "src": "src/pages/Subscriptions.jsx",
     "isDynamicEntry": true,
     "imports": [
       "_aitext-qQJmgM3E.js",
       "_vendor-DzEykzq0.js",
-      "_useAiAccess-mntowEQw.js",
-      "_subscriptionAnalysisJobs-B70X__au.js",
+      "_useAiAccess-CNLsVlOg.js",
+      "_subscriptionAnalysisJobs-CiSiJKyK.js",
       "index.html",
-      "_PageHero-BGwJwJqC.js",
-      "_AiCharts-LqvCRzww.js",
-      "_SubLogo-CxSauLrH.js",
+      "_PageHero-BYTr3bWD.js",
+      "_AiCharts-kXm4MM2f.js",
+      "_SubLogo-D-P3cKma.js",
       "src/components/SubscriptionReportView.jsx",
       "src/components/QuizFlow.jsx",
       "src/components/AiWorkboard.jsx",
       "_AnalysisExitBar-WF-pbhrx.js",
       "src/lib/pocketbase.js",
-      "_pbHistory-C4lvRYKC.js"
+      "_pbHistory-daPAV0Xk.js"
     ]
   }
 }

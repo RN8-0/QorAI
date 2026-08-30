@@ -721,22 +721,24 @@
 }
 
 /* ── Kararı belirleyen farklar — numaralı kart ızgarası ────────────────── */
+/* ── KARARI BELIRLEYEN FARKLAR ─────────────────────────────────────────
+   KUTU IZGARASI KALDIRILDI. Alti fark uc sutunlu kutu izgarasinda
+   duruyordu ve okuyucu bunu "her cihaza iki kutu ayrilmis" diye okuyordu —
+   oysa bir FARK tek bir cihaza ait degildir, iki cihaz ARASINDADIR
+   ("S26 Ultra 2600 nit sunarken iPhone 3000 nit ile lideri aliyor").
+   Izgara var olmayan bir gruplama vaat ediyordu; hizali tek sutun liste
+   vaat etmiyor. Ayrim hairline ile, kutu ve golge yok.
+   Cihaza AIT olgular zaten yukarida her urunun KENDI kartinda. */
 .aic-diffs { margin: 4px 0; }
-.aic-diff-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
+.aic-diff-grid { display: grid; gap: 0; }
 .aic-diff {
   display: flex;
-  gap: 11px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-left: 3px solid color-mix(in srgb, var(--ink-blue) 55%, transparent);
-  border-radius: 14px;
-  background: var(--surface-2);
+  gap: 12px;
+  padding: 13px 2px;
+  border-top: 1px solid var(--divider, var(--border));
   animation: aicRise .4s cubic-bezier(.22,.61,.36,1) both;
 }
+.aic-diff:first-child { border-top: 0; padding-top: 4px; }
 .aic-diff-no {
   flex: none;
   width: 24px;
@@ -918,17 +920,20 @@
    Sayilar `--lead-pos` (yesil) ile yaziliyordu; yani "256 GB baslangic
    depolama alani rakiplerinin GERISINDE kaliyor" cumlesindeki 256 GB da
    yesildi. Yesil bu sayfada TEK bir sey demeli: olumlu hukum. Bir spec ne
-   olumlu ne olumsuzdur — OLCUDUR. O yuzden kendi rengi var: kehribar/altin
-   `--ink-amber` (acik temada koyu kehribar, koyu temada altin; ikisi de
-   metin-guvenli, bkz. CLAUDE.md ink kurali). Uc renk, uc ayri sey:
-   yesil = iyi, kirmizi = kotu, altin = olcu. */
+   olumlu ne olumsuzdur — OLCUDUR. O yuzden kendi rengi var.
+   ONCE KEHRIBAR DENENDI, geri alindi: acik temada `--ink-amber` #92400E'ye
+   dusuyor ve sayfada kahverengi bir leke gibi duruyordu (kullanici: "sari
+   renk cok kotu durdu"). Simdi sitenin KENDI mavisi `--ink-blue`
+   (acik #1565C0 / koyu #4FC3F7) — marka ailesinden, yesil-kirmizi ile
+   karismiyor ve iki temada da metin-guvenli.
+   Uc renk, uc ayri sey: yesil = iyi, kirmizi = kotu, MAVI = olcu. */
 .aic-num {
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
-  color: var(--ink-amber);
+  color: var(--ink-blue);
   white-space: nowrap;
 }
 /* Konu cumlesinin icindeki sayi da OLCU rengini korur. Eskiden cumlenin

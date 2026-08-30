@@ -1007,14 +1007,45 @@ const PROSE_NUM_TEST = new RegExp(`^(?:${PROSE_NUM_RE.source.slice(1, -1)})$`, '
    kayboluyordu; okuyucu "hangi urun hakkinda konusuyor" sorusunu ancak
    cumleyi bastan okuyarak yanitlayabiliyordu. Adlar artik kalin ve koyu —
    goz paragraflari TARAYARAK ilgilendigi urunu bulabiliyor. */
+/* AD BIR SEKILDE YAZILMAZ. Katalog adi "Samsung Galaxy S26 Ultra
+   (12 GB / 512 GB)" ama model metinde "Samsung Galaxy S26 Ultra" ya da
+   markasiz "iPhone 17 Pro Max" diye geciyor. Birebir eslesme arandigi icin
+   OLCULDU 2026-08-30 (canli kayit, farklar blogu): bold olan TEK ad "Xiaomi
+   17 Ultra" idi — Samsung ve iPhone hic vurgulanmiyordu ve okuyucu bunu
+   "bazilari kalin bazilari ince" diye goruyor.
+   Her ad icin uc yazim uretilir: tam · parantezsiz · markasiz. Uzun olan
+   ONCE denenir; yoksa kisa alias uzun adin icinden parca kapardi. */
+function nameAliases(names) {
+  const out = [];
+  const ekle = (v) => {
+    const t = String(v || '').replace(/\s{2,}/g, ' ').trim();
+    if (t.length >= 6 && !out.some((x) => x.toLowerCase() === t.toLowerCase())) out.push(t);
+  };
+  for (const ham of (Array.isArray(names) ? names : [])) {
+    const tam = String(ham || '').trim();
+    if (!tam) continue;
+    ekle(tam);
+    const parantezsiz = tam.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+    ekle(parantezsiz);
+    // Marka ilk kelimededir; yalnizca GERIDE en az iki kelime kalirsa duser
+    // ("Apple iPhone 17 Pro Max" -> "iPhone 17 Pro Max"). Yoksa "Ultra" gibi
+    // tek kelimelik bir parca metnin her yerinde eslesirdi.
+    const kelimeler = parantezsiz.split(/\s+/);
+    if (kelimeler.length >= 3) ekle(kelimeler.slice(1).join(' '));
+  }
+  return out.sort((a, b) => b.length - a.length);
+}
+
 function highlightNames(node, names, keyPrefix) {
   if (!names || !names.length || typeof node !== 'string' || !node) return [node];
-  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(${names.map(esc).join('|')})`, 'gi');
+  const alias = nameAliases(names);
+  if (!alias.length) return [node];
+  const esc = (v) => v.replace(/[^\p{L}\p{N}\s]/gu, (ch) => '\\' + ch);
+  const re = new RegExp(`(${alias.map(esc).join('|')})`, 'gi');
   const parcalar = node.split(re);
   if (parcalar.length === 1) return [node];
   return parcalar.filter(Boolean).map((piece, i) => (
-    names.some((n) => n.toLowerCase() === piece.toLowerCase())
+    alias.some((n) => n.toLowerCase() === piece.toLowerCase())
       ? <b className="aic-name" key={`${keyPrefix}-nm${i}`}>{piece}</b>
       : piece
   ));

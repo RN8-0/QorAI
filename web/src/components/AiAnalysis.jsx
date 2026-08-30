@@ -903,9 +903,17 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
                     <b>{c.name}</b>
                   </div>
                 </header>
+                {/* FIYAT KUTUSU BURADA DA CIKMALI. Tekli analizde fiyat
+                    `StatTiles` icinde "🏷 Fiyat" olarak duruyor; coklu
+                    karsilastirmada AYNI sablon cizildigi halde kutu YOKTU,
+                    cunku yayinlanmis kayitta `c.product` bos ve disaridan
+                    gelen `priceInfo` null. Kart icin zaten cozdugumuz fiyat
+                    (`fiyatlar[c.key]`) buraya da veriliyor — ek istek yok,
+                    ve okuyucu fiyati tekli analizde gordugu YERDE goruyor. */}
                 <CompareProductDetail data={c.ai} L={L} lang={lang} hideQuiz={hideQuiz}
                   researched={Boolean(data.researched)}
-                  priceInfo={c.product ? priceForCountry(c.product, geoCountry) : priceInfo} />
+                  priceInfo={(c.product ? priceForCountry(c.product, geoCountry) : fiyatlar[c.key])
+                    || priceInfo} />
               </section>
             );
           })}
