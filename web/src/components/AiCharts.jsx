@@ -579,6 +579,17 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
   if (!rows.length) return null;
 
   const partial = rows.some((r) => r.filled < cols.length);
+  /* CUBUK BIR SEY SOYLEMELI. Tablodaki butun puanlar dar bir bantta topluyor
+     (olculdu 2026-08-30, canli kayit: 60-98 arasi, 21 hucrenin 18'i 75+) ve
+     0-100 olceginde cizilince 85 ile 95 GOZLE AYNI uzunlukta cikiyordu —
+     yani cubuk hicbir bilgi tasimiyor, yalnizca yer kapliyordu.
+     Olcek tablonun KENDI en dusuk degerinin biraz altindan baslar; boylece
+     fark gorunur olur. Yaniltmaz cunku her cubugun YANINDA gercek sayi
+     yaziyor ve tabanin ne oldugu `title` ile soyleniyor. */
+  const tumDegerler = rows.flatMap((r) => r.values.filter((v) => v != null));
+  const enDusuk = tumDegerler.length ? Math.min(...tumDegerler) : 0;
+  const taban = Math.max(0, Math.min(60, Math.floor(enDusuk - 5)));
+  const dolgu = (v) => Math.max(4, Math.min(100, ((v - taban) / Math.max(1, 100 - taban)) * 100));
   // Ürün başına ortalama — sütun altındaki tek sayı, "kim genel olarak önde".
   const avg = factorColumnAverages(rows, cols.length);
   const wins = factorColumnWins(rows, cols.length);
@@ -628,8 +639,9 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
                       <td key={`${row.label}-${i}`}>
                         {/* Dolgu genişliği VERİDİR; animasyona bağlanmaz (arka
                             plandaki sekmede transition donunca boş kalıyordu). */}
-                        <span className={'aic-heat-cell' + (isBest ? ' best' : '')}>
-                          <i style={{ width: `${Math.max(4, Math.min(100, v))}%`, background: col }} />
+                        <span className={'aic-heat-cell' + (isBest ? ' best' : '')}
+                          title={`${Math.round(v)}/100 · ${L('bars start at', 'çubuk tabanı')} ${taban}`}>
+                          <i style={{ width: `${dolgu(v)}%`, background: col }} />
                           <b style={{ color: col }}>{Math.round(v)}</b>
                           {isBest && <em aria-label="best">★</em>}
                         </span>
@@ -1076,7 +1088,11 @@ export function proseBlocks(text) {
    her konu cumlesi bir yon tasir. */
 const TONE_HEAD = '(?<![A-Za-zğüşıöçĞÜŞİÖÇ])';
 const POS_KOK = [
-  'memnuniyet', 'övgü', 'ovgu', 'beğen', 'begen', 'başarı', 'basari', 'gücl', 'gucl',
+  'memnuniyet', 'övgü', 'ovgu', 'beğen', 'begen', 'başarı', 'basari',
+  // 'gucl' ASCII 'c' ile yazilmis ve "GUCLU" kelimesinde 'c' DEGIL 'c'
+  // var — yani 'guclu' hicbir zaman olumlu sayilmiyordu. Diakritikli
+  // hali de listede.
+  'güçl', 'gücl', 'gucl',
   'mükemmel', 'mukemmel', 'etkileyici', 'üstün', 'ustun', 'avantaj', 'olumlu', 'takdir',
   'lider', 'rakipsiz', 'ideal', 'zirve', 'öne çık', 'one cik', 'tavsiye', 'iyi',
   'yeterli', 'akıcı', 'akici', 'sorunsuz', 'kolaylık', 'kolaylik', 'geniş', 'genis',
@@ -1093,6 +1109,13 @@ const NEG_KOK = [
   'hata', 'çökme', 'cokme', 'bozul', 'aşınma', 'asinma', 'endişe', 'endise',
   'problem', 'complaint', 'issue', 'weak', 'poor', 'lacks', 'disappoint',
   'drawback', 'fail', 'expensive', 'limited', 'overheat', 'defect',
+  // Olculdu 2026-08-30: "40W hizli sarj, rakiplerine gore daha YAVASTIR"
+  // cumlesi yesil cikiyordu — 'yavas' listede yoktu, 'hizli' ise SPEC ADI
+  // icinde gecip olumlu sayiliyordu.
+  'yavaş', 'yavas', 'gerisinde', 'kısa süre', 'kisa sure', 'slower', 'behind',
+  // "yuksek fiyat" tuzagi: 'yuksek' olumlu kok, ama fiyatla birlikte
+  // olumsuz. Ifade olarak listede, tek basina 'yuksek' olumlu kalir.
+  'engel', 'yüksek fiyat', 'yuksek fiyat', 'pahalı fiyat', 'barrier', 'high price',
 ];
 const TONE_DONUS = new RegExp(TONE_HEAD + '(ancak|fakat|ama |ne var ki|buna karşın|buna karsin|rağmen|ragmen|however|but |although|yet )', 'i');
 // Kok listesindeki tek ozel karakter bosluk; yine de kacis guvenligi icin
@@ -1110,11 +1133,58 @@ function sayKok(re, text) {
   return n;
 }
 
+/* INKAR ISARETI TERS CEVIRIR — ve cevirmeyi unutunca hukum yanlis renge
+   duser. Olculdu 2026-08-30 (canli S26/iPhone/Xiaomi kaydi):
+
+     "Ancak bu, genel deneyimi OLUMSUZ etkileyecek kritik bir nokta DEGILDIR."
+
+   Bu cumle guven veriyor ama sayfada KIRMIZI cikiyordu: "olumsuz" koku
+   sayiliyor, "degildir" hic bakilmiyordu. Ayni kor nokta ters yonde de var:
+   "kamera IYI DEGIL" yesil cikardi.
+
+   Cozum kelime saymadan once CUMLECIKLERE bolmek: inkar eki tasiyan
+   cumlecikte pozitif ve negatif sayimlar YER DEGISTIRIR. Bolme noktalari
+   virgul, noktali virgul ve baglaclar — Turkcede inkar eki fiilin sonunda,
+   yani ait oldugu cumlecigin icinde kalir. */
+/* IKI AYRI KALIP, IKI AYRI SINIR — ve bu ayrimi atlamak fonksiyonu
+   TAMAMEN calismaz yapiyordu. `TONE_HEAD` bir "kelime basi" lookbehind'i
+   (onunde harf olmasin). Ek kaliplari ONA baglayinca "cikMADI" hic
+   eslesmiyordu: "madi"nin onunde 'k' var. Sonuc: inkar tespiti sifir vaka
+   yakaliyordu.
+     · KELIME olarak gecenler (degil, yok...) -> kelime basi sarti VAR
+     · EK olarak gecenler (-madi, -maz, -mayabilir) -> kelime SONU sarti var,
+       basta harf olmasi zaten beklenen sey. */
+const NEG_INKAR = new RegExp(
+  '(?:'
+  + TONE_HEAD + "(?:degil|değil|yok|bulunmuyor|gerektirmez|not |isn't|aren't|no longer|without)"
+  + '|m[ae](?:dı|di|du|dü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ])'
+  + '|m[ae]z(?![a-zA-ZçğıöşüÇĞİÖŞÜ])'
+  // Yalniz TEK ANLAMLI olanlar: "-mayabilir" / "-mayacak" inkardir. Duz
+  // "-maya" ALINMADI — "saymaya basladi" da ayni yuzeye sahip ve inkar degil.
+  + '|m[ae]yabil|m[ae]yacak'
+  + ')',
+  'i',
+);
+const CUMLECIK_RE = /[,;]|\bve\b|\bama\b|\bancak\b|\bfakat\b|\bbut\b|\bhowever\b|\balthough\b/i;
+
 function leadTone(text) {
   const t = String(text || '');
   if (!t) return '';
-  const pos = sayKok(POS_RE, t);
-  const neg = sayKok(NEG_RE, t);
+  let pos = 0;
+  let neg = 0;
+  // HUKUM SONDA VERILIR. Turkce cumlede yuklem sonda; "40W hizli sarj,
+  // rakiplerine gore daha yavastir" cumlesinde bas olumlu bir SPEC ADI
+  // ("hizli sarj"), hukum ise son cumlecikte. Esit sayimda bas kazanip cumle
+  // yesile duruyordu. Son cumlecik iki kat sayilir.
+  const cumlecikler = t.split(CUMLECIK_RE).filter(Boolean);
+  cumlecikler.forEach((cumlecik, i) => {
+    const agirlik = i === cumlecikler.length - 1 ? 2 : 1;
+    const p = sayKok(POS_RE, cumlecik) * agirlik;
+    const n = sayKok(NEG_RE, cumlecik) * agirlik;
+    // Inkar varsa isaretler yer degistirir: "olumsuz ... degildir" = olumlu,
+    // "iyi degil" = olumsuz.
+    if (NEG_INKAR.test(cumlecik)) { pos += n; neg += p; } else { pos += p; neg += n; }
+  });
   if (pos > neg) return 'pos';
   if (neg > pos) return 'neg';
   return TONE_DONUS.test(t) ? 'neg' : 'pos';
@@ -1154,6 +1224,18 @@ function splitLead(text) {
  * @param text     ham AI metni
  * @param clamp    kaç paragraf açık başlasın (0 = hepsi). Gerisi katlanır.
  */
+/* TEK SATIRLIK metin icin okuma katmani. `RichProse` paragraf bloklari
+   kurar (konu cumlesi, katlama, madde isareti); kart icindeki tek satirlik
+   arti/eksi maddesi ve kunye cumlesi icin fazla. Ama sayi ve urun adi
+   vurgusu ORADA DA olmali — olmayinca ayni sayi sayfanin bir yerinde altin,
+   otekinde duz metin cikiyordu (olculdu: karsilastirma kartlarinda "2600
+   nit" duz, hemen altindaki farklar kartinda altin). */
+export function ProseLine({ text, names = null, keyPrefix = 'pl' }) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  return <>{proseParts(t, keyPrefix, names)}</>;
+}
+
 export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
   const [open, setOpen] = useState(false);
   const blocks = proseBlocks(text);

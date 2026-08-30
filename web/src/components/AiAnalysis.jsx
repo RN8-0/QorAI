@@ -10,15 +10,15 @@ import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import { productPath } from '../lib/routes';
 import { formatPrice, formatPriceAmount, priceForCountry } from '../lib/format';
-import { getProduct } from '../lib/typesense';
+import { getProduct, getProductBySlug } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
 import { displayProductName, cleanProductName } from '../lib/productNames';
 import {
   BarFill,
   DistributionBar,
   DecisiveDifferences,
-  HeadToHead,
   HeatMatrix,
+  ProseLine,
   RichProse,
   SentimentDonut,
   factorDistribution,
@@ -550,199 +550,171 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
   );
 }
 
-// Puan seridi — SIRALAMA TABLOSU gibi okunur: sira numarasi, ad, cubuk, puan,
-// ve gerekce ADIN ALTINDA. Gerekce eskiden CUBUGUN altinda duruyordu; sagdan
-// baslayan bir satir, bir ustundeki adla degil bir altindaki satirla
-// gruplaniyordu — okuyucunun "hangi bilgi hangi cihaza ait belli degil"
-// dedigi yerlerden biri buydu. Satirlar artik hairline ile ayriliyor.
-function CompareScoreChartFull({ chart = [], winner = '', L }) {
-  const rows = arr(chart).map((x) => ({ name: cleanProductName(x.name || ''), score: toInt(x.score), reason: x.reason || '' }))
-    .filter((x) => x.name)
-    .sort((a, b) => b.score - a.score);
-  if (!rows.length) return null;
-  const max = Math.max(1, ...rows.map((r) => r.score));
-  const kazanan = norm(winner);
-  return (
-    <div className="ai-compare-chart">
-      {rows.map((r, i) => {
-        const color = scoreColor(r.score);
-        const win = Boolean(kazanan && norm(r.name) === kazanan);
-        return (
-          <div className={`ai-compare-chart-row${win ? ' win' : ''}`} key={`${r.name}-${i}`}>
-            <span><i aria-hidden="true">{win ? '★' : i + 1}</i>{r.name}</span>
-            <div><BarFill pct={Math.max(4, (r.score / max) * 100)} color={color} delay={i * 90} /></div>
-            <b style={{ color }}>{r.score}</b>
-            {r.reason && <small>{r.reason}</small>}
-          </div>
-        );
-      })}
-      <small className="ai-report-hint">{L('Final scores are personalized to the comparison quiz.', 'Final puanlar karşılaştırma quizine göre kişiselleştirildi.')}</small>
-    </div>
-  );
-}
-
 // ── Compare report — the AI overall comparison is shown first, then one
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
 // the long per-product report stays out of the way until the user asks for it.
-function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names = null, lanes = [] }) {
-  const hasContent = cmp.winner || arr(cmp.chart).length || arr(cmp.factorMatrix).length
-    || arr(cmp.decisiveDifferences).length || String(cmp.headToHead || '').trim()
+/* ── KARAR TAHTASI: TEK URUN, TEK KART ──────────────────────────────────
+   Onceki surumde bir urunun bilgisi UC ayri blokta dagiliyordu:
+     1) puan seridi   — ad SOLDA, cubuk ORTADA, puan SAGDA, gerekce ALTTA
+     2) "Karsi karsiya" — ayni urunun artilari/eksileri, bir ekran asagida
+     3) "Hangisini almali" — ayni urunun kime uygun oldugu, bir ekran daha
+   Okuyucu TEK bir cihaz hakkinda fikir edinmek icin sayfada uc kez
+   asagi-yukari gidiyordu ve ayni olgu uc kez yaziliyordu.
+
+   Artik her urun KENDI KARTINDA ve kart icinde her sey ALT ALTA:
+     kimlik (sira + gorsel + ad) -> fiyat + uygunluk puani -> tek cumle hukum
+     -> artilar (yesil) -> eksiler (kirmizi) -> kime uygun / degil -> capa.
+   "Karsi karsiya" ve "Hangisini almali" bolumleri BIRLESTI; ikisi de ayni
+   urunun kartinda, ust uste.
+
+   RENK SOZLUGU SAYFA BOYUNCA TEK:
+     yesil = iyi · kirmizi = kotu · altin = OLCU (sayilar, bkz. .aic-num)
+   Urunu renk degil KARTIN KENDISI soyler. */
+function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0 }) {
+  const fark = lider > 0 && lane.score > 0 ? lane.score - lider : 0;
+  return (
+    <article className={`ai-cmp-card${lane.win ? ' win' : ''}`}>
+      <header className="ai-cmp-card-head">
+        <span className="ai-cmp-card-no">{lane.win ? '★' : lane.rank}</span>
+        {lane.image ? <ProductImg src={lane.image} alt={lane.name} size="thumb" /> : null}
+        <div className="ai-cmp-card-id">
+          {lane.win && <small>{L('AI pick', 'AI seçimi')}</small>}
+          <b>{lane.name}</b>
+          {lane.price ? (
+            <span className="ai-cmp-card-price">
+              {formatPriceAmount(lane.price.price, lane.price.currency, lane.lang)}
+              {lane.key === enUcuzKey && <i>{L('cheapest', 'en ucuz')}</i>}
+            </span>
+          ) : null}
+        </div>
+        {lane.score > 0 && (
+          <div className="ai-cmp-card-score">
+            <strong>{lane.score}</strong>
+            <small>{L('fit for you', 'sana uygunluk')}</small>
+            {/* PUANLAR BIRBIRINE COK YAKIN (95/94/92). 0-100 cubugu ucunu de
+                ayni uzunlukta gosteriyordu — cubuk hicbir sey soylemiyordu.
+                Bilgi FARKTA; o yuzden cubuk yerine liderle fark yaziliyor. */}
+            {fark < 0 && <i className="ai-cmp-card-gap">{fark}</i>}
+          </div>
+        )}
+      </header>
+
+      {lane.headline && (
+        <p className="ai-cmp-card-lead">
+          <ProseLine text={lane.headline} names={names} keyPrefix={`hl-${lane.key}`} />
+        </p>
+      )}
+
+      {lane.pros.length > 0 && (
+        <div className="ai-cmp-card-side for">
+          <span className="ai-cmp-card-tag">✓ {L('Strengths', 'Artıları')}</span>
+          <ul>{lane.pros.map((x, i) => (
+            <li key={`p${i}`}><ProseLine text={x} names={names} keyPrefix={`pp-${lane.key}-${i}`} /></li>
+          ))}</ul>
+        </div>
+      )}
+      {lane.cons.length > 0 && (
+        <div className="ai-cmp-card-side against">
+          <span className="ai-cmp-card-tag">✕ {L('Weaknesses', 'Eksileri')}</span>
+          <ul>{lane.cons.map((x, i) => (
+            <li key={`c${i}`}><ProseLine text={x} names={names} keyPrefix={`cc-${lane.key}-${i}`} /></li>
+          ))}</ul>
+        </div>
+      )}
+
+      {(lane.bestFor || lane.notFor) && (
+        <div className="ai-cmp-card-who">
+          {lane.bestFor && (
+            <p className="for">
+              <span className="ai-cmp-who-tag">{L('Right for you if', 'Sana uygun')}</span>
+              <ProseLine text={lane.bestFor} names={names} keyPrefix={`bf-${lane.key}`} />
+            </p>
+          )}
+          {lane.notFor && (
+            <p className="against">
+              <span className="ai-cmp-who-tag">{L('Not for you if', 'Sana uygun değil')}</span>
+              <ProseLine text={lane.notFor} names={names} keyPrefix={`nf-${lane.key}`} />
+            </p>
+          )}
+        </div>
+      )}
+
+      {lane.anchor && (
+        <a className="ai-cmp-card-more" href={`#${lane.anchor}`}>
+          {L('Full review ↓', 'Tam incelemesi ↓')}
+        </a>
+      )}
+    </article>
+  );
+}
+
+function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
+  const hasContent = cmp.winner || lanes.length || arr(cmp.decisiveDifferences).length
     || String(cmp.recommendation || '').trim();
   if (!hasContent) return null;
 
-  // ── KARSI KARSIYA: SATIRLAR ────────────────────────────────────────────
-  // Yeni kayitlar yapiyi hazir tasiyor (`headToHeadByProduct`). ESKI
-  // kayitlarda yalniz duz nesir var ve o nesir urun urun yazilmiyor — onu
-  // basliklara bolmek yanlis atif uretiyordu (bkz. AiCharts -> HeadToHead).
-  // Yapi yoksa serit URUNUN KENDI arti/eksi listesinden kurulur: `products[]`
-  // girdileri her urun icin AYRI bir AI cagrisinda uretildi, yani bir maddenin
-  // hangi urune ait oldugu YAPI GEREGI kesin — atif hatasi imkansiz.
-  // Ilk uc / ilk iki madde yeter: burasi tek bakislik ozet, urunun tam
-  // arti/eksi listesi zaten asagida kendi raporunda duruyor.
-  const h2hRows = arr(cmp.headToHeadByProduct).length
-    ? arr(cmp.headToHeadByProduct).map((r) => {
-      const l = lanes.find((x) => x.norm === norm(r?.name));
-      return { ...r, win: Boolean(l && l.win) };
-    })
-    : lanes
-      .filter((l) => l.pros.length || l.cons.length)
-      .map((l) => ({ name: l.name, case: l.pros.slice(0, 3), against: l.cons.slice(0, 2), win: l.win }));
+  // EN UCUZ yalnizca AYNI para biriminde anlamlidir; kur cevirisi yapmiyoruz
+  // (yapsak da gosterilen rakamla tutmazdi).
+  const fiyatli = lanes.filter((l) => l.price && l.price.price > 0);
+  const tekParaBirimi = new Set(fiyatli.map((l) => l.price.currency)).size === 1;
+  const enUcuzKey = tekParaBirimi && fiyatli.length > 1
+    ? fiyatli.reduce((a, b) => (a.price.price <= b.price.price ? a : b)).key
+    : '';
+  const lider = Math.max(0, ...lanes.map((l) => l.score || 0));
 
-  // ── HANGISINI ALMALI: KARAR SATIRLARI ──────────────────────────────────
-  // Nesir 4-5 paragrafti ve paragraflar urun degistiriyordu ("Ancak, 40W
-  // sarji ... geride kaliyor. Xiaomi 17 Ultra, ozellikle ..."), yani okuyucu
-  // hangi cumlenin hangi cihaza ait oldugunu ancak dikkatle okuyarak
-  // ayirabiliyordu. Karar artik once URUN URUN veriliyor: kime uygun / kime
-  // uygun degil, ikisi de raporun kendi alanindan (`bestFor` / `notFor`).
-  // Nesir kaybolmuyor — altta, kisaltilmis olarak duruyor.
-  const pickRows = lanes.filter((l) => l.bestFor || l.notFor);
   return (
     <section className="ai-report-section ai-cmp-overview">
       <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma')}</div>
       <h4>{L('Which one wins for you', 'Senin için hangisi kazanıyor')}</h4>
-      {cmp.winner && (
+      {/* KAZANAN BANDI YALNIZCA KART YILDIZLANAMADIGINDA. Band ile birinci
+          kart AYNI seyi soyluyordu: ayni ad, ayni 95, ayni "sana uygunluk"
+          etiketi — ust uste iki kez. Kart zaten yildiz + yesil kenar +
+          "AI SECIMI" tasiyor. Band yalnizca hukumdeki ad hicbir urunle
+          eslesmediginde (ad sapmasi) devreye girer; o zaman kartlarda yildiz
+          olmaz ve kazanan bilgisi kaybolurdu. */}
+      {cmp.winner && !lanes.some((l) => l.win) && (
         <div className="ai-cmp-winner">
           <span>★</span>
           <div><small>{L('Recommended pick', 'Önerilen seçim')}</small><b>{cleanProductName(cmp.winner)}</b></div>
-          {/* Sayı ETİKETSİZ duruyordu: kullanıcı ürün adının yanındaki "90"ın
-              ne olduğunu anlamıyordu ("ne alaka?"). Bu, sayfadaki "Qor AI
-              Skoru" (teknik puan) ile de karışıyordu — bunlar FARKLI şeyler:
-              teknik puan üründen gelir, bu ise quiz cevaplarına göre hesaplanan
-              SANA UYGUNLUK puanıdır. Artık adı yazıyor. */}
-          {toInt(winnerScore || cmp.winnerScore) > 0 && (
+          {lider > 0 && (
             <div className="ai-cmp-winner-score">
-              <strong>{toInt(winnerScore || cmp.winnerScore)}</strong>
+              <strong>{lider}</strong>
               <small>{L('fit for you', 'sana uygunluk')}</small>
             </div>
           )}
         </div>
       )}
-      <CompareScoreChartFull chart={chart || cmp.chart} winner={cmp.winner} L={L} />
-      {/* FAKTÖR MATRİSİ BURADAN KALKTI. Aynı veri sayfada İKİ KEZ çiziliyordu:
-          burada `FactorMatrix` (ürün adı + çubuk), hemen altında `HeatMatrix`
-          (hizalı tablo). Tek çizim yolu HeatMatrix. */}
 
-      {/* ÜÇ AYRI SORU, ÜÇ AYRI BLOK.
-          Eskiden üçü de tek bir "Detaylı analiz" accordion'unun içinde,
-          başlıksız, arka arkaya akıyordu: madde listesi bitiyor, hemen
-          ardından nesir başlıyor, onun ardından öneri geliyordu — hepsi aynı
-          punto, aynı renk. Kullanıcının "yazılar iç içe geçmiş" dediği yer
-          tam burasıydı. Artık her biri kendi başlığı ve kendi görsel biçimi
-          ile ayrılıyor:
-            farklar       -> numaralı kart ızgarası (taranabilir)
-            karşı karşıya -> ürün başına şerit (yeşil lehine / kırmızı aleyhine)
-            öneri         -> ürün başına karar satırı + kısaltılmış gerekçe */}
-      <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
-
-      {(h2hRows.length > 0 || String(cmp.headToHead || '').trim()) && (
-        <section className="ai-cmp-block">
-          <div className="aic-card-title">🥊 {L('Head to head', 'Karşı karşıya')}</div>
-          {/* Her ürün KENDİ şeridinde: yeşil = lehine, kırmızı = aleyhine.
-              Renk YALNIZCA yönü söyler, ürünü değil — ürünü şeridin başlığı
-              söyler. Eskiden burası tek blok nesirdi ve paragraflar ürün
-              değiştiriyordu; okuyucu hangi cümlenin hangi cihaza ait olduğunu
-              ancak dikkatle okuyarak çıkarabiliyordu. */}
-          <HeadToHead rows={h2hRows} names={names} L={L} />
-          {/* ESKİ kayıtların düz nesri KAYBOLMAZ ama şeritlerin üstünü de
-              kapatmaz: yapılandırılmış özet önce, nesir altta ve KISALTILMIŞ.
-              Katlama `Collapsible` ile DEĞİL `RichProse`un kendi katlamasıyla:
-              Collapsible kapalıyken çocuklarını hiç render etmiyor, yani
-              metin JS çalıştıran crawler'dan da saklanırdı. RichProse gizli
-              paragrafları DOM'da tutar, yalnızca `display`ini kapatır — bu
-              ayrım bu projede bir kez ölçülerek konuldu (bkz. AiCharts). */}
-          {String(cmp.headToHead || '').trim() && (
-            <div className="ai-cmp-fold">
-              <div className="ai-cmp-subhead">
-                {L('The full head-to-head text', 'Karşılaştırma metninin tamamı')}
-              </div>
-              <RichProse text={cmp.headToHead} L={L} clamp={1} names={names} />
-            </div>
-          )}
-        </section>
+      {lanes.length > 0 && (
+        <div className="ai-cmp-cards">
+          {lanes.map((l) => (
+            <CompareCard key={l.key} lane={l} L={L} names={names}
+              enUcuzKey={enUcuzKey} lider={lider} />
+          ))}
+        </div>
       )}
 
-      {(pickRows.length > 0 || String(cmp.recommendation || '').trim()) && (
-        <section className="ai-cmp-block">
-          <div className="aic-card-title">🏁 {L('Which one to buy', 'Hangisini almalı')}</div>
-          {pickRows.length > 0 && (
-            <div className="ai-cmp-picks">
-              {pickRows.map((l) => (
-                <article className={`ai-cmp-pick${l.win ? ' win' : ''}`} key={l.key}>
-                  <header>
-                    {l.win && <span className="ai-cmp-pick-win">★ {L('AI pick', 'AI seçimi')}</span>}
-                    <b>{l.name}</b>
-                    {/* PUAN ETIKETLI. Once burada `DecisionBadge` duruyordu ve
-                        iki sorunu vardi: (1) esik 70 oldugu icin uc urun de
-                        "Al" cikiyordu — hicbir sey ayirt etmiyor, (2) "★ AI
-                        secimi" rozetinin yaninda "✓ Al" gozle "AI" diye
-                        okunuyordu. Ayirt eden sey PUAN; o yuzden sayi ve neyin
-                        sayisi oldugu yaziyor. */}
-                    {l.score > 0 && (
-                      <span className="ai-cmp-pick-score">
-                        <b>{l.score}</b>
-                        <small>{L('fit for you', 'sana uygunluk')}</small>
-                      </span>
-                    )}
-                  </header>
-                  {l.bestFor && (
-                    <p className="ai-cmp-pick-for">
-                      <span>✓ {L('Buy it if', 'Sana uygun')}</span>{l.bestFor}
-                    </p>
-                  )}
-                  {l.notFor && (
-                    <p className="ai-cmp-pick-not">
-                      <span>✕ {L('Skip it if', 'Sana uygun değil')}</span>{l.notFor}
-                    </p>
-                  )}
-                  {l.anchor && (
-                    <a className="ai-cmp-pick-more" href={`#${l.anchor}`}>
-                      {L('Full review ↓', 'Tam incelemesi ↓')}
-                    </a>
-                  )}
-                </article>
-              ))}
+      {/* KARARI BELIRLEYEN FARKLAR karta girmez: bunlar tek bir urune ait
+          degil, urunler ARASINDAKI olculer. Kartlar "bu cihaz nasil",
+          bu blok "hangisi neyde onde" sorusunu yanitliyor. */}
+      <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
+
+      {String(cmp.recommendation || '').trim() && (
+        /* Tek uzun metin, EN ALTTA ve kisaltilmis. Karar yukarida kartlarda
+           verildi; bu metin onu aciklar, geciktirmemeli. Katlama RichProse'un
+           kendi mekanizmasi — gizli paragraf DOM'da kalir (crawler gorur),
+           `Collapsible` olsaydi hic basilmazdi. */
+        <div className="ai-cmp-fold">
+          <div className="ai-cmp-subhead">{L('Why — the full reasoning', 'Kararın gerekçesi')}</div>
+          <div className="ai-verdict">
+            <span>✓</span>
+            <div>
+              <RichProse text={cmp.recommendation} L={L}
+                clamp={lanes.length ? 2 : 0} names={names} />
             </div>
-          )}
-          {String(cmp.recommendation || '').trim() && (
-            /* Gerekçe nesri kısaltılmış gelir: karar YUKARIDA verildi, bu metin
-               onu açıklıyor ve okuyucuyu bekletmemeli. Katlama RichProse'un
-               kendi mekanizması — gizli paragraflar DOM'da kalır (crawler
-               görür), `Collapsible` olsaydı hiç basılmazlardı. */
-            <div className="ai-cmp-fold">
-              <div className="ai-cmp-subhead">
-                {L('Why — the full reasoning', 'Kararın gerekçesi')}
-              </div>
-              <div className="ai-verdict">
-                <span>✓</span>
-                <div>
-                  <RichProse text={cmp.recommendation} L={L}
-                    clamp={pickRows.length ? 2 : 0} names={names} />
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -794,6 +766,41 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
     return { ai: item, image: item.imageUrl || '', name, key: `${name}-${i}` };
   }).filter((c) => c.name || (c.ai && Object.keys(c.ai).length));
 
+  // ── FIYAT ─────────────────────────────────────────────────────────────
+  // Karsilastirma kaydi fiyat TASIMIYOR. Canli karsilastirma akisinda gercek
+  // urun nesnesi elde (`c.product`), ama YAYINLANMIS analizde yalnizca AI
+  // ciktisi var — ve orada tek katalog baglantisi `url: /product/<slug>`.
+  // Slug BENZERSIZ (107.449 urun, 0 cakisma; bkz. lib/typesense.js), yani
+  // eslesme kesin — ada gore aramak yanlis urun getirebilirdi.
+  // Istek sayisi URUN SAYISI kadar (2-4), katalog buyuklugunden bagimsiz.
+  const slugOf = (c) => {
+    const m = String(c.ai?.url || '').match(/\/product\/([^/?#]+)/);
+    return m ? m[1] : '';
+  };
+  const [fiyatlar, setFiyatlar] = useState({});
+  const slugAnahtari = columns.map((c) => (c.product ? '' : slugOf(c))).join('|');
+  useEffect(() => {
+    let live = true;
+    if (!geoCountry) return undefined;
+    const hedefler = columns.filter((c) => !c.product && slugOf(c)).map((c) => [c.key, slugOf(c)]);
+    if (!hedefler.length) return undefined;
+    Promise.all(hedefler.map(([key, slug]) => getProductBySlug(slug)
+      .then((prod) => [key, prod]).catch(() => [key, null])))
+      .then((ciftler) => {
+        if (!live) return;
+        const out = {};
+        for (const [key, prod] of ciftler) {
+          if (!prod) continue;
+          const pc = priceForCountry(prod, geoCountry);
+          if (pc && pc.price > 0) out[key] = pc;
+          else if (Number(prod.lowestPriceUSD) > 0) out[key] = { price: Number(prod.lowestPriceUSD), currency: 'USD' };
+        }
+        setFiyatlar(out);
+      });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slugAnahtari, geoCountry]);
+
   const winnerNorm = norm(cmp.winner || '');
   // TEK URUN, TEK PUAN. Kazanan seridindeki sayilar HUKUM cagrisinin ham
   // puanlariydi (92/88/88), urunun kendi kartindaki sayi ise kalibre edilmis
@@ -808,7 +815,6 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
     const satir = arr(cmp.chart).find((x) => norm(x?.name) === norm(c.name));
     return { name: c.name, score: puan, reason: satir?.reason || c.ai?.headline || '' };
   }).filter((x) => x.score > 0);
-  const winnerPuan = (chart.find((x) => norm(x.name) === winnerNorm) || {}).score || 0;
   // HeatMatrix her ürünün kendi faktörlerinden beslenir; AI ayrıca bir
   // factorMatrix döndürdüyse onu da aynı şekle çeviririz (tek çizim yolu).
   const heatProducts = columns.map((c) => ({
@@ -825,18 +831,31 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
   // adi cikarmaya calisan hicbir tahmin yok (o yol bir kez denendi ve yanlis
   // atif uretti, bkz. AiCharts -> HeadToHead).
   const lanes = columns.map((c, i) => {
-    const puan = (chart.find((x) => norm(x.name) === norm(c.name)) || {}).score || 0;
+    const satir = chart.find((x) => norm(x.name) === norm(c.name)) || {};
+    const puan = satir.score || 0;
     return {
       key: c.key,
       name: c.name,
       norm: norm(c.name),
+      lang,
+      image: c.image || '',
+      rank: i + 1,
       score: puan,
+      // Tek cumlelik hukum: once hukum cagrisinin kisa gerekcesi, yoksa
+      // urunun kendi basligi. Kartin ustunde durur, kart neyi anlatiyorsa
+      // onun ozeti.
+      headline: localizeAiText(satir.reason || c.ai?.headline || '', L),
+      price: (c.product ? priceForCountry(c.product, geoCountry) : fiyatlar[c.key]) || null,
       win: Boolean(winnerNorm && norm(c.name) === winnerNorm),
       // Arti/eksi maddeleri iki sekilde gelebiliyor: duz metin ya da
       // {title, detail}. `bullets()` ikisini de tek sekle indirger — String()
       // ile gecilseydi nesne maddesi ekranda "[object Object]" olurdu.
-      pros: bullets(c.ai?.pros).map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
-      cons: bullets(c.ai?.cons).map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
+      // UC ARTI, IKI EKSI. Kart tek bakista okunmali; urunun TAM listesi
+      // zaten asagida kendi raporunda duruyor (ProConList).
+      pros: bullets(c.ai?.pros).slice(0, 3)
+        .map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
+      cons: bullets(c.ai?.cons).slice(0, 2)
+        .map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
       bestFor: localizeAiText(c.ai?.bestFor, L),
       notFor: localizeAiText(c.ai?.notFor, L),
       // Karar satirindan urunun tam raporuna capa — rapor AYNI sayfada, altta.
@@ -846,7 +865,7 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
 
   return (
     <div className="ai-report ai-report-compare">
-      <ComparisonOverview cmp={cmp} L={L} chart={chart} winnerScore={winnerPuan}
+      <ComparisonOverview cmp={cmp} L={L}
         names={columns.map((c) => c.name).filter(Boolean)} lanes={lanes} />
 
       {heatProducts.length >= 2 && (

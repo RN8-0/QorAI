@@ -474,99 +474,6 @@
   border-radius: 8px;
   border: 1px solid var(--border);
 }
-.ai-compare-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 10px 0 14px;
-}
-/* SIRALAMA SATIRI. Ayrim hairline ile: gerekce satiri bir ustundeki adla
-   gruplanmali, bir altindaki urunle degil. */
-.ai-compare-chart-row {
-  display: grid;
-  /* AD KESILMEZ. Sutun 190px'te sabitken sira numarasi da eklenince en uzun
-     ad "Samsung Galaxy S26 Ultra (" diye kirpiliyordu — tam da bu bolumun
-     duzeltmeye calistigi sey, hangi cihazin konusuldugunun belli olmasi. */
-  grid-template-columns: minmax(150px, 250px) minmax(0, 1fr) 44px;
-  gap: 6px 10px;
-  align-items: center;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--divider, var(--border));
-}
-.ai-compare-chart-row:last-of-type { padding-bottom: 0; border-bottom: 0; }
-.ai-compare-chart-row span {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 850;
-  line-height: 1.35;
-  /* Sigmayan ad SARAR, kirpilmaz. */
-  overflow-wrap: anywhere;
-}
-/* Sira numarasi mono: uc satirin rakami ayni genislikte durur, ad sutunu
-   satirdan satira kaymaz. Kazanan yildiz alir. */
-.ai-compare-chart-row span i {
-  flex: none;
-  font-style: normal;
-  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
-  font-size: 11.5px;
-  font-weight: 900;
-  color: var(--text3);
-}
-.ai-compare-chart-row.win span i { color: var(--lead-pos); }
-.ai-compare-chart-row div {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--bg4);
-}
-.ai-compare-chart-row div i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-}
-.ai-compare-chart-row b {
-  text-align: right;
-  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  font-weight: 900;
-}
-/* GEREKCE ADIN ALTINDA. Eskiden `2 / -1` idi, yani cubugun altindan
-   basliyordu: sagdan baslayan bir satir goz icin bir ustundeki adla degil bir
-   altindaki satirla gruplaniyor ve gerekce yanlis urune aitmis gibi
-   okunuyordu. */
-.ai-compare-chart-row small {
-  grid-column: 1 / -1;
-  color: var(--text3);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-@media (max-width: 760px) {
-  .ai-feature-grid,
-  .ai-alt-cards,
-  .ai-price-grid {
-    grid-template-columns: 1fr;
-  }
-  .ai-report-hero,
-  .ai-community-head,
-  .ai-compare-product-head {
-    grid-template-columns: 1fr;
-  }
-  .ai-compare-chart-row {
-    grid-template-columns: minmax(0, 1fr) 42px;
-  }
-  .ai-compare-chart-row span {
-    grid-column: 1 / -1;
-  }
-  .ai-compare-chart-row small {
-    grid-column: 1 / -1;
-  }
-}
-
 /* Karşılaştırma özetinin ALT BLOKLARI. Üçü de tek bir accordion içinde
    başlıksız akıyordu; artık her biri kendi başlığı ve hairline ayıracıyla. */
 .ai-cmp-block {
@@ -576,95 +483,142 @@
 }
 .ai-cmp-block > .aic-card-title { margin-bottom: 10px; }
 
-/* ── HANGİSİNİ ALMALI — ÜRÜN ÜRÜN KARAR ─────────────────────────────────
-   Bu blok 4-5 paragraflık nesirdi ve paragraflar ürün değiştiriyordu:
-   "Ancak, 40W hızlı şarjı ... geride kalıyor. Xiaomi 17 Ultra, özellikle ..."
-   Tek paragrafta iki cihaz, aynı punto, aynı renk — okuyucu hangi cümlenin
-   hangi cihaza ait olduğunu ancak dikkatle okuyarak çıkarabiliyordu.
+/* ── KARAR TAHTASI: TEK ÜRÜN, TEK KART ─────────────────────────────────
+   Bir ürünün bilgisi üç ayrı blokta dağılıyordu (puan şeridi · karşı karşıya ·
+   hangisini almalı) ve şeritte ad SOLDA, çubuk ORTADA, puan SAĞDA, gerekçe
+   ALTTA duruyordu: göz tek bir cihazı takip edemiyordu. Artık her ürün kendi
+   kartında ve kart içinde her şey ALT ALTA.
 
-   Karar artık ürün başına bir şerit. RENK YALNIZCA YÖNÜ SÖYLER (yeşil =
-   sana uygun, kırmızı = uygun değil); cihazı şeridin başlığı söyler. Kazanan
-   şeridi sol kenarındaki yeşil çizgiden tanınır — kutu ya da gölge değil.
-   Nesir kaybolmuyor, altta katlanmış duruyor. */
-.ai-cmp-picks { display: grid; gap: 10px; }
-.ai-cmp-pick {
-  padding: 12px 14px;
+   Renk sözlüğü sayfa boyunca tek: yeşil = iyi, kırmızı = kötü, altın = ölçü.
+   Ürünü renk değil kartın kendisi söyler; kazanan yalnızca sol kenarındaki
+   yeşil çizgiyle ayrılır — kutu ya da gölge değil. */
+.ai-cmp-cards { display: grid; gap: 14px; margin: 4px 0 18px; }
+.ai-cmp-card {
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-left: 3px solid var(--border-strong);
-  border-radius: var(--r-sm, 10px);
+  border-radius: var(--r-md, 14px);
   background: var(--surface-2);
 }
-.ai-cmp-pick.win {
+.ai-cmp-card.win {
   border-left-color: var(--lead-pos);
   background: color-mix(in srgb, var(--lead-pos) 6%, var(--surface-2));
 }
-.ai-cmp-pick > header {
-  display: flex;
+
+/* Kimlik satırı: sıra · görsel · ad+fiyat · puan. Tek satır, dört sütun. */
+.ai-cmp-card-head {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  margin-bottom: 9px;
+  gap: 12px;
 }
-.ai-cmp-pick > header b { font-size: 14.5px; font-weight: 900; color: var(--text); }
-.ai-cmp-pick-win {
-  order: -1;
-  width: 100%;
-  font-size: 10.5px;
-  font-weight: 900;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+.ai-cmp-card-head > img { width: 44px; height: 44px; object-fit: contain; }
+.ai-cmp-card-no {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  border-radius: var(--r-xs, 6px);
+  background: color-mix(in srgb, var(--ink-blue) 12%, transparent);
+  color: var(--ink-blue);
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 12px; font-weight: 900;
+}
+.ai-cmp-card.win .ai-cmp-card-no {
+  background: color-mix(in srgb, var(--lead-pos) 14%, transparent);
   color: var(--lead-pos);
 }
-/* Uyum puanı mono ve tabular: üç şeridin rakamı alt alta hizalanır. Sayı
-   ETİKETSİZ duramaz — sayfada iki farklı puan var (katalog Tech Score ve bu
-   uygunluk puanı) ve etiketsiz sayı ikisini karıştırıyordu. */
-.ai-cmp-pick-score {
-  margin-left: auto;
-  text-align: right;
-  line-height: 1.1;
+.ai-cmp-card-id { min-width: 0; }
+.ai-cmp-card-id > small {
+  display: block; font-size: 10px; font-weight: 900;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--lead-pos);
 }
-.ai-cmp-pick-score b {
+.ai-cmp-card-id > b { display: block; font-size: 15px; font-weight: 900; color: var(--text); line-height: 1.25; }
+/* Fiyat sitenin geri kalanıyla AYNI token'da (`--price`); yargı değil VERİ,
+   o yüzden kartın kimlik satırında durur, artı/eksi listelerinin içinde değil. */
+.ai-cmp-card-price {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 3px;
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--text);
+  font-size: 13.5px; font-weight: 800; color: var(--price);
 }
-.ai-cmp-pick-score small {
-  display: block;
-  margin-top: 2px;
-  font-size: 9.5px;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--text3);
+.ai-cmp-card-price i {
+  font-style: normal; font-size: 9.5px; font-weight: 900;
+  letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: var(--r-xs, 6px);
+  background: color-mix(in srgb, var(--price) 14%, transparent);
 }
-.ai-cmp-pick p {
-  margin: 0 0 7px;
-  font-size: 13.5px;
-  line-height: 1.62;
+.ai-cmp-card-score { text-align: right; line-height: 1.1; }
+.ai-cmp-card-score strong {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px; font-weight: 900; color: var(--text);
+}
+.ai-cmp-card-score small {
+  display: block; margin-top: 2px; font-size: 9.5px; font-weight: 800;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--text3);
+}
+/* Liderle fark — çubuk yerine. 95/94/92 üç çubuğu aynı uzunlukta çiziyordu. */
+.ai-cmp-card-score i {
+  display: block; margin-top: 3px; font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 11px; font-weight: 800; color: var(--text3);
+}
+
+.ai-cmp-card-lead {
+  margin: 11px 0 0; font-size: 13.5px; line-height: 1.6;
   color: var(--text-soft, var(--text2));
 }
-.ai-cmp-pick p:last-of-type { margin-bottom: 0; }
-.ai-cmp-pick p > span {
-  margin-right: 8px;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  white-space: nowrap;
+
+/* Artılar / eksiler — yön yalnızca renkten ve etiketten okunur. */
+.ai-cmp-card-side { margin-top: 11px; padding-left: 12px; border-left: 2px solid var(--border); }
+.ai-cmp-card-side.for { border-left-color: color-mix(in srgb, var(--lead-pos) 55%, transparent); }
+.ai-cmp-card-side.against { border-left-color: color-mix(in srgb, var(--lead-neg) 55%, transparent); }
+.ai-cmp-card-tag {
+  display: block; margin-bottom: 4px;
+  font-size: 10.5px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase;
 }
-.ai-cmp-pick-for > span { color: var(--lead-pos); }
-.ai-cmp-pick-not > span { color: var(--lead-neg); }
-.ai-cmp-pick-more {
-  display: inline-block;
-  margin-top: 9px;
-  font-size: 12.5px;
-  font-weight: 750;
-  color: var(--accent);
-  text-decoration: none;
+.ai-cmp-card-side.for .ai-cmp-card-tag { color: var(--lead-pos); }
+.ai-cmp-card-side.against .ai-cmp-card-tag { color: var(--lead-neg); }
+.ai-cmp-card-side ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.ai-cmp-card-side li {
+  position: relative; padding-left: 13px;
+  font-size: 13.5px; line-height: 1.55; color: var(--text-soft, var(--text2));
 }
-.ai-cmp-pick-more:hover { text-decoration: underline; }
+.ai-cmp-card-side li::before {
+  content: ''; position: absolute; left: 2px; top: .62em;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: currentColor; opacity: .45;
+}
+
+/* Kime uygun / değil — hairline ile ayrılır, kutu yok. */
+.ai-cmp-card-who { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border); }
+.ai-cmp-card-who p {
+  margin: 0 0 6px; font-size: 13px; line-height: 1.55;
+  color: var(--text-soft, var(--text2));
+}
+.ai-cmp-card-who p:last-child { margin-bottom: 0; }
+/* ETIKET KENDI SINIFINDA. `p > span` idi ve okuma katmani (`ProseLine`)
+   metin parcalarini da <span> olarak basiyor: cumlenin TAMAMI buyuk harfe
+   donuyor, yesile/kirmiziya boyaniyor ve `nowrap` yuzunden satir karttan
+   TASIP puan sutununu ekrandan atiyordu. */
+.ai-cmp-who-tag {
+  margin-right: 8px; font-size: 10.5px; font-weight: 900;
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
+}
+.ai-cmp-card-who p.for .ai-cmp-who-tag { color: var(--lead-pos); }
+.ai-cmp-card-who p.against .ai-cmp-who-tag { color: var(--lead-neg); }
+
+.ai-cmp-card-more {
+  display: inline-block; margin-top: 11px;
+  font-size: 12.5px; font-weight: 750; color: var(--accent); text-decoration: none;
+}
+.ai-cmp-card-more:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  /* Dar ekranda görsel düşer, ad tam genişlik alır, puan alt satıra iner. */
+  .ai-cmp-card-head { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ai-cmp-card-head > img { display: none; }
+  .ai-cmp-card-score strong { font-size: 19px; }
+}
 
 /* Uzun nesirler (karşılaştırma metni, kararın gerekçesi) kısaltılmış gelir.
    Karar ÜSTTE verildi; metin onu açıklıyor, geciktirmemeli. Kısaltmayı

@@ -914,18 +914,26 @@
    "kucuk mavi" bir yabanci gibi duruyordu. Ayni punto, daha KALIN, ana metin
    rengi — belirgin ama cumleyi bolmuyor. Tabular figur korunuyor ki alt alta
    gelen sayilar hizali kalsin. */
+/* OLCU RENGI, HUKUM RENGI DEGILDIR.
+   Sayilar `--lead-pos` (yesil) ile yaziliyordu; yani "256 GB baslangic
+   depolama alani rakiplerinin GERISINDE kaliyor" cumlesindeki 256 GB da
+   yesildi. Yesil bu sayfada TEK bir sey demeli: olumlu hukum. Bir spec ne
+   olumlu ne olumsuzdur — OLCUDUR. O yuzden kendi rengi var: kehribar/altin
+   `--ink-amber` (acik temada koyu kehribar, koyu temada altin; ikisi de
+   metin-guvenli, bkz. CLAUDE.md ink kurali). Uc renk, uc ayri sey:
+   yesil = iyi, kirmizi = kotu, altin = olcu. */
 .aic-num {
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
-  color: var(--lead-pos);
+  color: var(--ink-amber);
   white-space: nowrap;
 }
-/* Konu cumlesinin ICINDEKI sayi cumlenin rengini alir — kirmizi bir hukmun
-   ortasinda yesil bir sayi hukmu boler. */
-.aic-prose-lead .aic-num { color: inherit; }
+/* Konu cumlesinin icindeki sayi da OLCU rengini korur. Eskiden cumlenin
+   rengini aliyordu (`inherit`); gerekcesi "kirmizi hukmun ortasinda yesil
+   sayi hukmu boler" idi. Sayi artik yesil olmadigi icin o catisma yok. */
 .aic-prose-more {
   display: inline-flex;
   align-items: center;
