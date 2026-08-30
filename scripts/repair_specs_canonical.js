@@ -13,6 +13,11 @@
 const path = require('path');
 const { req: pbReq } = require('../migration/pb');
 const { req: tsReq } = require('../migration/ts');
+// spec_i18n ONCE yuklenmeli: spec_canonical yarim cevrilmis etiketleri
+// ("Diger Specifications", "Display Boyutu") tamamlamak icin OPSIYONEL
+// olarak globalThis.QorAiSpecI18n'i arar. Yuklenmezse sessizce atlar --
+// yani bu satir olmadan onarim etiketleri DUZELTMEZ, hata da vermez.
+require(path.join(__dirname, '..', 'admin', 'js', 'spec_i18n.js'));
 const Canon = require(path.join(__dirname, '..', 'admin', 'js', 'spec_canonical.js'));
 
 const argv = process.argv.slice(2);

@@ -13,6 +13,15 @@
   function norm(text) {
     return String(text || '')
       .toLowerCase()
+      // NOKTALI BUYUK I TUZAGI. JS'te 'İ'.toLowerCase() tek harf DEGIL,
+      // "i" + U+0307 (birlesen nokta) uretir. Asagidaki [^a-z0-9] suzgeci o
+      // noktayi BOSLUGA cevirdigi icin kelime ikiye bolunuyordu:
+      //     "İletim Protokolü" -> "i letim protokolu"
+      //     "İşlemci Modeli"   -> "i slemci modeli"
+      // Boylece I ile baslayan HICBIR Turkce etiket takma adlara eslesemiyordu
+      // (olculdu 2026-08-30). Birlesen isaretler once temizlenir.
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
       .replace(/ı/g, 'i').replace(/İ/g, 'i')
       .replace(/ç/g, 'c').replace(/ğ/g, 'g').replace(/ö/g, 'o')
       .replace(/ş/g, 's').replace(/ü/g, 'u')
@@ -112,14 +121,40 @@
 
     ['Operating system', ['operating system', 'os', 'betriebssystem', 'isletim sistemi', 'software']],
     ['Weight', ['weight', 'gewicht', 'agirlik']],
+    // Monitorde "standli agirlik" URUN agirligindan AYRI bir olcum; ayni
+    // anahtara duserlerse mergeValue ikisini tek satirda birlestiriyordu.
+    ['Weight with stand', ['weight with stand', 'display weight with stand', 'agirlik standli', 'standli agirlik', 'display agirligi standli']],
     ['Dimensions', ['dimensions', 'dimension', 'abmessungen', 'masse', 'maße', 'boyutlar', 'olculer']],
     ['Thickness', ['thickness', 'dicke', 'tiefe', 'kalinlik']],
-    ['Width', ['width', 'breite', 'en']],
-    ['Height', ['height', 'hohe', 'höhe', 'boy', 'length']],
+    ['Width', ['width', 'breite', 'en', 'genislik']],
+    ['Height', ['height', 'hohe', 'höhe', 'boy', 'length', 'yukseklik']],
+    ['Depth', ['depth', 'derinlik']],
     ['Water resistance', ['water resistance', 'waterproof', 'wasserdicht', 'schutzart', 'ip zertifizierung', 'suya dayaniklilik']],
     ['Color', ['color', 'colour', 'farbe', 'color options', 'renk', 'renk secenekleri']],
     ['Sensors', ['sensors', 'sensoren', 'sensorler']],
     ['Speakers', ['speakers', 'speaker features', 'lautsprecher', 'hoparlor', 'hoparlor ozellikleri']],
+
+    // ── Epey'in ham Turkce etiketleri ──────────────────────────────────────
+    // Bunlar hicbir kurala eslesmiyordu ve kanonik (INGILIZCE) tarafta
+    // oldugu gibi duruyordu: Ingilizce urun sayfasinda, JSON-LD'de ve AI
+    // istemlerinde "Cerceve Boyutu", "Veri Yolu Standardi" gibi Turkce
+    // etiketler gorunuyordu. Makine cevirisi bunlari ya bozuyor
+    // ("Sirali Okuma" -> "Sequential Okuma") ya da yanlis anlamlandiriyor
+    // ("Cerceve Boyutu" -> "Frame Size"; dogrusu FORM FAKTORU), o yuzden
+    // acik yaziliyorlar.
+    ['Sequential read', ['sirali okuma', 'sequential read', 'okuma hizi', 'read speed']],
+    ['Sequential write', ['sirali yazma', 'sequential write', 'yazma hizi', 'write speed']],
+    ['Form factor', ['form factor', 'form faktoru', 'formfaktor', 'bauform', 'cerceve boyutu', 'frame size']],
+    ['Bus standard', ['veri yolu standardi', 'bus standard', 'pcie nesli', 'pcie generation']],
+    ['Bus', ['veri yolu', 'bus', 'bus interface']],
+    ['Interface', ['baglanti arayuzu', 'connection interface', 'arayuz', 'schnittstelle']],
+    ['Device type', ['cihaz tipi', 'device type']],
+    ['Device class', ['cihaz sinifi', 'device class']],
+    ['Product code', ['urun kodlari', 'urun kodu', 'product code', 'model code']],
+    ['Protocol', ['iletim protokolu', 'transfer protocol', 'protocol']],
+    ['Other features', ['diger ozellikler', 'other features', 'ek ozellikler', 'weitere merkmale']],
+    ['Usage', ['kullanim amaci', 'intended use', 'usage']],
+    ['Series', ['urun serisi', 'product series', 'series', 'seri']],
     ['Microphone', ['microphone', 'mikrofon']],
   ];
 
@@ -174,8 +209,53 @@
 
   // Kelime siniri: normalize edilmis metin bosluklarla ayrilmis jetonlardan
   // olusur, bu yuzden iki tarafi bosluga sarmak yeterli.
+  // TAKMA AD ETIKETIN SONUNU KAPLAMALI (bas-son kurali).
+  //
+  // Hem Turkce hem Ingilizce bilesik spec etiketlerinde ANA KAVRAM SONDA
+  // durur, bastakiler onu NITELER:
+  //     "Islemci Markasi"  -> asil kavram MARKA,  islemci nitelik
+  //     "Islemci Onbellek" -> asil kavram ONBELLEK
+  //     "Screen size"      -> asil kavram SIZE
+  // Bu yuzden bir takma ad etiketin ICINDE gecmesi YETMEZ, SONUNU kaplamali.
+  //
+  // Bu kural olmadan kisa bir takma ad butun bir aileyi yutuyordu. Olculdu
+  // 2026-08-30, `İ` normalizasyonu duzeltildikten hemen sonra: 'islemci'
+  // takma adi tek basina su ON etiketi ayni 'Processor' anahtarina
+  // dusuruyordu -> mergeValue hepsini tek satirda birlestiriyor ve on ayri
+  // olcum KAYBOLUYORDU:
+  //     Islemci Markasi · Islemci Modeli · Islemci Serisi · Islemci Core ·
+  //     Islemci Temel Frequency · Islemci Mimarisi · Islemci Soketi ...
+  // Ayni sey Display Yuksekligi/Genisligi -> Height/Width ve
+  // Arka Camera (+Specificationsi) -> Main camera icin de oluyordu.
+  // AYRI ORNEGI ISARETLEYEN ONEKLER. Bunlar etiketi BASKA bir olcume
+  // cevirir; takma ad onlari kapsamiyorsa bulanik eslesme REDDEDILIR.
+  // Olculdu 2026-08-30: bu kapi olmadan asagidakiler tek anahtarda
+  // birlesip mergeValue ile tek satira iniyordu --
+  //     "Ikinci Arka Camera" + "Ucuncu Arka Camera" + "Main camera"
+  //     "1. Yardimci Islemci" + "2. Yardimci Islemci"
+  //     "Alt Seri" + "Seri"     ·   "Ikinci Display Boyutu" + "Display Boyutu"
+  //     "Dahili Grafik Temel Frequency" + "Islemci Temel Frequency"
+  const ORNEK_ONEKI = new Set([
+    // Turkce
+    'ikinci', 'ucuncu', 'dorduncu', 'besinci', 'altinci',
+    'alt', 'yardimci', 'uyumlu', 'dahili', 'grafik',
+    // Ayni onekler etiket temizliginden Ingilizce olarak da cikabiliyor
+    // (olculdu: "Alt Seri" -> "Bottom Series", "Besinci ..." -> "Fifth ...",
+    // "Dahili Grafik ..." -> "Internal Graphics ...").
+    'second', 'third', 'fourth', 'fifth', 'sixth',
+    'bottom', 'sub', 'internal', 'integrated', 'graphics', 'auxiliary',
+    '1', '2', '3', '4', '5', '6',
+  ]);
   function kelimeIceriyor(hay, needle) {
-    return ` ${hay} `.includes(` ${needle} `);
+    if (hay === needle) return true;
+    if (!hay.endsWith(' ' + needle)) return false;
+    // Takma ad etiketin SONUNU kapliyor; bastaki artik jetonlar arasinda
+    // "ayri ornek" oneki varsa bu BASKA bir olcumdur.
+    const artik = hay.slice(0, hay.length - needle.length).trim().split(' ');
+    for (const j of artik) {
+      if (j && ORNEK_ONEKI.has(j) && !(' ' + needle + ' ').includes(' ' + j + ' ')) return false;
+    }
+    return true;
   }
 
   // "KAPASITE" NEYIN KAPASITESI? KATEGORI + BIRIM KARAR VERIR.
@@ -232,24 +312,127 @@
     return DEPOLAMA_TEKNOLOJISI.test(v) ? 'Storage type' : canonical;
   }
 
-  function canonicalKey(key, value, category) {
-    const raw = titleCase(key);
-    const k = norm(raw);
-    const v = norm(value);
-    if (!k) return 'Specification';
+  // YARIM CEVRILMIS ETIKETI INGILIZCEYE TAMAMLA -- AMA YALNIZ KARISIKSA.
+  //
+  // Katalogun bir kismi TR->EN sozlugunden YARIM gecmis etiketler tasiyor:
+  // ayni etiketin icinde hem Ingilizce hem Turkce kelime var. Olculdu
+  // 2026-08-30 (600 urun / 15 kategori):
+  //     "Diger Specifications" 186 · "Display Boyutu" 127+80+40
+  //     "Mouse Diger Specifications" 56 · "Display Tipi" 43 · "Panel Tipi" 40
+  //     "Display Agirligi (Standli)" 40 · "Bellek Frequency" 25 ...
+  // Bunlar kanonik (INGILIZCE) tarafta duruyor: Ingilizce urun sayfasinda,
+  // JSON-LD'de ve AI istemlerinde aynen goruluyorlar.
+  //
+  // KAPI: temizlik YALNIZ etiket zaten karisiksa calisir. Cunku sozluk eksik
+  // ve SAF Turkce bir etikete uygulanirsa onu YARIM cevrilmis hale getirir --
+  // yani duzeltmeye calistigimiz hatanin ta kendisini uretir. Olculdu:
+  //     "Sirali Okuma" -> "Sequential Okuma"   ("okuma" sozlukte YOK)
+  //     "Veri Yolu"    -> "Data Yolu"          ("yolu"  sozlukte YOK)
+  // `translationHasTurkishResidue` bunlari yakalamaz, cunku "Okuma"/"Yolu"
+  // Turkce'ye ozgu harf tasimiyor. O yuzden kapi CIKTIYA degil GIRDIYE
+  // bakiyor: saf Turkce etiketler makineye hic verilmez, onlar icin dogru
+  // cozum tahmin degil KEY_RULES'a acik takma addir (asagida yazildi).
+  //
+  // Ceviri sozlugu TEK KAYNAK olan admin/js/spec_i18n.js'te; burada ikinci
+  // bir sozluk TUTULMAZ. Bagimlilik OPSIYONEL: spec_i18n yuklu degilse
+  // etiket oldugu gibi kalir, davranis degismez.
+  // KARISIK ETIKETIN INGILIZCE TARAFI -- OLCULMUS KELIME LISTESI.
+  //
+  // "Bu jeton Ingilizce mi?" sorusunu genel olarak cevaplayamayiz: elimizde
+  // Ingilizce sozluk yok ve "Okuma" ile "Panel" ikisi de saf ASCII. Tahmin
+  // etmek tam da kacinmak istedigimiz hataya goturuyor
+  // ("Sirali Okuma" -> "Sequential Okuma"). Bu yuzden liste TAHMIN DEGIL,
+  // 600 urun / 15 kategori uzerinde OLCULEN karisik etiketlerden cikarildi
+  // (2026-08-30). Yeni bir karisim gorulurse buraya OLCEREK eklenir.
+  const INGILIZCE_ISARET = new Set([
+    'specifications', 'display', 'panel', 'charging', 'frequency', 'support',
+    'memory', 'resolution', 'storage', 'battery', 'processor', 'screen',
+    'camera', 'interface', 'connection', 'refresh', 'power', 'capacity',
+    'weight', 'speed', 'color', 'features', 'type', 'size', 'mouse',
+  ]);
+  function karisikEtiketMi(key, i18n) {
+    const d = (i18n && i18n.TR_WORD_DICT) || {};
+    let ingilizce = false;
+    let turkce = false;
+    for (const j of norm(key).split(' ')) {
+      if (j && INGILIZCE_ISARET.has(j)) ingilizce = true;
+    }
+    for (const j of String(key).toLowerCase().split(/[^a-z0-9çğıöşü]+/i)) {
+      if (!j) continue;
+      if (/[çğıöşü]/.test(j)) turkce = true;
+      else if (Object.prototype.hasOwnProperty.call(d, j)) turkce = true;
+    }
+    return ingilizce && turkce;
+  }
+  function etiketiTamamla(key) {
+    const s = String(key == null ? '' : key);
+    const i18n = (typeof globalThis !== 'undefined') && globalThis.QorAiSpecI18n;
+    if (!i18n || typeof i18n.finalPassTurkishCleanup !== 'function') return s;
+    if (!karisikEtiketMi(s, i18n)) return s;
+    try {
+      const out = String(i18n.finalPassTurkishCleanup(s, 'en') || '').trim();
+      return out || s;
+    } catch (_) {
+      return s;
+    }
+  }
+
+  // Bir etiketi kurallara vurur; eslesme yoksa '' doner.
+  function kurallaraVur(k, value, category) {
+    if (!k) return '';
     if (k.includes('required charging power') || k.includes('charging power')) {
       return 'Fast charging power';
     }
     if (k.includes('usb type c charging port') && /^(yes|no|var|yok|true|false)$/i.test(String(value || '').trim())) {
       return 'USB-C charging';
     }
-    if (exactKeyMap.has(k)) return depolamaTuruMu(kapasiteCoz(exactKeyMap.get(k), value, category), value);
+    if (exactKeyMap.has(k)) return onbellekTuruMu(depolamaTuruMu(kapasiteCoz(exactKeyMap.get(k), value, category), value), value);
     if (k === 'charging' || k === 'charge') {
-      if (/\b(usb|type c|typec|lightning|micro usb)\b/.test(v)) return 'Charging port';
+      if (/(usb|type c|typec|lightning|micro usb)/.test(norm(value))) return 'Charging port';
       return 'Charging';
     }
     for (const { canonical, a } of FUZZY_ALIASES) {
-      if (kelimeIceriyor(k, a)) return depolamaTuruMu(kapasiteCoz(canonical, value, category), value);
+      if (kelimeIceriyor(k, a)) return onbellekTuruMu(depolamaTuruMu(kapasiteCoz(canonical, value, category), value), value);
+    }
+    return '';
+  }
+
+  // SIRA ONEMLI: once ORIJINAL etiket kurallara vurulur. Makine temizligi
+  // ancak orijinal hicbir kurala eslesmediginde devreye girer -- boylece
+  // KEY_RULES'taki acik Turkce takma adlar ("sirali okuma", "veri yolu")
+  // temizlik tarafindan EZILMEZ.
+  // "RAM type" ANAHTARI SLC/MLC/TLC TASIYORSA O RAM DEGIL ONBELLEKTIR.
+  // Depolamadaki ile ayni durum: kayitlarin bir kismi ZATEN bozuk kanonik
+  // bicimde ("On Bellek Tipi" -> 'RAM type') duruyor ve kaynak etiket
+  // silindigi icin anahtardan geri getirilemiyor -- ama DEGERDEN
+  // getirilebilir. SLC/MLC/TLC/QLC bir NAND onbellek turudur; RAM turu
+  // DDR/LPDDR/GDDR ailesidir.
+  const ONBELLEK_TURU = /^(s|m|t|q)lc\b/i;
+  function onbellekTuruMu(canonical, value) {
+    if (canonical !== 'RAM type') return canonical;
+    return ONBELLEK_TURU.test(String(value == null ? '' : value).trim())
+      ? 'Cache type' : canonical;
+  }
+
+  function canonicalKey(key, value, category) {
+    const raw = titleCase(key);
+    const k = norm(raw);
+    if (!k) return 'Specification';
+
+    // 1) ORIJINAL etiket kurallara vurulur.
+    const dogrudan = kurallaraVur(k, value, category);
+    if (dogrudan) return dogrudan;
+
+    // 2) Eslesmedi. Etiket KARISIK ise (hem Ingilizce hem Turkce kelime)
+    //    Ingilizceye tamamlanip TEKRAR denenir: "Display Boyutu" once
+    //    "Display Size", sonra 'Screen size' olur.
+    const temiz = etiketiTamamla(raw);
+    if (temiz && temiz !== raw) {
+      const ikinci = kurallaraVur(norm(temiz), value, category);
+      if (ikinci) return ikinci;
+      // Kurala oturmadi ama artik TEK DILLI: temizlenmis hali kalir
+      // ("Mouse Diger Specifications" -> "Mouse Other Specifications").
+      return titleCase(temiz);
     }
     return raw;
   }
