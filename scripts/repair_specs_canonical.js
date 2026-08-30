@@ -40,8 +40,31 @@ const FIELDS = [
   'specsCount',
 ].join(',');
 
+// ANAHTAR SIRASI FARKI DEGISIKLIK DEGILDIR.
+//
+// PocketBase JSON alanlarini Go map'i olarak isliyor ve SIRALI anahtarlarla
+// geri veriyor; kanoniklestirici ise EKLEME sirasinda uretiyor. Duz
+// JSON.stringify karsilastirmasi sirayla ilgilendigi icin ICERIK AYNI olsa
+// bile her kayit "degisti" cikiyordu. Olculdu 2026-08-30 (desktops, 5 kayit):
+//   PB ilk 5 : Bellek Turu | Cache | Color | Dahili Grafik Modeli | Display
+//   yeni ilk5: Diger Baglantilar | Ethernet (Ag) | HDMI | USB A | VGA
+//   ayni anahtar KUMESI: true · sayilar esit
+//
+// Sonucu iki kat zararliydi: (1) her kosu 107k kaydi PB'ye ve Typesense'e
+// GEREKSIZ yere yeniden yaziyordu -- tek host icin agir; (2) her PATCH
+// kaydin `updated` alanina dokundugu icin `updatedAtTs` seliyle ana
+// sayfadaki "Yeni" rayi zehirleniyordu (bkz. project_updatedat_is_not_new).
+//
+// Karsilastirma artik anahtar sirasindan BAGIMSIZ.
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  const keys = Object.keys(value).sort();
+  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+}
+
 function jsonEq(a, b) {
-  return JSON.stringify(a || {}) === JSON.stringify(b || {});
+  return stableStringify(a || {}) === stableStringify(b || {});
 }
 
 function buildPatch(product) {
