@@ -15,8 +15,6 @@ import { useGeoCountry } from '../lib/geo';
 import { displayProductName, cleanProductName } from '../lib/productNames';
 import {
   BarFill,
-  Collapsible,
-  DecisionBadge,
   DistributionBar,
   DecisiveDifferences,
   HeadToHead,
@@ -28,7 +26,7 @@ import {
   usePrefersReducedMotion,
 } from './AiCharts.jsx';
 // Ürün ve karşılaştırma raporları da link/abonelik ile AYNI şablonu kullanır.
-import AiReportView, { Sec } from './AiReportView.jsx';
+import AiReportView, { Sec, bullets } from './AiReportView.jsx';
 import { compareProductToUnified, productReportToUnified } from '../lib/reportAdapters';
 // Kalibrasyon TEK KAYNAK (admin/js/qor_ai_prompts.js). Karsilastirma seridi
 // ile urun kartinin AYNI sayiyi gostermesinin garantisi ayni fonksiyon.
@@ -86,6 +84,10 @@ function localizedAiList(items, L) {
 
 const toInt = (v) => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? Math.round(n) : 0; };
 const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.').replace(/[^\d.-]/g, '')); return Number.isFinite(n) ? n : 0; };
+// Urun adi eslestirme — AI ayni urunu her cagride birebir ayni yazmiyor
+// (kod, bosluk, buyuk/kucuk harf). Karsilastirmanin iki yerinde birden lazim
+// (hukum seridi ve karar satirlari), o yuzden modul seviyesinde.
+const norm = (s) => cleanProductName(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
 
 // ─── Shared visual atoms ────────────────────────────────────────────────────
 function scoreColor(n) { return n >= 80 ? '#22c55e' : n >= 60 ? '#f59e0b' : '#f43f5e'; }
@@ -548,19 +550,26 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
   );
 }
 
-function CompareScoreChartFull({ chart = [], L }) {
+// Puan seridi — SIRALAMA TABLOSU gibi okunur: sira numarasi, ad, cubuk, puan,
+// ve gerekce ADIN ALTINDA. Gerekce eskiden CUBUGUN altinda duruyordu; sagdan
+// baslayan bir satir, bir ustundeki adla degil bir altindaki satirla
+// gruplaniyordu — okuyucunun "hangi bilgi hangi cihaza ait belli degil"
+// dedigi yerlerden biri buydu. Satirlar artik hairline ile ayriliyor.
+function CompareScoreChartFull({ chart = [], winner = '', L }) {
   const rows = arr(chart).map((x) => ({ name: cleanProductName(x.name || ''), score: toInt(x.score), reason: x.reason || '' }))
     .filter((x) => x.name)
     .sort((a, b) => b.score - a.score);
   if (!rows.length) return null;
   const max = Math.max(1, ...rows.map((r) => r.score));
+  const kazanan = norm(winner);
   return (
     <div className="ai-compare-chart">
       {rows.map((r, i) => {
         const color = scoreColor(r.score);
+        const win = Boolean(kazanan && norm(r.name) === kazanan);
         return (
-          <div className="ai-compare-chart-row" key={`${r.name}-${i}`}>
-            <span>{r.name}</span>
+          <div className={`ai-compare-chart-row${win ? ' win' : ''}`} key={`${r.name}-${i}`}>
+            <span><i aria-hidden="true">{win ? '★' : i + 1}</i>{r.name}</span>
             <div><BarFill pct={Math.max(4, (r.score / max) * 100)} color={color} delay={i * 90} /></div>
             <b style={{ color }}>{r.score}</b>
             {r.reason && <small>{r.reason}</small>}
@@ -576,11 +585,38 @@ function CompareScoreChartFull({ chart = [], L }) {
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
 // the long per-product report stays out of the way until the user asks for it.
-function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names = null }) {
+function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names = null, lanes = [] }) {
   const hasContent = cmp.winner || arr(cmp.chart).length || arr(cmp.factorMatrix).length
     || arr(cmp.decisiveDifferences).length || String(cmp.headToHead || '').trim()
     || String(cmp.recommendation || '').trim();
   if (!hasContent) return null;
+
+  // ── KARSI KARSIYA: SATIRLAR ────────────────────────────────────────────
+  // Yeni kayitlar yapiyi hazir tasiyor (`headToHeadByProduct`). ESKI
+  // kayitlarda yalniz duz nesir var ve o nesir urun urun yazilmiyor — onu
+  // basliklara bolmek yanlis atif uretiyordu (bkz. AiCharts -> HeadToHead).
+  // Yapi yoksa serit URUNUN KENDI arti/eksi listesinden kurulur: `products[]`
+  // girdileri her urun icin AYRI bir AI cagrisinda uretildi, yani bir maddenin
+  // hangi urune ait oldugu YAPI GEREGI kesin — atif hatasi imkansiz.
+  // Ilk uc / ilk iki madde yeter: burasi tek bakislik ozet, urunun tam
+  // arti/eksi listesi zaten asagida kendi raporunda duruyor.
+  const h2hRows = arr(cmp.headToHeadByProduct).length
+    ? arr(cmp.headToHeadByProduct).map((r) => {
+      const l = lanes.find((x) => x.norm === norm(r?.name));
+      return { ...r, win: Boolean(l && l.win) };
+    })
+    : lanes
+      .filter((l) => l.pros.length || l.cons.length)
+      .map((l) => ({ name: l.name, case: l.pros.slice(0, 3), against: l.cons.slice(0, 2), win: l.win }));
+
+  // ── HANGISINI ALMALI: KARAR SATIRLARI ──────────────────────────────────
+  // Nesir 4-5 paragrafti ve paragraflar urun degistiriyordu ("Ancak, 40W
+  // sarji ... geride kaliyor. Xiaomi 17 Ultra, ozellikle ..."), yani okuyucu
+  // hangi cumlenin hangi cihaza ait oldugunu ancak dikkatle okuyarak
+  // ayirabiliyordu. Karar artik once URUN URUN veriliyor: kime uygun / kime
+  // uygun degil, ikisi de raporun kendi alanindan (`bestFor` / `notFor`).
+  // Nesir kaybolmuyor — altta, kisaltilmis olarak duruyor.
+  const pickRows = lanes.filter((l) => l.bestFor || l.notFor);
   return (
     <section className="ai-report-section ai-cmp-overview">
       <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma')}</div>
@@ -602,7 +638,7 @@ function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names 
           )}
         </div>
       )}
-      <CompareScoreChartFull chart={chart || cmp.chart} L={L} />
+      <CompareScoreChartFull chart={chart || cmp.chart} winner={cmp.winner} L={L} />
       {/* FAKTÖR MATRİSİ BURADAN KALKTI. Aynı veri sayfada İKİ KEZ çiziliyordu:
           burada `FactorMatrix` (ürün adı + çubuk), hemen altında `HeatMatrix`
           (hizalı tablo). Tek çizim yolu HeatMatrix. */}
@@ -614,30 +650,98 @@ function ComparisonOverview({ cmp = {}, L, chart = null, winnerScore = 0, names 
           punto, aynı renk. Kullanıcının "yazılar iç içe geçmiş" dediği yer
           tam burasıydı. Artık her biri kendi başlığı ve kendi görsel biçimi
           ile ayrılıyor:
-            farklar   -> numaralı kart ızgarası (taranabilir)
-            karşı karşıya -> zengin nesir (ürün adları vurgulu)
-            öneri     -> vurgulu karar kutusu */}
+            farklar       -> numaralı kart ızgarası (taranabilir)
+            karşı karşıya -> ürün başına şerit (yeşil lehine / kırmızı aleyhine)
+            öneri         -> ürün başına karar satırı + kısaltılmış gerekçe */}
       <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
 
-      {(arr(cmp.headToHeadByProduct).length > 0 || String(cmp.headToHead || '').trim()) && (
+      {(h2hRows.length > 0 || String(cmp.headToHead || '').trim()) && (
         <section className="ai-cmp-block">
           <div className="aic-card-title">🥊 {L('Head to head', 'Karşı karşıya')}</div>
-          {/* YENİ kayıtlar ürün başına yapı taşır (headToHeadByProduct) ve
-              başlıklı bloklar hâlinde çizilir. ESKİ kayıtlarda yalnız düz
-              nesir var; o BÖLÜNMEDEN gösterilir — paragrafı "içinde ilk geçen
-              ürün adına" atamak yanlış atıf üretiyordu (bkz. HeadToHead). */}
-          <HeadToHead text={cmp.headToHead} rows={cmp.headToHeadByProduct}
-            names={names} L={L} />
+          {/* Her ürün KENDİ şeridinde: yeşil = lehine, kırmızı = aleyhine.
+              Renk YALNIZCA yönü söyler, ürünü değil — ürünü şeridin başlığı
+              söyler. Eskiden burası tek blok nesirdi ve paragraflar ürün
+              değiştiriyordu; okuyucu hangi cümlenin hangi cihaza ait olduğunu
+              ancak dikkatle okuyarak çıkarabiliyordu. */}
+          <HeadToHead rows={h2hRows} names={names} L={L} />
+          {/* ESKİ kayıtların düz nesri KAYBOLMAZ ama şeritlerin üstünü de
+              kapatmaz: yapılandırılmış özet önce, nesir altta ve KISALTILMIŞ.
+              Katlama `Collapsible` ile DEĞİL `RichProse`un kendi katlamasıyla:
+              Collapsible kapalıyken çocuklarını hiç render etmiyor, yani
+              metin JS çalıştıran crawler'dan da saklanırdı. RichProse gizli
+              paragrafları DOM'da tutar, yalnızca `display`ini kapatır — bu
+              ayrım bu projede bir kez ölçülerek konuldu (bkz. AiCharts). */}
+          {String(cmp.headToHead || '').trim() && (
+            <div className="ai-cmp-fold">
+              <div className="ai-cmp-subhead">
+                {L('The full head-to-head text', 'Karşılaştırma metninin tamamı')}
+              </div>
+              <RichProse text={cmp.headToHead} L={L} clamp={1} names={names} />
+            </div>
+          )}
         </section>
       )}
 
-      {String(cmp.recommendation || '').trim() && (
+      {(pickRows.length > 0 || String(cmp.recommendation || '').trim()) && (
         <section className="ai-cmp-block">
           <div className="aic-card-title">🏁 {L('Which one to buy', 'Hangisini almalı')}</div>
-          <div className="ai-verdict">
-            <span>✓</span>
-            <div><RichProse text={cmp.recommendation} L={L} clamp={0} names={names} /></div>
-          </div>
+          {pickRows.length > 0 && (
+            <div className="ai-cmp-picks">
+              {pickRows.map((l) => (
+                <article className={`ai-cmp-pick${l.win ? ' win' : ''}`} key={l.key}>
+                  <header>
+                    {l.win && <span className="ai-cmp-pick-win">★ {L('AI pick', 'AI seçimi')}</span>}
+                    <b>{l.name}</b>
+                    {/* PUAN ETIKETLI. Once burada `DecisionBadge` duruyordu ve
+                        iki sorunu vardi: (1) esik 70 oldugu icin uc urun de
+                        "Al" cikiyordu — hicbir sey ayirt etmiyor, (2) "★ AI
+                        secimi" rozetinin yaninda "✓ Al" gozle "AI" diye
+                        okunuyordu. Ayirt eden sey PUAN; o yuzden sayi ve neyin
+                        sayisi oldugu yaziyor. */}
+                    {l.score > 0 && (
+                      <span className="ai-cmp-pick-score">
+                        <b>{l.score}</b>
+                        <small>{L('fit for you', 'sana uygunluk')}</small>
+                      </span>
+                    )}
+                  </header>
+                  {l.bestFor && (
+                    <p className="ai-cmp-pick-for">
+                      <span>✓ {L('Buy it if', 'Sana uygun')}</span>{l.bestFor}
+                    </p>
+                  )}
+                  {l.notFor && (
+                    <p className="ai-cmp-pick-not">
+                      <span>✕ {L('Skip it if', 'Sana uygun değil')}</span>{l.notFor}
+                    </p>
+                  )}
+                  {l.anchor && (
+                    <a className="ai-cmp-pick-more" href={`#${l.anchor}`}>
+                      {L('Full review ↓', 'Tam incelemesi ↓')}
+                    </a>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+          {String(cmp.recommendation || '').trim() && (
+            /* Gerekçe nesri kısaltılmış gelir: karar YUKARIDA verildi, bu metin
+               onu açıklıyor ve okuyucuyu bekletmemeli. Katlama RichProse'un
+               kendi mekanizması — gizli paragraflar DOM'da kalır (crawler
+               görür), `Collapsible` olsaydı hiç basılmazlardı. */
+            <div className="ai-cmp-fold">
+              <div className="ai-cmp-subhead">
+                {L('Why — the full reasoning', 'Kararın gerekçesi')}
+              </div>
+              <div className="ai-verdict">
+                <span>✓</span>
+                <div>
+                  <RichProse text={cmp.recommendation} L={L}
+                    clamp={pickRows.length ? 2 : 0} names={names} />
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
     </section>
@@ -678,7 +782,6 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
   const aiProducts = arr(data.products);
   const cmp = data.comparison || {};
 
-  const norm = (s) => cleanProductName(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
   // Kolonları spec tablosundaki sırayla eşle: gerçek ürün listesi varsa onu
   // gez ve AI girdisini ADA göre bul (yoksa indekse düş).
   const columns = (products.length ? products : aiProducts).map((item, i) => {
@@ -715,10 +818,36 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
       .map((f) => ({ label: f.label, score: toInt(f.score) })),
   }));
 
+  // ── URUN SERITLERI ────────────────────────────────────────────────────
+  // Hukum bloklarinin tamami bu diziden besleniyor: her olgu, sahibi olan
+  // urunun seridinde durur. Kaynak `products[]` girdisi — her urun icin AYRI
+  // bir AI cagrisinda uretildi, yani atif YAPI GEREGI dogru; metinden urun
+  // adi cikarmaya calisan hicbir tahmin yok (o yol bir kez denendi ve yanlis
+  // atif uretti, bkz. AiCharts -> HeadToHead).
+  const lanes = columns.map((c, i) => {
+    const puan = (chart.find((x) => norm(x.name) === norm(c.name)) || {}).score || 0;
+    return {
+      key: c.key,
+      name: c.name,
+      norm: norm(c.name),
+      score: puan,
+      win: Boolean(winnerNorm && norm(c.name) === winnerNorm),
+      // Arti/eksi maddeleri iki sekilde gelebiliyor: duz metin ya da
+      // {title, detail}. `bullets()` ikisini de tek sekle indirger — String()
+      // ile gecilseydi nesne maddesi ekranda "[object Object]" olurdu.
+      pros: bullets(c.ai?.pros).map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
+      cons: bullets(c.ai?.cons).map((x) => localizeAiText([x.title, x.detail].filter(Boolean).join(' — '), L)),
+      bestFor: localizeAiText(c.ai?.bestFor, L),
+      notFor: localizeAiText(c.ai?.notFor, L),
+      // Karar satirindan urunun tam raporuna capa — rapor AYNI sayfada, altta.
+      anchor: cmpAnchor(c.key, i),
+    };
+  });
+
   return (
     <div className="ai-report ai-report-compare">
       <ComparisonOverview cmp={cmp} L={L} chart={chart} winnerScore={winnerPuan}
-        names={columns.map((c) => c.name).filter(Boolean)} />
+        names={columns.map((c) => c.name).filter(Boolean)} lanes={lanes} />
 
       {heatProducts.length >= 2 && (
         <HeatMatrix products={heatProducts} matrix={cmp.factorMatrix} L={L} />

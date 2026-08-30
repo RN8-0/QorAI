@@ -7,14 +7,14 @@
 //
 // Kayitlar admin panelinden TEK TEK yayina alinir (status='published').
 // Otomatik doldurulmaz — bkz. web/scripts/gen-analysis.mjs basligi.
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, hreflangAlternates } from '../lib/seo';
 import {
   analysisKind, analysisKindShort, analysisLead, analysisRenderLangs, analysisSubject,
-  analysisTitle,
+  analysisSubjectNames, analysisTitle,
 } from '../lib/analysisRecord';
 import './Analyses.css';
 
@@ -265,6 +265,13 @@ export default function Analyses() {
           // Gorseli olmayan kayit (link/abonelik analizi) iki sutuna duser;
           // aksi halde metin 84px'lik gorsel sutununa sikisiyordu.
           const sinif = `an-item${a.productImage ? '' : ' an-item-noimg'}`;
+          // KARSILASTIRMADA MARKA DEGIL URUNLERIN TAMAMI. `productBrand` yalniz
+          // ILK urunun markasi; uc telefonluk kayit listede tek kelime
+          // ("Samsung") olarak duruyordu ve basliktaki iki addan sonra ucuncu
+          // urun satirda HIC gecmiyordu. Tek konulu analizlerde (urun/link)
+          // ad zaten baslikta, orada marka bilgi katiyor — o yuzden ayrim
+          // KONU SAYISINA gore, tur adina gore degil.
+          const konular = analysisSubjectNames(a, lang);
           const govde = (
             <>
               {/* alt metni de KODSUZ: `productName` ham katalog adini tasiyor,
@@ -277,7 +284,22 @@ export default function Analyses() {
                 <p>{analysisLead(a, lang)}</p>
                 <span className="an-meta">
                   <span className="an-kind">{analysisKindShort(a, lang)}</span>
-                  {a.productBrand ? <span>{a.productBrand}</span> : null}
+                  {konular.length > 1 ? (
+                    <span className="an-vs">
+                      {/* Ayirac AD SPANININ DISINDA ve icinde GERCEK bosluk
+                          tasiyor. Icine alinsaydi satirin tamami tek bir
+                          kirilmaz dizi olurdu: adlar `nowrap`, aralarinda da
+                          bosluk karakteri olmadigi icin tarayicinin
+                          kirabilecegi hicbir nokta kalmiyor ve 390px ekranda
+                          satir 623px'e tasiyordu. */}
+                      {konular.map((ad, i) => (
+                        <Fragment key={`${ad}-${i}`}>
+                          {i > 0 ? <i aria-hidden="true"> vs </i> : null}
+                          <span>{ad}</span>
+                        </Fragment>
+                      ))}
+                    </span>
+                  ) : a.productBrand ? <span>{a.productBrand}</span> : null}
                   {a.techScore ? <span className="an-score">Qor AI {a.techScore}/100</span> : null}
                 </span>
               </div>

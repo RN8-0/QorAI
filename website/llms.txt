@@ -13,7 +13,7 @@
 - [Blog & Alım Rehberleri / Buying guides](https://qorai.net/blog)
 
 ## Veri / Data
-- [Sitemap](https://qorai.net/sitemap.xml): 8110 sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber
+- [Sitemap](https://qorai.net/sitemap.xml): 8108 sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber
 - Her ürün sayfası: teknik özellik tablosu + Qor AI teknik skoru + benzer model linkleri
 
 ## Politikalar / Policies

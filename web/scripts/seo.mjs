@@ -25,7 +25,7 @@ import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.
 import {
   analysisFaq, analysisKind, analysisLead, analysisMetaDescription,
   analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
-  analysisTitle, analysisUnified,
+  analysisSubjectNames, analysisTitle, analysisUnified,
 } from '../src/lib/analysisRecord.js';
 // Tekrar agi: ON-RENDER ile SITE ayni modulu kosar (bkz. reportDedupe.js).
 import { dropRestated } from '../src/lib/reportDedupe.js';
@@ -208,6 +208,7 @@ const ANALIZ_LISTE_TEXT = {
     // urun raporundaki karsiliklarindan FARKLI adlandirilir, yoksa okuyucu
     // hangi turu okudugunu anlamiyor.
     kindProduct: 'AI Analysis', kindLink: 'AI Link Analysis', kindSub: 'AI Subscription Analysis',
+    kindCompare: 'AI Comparison',
     quizTop: 'Answers this analysis was built on',
     scoreBasis: 'How this score is calculated',
     loved: 'What owners keep praising', chronic: 'Chronic problems',
@@ -218,6 +219,7 @@ const ANALIZ_LISTE_TEXT = {
     risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
     score: 'Score', pros: 'What works', cons: 'What does not',
     headToHead: 'Head to head', products: 'Products compared',
+    h2hFor: 'In its favour:', h2hAgainst: 'Against it:',
     factorTable: 'Factor by factor', average: 'Average', leads: 'factors ahead',
     notMeasured: '“—” means that factor was not scored for that product — it is not a zero.',
   },
@@ -240,6 +242,7 @@ const ANALIZ_LISTE_TEXT = {
     who: 'Kime uygun?', bestFor: 'Alması gereken', notFor: 'Almaması gereken',
     verdict: 'Sonuç',
     kindProduct: 'Yapay Zekâ Analizi', kindLink: 'Yapay Zekâ Link Analizi', kindSub: 'Yapay Zekâ Abonelik Analizi',
+    kindCompare: 'Yapay Zekâ Karşılaştırması',
     quizTop: 'Bu analiz şu cevaplara göre yapıldı',
     scoreBasis: 'Bu puan nasıl hesaplanıyor',
     loved: 'Sahiplerin en çok sevdiği', chronic: 'Kronik sorunlar',
@@ -250,6 +253,7 @@ const ANALIZ_LISTE_TEXT = {
     risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
     score: 'Puan', pros: 'İyi yanları', cons: 'Zayıf yanları',
     headToHead: 'Karşı karşıya', products: 'Karşılaştırılan ürünler',
+    h2hFor: 'Lehine:', h2hAgainst: 'Aleyhine:',
     factorTable: 'Faktör faktör karşılaştırma', average: 'Ortalama', leads: 'faktörde önde',
     notMeasured: '“—” o faktörün o ürün için ölçülmediğini gösterir; sıfır puan demek değildir.',
   },
@@ -264,10 +268,14 @@ function analizListeBody(analyses, lang) {
     // konudan turetilen. Iki taraf ayrisirsa crawler baska bir baslik gorur.
     const baslik = esc(analysisTitle(a, lang));
     const lead = esc(truncate(analysisLead(a, lang), 180));
+    const konular = analysisSubjectNames(a, lang);
     return `<li style="margin:0;padding:18px 0;border-top:1px solid #e2e8f0">`
       + `<a href="${pfx}/analiz/${esc(a.slug)}" style="color:#0f172a;text-decoration:none;font-size:18px;font-weight:700">${baslik}</a>`
       + (lead ? `<p style="margin:6px 0 0;color:#475569;line-height:1.55">${lead}</p>` : '')
-      + `<div style="margin-top:6px;font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
+      // KARSILASTIRMADA MARKA DEGIL URUNLERIN TAMAMI — React satiriyla ayni
+      // kural (pages/Analyses.jsx). `productBrand` yalniz ILK urunun markasi;
+      // uc telefonluk kayit hem burada hem sitede tek kelimeye dusuyordu.
+      + `<div style="margin-top:6px;font-size:12.5px;color:#64748b">${esc(kindLabel(a, tx))}${konular.length > 1 ? ` · ${esc(konular.join(' vs '))}` : a.productBrand ? ` · ${esc(a.productBrand)}` : ''}${a.techScore ? ` · Qor AI ${a.techScore}/100` : ''}</div>`
       + `</li>`;
   }).join('');
   return `<main class="seo-prerender" style="max-width:760px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
@@ -279,7 +287,14 @@ function analizListeBody(analyses, lang) {
 
 function kindLabel(a, tx) {
   const k = analysisKind(a);
-  return k === 'link' ? tx.kindLink : k === 'subscription' ? tx.kindSub : tx.kindProduct;
+  // KARSILASTIRMA kendi adiyla anilir. Dort tur var ama burada uc etiket
+  // vardi ve `compare` sessizce "Yapay Zeka Analizi"ne dusuyordu: crawler ve
+  // ilk boyama uc urunluk bir karsilastirmayi TEK URUN analizi diye
+  // gosteriyordu, React devralinca rozet "Karsilastirma"ya donuyordu.
+  if (k === 'link') return tx.kindLink;
+  if (k === 'subscription') return tx.kindSub;
+  if (k === 'compare') return tx.kindCompare;
+  return tx.kindProduct;
 }
 
 // -- /analiz LISTESININ TOHUMU --------------------------------------------
@@ -312,6 +327,11 @@ function analizTohumBlogu(analyses) {
       kind: analysisKind(a),
       productName: cleanProductName(a.productName || '') || a.productName || '',
       productBrand: a.productBrand || '',
+      // Karsilastirma satiri urunlerin TAMAMINI yaziyor (bkz. analizListeBody
+      // ve pages/Analyses.jsx). Tohumda bu alan olmazsa liste ILK KAREDE yine
+      // markaya duser ve PB gelince satir degisir — okuyucu satirin zipladigini
+      // gorur.
+      subjectNames: analysisSubjectNames(a, SEO_DEFAULT_LOCALE),
       productImage: /^https?:\/\//i.test(a.productImage || '') ? a.productImage : '',
       techScore: a.techScore || 0,
       title_tr: analysisTitle(a, 'tr'),
@@ -621,7 +641,22 @@ function anKarsilastirmaGovde(r, tx, quizGizle = false) {
 
   const farklar = anBaslikliListe(cmp.decisiveDifferences);
   if (farklar) { g += anH2(tx.decisive); g += farklar; }
-  if (cmp.headToHead) { g += anH2(tx.headToHead); g += anPar(cmp.headToHead); }
+  // KARSI KARSIYA — SITEDEKIYLE AYNI SIRA VE AYNI YAPI.
+  // Site urun basina serit ciziyor (lehine / aleyhine); yapi kayitta varsa
+  // burada da urun basina yazilir. Yoksa duz nesir — BOLUNMEDEN, cunku o
+  // metin urun urun yazilmiyor ve bolmek yanlis atif uretir (ayni gerekce
+  // components/AiCharts.jsx -> HeadToHead icinde olculdu).
+  const h2h = anDizi(cmp.headToHeadByProduct).filter((x) => x && x.name && (x.case || x.against));
+  if (h2h.length || cmp.headToHead) {
+    g += anH2(tx.headToHead);
+    if (h2h.length) {
+      g += h2h.map((x) => anH3(x.name)
+        + (x.case ? `<p style="line-height:1.7;color:#334155;margin:0 0 6px"><strong>${esc(tx.h2hFor)}</strong> ${esc(x.case)}</p>` : '')
+        + (x.against ? `<p style="line-height:1.7;color:#475569;margin:0 0 12px"><strong>${esc(tx.h2hAgainst)}</strong> ${esc(x.against)}</p>` : '')).join('');
+    } else {
+      g += anPar(cmp.headToHead);
+    }
+  }
 
   urunler.filter((p) => p && p.name).forEach((p) => {
     g += anH2(`${p.name}${Number(p.matchScore) ? ` — ${p.matchScore}/100` : ''}`);
@@ -630,6 +665,11 @@ function anKarsilastirmaGovde(r, tx, quizGizle = false) {
     if (p.analysis) g += anPar(p.analysis);
     if (anDizi(p.pros).length) { g += anH3(tx.pros); g += anListe(p.pros); }
     if (anDizi(p.cons).length) { g += anH3(tx.cons); g += anListe(p.cons); }
+    // KIME UYGUN / KIME UYGUN DEGIL. Site bunlari karsilastirmanin "Hangisini
+    // almali" blogunda urun urun gosteriyor (ai-cmp-pick); on-render'da hic
+    // yoktu, yani crawler kararin KIME verildigi bilgisini goremiyordu.
+    if (p.bestFor) { g += anH3(tx.bestFor); g += anPar(p.bestFor); }
+    if (p.notFor) { g += anH3(tx.notFor); g += anPar(p.notFor); }
     // FORUM BULGULARI KARSILASTIRMADA DA CIZILIR.
     //
     // Bu dal urun basina yalnizca arti/eksi yaziyordu; `products[].community`

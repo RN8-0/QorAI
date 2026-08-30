@@ -41,7 +41,11 @@
 
 .an-item {
   display: grid;
-  grid-template-columns: 84px 1fr;
+  /* `minmax(0,1fr)` — sade `1fr` DEGIL: `1fr` parcasinin otomatik alt siniri
+     kendi min-content'i, yani satirdaki en uzun kirilmaz metin. Karsilastirma
+     kunyesi uc urun adi tasidigi icin parca 390px ekranda 531px'e sisip
+     SAYFANIN TAMAMINI yana kaydiriyordu. */
+  grid-template-columns: 84px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   padding: 20px 0;
@@ -52,7 +56,7 @@
 .an-item:last-child { border-bottom: 1px solid var(--divider); }
 /* Gorseli olmayan analiz (link / abonelik) tek sutuna duser — yoksa metin
    84px'lik gorsel sutununa sikisip harf harf sariyordu. */
-.an-item-noimg { grid-template-columns: 1fr; }
+.an-item-noimg { grid-template-columns: minmax(0, 1fr); }
 .an-item img {
   width: 84px; height: 84px; object-fit: contain;
   background: var(--surface-2); border-radius: var(--r-sm, 10px);
@@ -73,6 +77,21 @@
   font-size: 12.5px; color: var(--text-3);
 }
 .an-score { font-variant-numeric: tabular-nums; color: var(--ink-blue); font-weight: 600; }
+
+/* Karşılaştırılan ürünlerin TAMAMI. Marka satırının yerini alır: üç telefonluk
+   bir karşılaştırma burada tek kelimeye ("Samsung") düşüyordu. Adlar künye
+   satırının geri kalanından bir ton koyu — satırın asıl bilgisi bu; "vs"
+   ayıracı sönük ve seçilemez, adların arasında yalnızca nefes açar. */
+/* `min-width:0` ŞART: künye satırı flex ve bir esnek öğenin varsayılan alt
+   sınırı kendi min-content'i. Üç ürün adı tek öğede durduğu için satır 390px
+   ekranda 623px'e taşıyordu — sayfanın tamamı yana kayıyordu. */
+.an-vs { display: inline; min-width: 0; color: var(--text-2); font-weight: 600; }
+/* Ürün adının ORTASINDAN kırılma yok; kırılma ancak adlar ARASINDA olur. */
+.an-vs > span { white-space: nowrap; }
+.an-vs i {
+  font-style: normal; font-weight: 500; color: var(--text-3);
+  padding: 0 2px; user-select: none;
+}
 
 /* Tür rozeti — ürün / link / abonelik analizi aynı listede durur. */
 .an-kind {
@@ -183,6 +202,19 @@
 .an-strip-noimg { padding: 12px 14px; }
 .an-strip img { width: 64px; height: 64px; object-fit: contain; background: var(--surface-2); border-radius: var(--r-sm, 10px); }
 .an-strip strong { display: block; font-size: 15px; margin-bottom: 3px; }
+/* Katalog fiyatı — künyenin sağ ucunda, tabular rakamla. Rakam bayat da olsa
+   `--price` kalır; tazelik bilgisini yanındaki küçük etiket taşır (aynı kural
+   ProductCard.css'te ölçülerek konuldu: iki farklı renkte fiyat, kusur gibi
+   okunuyor). */
+.an-price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--price);
+}
+.an-price small {
+  margin-left: 5px; font-size: 11px; font-weight: 600;
+  color: var(--text-3); white-space: nowrap;
+}
 .an-strip a { font-size: 13.5px; color: var(--accent); text-decoration: none; }
 .an-strip a:hover { text-decoration: underline; }
 
@@ -192,7 +224,11 @@
 
 @media (max-width: 560px) {
   .an-wrap { padding: 22px 16px 64px; }
-  .an-item { grid-template-columns: 64px 1fr; gap: 12px; }
+  .an-item { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
   .an-item img { width: 64px; height: 64px; }
   .an-strip { flex-direction: column; align-items: flex-start; }
+  /* Dar ekranda ürün zinciri KENDİ SATIRINI alır: rozetin yanına sıkışınca
+     ilk adın yarısı görünüp geri kalanı alt satıra düşüyordu. */
+  .an-meta { row-gap: 6px; }
+  .an-vs { flex: 1 1 100%; }
 }

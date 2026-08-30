@@ -768,8 +768,42 @@
 .aic-name { font-weight: 850; color: var(--text); }
 
 /* ── Karşı karşıya — ürün ürün ────────────────────────────────────────── */
-.aic-h2h { display: grid; gap: 18px; }
-.aic-h2h-item + .aic-h2h-item { padding-top: 16px; border-top: 1px solid var(--border); }
+.aic-h2h { display: grid; gap: 14px; }
+/* Her urun KENDI kutusunda. Once yalnizca hairline ile ayriliyorlardi ve uc
+   urunlu bir karsilastirmada seritler goz icin tek bir metin bloguna
+   dokunuyordu; kutu burada sus degil, SAHIPLIK isareti. */
+.aic-h2h-item {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--r-sm, 10px);
+  background: var(--surface-2);
+}
+.aic-h2h-item.win {
+  border-left-color: var(--lead-pos);
+  background: color-mix(in srgb, var(--lead-pos) 6%, var(--surface-2));
+}
+/* Lehine/aleyhine maddeleri — nesir yerine liste geldiginde (eski kayitlar,
+   urunun kendi arti/eksi listesinden kurulur). */
+.aic-h2h-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.aic-h2h-list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-soft, var(--text2));
+}
+.aic-h2h-list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: .62em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .45;
+}
 .aic-h2h-head {
   display: flex;
   align-items: center;

@@ -189,6 +189,36 @@ export function analysisSubject(rec, lang) {
   );
 }
 
+/**
+ * KONULARIN TAMAMI — ad ad, birlestirilmeden.
+ *
+ * `analysisSubject` ayni adlari TEK STRING'e birlestirir; bu dogru sey oldugu
+ * yerler var (alt metni, <title>, JSON-LD). Ama LISTE SATIRI adlari ayri ayri
+ * cizmek zorunda, o yuzden dizi hali burada.
+ *
+ * NEDEN GEREKTI: karsilastirma kaydinda `productBrand` yalnizca ILK urunun
+ * markasi (admin/js/analyses.js -> kayitKur; karsilastirmada tek bir urun
+ * kaydi yok, ilki temsil ediyor). Uc telefonluk canli kayit listede
+ * "KARSILASTIRMA · Samsung" yaziyordu; basligi da AI yazmis ve orada yalnizca
+ * iki urun aniliyordu — yani ucuncu urun (Xiaomi 17 Ultra) satirin HICBIR
+ * yerinde gorunmuyordu. Adlar `subjectNames` alaninda zaten duruyor.
+ */
+export function analysisSubjectNames(rec, lang) {
+  const stored = Array.isArray(rec?.subjectNames) ? rec.subjectNames.map(temiz).filter(Boolean) : [];
+  if (stored.length) return stored;
+  // Eski kayitlarda alan bos olabilir; rapor gene de urun/servis listesini
+  // tasir (karsilastirma `products[]`, abonelik `services[]`).
+  const raw = analysisReport(rec, lang);
+  const list = Array.isArray(raw?.products) ? raw.products
+    : Array.isArray(raw?.services) ? raw.services : null;
+  if (list) {
+    const adlar = list.map((x) => temiz(x?.name)).filter(Boolean);
+    if (adlar.length) return adlar;
+  }
+  const tek = temiz(rec?.productName);
+  return tek ? [tek] : [];
+}
+
 // Iki uzunluk, iki is: UZUN ad basligi tamamlar ("iPhone 16 — Yapay Zeka
 // Analizi"), KISA ad kunye satirindaki rozette durur. Rozette uzunu kullanmak
 // satiri dort satira sariyordu; baslikta kisayi kullanmak ("iPhone 16 — Urun")

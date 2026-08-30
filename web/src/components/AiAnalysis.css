@@ -480,21 +480,43 @@
   gap: 10px;
   margin: 10px 0 14px;
 }
+/* SIRALAMA SATIRI. Ayrim hairline ile: gerekce satiri bir ustundeki adla
+   gruplanmali, bir altindaki urunle degil. */
 .ai-compare-chart-row {
   display: grid;
-  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr) 44px;
-  gap: 10px;
+  /* AD KESILMEZ. Sutun 190px'te sabitken sira numarasi da eklenince en uzun
+     ad "Samsung Galaxy S26 Ultra (" diye kirpiliyordu — tam da bu bolumun
+     duzeltmeye calistigi sey, hangi cihazin konusuldugunun belli olmasi. */
+  grid-template-columns: minmax(150px, 250px) minmax(0, 1fr) 44px;
+  gap: 6px 10px;
   align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--divider, var(--border));
 }
+.ai-compare-chart-row:last-of-type { padding-bottom: 0; border-bottom: 0; }
 .ai-compare-chart-row span {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
   min-width: 0;
   color: var(--text);
   font-size: 13px;
   font-weight: 850;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  /* Sigmayan ad SARAR, kirpilmaz. */
+  overflow-wrap: anywhere;
 }
+/* Sira numarasi mono: uc satirin rakami ayni genislikte durur, ad sutunu
+   satirdan satira kaymaz. Kazanan yildiz alir. */
+.ai-compare-chart-row span i {
+  flex: none;
+  font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 900;
+  color: var(--text3);
+}
+.ai-compare-chart-row.win span i { color: var(--lead-pos); }
 .ai-compare-chart-row div {
   height: 8px;
   overflow: hidden;
@@ -508,14 +530,20 @@
 }
 .ai-compare-chart-row b {
   text-align: right;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 900;
 }
+/* GEREKCE ADIN ALTINDA. Eskiden `2 / -1` idi, yani cubugun altindan
+   basliyordu: sagdan baslayan bir satir goz icin bir ustundeki adla degil bir
+   altindaki satirla gruplaniyor ve gerekce yanlis urune aitmis gibi
+   okunuyordu. */
 .ai-compare-chart-row small {
-  grid-column: 2 / -1;
+  grid-column: 1 / -1;
   color: var(--text3);
   font-size: 11.5px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 @media (max-width: 760px) {
   .ai-feature-grid,
@@ -547,6 +575,110 @@
   border-top: 1px solid var(--border);
 }
 .ai-cmp-block > .aic-card-title { margin-bottom: 10px; }
+
+/* ── HANGİSİNİ ALMALI — ÜRÜN ÜRÜN KARAR ─────────────────────────────────
+   Bu blok 4-5 paragraflık nesirdi ve paragraflar ürün değiştiriyordu:
+   "Ancak, 40W hızlı şarjı ... geride kalıyor. Xiaomi 17 Ultra, özellikle ..."
+   Tek paragrafta iki cihaz, aynı punto, aynı renk — okuyucu hangi cümlenin
+   hangi cihaza ait olduğunu ancak dikkatle okuyarak çıkarabiliyordu.
+
+   Karar artık ürün başına bir şerit. RENK YALNIZCA YÖNÜ SÖYLER (yeşil =
+   sana uygun, kırmızı = uygun değil); cihazı şeridin başlığı söyler. Kazanan
+   şeridi sol kenarındaki yeşil çizgiden tanınır — kutu ya da gölge değil.
+   Nesir kaybolmuyor, altta katlanmış duruyor. */
+.ai-cmp-picks { display: grid; gap: 10px; }
+.ai-cmp-pick {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--r-sm, 10px);
+  background: var(--surface-2);
+}
+.ai-cmp-pick.win {
+  border-left-color: var(--lead-pos);
+  background: color-mix(in srgb, var(--lead-pos) 6%, var(--surface-2));
+}
+.ai-cmp-pick > header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+.ai-cmp-pick > header b { font-size: 14.5px; font-weight: 900; color: var(--text); }
+.ai-cmp-pick-win {
+  order: -1;
+  width: 100%;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--lead-pos);
+}
+/* Uyum puanı mono ve tabular: üç şeridin rakamı alt alta hizalanır. Sayı
+   ETİKETSİZ duramaz — sayfada iki farklı puan var (katalog Tech Score ve bu
+   uygunluk puanı) ve etiketsiz sayı ikisini karıştırıyordu. */
+.ai-cmp-pick-score {
+  margin-left: auto;
+  text-align: right;
+  line-height: 1.1;
+}
+.ai-cmp-pick-score b {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+.ai-cmp-pick-score small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.ai-cmp-pick p {
+  margin: 0 0 7px;
+  font-size: 13.5px;
+  line-height: 1.62;
+  color: var(--text-soft, var(--text2));
+}
+.ai-cmp-pick p:last-of-type { margin-bottom: 0; }
+.ai-cmp-pick p > span {
+  margin-right: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ai-cmp-pick-for > span { color: var(--lead-pos); }
+.ai-cmp-pick-not > span { color: var(--lead-neg); }
+.ai-cmp-pick-more {
+  display: inline-block;
+  margin-top: 9px;
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--accent);
+  text-decoration: none;
+}
+.ai-cmp-pick-more:hover { text-decoration: underline; }
+
+/* Uzun nesirler (karşılaştırma metni, kararın gerekçesi) kısaltılmış gelir.
+   Karar ÜSTTE verildi; metin onu açıklıyor, geciktirmemeli. Kısaltmayı
+   RichProse yapar: gizli paragraflar DOM'da kalır, yalnızca `display`i
+   kapanır — hiç basılmayan metin indekslenemez. */
+.ai-cmp-fold { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.ai-cmp-subhead {
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
 
 /* Rapor kisayolu — uc urunlu karsilastirmada ikinci raporu bulmak icin
    birincinin tamamini kaydirmak gerekmesin. */

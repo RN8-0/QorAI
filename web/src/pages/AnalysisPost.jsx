@@ -20,7 +20,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { getProduct } from '../lib/typesense';
-import { priceForCountry } from '../lib/format';
+import { formatPriceAmount, priceForCountry } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, SEO_DEFAULT_LOCALE, truncate } from '../lib/seo';
@@ -230,6 +230,26 @@ export default function AnalysisPost() {
               <span className="an-kind">{analysisKindShort(a, lang)}</span>
               {a.productBrand ? <span>{a.productBrand}</span> : null}
               {a.techScore ? <span className="an-score">Qor AI {a.techScore}/100</span> : null}
+              {/* KATALOG FIYATI KUNYEDE. Fiyat sayfada zaten vardi ama raporun
+                  ICINDE, skor kutucuklarinin arasinda (AiReportView ->
+                  StatTiles) — yani okuyucunun bir ekran kaydirmasi gerekiyordu
+                  ve ustteki kunyeye bakan "fiyat yok" sanıyordu. Ayni `fiyat`
+                  state'i besliyor, ikinci bir istek YOK.
+                  ON-RENDER'A GIRMEZ: statik HTML gunlerce yasiyor, oraya
+                  yazilan fiyat bayatlar (SEO Faz 0'da "fiyat vaadi" tam olarak
+                  bu yuzden temizlenmisti). Rakam istemcide, canli katalogdan.
+                  Bayatlik AYRIMI RENKLE DEGIL ETIKETLE — rakam her halukarda
+                  `--price` (bkz. ProductCard.css, `.is-stale`). */}
+              {fiyat && fiyat.price > 0 ? (
+                <span className={`an-price${fiyat.stale ? ' is-stale' : ''}`}>
+                  {formatPriceAmount(fiyat.price, fiyat.currency, lang)}
+                  {fiyat.stale && fiyat.ageDays ? (
+                    <small title={L('This price was not verified recently', 'Bu fiyat yakın zamanda doğrulanmadı')}>
+                      {fiyat.ageDays} {L('d ago', 'gün önce')}
+                    </small>
+                  ) : null}
+                </span>
+              ) : null}
             </div>
             {kind === 'product' && a.productSlug ? (
               <Link to={`/product/${a.productSlug}`}>

@@ -723,17 +723,30 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
 
    ÇÖZÜM VERİDE: prompt artık ürün başına yapı istiyor
    (`headToHeadByProduct: [{name, case, against}]`, bkz.
-   admin/js/qor_ai_prompts.js). Bu bileşen O YAPIYI çizer. Yapı yoksa (eski
-   kayıtlar) metin BÖLÜNMEDEN, olduğu gibi gösterilir — uydurma başlık yok. */
+   admin/js/qor_ai_prompts.js). Bu bileşen O YAPIYI çizer.
+
+   YAPIYI KİM KURARSA KURSUN AYNI ÇİZİM. `case` / `against` iki biçimde
+   gelebilir: model nesir yazar (yeni kayıtlar), çağıran ise ürünün KENDİ
+   artı/eksi listesinden madde madde kurar (eski kayıtlar — bkz.
+   AiAnalysis.jsx `ComparisonOverview`). Dizi geldiğinde madde listesi, metin
+   geldiğinde nesir çizilir; ikisinde de olgu ürünün kendi şeridinde kalır.
+   Hiçbir yapı yoksa metin BÖLÜNMEDEN gösterilir — uydurma başlık yok. */
 export function HeadToHead({ text, rows = null, names = [], L = (en) => en }) {
   const isim = (Array.isArray(names) ? names : []).filter(Boolean);
+  const yan = (v) => (Array.isArray(v)
+    ? v.map((x) => String(x || '').trim()).filter(Boolean)
+    : String(v || '').trim());
+  const dolu = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(v));
   const yapi = (Array.isArray(rows) ? rows : [])
     .map((r) => ({
       name: String(r?.name || '').trim(),
-      lehine: String(r?.case || r?.for || '').trim(),
-      aleyhine: String(r?.against || '').trim(),
+      lehine: yan(r?.case ?? r?.for),
+      aleyhine: yan(r?.against),
+      // Kazanan seridi isaretlenir: okuyucu "AI hangisini secti" sorusunun
+      // cevabini bu blokta da gorur, yukari kaydirmadan.
+      win: Boolean(r?.win),
     }))
-    .filter((r) => r.name && (r.lehine || r.aleyhine));
+    .filter((r) => r.name && (dolu(r.lehine) || dolu(r.aleyhine)));
 
   // Yapilandirilmis veri YOKSA metni oldugu gibi ver. Bolmek yanlis atif uretir.
   if (!yapi.length) {
@@ -741,24 +754,31 @@ export function HeadToHead({ text, rows = null, names = [], L = (en) => en }) {
       ? <RichProse text={text} L={L} clamp={0} names={isim} />
       : null;
   }
+  const govde = (v, k) => (Array.isArray(v)
+    ? (
+      <ul className="aic-h2h-list">
+        {v.map((x, i) => <li key={`${k}-${i}`}>{proseParts(x, `${k}${i}`, isim)}</li>)}
+      </ul>
+    )
+    : <RichProse text={v} L={L} clamp={0} names={isim} />);
   return (
     <div className="aic-h2h">
       {yapi.map((r, i) => (
-        <section className="aic-h2h-item" key={`${r.name}-${i}`}>
+        <section className={`aic-h2h-item${r.win ? ' win' : ''}`} key={`${r.name}-${i}`}>
           <header className="aic-h2h-head">
             <span className="aic-h2h-no">{i + 1}</span>
             <b>{r.name}</b>
           </header>
-          {r.lehine && (
+          {dolu(r.lehine) && (
             <div className="aic-h2h-side for">
               <span className="aic-h2h-tag">✓ {L('In its favour', 'Lehine')}</span>
-              <RichProse text={r.lehine} L={L} clamp={0} names={isim} />
+              {govde(r.lehine, `f${i}`)}
             </div>
           )}
-          {r.aleyhine && (
+          {dolu(r.aleyhine) && (
             <div className="aic-h2h-side against">
               <span className="aic-h2h-tag">⚠ {L('Against it', 'Aleyhine')}</span>
-              <RichProse text={r.aleyhine} L={L} clamp={0} names={isim} />
+              {govde(r.aleyhine, `a${i}`)}
             </div>
           )}
         </section>
