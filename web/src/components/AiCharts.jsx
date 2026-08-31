@@ -1198,6 +1198,13 @@ const NEG_INKAR = new RegExp(
 );
 const CUMLECIK_RE = /[,;]|\bve\b|\bama\b|\bancak\b|\bfakat\b|\bbut\b|\bhowever\b|\balthough\b/i;
 
+/* OLUMSUZ KOKUN OLUMSUZ OLMADIGI YERLER. "dusuk isik kosullarinda bile canli
+   fotograflar" cumlesi 'dusuk' koku yuzunden KIRMIZI cikiyordu — oysa cumle
+   olumlu ve "dusuk isik" bir cekim kosulu, kusur degil. Bu tamlamalar sayim
+   oncesi metinden dusurulur; koku listeden cikarmak olmazdi, cunku "dusuk
+   depolama" gercekten olumsuz. */
+const TONE_MUAF = /(d[uü][sş][uü]k [iı][sş][iı][kğ]|low[- ]light|d[uü][sş][uü]k gecikme|low latency|d[uü][sş][uü]k [iı]s[iı] ?[uü]retimi)/gi;
+
 function leadTone(text) {
   const t = String(text || '');
   if (!t) return '';
@@ -1210,8 +1217,9 @@ function leadTone(text) {
   const cumlecikler = t.split(CUMLECIK_RE).filter(Boolean);
   cumlecikler.forEach((cumlecik, i) => {
     const agirlik = i === cumlecikler.length - 1 ? 2 : 1;
-    const p = sayKok(POS_RE, cumlecik) * agirlik;
-    const n = sayKok(NEG_RE, cumlecik) * agirlik;
+    const temiz = cumlecik.replace(TONE_MUAF, ' ');
+    const p = sayKok(POS_RE, temiz) * agirlik;
+    const n = sayKok(NEG_RE, temiz) * agirlik;
     // Inkar varsa isaretler yer degistirir: "olumsuz ... degildir" = olumlu,
     // "iyi degil" = olumsuz.
     if (NEG_INKAR.test(cumlecik)) { pos += n; neg += p; } else { pos += p; neg += n; }
@@ -1261,10 +1269,16 @@ function splitLead(text) {
    vurgusu ORADA DA olmali — olmayinca ayni sayi sayfanin bir yerinde altin,
    otekinde duz metin cikiyordu (olculdu: karsilastirma kartlarinda "2600
    nit" duz, hemen altindaki farklar kartinda altin). */
-export function ProseLine({ text, names = null, keyPrefix = 'pl' }) {
+export function ProseLine({ text, names = null, keyPrefix = 'pl', tone = true }) {
   const t = String(text || '').trim();
   if (!t) return null;
-  return <>{proseParts(t, keyPrefix, names)}</>;
+  // SAYI, ICINDE GECTIGI CUMLENIN YONUNU ALIR. Sabit bir "olcu rengi"
+  // denendi (once kehribar, sonra mavi) ama okuyucu icin bilgi tasimiyordu:
+  // "40W ... daha yavastir" cumlesindeki 40W ile "90W hizli sarj" cumlesindeki
+  // 90W ayni renkteydi. Ton zaten hesaplaniyor (leadTone); sayi da ondan
+  // besleniyor. Notr baglam yok — leadTone daima pos ya da neg dondurur.
+  const cls = tone ? ` aic-tone-${leadTone(t)}` : '';
+  return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
 }
 
 export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
@@ -1285,11 +1299,16 @@ export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
       return <h5 className={`aic-prose-head${hid ? ' hid' : ''}`} key={`h-${i}`}>{proseParts(b.text, `h${i}`, names)}</h5>;
     }
     if (b.kind === 'bullet') {
-      return <li className={`aic-prose-li${hid ? ' hid' : ''}`} key={`l-${i}`}>{proseParts(b.text, `l${i}`, names)}</li>;
+      return (
+        <li className={`aic-prose-li aic-tone aic-tone-${leadTone(b.text)}${hid ? ' hid' : ''}`} key={`l-${i}`}>
+          {proseParts(b.text, `l${i}`, names)}
+        </li>
+      );
     }
     const [lead, rest] = splitLead(b.text);
     return (
-      <p className={`aic-prose-p${hid ? ' hid' : ''}`} key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
+      <p className={`aic-prose-p aic-tone aic-tone-${leadTone(b.text)}${hid ? ' hid' : ''}`}
+        key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
         {lead ? (
           <strong className={`aic-prose-lead${leadTone(lead) ? ` ${leadTone(lead)}` : ''}`}>
             {proseParts(lead, `pl${i}`, names)}

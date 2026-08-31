@@ -933,9 +933,23 @@
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
+  /* Taban renk: tonu hesaplanmamis baglamlar icin (tablo hucresi, rozet). */
   color: var(--ink-blue);
   white-space: nowrap;
 }
+
+/* SAYI, CUMLESININ YONUNU ALIR.
+   Iki sabit renk denendi, ikisi de bilgi tasimadi: once kehribar (acik temada
+   kahverengi leke), sonra marka mavisi. Sorun renk secimi degildi — "40W ...
+   daha yavastir" ile "90W hizli sarj" ayni renkteydi, yani sayi okuyucuya iyi
+   mi kotu mu oldugunu SOYLEMIYORDU. Artik sayi, icinde gectigi cumlenin
+   tonundan besleniyor: renkli konu cumleleriyle AYNI sozluk
+   (yesil = iyi, kirmizi = kotu). Ton hesabi inkar ekini ve son-cumlecik
+   agirligini da iceriyor (bkz. leadTone). */
+.aic-tone-pos .aic-num { color: var(--lead-pos); }
+.aic-tone-neg .aic-num { color: var(--lead-neg); }
+/* Konu cumlesinin kendi rengi zaten ton rengi; sayi onu bolmesin. */
+.aic-prose-lead .aic-num { color: inherit; }
 /* Konu cumlesinin icindeki sayi da OLCU rengini korur. Eskiden cumlenin
    rengini aliyordu (`inherit`); gerekcesi "kirmizi hukmun ortasinda yesil
    sayi hukmu boler" idi. Sayi artik yesil olmadigi icin o catisma yok. */

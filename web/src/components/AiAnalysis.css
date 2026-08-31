@@ -479,6 +479,25 @@
   border-radius: 8px;
   border: 1px solid var(--border);
 }
+/* DAR EKRAN IZGARALARI. Bu blok bir onceki turda `.ai-compare-chart`
+   stilleriyle birlikte YANLISLIKLA silindi ve `.ai-alt-cards` mobilde uc
+   sutunda kaldi: 390px'te sutun ~110px, kartin ici 76px gorsel + metin
+   olunca metne ~20px kaliyor ve her kelime alt alta duruyordu ("Akilli
+   alternatifler" bolumu). Compare-chart satirlari geri gelmedi — o bilesen
+   artik yok; yalnizca hala var olan izgaralar geri kondu. */
+@media (max-width: 760px) {
+  .ai-feature-grid,
+  .ai-alt-cards,
+  .ai-price-grid {
+    grid-template-columns: 1fr;
+  }
+  .ai-report-hero,
+  .ai-community-head,
+  .ai-compare-product-head {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Karşılaştırma özetinin ALT BLOKLARI. Üçü de tek bir accordion içinde
    başlıksız akıyordu; artık her biri kendi başlığı ve hairline ayıracıyla. */
 .ai-cmp-block {
@@ -497,6 +516,18 @@
    Renk sözlüğü sayfa boyunca tek: yeşil = iyi, kırmızı = kötü, altın = ölçü.
    Ürünü renk değil kartın kendisi söyler; kazanan yalnızca sol kenarındaki
    yeşil çizgiyle ayrılır — kutu ya da gölge değil. */
+/* Urun raporunun basligindaki fiyat — tekli analizdeki kunye fiyatiyla ayni
+   bicim (mono, tabular, --price). */
+.ai-cmp-report-price {
+  display: block;
+  margin-top: 3px;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--price);
+}
+
 .ai-cmp-cards { display: grid; gap: 14px; margin: 4px 0 18px; }
 .ai-cmp-card {
   padding: 14px 16px;
@@ -583,6 +614,13 @@
 }
 .ai-cmp-card-side.for .ai-cmp-card-tag { color: var(--lead-pos); }
 .ai-cmp-card-side.against .ai-cmp-card-tag { color: var(--lead-neg); }
+/* Karttaki sayilar da seridin yonunu alir: artilar listesindeki 2600 nit
+   yesil, eksiler listesindeki 40W kirmizi. Yon zaten seridin kendisinden
+   belli — sayinin ondan farkli bir renkte olmasi sozlugu boluyordu. */
+.ai-cmp-card-side.for .aic-num { color: var(--lead-pos); }
+.ai-cmp-card-side.against .aic-num { color: var(--lead-neg); }
+.ai-cmp-card-who p.for .aic-num { color: var(--lead-pos); }
+.ai-cmp-card-who p.against .aic-num { color: var(--lead-neg); }
 .ai-cmp-card-side ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
 .ai-cmp-card-side li {
   position: relative; padding-left: 13px;

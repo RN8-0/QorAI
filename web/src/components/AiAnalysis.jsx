@@ -901,6 +901,20 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
                   <div className="ai-cmp-report-id">
                     <small>{L('Full AI review', 'Detaylı AI incelemesi')}</small>
                     <b>{c.name}</b>
+                    {/* FIYAT ADIN YANINDA. Tekli analizde fiyat kunyede, urun
+                        adinin hemen altinda duruyor (pages/Analyses.css
+                        .an-price). Coklu karsilastirmada ayni bilgi yalnizca
+                        asagidaki skor kutucuklarinin arasindaydi; okuyucu
+                        urun basligina bakip "fiyat yok" saniyordu. Ayni yer,
+                        ayni bicim. */}
+                    {(() => {
+                      const f = (c.product ? priceForCountry(c.product, geoCountry) : fiyatlar[c.key]) || null;
+                      return f && f.price > 0 ? (
+                        <span className="ai-cmp-report-price">
+                          {formatPriceAmount(f.price, f.currency, lang)}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                 </header>
                 {/* FIYAT KUTUSU BURADA DA CIKMALI. Tekli analizde fiyat

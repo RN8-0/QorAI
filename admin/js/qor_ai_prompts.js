@@ -2040,6 +2040,12 @@ function groundedResearchSystemPrompt(lang) {
    Yayinlanan analizin BASLIGI, OZETI, meta etiketleri ve SSS'i. Iki dil TEK
    cagrida uretilir; ayni dilde iki analizin ayni meta'yi tasimamasi icin
    `usedTitles` / `usedDescriptions` yasakli liste olarak gonderilir. */
+/* Karsilastirma konusu "A vs B vs C" bicimindedir (bkz. admin/js/analyses.js
+   -> runKonu). Hem prompt hem yayin kapisi ayni ayristirmayi kullanir. */
+function compareSubjects(subject) {
+  return String(subject || '').split(/\s+vs\s+/i).map((x) => x.trim()).filter(Boolean);
+}
+
 function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
   // `compare` dali YOKTU ve karsilastirma "a product analysis" olarak
   // tanitiliyordu: model tek urun basligi yaziyordu ("Samsung Galaxy S26 Ultra
@@ -2060,11 +2066,20 @@ function buildPublishMetaPrompt({ subject, kind, report, used = {} }) {
     'Rules:\n' +
     '- `tr` is Turkish, `en` is English. Keep official brand/product names as-is in both.\n' +
     (kind === 'compare'
-      ? '- THIS IS A COMPARISON. The title and metaTitle must name the products being compared (or say '
-        + '"X vs Y"), and must state WHICH ONE WINS and for whom. A title naming only one of them is WRONG. '
-        + 'The lead must give the verdict in one sentence: which product, for which buyer, on what evidence. '
-        + 'FAQ questions must be comparison questions ("which one has the better camera", "is X worth the '
-        + 'extra over Y"), never single-product questions.\n'
+      /* "or say X vs Y" BOSLUGU URUN DUSURUYORDU. Olculdu 2026-08-31,
+         canli kayit (uc telefon): title_tr "Samsung S26 Ultra mi iPhone 17
+         Pro Max mi?" — Xiaomi 17 Ultra ne baslikta, ne meta baslikta, ne de
+         ozette geciyordu. Model iki urunle "X vs Y" kalibini saglamis
+         sayiyordu. Artik urun SAYISI ve adlarin TAMAMI prompt'ta yaziyor. */
+      ? `- THIS IS A COMPARISON OF ${compareSubjects(subject).length} PRODUCTS: `
+        + `${compareSubjects(subject).join(' | ')}\n`
+        + '- title, metaTitle AND lead must name EVERY ONE of those products. Naming only '
+        + 'some of them is WRONG: a reader who owns the omitted product will never find '
+        + 'this page, and the page claims to compare something it does not mention. '
+        + 'Shorten a name if you must, but never drop one.\n'
+        + '- The title must also state WHICH ONE WINS and for whom. The lead gives the '
+        + 'verdict in one sentence: which product, for which buyer, on what evidence.\n'
+        + '- FAQ questions must be comparison questions, never single-product questions.\n'
       : '') +
     '- NEVER PUT A SCORE NUMBER IN title, lead, metaTitle OR metaDescription ("%88 skorla", "scores 88/100"). The published score is computed from the report separately, so a figure baked into the title goes stale the moment the scoring changes — this already happened and had to be rewritten at read time. Say the verdict in words.\n' +
     '- title: the on-page H1. Max 70 characters. Must name the subject and say what the page decides, not just what it is. Never a bare product name.\n' +
@@ -2120,7 +2135,7 @@ root.QorAiPrompts = {
   compareFactorAxis, compareAxisFamily, alignFactorsToAxis, alignFactorMatrixToAxis,
   factorAxisContract, axisSimilarity,
   // yayin metasi
-  groundedResearchSystemPrompt, buildPublishMetaPrompt,
+  groundedResearchSystemPrompt, buildPublishMetaPrompt, compareSubjects,
   // ayristirma
   parseAiJson,
 };
