@@ -214,10 +214,11 @@ export function FeatureMatchTable({ rows = [], L }) {
  * @param heroExtra     hero kartının sağına (ör. mağaza butonu)
  * @param altNode       alternatifler bölümünün gövdesi (zengin kart ızgarası)
  * @param tailNode      raporun sonuna eklenecek içerik
+ * @param hidePriceTile fiyat künyede zaten yazıyorsa "🏷 Fiyat" kutucuğunu çizme
  */
 export default function AiReportView({
   data = {}, L, lang, headerNode = null, heroExtra = null, altNode = null, tailNode = null,
-  showHead = true, hideQuiz = false, priceInfo = null,
+  showHead = true, hideQuiz = false, priceInfo = null, hidePriceTile = false,
 }) {
   const geoCountry = useGeoCountry();
   const score = Math.round(data.enhancedScore || 0);
@@ -343,7 +344,7 @@ export default function AiReportView({
           // FIYAT KUTUSU. PB'de fiyat VARSA gosterilir; yoksa kutu hic
           // cizilmez (sifir/"-" yazmak yaniltici olurdu). Kaynak: cagirandan
           // gelen `priceInfo` ya da katalog eslesmesi.
-          outlookPrice.price > 0 ? {
+          !hidePriceTile && outlookPrice.price > 0 ? {
             icon: '🏷',
             label: L('Price', 'Fiyat'),
             value: formatPriceAmount(outlookPrice.price, outlookPrice.currency, lang) || formatPrice(outlookPrice.price),

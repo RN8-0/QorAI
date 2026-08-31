@@ -5,7 +5,7 @@
 //  Renk dili: güçlü/pozitif #22c55e, orta/nötr #f59e0b, zayıf/negatif #f43f5e,
 //  marka mavi #3b82f6. prefers-reduced-motion'a saygı gösterir.
 // ─────────────────────────────────────────────────────────────────────────
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import './AiCharts.css';
 // Faktor tablosunun satir kumesi TEK KAYNAK — on-render (Node) da ayni
 // modulu kosar; bkz. lib/factorRows.js.
@@ -59,6 +59,43 @@ function useDrawn() {
     };
   }, [reduced]);
   return { drawn, reduced };
+}
+
+// ── (A2) GÖRÜNÜME GİRİNCE ÇİZ ─────────────────────────────────────────────
+// `useDrawn` animasyonu MOUNT'ta başlatır. Sayfanın altındaki faktör tablosu
+// için bu, kimse bakmadan bitmiş bir animasyon demek: okuyucu oraya
+// vardığında çubuklar çoktan doluydu. Bu kanca çizimi ELEMAN GÖRÜNÜNCE
+// başlatır — kullanıcı sayfayı kaydırdıkça çubuklar önünde ilerler.
+//
+// İÇERİK ASLA SAKLANMAZ. Bu projede reveal denemesi bir kez geri alındı
+// (IntersectionObserver eşiği tutmayınca içerik hiç gelmiyordu, bkz. proje
+// notları). Burada gizlenen tek şey ÇUBUK GENİŞLİĞİ: etiket, sayı ve metin
+// ilk boyamada yerinde. Üstüne zamanlayıcı güvenlik ağı var — gözlemci hiç
+// ateşlemese bile (arka plan sekmesi, eski tarayıcı) çubuk kendi değerine
+// oturur.
+export function useDrawIn({ margin = '0px 0px -10% 0px', timeout = 2600 } = {}) {
+  const reduced = usePrefersReducedMotion();
+  const ref = useRef(null);
+  const [drawn, setDrawn] = useState(reduced);
+  useEffect(() => {
+    if (reduced) { setDrawn(true); return undefined; }
+    const el = ref.current;
+    let io = null;
+    if (el && typeof IntersectionObserver === 'function') {
+      io = new IntersectionObserver((girisler) => {
+        if (girisler.some((g) => g.isIntersecting)) {
+          setDrawn(true);
+          if (io) io.disconnect();
+        }
+      }, { rootMargin: margin, threshold: 0.06 });
+      io.observe(el);
+    } else {
+      setDrawn(true);
+    }
+    const guvenlik = setTimeout(() => setDrawn(true), timeout);
+    return () => { if (io) io.disconnect(); clearTimeout(guvenlik); };
+  }, [reduced, margin, timeout]);
+  return [ref, drawn, reduced];
 }
 
 // Sayı count-up (skor halkası merkezi vb.). reduced-motion'da anında hedef.
@@ -573,30 +610,57 @@ export function StatTiles({ items = [] }) {
 // import edemiyor. Gerekce ve olcum o dosyanin basinda.
 
 export function HeatMatrix({ products = [], matrix = null, L = (en) => en, labelOf = (p) => p.name }) {
+  // Çubuklar GÖRÜNÜNCE çizilir; tablo sayfanın altında ve mount'ta başlayan
+  // bir animasyonu kimse görmüyordu (bkz. useDrawIn).
+  const [kap, drawn, reduced] = useDrawIn();
   const cols = Array.isArray(products) ? products.filter((p) => p && p.name) : [];
-  if (cols.length < 2) return null;
-  const rows = factorMatrixRows(cols, matrix);
+  const rows = cols.length >= 2 ? factorMatrixRows(cols, matrix) : [];
   if (!rows.length) return null;
 
   const partial = rows.some((r) => r.filled < cols.length);
-  /* CUBUK BIR SEY SOYLEMELI. Tablodaki butun puanlar dar bir bantta topluyor
-     (olculdu 2026-08-30, canli kayit: 60-98 arasi, 21 hucrenin 18'i 75+) ve
-     0-100 olceginde cizilince 85 ile 95 GOZLE AYNI uzunlukta cikiyordu —
-     yani cubuk hicbir bilgi tasimiyor, yalnizca yer kapliyordu.
-     Olcek tablonun KENDI en dusuk degerinin biraz altindan baslar; boylece
-     fark gorunur olur. Yaniltmaz cunku her cubugun YANINDA gercek sayi
-     yaziyor ve tabanin ne oldugu `title` ile soyleniyor. */
+  /* ÇUBUK BİR ŞEY SÖYLEMELİ. Tablodaki bütün puanlar dar bir banda toplanıyor
+     (ölçüldü 2026-08-30, canlı kayıt: 60-98 arası, 21 hücrenin 18'i 75+) ve
+     0-100 ölçeğinde çizilince 85 ile 95 GÖZLE AYNI uzunlukta çıkıyordu —
+     yani çubuk hiçbir bilgi taşımıyor, yalnızca yer kaplıyordu.
+     Ölçek tablonun KENDİ en düşük değerinin biraz altından başlar; böylece
+     fark görünür olur. Yanıltmaz çünkü her çubuğun YANINDA gerçek sayı
+     yazıyor ve tabanın ne olduğu `title` ile söyleniyor. */
   const tumDegerler = rows.flatMap((r) => r.values.filter((v) => v != null));
   const enDusuk = tumDegerler.length ? Math.min(...tumDegerler) : 0;
   const taban = Math.max(0, Math.min(60, Math.floor(enDusuk - 5)));
-  const dolgu = (v) => Math.max(4, Math.min(100, ((v - taban) / Math.max(1, 100 - taban)) * 100));
-  // Ürün başına ortalama — sütun altındaki tek sayı, "kim genel olarak önde".
+  const dolgu = (v) => Math.max(5, Math.min(100, ((v - taban) / Math.max(1, 100 - taban)) * 100));
   const avg = factorColumnAverages(rows, cols.length);
   const wins = factorColumnWins(rows, cols.length);
+  // KÜNYE VURGUSU ORTALAMAYA BAKAR, "kaç faktörde önde"ye DEĞİL. Ölçüldü
+  // (canlı kayıt): en yüksek ortalama Samsung'da (90) ama en çok faktör
+  // galibiyeti iPhone ve Xiaomi'de (3-3). Çipin BÜYÜK sayısı ortalama olduğu
+  // için yeşil çerçeve de onu işaretlemeli; aksi hâlde çip "90" yazıp vurguyu
+  // komşusuna veriyordu.
+  const enIyiOrt = Math.max(0, ...avg.map((v) => (v == null ? 0 : v)));
 
   return (
-    <section className="aic-heat">
+    <section className="aic-heat" ref={kap}>
       <div className="aic-card-title">🧭 {L('Factor by factor', 'Faktör faktör karşılaştırma')}</div>
+
+      {/* ÜRÜN KÜNYESİ TABLONUN DIŞINDA. Ortalama eskiden tablonun EN ALT
+          satırındaydı ve "kim genel olarak önde" sorusunun cevabı yedi satır
+          aşağıda kalıyordu; ayrıca dar ekranda tablo satır-karta dönüştüğü
+          için başlık satırı tamamen kayboluyordu. Künye artık tablodan önce,
+          her iki genişlikte de görünür: ad · ortalama · kaç faktörde önde. */}
+      <div className="aic-heat-keys">
+        {cols.map((p, i) => (
+          <div key={`hk-${i}`} className={'aic-heat-key' + (avg[i] != null && avg[i] === enIyiOrt ? ' lead' : '')}>
+            <b title={labelOf(p)}>{labelOf(p)}</b>
+            <span>
+              {avg[i] != null && (
+                <em style={{ color: scoreColor(avg[i]) }}>{avg[i]}<i>/100</i></em>
+              )}
+              {wins[i] > 0 && <u>{wins[i]} {L('leads', 'faktörde önde')}</u>}
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className="aic-heat-scroll">
         <table className="aic-heat-table" style={{ '--cols': cols.length }}>
           <thead>
@@ -605,11 +669,6 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
               {cols.map((p, i) => (
                 <th key={`${p.name}-${i}`} className="aic-heat-col">
                   <span>{labelOf(p)}</span>
-                  {wins[i] > 0 && (
-                    <em className="aic-heat-wins">
-                      {wins[i]} {L('leads', 'faktörde önde')}
-                    </em>
-                  )}
                 </th>
               ))}
             </tr>
@@ -625,7 +684,7 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
                   {row.values.map((v, i) => {
                     if (v == null) {
                       return (
-                        <td key={`${row.label}-${i}`}>
+                        <td key={`${row.label}-${i}`} data-name={labelOf(cols[i]) || ''}>
                           <span className="aic-heat-cell empty"
                             title={L('Not measured for this product', 'Bu ürün için ölçülmedi')}>
                             <b>—</b>
@@ -636,12 +695,17 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
                     const col = scoreColor(v);
                     const isBest = !tied && v === best && best > 0 && vals.length > 1;
                     return (
-                      <td key={`${row.label}-${i}`}>
-                        {/* Dolgu genişliği VERİDİR; animasyona bağlanmaz (arka
-                            plandaki sekmede transition donunca boş kalıyordu). */}
+                      <td key={`${row.label}-${i}`} data-name={labelOf(cols[i]) || ''}>
+                        {/* Genişlik VERİDİR; animasyon yalnızca ona GİDİŞ.
+                            Gözlemci ateşlemese bile `useDrawIn`in zamanlayıcısı
+                            çubuğu değerine oturtur — boş kalma yolu yok. */}
                         <span className={'aic-heat-cell' + (isBest ? ' best' : '')}
                           title={`${Math.round(v)}/100 · ${L('bars start at', 'çubuk tabanı')} ${taban}`}>
-                          <i style={{ width: `${dolgu(v)}%`, background: col }} />
+                          <i style={{
+                            width: `${drawn ? dolgu(v) : 0}%`,
+                            background: col,
+                            transition: reduced ? 'none' : `width .75s cubic-bezier(.22,.61,.36,1) ${Math.min(ri * 55 + i * 70, 700)}ms`,
+                          }} />
                           <b style={{ color: col }}>{Math.round(v)}</b>
                           {isBest && <em aria-label="best">★</em>}
                         </span>
@@ -652,18 +716,6 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
               );
             })}
           </tbody>
-          <tfoot>
-            <tr>
-              <th scope="row" className="aic-heat-label">{L('Average', 'Ortalama')}</th>
-              {avg.map((v, i) => (
-                <td key={`avg-${i}`}>
-                  <span className="aic-heat-avg" style={v != null ? { color: scoreColor(v) } : undefined}>
-                    {v == null ? '—' : v}
-                  </span>
-                </td>
-              ))}
-            </tr>
-          </tfoot>
         </table>
       </div>
       {partial && (
@@ -703,17 +755,39 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
   return (
     <section className="aic-diffs">
       <div className="aic-card-title">⚔️ {title || L('What actually decides it', 'Kararı belirleyen farklar')}</div>
-      <div className="aic-diff-grid">
-        {rows.map((x, i) => (
-          <article className="aic-diff" key={i} style={{ animationDelay: `${i * 60}ms` }}>
-            <span className="aic-diff-no">{i + 1}</span>
-            <div className="aic-diff-body">
-              {x.title && <strong>{proseParts(x.title, `dt${i}`, names)}</strong>}
-              {x.detail && <p>{proseParts(x.detail, `dd${i}`, names)}</p>}
-            </div>
-          </article>
-        ))}
-      </div>
+      <ol className="aic-diff-grid">
+        {rows.map((x, i) => {
+          // Fark İKİ TARAFLI çizilir: cümlenin kendi dönüş noktasından
+          // ("…sunarken," / "…sunsa da,") ikiye ayrılır. Kalıp yoksa cümle
+          // bölünmeden kalır — uydurma taraf yok (bkz. splitPivot).
+          const [sol, sag] = splitPivot(x.detail || '');
+          return (
+            <li className="aic-diff" key={i} style={{ '--i': Math.min(i, 8) }}>
+              <span className="aic-diff-no">{i + 1}</span>
+              <div className="aic-diff-body">
+                {x.title && <strong>{proseParts(x.title, `dt${i}`, names)}</strong>}
+                {sag ? (
+                  <div className="aic-diff-sides">
+                    <p className={`aic-diff-side aic-tone aic-tone-${leadTone(sol)}`}>
+                      {proseParts(sol, `da${i}`, names)}
+                    </p>
+                    <span className="aic-diff-vs" aria-hidden="true">↔</span>
+                    <p className={`aic-diff-side aic-tone aic-tone-${leadTone(sag)}`}>
+                      {proseParts(sag, `db${i}`, names)}
+                    </p>
+                  </div>
+                ) : (
+                  x.detail ? (
+                    <p className={`aic-tone aic-tone-${leadTone(x.detail)}`}>
+                      {proseParts(x.detail, `dd${i}`, names)}
+                    </p>
+                  ) : null
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }
@@ -1255,6 +1329,102 @@ function splitLead(text) {
     m = SENT_END_RE.exec(s);
   }
   return [null, s];
+}
+
+/* ── CÜMLEYİ İKİYE BÖL: "ne" ve "ne demek" ────────────────────────────────
+   Karşılaştırma kartlarındaki artı/eksi maddeleri TEK CÜMLE geliyor ve uzun:
+   ölçüldü (canlı S26 Ultra / iPhone 17 Pro Max / Xiaomi 17 Ultra kaydı) 11
+   maddenin 9'u 95 karakterin üstünde. Alt alta beşi gri bir duvar oluyordu ve
+   kullanıcının "çok uzun cümleler var, ayırt edici kısımlar yok" dediği yer
+   tam olarak burası.
+
+   Model bu cümleleri hep aynı kalıpta yazıyor: ÖNCE ölçülebilir olan
+   ("2600 nit parlaklığa sahip 6.9 inç Dynamic AMOLED 2X ekran"), SONRA hüküm
+   ("açık havada bile mükemmel görünürlük sağlar"). Ayraç ya ilk üst-seviye
+   virgül ya da " ile / sayesinde " bağlacı. Oradan bölününce ilk parça KOYU
+   bir tutamak, ikincisi açıklama olur.
+
+   UYDURMA YOK: bölme cümlenin İÇİNDE kalır, iki parça da aynı cümleye aittir
+   — paragrafı bir ürüne ATAYAN eski yöntemle akrabalığı yok (o yol yanlış
+   atıf üretmişti, bkz. HeadToHead). Kalıp tutmazsa cümle bölünmez.
+   Ölçüm: aynı kayıtta 11 maddenin 11'i doğru bölündü. */
+const CLAUSE_CONN = /\s(?:ile|sayesinde|with|thanks to)\s/i;
+
+export function splitClause(text) {
+  const s = String(text || '').trim();
+  if (s.length < 62) return [null, s];
+  // Parantez İÇİNDEKİ virgül ayraç değildir: "(12 GB, 512 GB)".
+  let derinlik = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    const ch = s[i];
+    if (ch === '(' || ch === '[') derinlik += 1;
+    else if (ch === ')' || ch === ']') derinlik = Math.max(0, derinlik - 1);
+    else if (ch === ',' && derinlik === 0 && s[i + 1] === ' ') {
+      // Ondalık virgül ("1,5 mm") ayraç değil; ayraç virgülünden sonra boşluk
+      // gelir ve iki yanı rakam olmaz.
+      if (/\d/.test(s[i - 1] || '') && /\d/.test(s[i + 2] || '')) continue;
+      // Virgül BAŞTA kalır: metin olduğu gibi korunsun, yalnızca ağırlığı değişsin.
+      if (i >= 12 && i <= 84 && s.length - i >= 28) return [s.slice(0, i + 1), s.slice(i + 1).trim()];
+      break; // İLK üst-seviye virgül ayraçtır; sonrakiler yüklemin içinde.
+    }
+  }
+  const m = s.match(CLAUSE_CONN);
+  if (m && m.index >= 12 && m.index <= 84 && s.length - m.index >= 28) {
+    return [s.slice(0, m.index), s.slice(m.index + 1).trim()];
+  }
+  return [null, s];
+}
+
+/* ── FARKI İKİ TARAFA AYIR ────────────────────────────────────────────────
+   "Kararı belirleyen farklar" maddeleri iki ürünü TEK cümlede karşılaştırıyor
+   ve dönüş noktası hep aynı ek: "…sunarken, iPhone…" / "…sunsa da, 40W…".
+   Ölçüldü: canlı kayıttaki 6 farkın 5'inde bu dönüş var.
+
+   Hiçbir yarı bir ürüne ATANMIYOR — cümle yalnızca kendi bağlacından ikiye
+   ayrılıyor, adları zaten `highlightNames` işaretliyor. Kalıp yoksa cümle
+   bölünmeden döner. */
+const PIVOT_TR = /(rken|ken|sa da|se de|masına rağmen|mesine rağmen|rağmen|karşın)\s*,\s+/;
+const PIVOT_EN = /\s(?:while|whereas|although|though|but)\s/i;
+
+export function splitPivot(text) {
+  const s = String(text || '').trim();
+  if (s.length < 90) return [s, ''];
+  const m = s.match(PIVOT_TR);
+  if (m && m.index > 24 && s.length - (m.index + m[0].length) > 24) {
+    return [s.slice(0, m.index + m[1].length), s.slice(m.index + m[0].length).trim()];
+  }
+  const e = s.match(PIVOT_EN);
+  if (e && e.index > 24 && s.length - (e.index + e[0].length) > 24) {
+    return [s.slice(0, e.index).replace(/[,;]\s*$/, ''), s.slice(e.index + 1).trim()];
+  }
+  return [s, ''];
+}
+
+// Uzun bir "kime uygun" metnini cümlelere ayırır — her cümle kendi satırında
+// okunur. Bölme noktası cümle sonu, yani metin bozulmuyor.
+export function sentencesOf(text) {
+  return String(text || '').trim()
+    .split(/(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ"“(])/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+/* TEK SATIRLIK metnin OKUNUR hâli: tutamak + açıklama.
+   `ProseLine` cümleyi tek parça basar; kart içindeki uzun artı/eksi maddesi
+   için bu yetmiyordu. `ProseClause` aynı vurguları (sayı, ürün adı, ton)
+   korur ama cümleyi `splitClause` ile ikiye ayırıp ilk parçayı KOYU yapar. */
+export function ProseClause({ text, names = null, keyPrefix = 'pc', tone = true }) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const cls = tone ? ` aic-tone-${leadTone(t)}` : '';
+  const [bas, kalan] = splitClause(t);
+  if (!bas) return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
+  return (
+    <span className={`aic-tone${cls}`}>
+      <b className="aic-clause">{proseParts(bas, `${keyPrefix}-h`, names)}</b>{' '}
+      <span className="aic-clause-rest">{proseParts(kalan, `${keyPrefix}-r`, names)}</span>
+    </span>
+  );
 }
 
 /**

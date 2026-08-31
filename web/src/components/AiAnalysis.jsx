@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
+import Gauge from './Gauge.jsx';
 import { productPath } from '../lib/routes';
 import { formatPrice, formatPriceAmount, priceForCountry } from '../lib/format';
 import { getProduct, getProductBySlug } from '../lib/typesense';
@@ -18,11 +19,14 @@ import {
   DistributionBar,
   DecisiveDifferences,
   HeatMatrix,
+  ProseClause,
   ProseLine,
   RichProse,
   SentimentDonut,
   factorDistribution,
+  sentencesOf,
   useCountUp,
+  useDrawIn,
   usePrefersReducedMotion,
 } from './AiCharts.jsx';
 // Ürün ve karşılaştırma raporları da link/abonelik ile AYNI şablonu kullanır.
@@ -554,51 +558,80 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
 // clickable evaluation column per product (aligned with the spec-table columns).
 // Each column opens a full-screen modal with that product's complete review, so
 // the long per-product report stays out of the way until the user asks for it.
-/* ── KARAR TAHTASI: TEK URUN, TEK KART ──────────────────────────────────
-   Onceki surumde bir urunun bilgisi UC ayri blokta dagiliyordu:
-     1) puan seridi   — ad SOLDA, cubuk ORTADA, puan SAGDA, gerekce ALTTA
-     2) "Karsi karsiya" — ayni urunun artilari/eksileri, bir ekran asagida
-     3) "Hangisini almali" — ayni urunun kime uygun oldugu, bir ekran daha
-   Okuyucu TEK bir cihaz hakkinda fikir edinmek icin sayfada uc kez
-   asagi-yukari gidiyordu ve ayni olgu uc kez yaziliyordu.
+/* ── KARAR TAHTASI: TEK ÜRÜN, TEK KART ─────────────────────────────────
+   Bir ürünün bilgisi eskiden üç ayrı blokta dağılıyordu (puan şeridi ·
+   karşı karşıya · hangisini almalı); artık her ürün KENDİ kartında ve kart
+   içinde her şey alt alta.
 
-   Artik her urun KENDI KARTINDA ve kart icinde her sey ALT ALTA:
-     kimlik (sira + gorsel + ad) -> fiyat + uygunluk puani -> tek cumle hukum
-     -> artilar (yesil) -> eksiler (kirmizi) -> kime uygun / degil -> capa.
-   "Karsi karsiya" ve "Hangisini almali" bolumleri BIRLESTI; ikisi de ayni
-   urunun kartinda, ust uste.
+   2026-09-01 — İKİNCİ GEÇİŞ. Kart doğru bilgiyi taşıyordu ama okunmuyordu:
+   artı/eksi maddeleri ortalama 105 karakterlik TEK cümleler hâlinde alt alta
+   diziliyor, hepsi aynı gri ağırlıkta çıkıyordu ("çok uzun cümleler var,
+   ayırt edici kısımlar yok"). Üç şey değişti:
+     1. Her madde `ProseClause` ile İKİYE ayrılıyor — ölçüyü söyleyen ilk
+        parça KOYU, hükmü söyleyen ikinci parça yumuşak. Metin bozulmuyor,
+        yalnızca ağırlığı değişiyor.
+     2. Artılar ve eksiler yan yana İKİ SÜTUN (dar ekranda alt alta): göz
+        "iyi taraf / kötü taraf" ayrımını okumadan görüyor.
+     3. Puan artık halka (sitenin imza öğesi) + GÖRELİ fark çubuğu. Çubuk
+        0-100'de değil, karşılaştırmanın kendi tabanından başlıyor; 95/94/92
+        0-100'de gözle aynı uzunluktaydı, yani çubuk hiçbir şey söylemiyordu.
 
-   RENK SOZLUGU SAYFA BOYUNCA TEK:
-     yesil = iyi · kirmizi = kotu · altin = OLCU (sayilar, bkz. .aic-num)
-   Urunu renk degil KARTIN KENDISI soyler. */
-function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0 }) {
+   RENK SÖZLÜĞÜ SAYFA BOYUNCA TEK:
+     yeşil = iyi · kırmızı = kötü · mavi = ÖLÇÜ (sayılar, bkz. .aic-num)
+   Ürünü renk değil KARTIN KENDİSİ söyler. */
+function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0, taban = 0 }) {
+  // Çubuk GÖRÜNÜNCE dolar; kart sayfanın ortasında ve mount'ta biten bir
+  // animasyonu kimse görmüyordu (bkz. AiCharts → useDrawIn).
+  const [kap, drawn, reduced] = useDrawIn();
   const fark = lider > 0 && lane.score > 0 ? lane.score - lider : 0;
+  const pay = Math.max(1, lider - taban);
+  const oran = lane.score > 0 ? Math.max(8, Math.min(100, ((lane.score - taban) / pay) * 100)) : 0;
+  const renk = scoreColor(lane.score);
+  const ucuz = lane.key === enUcuzKey;
   return (
-    <article className={`ai-cmp-card${lane.win ? ' win' : ''}`}>
+    <article className={`ai-cmp-card${lane.win ? ' win' : ''}`} ref={kap}>
       <header className="ai-cmp-card-head">
         <span className="ai-cmp-card-no">{lane.win ? '★' : lane.rank}</span>
         {lane.image ? <ProductImg src={lane.image} alt={lane.name} size="thumb" /> : null}
         <div className="ai-cmp-card-id">
           {lane.win && <small>{L('AI pick', 'AI seçimi')}</small>}
-          <b>{lane.name}</b>
-          {lane.price ? (
-            <span className="ai-cmp-card-price">
-              {formatPriceAmount(lane.price.price, lane.price.currency, lane.lang)}
-              {lane.key === enUcuzKey && <i>{L('cheapest', 'en ucuz')}</i>}
-            </span>
-          ) : null}
+          {/* FİYAT ADIN YANINDA — ayrı bir kutuda değil. Aynı kural raporun
+              künyesinde de geçerli (.ai-cmp-report-price). */}
+          <b>
+            {lane.name}
+            {lane.price ? (
+              <span className="ai-cmp-card-price">
+                {formatPriceAmount(lane.price.price, lane.price.currency, lane.lang)}
+                {ucuz && <i>{L('cheapest', 'en ucuz')}</i>}
+              </span>
+            ) : null}
+          </b>
         </div>
         {lane.score > 0 && (
           <div className="ai-cmp-card-score">
-            <strong>{lane.score}</strong>
+            <Gauge value={lane.score} size={58} stroke={6} color={renk} fontSize={19} />
             <small>{L('fit for you', 'sana uygunluk')}</small>
-            {/* PUANLAR BIRBIRINE COK YAKIN (95/94/92). 0-100 cubugu ucunu de
-                ayni uzunlukta gosteriyordu — cubuk hicbir sey soylemiyordu.
-                Bilgi FARKTA; o yuzden cubuk yerine liderle fark yaziliyor. */}
-            {fark < 0 && <i className="ai-cmp-card-gap">{fark}</i>}
           </div>
         )}
       </header>
+
+      {/* GÖRELİ FARK ÇUBUĞU — bu bölümün imza öğesi. Ölçek karşılaştırmanın
+          kendi tabanından başlar; gerçek sayı halkada, fark burada yazıyor. */}
+      {lane.score > 0 && lider > 0 && (
+        <div className="ai-cmp-card-gap">
+          <span className="ai-cmp-card-gap-tag">{L('vs leader', 'Lidere göre')}</span>
+          <div className="ai-cmp-card-track">
+            <i style={{
+              width: `${drawn ? oran : 0}%`,
+              background: renk,
+              transition: reduced ? 'none' : `width .8s cubic-bezier(.22,.61,.36,1) ${Math.min(lane.rank * 90, 400)}ms`,
+            }} />
+          </div>
+          <span className={'ai-cmp-card-delta' + (fark === 0 ? ' lead' : '')}>
+            {fark === 0 ? `★ ${L('leader', 'lider')}` : fark}
+          </span>
+        </div>
+      )}
 
       {lane.headline && (
         <p className="ai-cmp-card-lead">
@@ -606,43 +639,62 @@ function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0 }) {
         </p>
       )}
 
-      {lane.pros.length > 0 && (
-        <div className="ai-cmp-card-side for">
-          <span className="ai-cmp-card-tag">✓ {L('Strengths', 'Artıları')}</span>
-          <ul>{lane.pros.map((x, i) => (
-            <li key={`p${i}`}><ProseLine text={x} names={names} keyPrefix={`pp-${lane.key}-${i}`} /></li>
-          ))}</ul>
-        </div>
-      )}
-      {lane.cons.length > 0 && (
-        <div className="ai-cmp-card-side against">
-          <span className="ai-cmp-card-tag">✕ {L('Weaknesses', 'Eksileri')}</span>
-          <ul>{lane.cons.map((x, i) => (
-            <li key={`c${i}`}><ProseLine text={x} names={names} keyPrefix={`cc-${lane.key}-${i}`} /></li>
-          ))}</ul>
+      {(lane.pros.length > 0 || lane.cons.length > 0) && (
+        <div className="ai-cmp-card-split">
+          {lane.pros.length > 0 && (
+            <div className="ai-cmp-card-side for">
+              <span className="ai-cmp-card-tag">✓ {L('Strengths', 'Artıları')}</span>
+              <ul>{lane.pros.map((x, i) => (
+                <li key={`p${i}`}>
+                  <ProseClause text={x} names={names} keyPrefix={`pp-${lane.key}-${i}`} />
+                </li>
+              ))}</ul>
+            </div>
+          )}
+          {lane.cons.length > 0 && (
+            <div className="ai-cmp-card-side against">
+              <span className="ai-cmp-card-tag">✕ {L('Weaknesses', 'Eksileri')}</span>
+              <ul>{lane.cons.map((x, i) => (
+                <li key={`c${i}`}>
+                  <ProseClause text={x} names={names} keyPrefix={`cc-${lane.key}-${i}`} />
+                </li>
+              ))}</ul>
+            </div>
+          )}
         </div>
       )}
 
       {(lane.bestFor || lane.notFor) && (
         <div className="ai-cmp-card-who">
+          {/* UZUN METİN CÜMLELERE BÖLÜNÜR. "Kime uygun" alanı iki-üç cümlelik
+              tek paragraftı; her cümle kendi satırında okunur ve bölme noktası
+              cümle sonu olduğu için metin bozulmuyor (bkz. sentencesOf). */}
           {lane.bestFor && (
-            <p className="for">
+            <div className="ai-cmp-who-row for">
               <span className="ai-cmp-who-tag">{L('Right for you if', 'Sana uygun')}</span>
-              <ProseLine text={lane.bestFor} names={names} keyPrefix={`bf-${lane.key}`} />
-            </p>
+              <ul>{sentencesOf(lane.bestFor).map((c, i) => (
+                <li key={`bf${i}`}><ProseClause text={c} names={names} tone={false} keyPrefix={`bf-${lane.key}-${i}`} /></li>
+              ))}</ul>
+            </div>
           )}
           {lane.notFor && (
-            <p className="against">
+            <div className="ai-cmp-who-row against">
               <span className="ai-cmp-who-tag">{L('Not for you if', 'Sana uygun değil')}</span>
-              <ProseLine text={lane.notFor} names={names} keyPrefix={`nf-${lane.key}`} />
-            </p>
+              <ul>{sentencesOf(lane.notFor).map((c, i) => (
+                <li key={`nf${i}`}><ProseClause text={c} names={names} tone={false} keyPrefix={`nf-${lane.key}-${i}`} /></li>
+              ))}</ul>
+            </div>
           )}
         </div>
       )}
 
       {lane.anchor && (
         <a className="ai-cmp-card-more" href={`#${lane.anchor}`}>
-          {L('Full review ↓', 'Tam incelemesi ↓')}
+          {L('Full review', 'Tam incelemesi')}
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+            strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
         </a>
       )}
     </article>
@@ -661,12 +713,42 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
   const enUcuzKey = tekParaBirimi && fiyatli.length > 1
     ? fiyatli.reduce((a, b) => (a.price.price <= b.price.price ? a : b)).key
     : '';
-  const lider = Math.max(0, ...lanes.map((l) => l.score || 0));
+  const puanlar = lanes.map((l) => l.score || 0).filter((v) => v > 0);
+  const lider = Math.max(0, ...puanlar);
+  const enAz = puanlar.length ? Math.min(...puanlar) : 0;
+  // Çubuk tabanı: en düşük puanın biraz altı. Sıfırdan başlayan ölçek bu
+  // bantta (95/94/92) hiçbir fark göstermiyordu.
+  const taban = Math.max(0, Math.min(lider - 1, enAz - 3));
+  const ikinci = puanlar.length > 1 ? [...puanlar].sort((a, b) => b - a)[1] : 0;
+  const kazanan = lanes.find((l) => l.win) || null;
 
   return (
     <section className="ai-report-section ai-cmp-overview">
       <div className="ai-report-eyebrow">{L('AI overall comparison', 'AI genel karşılaştırma')}</div>
       <h4>{L('Which one wins for you', 'Senin için hangisi kazanıyor')}</h4>
+
+      {/* SONUÇ ŞERİDİ — kartlara inmeden önce tek satırlık cevap: kaç ürün,
+          hangisi önde, ikinciyle farkı ne. Kartlarla ÇAKIŞMAZ; kart "bu cihaz
+          nasıl", şerit "yarış nasıl bitti" sorusunu yanıtlıyor. */}
+      {lanes.length > 1 && (
+        <div className="ai-cmp-sum">
+          <span className="ai-cmp-sum-pill">
+            <b>{lanes.length}</b> {L('products compared', 'ürün karşılaştırıldı')}
+          </span>
+          {kazanan && (
+            <span className="ai-cmp-sum-pill win" title={kazanan.name}>
+              ★<span className="ai-cmp-sum-name">{kazanan.name}</span>
+            </span>
+          )}
+          {lider > 0 && ikinci > 0 && (
+            <span className="ai-cmp-sum-pill">
+              {L('gap to runner-up', 'ikinciyle fark')}
+              <b>{lider - ikinci === 0 ? L('tie', 'berabere') : `+${lider - ikinci}`}</b>
+            </span>
+          )}
+        </div>
+      )}
+
       {/* KAZANAN BANDI YALNIZCA KART YILDIZLANAMADIGINDA. Band ile birinci
           kart AYNI seyi soyluyordu: ayni ad, ayni 95, ayni "sana uygunluk"
           etiketi — ust uste iki kez. Kart zaten yildiz + yesil kenar +
@@ -690,7 +772,7 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
         <div className="ai-cmp-cards">
           {lanes.map((l) => (
             <CompareCard key={l.key} lane={l} L={L} names={names}
-              enUcuzKey={enUcuzKey} lider={lider} />
+              enUcuzKey={enUcuzKey} lider={lider} taban={taban} />
           ))}
         </div>
       )}
@@ -706,13 +788,16 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
            kendi mekanizmasi — gizli paragraf DOM'da kalir (crawler gorur),
            `Collapsible` olsaydi hic basilmazdi. */
         <div className="ai-cmp-fold">
-          <div className="ai-cmp-subhead">{L('Why — the full reasoning', 'Kararın gerekçesi')}</div>
-          <div className="ai-verdict">
-            <span>✓</span>
-            <div>
-              <RichProse text={cmp.recommendation} L={L}
-                clamp={lanes.length ? 2 : 0} names={names} />
+          <div className="ai-cmp-why">
+            <div className="ai-cmp-why-head">
+              <span aria-hidden="true">✓</span>
+              <div>
+                <small>{L('Why — the full reasoning', 'Kararın gerekçesi')}</small>
+                {kazanan ? <b>{kazanan.name}</b> : cmp.winner ? <b>{cleanProductName(cmp.winner)}</b> : null}
+              </div>
             </div>
+            <RichProse text={cmp.recommendation} L={L}
+              clamp={lanes.length ? 2 : 0} names={names} />
           </div>
         </div>
       )}
@@ -723,11 +808,15 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
 // One product's complete review — the SAME template the product-detail, link
 // and subscription reports use, rendered inside the compare detail modal.
 function CompareProductDetail({ data = {}, L, lang, hideQuiz = false, priceInfo = null, researched = false }) {
+  // `hidePriceTile`: fiyat karşılaştırmada ürün ADININ YANINDA duruyor
+  // (.ai-cmp-report-price); aynı sayıyı bir de "🏷 Fiyat" kutucuğunda
+  // tekrarlamak kullanıcının kaldırılmasını istediği ikinci gösterimdi.
+  // Tekli analizde kutucuk YERİNDE KALIR — orası fiyatın tek yeri.
   // `researched` KAYDIN KOKUNDE duruyor (admin/js/analyses.js), urun
   // girdisinde degil. Gecirilmezse "Kanit gucu" kutusu arastirma kosmus bir
   // raporda bile "model bilgisi" yaziyordu — okuyucuya YANLIS bilgi.
   return <AiReportView data={compareProductToUnified(data, { researched })} L={L} lang={lang}
-    showHead={false} hideQuiz={hideQuiz} priceInfo={priceInfo} />;
+    showHead={false} hideQuiz={hideQuiz} priceInfo={priceInfo} hidePriceTile />;
 }
 
 // Full-screen modal — portaled to <body> so a transformed/filtered ancestor
@@ -900,21 +989,22 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
                   {c.image ? <ProductImg src={c.image} alt={c.name} size="thumb" /> : null}
                   <div className="ai-cmp-report-id">
                     <small>{L('Full AI review', 'Detaylı AI incelemesi')}</small>
-                    <b>{c.name}</b>
-                    {/* FIYAT ADIN YANINDA. Tekli analizde fiyat kunyede, urun
-                        adinin hemen altinda duruyor (pages/Analyses.css
-                        .an-price). Coklu karsilastirmada ayni bilgi yalnizca
-                        asagidaki skor kutucuklarinin arasindaydi; okuyucu
-                        urun basligina bakip "fiyat yok" saniyordu. Ayni yer,
-                        ayni bicim. */}
-                    {(() => {
-                      const f = (c.product ? priceForCountry(c.product, geoCountry) : fiyatlar[c.key]) || null;
-                      return f && f.price > 0 ? (
-                        <span className="ai-cmp-report-price">
-                          {formatPriceAmount(f.price, f.currency, lang)}
-                        </span>
-                      ) : null;
-                    })()}
+                    {/* FİYAT ADIN YANINDA, AYRI KUTUDA DEĞİL. Kullanıcı
+                        isteği (2026-09-01): karşılaştırmada fiyat ürün adının
+                        yanında yazılmalı; aşağıdaki "🏷 Fiyat" kutucuğu
+                        kaldırıldı (bkz. hidePriceTile). Adla aynı satırda
+                        başlar, sığmazsa alta sarar. */}
+                    <b>
+                      {c.name}
+                      {(() => {
+                        const f = (c.product ? priceForCountry(c.product, geoCountry) : fiyatlar[c.key]) || null;
+                        return f && f.price > 0 ? (
+                          <span className="ai-cmp-report-price">
+                            {formatPriceAmount(f.price, f.currency, lang)}
+                          </span>
+                        ) : null;
+                      })()}
+                    </b>
                   </div>
                 </header>
                 {/* FIYAT KUTUSU BURADA DA CIKMALI. Tekli analizde fiyat

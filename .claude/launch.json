@@ -26,6 +26,18 @@
       "port": 5183
     },
     {
+      "name": "web-dev-ui",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "5195",
+        "--strictPort"
+      ],
+      "cwd": "web",
+      "port": 5195
+    },
+    {
       "name": "web-preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": [

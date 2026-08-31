@@ -474,11 +474,12 @@
 .aic-tile b { display: block; margin-top: 4px; font-size: 19px; font-weight: 900; color: var(--text); line-height: 1.15; }
 .aic-tile small { display: block; margin-top: 3px; font-size: 11.5px; color: var(--text3); font-weight: 650; }
 
-/* Faktör faktör karşılaştırma — hizalı mini çubuklar (eski düz renk blokları
-   sütun genişlikleri farklı olduğu için çarpık ve okunmaz duruyordu). */
-/* Tablo KART İÇİNDE. Karşılaştırma raporunda her bölüm beyaz bir kart, bu
-   tablo ise sayfanın çıplak zemininde duruyordu; aynı sayfada iki farklı
-   yüzey dili gibi okunuyordu. */
+/* ── FAKTÖR TAHTASI ───────────────────────────────────────────────────────
+   Masaüstünde hizalı matris, dar ekranda FAKTÖR BAŞINA KART. Tablonun yatay
+   kaydırılması ölçüldü: üç ürünlü bir karşılaştırmada 420px'lik tablo 390px
+   telefonda hep taşıyordu ve okuyucu her satır için sağa-sola kaydırıyordu.
+   Aynı veri, aynı sıra — yalnızca kırılma noktasında satırlar dikey kartlara
+   dönüyor ve ürün adı hücrenin başına geçiyor (`td[data-name]`). */
 .aic-heat {
   margin: 4px 0;
   padding: 16px 18px;
@@ -488,10 +489,66 @@
   background: var(--surface-2);
 }
 .aic-heat > .aic-card-title { color: var(--ink-blue); }
+
+/* Ürün künyesi: ad · ortalama · kaç faktörde önde. Tablonun DIŞINDA, çünkü
+   "kim genel olarak önde" cevabı en alt satırda kalmamalı ve dar ekranda
+   tablo başlığı zaten kayboluyor. */
+.aic-heat-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 2px 0 14px;
+}
+.aic-heat-key {
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: var(--r-sm, 10px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.aic-heat-key.lead {
+  border-color: color-mix(in srgb, var(--lead-pos) 45%, var(--border));
+  background: color-mix(in srgb, var(--lead-pos) 7%, var(--surface));
+}
+.aic-heat-key > b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 850;
+  color: var(--text);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aic-heat-key > span {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.aic-heat-key em {
+  font-style: normal;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+.aic-heat-key em i { font-style: normal; font-size: 10.5px; opacity: .55; font-weight: 700; }
+.aic-heat-key u {
+  text-decoration: none;
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  color: var(--text3);
+  font-variant-numeric: tabular-nums;
+}
+.aic-heat-key.lead u { color: var(--lead-pos); }
+
 .aic-heat-scroll { overflow-x: auto; }
 .aic-heat-table {
   width: 100%;
-  min-width: 420px;
   table-layout: fixed; /* sütunlar EŞİT genişlikte — hizasızlık buradan geliyordu */
   border-collapse: separate;
   border-spacing: 8px 6px;
@@ -504,10 +561,11 @@
 }
 .aic-heat-col span {
   display: block;
-  font-size: 11.5px;
-  font-weight: 900;
-  color: var(--text2);
-  letter-spacing: .01em;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -543,6 +601,7 @@
 .aic-heat-cell b {
   position: relative;
   margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-size: 13.5px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -558,6 +617,46 @@
 }
 [data-theme='dark'] .aic-heat-cell i { opacity: .42; }
 [data-theme='dark'] .aic-heat-cell em { color: var(--brand-cyan); }
+
+/* DAR EKRAN: satır → kart. Tablo semantiği korunur (ekran okuyucu hâlâ
+   satır/sütun görür), yalnızca görsel akış dikeye döner. */
+@media (max-width: 760px) {
+  .aic-heat { padding: 14px; }
+  .aic-heat-scroll { overflow-x: visible; }
+  .aic-heat-table,
+  .aic-heat-table tbody,
+  .aic-heat-table tr,
+  .aic-heat-table th,
+  .aic-heat-table td { display: block; width: auto; }
+  .aic-heat-table { border-spacing: 0; }
+  .aic-heat-table thead { display: none; }
+  .aic-heat-table tr {
+    padding: 10px 0 4px;
+    border-top: 1px solid var(--divider, var(--border));
+  }
+  .aic-heat-table tr:first-child { border-top: 0; padding-top: 0; }
+  .aic-heat-table td { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .aic-heat-table td::before {
+    content: attr(data-name);
+    flex: 0 0 42%;
+    min-width: 0;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--text3);
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .aic-heat-table td > .aic-heat-cell { flex: 1 1 auto; }
+  .aic-heat-label {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text);
+    margin-bottom: 7px;
+    padding-right: 0;
+  }
+}
 
 /* Karar afişi */
 .aic-verdict {
@@ -667,17 +766,6 @@
   .aic-pc li { animation: none; }
 }
 
-/* ── Isı matrisi eklentileri: ölçülmemiş hücre, ortalama satırı, önde rozeti ── */
-.aic-heat-col em.aic-heat-wins {
-  display: block;
-  margin-top: 2px;
-  font-style: normal;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: .01em;
-  color: var(--ink-blue);
-  font-variant-numeric: tabular-nums;
-}
 /* "—" SIFIR DEĞİL. Boş hücre kasıtlı olarak SÖNÜK ve çubuksuz: gözde bir
    değer izlenimi bırakmamalı. */
 .aic-heat-cell.empty {
@@ -687,32 +775,6 @@
   padding: 0;
 }
 .aic-heat-cell.empty b { margin: 0; color: var(--text3); font-weight: 700; }
-.aic-heat-table tfoot th,
-.aic-heat-table tfoot td { padding-top: 4px; }
-.aic-heat-table tfoot .aic-heat-label {
-  font-size: 11.5px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--text3);
-}
-/* ORTALAMA satırı tablonun ÖZETİ; soluk gri bir çip olarak duruyordu ve
-   sütunun altında kaybolup gidiyordu. Artık okunabilir bir özet: sayı büyük,
-   renk skor bandından, zemin hafifçe renkli. */
-.aic-heat-avg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, currentColor 10%, var(--surface-3));
-  border: 1px solid color-mix(in srgb, currentColor 26%, transparent);
-  font-size: 17px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
-}
 .aic-heat-note {
   margin-top: 8px;
   font-size: 11.5px;
@@ -720,23 +782,22 @@
   color: var(--text3);
 }
 
-/* ── Kararı belirleyen farklar — numaralı kart ızgarası ────────────────── */
-/* ── KARARI BELIRLEYEN FARKLAR ─────────────────────────────────────────
-   KUTU IZGARASI KALDIRILDI. Alti fark uc sutunlu kutu izgarasinda
-   duruyordu ve okuyucu bunu "her cihaza iki kutu ayrilmis" diye okuyordu —
-   oysa bir FARK tek bir cihaza ait degildir, iki cihaz ARASINDADIR
-   ("S26 Ultra 2600 nit sunarken iPhone 3000 nit ile lideri aliyor").
-   Izgara var olmayan bir gruplama vaat ediyordu; hizali tek sutun liste
-   vaat etmiyor. Ayrim hairline ile, kutu ve golge yok.
-   Cihaza AIT olgular zaten yukarida her urunun KENDI kartinda. */
+/* ── KARARI BELİRLEYEN FARKLAR — İKİ TARAFLI SATIRLAR ──────────────────────
+   Bir FARK tek bir cihaza ait değildir, iki cihaz ARASINDADIR. Metin de zaten
+   öyle yazılıyor: "…S26 Ultra 2600 nit sunarken, iPhone 3000 nit ile lideri
+   alıyor". Eskiden bu tek bir paragraf olarak basılıyordu ve okuyucu iki
+   tarafı cümleyi okuyarak ayırmak zorundaydı.
+   Artık cümle KENDİ dönüş noktasından ikiye ayrılıyor (bkz. splitPivot) ve
+   iki yarı üst üste, aralarında ↔ ile duruyor. Kalıp yoksa tek paragraf. */
 .aic-diffs { margin: 4px 0; }
-.aic-diff-grid { display: grid; gap: 0; }
+.aic-diff-grid { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
 .aic-diff {
   display: flex;
   gap: 12px;
   padding: 13px 2px;
   border-top: 1px solid var(--divider, var(--border));
   animation: aicRise .4s cubic-bezier(.22,.61,.36,1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
 }
 .aic-diff:first-child { border-top: 0; padding-top: 4px; }
 .aic-diff-no {
@@ -752,7 +813,7 @@
   font-size: 12px;
   font-weight: 900;
 }
-.aic-diff-body { min-width: 0; }
+.aic-diff-body { min-width: 0; flex: 1 1 auto; }
 .aic-diff-body strong {
   display: block;
   margin-bottom: 3px;
@@ -766,8 +827,46 @@
   line-height: 1.6;
   color: var(--text-soft, var(--text2));
 }
+/* İki taraf: sol dikey ray + aralarında ↔. Kutu YOK — ayrım hairline ile. */
+.aic-diff-sides { display: grid; gap: 5px; }
+.aic-diff-side {
+  position: relative;
+  padding-left: 13px;
+}
+.aic-diff-side::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: .55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .4;
+}
+.aic-diff-side:first-child::before { background: var(--ink-blue); opacity: .75; }
+.aic-diff-vs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--text3);
+}
+.aic-diff-vs::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--divider, var(--border));
+}
 /* Ürün adı: gözün paragrafı tarayıp ilgilendiği ürünü bulmasını sağlar. */
 .aic-name { font-weight: 850; color: var(--text); }
+
+/* Cümlenin TUTAMAĞI — `splitClause` ile ayrılan ilk parça. Uzun tek cümlelik
+   maddeler alt alta gri bir duvar oluyordu; ilk parça koyu, gerisi yumuşak. */
+.aic-clause { font-weight: 800; color: var(--text); }
+.aic-clause-rest { color: var(--text-soft, var(--text2)); }
 
 /* ── Karşı karşıya — ürün ürün ────────────────────────────────────────── */
 .aic-h2h { display: grid; gap: 14px; }
