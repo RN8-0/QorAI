@@ -1,0 +1,183 @@
+#!/usr/bin/env node
+/**
+ * Bozuk spec DEGERLERINI temiz Turkce kaynaktan yeniden turetir.
+ *
+ * NEDEN AYRI SCRIPT: repair_specs_canonical.js ANAHTARLARI kanoniklestirir,
+ * degerlere dokunmaz. Degerlerde eski ceviri hattindan kalma bozukluk var ve
+ * en gorunur yerde duruyor:
+ *     Screen size = "6.3 I 'm not ."   (dogrusu "6.3 inches")
+ *     Battery Specifications = "20 minutesda %50 Dolum"
+ * Olculdu 2026-08-31 (400 urun / 24.140 deger): "I 'm not" 61 · "...da %" 46.
+ * `inç` kaydi sozlukte BUGUN DOGRU; bozukluk veriye ESKI surumden kazinmis.
+ *
+ * NEDEN TAHMIN YOK: temiz Turkce kaynak DURUYOR (multiLangSpecs.tr ->
+ * "Ekran Boyutu = 6.3 İnç") ve kuratorlu sozluk dogru cevirisini veriyor:
+ *     resolve("6.3 İnç")               -> "6.3 inches"
+ *     resolve("20 dakikada %50 Dolum") -> "50% charge in 20 minutes"
+ *
+ * ELENEN IKI YOL (olculdu, 200 Epey urunu):
+ *   - localizeProduct ciktisini dogrudan yazmak:
+ *       12.535 -> 10.988 spec = %12 ALAN KAYBI (AB enerji etiketi alanlari
+ *       siliniyor: Enerji Sinifi, Onarilabilirlik Sinifi, Dusme Direnci).
+ *       localizeProduct bir GORUNTULEME fonksiyonu, depolama kaynagi degil.
+ *   - temiz hat + taban birlestirmek:
+ *       12.535 -> 19.565 spec = KOPYA PATLAMASI; iki hat ayni olgu icin
+ *       FARKLI kanonik anahtar uretiyor, "uzerine yazma" degil "ekleme" olur.
+ *
+ * BU SCRIPT: alan EKLEMEZ, SILMEZ, anahtar DEGISTIRMEZ. Yalnizca zaten var
+ * olan bir anahtarin BOZUK degerini, ayni olgunun temiz Turkcesinden cevirir.
+ * Eslesme kanonik anahtar uzerinden kurulur.
+ *
+ * Kullanim:
+ *   node --require ./scripts/dns-patch.js scripts/repair_spec_values.js --dry --category=smartphones
+ *   node --require ./scripts/dns-patch.js scripts/repair_spec_values.js --apply --category=smartphones
+ */
+'use strict';
+
+const path = require('path');
+const { req: pbReq } = require('../migration/pb');
+const { req: tsReq } = require('../migration/ts');
+require(path.join(__dirname, '..', 'admin', 'js', 'spec_i18n.js'));
+const I18n = globalThis.QorAiSpecI18n;
+const Canon = require(path.join(__dirname, '..', 'admin', 'js', 'spec_canonical.js'));
+
+const argv = process.argv.slice(2);
+const APPLY = argv.includes('--apply');
+const CATEGORY = (argv.find((a) => a.startsWith('--category=')) || '').split('=')[1] || '';
+const LIMIT = Number((argv.find((a) => a.startsWith('--limit=')) || '').split('=')[1] || 0);
+const CONCURRENCY = Math.max(1, Number((argv.find((a) => a.startsWith('--concurrency=')) || '').split('=')[1] || 4));
+
+const FIELDS = ['id', 'name', 'category', 'source', 'specs', 'specsEn', 'keySpecs',
+  'multiLangSpecs', 'multiLangSections', 'sourceLang'].join(',');
+
+// SADECE OLCULEN BOZUKLUK SINIFLARI. Genis tutmak ("her Turkce degeri cevir")
+// sozlukte olmayan kelimeyi yarim cevirip YENI bozukluk uretirdi -- ayni
+// tuzaga etiket tarafinda dusuldu, bkz. admin/js/spec_canonical.js.
+const BOZUK = /I\s*'m\s*not|\b(?:minutes|hours|seconds)da\b|\bthe\s+the\b/i;
+
+function stableStringify(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  return '{' + Object.keys(v).sort()
+    .map((k) => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+}
+const jsonEq = (a, b) => stableStringify(a || {}) === stableStringify(b || {});
+
+/** Kanonik anahtar -> temiz Turkce degerin cevirisi. */
+function temizCeviriHaritasi(product) {
+  const tr = (product.multiLangSpecs && product.multiLangSpecs.tr) || {};
+  if (!Object.keys(tr).length) return null;
+  let L;
+  try { L = I18n.createSpecLocalizer(product, 'en'); } catch (_) { return null; }
+  if (!L || typeof L.resolve !== 'function') return null;
+  const harita = {};
+  for (const [kTr, vTr] of Object.entries(tr)) {
+    const ham = String(vTr == null ? '' : vTr).trim();
+    if (!ham) continue;
+    let cev;
+    try { cev = L.resolve(ham); } catch (_) { continue; }
+    // Ceviri yoksa ya da aynen dondiyse ATLA -- yarim ceviri uretme.
+    if (!cev || String(cev) === ham) continue;
+    if (BOZUK.test(String(cev))) continue;
+    const K = Canon.canonicalKey(kTr, ham, product.category || '');
+    if (K) harita[K] = String(cev);
+  }
+  return Object.keys(harita).length ? harita : null;
+}
+
+function duzelt(map, harita) {
+  if (!map || typeof map !== 'object') return { out: map, n: 0 };
+  const out = {};
+  let n = 0;
+  for (const [k, v] of Object.entries(map)) {
+    const s = String(v == null ? '' : v);
+    if (BOZUK.test(s) && harita[k] && !BOZUK.test(harita[k])) { out[k] = harita[k]; n += 1; }
+    else out[k] = v;
+  }
+  return { out, n };
+}
+
+function buildPatch(p) {
+  const harita = temizCeviriHaritasi(p);
+  if (!harita) return null;
+  const patch = {};
+  let toplam = 0;
+  for (const alan of ['specs', 'specsEn', 'keySpecs']) {
+    const r = duzelt(p[alan], harita);
+    if (r.n && !jsonEq(r.out, p[alan])) { patch[alan] = r.out; toplam += r.n; }
+  }
+  const mlEn = (p.multiLangSpecs && p.multiLangSpecs.en) || null;
+  if (mlEn) {
+    const r = duzelt(mlEn, harita);
+    if (r.n && !jsonEq(r.out, mlEn)) {
+      patch.multiLangSpecs = Object.assign({}, p.multiLangSpecs, { en: r.out });
+      toplam += r.n;
+    }
+  }
+  return toplam ? { patch, toplam } : null;
+}
+
+async function fetchProducts() {
+  const out = [];
+  let lastId = '';
+  for (;;) {
+    const f = [];
+    if (CATEGORY) f.push('category = "' + CATEGORY + '"');
+    if (lastId) f.push('id > "' + lastId + '"');
+    const filter = f.length ? '&filter=' + encodeURIComponent(f.join(' && ')) : '';
+    const url = '/api/collections/products/records?perPage=500&page=1&sort=id&skipTotal=1'
+      + '&fields=' + encodeURIComponent(FIELDS) + filter;
+    const r = await pbReq('GET', url);
+    if (r.status !== 200) throw new Error('fetch: ' + r.status);
+    const items = r.body.items || [];
+    out.push(...items);
+    if (items.length) lastId = items[items.length - 1].id;
+    if ((LIMIT && out.length >= LIMIT) || items.length < 500) break;
+  }
+  return LIMIT ? out.slice(0, LIMIT) : out;
+}
+
+async function runPool(items, worker) {
+  let i = 0;
+  const n = Math.min(CONCURRENCY, items.length || 1);
+  await Promise.all(Array.from({ length: n }, async () => {
+    for (;;) { const it = items[i]; i += 1; if (!it) break; await worker(it); }
+  }));
+}
+
+(async () => {
+  console.log('[deger] mode=' + (APPLY ? 'APPLY' : 'DRY') + ' category=' + (CATEGORY || 'hepsi'));
+  const list = await fetchProducts();
+  console.log('[deger] ' + list.length + ' urun yuklendi');
+  let urun = 0; let alan = 0; let pbOk = 0; let pbHata = 0;
+  const ornek = [];
+  await runPool(list, async (p) => {
+    const res = buildPatch(p);
+    if (!res) return;
+    urun += 1; alan += res.toplam;
+    if (ornek.length < 6) {
+      // YALNIZ GERCEKTEN DEGISEN alani ornekle: patch tum haritayi tasiyor,
+      // "eskisi bozuk" demek "duzeldi" demek DEGIL (sozlukte karsiligi
+      // olmayan alan aynen kaliyor -- kasitli, yarim ceviri uretmemek icin).
+      const k = Object.keys(res.patch.specs || {})
+        .find((x) => BOZUK.test(String((p.specs || {})[x]))
+          && String(res.patch.specs[x]) !== String((p.specs || {})[x]));
+      if (k) {
+        ornek.push(p.name.slice(0, 28) + ' | ' + k + ': "'
+          + String(p.specs[k]).slice(0, 24) + '" -> "' + res.patch.specs[k] + '"');
+      }
+    }
+    if (!APPLY) return;
+    const r = await pbReq('PATCH', '/api/collections/products/records/' + p.id, res.patch);
+    if (r.status === 200) {
+      pbOk += 1;
+      try {
+        await tsReq('PATCH', '/collections/products/documents/' + encodeURIComponent(p.id),
+          { _raw: JSON.stringify(Object.assign({}, p, res.patch)) });
+      } catch (_) { /* TS gece senkronunda toparlar */ }
+    } else { pbHata += 1; console.warn('[uyari] ' + p.id + ' PB ' + r.status); }
+  });
+  console.log('[deger] duzelen urun=' + urun + ' alan=' + alan + ' pb=' + pbOk + '/' + pbHata);
+  ornek.forEach((o) => console.log('   ', o));
+  if (!APPLY) console.log('[deger] kuru kosu; yazmak icin --apply');
+})().catch((e) => { console.error('[deger] fatal:', e); process.exit(1); });
