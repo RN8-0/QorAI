@@ -174,34 +174,107 @@ function imzaHaritasi(product) {
   return Object.keys(harita).length ? harita : null;
 }
 
-function duzelt(map, harita, sigHarita) {
+// "I 'm not" HER ZAMAN "İnç"IN BOZUK CEVIRISI -- olculdu, istisna yok.
+// 2100 urun tarandi, kalan 5 satirin BESININ DE Turkce karsiliginda `İnç`
+// geciyor:
+//     "N/N <<X>> Sensor Size"  <->  "N/N İnç Sensör Boyutu"   (3)
+//     "N <<X>>"                <->  "N İnç"                    (2)
+// Bugunku sozluk de `inç -> inches` diyor. Bu yuzden jeton degisimi TAHMIN
+// DEGIL, kanitla sabit: satirin geri kalanina DOKUNULMAZ, yalnizca bozuk
+// jeton yerine `inches` yazilir ("1/1.56 I 'm not . Sensor Size" ->
+// "1/1.56 inches Sensor Size").
+const NL = String.fromCharCode(10);
+const INC_BOZUK = /I\s*'m\s*not\s*\.?/gi;
+
+function duzelt(map, harita, sigHarita, satirHarita) {
   if (!map || typeof map !== 'object') return { out: map, n: 0 };
   const out = {};
   let n = 0;
   for (const [k, v] of Object.entries(map)) {
     const s = String(v == null ? '' : v);
     if (!BOZUK.test(s)) { out[k] = v; continue; }
-    // 1) anahtar eslesmesi  2) tutmazsa deger imzasi
+
+    // 1) anahtar eslesmesi (deger BUTUN olarak)
     let yeni = harita[k];
+    // 2) tutmazsa degerin imzasi (yine butun olarak)
     if (!yeni && sigHarita) yeni = sigHarita[imza(s)];
-    if (yeni && !BOZUK.test(yeni)) { out[k] = yeni; n += 1; } else out[k] = v;
+
+    // 3) tutmazsa SATIR SATIR. Cok satirli degerlerde bozukluk tek satirda
+    //    oluyor ("Bypass Charge / Dual-cell Battery / 15 minutesda %50 Dolum")
+    //    ve degerin tamami eslesmedigi icin oncekiler bu satirlari
+    //    kaciriyordu -- ilk kosudan sonra kalan %7,2 tam olarak buydu.
+    if (!yeni && satirHarita) {
+      const satirlar = s.split(NL);
+      let degisti = false;
+      const yeniSatirlar = satirlar.map((satir) => {
+        if (!BOZUK.test(satir)) return satir;
+        const c = satirHarita[imza(satir)];
+        if (c && !BOZUK.test(c)) { degisti = true; return c; }
+        // Satir eslesmedi: hic olmazsa kanitli jetonu duzelt.
+        if (INC_BOZUK.test(satir)) {
+          INC_BOZUK.lastIndex = 0;
+          const d = satir.replace(INC_BOZUK, 'inches').replace(/\s+/g, ' ').trim();
+          if (d !== satir) { degisti = true; return d; }
+        }
+        return satir;
+      });
+      if (degisti) yeni = yeniSatirlar.join(NL);
+    }
+
+    // 4) son care: kanitli jeton degisimi (tek satirli degerler icin)
+    if (!yeni) {
+      INC_BOZUK.lastIndex = 0;
+      if (INC_BOZUK.test(s)) {
+        INC_BOZUK.lastIndex = 0;
+        const d = s.replace(INC_BOZUK, 'inches').replace(/[ 	]+/g, ' ').trim();
+        if (d !== s) yeni = d;
+      }
+    }
+
+    if (yeni && String(yeni) !== s) { out[k] = yeni; n += 1; } else out[k] = v;
   }
   return { out, n };
+}
+
+/** SATIR bazli imza haritasi -- cok satirli degerler icin. Teklik sarti ayni. */
+function satirImzaHaritasi(product) {
+  const tr = (product.multiLangSpecs && product.multiLangSpecs.tr) || {};
+  if (!Object.keys(tr).length) return null;
+  let L;
+  try { L = I18n.createSpecLocalizer(product, 'en'); } catch (_) { return null; }
+  if (!L || typeof L.resolve !== 'function') return null;
+  const sayac = {};
+  const harita = {};
+  for (const vTr of Object.values(tr)) {
+    for (const satir of String(vTr == null ? '' : vTr).split(NL)) {
+      const ham = satir.trim();
+      const sig = imza(ham);
+      if (!ham || !sig) continue;
+      sayac[sig] = (sayac[sig] || 0) + 1;
+      let cev;
+      try { cev = L.resolve(ham); } catch (_) { continue; }
+      if (!cev || String(cev) === ham || BOZUK.test(String(cev))) continue;
+      harita[sig] = String(cev);
+    }
+  }
+  for (const sig of Object.keys(harita)) if (sayac[sig] !== 1) delete harita[sig];
+  return Object.keys(harita).length ? harita : null;
 }
 
 function buildPatch(p) {
   const harita = temizCeviriHaritasi(p);
   const sigHarita = imzaHaritasi(p);
-  if (!harita && !sigHarita) return null;
+  const satirHarita = satirImzaHaritasi(p);
+  if (!harita && !sigHarita && !satirHarita) return null;
   const patch = {};
   let toplam = 0;
   for (const alan of ['specs', 'specsEn', 'keySpecs']) {
-    const r = duzelt(p[alan], harita || {}, sigHarita);
+    const r = duzelt(p[alan], harita || {}, sigHarita, satirHarita);
     if (r.n && !jsonEq(r.out, p[alan])) { patch[alan] = r.out; toplam += r.n; }
   }
   const mlEn = (p.multiLangSpecs && p.multiLangSpecs.en) || null;
   if (mlEn) {
-    const r = duzelt(mlEn, harita || {}, sigHarita);
+    const r = duzelt(mlEn, harita || {}, sigHarita, satirHarita);
     if (r.n && !jsonEq(r.out, mlEn)) {
       patch.multiLangSpecs = Object.assign({}, p.multiLangSpecs, { en: r.out });
       toplam += r.n;

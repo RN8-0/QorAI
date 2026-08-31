@@ -768,6 +768,20 @@ const _TR_WORD_DICT = {
   'batarya': 'battery', 'bataryasi': 'battery', 'bataryanin': 'battery',
   'depolama': 'storage', 'depolamasi': 'storage', 'depo': 'storage',
   'bellek': 'memory', 'bellegi': 'memory', 'bellegin': 'memory',
+  // 2026-09-01: bu bes kelime sozlukte YOKTU ve sonucu CANLI Ingilizce urun
+  // sayfasinda goruluyordu -- kelime kelime ceviri yarim kaliyordu:
+  //     "Sirali Okuma"      -> "Sequential Okuma"
+  //     "Sirali Yazma"      -> "Sequential Yazma"
+  //     "Veri Yolu"         -> "Data Yolu"
+  //     "Ethernet Portu Sayisi" -> "Ethernet Portu Count"
+  //     "Telefon/Tablet"    -> "Telefon/Tablet"
+  // Olculdu (600 Epey urunu, 15 kategori): yarim cevrilmis AYRI etiket
+  // sayisi 10 ve HEPSI bu bes kelimeden geliyordu. Kuyruk sanildigi gibi
+  // yuzlerce degil, bes kelimelik bir eksiklikmis.
+  'okuma': 'read', 'okumasi': 'read', 'yazma': 'write', 'yazmasi': 'write',
+  'yolu': 'bus', 'yollari': 'buses',
+  'portu': 'port', 'portlari': 'ports',
+  'telefon': 'phone', 'telefonu': 'phone', 'telefonlar': 'phones',
   'sogutma': 'cooling', 'sogutucu': 'cooler', 'sogutmali': 'cooled',
   'isitma': 'heating', 'isitici': 'heater',
   'buhar': 'steam', 'buharli': 'steam',
