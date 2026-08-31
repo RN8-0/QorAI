@@ -83,6 +83,17 @@ function keySpecsText(product, patch) {
   return chunks.join(' ').replace(/\s+/g, ' ').trim().slice(0, 60000);
 }
 
+// DEGERIN SAYISAL IMZASI: rakamlar ve yuzde isaretleri, sirasiyla.
+//   "20 minutesda %50 Dolum"  ->  "20|%50"
+//   "20 Dakikada %50 Dolum"   ->  "20|%50"     (ayni olgu)
+//   "6.3 I 'm not ."          ->  "6.3"
+//   "6.3 Inc"                 ->  "6.3"
+// Kelimeler ceviri yuzunden ayrisiyor ama SAYILAR ayrismiyor.
+function imza(text) {
+  const m = String(text == null ? '' : text).match(/%?\d+(?:[.,]\d+)?/g);
+  return m ? m.join('|') : '';
+}
+
 /** Kanonik anahtar -> temiz Turkce degerin cevirisi. */
 function temizCeviriHaritasi(product) {
   const tr = (product.multiLangSpecs && product.multiLangSpecs.tr) || {};
@@ -99,36 +110,98 @@ function temizCeviriHaritasi(product) {
     // Ceviri yoksa ya da aynen dondiyse ATLA -- yarim ceviri uretme.
     if (!cev || String(cev) === ham) continue;
     if (BOZUK.test(String(cev))) continue;
-    const K = Canon.canonicalKey(kTr, ham, product.category || '');
-    if (K) harita[K] = String(cev);
+    // IKI ANAHTARLA INDEKSLE.
+    //
+    // Stored anahtarlar Turkce DEGIL, eski sozlugun YARIM cevirisidir:
+    //     TR "Batarya Ozellikleri"  ->  stored "Battery Specifications"
+    // canonicalKey saf Turkce etiketi KASITLI olarak oldugu gibi birakiyor
+    // (makineyle cevirmek "Sirali Okuma" -> "Sequential Okuma" hatasini
+    // uretiyordu), bu yuzden TR anahtardan gelen kanonik ad stored anahtarla
+    // ESLESMIYOR ve deger duzelmiyordu. Olculdu 2026-08-31: smartphones
+    // ilk kosudan sonra %61,7 hala bozuk kaldi, hepsi bu koprunun eksikligi.
+    //
+    // Cozum: ayni degeri hem TR etiketin hem de o etiketin YARIM CEVRILMIS
+    // halinin kanonik adiyla indeksle -- stored anahtar tam olarak ikincisi.
+    const ekle = (etiket) => {
+      const K = Canon.canonicalKey(etiket, ham, product.category || '');
+      if (K && !harita[K]) harita[K] = String(cev);
+    };
+    ekle(kTr);
+    try {
+      const yarim = I18n.finalPassTurkishCleanup(kTr, 'en');
+      if (yarim && String(yarim) !== kTr) ekle(String(yarim));
+    } catch (_) { /* sozluk yoksa tek anahtar yeter */ }
   }
   return Object.keys(harita).length ? harita : null;
 }
 
-function duzelt(map, harita) {
+/**
+ * IMZA KOPRUSU -- anahtar eslesmesi TUTMADIGINDA kullanilir.
+ *
+ * Stored anahtarlar ESKI sozluk surumunun yarim cevirisi; o surum elimizde
+ * YOK. Olculdu 2026-08-31:
+ *     TR "Batarya Ozellikleri"
+ *       bugunku sozluk -> "Battery Features"
+ *       stored veri    -> "Battery Specifications"
+ * Yani tarihsel yarim ceviri YENIDEN URETILEMEZ; anahtardan koprü kurmak
+ * bu alanlarda calismiyor (smartphones ilk kosudan sonra %61,7 bozuk kaldi).
+ *
+ * Ama DEGERIN SAYILARI cevirilerden etkilenmiyor. Bu yuzden bozuk stored
+ * degerin imzasi, ayni urunun TR kaynagindaki bir degerin imzasiyla
+ * eslestirilir. TEKLIK SARTI var: imza birden fazla TR alanina denk
+ * geliyorsa DOKUNULMAZ -- yanlis alani yazmaktansa bozuk birakmak yeglenir.
+ */
+function imzaHaritasi(product) {
+  const tr = (product.multiLangSpecs && product.multiLangSpecs.tr) || {};
+  if (!Object.keys(tr).length) return null;
+  let L;
+  try { L = I18n.createSpecLocalizer(product, 'en'); } catch (_) { return null; }
+  if (!L || typeof L.resolve !== 'function') return null;
+  const sayac = {};
+  const harita = {};
+  for (const vTr of Object.values(tr)) {
+    const ham = String(vTr == null ? '' : vTr).trim();
+    const sig = imza(ham);
+    if (!ham || !sig) continue;
+    sayac[sig] = (sayac[sig] || 0) + 1;
+    let cev;
+    try { cev = L.resolve(ham); } catch (_) { continue; }
+    if (!cev || String(cev) === ham || BOZUK.test(String(cev))) continue;
+    harita[sig] = String(cev);
+  }
+  // Teklik: birden fazla alana denk gelen imzayi AT.
+  for (const sig of Object.keys(harita)) if (sayac[sig] !== 1) delete harita[sig];
+  return Object.keys(harita).length ? harita : null;
+}
+
+function duzelt(map, harita, sigHarita) {
   if (!map || typeof map !== 'object') return { out: map, n: 0 };
   const out = {};
   let n = 0;
   for (const [k, v] of Object.entries(map)) {
     const s = String(v == null ? '' : v);
-    if (BOZUK.test(s) && harita[k] && !BOZUK.test(harita[k])) { out[k] = harita[k]; n += 1; }
-    else out[k] = v;
+    if (!BOZUK.test(s)) { out[k] = v; continue; }
+    // 1) anahtar eslesmesi  2) tutmazsa deger imzasi
+    let yeni = harita[k];
+    if (!yeni && sigHarita) yeni = sigHarita[imza(s)];
+    if (yeni && !BOZUK.test(yeni)) { out[k] = yeni; n += 1; } else out[k] = v;
   }
   return { out, n };
 }
 
 function buildPatch(p) {
   const harita = temizCeviriHaritasi(p);
-  if (!harita) return null;
+  const sigHarita = imzaHaritasi(p);
+  if (!harita && !sigHarita) return null;
   const patch = {};
   let toplam = 0;
   for (const alan of ['specs', 'specsEn', 'keySpecs']) {
-    const r = duzelt(p[alan], harita);
+    const r = duzelt(p[alan], harita || {}, sigHarita);
     if (r.n && !jsonEq(r.out, p[alan])) { patch[alan] = r.out; toplam += r.n; }
   }
   const mlEn = (p.multiLangSpecs && p.multiLangSpecs.en) || null;
   if (mlEn) {
-    const r = duzelt(mlEn, harita);
+    const r = duzelt(mlEn, harita || {}, sigHarita);
     if (r.n && !jsonEq(r.out, mlEn)) {
       patch.multiLangSpecs = Object.assign({}, p.multiLangSpecs, { en: r.out });
       toplam += r.n;
