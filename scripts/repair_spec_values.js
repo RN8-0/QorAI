@@ -63,6 +63,26 @@ function stableStringify(v) {
 }
 const jsonEq = (a, b) => stableStringify(a || {}) === stableStringify(b || {});
 
+// Typesense'in ARANABILIR alani. repair_specs_canonical.js ile ayni uretim --
+// bozuk deger asil BURADA zarar veriyor: olculdu, keySpecsText su an
+// "Screen size 6.3 I 'm not ." tasiyor, yani "6.3 inches" arayan kullanici
+// telefonu BULAMIYOR. Bu yuzden deger yamasi keySpecsText'i de tazelemeli;
+// yoksa PB duzelir, arama bozuk kalirdi.
+function keySpecsText(product, patch) {
+  const chunks = [];
+  const visit = (value) => {
+    if (!value) return;
+    if (Array.isArray(value)) value.forEach(visit);
+    else if (typeof value === 'object') {
+      Object.entries(value).forEach(([k, v]) => { chunks.push(k); visit(v); });
+    } else chunks.push(String(value));
+  };
+  visit(patch.keySpecs || product.keySpecs);
+  visit(patch.specs || product.specs);
+  visit(product.specSections);
+  return chunks.join(' ').replace(/\s+/g, ' ').trim().slice(0, 60000);
+}
+
 /** Kanonik anahtar -> temiz Turkce degerin cevirisi. */
 function temizCeviriHaritasi(product) {
   const tr = (product.multiLangSpecs && product.multiLangSpecs.tr) || {};
@@ -172,8 +192,10 @@ async function runPool(items, worker) {
     if (r.status === 200) {
       pbOk += 1;
       try {
-        await tsReq('PATCH', '/collections/products/documents/' + encodeURIComponent(p.id),
-          { _raw: JSON.stringify(Object.assign({}, p, res.patch)) });
+        await tsReq('PATCH', '/collections/products/documents/' + encodeURIComponent(p.id), {
+          _raw: JSON.stringify(Object.assign({}, p, res.patch)),
+          keySpecsText: keySpecsText(p, res.patch),
+        });
       } catch (_) { /* TS gece senkronunda toparlar */ }
     } else { pbHata += 1; console.warn('[uyari] ' + p.id + ' PB ' + r.status); }
   });
