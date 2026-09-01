@@ -963,21 +963,10 @@ function CompareFullReport({ data, L, lang, products = [], hideQuiz = false, pri
 
       {columns.length > 0 && (
         <div className="ai-cmp-reports">
-          {/* SIRALI RAPORLARA ATLAMA. Uc urunlu bir karsilastirmada sayfa
-              ~25 bolum uzunlugunda; okuyucu ikinci urunun raporuna ulasmak
-              icin birincinin tamamini kaydiriyordu. Kisayol modal DEGIL —
-              raporlar alt alta acik kalir, bu yalnizca bir capa. */}
-          {columns.length > 1 && (
-            <nav className="ai-cmp-jump" aria-label={L('Jump to a review', 'Bir incelemeye atla')}>
-              <span>{L('Jump to', 'Şuraya atla')}</span>
-              {columns.map((c, i) => (
-                <a key={`jump-${c.key}`} href={`#${cmpAnchor(c.key, i)}`}
-                  className={winnerNorm && norm(c.name) === winnerNorm ? 'win' : ''}>
-                  {winnerNorm && norm(c.name) === winnerNorm ? '★ ' : `${i + 1}. `}{c.name}
-                </a>
-              ))}
-            </nav>
-          )}
+          {/* "Şuraya atla" şeridi KALDIRILDI (2026-09-01, kullanıcı isteği).
+              Kartlardaki "Tam incelemesi" bağlantısı aynı çapaya gidiyor;
+              şerit ikinci bir gezinme katmanıydı. `cmpAnchor` duruyor —
+              çapaların kendisi hâlâ gerekli. */}
           {columns.map((c, i) => {
             const isWin = winnerNorm && norm(c.name) === winnerNorm;
             return (

@@ -599,8 +599,8 @@
   width: 24px; height: 24px;
   display: grid; place-items: center;
   border-radius: var(--r-xs, 6px);
-  background: color-mix(in srgb, var(--ink-blue) 12%, transparent);
-  color: var(--ink-blue);
+  background: var(--surface-3);
+  color: var(--text3);
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-size: 12px; font-weight: 900;
 }
@@ -719,9 +719,10 @@
   width: 4px; height: 4px; border-radius: 50%;
   background: currentColor; opacity: .45;
 }
-/* Cümlenin tutamağı — koyu; gerisi yumuşak (bkz. AiCharts → splitClause). */
-.ai-cmp-card-side.for li .aic-clause { color: var(--text); }
-.ai-cmp-card-side.against li .aic-clause { color: var(--text); }
+/* Tutamak, maddenin YÖNÜNÜ taşır (siyah değil): artılarda yeşil,
+   eksilerde kırmızı. Siyah-kalın yalnızca ürün adına ayrılmıştır. */
+.ai-cmp-card-side.for .aic-clause { color: var(--lead-pos); }
+.ai-cmp-card-side.against .aic-clause { color: var(--lead-neg); }
 
 /* ── KİME UYGUN / DEĞİL ──────────────────────────────────────────────────
    İki-üç cümlelik paragraftı; her cümle kendi satırında. Kutu yok, hairline. */
@@ -744,8 +745,10 @@
 .ai-cmp-who-row li {
   font-size: 13px; line-height: 1.55; color: var(--text-soft, var(--text2));
 }
-.ai-cmp-who-row.for .aic-num { color: var(--lead-pos); }
-.ai-cmp-who-row.against .aic-num { color: var(--lead-neg); }
+.ai-cmp-who-row.for .aic-num,
+.ai-cmp-who-row.for .aic-clause { color: var(--lead-pos); }
+.ai-cmp-who-row.against .aic-num,
+.ai-cmp-who-row.against .aic-clause { color: var(--lead-neg); }
 
 .ai-cmp-card-more {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 13px;
@@ -813,46 +816,6 @@
    kapanır — hiç basılmayan metin indekslenemez. */
 .ai-cmp-fold { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 
-/* Rapor kisayolu — uc urunlu karsilastirmada ikinci raporu bulmak icin
-   birincinin tamamini kaydirmak gerekmesin. */
-.ai-cmp-jump {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  /* ORTALANIR. Sola yapışıkken üç üründe şeridin sağ yarısı boş kalıyordu;
-     ürün sayısı arttıkça denge kendiliğinden korunsun. */
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
-}
-.ai-cmp-jump > span {
-  font-size: 11.5px;
-  font-weight: 900;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: var(--text3);
-}
-.ai-cmp-jump a {
-  max-width: 260px;
-  padding: 7px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text2);
-  font-size: 12.5px;
-  font-weight: 800;
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: border-color .12s ease-out, color .12s ease-out;
-}
-.ai-cmp-jump a:hover { border-color: var(--accent); color: var(--accent); }
-.ai-cmp-jump a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ai-cmp-jump a.win {
-  border-color: color-mix(in srgb, var(--brand-cyan) 48%, var(--border));
-  color: var(--ink-blue);
-}
 /* Kart ustundeki sabit baslik capayi yemesin. */
 .ai-cmp-report { scroll-margin-top: calc(var(--header-h, 68px) + 14px); }
 

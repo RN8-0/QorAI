@@ -92,7 +92,20 @@ export function useDrawIn({ margin = '0px 0px -10% 0px', timeout = 2600 } = {}) 
     } else {
       setDrawn(true);
     }
-    const guvenlik = setTimeout(() => setDrawn(true), timeout);
+    let guvenlik = 0;
+    const gorunurMu = () => {
+      if (!el || typeof el.getBoundingClientRect !== 'function') return true;
+      const r = el.getBoundingClientRect();
+      const h = window.innerHeight || document.documentElement.clientHeight || 0;
+      return r.top < h && r.bottom > 0;
+    };
+    const bekle = () => {
+      guvenlik = setTimeout(() => {
+        if (!io || gorunurMu()) setDrawn(true);
+        else bekle();
+      }, timeout);
+    };
+    bekle();
     return () => { if (io) io.disconnect(); clearTimeout(guvenlik); };
   }, [reduced, margin, timeout]);
   return [ref, drawn, reduced];
@@ -768,17 +781,17 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
                 {x.title && <strong>{proseParts(x.title, `dt${i}`, names)}</strong>}
                 {sag ? (
                   <div className="aic-diff-sides">
-                    <p className={`aic-diff-side aic-tone aic-tone-${leadTone(sol)}`}>
+                    <p className={`aic-diff-side aic-tone${toneClass(sol)}`}>
                       {proseParts(sol, `da${i}`, names)}
                     </p>
                     <span className="aic-diff-vs" aria-hidden="true">↔</span>
-                    <p className={`aic-diff-side aic-tone aic-tone-${leadTone(sag)}`}>
+                    <p className={`aic-diff-side aic-tone${toneClass(sag)}`}>
                       {proseParts(sag, `db${i}`, names)}
                     </p>
                   </div>
                 ) : (
                   x.detail ? (
-                    <p className={`aic-tone aic-tone-${leadTone(x.detail)}`}>
+                    <p className={`aic-tone${toneClass(x.detail)}`}>
                       {proseParts(x.detail, `dd${i}`, names)}
                     </p>
                   ) : null
@@ -1201,8 +1214,23 @@ const POS_KOK = [
   'mükemmel', 'mukemmel', 'etkileyici', 'üstün', 'ustun', 'avantaj', 'olumlu', 'takdir',
   'lider', 'rakipsiz', 'ideal', 'zirve', 'öne çık', 'one cik', 'tavsiye', 'iyi',
   'yeterli', 'akıcı', 'akici', 'sorunsuz', 'kolaylık', 'kolaylik', 'geniş', 'genis',
-  'yüksek', 'yuksek', 'uzun ömür', 'uzun omur', 'sağlam', 'saglam', 'dayanıklı',
-  'dayanikli', 'hızlı', 'hizli', 'zengin', 'premium', 'şık', 'net ',
+  // 'yüksek' LİSTEDEN ÇIKARILDI (2026-09-01). Bir HÜKÜM değil BÜYÜKLÜK
+  // bildiriyor: "yüksek yük", "yüksek sıcaklık", "yüksek fiyat", "yüksek ses"
+  // hepsi olumsuz. Ölçüldü canlı RTX 4060 kaydında: "…YÜKSEK yük altında
+  // HDD benzeri bir tıkırtı … rapor etmiştir" cümlesi yalnız bu kök yüzünden
+  // YEŞİL çıkıyordu — bir şikâyet, olumlu diye boyanmış.
+  'uzun ömür', 'uzun omur', 'sağlam', 'saglam', 'dayanıklı',
+  // 'zengin' ÇIKARILDI: "görsel zenginliğe önem veren kullanıcılar için bir
+  // DEZAVANTAJ" cümlesinde kullanıcı tercihini tarif ediyor, ürün hakkında
+  // hüküm bildirmiyordu — olumsuz hükmü dengeleyip cümleyi renksiz bırakıyordu.
+  'dayanikli', 'hızlı', 'hizli', 'premium', 'şık', 'net ',
+  // YOKLUK EKİ = OLUMLU. Bunlar listede yoktu ve "Kusursuz bir ekran ve
+  // sınırsız depolama sunar" cümlesi hiçbir köke eşleşmeyip RENKSİZ
+  // kalıyordu. ('sorunsuz' zaten yukarıda.)
+  'kusursuz', 'sınırsız', 'sinirsiz', 'hatasız', 'hatasiz', 'arızasız', 'arizasiz',
+  // Tek anlamlı kalite sıfatları. ('kalite' TEK BAŞINA alınmadı — "kamera
+  // kalitesi düşük" cümlesinde olumsuzu dengelerdi; sıfat hâli güvenli.)
+  'kaliteli', 'rahatça', 'rahatca', 'verimli', 'keskin',
   'praise', 'excellent', 'outstanding', 'strong', 'impressive', 'leading',
   'recommend', 'great', 'best', 'smooth', 'reliable', 'durable', 'fast',
 ];
@@ -1221,14 +1249,27 @@ const NEG_KOK = [
   // "yuksek fiyat" tuzagi: 'yuksek' olumlu kok, ama fiyatla birlikte
   // olumsuz. Ifade olarak listede, tek basina 'yuksek' olumlu kalir.
   'engel', 'yüksek fiyat', 'yuksek fiyat', 'pahalı fiyat', 'barrier', 'high price',
+  // Donanım şikâyetlerinin SÖZLÜĞÜ eksikti: bobin sesi/coil whine bildiren
+  // cümlelerde tek bir olumsuz kök bile eşleşmiyordu.
+  'tıkırtı', 'tikirti', 'vızıltı', 'vizilti', 'uğultu', 'ugultu', 'gürültü', 'gurultu',
+  'bobin sesi', 'coil whine', 'titreşim', 'titresim', 'aşırı ısın', 'asiri isin',
+  'rahatsız', 'rahatsiz', 'tepki süresi', 'noisy', 'rattle', 'buzzing', 'throttl',
 ];
 const TONE_DONUS = new RegExp(TONE_HEAD + '(ancak|fakat|ama |ne var ki|buna karşın|buna karsin|rağmen|ragmen|however|but |although|yet )', 'i');
 // Kok listesindeki tek ozel karakter bosluk; yine de kacis guvenligi icin
 // regex-anlamli karakterler kacisliyor.
 const ESC = /[.*+?^${}()|[\]\\]/g;
-const kokRe = (list) => new RegExp(`${TONE_HEAD}(?:${list.map((w) => w.replace(ESC, '\\$&')).join('|')})`, 'gi');
+const kokRe = (list, kuyruk = '') => new RegExp(
+  `${TONE_HEAD}(?:${list.map((w) => w.replace(ESC, '\\$&')).join('|')})${kuyruk}`,
+  'gi',
+);
 const POS_RE = kokRe(POS_KOK);
-const NEG_RE = kokRe(NEG_KOK);
+// YOKLUK EKİ KÖKÜ İPTAL EDER: "sorunsuz" olumsuz DEĞİLDİR, "sorunları"
+// olumsuzdur. `sorun` kökü `sorunsuz` içinde de eşleşiyordu ve cümle hem
+// olumlu hem olumsuz sayılıp RENKSİZ kalıyordu (ölçüldü: "…sorunsuz bir
+// deneyim sunar"). Ek, kökün hemen ardından (en çok iki harf sonra)
+// geliyorsa eşleşme düşer. Aynısı kusursuz/sınırsız/hatasız için de geçerli.
+const NEG_RE = kokRe(NEG_KOK, '(?![a-zçğıöşü]{0,2}s[uüıi]z)');
 
 function sayKok(re, text) {
   re.lastIndex = 0;
@@ -1277,7 +1318,14 @@ const CUMLECIK_RE = /[,;]|\bve\b|\bama\b|\bancak\b|\bfakat\b|\bbut\b|\bhowever\b
    olumlu ve "dusuk isik" bir cekim kosulu, kusur degil. Bu tamlamalar sayim
    oncesi metinden dusurulur; koku listeden cikarmak olmazdi, cunku "dusuk
    depolama" gercekten olumsuz. */
-const TONE_MUAF = /(d[uü][sş][uü]k [iı][sş][iı][kğ]|low[- ]light|d[uü][sş][uü]k gecikme|low latency|d[uü][sş][uü]k [iı]s[iı] ?[uü]retimi)/gi;
+// "hızlı şarj" EKLENDİ (2026-09-01): bir spec ADI, hüküm değil. Ölçüldü:
+// "40W HIZLI ŞARJ, rakiplerine göre daha yavaştır" cümlesinde baştaki spec
+// adı olumlu sayılıp asıl hükmü (yavaştır) dengeliyor ve cümle renksiz
+// kalıyordu. 'hızlı' tek başına olumlu kalır ("hızlı açılıyor").
+// "kısa sürede" EKLENDİ: `kısa süre` olumsuz kök ("kısa süre dayanıyor") ama
+// "-de" hâliyle SÜREYİ değil HIZI anlatıyor ve olumludur — ölçüldü:
+// "…kısa sürede tam dolum imkânı sunar" cümlesi KIRMIZI çıkıyordu.
+const TONE_MUAF = /(d[uü][sş][uü]k [iı][sş][iı][kğ]|low[- ]light|d[uü][sş][uü]k gecikme|low latency|d[uü][sş][uü]k [iı]s[iı] ?[uü]retimi|h[iı]zl[iı] [sş]arj|fast charging|k[iı]sa s[uü]rede)/gi;
 
 function leadTone(text) {
   const t = String(text || '');
@@ -1298,9 +1346,27 @@ function leadTone(text) {
     // "iyi degil" = olumsuz.
     if (NEG_INKAR.test(cumlecik)) { pos += n; neg += p; } else { pos += p; neg += n; }
   });
-  if (pos > neg) return 'pos';
-  if (neg > pos) return 'neg';
-  return TONE_DONUS.test(t) ? 'neg' : 'pos';
+  // KANIT YOKSA RENK YOK (2026-09-01). Önceki sürüm HER cümleyi yeşil ya da
+  // kırmızı yapmak zorundaydı ve eşitlikte 'pos' dönüyordu — yani TAHMİN
+  // ediyordu. Tahminle renk vermek renk vermemekten kötü: kullanıcı canlı
+  // sayfada olumsuz bir şikâyeti yeşil, olumlu bir hükmü kırmızı gördü.
+  //
+  // Üç çıkış: 'pos' · 'neg' · '' (nötr, sınıf basılmaz → metin kendi rengini
+  // korur, sayı da öyle). Nötr iki durumda oluşur:
+  //   1. hiçbir kök eşleşmedi   → söyleyecek bir şey yok
+  //   2. iki taraf da doluysa ve baskın taraf ötekinin İKİ KATINDAN fazla
+  //      değilse → cümle gerçekten KARIŞIK ("…olumlu seyretmektedir, ancak
+  //      kısıtlamalar ve sorunlar da dile getirilmektedir"). Böyle bir cümleyi
+  //      tek renge zorlamak okuyucuya yanlış hüküm okutuyordu.
+  if (pos === 0 && neg === 0) return '';
+  if (pos > 0 && neg > 0 && Math.max(pos, neg) <= 2 * Math.min(pos, neg)) return '';
+  return pos > neg ? 'pos' : 'neg';
+}
+
+// Ton sınıfı — nötrde HİÇBİR sınıf basılmaz (boş `aic-tone-` üretmemek için).
+function toneClass(text) {
+  const t = leadTone(text);
+  return t ? ` aic-tone-${t}` : '';
 }
 
 // Paragrafın konu cümlesi: ilk cümle, makul uzunluktaysa.
@@ -1416,7 +1482,7 @@ export function sentencesOf(text) {
 export function ProseClause({ text, names = null, keyPrefix = 'pc', tone = true }) {
   const t = String(text || '').trim();
   if (!t) return null;
-  const cls = tone ? ` aic-tone-${leadTone(t)}` : '';
+  const cls = tone ? toneClass(t) : '';
   const [bas, kalan] = splitClause(t);
   if (!bas) return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
   return (
@@ -1447,7 +1513,7 @@ export function ProseLine({ text, names = null, keyPrefix = 'pl', tone = true })
   // "40W ... daha yavastir" cumlesindeki 40W ile "90W hizli sarj" cumlesindeki
   // 90W ayni renkteydi. Ton zaten hesaplaniyor (leadTone); sayi da ondan
   // besleniyor. Notr baglam yok — leadTone daima pos ya da neg dondurur.
-  const cls = tone ? ` aic-tone-${leadTone(t)}` : '';
+  const cls = tone ? toneClass(t) : '';
   return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
 }
 
@@ -1470,14 +1536,14 @@ export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
     }
     if (b.kind === 'bullet') {
       return (
-        <li className={`aic-prose-li aic-tone aic-tone-${leadTone(b.text)}${hid ? ' hid' : ''}`} key={`l-${i}`}>
+        <li className={`aic-prose-li aic-tone${toneClass(b.text)}${hid ? ' hid' : ''}`} key={`l-${i}`}>
           {proseParts(b.text, `l${i}`, names)}
         </li>
       );
     }
     const [lead, rest] = splitLead(b.text);
     return (
-      <p className={`aic-prose-p aic-tone aic-tone-${leadTone(b.text)}${hid ? ' hid' : ''}`}
+      <p className={`aic-prose-p aic-tone${toneClass(b.text)}${hid ? ' hid' : ''}`}
         key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
         {lead ? (
           <strong className={`aic-prose-lead${leadTone(lead) ? ` ${leadTone(lead)}` : ''}`}>

@@ -610,13 +610,12 @@
   position: relative;
   font-style: normal;
   font-size: 11px;
-  color: var(--brand-blue);
+  color: var(--lead-pos);
 }
 .aic-heat-cell.best {
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--brand-cyan) 60%, transparent);
 }
 [data-theme='dark'] .aic-heat-cell i { opacity: .42; }
-[data-theme='dark'] .aic-heat-cell em { color: var(--brand-cyan); }
 
 /* DAR EKRAN: satır → kart. Tablo semantiği korunur (ekran okuyucu hâlâ
    satır/sütun görür), yalnızca görsel akış dikeye döner. */
@@ -807,8 +806,8 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--ink-blue) 12%, transparent);
-  color: var(--ink-blue);
+  background: var(--surface-3);
+  color: var(--text3);
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-size: 12px;
   font-weight: 900;
@@ -844,7 +843,7 @@
   background: currentColor;
   opacity: .4;
 }
-.aic-diff-side:first-child::before { background: var(--ink-blue); opacity: .75; }
+.aic-diff-side:first-child::before { opacity: .6; }
 .aic-diff-vs {
   display: flex;
   align-items: center;
@@ -863,9 +862,15 @@
 /* Ürün adı: gözün paragrafı tarayıp ilgilendiği ürünü bulmasını sağlar. */
 .aic-name { font-weight: 850; color: var(--text); }
 
-/* Cümlenin TUTAMAĞI — `splitClause` ile ayrılan ilk parça. Uzun tek cümlelik
-   maddeler alt alta gri bir duvar oluyordu; ilk parça koyu, gerisi yumuşak. */
-.aic-clause { font-weight: 800; color: var(--text); }
+/* Cümlenin TUTAMAĞI — `splitClause` ile ayrılan ilk parça.
+   RENK DAYATMAZ: içinde bulunduğu tonu alır (artı → yeşil, eksi → kırmızı).
+   KURAL (kullanıcı, 2026-09-01): siyah-kalın YALNIZCA ürün adına aittir;
+   başka hiçbir kelime siyah vurgulanmaz, spec asla mavi yazılmaz. */
+.aic-clause { font-weight: 750; color: inherit; }
+.aic-tone-pos > .aic-clause { color: var(--lead-pos); }
+.aic-tone-neg > .aic-clause { color: var(--lead-neg); }
+/* Ürün adı tutamağın İÇİNDE de siyah-kalın kalır — tek istisna budur. */
+.aic-clause .aic-name { color: var(--text); font-weight: 850; }
 .aic-clause-rest { color: var(--text-soft, var(--text2)); }
 
 /* ── Karşı karşıya — ürün ürün ────────────────────────────────────────── */
@@ -1032,8 +1037,11 @@
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
-  /* Taban renk: tonu hesaplanmamis baglamlar icin (tablo hucresi, rozet). */
-  color: var(--ink-blue);
+  /* TABAN RENK MAVİ DEĞİL, DEVRALINAN RENK (2026-09-01).
+     Kural (kullanıcı): bir spec'ten bahsediliyorsa asla mavi yazılmaz —
+     iyi bağlamda yeşil, kötü bağlamda kırmızı. Tonu HESAPLANAMAYAN nötr
+     cümlede sayı artık cümlenin kendi rengini alır; mavi kalıntısı yok. */
+  color: inherit;
   white-space: nowrap;
 }
 
