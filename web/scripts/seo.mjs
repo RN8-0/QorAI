@@ -2197,10 +2197,20 @@ function renderPage(template, seo, bodyHtml) {
   // interpreted as a String.replace special pattern and corrupt the output.
   const block = `<!-- seo:start -->\n  ${seoBlock(seo)}\n  <!-- seo:end -->`;
   let out = template.replace(/<!-- seo:start -->[\s\S]*?<!-- seo:end -->/, () => block);
-  // Match the <html lang> attribute to the page language so a crawler that never
-  // runs JS doesn't see e.g. English content under lang="tr". tr is a no-op.
+  // <html lang> HER ZAMAN sayfanin kendi dili olur -- KOSULSUZ.
+  //
+  // Eskiden `if (lang !== 'tr')` diye bir kapi vardi; varsayim "sablon zaten
+  // lang=tr" idi. Ama sablon `web/index.html` DEGIL, vite ciktisi
+  // `website/index.html`; seo.mjs Ingilizce KOK sayfayi tam oraya yaziyor ve
+  // ondan sonra uretilen TURKCE sayfalar lang="en" miras aliyor. Olculdu
+  // 2026-09-01: website/tr/index.html -> <html lang="en"> (basligi ve
+  // canonical'i Turkce oldugu halde). JS calistirmayan bir bot Turkce govdeyi
+  // lang="en" altinda goruyordu.
+  //
+  // Kapi kaldirildi: uretim sirasina ve sablonun o anki haline bakilmaksizin
+  // her sayfa kendi dilini ilan eder.
   const lang = seo.lang || SEO_DEFAULT_LOCALE;
-  if (lang !== 'tr') out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
+  out = out.replace(/<html lang="[a-z-]+"/i, () => `<html lang="${lang}"`);
   if (bodyHtml) out = out.replace('<div id="root"></div>', () => `<div id="root">${bodyHtml}</div>`);
   // Acilis kabugundaki hero metni YALNIZCA ana sayfada kalir. Sablonda duruyor
   // cunku kabuk statik; diger rotalarda buradan SILINIR. Aksi halde ana
