@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartwatches">Smartwatches</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Huawei Watch Ultimate Aktivite Hour</h1><p style="color:#475569;margin:0 0 12px">Huawei · Smartwatches · Qor AI tech score 68/100</p><img src="https://resim.epey.com/859769/m_huawei-watch-ultimate-10.png" alt="Huawei Watch Ultimate Aktivite Hour" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Huawei Watch Ultimate Aktivite Hour key features: screen size 1.5 inches, display resolution 466x466 pixels, speaker Yes. Review Huawei Watch Ultimate Aktivite Hour's 50 technical specs, its Qor AI tech score and how it compares with similar models in smartwatches below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Screen size:</span> <strong>1.5 inches</strong></li><li><span style="color:#64748b">Display resolution:</span> <strong>466x466 pixels</strong></li><li><span style="color:#64748b">Speaker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Location info:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Vibration:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartwatches</h2><ul style="line-height:1.8"><li><a href="/product/huawei-watch-fit-5-pro-turuncu" style="color:#2563eb">Huawei Watch Fit 5 Pro Orange Smartwatch</a></li><li><a href="/product/huawei-watch-gt-6-pro-titanyum" style="color:#2563eb">Huawei Watch GT 6 Pro Titanium Smartwatch</a></li><li><a href="/product/huawei-watch-fit-2-active" style="color:#2563eb">Huawei Watch Fit 2 Active Smartwatch</a></li><li><a href="/product/huawei-band-11-polimer" style="color:#2563eb">Huawei Band 11 Polymer Smart Bileklik</a></li><li><a href="/product/garmin-fenix-chronos-leather" style="color:#2563eb">Garmin Fenix Chronos Leather Aktivite Hour (Brown)</a></li><li><a href="/product/garmin-vivofit-3" style="color:#2563eb">Garmin vivofit 3 Smart Bileklik</a></li><li><a href="/product/garmin-forerunner-245-music" style="color:#2563eb">Garmin Forerunner 245 Music Aktivite Hour (Black / White / Blue)</a></li><li><a href="/product/huawei-watch-fit-5" style="color:#2563eb">Huawei Watch Fit 5 Smartwatch</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartwatches" style="color:#2563eb;font-weight:600">Compare all Smartwatches →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/smartwatches">Smartwatches</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Huawei Watch Ultimate Aktivite Hour</h1><p style="color:#475569;margin:0 0 12px">Huawei · Smartwatches · Qor AI tech score 68/100</p><img src="https://resim.epey.com/859769/m_huawei-watch-ultimate-10.png" alt="Huawei Watch Ultimate Aktivite Hour" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Huawei Watch Ultimate Aktivite Hour key features: screen size 1.5 inches, display resolution 466x466 pixels, speaker Yes. Review Huawei Watch Ultimate Aktivite Hour's 53 technical specs, its Qor AI tech score and how it compares with similar models in smartwatches below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Screen size:</span> <strong>1.5 inches</strong></li><li><span style="color:#64748b">Display resolution:</span> <strong>466x466 pixels</strong></li><li><span style="color:#64748b">Speaker:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Camera:</span> <strong>No</strong></li><li><span style="color:#64748b">Location Info:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Water resistance:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Flicker:</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Smartwatches</h2><ul style="line-height:1.8"><li><a href="/product/huawei-watch-fit-5-pro-turuncu" style="color:#2563eb">Huawei Watch Fit 5 Pro Orange Smartwatch</a></li><li><a href="/product/huawei-watch-gt-6-pro-titanyum" style="color:#2563eb">Huawei Watch GT 6 Pro Titanium Smartwatch</a></li><li><a href="/product/huawei-watch-fit-2-active" style="color:#2563eb">Huawei Watch Fit 2 Active Smartwatch</a></li><li><a href="/product/huawei-band-11-polimer" style="color:#2563eb">Huawei Band 11 Polymer Smart Bileklik</a></li><li><a href="/product/garmin-fenix-chronos-leather" style="color:#2563eb">Garmin Fenix Chronos Leather Aktivite Hour (Brown)</a></li><li><a href="/product/garmin-vivofit-3" style="color:#2563eb">Garmin vivofit 3 Smart Bileklik</a></li><li><a href="/product/garmin-forerunner-245-music" style="color:#2563eb">Garmin Forerunner 245 Music Aktivite Hour (Black / White / Blue)</a></li><li><a href="/product/huawei-watch-fit-5" style="color:#2563eb">Huawei Watch Fit 5 Smartwatch</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/smartwatches" style="color:#2563eb;font-weight:600">Compare all Smartwatches →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

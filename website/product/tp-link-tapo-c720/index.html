@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ip_cameras">IP Cameras</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TP-Link Tapo C720</h1><p style="color:#475569;margin:0 0 12px">TP-Link · IP Cameras · Qor AI tech score 27/100</p><img src="https://resim.epey.com/1027810/m_tp-link-tapo-c720-1.png" alt="TP-Link Tapo C720" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TP-Link Tapo C720 key features: night vision: Yes, view angle (width): 134 °, memory card support: Yes. Review TP-Link Tapo C720's 31 technical specs, its Qor AI tech score and how it compares with similar models in ip cameras below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Night vision::</span> <strong>Yes</strong></li><li><span style="color:#64748b">View angle (width)::</span> <strong>134 °</strong></li><li><span style="color:#64748b">Memory card support::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Memory card type::</span> <strong>microSD</strong></li><li><span style="color:#64748b">The number of pixels::</span> <strong>1440 p</strong></li><li><span style="color:#64748b">Zoom (nearby)::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Solution format::</span> <strong>2K</strong></li><li><span style="color:#64748b">Two-way voice communication::</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in IP Cameras</h2><ul style="line-height:1.8"><li><a href="/product/hikvision-ds-2cd1141g2-liuf" style="color:#2563eb">Hikvision DS-2CD1141G2-LIUF</a></li><li><a href="/product/tp-link-insight-s485" style="color:#2563eb">TP-Link InSight S485</a></li><li><a href="/product/anker-eufy-security-indoor-cam-s350" style="color:#2563eb">Anker Eufy Security Indoor Cam S350 (T8416)</a></li><li><a href="/product/hikvision-ds-2cd1083g2-liuf-sl" style="color:#2563eb">Hikvision DS-2CD1083G2-LIUF/SL</a></li><li><a href="/product/hikvision-ds-2cd1t83g2-luf" style="color:#2563eb">Hikvision DS-2CD1T83G2-LUF</a></li><li><a href="/product/tp-link-tapo-c260" style="color:#2563eb">TP-Link Tapo C260</a></li><li><a href="/product/tp-link-tapo-c425" style="color:#2563eb">TP-Link Tapo C425</a></li><li><a href="/product/hikvision-ds-2cd1047g2h-liuf" style="color:#2563eb">Hikvision DS-2CD1047G2H-LIUF</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ip_cameras" style="color:#2563eb;font-weight:600">Compare all IP Cameras →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/ip_cameras">IP Cameras</a></nav><h1 style="font-size:26px;margin:12px 0 4px">TP-Link Tapo C720</h1><p style="color:#475569;margin:0 0 12px">TP-Link · IP Cameras · Qor AI tech score 27/100</p><img src="https://resim.epey.com/1027810/m_tp-link-tapo-c720-1.png" alt="TP-Link Tapo C720" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">TP-Link Tapo C720 key features: night vision: Yes, view angle (width): 134 °, memory card support: Yes. Review TP-Link Tapo C720's 34 technical specs, its Qor AI tech score and how it compares with similar models in ip cameras below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Night vision::</span> <strong>Yes</strong></li><li><span style="color:#64748b">View angle (width)::</span> <strong>134 °</strong></li><li><span style="color:#64748b">Memory card support::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Memory card type::</span> <strong>microSD</strong></li><li><span style="color:#64748b">The number of pixels::</span> <strong>1440 p</strong></li><li><span style="color:#64748b">Zoom (nearby)::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Solution format::</span> <strong>2K</strong></li><li><span style="color:#64748b">Two-way voice communication::</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in IP Cameras</h2><ul style="line-height:1.8"><li><a href="/product/hikvision-ds-2cd1141g2-liuf" style="color:#2563eb">Hikvision DS-2CD1141G2-LIUF</a></li><li><a href="/product/tp-link-insight-s485" style="color:#2563eb">TP-Link InSight S485</a></li><li><a href="/product/anker-eufy-security-indoor-cam-s350" style="color:#2563eb">Anker Eufy Security Indoor Cam S350 (T8416)</a></li><li><a href="/product/hikvision-ds-2cd1083g2-liuf-sl" style="color:#2563eb">Hikvision DS-2CD1083G2-LIUF/SL</a></li><li><a href="/product/hikvision-ds-2cd1t83g2-luf" style="color:#2563eb">Hikvision DS-2CD1T83G2-LUF</a></li><li><a href="/product/tp-link-tapo-c260" style="color:#2563eb">TP-Link Tapo C260</a></li><li><a href="/product/tp-link-tapo-c425" style="color:#2563eb">TP-Link Tapo C425</a></li><li><a href="/product/hikvision-ds-2cd1047g2h-liuf" style="color:#2563eb">Hikvision DS-2CD1047G2H-LIUF</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/ip_cameras" style="color:#2563eb;font-weight:600">Compare all IP Cameras →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

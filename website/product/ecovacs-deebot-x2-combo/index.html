@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Ecovacs deebot X2 combo robot sweeper+mop Specs &amp; Comparison</title>
-  <meta name="description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Height that can be removed: 22 mm, Sensor to prevent falling: Yes, Suction Power: 8700…" />
+  <meta name="description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Clearable Height: 22 mm, Yes: Yes, 8700 Pa: 8700 Pa, Suction Power Control: Automatic…" />
   <link rel="canonical" href="https://qorai.net/product/ecovacs-deebot-x2-combo" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/ecovacs-deebot-x2-combo" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/ecovacs-deebot-x2-combo" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Ecovacs deebot X2 combo robot sweeper+mop Specs &amp; Comparison" />
-  <meta property="og:description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Height that can be removed: 22 mm, Sensor to prevent falling: Yes, Suction Power: 8700…" />
+  <meta property="og:description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Clearable Height: 22 mm, Yes: Yes, 8700 Pa: 8700 Pa, Suction Power Control: Automatic…" />
   <link rel="preload" as="image" href="https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg" />
   <meta property="og:image:alt" content="Ecovacs deebot X2 combo robot sweeper+mop" />
   <meta property="og:url" content="https://qorai.net/product/ecovacs-deebot-x2-combo" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Ecovacs deebot X2 combo robot sweeper+mop Specs &amp; Comparison" />
-  <meta name="twitter:description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Height that can be removed: 22 mm, Sensor to prevent falling: Yes, Suction Power: 8700…" />
+  <meta name="twitter:description" content="Ecovacs deebot X2 combo robot sweeper+mop (Ecovacs) — Robot Vacuums. Clearable Height: 22 mm, Yes: Yes, 8700 Pa: 8700 Pa, Suction Power Control: Automatic…" />
   <meta name="twitter:image" content="https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg" />
   <meta name="twitter:image:alt" content="Ecovacs deebot X2 combo robot sweeper+mop" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/ecovacs-deebot-x2-combo#webpage","url":"https://qorai.net/product/ecovacs-deebot-x2-combo","name":"Ecovacs deebot X2 combo robot sweeper+mop Specs & Comparison","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/ecovacs-deebot-x2-combo#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Robot Vacuums","item":"https://qorai.net/category/robot_vacuums"},{"@type":"ListItem","position":3,"name":"Ecovacs deebot X2 combo robot sweeper+mop","item":"https://qorai.net/product/ecovacs-deebot-x2-combo"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ecovacs deebot X2 combo robot sweeper+mop</h1><p style="color:#475569;margin:0 0 12px">Ecovacs · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg" alt="Ecovacs deebot X2 combo robot sweeper+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ecovacs deebot X2 combo robot sweeper+mop key features: height that can be removed 22 mm, sensor to prevent falling Yes, suction power 8700 Pa. Review Ecovacs deebot X2 combo robot sweeper+mop's 39 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Height that can be removed:</span> <strong>22 mm</strong></li><li><span style="color:#64748b">Sensor to prevent falling:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Suction Power:</span> <strong>8700 Pa</strong></li><li><span style="color:#64748b">Suction Power Control:</span> <strong>Automated</strong></li><li><span style="color:#64748b">Mapping:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sliding mop:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Charging automatically:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Running time:</span> <strong>210 seconds</strong></li><li><span style="color:#64748b">Charge time:</span> <strong>5.5 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/ecovacs-deebot-x2-omni" style="color:#2563eb">Ecovacs deebot X2 omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-n10" style="color:#2563eb">Ecovacs deebot N10 robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-x1-omni" style="color:#2563eb">Ecovacs deebot X1 omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-t20-omni" style="color:#2563eb">Ecovacs deebot T20 omni robot syburge+mop</a></li><li><a href="/product/ecovacs-deebot-x8-pro-omni" style="color:#2563eb">Ecovacs deebot X8 pro omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-x11-omnicyclone" style="color:#2563eb">Ecovacs deebot X11 omnicyclone robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-n20-pro-plus" style="color:#2563eb">Ecovacs deebot N20 pro plus is a robot with a sweeper + mop.</a></li><li><a href="/product/ecovacs-deebot-n20e" style="color:#2563eb">Ecovacs deebot N20e robot sweeper+mop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Ecovacs deebot X2 combo robot sweeper+mop</h1><p style="color:#475569;margin:0 0 12px">Ecovacs · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/954629/m_ecovacs-deebot-x2-combo-1.jpg" alt="Ecovacs deebot X2 combo robot sweeper+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Ecovacs deebot X2 combo robot sweeper+mop key features: clearable height 22 mm, yes Yes, 8700 pa 8700 Pa. Review Ecovacs deebot X2 combo robot sweeper+mop's 39 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Clearable Height:</span> <strong>22 mm</strong></li><li><span style="color:#64748b">Yes:</span> <strong>Yes</strong></li><li><span style="color:#64748b">8700 Pa:</span> <strong>8700 Pa</strong></li><li><span style="color:#64748b">Suction Power Control:</span> <strong>Automatic</strong></li><li><span style="color:#64748b">Automatic Charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">210 dk:</span> <strong>210 dk</strong></li><li><span style="color:#64748b">Charging Time:</span> <strong>5.5 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/ecovacs-deebot-x2-omni" style="color:#2563eb">Ecovacs deebot X2 omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-n10" style="color:#2563eb">Ecovacs deebot N10 robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-x1-omni" style="color:#2563eb">Ecovacs deebot X1 omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-t20-omni" style="color:#2563eb">Ecovacs deebot T20 omni robot syburge+mop</a></li><li><a href="/product/ecovacs-deebot-x8-pro-omni" style="color:#2563eb">Ecovacs deebot X8 pro omni robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-x11-omnicyclone" style="color:#2563eb">Ecovacs deebot X11 omnicyclone robot sweeper+mop</a></li><li><a href="/product/ecovacs-deebot-n20-pro-plus" style="color:#2563eb">Ecovacs deebot N20 pro plus is a robot with a sweeper + mop.</a></li><li><a href="/product/ecovacs-deebot-n20e" style="color:#2563eb">Ecovacs deebot N20e robot sweeper+mop</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

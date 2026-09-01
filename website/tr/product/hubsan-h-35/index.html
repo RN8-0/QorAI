@@ -24,7 +24,7 @@
   <meta name="twitter:description" content="Hubsan H-35 Drone (Hubsan) — Drone. Fiyatı ₺2.250. Dahili Kamera: Var, Kullanıcı Seviyesi: Başlangıç, Kullanım Mesafesi: 499 m, Uçuş Süresi: 10 dk. Qor AI…" />
   <meta name="twitter:image" content="https://resim.epey.com/957551/hubsan-h-35-2.png" />
   <meta name="twitter:image:alt" content="Hubsan H-35 Drone" />
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/tr/product/hubsan-h-35#webpage","url":"https://qorai.net/tr/product/hubsan-h-35","name":"Hubsan H-35 Drone Fiyatı ve Özellikleri | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/957551/hubsan-h-35-2.png"},{"@type":"BreadcrumbList","@id":"https://qorai.net/tr/product/hubsan-h-35#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/tr/"},{"@type":"ListItem","position":2,"name":"Drone","item":"https://qorai.net/tr/category/drones"},{"@type":"ListItem","position":3,"name":"Hubsan H-35 Drone","item":"https://qorai.net/tr/product/hubsan-h-35"}]},{"@type":"Product","@id":"https://qorai.net/tr/product/hubsan-h-35#product","name":"Hubsan H-35 Drone","url":"https://qorai.net/tr/product/hubsan-h-35","description":"Hubsan H-35 Drone (Hubsan) — Drone. Fiyatı ₺2.250. Dahili Kamera: Var, Kullanıcı Seviyesi: Başlangıç, Kullanım Mesafesi: 499 m, Uçuş Süresi: 10 dk. Qor AI…","image":"https://resim.epey.com/957551/hubsan-h-35-2.png","category":"Drone","brand":{"@type":"Brand","name":"Hubsan"},"offers":{"@type":"Offer","url":"https://qorai.net/tr/product/hubsan-h-35","price":"2250","priceCurrency":"TRY","availability":"https://schema.org/InStock","priceValidUntil":"2026-09-06"}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/tr/product/hubsan-h-35#webpage","url":"https://qorai.net/tr/product/hubsan-h-35","name":"Hubsan H-35 Drone Fiyatı ve Özellikleri | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/957551/hubsan-h-35-2.png"},{"@type":"BreadcrumbList","@id":"https://qorai.net/tr/product/hubsan-h-35#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/tr/"},{"@type":"ListItem","position":2,"name":"Drone","item":"https://qorai.net/tr/category/drones"},{"@type":"ListItem","position":3,"name":"Hubsan H-35 Drone","item":"https://qorai.net/tr/product/hubsan-h-35"}]},{"@type":"Product","@id":"https://qorai.net/tr/product/hubsan-h-35#product","name":"Hubsan H-35 Drone","url":"https://qorai.net/tr/product/hubsan-h-35","description":"Hubsan H-35 Drone (Hubsan) — Drone. Fiyatı ₺2.250. Dahili Kamera: Var, Kullanıcı Seviyesi: Başlangıç, Kullanım Mesafesi: 499 m, Uçuş Süresi: 10 dk. Qor AI…","image":"https://resim.epey.com/957551/hubsan-h-35-2.png","category":"Drone","brand":{"@type":"Brand","name":"Hubsan"},"offers":{"@type":"Offer","url":"https://qorai.net/tr/product/hubsan-h-35","price":"2250","priceCurrency":"TRY","availability":"https://schema.org/InStock","priceValidUntil":"2026-09-08"}}]}</script>
   <!-- seo:end -->
   <meta name="theme-color" content="#F8FAFC" />
   <link rel="icon" type="image/png" href="/assets/favicon.png?v=20260605a" />
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/drones">Drone</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hubsan H-35 Drone</h1><p style="color:#475569;margin:0 0 12px">Hubsan · Drone · Qor AI teknik skoru 38/100</p><img src="https://resim.epey.com/957551/hubsan-h-35-2.png" alt="Hubsan H-35 Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺2.250</p><p style="line-height:1.7;color:#334155">Hubsan H-35 Drone öne çıkan özellikleri: dahili kamera Var, kullanıcı seviyesi Başlangıç, kullanım mesafesi 499 m. Hubsan H-35 Drone 14 teknik özelliğini, Qor AI teknik skorunu ve benzer drone modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Dahili Kamera:</span> <strong>Var</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Başlangıç</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>499 m</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>10 dk</strong></li><li><span style="color:#64748b">Video Çözünürlüğü:</span> <strong>HD</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Drone modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sunman-x11" style="color:#2563eb">Sunman X11 Drone</a></li><li><a href="/tr/product/jjrc-h48" style="color:#2563eb">JJRC H48 Drone</a></li><li><a href="/tr/product/corby-zoom-air-sd07" style="color:#2563eb">Corby Zoom Air SD07 Drone</a></li><li><a href="/tr/product/emax-tinyhawk-bnf" style="color:#2563eb">Emax Tinyhawk BNF Drone</a></li><li><a href="/tr/product/silverlit-bumper-drone" style="color:#2563eb">Silverlit Bumper Drone Drone</a></li><li><a href="/tr/product/dji-mavic-4-pro-creator-combo" style="color:#2563eb">DJI Mavic 4 Pro Creator Combo Drone</a></li><li><a href="/tr/product/dji-mavic-4-pro-fly-more-combo" style="color:#2563eb">DJI Mavic 4 Pro Fly More Combo Drone</a></li><li><a href="/tr/product/dji-neo-2-fly-more-combo" style="color:#2563eb">DJI Neo 2 Fly More Combo Drone</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/drones" style="color:#2563eb;font-weight:600">Tüm Drone modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/drones">Drone</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Hubsan H-35 Drone</h1><p style="color:#475569;margin:0 0 12px">Hubsan · Drone · Qor AI teknik skoru 38/100</p><img src="https://resim.epey.com/957551/hubsan-h-35-2.png" alt="Hubsan H-35 Drone" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="margin:10px 0 2px;font-size:20px;font-weight:700;color:#15803D">₺2.250</p><p style="line-height:1.7;color:#334155">Hubsan H-35 Drone öne çıkan özellikleri: dahili kamera Var, kullanıcı seviyesi Başlangıç, kullanım mesafesi 499 m. Hubsan H-35 Drone 14 teknik özelliğini, Qor AI teknik skorunu ve benzer drone modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Dahili Kamera:</span> <strong>Var</strong></li><li><span style="color:#64748b">Kullanıcı Seviyesi:</span> <strong>Başlangıç</strong></li><li><span style="color:#64748b">Kullanım Mesafesi:</span> <strong>499 m</strong></li><li><span style="color:#64748b">Uçuş Süresi:</span> <strong>10 dk</strong></li><li><span style="color:#64748b">Video Çözünürlüğü:</span> <strong>HD</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Drone modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/sunman-x11" style="color:#2563eb">Sunman X11 Drone</a></li><li><a href="/tr/product/jjrc-h48" style="color:#2563eb">JJRC H48 Drone</a></li><li><a href="/tr/product/corby-zoom-air-sd07" style="color:#2563eb">Corby Zoom Air SD07 Drone</a></li><li><a href="/tr/product/emax-tinyhawk-bnf" style="color:#2563eb">Emax Tinyhawk BNF Drone</a></li><li><a href="/tr/product/silverlit-bumper-drone" style="color:#2563eb">Silverlit Bumper Drone Drone</a></li><li><a href="/tr/product/dji-mavic-4-pro-fly-more-combo" style="color:#2563eb">DJI Mavic 4 Pro Fly More Combo Drone</a></li><li><a href="/tr/product/dji-neo-2-fly-more-combo" style="color:#2563eb">DJI Neo 2 Fly More Combo Drone</a></li><li><a href="/tr/product/dji-lito-x1-fly-more-combo-dji-rc-2" style="color:#2563eb">DJI Lito X1 Fly More Combo (DJI RC 2) Drone</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/drones" style="color:#2563eb;font-weight:600">Tüm Drone modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

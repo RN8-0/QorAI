@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Dell alienware 34 AW3425DW is included Specs &amp; Comparison | Qor AI</title>
-  <meta name="description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. DisplayPort (DP):: Yes, Screen Size (Inch):: 34 inches, Screen Technology:: OLED, Screen…" />
+  <meta name="description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. Yes: Yes, Screen Size (Inch): 34 inches, Display technology: OLED, Display resolution: 3440x1440…" />
   <link rel="canonical" href="https://qorai.net/product/dell-alienware-34-aw3425dw" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/dell-alienware-34-aw3425dw" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/dell-alienware-34-aw3425dw" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Dell alienware 34 AW3425DW is included Specs &amp; Comparison | Qor AI" />
-  <meta property="og:description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. DisplayPort (DP):: Yes, Screen Size (Inch):: 34 inches, Screen Technology:: OLED, Screen…" />
+  <meta property="og:description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. Yes: Yes, Screen Size (Inch): 34 inches, Display technology: OLED, Display resolution: 3440x1440…" />
   <link rel="preload" as="image" href="https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg" />
   <meta property="og:image:alt" content="Dell alienware 34 AW3425DW is included" />
   <meta property="og:url" content="https://qorai.net/product/dell-alienware-34-aw3425dw" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Dell alienware 34 AW3425DW is included Specs &amp; Comparison | Qor AI" />
-  <meta name="twitter:description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. DisplayPort (DP):: Yes, Screen Size (Inch):: 34 inches, Screen Technology:: OLED, Screen…" />
+  <meta name="twitter:description" content="Dell alienware 34 AW3425DW is included (Dell) — Monitors. Yes: Yes, Screen Size (Inch): 34 inches, Display technology: OLED, Display resolution: 3440x1440…" />
   <meta name="twitter:image" content="https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg" />
   <meta name="twitter:image:alt" content="Dell alienware 34 AW3425DW is included" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/dell-alienware-34-aw3425dw#webpage","url":"https://qorai.net/product/dell-alienware-34-aw3425dw","name":"Dell alienware 34 AW3425DW is included Specs & Comparison | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/dell-alienware-34-aw3425dw#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Monitors","item":"https://qorai.net/category/monitors"},{"@type":"ListItem","position":3,"name":"Dell alienware 34 AW3425DW is included","item":"https://qorai.net/product/dell-alienware-34-aw3425dw"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/monitors">Monitors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dell alienware 34 AW3425DW is included</h1><p style="color:#475569;margin:0 0 12px">Dell · Monitors · Qor AI tech score 96/100</p><img src="https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg" alt="Dell alienware 34 AW3425DW is included" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dell alienware 34 AW3425DW is included key features: displayport (dp): Yes, screen size (inch): 34 inches, screen technology: OLED. Review Dell alienware 34 AW3425DW is included's 81 technical specs, its Qor AI tech score and how it compares with similar models in monitors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">DisplayPort (DP)::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Screen Size (Inch)::</span> <strong>34 inches</strong></li><li><span style="color:#64748b">Screen Technology::</span> <strong>OLED</strong></li><li><span style="color:#64748b">Screen Resolution::</span> <strong>3440x1440 pixels</strong></li><li><span style="color:#64748b">HDMI (Type A)::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Brightness (Typical)::</span> <strong>250 cd/m²</strong></li><li><span style="color:#64748b">Response Time::</span> <strong>0.03 ms</strong></li><li><span style="color:#64748b">USB-A (Type-A) Hub::</span> <strong>Yes</strong></li><li><span style="color:#64748b">USB-C (Type-C)::</span> <strong>Yes</strong></li><li><span style="color:#64748b">VESA Support::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Refresh Speed::</span> <strong>240 Hz</strong></li><li><span style="color:#64748b">Height Adjustment::</span> <strong>Yes</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Monitors</h2><ul style="line-height:1.8"><li><a href="/product/msi-mpg-341cqr-qd-oled-x36" style="color:#2563eb">Msi mpg 341CQR qd-oled X36</a></li><li><a href="/product/msi-mag-271qpx-qd-oled-e2" style="color:#2563eb">Msi mag 271QPX qd-oled E2</a></li><li><a href="/product/msi-mag-322up-qd-oled-e16" style="color:#2563eb">Msi mag 322UP qd-oled E16</a></li><li><a href="/product/msi-mpg-341cqpx-qd-oled" style="color:#2563eb">Msi mpg 341CQPX qd-oled</a></li><li><a href="/product/msi-mpg-491cqp-qd-oled" style="color:#2563eb">Msi mpg 491CQP qd-oled</a></li><li><a href="/product/philips-evnia-49m2c8900l-00" style="color:#2563eb">Philips evnia 49M2C8900L/00</a></li><li><a href="/product/asus-rog-strix-oled-xg27aqwmg" style="color:#2563eb">Asus rog strix OLED XG27AQWMG</a></li><li><a href="/product/samsung-odyssey-oled-g8-32-ls32hg800suxuf-s32hg800" style="color:#2563eb">Samsung odyssey OLED G8 32&quot; LS32HG800SUXUF (S32Hg800) is also included.</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/monitors" style="color:#2563eb;font-weight:600">Compare all Monitors →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/monitors">Monitors</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Dell alienware 34 AW3425DW is included</h1><p style="color:#475569;margin:0 0 12px">Dell · Monitors · Qor AI tech score 96/100</p><img src="https://resim.epey.com/1031785/m_dell-alienware-34-aw3425dw-2.jpg" alt="Dell alienware 34 AW3425DW is included" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Dell alienware 34 AW3425DW is included key features: yes Yes, screen size (inch) 34 inches, display technology OLED. Review Dell alienware 34 AW3425DW is included's 81 technical specs, its Qor AI tech score and how it compares with similar models in monitors below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Yes:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Screen Size (Inch):</span> <strong>34 inches</strong></li><li><span style="color:#64748b">Display technology:</span> <strong>OLED</strong></li><li><span style="color:#64748b">Display resolution:</span> <strong>3440x1440 pixels</strong></li><li><span style="color:#64748b">250 cd/m²:</span> <strong>250 cd/m²</strong></li><li><span style="color:#64748b">0.03 ms:</span> <strong>0.03 ms</strong></li><li><span style="color:#64748b">VESA Support:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Refresh Speed:</span> <strong>240 Hz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Monitors</h2><ul style="line-height:1.8"><li><a href="/product/msi-mpg-341cqr-qd-oled-x36" style="color:#2563eb">Msi mpg 341CQR qd-oled X36</a></li><li><a href="/product/msi-mag-271qpx-qd-oled-e2" style="color:#2563eb">Msi mag 271QPX qd-oled E2</a></li><li><a href="/product/msi-mag-322up-qd-oled-e16" style="color:#2563eb">Msi mag 322UP qd-oled E16</a></li><li><a href="/product/msi-mpg-341cqpx-qd-oled" style="color:#2563eb">Msi mpg 341CQPX qd-oled</a></li><li><a href="/product/msi-mpg-491cqp-qd-oled" style="color:#2563eb">Msi mpg 491CQP qd-oled</a></li><li><a href="/product/philips-evnia-49m2c8900l-00" style="color:#2563eb">Philips evnia 49M2C8900L/00</a></li><li><a href="/product/asus-rog-strix-oled-xg27aqwmg" style="color:#2563eb">Asus rog strix OLED XG27AQWMG</a></li><li><a href="/product/samsung-odyssey-oled-g8-32-ls32hg800suxuf-s32hg800" style="color:#2563eb">Samsung odyssey OLED G8 32&quot; LS32HG800SUXUF (S32Hg800) is also included.</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/monitors" style="color:#2563eb;font-weight:600">Compare all Monitors →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

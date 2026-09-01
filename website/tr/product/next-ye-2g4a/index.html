@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Next YE-2G4A Özellikleri ve Karşılaştırma | Qor AI</title>
-  <meta name="description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi: DVD Kalitesi, Wi-Fi: Var, Çözünürlük: 768x576p. Qor AI teknik skoru 10/100. 13 teknik özellik. Mağaza…" />
+  <meta name="description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi:: DVD Kalitesi, Wi-Fi:: Var, Çözünürlük:: 768x576p. Qor AI teknik skoru 10/100. 14 teknik özellik. Mağaza…" />
   <link rel="canonical" href="https://qorai.net/tr/product/next-ye-2g4a" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/next-ye-2g4a" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/next-ye-2g4a" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Next YE-2G4A Özellikleri ve Karşılaştırma | Qor AI" />
-  <meta property="og:description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi: DVD Kalitesi, Wi-Fi: Var, Çözünürlük: 768x576p. Qor AI teknik skoru 10/100. 13 teknik özellik. Mağaza…" />
+  <meta property="og:description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi:: DVD Kalitesi, Wi-Fi:: Var, Çözünürlük:: 768x576p. Qor AI teknik skoru 10/100. 14 teknik özellik. Mağaza…" />
   <link rel="preload" as="image" href="https://resim.epey.com/605513/m_next-av-sender-1.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/605513/m_next-av-sender-1.jpg" />
   <meta property="og:image:alt" content="Next YE-2G4A" />
   <meta property="og:url" content="https://qorai.net/tr/product/next-ye-2g4a" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Next YE-2G4A Özellikleri ve Karşılaştırma | Qor AI" />
-  <meta name="twitter:description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi: DVD Kalitesi, Wi-Fi: Var, Çözünürlük: 768x576p. Qor AI teknik skoru 10/100. 13 teknik özellik. Mağaza…" />
+  <meta name="twitter:description" content="Next YE-2G4A (Next) — AV Receiver. Görüntü Biçimi:: DVD Kalitesi, Wi-Fi:: Var, Çözünürlük:: 768x576p. Qor AI teknik skoru 10/100. 14 teknik özellik. Mağaza…" />
   <meta name="twitter:image" content="https://resim.epey.com/605513/m_next-av-sender-1.jpg" />
   <meta name="twitter:image:alt" content="Next YE-2G4A" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/tr/product/next-ye-2g4a#webpage","url":"https://qorai.net/tr/product/next-ye-2g4a","name":"Next YE-2G4A Özellikleri ve Karşılaştırma | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/605513/m_next-av-sender-1.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/tr/product/next-ye-2g4a#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/tr/"},{"@type":"ListItem","position":2,"name":"AV Receiver","item":"https://qorai.net/tr/category/av_receivers"},{"@type":"ListItem","position":3,"name":"Next YE-2G4A","item":"https://qorai.net/tr/product/next-ye-2g4a"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/av_receivers">AV Receiver</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Next YE-2G4A</h1><p style="color:#475569;margin:0 0 12px">Next · AV Receiver · Qor AI teknik skoru 10/100</p><img src="https://resim.epey.com/605513/m_next-av-sender-1.jpg" alt="Next YE-2G4A" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Next YE-2G4A öne çıkan özellikleri: görüntü biçimi DVD Kalitesi, wi-fi Var, çözünürlük 768x576p. Next YE-2G4A 13 teknik özelliğini, Qor AI teknik skorunu ve benzer av receiver modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Görüntü Biçimi:</span> <strong>DVD Kalitesi</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Var</strong></li><li><span style="color:#64748b">Çözünürlük:</span> <strong>768x576p</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer AV Receiver modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/everest-sl-w13" style="color:#2563eb">Everest SL-W13</a></li><li><a href="/tr/product/elgato-cam-link-4k" style="color:#2563eb">Elgato Cam Link 4K</a></li><li><a href="/tr/product/azemax-w1-plus" style="color:#2563eb">Azemax W1 Plus</a></li><li><a href="/tr/product/ally-chromecast-g12" style="color:#2563eb">Ally Chromecast G12</a></li><li><a href="/tr/product/benq-qcast-mirror-qp30" style="color:#2563eb">BenQ Qcast Mirror QP30</a></li><li><a href="/tr/product/viewsonic-wpd-900" style="color:#2563eb">ViewSonic WPD-900</a></li><li><a href="/tr/product/google-chromecast-ultra" style="color:#2563eb">Google Chromecast Ultra</a></li><li><a href="/tr/product/philips-swr8106b-93" style="color:#2563eb">Philips SWR8106B/93</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/av_receivers" style="color:#2563eb;font-weight:600">Tüm AV Receiver modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/av_receivers">AV Receiver</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Next YE-2G4A</h1><p style="color:#475569;margin:0 0 12px">Next · AV Receiver · Qor AI teknik skoru 10/100</p><img src="https://resim.epey.com/605513/m_next-av-sender-1.jpg" alt="Next YE-2G4A" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Next YE-2G4A öne çıkan özellikleri: görüntü biçimi: DVD Kalitesi, wi-fi: Var, çözünürlük: 768x576p. Next YE-2G4A 14 teknik özelliğini, Qor AI teknik skorunu ve benzer av receiver modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Görüntü Biçimi::</span> <strong>DVD Kalitesi</strong></li><li><span style="color:#64748b">Wi-Fi::</span> <strong>Var</strong></li><li><span style="color:#64748b">Çözünürlük::</span> <strong>768x576p</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer AV Receiver modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/everest-sl-w13" style="color:#2563eb">Everest SL-W13</a></li><li><a href="/tr/product/elgato-cam-link-4k" style="color:#2563eb">Elgato Cam Link 4K</a></li><li><a href="/tr/product/benq-qcast-mirror-qp30" style="color:#2563eb">BenQ Qcast Mirror QP30</a></li><li><a href="/tr/product/viewsonic-wpd-900" style="color:#2563eb">ViewSonic WPD-900</a></li><li><a href="/tr/product/google-chromecast-ultra" style="color:#2563eb">Google Chromecast Ultra</a></li><li><a href="/tr/product/philips-swr8106b-93" style="color:#2563eb">Philips SWR8106B/93</a></li><li><a href="/tr/product/dell-cast-t95fn" style="color:#2563eb">Dell Cast T95FN</a></li><li><a href="/tr/product/acer-wirelesscast-mwa3" style="color:#2563eb">Acer WirelessCAST MWA3</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/av_receivers" style="color:#2563eb;font-weight:600">Tüm AV Receiver modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -105,7 +105,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -308,34 +327,34 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/Compare-zIMeYcrQ.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/Compare-Dkvq_aok.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/compareAnalysisJobs-DILoXB52.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiCharts-BNyeG-iP.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiAnalysis-qRfzt6j2.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiReportView-B7367QKb.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/reportAdapters-T2yYlQhA.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/QuizFlow-qW2rhHxK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/compareAnalysisJobs-C-WwhSzC.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiCharts-CsabgjMe.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiAnalysis-Db2h6dxu.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiReportView-Bm85xRgq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/reportAdapters-B6qnAtVD.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/QuizFlow-1atH9ZDf.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AiWorkboard-BKCPf-tR.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pageContext-BthrEKoK.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useReviewAnchor-CGU2xSxu.js" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/Compare-AwKeXF9g.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/LinkAnalysis-BEqZtxQM.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/AiAnalysis-I1IYS8Ml.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/AiAnalysis-C37LVQcX.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/index-CImBquEq.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/profileMatch-CQsxW33c.css" />
-  <link rel="preload" as="style" fetchpriority="low" href="/spa/AiCharts-XdZcbHqO.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/spa/AiCharts-DCgOeIRj.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/QuizFlow-B2ZFkTcf.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AiWorkboard-BiGNhJ1T.css" />
   <link rel="preload" as="style" fetchpriority="low" href="/spa/AnalysisExitBar-DrSvI22U.css" />
@@ -371,7 +390,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:26px;width:58%"></div><div class="qb-row"><div class="qb-sk" style="height:190px"></div><div class="qb-sk" style="height:190px"></div></div><div class="qb-sk" style="height:18px;width:40%"></div><div class="qb-sk" style="height:22px;width:94%"></div><div class="qb-sk" style="height:22px;width:94%"></div><div class="qb-sk" style="height:22px;width:94%"></div><div class="qb-sk" style="height:22px;width:94%"></div><div class="qb-sk" style="height:22px;width:94%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gaming_consoles">Game Consoles</a></nav><h1 style="font-size:26px;margin:12px 0 6px">MSI Claw 8 AI+ <span style="color:#94a3b8">vs</span> Sony PlayStation 5 Pro</h1><p style="line-height:1.7;color:#334155">MSI Claw 8 AI+ vs Sony PlayStation 5 Pro comparison: Qor AI tech score and specifications side by side. See which one suits you better in the table below.</p><table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px"><thead><tr><th></th><th style="padding:8px 12px;text-align:left"><a href="/product/msi-claw-8-ai-plus" style="color:#2563eb">MSI Claw 8 AI+</a></th><th style="padding:8px 12px;text-align:left"><a href="/product/sony-playstation-5-pro" style="color:#2563eb">Sony PlayStation 5 Pro</a></th></tr></thead><tbody><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Qor AI tech score</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">88/100</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">86/100</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Brand</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">MSI</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Sony</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Memory Bandwidth</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">136.5 GB/sn</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">576 GB/sn</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Bluetooth</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Storage capacity</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1 TB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2 TB</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Graphics processing power</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">4.1 TFLOPs</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">16.7 TFLOPs</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Tv game resolution</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1920x1200p (WUXGA)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">3840x2160p (4K/UHD)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">The resolution of tv video</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1920x1200p (WUXGA)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">7680x4320p (8K)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Wi-Fi Standard</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 7 (BE)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 7 (BE)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Core Count</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">8</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">8</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Processing Unit</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">64 CUs</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">60 CUs</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Processor Frequency</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2.2 GHz</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">3.5 GHz</td></tr></tbody></table><h2 style="font-size:20px;margin:22px 0 6px">The short answer</h2><p style="line-height:1.7;color:#334155;max-width:680px">MSI Claw 8 AI+ leads on the Qor AI tech score by 2 points (MSI Claw 8 AI+ vs Sony PlayStation 5 Pro). They differ on 7 of the compared specs — most notably Memory Bandwidth, Storage capacity, Graphics processing power.</p><p><a href="https://qorai.net/category/gaming_consoles" style="color:#2563eb;font-weight:600">Compare all Game Consoles →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gaming_consoles">Game Consoles</a></nav><h1 style="font-size:26px;margin:12px 0 6px">MSI Claw 8 AI+ <span style="color:#94a3b8">vs</span> Sony PlayStation 5 Pro</h1><p style="line-height:1.7;color:#334155">MSI Claw 8 AI+ vs Sony PlayStation 5 Pro comparison: Qor AI tech score and specifications side by side. See which one suits you better in the table below.</p><table style="border-collapse:collapse;margin:18px 0;width:100%;max-width:680px"><thead><tr><th></th><th style="padding:8px 12px;text-align:left"><a href="/product/msi-claw-8-ai-plus" style="color:#2563eb">MSI Claw 8 AI+</a></th><th style="padding:8px 12px;text-align:left"><a href="/product/sony-playstation-5-pro" style="color:#2563eb">Sony PlayStation 5 Pro</a></th></tr></thead><tbody><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Qor AI tech score</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">88/100</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">86/100</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Brand</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">MSI</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Sony</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Memory Band Width:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">136.5 GB/sn</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">576 GB/sn</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Bluetooth:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Yes</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Storage Capacity:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1 TB</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2 TB</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Graphics Processing Power:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">4.1 TFLOPs</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">16.7 TFLOPs</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">TV Game Resolution:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1920x1200p (WUXGA)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">3840x2160p (4K/UHD)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">TV Video Resolution:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">1920x1200p (WUXGA)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">7680x4320p (8K)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Wi-Fi Standard:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 7 (BE)</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">Wi-Fi 7 (BE)</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Core Count:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">8</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">8</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Process Unit:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">64 CUs</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">60 CUs</td></tr><tr><td style="padding:7px 12px;color:#64748b;border-top:1px solid #e2e8f0">Processor Frequency:</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">2.2 GHz</td><td style="padding:7px 12px;font-weight:600;border-top:1px solid #e2e8f0">3.5 GHz</td></tr></tbody></table><h2 style="font-size:20px;margin:22px 0 6px">The short answer</h2><p style="line-height:1.7;color:#334155;max-width:680px">MSI Claw 8 AI+ leads on the Qor AI tech score by 2 points (MSI Claw 8 AI+ vs Sony PlayStation 5 Pro). They differ on 7 of the compared specs — most notably Memory Band Width:, Storage Capacity:, Graphics Processing Power:.</p><p><a href="https://qorai.net/category/gaming_consoles" style="color:#2563eb;font-weight:600">Compare all Game Consoles →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

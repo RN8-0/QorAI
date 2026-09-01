@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Philips homerun 7000 series aqua XU7000 robot cleaner+mop Specs</title>
-  <meta name="description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Height that can be removed: 20 mm, Sensor to prevent falling: Yes…" />
+  <meta name="description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Clearable Height: 20 mm, Yes: Yes, 5000 Pa: 5000 Pa, Suction Power…" />
   <link rel="canonical" href="https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/philips-homerun-7000-series-aqua-xu7000" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop Specs" />
-  <meta property="og:description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Height that can be removed: 20 mm, Sensor to prevent falling: Yes…" />
+  <meta property="og:description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Clearable Height: 20 mm, Yes: Yes, 5000 Pa: 5000 Pa, Suction Power…" />
   <link rel="preload" as="image" href="https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png" />
   <meta property="og:image:alt" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop" />
   <meta property="og:url" content="https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop Specs" />
-  <meta name="twitter:description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Height that can be removed: 20 mm, Sensor to prevent falling: Yes…" />
+  <meta name="twitter:description" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop (Philips) — Robot Vacuums. Clearable Height: 20 mm, Yes: Yes, 5000 Pa: 5000 Pa, Suction Power…" />
   <meta name="twitter:image" content="https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png" />
   <meta name="twitter:image:alt" content="Philips homerun 7000 series aqua XU7000 robot cleaner+mop" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000#webpage","url":"https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000","name":"Philips homerun 7000 series aqua XU7000 robot cleaner+mop Specs","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Robot Vacuums","item":"https://qorai.net/category/robot_vacuums"},{"@type":"ListItem","position":3,"name":"Philips homerun 7000 series aqua XU7000 robot cleaner+mop","item":"https://qorai.net/product/philips-homerun-7000-series-aqua-xu7000"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Philips homerun 7000 series aqua XU7000 robot cleaner+mop</h1><p style="color:#475569;margin:0 0 12px">Philips · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png" alt="Philips homerun 7000 series aqua XU7000 robot cleaner+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Philips homerun 7000 series aqua XU7000 robot cleaner+mop key features: height that can be removed 20 mm, sensor to prevent falling Yes, suction power 5000 Pa. Review Philips homerun 7000 series aqua XU7000 robot cleaner+mop's 39 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Height that can be removed:</span> <strong>20 mm</strong></li><li><span style="color:#64748b">Sensor to prevent falling:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Suction Power:</span> <strong>5000 Pa</strong></li><li><span style="color:#64748b">Suction Power Control:</span> <strong>Automated</strong></li><li><span style="color:#64748b">Mapping:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Sliding mop:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Charging automatically:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Wi-Fi:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Scheduling time:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Running time:</span> <strong>180 seconds</strong></li><li><span style="color:#64748b">Charge time:</span> <strong>5 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/philips-homerun-9000-serisi-xu9100-10" style="color:#2563eb">Philips homerun 9000 series XU9100/10 robot sweeper+mop</a></li><li><a href="/product/philips-homerun-7000-serisi-aqua-xu7100" style="color:#2563eb">Philips homerun 7000 series aqua XU7100 robot sweeper+mop</a></li><li><a href="/product/philips-xu5000" style="color:#2563eb">Philips XU5000 robot cleaner+mop</a></li><li><a href="/product/philips-homerun-3000-series-aqua-xu3100-xu3110" style="color:#2563eb">Philips homerun 3000 series aqua robot cleaner+mop</a></li><li><a href="/product/philips-xu5100" style="color:#2563eb">Philips XU5100 robot sweeper+mop</a></li><li><a href="/product/samsung-bespoke-jet-bot-combo-ai" style="color:#2563eb">Samsung bespoke jet bot combo AI robot sweeper+mop</a></li><li><a href="/product/samsung-vr7700bm" style="color:#2563eb">Samsung VR7700BM robot sweeper+mop</a></li><li><a href="/product/anker-clean-l35-hybrid" style="color:#2563eb">Anker clean L35 hybrid robot sweeper+mop (T2194)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/robot_vacuums">Robot Vacuums</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Philips homerun 7000 series aqua XU7000 robot cleaner+mop</h1><p style="color:#475569;margin:0 0 12px">Philips · Robot Vacuums · Qor AI tech score 100/100</p><img src="https://resim.epey.com/861912/m_philips-homerun-7000-serisi-aqua-xu7000-1.png" alt="Philips homerun 7000 series aqua XU7000 robot cleaner+mop" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Philips homerun 7000 series aqua XU7000 robot cleaner+mop key features: clearable height 20 mm, yes Yes, 5000 pa 5000 Pa. Review Philips homerun 7000 series aqua XU7000 robot cleaner+mop's 38 technical specs, its Qor AI tech score and how it compares with similar models in robot vacuums below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Clearable Height:</span> <strong>20 mm</strong></li><li><span style="color:#64748b">Yes:</span> <strong>Yes</strong></li><li><span style="color:#64748b">5000 Pa:</span> <strong>5000 Pa</strong></li><li><span style="color:#64748b">Suction Power Control:</span> <strong>Automatic</strong></li><li><span style="color:#64748b">Automatic Charging:</span> <strong>Yes</strong></li><li><span style="color:#64748b">180 dk:</span> <strong>180 dk</strong></li><li><span style="color:#64748b">Charging Time:</span> <strong>5 hours</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Robot Vacuums</h2><ul style="line-height:1.8"><li><a href="/product/philips-homerun-9000-serisi-xu9100-10" style="color:#2563eb">Philips homerun 9000 series XU9100/10 robot sweeper+mop</a></li><li><a href="/product/philips-homerun-7000-serisi-aqua-xu7100" style="color:#2563eb">Philips homerun 7000 series aqua XU7100 robot sweeper+mop</a></li><li><a href="/product/philips-xu5000" style="color:#2563eb">Philips XU5000 robot cleaner+mop</a></li><li><a href="/product/philips-homerun-3000-series-aqua-xu3100-xu3110" style="color:#2563eb">Philips homerun 3000 series aqua robot cleaner+mop</a></li><li><a href="/product/philips-xu5100" style="color:#2563eb">Philips XU5100 robot sweeper+mop</a></li><li><a href="/product/samsung-bespoke-jet-bot-combo-ai" style="color:#2563eb">Samsung bespoke jet bot combo AI robot sweeper+mop</a></li><li><a href="/product/samsung-vr7700bm" style="color:#2563eb">Samsung VR7700BM robot sweeper+mop</a></li><li><a href="/product/anker-clean-l35-hybrid" style="color:#2563eb">Anker clean L35 hybrid robot sweeper+mop (T2194)</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/robot_vacuums" style="color:#2563eb;font-weight:600">Compare all Robot Vacuums →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

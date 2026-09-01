@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">ViewSonic PJD6350 DLP Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">ViewSonic · Projeksiyon · Qor AI teknik skoru 95/100</p><img src="https://resim.epey.com/87848/m_viewsonic-pjd6350-1.jpg" alt="ViewSonic PJD6350 DLP Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">ViewSonic PJD6350 DLP Projeksiyon öne çıkan özellikleri: ağ bağlantısı Var, dinamik kontrast 22000 :1, enerji tüketimi (güçlü) 315 W. ViewSonic PJD6350 DLP Projeksiyon 26 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Var</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>22000 :1</strong></li><li><span style="color:#64748b">Enerji Tüketimi (Güçlü):</span> <strong>315 W</strong></li><li><span style="color:#64748b">Gürültü Seviyesi (Güçlü):</span> <strong>32 dB</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>10000 saat</strong></li><li><span style="color:#64748b">Parlaklık (ANSI):</span> <strong>3300 Lümen</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>DLP</strong></li><li><span style="color:#64748b">Çözünürlük:</span> <strong>1024x768</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/viewsonic-pa503s" style="color:#2563eb">ViewSonic PA503S DLP Projeksiyon</a></li><li><a href="/tr/product/viewsonic-pa503x" style="color:#2563eb">ViewSonic PA503X DLP Projeksiyon</a></li><li><a href="/tr/product/epson-eh-tw7100" style="color:#2563eb">Epson EH-TW7100 LCD Projeksiyon</a></li><li><a href="/tr/product/benq-mx560" style="color:#2563eb">BenQ MX560 DLP Projeksiyon</a></li><li><a href="/tr/product/benq-lk935" style="color:#2563eb">BenQ LK935 DLP Projeksiyon</a></li><li><a href="/tr/product/epson-eh-tw6150" style="color:#2563eb">Epson EH-TW6150 LCD Projeksiyon</a></li><li><a href="/tr/product/benq-x500i" style="color:#2563eb">BenQ X500i DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk710" style="color:#2563eb">BenQ TK710 DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/tr">Qor AI</a> › <a href="/tr/category">Kategoriler</a> › <a href="https://qorai.net/tr/category/projectors">Projeksiyon</a></nav><h1 style="font-size:26px;margin:12px 0 4px">ViewSonic PJD6350 DLP Projeksiyon</h1><p style="color:#475569;margin:0 0 12px">ViewSonic · Projeksiyon · Qor AI teknik skoru 95/100</p><img src="https://resim.epey.com/87848/m_viewsonic-pjd6350-1.jpg" alt="ViewSonic PJD6350 DLP Projeksiyon" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">ViewSonic PJD6350 DLP Projeksiyon öne çıkan özellikleri: ağ bağlantısı Var, dinamik kontrast 22000 :1, enerji tüketimi (güçlü) 315 W. ViewSonic PJD6350 DLP Projeksiyon 27 teknik özelliğini, Qor AI teknik skorunu ve benzer projeksiyon modelleriyle karşılaştırmasını aşağıda incele.</p><h2 style="font-size:18px;margin:22px 0 8px">Öne Çıkan Teknik Özellikler</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Ağ Bağlantısı:</span> <strong>Var</strong></li><li><span style="color:#64748b">Dinamik Kontrast:</span> <strong>22000 :1</strong></li><li><span style="color:#64748b">Enerji Tüketimi (Güçlü):</span> <strong>315 W</strong></li><li><span style="color:#64748b">Gürültü Seviyesi (Güçlü):</span> <strong>32 dB</strong></li><li><span style="color:#64748b">Lamba Ömrü (Ekonomik):</span> <strong>10000 saat</strong></li><li><span style="color:#64748b">Parlaklık (ANSI):</span> <strong>3300 Lümen</strong></li><li><span style="color:#64748b">Projeksiyon Sistemi:</span> <strong>DLP</strong></li><li><span style="color:#64748b">Çözünürlük:</span> <strong>1024x768</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Benzer Projeksiyon modelleri</h2><ul style="line-height:1.8"><li><a href="/tr/product/viewsonic-pa503s" style="color:#2563eb">ViewSonic PA503S DLP Projeksiyon</a></li><li><a href="/tr/product/viewsonic-pa503x" style="color:#2563eb">ViewSonic PA503X DLP Projeksiyon</a></li><li><a href="/tr/product/epson-eh-tw7100" style="color:#2563eb">Epson EH-TW7100 LCD Projeksiyon</a></li><li><a href="/tr/product/benq-mx560" style="color:#2563eb">BenQ MX560 DLP Projeksiyon</a></li><li><a href="/tr/product/epson-eh-tw6150" style="color:#2563eb">Epson EH-TW6150 LCD Projeksiyon</a></li><li><a href="/tr/product/benq-x500i" style="color:#2563eb">BenQ X500i DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk710" style="color:#2563eb">BenQ TK710 DLP Projeksiyon</a></li><li><a href="/tr/product/benq-tk700" style="color:#2563eb">BenQ TK700 DLP Projeksiyon</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/tr/category/projectors" style="color:#2563eb;font-weight:600">Tüm Projeksiyon modellerini karşılaştır →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

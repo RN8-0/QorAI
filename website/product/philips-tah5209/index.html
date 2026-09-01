@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Philips TAH5209 Wireless Headphones Specs &amp; Comparison | Qor AI</title>
-  <meta name="description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type:: Wireless, Bluetooth Standard:: 5.3, Bluetooth:: Yes, Low Frequency (Head):: 20…" />
+  <meta name="description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type: Wireless, Yes 5.3 HFP A2DP AVRCP SBC: Yes, Bluetooth Standard: 5.3, Low…" />
   <link rel="canonical" href="https://qorai.net/product/philips-tah5209" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/philips-tah5209" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/philips-tah5209" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Philips TAH5209 Wireless Headphones Specs &amp; Comparison | Qor AI" />
-  <meta property="og:description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type:: Wireless, Bluetooth Standard:: 5.3, Bluetooth:: Yes, Low Frequency (Head):: 20…" />
+  <meta property="og:description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type: Wireless, Yes 5.3 HFP A2DP AVRCP SBC: Yes, Bluetooth Standard: 5.3, Low…" />
   <link rel="preload" as="image" href="https://resim.epey.com/956269/m_philips-tah5209-1.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/956269/m_philips-tah5209-1.jpg" />
   <meta property="og:image:alt" content="Philips TAH5209 Wireless Headphones" />
   <meta property="og:url" content="https://qorai.net/product/philips-tah5209" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Philips TAH5209 Wireless Headphones Specs &amp; Comparison | Qor AI" />
-  <meta name="twitter:description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type:: Wireless, Bluetooth Standard:: 5.3, Bluetooth:: Yes, Low Frequency (Head):: 20…" />
+  <meta name="twitter:description" content="Philips TAH5209 Wireless Headphones (Philips) — Headphones. Connection Type: Wireless, Yes 5.3 HFP A2DP AVRCP SBC: Yes, Bluetooth Standard: 5.3, Low…" />
   <meta name="twitter:image" content="https://resim.epey.com/956269/m_philips-tah5209-1.jpg" />
   <meta name="twitter:image:alt" content="Philips TAH5209 Wireless Headphones" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/philips-tah5209#webpage","url":"https://qorai.net/product/philips-tah5209","name":"Philips TAH5209 Wireless Headphones Specs & Comparison | Qor AI","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/956269/m_philips-tah5209-1.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/philips-tah5209#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Headphones","item":"https://qorai.net/category/headphones"},{"@type":"ListItem","position":3,"name":"Philips TAH5209 Wireless Headphones","item":"https://qorai.net/product/philips-tah5209"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/headphones">Headphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Philips TAH5209 Wireless Headphones</h1><p style="color:#475569;margin:0 0 12px">Philips · Headphones · Qor AI tech score 90/100</p><img src="https://resim.epey.com/956269/m_philips-tah5209-1.jpg" alt="Philips TAH5209 Wireless Headphones" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Philips TAH5209 Wireless Headphones key features: connection type: Wireless, bluetooth standard: 5.3, bluetooth: Yes. Review Philips TAH5209 Wireless Headphones's 40 technical specs, its Qor AI tech score and how it compares with similar models in headphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Connection Type::</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Bluetooth Standard::</span> <strong>5.3</strong></li><li><span style="color:#64748b">Bluetooth::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Low Frequency (Head)::</span> <strong>20 Hz</strong></li><li><span style="color:#64748b">Impedance::</span> <strong>32 Ohm</strong></li><li><span style="color:#64748b">Sensitivity::</span> <strong>92 dB</strong></li><li><span style="color:#64748b">Use Distance::</span> <strong>10 m</strong></li><li><span style="color:#64748b">Use Time (General)::</span> <strong>65 hours</strong></li><li><span style="color:#64748b">Control::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Maximum Power::</span> <strong>20 mW</strong></li><li><span style="color:#64748b">Microphone::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Audio Output::</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Driver Diameter::</span> <strong>40 mm</strong></li><li><span style="color:#64748b">High Frequency (Tiz)::</span> <strong>20 kHz</strong></li><li><span style="color:#64748b">Charging Time::</span> <strong>120 dk</strong></li><li><span style="color:#64748b">Charging Type::</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Headphones</h2><ul style="line-height:1.8"><li><a href="/product/lenovo-eb320" style="color:#2563eb">Lenovo EB320 Wireless Headphones</a></li><li><a href="/product/jbl-quantum-610-wireless" style="color:#2563eb">JBL Quantum 610 Wireless Wireless Headphones</a></li><li><a href="/product/jbl-tour-one-m2" style="color:#2563eb">JBL Tour One M2 Wireless Headphones</a></li><li><a href="/product/jbl-live-770nc" style="color:#2563eb">JBL Live 770NC Wireless Headphones</a></li><li><a href="/product/jbl-tour-one-m3" style="color:#2563eb">JBL Tour One M3 Wireless Headphones</a></li><li><a href="/product/jbl-live-670nc" style="color:#2563eb">JBL Live 670NC Wireless Headphones</a></li><li><a href="/product/jbl-tune-720bt" style="color:#2563eb">JBL Tune 720BT Wireless Headphones</a></li><li><a href="/product/jbl-tune-770nc" style="color:#2563eb">JBL Tune 770NC Wireless Headphones</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/headphones" style="color:#2563eb;font-weight:600">Compare all Headphones →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/headphones">Headphones</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Philips TAH5209 Wireless Headphones</h1><p style="color:#475569;margin:0 0 12px">Philips · Headphones · Qor AI tech score 90/100</p><img src="https://resim.epey.com/956269/m_philips-tah5209-1.jpg" alt="Philips TAH5209 Wireless Headphones" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Philips TAH5209 Wireless Headphones key features: connection type Wireless, yes 5.3 hfp a2dp avrcp sbc Yes, bluetooth standard 5.3. Review Philips TAH5209 Wireless Headphones's 40 technical specs, its Qor AI tech score and how it compares with similar models in headphones below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Connection Type:</span> <strong>Wireless</strong></li><li><span style="color:#64748b">Yes 5.3 HFP A2DP AVRCP SBC:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Bluetooth Standard:</span> <strong>5.3</strong></li><li><span style="color:#64748b">Low Frequency (Head):</span> <strong>20 Hz</strong></li><li><span style="color:#64748b">32 Ohm:</span> <strong>32 Ohm</strong></li><li><span style="color:#64748b">Sensitivity:</span> <strong>92 dB</strong></li><li><span style="color:#64748b">Use Distance:</span> <strong>10 m</strong></li><li><span style="color:#64748b">Use Time (General):</span> <strong>65 hours</strong></li><li><span style="color:#64748b">Control:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Maximum Power:</span> <strong>20 mW</strong></li><li><span style="color:#64748b">Microphone:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Audio output:</span> <strong>Stereo</strong></li><li><span style="color:#64748b">Driver Diameter:</span> <strong>40 mm</strong></li><li><span style="color:#64748b">High Frequency (Tiz):</span> <strong>20 kHz</strong></li><li><span style="color:#64748b">Charging Time:</span> <strong>120 dk</strong></li><li><span style="color:#64748b">Charging Type:</span> <strong>USB</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Headphones</h2><ul style="line-height:1.8"><li><a href="/product/lenovo-eb320" style="color:#2563eb">Lenovo EB320 Wireless Headphones</a></li><li><a href="/product/jbl-quantum-610-wireless" style="color:#2563eb">JBL Quantum 610 Wireless Wireless Headphones</a></li><li><a href="/product/jbl-tour-one-m2" style="color:#2563eb">JBL Tour One M2 Wireless Headphones</a></li><li><a href="/product/jbl-live-770nc" style="color:#2563eb">JBL Live 770NC Wireless Headphones</a></li><li><a href="/product/jbl-tour-one-m3" style="color:#2563eb">JBL Tour One M3 Wireless Headphones</a></li><li><a href="/product/jbl-live-670nc" style="color:#2563eb">JBL Live 670NC Wireless Headphones</a></li><li><a href="/product/jbl-tune-720bt" style="color:#2563eb">JBL Tune 720BT Wireless Headphones</a></li><li><a href="/product/jbl-tune-770nc" style="color:#2563eb">JBL Tune 770NC Wireless Headphones</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/headphones" style="color:#2563eb;font-weight:600">Compare all Headphones →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- seo:start -->
   <title>Sony PlayStation 5 Digital Edition (Dijital) Specs &amp; Comparison</title>
-  <meta name="description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Bandwidth: 448 GB/sn, Bluetooth: Yes, Storage capacity: 825 GB, Graphics…" />
+  <meta name="description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Band Width:: 448 GB/sn, Bluetooth:: Yes, Storage Capacity:: 825 GB, Graphics…" />
   <link rel="canonical" href="https://qorai.net/product/sony-playstation-5-digital-edition" />
   <link rel="alternate" hreflang="en" href="https://qorai.net/product/sony-playstation-5-digital-edition" />
   <link rel="alternate" hreflang="tr" href="https://qorai.net/tr/product/sony-playstation-5-digital-edition" />
@@ -14,14 +14,14 @@
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Qor AI" />
   <meta property="og:title" content="Sony PlayStation 5 Digital Edition (Dijital) Specs &amp; Comparison" />
-  <meta property="og:description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Bandwidth: 448 GB/sn, Bluetooth: Yes, Storage capacity: 825 GB, Graphics…" />
+  <meta property="og:description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Band Width:: 448 GB/sn, Bluetooth:: Yes, Storage Capacity:: 825 GB, Graphics…" />
   <link rel="preload" as="image" href="https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg" fetchpriority="high" />
   <meta property="og:image" content="https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg" />
   <meta property="og:image:alt" content="Sony PlayStation 5 Digital Edition (Dijital)" />
   <meta property="og:url" content="https://qorai.net/product/sony-playstation-5-digital-edition" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Sony PlayStation 5 Digital Edition (Dijital) Specs &amp; Comparison" />
-  <meta name="twitter:description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Bandwidth: 448 GB/sn, Bluetooth: Yes, Storage capacity: 825 GB, Graphics…" />
+  <meta name="twitter:description" content="Sony PlayStation 5 Digital Edition (Dijital) (Sony) — Game Consoles. Memory Band Width:: 448 GB/sn, Bluetooth:: Yes, Storage Capacity:: 825 GB, Graphics…" />
   <meta name="twitter:image" content="https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg" />
   <meta name="twitter:image:alt" content="Sony PlayStation 5 Digital Edition (Dijital)" />
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://qorai.net/product/sony-playstation-5-digital-edition#webpage","url":"https://qorai.net/product/sony-playstation-5-digital-edition","name":"Sony PlayStation 5 Digital Edition (Dijital) Specs & Comparison","isPartOf":{"@id":"https://qorai.net/#website"},"primaryImageOfPage":"https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg"},{"@type":"BreadcrumbList","@id":"https://qorai.net/product/sony-playstation-5-digital-edition#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Qor AI","item":"https://qorai.net/"},{"@type":"ListItem","position":2,"name":"Game Consoles","item":"https://qorai.net/category/gaming_consoles"},{"@type":"ListItem","position":3,"name":"Sony PlayStation 5 Digital Edition (Dijital)","item":"https://qorai.net/product/sony-playstation-5-digital-edition"}]}]}</script>
@@ -106,7 +106,26 @@
         if(qc==='tr'){qtr=true;break}
         if(qc==='en'){break}
       }
-      if(qtr&&!/^\/blog\/.+/.test(qp)){
+      /* BEYAZ LISTE. Yonlendirme YALNIZ /tr/ altinda GERCEKTEN var olan
+         yollara yapilir. Once koru yoktu ve sonucu 404'tu: kokte durup
+         /tr/ altinda BULUNMAYAN adresler var --
+             /email-verify.html      /reset-password.html
+             /affiliate-disclosure.html
+         Bunlar kimlik dogrulama akislari; Turkce tarayicidaki kullanici
+         e-postadaki dogrulama linkine tiklayinca /tr/email-verify.html'e
+         yonleniyor ve "Page not found" goruyordu. Liste website/tr/ altinda
+         URETILEN dizinlerin ta kendisi; yeni bir dil-onekli rota eklenirse
+         buraya da eklenmeli. */
+      var QOK={'':1,'about':1,'ai-chat':1,'analiz':1,'blog':1,'category':1,
+        'compare':1,'contact':1,'cookies':1,'faq':1,'go':1,'link-analysis':1,
+        'premium':1,'privacy':1,'product':1,'profile':1,'quiz':1,'refund':1,
+        'search':1,'subscriptions':1,'terms':1};
+      var qseg=qp.split('/')[1]||'';
+      /* /blog/<slug> HARIC: blog i18n'i slug tabanli, /tr/blog/<slug>
+         nginx'te /blog/<slug>'a 301 doner -> sonsuz dongu. Liste (/blog)
+         yonlenir, YAZI yonlenmez. */
+      var qyazi=/^\/blog\/.+/.test(qp);
+      if(qtr&&QOK[qseg]&&!qyazi){
         location.replace('/tr'+(qp==='/'?'/':qp)+location.search+location.hash);
       }
     }
@@ -309,18 +328,18 @@
   /* Paket geldiyse kabuk zaten kaldırılır; bu geçiş yalnız kaldırma anını yumuşatır. */
   #qor-boot.qb-out{opacity:0;transition:opacity .18s ease}
   </style>
-  <script type="module" crossorigin src="/spa/index-DN9YBr4y.js"></script>
+  <script type="module" crossorigin src="/spa/index-Cbp8S4C0.js"></script>
   <link rel="modulepreload" crossorigin href="/spa/vendor-DzEykzq0.js">
   <link rel="modulepreload" crossorigin href="/spa/aitext-qQJmgM3E.js">
   <link rel="stylesheet" crossorigin href="/spa/index-CImBquEq.css">
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-D4iO_fEZ.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-B_CWOkmi.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-DjBTOqdr.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-d9e_0rz-.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-CKoWLfvY.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-B8jCqbeB.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CGzWB3MV.js" />
-  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-C7m3GJ2f.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/ProductDetail-DlEEWZ3p.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pocketbase-ClRGSbmO.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/useAiAccess-BMLYs-aK.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/productAnalysisJobs-FKBh4qjl.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/catalogAlternatives-DeKWjOh2.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/pbHistory-Cg2Va1Zp.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/offers-CJfI9hlq.js" />
+  <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/profileMatch-DPD85Eu3.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AmazonLogo-DttRUBP6.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/GlyphIcons-D_EiYjNO.js" />
   <link rel="modulepreload" crossorigin fetchpriority="low" href="/spa/AnalysisExitBar-WF-pbhrx.js" />
@@ -363,7 +382,7 @@
       <!--qb-hero--><div class="qb-skel"><div class="qb-sk" style="height:12px;width:46%"></div><div class="qb-sk" style="height:300px"></div><div class="qb-sk" style="height:24px;width:88%"></div><div class="qb-sk" style="height:24px;width:54%"></div><div class="qb-row"><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div><div class="qb-sk" style="height:30px;border-radius:999px"></div></div><div class="qb-row"><div class="qb-sk" style="height:40px;border-radius:12px"></div><div class="qb-sk" style="height:40px;border-radius:12px"></div></div><div class="qb-sk" style="height:16px;width:72%"></div><div class="qb-sk" style="height:16px;width:90%"></div><div class="qb-sk" style="height:16px;width:64%"></div><div class="qb-sk" style="height:16px;width:82%"></div></div><!--/qb-hero-->
     </div>
   </div>
-  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gaming_consoles">Game Consoles</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Sony PlayStation 5 Digital Edition (Dijital)</h1><p style="color:#475569;margin:0 0 12px">Sony · Game Consoles · Qor AI tech score 52/100</p><img src="https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg" alt="Sony PlayStation 5 Digital Edition (Dijital)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Sony PlayStation 5 Digital Edition (Dijital) key features: memory bandwidth 448 GB/sn, bluetooth Yes, storage capacity 825 GB. Review Sony PlayStation 5 Digital Edition (Dijital)'s 41 technical specs, its Qor AI tech score and how it compares with similar models in game consoles below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory Bandwidth:</span> <strong>448 GB/sn</strong></li><li><span style="color:#64748b">Bluetooth:</span> <strong>Yes</strong></li><li><span style="color:#64748b">Storage capacity:</span> <strong>825 GB</strong></li><li><span style="color:#64748b">Graphics processing power:</span> <strong>10.28 TFLOPs</strong></li><li><span style="color:#64748b">Tv game resolution:</span> <strong>3840x2160p (4K/UHD)</strong></li><li><span style="color:#64748b">The resolution of tv video:</span> <strong>7680x4320p (8K)</strong></li><li><span style="color:#64748b">Wi-Fi Standard:</span> <strong>Wi-Fi 6 (AX)</strong></li><li><span style="color:#64748b">Core Count:</span> <strong>8</strong></li><li><span style="color:#64748b">Processing Unit:</span> <strong>36 CUs</strong></li><li><span style="color:#64748b">Processor Frequency:</span> <strong>3.5 GHz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Game Consoles</h2><ul style="line-height:1.8"><li><a href="/product/sony-playstation-5" style="color:#2563eb">Sony playstation 5 (blu-ray player)</a></li><li><a href="/product/microsoft-xbox-series-x" style="color:#2563eb">Microsoft Xbox Series X (Siyah)</a></li><li><a href="/product/microsoft-xbox-series-s-1tb" style="color:#2563eb">Microsoft Xbox Series S (1 TB)</a></li><li><a href="/product/nintendo-switch-oled" style="color:#2563eb">Nintendo Switch OLED</a></li><li><a href="/product/sony-playstation-4-slim-1tb" style="color:#2563eb">Sony PlayStation 4 Slim (1 TB)</a></li><li><a href="/product/nintendo-switch-lite" style="color:#2563eb">Nintendo Switch Lite</a></li><li><a href="/product/sony-playstation-4-500gb" style="color:#2563eb">Sony PlayStation 4 (500 GB)</a></li><li><a href="/product/acer-nitro-blaze-8" style="color:#2563eb">Acer Nitro Blaze 8</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/gaming_consoles" style="color:#2563eb;font-weight:600">Compare all Game Consoles →</a></p></main></div>
+  <div id="root"><main class="seo-prerender" style="max-width:880px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a"><nav style="font-size:13px;color:#64748b"><a href="/">Qor AI</a> › <a href="/category">Categories</a> › <a href="https://qorai.net/category/gaming_consoles">Game Consoles</a></nav><h1 style="font-size:26px;margin:12px 0 4px">Sony PlayStation 5 Digital Edition (Dijital)</h1><p style="color:#475569;margin:0 0 12px">Sony · Game Consoles · Qor AI tech score 52/100</p><img src="https://resim.epey.com/568287/m_sony-playstation-5-digital-edition-1.jpg" alt="Sony PlayStation 5 Digital Edition (Dijital)" width="320" style="max-width:100%;height:auto;border-radius:12px" loading="lazy" /><p style="line-height:1.7;color:#334155">Sony PlayStation 5 Digital Edition (Dijital) key features: memory band width: 448 GB/sn, bluetooth: Yes, storage capacity: 825 GB. Review Sony PlayStation 5 Digital Edition (Dijital)'s 54 technical specs, its Qor AI tech score and how it compares with similar models in game consoles below.</p><h2 style="font-size:18px;margin:22px 0 8px">Key Specifications</h2><ul style="margin:8px 0;line-height:1.8;list-style:none;padding:0"><li><span style="color:#64748b">Memory Band Width::</span> <strong>448 GB/sn</strong></li><li><span style="color:#64748b">Bluetooth::</span> <strong>Yes</strong></li><li><span style="color:#64748b">Storage Capacity::</span> <strong>825 GB</strong></li><li><span style="color:#64748b">Graphics Processing Power::</span> <strong>10.28 TFLOPs</strong></li><li><span style="color:#64748b">TV Game Resolution::</span> <strong>3840x2160p (4K/UHD)</strong></li><li><span style="color:#64748b">TV Video Resolution::</span> <strong>7680x4320p (8K)</strong></li><li><span style="color:#64748b">Wi-Fi Standard::</span> <strong>Wi-Fi 6 (AX)</strong></li><li><span style="color:#64748b">Core Count::</span> <strong>8</strong></li><li><span style="color:#64748b">Process Unit::</span> <strong>36 CUs</strong></li><li><span style="color:#64748b">Processor Frequency::</span> <strong>3.5 GHz</strong></li></ul><h2 style="font-size:18px;margin:22px 0 8px">Similar models in Game Consoles</h2><ul style="line-height:1.8"><li><a href="/product/sony-playstation-5" style="color:#2563eb">Sony playstation 5 (blu-ray player)</a></li><li><a href="/product/microsoft-xbox-series-x" style="color:#2563eb">Microsoft Xbox Series X (Siyah)</a></li><li><a href="/product/microsoft-xbox-series-s-1tb" style="color:#2563eb">Microsoft Xbox Series S (1 TB)</a></li><li><a href="/product/nintendo-switch-oled" style="color:#2563eb">Nintendo Switch OLED</a></li><li><a href="/product/sony-playstation-4-slim-1tb" style="color:#2563eb">Sony PlayStation 4 Slim (1 TB)</a></li><li><a href="/product/nintendo-switch-lite" style="color:#2563eb">Nintendo Switch Lite</a></li><li><a href="/product/sony-playstation-4-500gb" style="color:#2563eb">Sony PlayStation 4 (500 GB)</a></li><li><a href="/product/acer-nitro-blaze-8" style="color:#2563eb">Acer Nitro Blaze 8</a></li></ul><p style="margin-top:16px"><a href="https://qorai.net/category/gaming_consoles" style="color:#2563eb;font-weight:600">Compare all Game Consoles →</a></p></main></div>
   <script>
     /* Kabuğu kaldırma + PAKET GELMEZSE kurtarma.
        Bu blok BİLEREK satır içi: kurtarmanın çalışması gereken senaryo tam da
