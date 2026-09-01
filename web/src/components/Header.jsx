@@ -35,6 +35,12 @@ const NAV_REST = [
 ].filter((n) => routeOpen(n.to));
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 
+// Nav ORTALANSIN MI? Tam liste bes sekme tasir; kapali modda ikiye duser
+// (Blog + Analizler) ve Ana Sayfa + Kategoriler ile birlikte dort eleman
+// genis bir barin ortasinda asili kalir. Esik dort: tam listede ortali,
+// kisitli listede sola yaslanir. Tek karar noktasi burasi.
+const navOrtali = NAV_REST.length >= 4;
+
 const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
   group.cats.map((id) => ({ id, group })),
 );
@@ -114,8 +120,15 @@ export default function Header() {
 
           {/* Menu ORTADA: nav'in iki yaninda esnek bosluk var. Onceden tek
               `.grow` vardi ve o da nav'dan SONRA geliyordu, yani menu sola
-              yaslaniyordu. Iki bosluk arayi esit boler. */}
-          <div className="grow" />
+              yaslaniyordu. Iki bosluk arayi esit boler.
+              ORTALAMA SEKME SAYISINA BAGLI (2026-09-01): site modu kapaliyken
+              nav dort sekmeye duserek (Ana Sayfa · Kategoriler · Blog ·
+              Analizler) ortada asili kaliyor ve ust bar bos gorunuyordu.
+              Az sekmeyle nav arama kutusunun yanina, SOLA yaslanir. Kosul
+              moda bagli oldugu icin akislar geri acildiginda (Link Analizi,
+              Abonelikler, Premium — bkz. lib/siteMode.js) ilk `.grow` geri
+              gelir ve menu KENDILIGINDEN yeniden ortalanir. */}
+          {navOrtali && <div className="grow" />}
 
           <nav className="nav" onMouseLeave={closeCatSoon}>
             <NavLink to="/" end onMouseEnter={closeCatNow}

@@ -57,11 +57,11 @@ const ICONS = {
 // acildiginda ise ilk sirayi yeniden aliyorlar.
 const ITEMS = [
   { to: '/', key: 'nav.home', end: true, icon: ICONS.home },
+  { to: '/category', key: 'nav.categories', icon: ICONS.grid },
   { to: '/analiz', key: 'nav.analyses', icon: ICONS.analyses },
+  { to: '/blog', key: 'nav.blog', icon: ICONS.blog },
   { to: '/link-analysis', key: 'nav.linkAnalysis', icon: ICONS.link },
   { to: '/subscriptions', key: 'nav.subscriptions', icon: ICONS.subs },
-  { to: '/category', key: 'nav.categories', icon: ICONS.grid },
-  { to: '/blog', key: 'nav.blog', icon: ICONS.blog },
 ].filter((it) => routeOpen(it.to)).slice(0, 4);
 
 export default function BottomNav() {

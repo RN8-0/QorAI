@@ -1306,17 +1306,30 @@ function quizLines(answers = []) {
 function evaluationAxisBlock(axis, lang) {
   const list = (Array.isArray(axis) ? axis : []).map((f) => f && f.label).filter(Boolean);
   const tr = String(lang || 'en').slice(0, 2).toLowerCase() === 'tr';
+  // KRITIK: BURADAN EK CIKTI ISTENMEZ.
+  //
+  // Ilk surum "3-4 kullanim profili icin ayri hukum ver" diyordu ve semada o
+  // hukumlerin gidecegi ALAN YOKTU. Model onlari serbest metin alanlarina
+  // (analysis zaten 8-11 paragraf) sikistirdi, cikti 16384 jeton tavanini
+  // asti, JSON ortasinda kesildi ve parseAiJson null dondu: adminde
+  // "Rapor cozulemedi (en)". Ayni tuzak 2026-08-22'de priceForecast'te de
+  // yasanmisti (bkz. runProductReport'taki olcum notu).
+  //
+  // Cozum: yeni alan degil, VAR OLAN alanlari yonlendirmek. `factors` zaten
+  // 8-10 etiket istiyor -> eksen oraya oturur. `bestFor`/`notFor` zaten var
+  // -> kullanim profilleri oraya girer. Cikti hacmi ARTMAZ.
   const axisPart = list.length
-    ? 'Evaluate the product on this fixed axis, every item, in this order:\n'
+    ? 'Use these as the labels of product.factors, in this order, before adding any of your own:\n'
       + list.map((l, i) => (i + 1) + '. ' + l).join('\n')
-    : 'Evaluate the product across every dimension that matters in its category.';
-  return 'NO QUIZ WAS ANSWERED. This analysis must serve EVERY reader, not one assumed buyer.\n'
+    : 'Choose product.factors labels from the dimensions that actually matter in this category.';
+  return 'NO QUIZ WAS ANSWERED. Write for EVERY reader, not one assumed buyer.\n'
     + axisPart + '\n'
-    + 'Then give a verdict PER USE PROFILE: 3-4 realistic profiles for this category, '
-    + 'including at least one the product is clearly WRONG for. Each profile gets a '
-    + 'concrete buy / think / skip call and the number that justifies it.\n'
-    + 'Never write a single overall "fit" or "match" verdict as if one reader existed. '
-    + 'Never address the reader as if they had answered questions.'
+    + 'product.bestFor must name 2-3 concrete use profiles this product suits, '
+    + 'each with the number that justifies it. product.notFor must name at least '
+    + 'one profile it is clearly WRONG for, with the number that proves it.\n'
+    + 'product.matchScore is the product level on its own merits, NOT a fit with '
+    + 'any reader. Never address the reader as if they had answered questions, '
+    + 'and never write "your needs" or "your answers".'
     + (tr ? '\nWrite every user-facing string in Turkish.' : '');
 }
 
@@ -1464,6 +1477,8 @@ function buildCompareResearchPrompt(products, lang, context = {}) {
 // Consolidated single-call prompt: quiz answers + catalog specs + optional web
 // research become one continuous report in the requested order.
 function buildFullPrompt(p, lang, profile = {}, context = {}) {
+  // Quiz yanitlandi mi? Semanin quiz'e dayanan kurallari buna bagli.
+  const quizVar = Array.isArray(context.quizAnswers) && context.quizAnswers.length > 0;
   const { name, brand, category, score, price, ks } = productLine(p, lang);
   const ctx = promptContext(context, lang);
   const prof = Object.entries(profile).filter(([, v]) => v != null && v !== '' && (!Array.isArray(v) || v.length))
@@ -1486,12 +1501,16 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '    "decision": "buy|consider|skip",\n' +
     '    "confidence": <0-100>,\n' +
     '    "headline": "one decisive sentence a buyer can act on",\n' +
-    '    "matchComment": "5-7 detailed sentences explaining quiz/profile fit, trade-offs, and who should care",\n' +
+    '    "matchComment": ' + (quizVar
+      ? '"5-7 detailed sentences explaining quiz/profile fit, trade-offs, and who should care",'
+      : '"5-7 detailed sentences on what this product actually delivers, its trade-offs, and which buyers should care",') + '\n' +
     '    "reviewedInputs": ["<input/source label in requested language>", "<input/source label in requested language>"],\n' +
     '    "factors": [{"label": "Usage fit", "score": <0-100>, "detail": "2 detailed sentences with evidence"}],\n' +
     '    "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences on why it changes the decision", "severity": "high|mid|low"}],\n' +
     '    "quizInsights": [{"topic": "what the question was about", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences on how it moved the score"}],\n' +
-    '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 detailed sentences with evidence"}],\n' +
+    '    "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": '
+      + (quizVar ? '"need inferred from quiz/profile"' : '"the buyer need this spec serves in this category"')
+      + ', "score": <0-100>, "comment": "2 detailed sentences with evidence"}],\n' +
     '    "analysis": "8-11 substantial paragraphs, each 45-85 words: technical overview, performance/quality, compatibility, longevity, risks, buying advice; merge AI product advisor here",\n' +
     '    "strengths": ["6 detailed strengths grounded in specs"],\n' +
     '    "weaknesses": ["5 detailed drawbacks a buyer can judge BEFORE paying — size, weight, price, a missing accessory, a spec that falls short, ecosystem lock-in. Failures, crashes, overheating, defects and support problems do NOT belong here; they go in community.chronicIssues"],\n' +
@@ -1547,7 +1566,12 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // summary icine kopyaliyordu, yani okuyucu ayni sikayeti BES KEZ
     // goruyordu. Alan alan sinir yazmak yetmedi; birlestiren kural sart.
     '- ONE FACT, ONE PLACE. product.strengths, product.weaknesses, product.criticalPoints, product.reliabilityNotes, community.lovedFeatures and community.chronicIssues must not share a single fact between them. Before writing an item, check whether another list already covers it; if it does, drop it or write the genuinely different angle. Each list answers its own question: strengths/weaknesses = what a buyer can judge BEFORE paying · criticalPoints = what would flip the decision itself · reliabilityNotes = what the maker promises · lovedFeatures/chronicIssues = what owners report AFTER living with it.\n' +
-    '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product. Never invent an answer that was not given.\n' +
+    // Quiz yanitlanmadiginda bu kural KENDI KENDINE CELISIYORDU: model hem
+    // "cevaplanmis her soru icin bir kayit (4-6)" hem "verilmemis cevap
+    // uydurma" emrini birden aliyordu. Bos dizi istemek celiskiyi kaldirir.
+    (quizVar
+      ? '- product.quizInsights must reference the ACTUAL quiz answers listed below, one entry per answered question (4-6). impact is negative when the answer works against this product. Never invent an answer that was not given.\n'
+      : '- product.quizInsights MUST be an empty array []. No quiz was answered; do not invent questions or answers.\n') +
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
