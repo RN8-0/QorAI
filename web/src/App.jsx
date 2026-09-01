@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import BottomNav from './components/BottomNav.jsx';
@@ -10,6 +10,7 @@ import { useCompare } from './lib/compare.js';
 import AiFab, { hasActiveAnalysis } from './components/AiFab.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { hasCompletedQuiz, wasQuizSkippedLocal } from './lib/qorCoins.js';
+import { modeOn, routeOpen } from './lib/siteMode.js';
 
 // Home stays eager so the landing page paints on the first request (no extra
 // chunk round-trip on the most-visited route). Every other page is loaded on
@@ -69,6 +70,19 @@ function BootDone() {
   return null;
 }
 
+// Kapali moda bagli rota (bkz. lib/siteMode.js). Sayfa bileseni ve rota
+// SILINMEDI — yalnizca element degistirildi, dolayisiyla bayragi `true`
+// yapmak sayfayi oldugu gibi geri getirir.
+//
+// Rotanin KENDISI duruyor olmasi onemli: on-render kabugu (website/premium/,
+// website/ai-chat/ …) diskte kaliyor, nginx 200 donuyor ve SPA acilinca
+// ziyaretciyi ana sayfaya tasiyor. Rotayi komple kaldirmak o adresleri
+// 404'e dusururdu — Google'in bildigi bir adresi 404 yapmak, noindex ile
+// sessizce dusurmekten daha zararlidir.
+function gated(path, element) {
+  return routeOpen(path) ? element : <Navigate to="/" replace />;
+}
+
 export default function App() {
   const loc = useLocation();
   const nav = useNavigate();
@@ -82,12 +96,18 @@ export default function App() {
   const [aiOn, setAiOn] = useState(false);
   const [aiAuto, setAiAuto] = useState(false);
   const openAi = useCallback(() => { setAiAuto(true); setAiOn(true); }, []);
+  // Sag alt katman (Qor dugmesi + sohbet balonu) `chat` moduna bagli.
+  // NOT: "analiz hazir" bildirimi de bu balondan cikiyor, yani sohbeti
+  // kapatmak o bildirimi de kapatir. Bugun sorun degil — ziyaretciye donuk
+  // analiz akislarinin hepsi zaten kapali. `userAi` tek basina acilirsa
+  // bildirim yuzeyi icin burasi yeniden dusunulmeli.
+  const chatOn = modeOn('chat');
   useEffect(() => {
     // Arka planda calisan bir analiz varsa balon KENDILIGINDEN yuklenir ki
     // "hazir" bildirimi eskisi gibi gorunsun. Kontrol tek bir localStorage
     // okumasi — hicbir chunk indirmiyor.
-    if (hasActiveAnalysis()) setAiOn(true);
-  }, [loc.pathname]);
+    if (chatOn && hasActiveAnalysis()) setAiOn(true);
+  }, [chatOn, loc.pathname]);
 
 
   // Scroll to top + report page view on every route change.
@@ -107,6 +127,9 @@ export default function App() {
   // freely. AI features stay gated by hasCompletedQuiz(), so the first AI action
   // still routes them to finish the quiz.
   useEffect(() => {
+    // Quiz modu kapaliyken kimse quize yonlendirilmez — rota `/`'a gidiyor,
+    // yonlendirme birakilsaydi yeni kullanici sonsuz doneme girerdi.
+    if (!modeOn('quiz')) return;
     if (!user || hasCompletedQuiz(user) || wasQuizSkippedLocal(user) || loc.pathname === '/quiz') return;
     if (String(user.email || '').toLowerCase().endsWith('@qorai.local')) return;
     const next = `${loc.pathname}${loc.search}${loc.hash}`;
@@ -146,11 +169,11 @@ export default function App() {
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/compare" element={<Compare />} />
           <Route path="/compare/:pair" element={<Compare />} />
-          <Route path="/ai-chat" element={<AiChat />} />
-          <Route path="/link-analysis" element={<LinkAnalysis />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
-          <Route path="/premium" element={<Premium />} />
-          <Route path="/quiz" element={<Quiz />} />
+          <Route path="/ai-chat" element={gated('/ai-chat', <AiChat />)} />
+          <Route path="/link-analysis" element={gated('/link-analysis', <LinkAnalysis />)} />
+          <Route path="/subscriptions" element={gated('/subscriptions', <Subscriptions />)} />
+          <Route path="/premium" element={gated('/premium', <Premium />)} />
+          <Route path="/quiz" element={gated('/quiz', <Quiz />)} />
           <Route path="/go" element={<Go />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/analiz" element={<Analyses />} />
@@ -177,9 +200,9 @@ export default function App() {
       <Suspense fallback={null}>
         {compareIds.length > 0 && <CompareBar />}
         {modalOpen && <AuthModal />}
-        {aiOn && <AiBubble autoOpen={aiAuto} />}
+        {chatOn && aiOn && <AiBubble autoOpen={aiAuto} />}
       </Suspense>
-      {!aiOn && <AiFab onOpen={openAi} />}
+      {chatOn && !aiOn && <AiFab onOpen={openAi} />}
     </>
   );
 }

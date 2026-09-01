@@ -8,6 +8,7 @@ const en = {
   // nav / header
   'nav.home': 'Home',
   'nav.catalog': 'Catalog',
+  'nav.categories': 'Categories',
   'nav.compare': 'Compare',
   'nav.aiChat': 'AI Chat',
   'nav.subscriptions': 'Subscriptions',
@@ -372,6 +373,7 @@ const en = {
 const tr = {
   'nav.home': 'Ana Sayfa',
   'nav.catalog': 'Katalog',
+  'nav.categories': 'Kategoriler',
   'nav.compare': 'Karşılaştır',
   'nav.aiChat': 'AI Sohbet',
   'nav.subscriptions': 'Abonelikler',

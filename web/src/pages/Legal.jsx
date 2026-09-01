@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
+import { routeOpen } from '../lib/siteMode';
 import './Legal.css';
 import { META, COPY, CONTACT_EMAIL, legalTextFor as textFor } from '../lib/legalContent.js';
 
@@ -53,7 +54,7 @@ export default function LegalPage({ kind }) {
 
           <div className="legal-actions">
             <Link className="btn btn-ghost" to="/">{common.home}</Link>
-            <Link className="btn btn-grad" to="/premium">{common.premium}</Link>
+            {routeOpen('/premium') && <Link className="btn btn-grad" to="/premium">{common.premium}</Link>}
             <a className="btn btn-ghost" href={`mailto:${CONTACT_EMAIL}`}>{common.contact}</a>
           </div>
         </article>

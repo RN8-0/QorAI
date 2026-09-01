@@ -55,6 +55,7 @@ import { categoryPath, parseProductToken, productPath } from '../lib/routes';
 import { calculateProfileMatchScore, hasProfileMatch } from '../lib/profileMatch';
 import { cleanProductName, displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
+import { modeOn } from '../lib/siteMode';
 import ScrollRail from '../components/ScrollRail.jsx';
 const Reviews = lazy(() => import('../components/Reviews.jsx'));
 import './ProductDetail.css';
@@ -1116,8 +1117,11 @@ export default function ProductDetail() {
               <span>{inCompare ? L('In compare', 'Karşılaştırmada') : L('Compare', 'Karşılaştır')}</span>
             </button>
             {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
-                sekmeydi; burada ilk ekranda duruyor. */}
-            <AnalyzeButton busy={aiFull.busy} onClick={analizeBaslat} />
+                sekmeydi; burada ilk ekranda duruyor.
+                Ziyaretciye donuk analiz kapaliyken dugme HIC cizilmez —
+                `useAiAccess` zaten durduruyor ama tiklanip "bu ozellik kapali"
+                mesaji almak, dugmeyi hic gostermemekten kotu bir deneyim. */}
+            {modeOn('userAi') && <AnalyzeButton busy={aiFull.busy} onClick={analizeBaslat} />}
             {/* Yayinlanmis analiz VARSA okumaya git. AnalyzeButton kullaniciya
                 ozel bir analiz URETIR (quiz + Q Coin); bu ise hazir, yayinlanmis
                 yaziyi ACAR. Ikisi ayri islerdir, o yuzden ayri butonlar. */}
@@ -1322,20 +1326,28 @@ export default function ProductDetail() {
           })()}
 
           <section className="pd-block" ref={aiSekmeRef}>
-            <div className="pd-tabs2">
-              <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
-              {/* Analiz KOSARKEN etiketin sag ustunde donen halka — bkz.
-                  Compare.jsx'teki ayni not. */}
-              <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>
-                <span className="tab-lbl">
-                  {t('pd.tabAi')}
-                  {aiFull.busy && <i className="tab-spin" role="status" aria-live="polite"
-                    aria-label={L('Analysis running', 'Analiz sürüyor')} />}
-                </span>
-              </button>
-            </div>
+            {/* AI sekmesi ziyaretciye donuk analiz kapaliyken cizilmez. Tek
+                sekme kalinca sekme cubugunun kendisi de anlamsizlasiyor —
+                ozellikler dogrudan govdede gosteriliyor. */}
+            {modeOn('userAi') && (
+              <div className="pd-tabs2">
+                <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>{t('pd.tabSpecs')}</button>
+                {/* Analiz KOSARKEN etiketin sag ustunde donen halka — bkz.
+                    Compare.jsx'teki ayni not. */}
+                <button className={tab === 'premium' ? 'on' : ''} onClick={() => setTab('premium')}>
+                  <span className="tab-lbl">
+                    {t('pd.tabAi')}
+                    {aiFull.busy && <i className="tab-spin" role="status" aria-live="polite"
+                      aria-label={L('Analysis running', 'Analiz sürüyor')} />}
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="pd-tab-body">
-              {tab === 'specs' && (
+              {/* AI sekmesi yokken ozellikler KOSULSUZ cizilir: `tab` durumu
+                  eski bir `?ai=` derin linkinden 'premium'da kalmis olabilir ve
+                  o durumda govde bombos gorunurdu. */}
+              {(tab === 'specs' || !modeOn('userAi')) && (
                 <div className="fade-up">
                   {p.description && <p className="muted" style={{ fontSize: 14.5, lineHeight: 1.6, marginBottom: 16 }}>{p.description}</p>}
                   {bricks.length > 0 ? (
@@ -1347,7 +1359,7 @@ export default function ProductDetail() {
                   )}
                 </div>
               )}
-              {tab === 'premium' && (
+              {tab === 'premium' && modeOn('userAi') && (
                 /* KENDI Suspense siniri: tembel AI agaci yuklenirken App.jsx'teki
                    rota siniri devreye girseydi TUM urun sayfasi spinner'a
                    donerdi. Yer tutucu sekmenin kendi alani kadar. */

@@ -46,6 +46,7 @@ import {
 } from '../lib/specDisplay';
 import { displayProductName } from '../lib/productNames';
 import { usePageContext } from '../lib/pageContext';
+import { modeOn, routeOpen } from '../lib/siteMode';
 import CompareReviews from '../components/CompareReviews.jsx';
 import './Compare.css';
 // Ortak AI rapor govdesi (AiReportView) 'la-*' siniflarini kullanir. CSS'i
@@ -817,7 +818,7 @@ export default function Compare() {
             {/* AI analizini baslatmanin tek yolu sayfanin cok asagisindaki
                 sekmeydi; burada ust eylem satirinda duruyor. En az iki urun
                 gerekiyor — tek urunle karsilastirma analizi anlamsiz. */}
-            {products.length >= 2 && (
+            {modeOn('userAi') && products.length >= 2 && (
               <AnalyzeButton busy={aiBusy} onClick={analizeBaslat} />
             )}
             {ytUrl && products.length >= 2 && (
@@ -960,7 +961,13 @@ export default function Compare() {
               </div>
             </section>
 
-            {/* tabs — Specs · AI (centered) */}
+            {/* tabs — Specs · AI (centered)
+                Ziyaretciye donuk analiz kapaliyken sekme cubugu komple duser
+                (ProductDetail ile ayni kural): tek sekmelik bir cubuk gezinme
+                degil, gurultu. `aiSekmeRef` ile birlikte gitmesi sorun degil:
+                ref'i yalnizca `analizeBaslat` okuyor, o da ayni bayrakla
+                gizlenen AnalyzeButton'dan baska yerden cagrilmiyor. */}
+            {modeOn('userAi') && (
             <div className="cmp-tabs2" ref={aiSekmeRef}>
               <button className={tab === 'specs' ? 'on' : ''} onClick={() => setTab('specs')}>
                 {L('Specs', 'Özellikler')}
@@ -978,9 +985,12 @@ export default function Compare() {
                 </span>
               </button>
             </div>
+            )}
 
             <div style={{ marginTop: 18 }}>
-              {tab === 'specs' && (
+              {/* AI sekmesi yokken ozellikler kosulsuz cizilir — `?view=analysis`
+                  derin linki `tab`i 'ai'de birakmis olabilir. */}
+              {(tab === 'specs' || !modeOn('userAi')) && (
                 <>
                 <div className="cmp-fhead cmp-hscroll" ref={fheadRef} aria-hidden="true">
                   <div className="cmp-fhead-row">
@@ -1057,7 +1067,7 @@ export default function Compare() {
                 </>
               )}
 
-              {tab === 'ai' && (
+              {tab === 'ai' && modeOn('userAi') && (
                 <div className="cmp-ai-layout fade-up">
                   {/* Üst çıkış çubuğu — diğer analiz akışlarıyla aynı. */}
                   {aiPhase !== 'idle' && (
@@ -1114,7 +1124,7 @@ export default function Compare() {
                       <div className="cmp-ai-notice">
                         {aiNotice}
                         {aiNoticeCode === 'INSUFFICIENT_QOR_COINS' && (
-                          <> <Link to="/premium">{L('See Premium', 'Premium’a bak')}</Link></>
+                          <>{routeOpen('/premium') && <> <Link to="/premium">{L('See Premium', 'Premium’a bak')}</Link></>}</>
                         )}
                       </div>
                     )}

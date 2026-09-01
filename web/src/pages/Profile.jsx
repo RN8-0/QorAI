@@ -13,6 +13,7 @@ import {
 } from '../lib/pbHistory';
 import { useI18n } from '../i18n/index.jsx';
 import { articlePath } from '../lib/routes';
+import { routeOpen } from '../lib/siteMode';
 import { getProduct } from '../lib/typesense';
 import ProductImg from '../components/ProductImg.jsx';
 import { premiumStatus } from '../lib/premium';
@@ -206,14 +207,21 @@ function Overview({ user, t }) {
   const coins = formatQorCoins(user.bonusQCoins, user.language || 'en');
   return (
     <div className="fade-up">
-      <div className="pf-card pf-membership">
-        <div className="pf-mem-badge">Q</div>
-        <div className="pf-mem-text">
-          <strong>{t('pf.memberFree')}</strong>
-          <span>{t('pf.premiumApp')}</span>
+      {/* Premium kapaliyken bu kartin tamami duser: icerigi bastan sona
+          upsell (rozet + "uygulamada Premium" + dugme), satisa kapaliyken
+          gosterecek bir sey kalmiyor. Q Coin karti KALIR — o upsell degil,
+          hesabin gercek durumu ve Profil sayfasi tam olarak oranin yeri.
+          (Ust bardaki rozet gezinme sussu oldugu icin orada gizlendi.) */}
+      {routeOpen('/premium') && (
+        <div className="pf-card pf-membership">
+          <div className="pf-mem-badge">Q</div>
+          <div className="pf-mem-text">
+            <strong>{t('pf.memberFree')}</strong>
+            <span>{t('pf.premiumApp')}</span>
+          </div>
+          <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>
         </div>
-        <Link to="/premium" className="btn pf-mem-cta">{t('nav.premium')}</Link>
-      </div>
+      )}
 
       <div className="pf-card pf-coins">
         <div className="pf-coin-badge"><span className="coin-dot">Q</span></div>

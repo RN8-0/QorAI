@@ -17,6 +17,10 @@ import { STRINGS } from '../src/i18n/strings.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
+// Site modu TEK KAYNAK: SPA'nin gezinmesi ile on-render/sitemap AYNI dosyayi
+// okur. Bayrak build zamaninda bilinmek zorunda — Google'in gordugu HTML
+// burada yaziliyor, calisma anindaki bir ayar ona yetisemez (bkz. siteMode.js).
+import { closedRoutes, routeOpen } from '../src/lib/siteMode.js';
 import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.js';
 // Analiz kaydini okuma kurallari (tur, dile gore rapor, baslik/ozet/meta) TEK
 // KAYNAKTA: sayfayi cizen React bileseni (pages/AnalysisPost.jsx) ve buradaki
@@ -1958,7 +1962,11 @@ function homeBody(guides, lang = 'tr') {
   const catLinks = cats
     .map((c) => `<li style="margin:4px 0"><a href="${esc(c.href)}" style="color:#2563eb;text-decoration:none">${esc(c.label)}</a></li>`)
     .join('');
+  // Kapali rotalar ana sayfanin arac listesinden DUSER. Bu liste ziyaretcinin
+  // gordugu ilk HTML ve Google'in kesif yuzeyi; kapatilan bir sayfaya buradan
+  // link birakmak onu hem crawl'da hem kullanicida canli tutardi.
   const tools = tx.toolLinks
+    .filter(([h]) => routeOpen(h))
     .map(([h, t]) => `<li style="margin:4px 0"><a href="${h}" style="color:#2563eb;text-decoration:none">${esc(t)}</a></li>`).join('');
   return '<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
     + `<h1 style="font-size:30px;margin:0 0 10px">${esc(tx.h1)}</h1>`
@@ -2102,8 +2110,12 @@ function landingBody(kind, guides, lang = 'tr') {
   const tr = lang === 'tr' ? base : { ...base, ...((LANDING_I18N[lang] || {})[kind] || {}) };
   const paras = tr.paras.map((t) => `<p style="line-height:1.7;color:#334155;max-width:760px;margin:10px 0">${esc(t)}</p>`).join('');
   const grid = base.grid ? `<h2 style="font-size:20px;margin:24px 0 8px">${esc(GRID_HEADING[lang] || GRID_HEADING.tr)}</h2>${categoryLinkGrid(guides, lang)}` : '';
-  const links = (tr.links && tr.links.length)
-    ? `<p style="margin:18px 0;font-size:14px">${tr.links.map(([h, t]) => `<a href="${h}" style="color:#2563eb;margin-right:14px">${esc(t)}</a>`).join('')}</p>`
+  // Kapali rotalar gövde linklerinden de DÜŞER (ana sayfadaki arac listesiyle
+  // ayni gerekce). Süzgeçten sonra hic link kalmayabilir — o zaman paragraf
+  // hic basilmaz, bos bir <p> birakilmaz.
+  const openLinks = (tr.links || []).filter(([h]) => routeOpen(h));
+  const links = openLinks.length
+    ? `<p style="margin:18px 0;font-size:14px">${openLinks.map(([h, t]) => `<a href="${h}" style="color:#2563eb;margin-right:14px">${esc(t)}</a>`).join('')}</p>`
     : '';
   return '<main class="seo-prerender" style="max-width:980px;margin:0 auto;padding:24px 16px;font-family:\'Plus Jakarta Sans\',system-ui,sans-serif;color:#0f172a">'
     + `<h1 style="font-size:28px;margin:0 0 10px">${esc(tr.h1)}</h1>`
@@ -2706,6 +2718,26 @@ const STATIC_ROUTES = [
   },
 ];
 
+// ── Kapalı modların rotaları: noindex + sitemap dışı ───────────────────────
+// Rota kaydı DURUYOR, yani ön-render kabuğu da yazılmaya devam eder ve adres
+// 200 dönmeyi sürdürür. Kapatılan bir sayfayı 404'e düşürmek, Google'ın zaten
+// bildiği bir adres için noindex'ten daha zararlı: 404 crawl hatası üretir,
+// noindex ise sayfayı sessizce indeksten alır. `/compare` ve `/search` için
+// yıllardır kullanılan kalıbın aynısı (bkz. yukarıdaki iki kayıt).
+//
+// `isMultilangRoute` de `noindex`e baktığı için /tr eşlenikleri kendiliğinden
+// üretilmez ve hreflang kümesi kapalı rotaya işaret etmez.
+for (const r of STATIC_ROUTES) {
+  if (routeOpen(r.path)) continue;
+  r.sitemap = false;
+  r.noindex = true;
+  r.seo = { ...(r.seo || {}), noindex: true };
+}
+{
+  const kapali = closedRoutes();
+  if (kapali.length) console.log(`[seo] kapalı rota (noindex + sitemap dışı): ${kapali.join(', ')}`);
+}
+
 // ── Multilingual SEO (en=root, tr=/tr) ─────────────────────────────────────
 // KÖK ADRESİN DİLİ = İNGİLİZCE (2026-08-05). Eskiden kök Türkçeydi: Google'da
 // "qorai iphone specs" arayan bir İngiliz/Alman kullanıcıya Türkçe başlık ve
@@ -2722,8 +2754,22 @@ const localePrefix = (lang) => (lang === SEO_DEFAULT_LOCALE ? '' : `/${lang}`);
 // and the landing/feature pages (LANDING_I18N). /go and the /product placeholder
 // stay tr-only. Products/compare are NOT multiplied by language — a 3× explosion
 // of thin shells is exactly the crawl-budget/“scaled content” trap to avoid.
+//
+// SİTE MODU KAPALI ROTA İSTİSNASI (ölçüldü 2026-09-01):
+// `noindex` konunca /tr eşleniği yazılmayı bırakıyor — ama o kabuk zaten
+// DİSKTE var, çünkü `postbuild.mjs` her rotayı iki dilde ham şablondan
+// yazıyor ve o şablon `index, follow` taşıyor. seo.mjs üzerine yazmayınca
+// `/tr/premium`, `/tr/quiz`, `/tr/link-analysis`, `/tr/subscriptions` ve
+// `/tr/ai-chat` indekslenebilir kaldı: kök adres noindex, Türkçe eşleniği
+// index. Hiç dokunmamaktan kötü bir durum. Kapalı rotanın /tr kabuğu bu
+// yüzden YAZILMAYA DEVAM EDER — noindex'i taşıyan sürüm ham şablonun
+// üzerine binsin diye. Sitemap'e sızmaz: oradaki döngü (bkz. `sitemap`
+// bölümü) zaten `!noindex` süzgecinden geçiyor.
+const isModeClosedRoute = (r) => !routeOpen(r.path);
+const hasTranslatableBody = (r) => r.dir === '' || !!LEGAL_META[r.dir] || !!LANDING[r.dir];
 const isMultilangRoute = (r) =>
-  !r.noindex && !r.seo?.noindex && (r.dir === '' || !!LEGAL_META[r.dir] || !!LANDING[r.dir]);
+  hasTranslatableBody(r)
+  && (isModeClosedRoute(r) || (!r.noindex && !r.seo?.noindex));
 
 // hreflang cluster for a path that has no language prefix. x-default → tr (root).
 function hreflangAlts(basePath) {
@@ -2742,7 +2788,18 @@ function hreflangAlts(basePath) {
 // olan bu kontrol, kök İngilizceye döndükten sonra TERSİNE dönmüştü: Türkçe
 // sayfaların İÇ LİNKLERİ öneksiz (yani İngilizce) sayfalara gidiyordu, üstelik
 // Almanca sayfalar prefixlenirken. Kapı artık VARSAYILAN dile bakıyor.
-const MULTILANG_LINK_RE = /href="(\/(?:category|product|compare|link-analysis|subscriptions|premium|quiz|terms|privacy|refund|cookies|contact|about|faq)(?:[/?#][^"]*)?|\/)"/g;
+// `analiz` EKLENDİ (2026-09-01): /tr/analiz hem liste hem 19 yazı olarak
+// ön-render ediliyor (ölçüldü: website/tr/analiz altında 19 slug + index),
+// yani Türkçe sayfaların analiz linkleri prefixlenebilir. Önceden öneksiz
+// kalıyordu, yani Türkçe ana sayfa okuyucuyu İNGİLİZCE analiz listesine
+// yolluyordu — sitenin tek özgün içeriğine giden ana iç link yanlış dildeydi.
+//
+// `blog` SADECE ÇIPLAK HALİYLE eklendi (`\/blog` ayrı alternatif, yol
+// eklentisi YOK). Sebep: /tr/blog LİSTESİ var ama /tr/blog/<slug> YOK —
+// blog'un i18n'i slug tabanlı, Türkçe yazı zaten /blog/<türkçe-slug>
+// adresinde duruyor. `/blog/<slug>`ı prefixlemek yumuşak 404 üretirdi
+// (aynı hata 2026-08-29'da GSC'de noindex olarak görülmüştü).
+const MULTILANG_LINK_RE = /href="(\/(?:category|product|compare|analiz|link-analysis|subscriptions|premium|quiz|terms|privacy|refund|cookies|contact|about|faq)(?:[/?#][^"]*)?|\/blog|\/)"/g;
 function localizeBodyLinks(html, lang) {
   if (lang === SEO_DEFAULT_LOCALE || !html) return html;
   return html.replace(MULTILANG_LINK_RE, (_m, p) => `href="/${lang}${p}"`);

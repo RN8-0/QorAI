@@ -7,6 +7,7 @@ import { formatQorCoins, hasCompletedQuiz } from '../lib/qorCoins';
 import { useI18n } from '../i18n/index.jsx';
 import { CANONICAL_CATEGORY_GROUPS, categoryLabel, CURRENCY_BY_COUNTRY, countryDisplayName } from '../lib/format';
 import { categoryPath } from '../lib/routes';
+import { modeOn, routeOpen } from '../lib/siteMode';
 import { useGeoCountry, setGeoCountry } from '../lib/geo';
 import HeaderSearch from './HeaderSearch.jsx';
 import './Header.css';
@@ -21,13 +22,17 @@ function flagEmoji(cc) {
 }
 
 // Order: Home, then the Categories mega-menu trigger, then the tools.
+// `routeOpen` süzgeci ŞART: kapalı bir moda bağlı rota (Premium, link
+// analizi, abonelik analizi) hem üst barda hem çekmecede kaybolur.
+// Süzme MODÜL düzeyinde çünkü SITE_MODE bir build sabiti — render başına
+// yeniden hesaplanacak bir şey yok (bkz. lib/siteMode.js).
 const NAV_REST = [
   { to: '/link-analysis', key: 'nav.linkAnalysis' },
   { to: '/subscriptions', key: 'nav.subscriptions' },
   { to: '/blog', key: 'nav.blog' },
   { to: '/analiz', key: 'nav.analyses' },
   { to: '/premium', key: 'nav.premium' },
-];
+].filter((n) => routeOpen(n.to));
 const NAV = [{ to: '/', key: 'nav.home', end: true }, ...NAV_REST];
 
 const ALL_CATEGORIES = CANONICAL_CATEGORY_GROUPS.flatMap((group) =>
@@ -75,10 +80,17 @@ export default function Header() {
   const coinDisplay = isPremium ? '∞' : coins;
   const coinWord = isPremium ? L('Unlimited', 'Sınırsız') : 'Qor Coin';
   const displayName = user ? user.name || user.email?.split('@')[0] || 'User' : '';
-  const quizMissing = !!user
+  // Quiz kapalıyken kırmızı "!" uyarısı da kalkar: kullanıcıyı var olmayan
+  // bir sayfaya çağıran bir rozet bırakmanın anlamı yok.
+  const quizMissing = modeOn('quiz')
+    && !!user
     && !hasCompletedQuiz(user)
     && !String(user.email || '').toLowerCase().endsWith('@qorai.local');
   const quizNext = `${loc.pathname}${loc.search}${loc.hash}`;
+  // Q Coin göstergesi, harcanacak bir şey varken anlamlı. Ziyaretçinin
+  // başlatabildiği AI akışlarının HEPSİ kapalıysa bakiye ölü bir sayıya
+  // dönüşüyor — defter ve bakiye yerinde duruyor, yalnız gösterge gizli.
+  const coinsVisible = modeOn('userAi') || modeOn('chat');
   const coinTip = isPremium
     ? L('Premium is active. AI features do not spend Qor Coins.',
       'Premium aktif. AI özellikleri Qor Coin harcamaz.')
@@ -182,12 +194,14 @@ export default function Header() {
                   !
                 </Link>
               )}
-              <span className="hd-coins-wrap">
-                <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} tabIndex={0}>
-                  <span className="coin-dot">Q</span>{coinDisplay}
+              {coinsVisible && (
+                <span className="hd-coins-wrap">
+                  <span className={'hd-coins' + (isPremium ? ' hd-coins-pro' : '')} tabIndex={0}>
+                    <span className="coin-dot">Q</span>{coinDisplay}
+                  </span>
+                  <span className="hd-tip" role="tooltip">{coinTip}</span>
                 </span>
-                <span className="hd-tip" role="tooltip">{coinTip}</span>
-              </span>
+              )}
               <button className="hd-avatar" onClick={() => setMenu((m) => !m)}>
                 {user?.photoURL
                   ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
@@ -201,7 +215,9 @@ export default function Header() {
                       <strong>{displayName}</strong>
                       <span>{user.email}</span>
                     </div>
-                    <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coinDisplay}</b> {coinWord}</div>
+                    {coinsVisible && (
+                      <div className="hd-menu-coins"><span className="coin-dot">Q</span><b>{coinDisplay}</b> {coinWord}</div>
+                    )}
                     <Link to="/profile" className="hd-menu-item" onClick={() => setMenu(false)}>{t('nav.profile')}</Link>
                     <button className="hd-menu-item danger" onClick={() => { logout(); setMenu(false); }}>{t('nav.signOut')}</button>
                   </div>

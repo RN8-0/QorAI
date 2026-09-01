@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
+import { routeOpen } from '../lib/siteMode';
 import PlayBadge from './PlayBadge.jsx';
 
 // Sosyal hesaplar. `rel="me"` bilerek: arama motorlari ve dogrulama araclari
@@ -83,10 +84,17 @@ export default function Footer() {
           {/* Link columns */}
           <div className="ft-cols">
             <div>
+              {/* Analiz ve blog buraya BİLEREK eklendi. Footer 8.000+ sayfanın
+                  hepsinde duruyor, yani sitenin tek özgün içeriğine giden en
+                  geniş iç link yüzeyi burası — önceden ikisi de yalnız üst
+                  bardaydı. Link analizi / abonelik kapalı modda düşer, açılınca
+                  kendiliğinden geri gelir. */}
               <h5>{t('footer.product')}</h5>
               <Link to="/">{t('nav.home')}</Link>
-              <Link to="/link-analysis">{t('nav.linkAnalysis')}</Link>
-              <Link to="/subscriptions">{t('nav.subscriptions')}</Link>
+              <Link to="/analiz">{t('nav.analyses')}</Link>
+              <Link to="/blog">{t('nav.blog')}</Link>
+              {routeOpen('/link-analysis') && <Link to="/link-analysis">{t('nav.linkAnalysis')}</Link>}
+              {routeOpen('/subscriptions') && <Link to="/subscriptions">{t('nav.subscriptions')}</Link>}
             </div>
             <div>
               <h5>{L('Company', 'Şirket')}</h5>

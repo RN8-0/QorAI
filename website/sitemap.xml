@@ -4,12 +4,6 @@
   <url><loc>https://qorai.net/tr/</loc><lastmod>2026-09-01</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://qorai.net/category</loc><lastmod>2026-09-01</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://qorai.net/tr/category</loc><lastmod>2026-09-01</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
-  <url><loc>https://qorai.net/link-analysis</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/tr/link-analysis</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/subscriptions</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/tr/subscriptions</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/premium</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://qorai.net/tr/premium</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/terms</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/tr/terms</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/privacy</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
@@ -24,10 +18,6 @@
   <url><loc>https://qorai.net/tr/about</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/faq</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/tr/faq</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/quiz</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/tr/quiz</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/ai-chat</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://qorai.net/tr/ai-chat</loc><lastmod>2026-09-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://qorai.net/category/3d_printers</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/tr/category/3d_printers</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://qorai.net/category/audio_systems</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
@@ -336,8 +326,6 @@
   <url><loc>https://qorai.net/tr/product/tp-link-tapo-rv30</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/tp-link-tapo-rv30-max-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/tp-link-tapo-rv30-max-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/beko-robo-x-3-0-rs-8131</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/beko-robo-x-3-0-rs-8131</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/beko-robo-x-3-1-vrr-82314-vb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/beko-robo-x-3-1-vrr-82314-vb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/beko-robo-x-2-1-vrr-72314-vb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -474,8 +462,6 @@
   <url><loc>https://qorai.net/tr/product/ecovacs-deebot-n10</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/ecovacs-deebot-x1-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/ecovacs-deebot-x1-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/ecovacs-deebot-t20-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/ecovacs-deebot-t20-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/ecovacs-deebot-x8-pro-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/ecovacs-deebot-x8-pro-omni</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/ecovacs-deebot-x11-omnicyclone</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -528,6 +514,10 @@
   <url><loc>https://qorai.net/tr/product/xiaomi-roborock-s6-pure</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/roborock-q7-tf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/roborock-q7-tf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/roborock-s5-max</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/roborock-s5-max</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/roborock-saros-20</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/roborock-saros-20</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-mac-mini-m4-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-mac-mini-m4-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-imac-24-m4-24gb-512ssd</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -616,8 +606,6 @@
   <url><loc>https://qorai.net/tr/product/thermaltake-ceres-300-tg</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/thermaltake-h570-tg-750w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/thermaltake-h570-tg-750w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/thermaltake-the-tower-500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/thermaltake-the-tower-500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/thermaltake-cte-t500-tg</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/thermaltake-cte-t500-tg</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/thermaltake-ceres-330-tg-argb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -698,6 +686,8 @@
   <url><loc>https://qorai.net/tr/product/msi-mag-forge-100r</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-mag-forge-121a-750w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/msi-mag-forge-121a-750w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/msi-mag-forge-340r</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/msi-mag-forge-340r</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hyperx-clutch</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hyperx-clutch</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-force-gc300</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -798,12 +788,8 @@
   <url><loc>https://qorai.net/tr/product/samsung-75qn70f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-85qn70f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-85qn70f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/samsung-75qn80f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/samsung-75qn80f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-65qn900f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-65qn900f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/samsung-75qn90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/samsung-75qn90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-98qn90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-98qn90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-75qn990f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -868,8 +854,6 @@
   <url><loc>https://qorai.net/tr/product/samsung-75qn85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-65s90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-65s90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/samsung-85qn85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/samsung-85qn85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-83s85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-83s85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-77s90f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -928,12 +912,8 @@
   <url><loc>https://qorai.net/tr/product/samsung-50q8fa</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-75q8fa</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-75q8fa</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/samsung-75ls03d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/samsung-75ls03d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-85q70d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-85q70d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/samsung-55qn85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/samsung-55qn85f</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-75q80d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-75q80d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-65qn800d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -994,8 +974,6 @@
   <url><loc>https://qorai.net/tr/product/lg-65qned7eb3c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/tcl-65c855</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/tcl-65c855</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/tcl-75c855</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/tcl-75c855</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/grundig-55-go-990a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/grundig-55-go-990a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lg-55qned70b6c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -1124,8 +1102,6 @@
   <url><loc>https://qorai.net/tr/product/grundig-tokyo-65-gju-7900g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/grundig-43-gjq-9200</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/grundig-43-gjq-9200</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/grundig-55-gjq-9200</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/grundig-55-gjq-9200</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/grundig-55-ghq-9500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/grundig-55-ghq-9500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/grundig-75-gjq-9200</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -1248,6 +1224,20 @@
   <url><loc>https://qorai.net/tr/product/samsung-65s90c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-75qn700c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-75qn700c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/xiaomi-tv-max-85-2025</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/xiaomi-tv-max-85-2025</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-55t6d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-55t6d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-55p7l</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-55p7l</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-65p7l</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-65p7l</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-75t6d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-75t6d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-55t8d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-55t8d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tcl-55q6c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tcl-55q6c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-galaxy-z-fold8-ultra-512gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-z-fold8-ultra-512gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-iphone-17-pro-512gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -1486,8 +1476,8 @@
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-a54</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-galaxy-a56-5g-128gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-a56-5g-128gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/nothing-phone-3a-lite</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/nothing-phone-3a-lite</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/nothing-phone-3a-lite-256gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/nothing-phone-3a-lite-256gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-rog-phone-6</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-rog-phone-6</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/realme-14-5g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -2170,8 +2160,6 @@
   <url><loc>https://qorai.net/tr/product/antigravity-a1-explorer</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sjrc-f22-s2-pro-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/sjrc-f22-s2-pro-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/sjrc-f5s-pro-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/sjrc-f5s-pro-plus</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/antigravity-a1</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/antigravity-a1</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sjrc-f11-4k-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -2222,6 +2210,8 @@
   <url><loc>https://qorai.net/tr/product/silverlit-bumper-drone</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/buyfun-e98-rc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/buyfun-e98-rc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/autel-robotics-evo-ii-8k-rugged-bundle</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/autel-robotics-evo-ii-8k-rugged-bundle</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/nikon-z-35mm-f1-2-s-nikon-z</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/nikon-z-35mm-f1-2-s-nikon-z</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/nikon-nikkor-z-85mm-f1-2-s-nikon-z</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -2348,8 +2338,6 @@
   <url><loc>https://qorai.net/tr/product/xiaomi-tv-box-s-3rd-gen</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/google-tv-streamer-4k</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/google-tv-streamer-4k</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/nvidia-shield-tv</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/nvidia-shield-tv</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-tv-4k-2-nesil-64-gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-tv-4k-2-nesil-64-gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/xiaomi-tv-stick-4k-2-nesil</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -2366,6 +2354,8 @@
   <url><loc>https://qorai.net/tr/product/nvidia-shield-tv-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/nvidia-shield-tv-gaming-edition</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/nvidia-shield-tv-gaming-edition</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/nvidia-shield-tv</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/nvidia-shield-tv</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/anker-nebula-4k-streaming-dongle</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/anker-nebula-4k-streaming-dongle</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-tv-4k-3-nesil-wi-fi</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3010,8 +3000,6 @@
   <url><loc>https://qorai.net/tr/product/sony-playstation-5-slim-digital-edition</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sony-playstation-5-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/sony-playstation-5-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/asus-rog-ally-2023</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/asus-rog-ally-2023</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sony-playstation-5-digital-edition</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/sony-playstation-5-digital-edition</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sony-playstation-5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3064,6 +3052,8 @@
   <url><loc>https://qorai.net/tr/product/lenovo-legion-go-1tb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-rog-ally-2023-extreme</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-rog-ally-2023-extreme</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/asus-rog-ally-2023</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/asus-rog-ally-2023</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/razer-edge-kishi-v2-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/razer-edge-kishi-v2-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sony-playstation-4-pro-2tb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3320,8 +3310,6 @@
   <url><loc>https://qorai.net/tr/product/crucial-crupc3200-16</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/crucial-cruso3200-16</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/crucial-cruso3200-16</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/crucial-cb16gu3200e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/crucial-cb16gu3200e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dell-aa940922</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/dell-aa940922</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/xpg-spectrix-d35g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3398,6 +3386,8 @@
   <url><loc>https://qorai.net/tr/product/crucial-ct64g56c46s5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/crucial-pro-cp2k48g56c46u5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/crucial-pro-cp2k48g56c46u5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/crucial-ct64g56c46u5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/crucial-ct64g56c46u5</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/amd-ryzen-9-9950x3d2</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/amd-ryzen-9-9950x3d2</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/amd-ryzen-9-9950x3d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3786,8 +3776,6 @@
   <url><loc>https://qorai.net/tr/product/asus-dual-geforce-rtx-5050-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-prime-geforce-rtx-5050-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-prime-geforce-rtx-5050-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/msi-geforce-rtx-4070-super-12g-gaming-x-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/msi-geforce-rtx-4070-super-12g-gaming-x-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/gigabyte-geforce-rtx-5060-eagle-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/gigabyte-geforce-rtx-5060-eagle-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/gigabyte-geforce-rtx-5060-windforce-8g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3858,8 +3846,6 @@
   <url><loc>https://qorai.net/tr/product/asus-dual-radeon-rx-7700-xt-oc-edition-12gb-gddr6</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-dual-geforce-rtx-4060-ti-v2-oc-edition-8gb-gddr6</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-dual-geforce-rtx-4060-ti-v2-oc-edition-8gb-gddr6</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/msi-geforce-rtx-4060-gaming-x-8g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/msi-geforce-rtx-4060-gaming-x-8g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-geforce-rtx-4060-gaming-8g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/msi-geforce-rtx-4060-gaming-8g</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-geforce-rtx-4060-ventus-2x-black-8g-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3878,6 +3864,10 @@
   <url><loc>https://qorai.net/tr/product/hp-rtx-a4000</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-rtx-a4500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hp-rtx-a4500</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/intel-arc-a750</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/intel-arc-a750</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/asus-rog-strix-geforce-rtx-3080-ti-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/asus-rog-strix-geforce-rtx-3080-ti-oc</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-dual-geforce-rtx-4060-evo</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-dual-geforce-rtx-4060-evo</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sony-playstation-vr2</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3920,8 +3910,6 @@
   <url><loc>https://qorai.net/tr/product/vr-shinecon-g04e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/vr-box-3-0</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/vr-box-3-0</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/vr-shinecon-g06a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/vr-shinecon-g06a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/vr-shinecon-g04ea</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/vr-shinecon-g04ea</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/vr-shinecon-g12</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -3930,6 +3918,8 @@
   <url><loc>https://qorai.net/tr/product/vr-shinecon-g04bs</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/vr-shinecon-g06b</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/vr-shinecon-g06b</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/vr-shinecon-g06</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/vr-shinecon-g06</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/huawei-matepad-paper</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/huawei-matepad-paper</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lenovo-smart-paper-64gb-zac00011tr</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4422,8 +4412,6 @@
   <url><loc>https://qorai.net/tr/product/lenovo-legion-y700-gen-4-16gb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-ipad-pro-12-9-1-tb-wi-fi</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-ipad-pro-12-9-1-tb-wi-fi</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/lenovo-idea-tab-pro-plus-kalem</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/lenovo-idea-tab-pro-plus-kalem</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lenovo-idea-tab-pro-plus-kilif-plus-kalem</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/lenovo-idea-tab-pro-plus-kilif-plus-kalem</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lenovo-idea-tab-pro-plus-klavye-plus-kalem</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4550,6 +4538,8 @@
   <url><loc>https://qorai.net/tr/product/tcl-tab-10l-gen-4-lte</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/honor-magic-pad-2</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/honor-magic-pad-2</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/microsoft-surface-pro-7-12-3-i7-16-1tb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/microsoft-surface-pro-7-12-3-i7-16-1tb</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-macbook-pro-16-2-m5-pro-18cpu-20gpu-mge64tu-a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-macbook-pro-16-2-m5-pro-18cpu-20gpu-mge64tu-a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-macbook-pro-14-2-m5-max-18cpu-32gpu-mgdu4tu-a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4604,8 +4594,6 @@
   <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-df90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-cx90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-cx90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-gf90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-gf90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-dx90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-dx90x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-cx90h-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4624,8 +4612,6 @@
   <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-cf90a-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-zbook-fury-g1i-16-5f9t8es</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hp-zbook-fury-g1i-16-5f9t8es</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/asus-rog-strix-g18-g815lw-s9128</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/asus-rog-strix-g18-g815lw-s9128</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lenovo-legion-5-15iax10-83f0008btrf38</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/lenovo-legion-5-15iax10-83f0008btrf38</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/lenovo-legion-5-15iax10-83f0008btra32</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4694,10 +4680,6 @@
   <url><loc>https://qorai.net/tr/product/msi-vector-16-hx-ai-a2xwhg-091xtrp325</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-raider-a16-hx-b8wi-008tr</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/msi-raider-a16-hx-b8wi-008tr</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-en80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-en80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-ex80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-ex80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap00014nta20-c12cjeaa20</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hp-omen-gaming-16-ap00014nta20-c12cjeaa20</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap00014nta16-c12cjeaa16</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -4808,8 +4790,6 @@
   <url><loc>https://qorai.net/tr/product/msi-katana-15-hx-b14wgk-068xtrhmf18</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/msi-katana-15-hx-b14wgk-068xtrhmf44</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/msi-katana-15-hx-b14wgk-068xtrhmf44</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/casper-excalibur-g920-1490-dx80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/casper-excalibur-g920-1490-dx80x-e</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap0012nta15-c12cgeaa15</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hp-omen-gaming-16-ap0012nta15-c12cgeaa15</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap0012nta12-c12cgeaa12</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -5050,6 +5030,16 @@
   <url><loc>https://qorai.net/tr/product/hp-zbook-x-g1i-16-cu0j2es</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap00014nta77-c12cjeaa77</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hp-omen-gaming-16-ap00014nta77-c12cjeaa77</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/hp-omen-gaming-16-ap00014nta73-c12cjeaa73</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/hp-omen-gaming-16-ap00014nta73-c12cjeaa73</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/lenovo-thinkpad-t14-g6-21qc00cktx</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/lenovo-thinkpad-t14-g6-21qc00cktx</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/lenovo-thinkpad-t16-g4-21qfs2bhtx-015</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/lenovo-thinkpad-t16-g4-21qfs2bhtx-015</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/lenovo-thinkpad-e14-g7-21sx007ctx-32gbram-1tbssd-fdos</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/lenovo-thinkpad-e14-g7-21sx007ctx-32gbram-1tbssd-fdos</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/asus-zenbook-duo-oled-ux8406ca-ql308w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/asus-zenbook-duo-oled-ux8406ca-ql308w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/apple-macbook-neo-mhfe4tu-a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/apple-macbook-neo-mhfe4tu-a</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/baseus-nomos-qi2-45w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -5152,8 +5142,6 @@
   <url><loc>https://qorai.net/tr/product/baseus-mgsafe-mini-20w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/baseus-picogo</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/baseus-picogo</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/xiaomi-mi-wireless-powerbank</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/xiaomi-mi-wireless-powerbank</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/baseus-picogo-am41-ultra-slim-p1007680c123-00</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/baseus-picogo-am41-ultra-slim-p1007680c123-00</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/philips-dlp9701c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -5172,6 +5160,8 @@
   <url><loc>https://qorai.net/tr/product/baseus-picogo-45w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/xiaomi-mi-power-bank-3-10000mah</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/xiaomi-mi-power-bank-3-10000mah</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/xiaomi-pocket-edition-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/xiaomi-pocket-edition-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/sennheiser-momentum-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/sennheiser-momentum-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/grundig-ghp-1000</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -5330,8 +5320,6 @@
   <url><loc>https://qorai.net/tr/product/logitech-g-pro-x-2-lightspeed</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-galaxy-buds-3-fe</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-buds-3-fe</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/hyperx-cloudx-stinger</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/hyperx-cloudx-stinger</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hyperx-cloud-stinger-s</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hyperx-cloud-stinger-s</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/kingston-hyperx-cloud-alpha</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -5672,6 +5660,8 @@
   <url><loc>https://qorai.net/tr/product/asus-rog-strix-fusion-300</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-strix-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-strix-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/asus-vulcan-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/asus-vulcan-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/samsung-galaxy-ring</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/samsung-galaxy-ring</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/motions-ring</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6150,8 +6140,6 @@
   <url><loc>https://qorai.net/tr/product/huawei-watch-fit-elegant</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/huawei-watch-fit-mini</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/huawei-watch-fit-mini</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/huawei-watch-3-active</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/huawei-watch-3-active</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/huawei-watch-fit-new</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/huawei-watch-fit-new</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/tcl-movetime-mt42x</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6202,6 +6190,8 @@
   <url><loc>https://qorai.net/tr/product/garmin-fenix-6s</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/garmin-fenix-6-sapphire</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/garmin-fenix-6-sapphire</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/garmin-vivosmart-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/garmin-vivosmart-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-rog-thor-1600w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/asus-rog-thor-1600w</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/asus-tuf-gaming-1200w-gold</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6608,8 +6598,6 @@
   <url><loc>https://qorai.net/tr/product/xiaomi-smart-camera-c400</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd2421g0-iw</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd2421g0-iw</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/ttec-ipdp-2330m-m-lite</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/ttec-ipdp-2330m-m-lite</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/xiaomi-mi-home-security-camera-360-1080p</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/xiaomi-mi-home-security-camera-360-1080p</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd2121g0-i</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6630,8 +6618,6 @@
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2de3c210ix-d</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1027g2h-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1027g2h-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/hikvision-ds-2cd1023g2-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1023g2-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1327g2h-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1327g2h-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1723g2-lizsu</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6642,14 +6628,14 @@
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1t27g2h-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1623g2-lizsu</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1623g2-lizsu</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/tp-link-tapo-c200c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/tp-link-tapo-c200c</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1623g0-iz</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1623g0-iz</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1023g0-iuf-4mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1023g0-iuf-4mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd1027g0-luf-4mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1027g0-luf-4mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/hikvision-ds-2cd1023g2-liuf-2-4-mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1023g2-liuf-2-4-mm</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2de1c200iw-d3</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2de1c200iw-d3</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/hikvision-ds-2cd2423g2-iw</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -6682,6 +6668,10 @@
   <url><loc>https://qorai.net/tr/product/hikvision-ds-2cd1141g2-liuf</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/tp-link-tc85-kit</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/tp-link-tc85-kit</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tp-link-vigi-insight-s455</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tp-link-vigi-insight-s455</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/tp-link-tapo-c410</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/tp-link-tapo-c410</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/canon-i-sensys-x-c1538if</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/canon-i-sensys-x-c1538if</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/epson-workforce-enterprise-am-c400</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
@@ -7040,8 +7030,8 @@
   <url><loc>https://qorai.net/tr/product/samsung-ep-t4511n</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/anker-543</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/anker-543</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://qorai.net/product/anker-powerport-atom-iii-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://qorai.net/tr/product/anker-powerport-atom-iii-slim</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://qorai.net/product/sony-uch10</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://qorai.net/tr/product/sony-uch10</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dji-rs-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://qorai.net/tr/product/dji-rs-4</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://qorai.net/product/dji-rs-3-pro</loc><lastmod>2026-09-01</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>

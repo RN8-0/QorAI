@@ -4,12 +4,16 @@ import { useAuth } from './auth';
 import {
   featureCost, formatQorCoins, hasCompletedQuiz, spendQorCoins,
 } from './qorCoins';
+import { modeOn } from './siteMode';
 
 function messageFor(code, { feature, cost, balance, lang }) {
   const l = String(lang || 'en').slice(0, 2).toLowerCase();
   const amount = formatQorCoins(cost ?? featureCost(feature), l);
   const bal = formatQorCoins(balance ?? 0, l);
   if (l === 'tr') {
+    if (code === 'FEATURE_DISABLED') {
+      return 'Bu özellik şu anda kapalı. Hazır analizleri Analizler bölümünden okuyabilirsin.';
+    }
     if (code === 'AUTH_REQUIRED') {
       return `Bu AI özelliği için giriş yapmalısın. İşlem ücreti: ${amount} Qor Coin.`;
     }
@@ -22,6 +26,7 @@ function messageFor(code, { feature, cost, balance, lang }) {
     return 'AI erişimi hazırlanamadı. Lütfen tekrar dene.';
   }
   
+  if (code === 'FEATURE_DISABLED') return 'This feature is currently turned off. You can read the published analyses in the Analyses section.';
   if (code === 'AUTH_REQUIRED') return `Sign in to use this AI feature. Cost: ${amount} Qor Coin.`;
   if (code === 'QUIZ_REQUIRED') return 'Complete the profile quiz first. Sending you to the quiz page.';
   if (code === 'INSUFFICIENT_QOR_COINS') return `Not enough Qor Coin — the analysis was not started. This costs ${amount} and your balance is ${bal}. You can go Premium for unlimited AI.`;
@@ -46,13 +51,25 @@ export function useAiAccess(lang = 'en') {
       return message;
     };
 
+    // EMNİYET KİLİDİ — ziyaretçinin başlattığı HER AI işi buradan geçer
+    // (ürün, karşılaştırma, link, abonelik, sohbet). Arayüzde gözden kaçan
+    // bir düğme kalsa bile burada durur: ne Qor Coin harcanır ne AI çağrısı
+    // yapılır. Gizlemeyi yalnız görsel katmana bırakmamanın sebebi bu.
+    if (!modeOn('userAi')) {
+      const message = sendMessage('FEATURE_DISABLED');
+      return { ok: false, reason: 'FEATURE_DISABLED', message };
+    }
+
     if (!user) {
       const message = sendMessage('AUTH_REQUIRED');
       openAuth();
       return { ok: false, reason: 'AUTH_REQUIRED', message };
     }
 
-    if (requireQuiz && !hasCompletedQuiz(user)) {
+    // Quiz modu kapalıyken AI kapısı quiz şartı ARAMAZ: `/quiz` rotası
+    // `/`'a gidiyor, şart bırakılsaydı kullanıcı hiç geçemeyeceği bir
+    // kapıya yönlendirilirdi.
+    if (modeOn('quiz') && requireQuiz && !hasCompletedQuiz(user)) {
       const message = sendMessage('QUIZ_REQUIRED');
       const next = `${location.pathname}${location.search}${location.hash}`;
       navigate(`/quiz?required=1&next=${encodeURIComponent(next)}`);
