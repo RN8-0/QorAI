@@ -1081,6 +1081,28 @@
 .aic-tone-neg .aic-num { color: var(--lead-neg); }
 /* Konu cumlesinin kendi rengi zaten ton rengi; sayi onu bolmesin. */
 .aic-prose-lead .aic-num { color: inherit; }
+
+/* ── SAYI DA KALIN GÖRÜNMELİ ──────────────────────────────────────────────
+   Kalın bir hükmün içindeki "2600 nit" / "6.9 inç" komşusundan İNCE
+   çıkıyordu. Sebep ağırlık değil YAZI TİPİ: `.aic-num` mono aileyi
+   kullanıyor, projede self-host edilmiş bir mono YOK (CLAUDE.md: JetBrains
+   Mono ÖNERİ, kurulu değil), dolayısıyla yığın Windows'ta Consolas'a
+   düşüyor — orada 800 kesimi yok, tavan 700. Yani sayı 800 isteyip 700
+   alıyor, yanındaki Jakarta ise gerçekten 800.
+
+   Kalıcı çözüm JetBrains Mono'yu Jakarta ile aynı desende self-host etmek;
+   o ayrı bir iş ve LCP'ye dokunuyor (bu proje Google Fonts'u tam o yüzden
+   kaldırmıştı). O gelene kadar eksik ağırlık ince bir konturla kapanıyor:
+   kontur `currentColor` olduğu için sayı yine cümlesinin RENGİNDE kalıyor,
+   yalnız gövdesi kalınlaşıyor. Yalnız KALIN bağlamlarda uygulanır — normal
+   metindeki sayı olduğu gibi durur. */
+.aic-clause .aic-num,
+.aic-prose-lead.pos .aic-num,
+.aic-prose-lead.neg .aic-num,
+.aic-diff-body strong .aic-num {
+  -webkit-text-stroke: .38px currentColor;
+  paint-order: stroke fill;
+}
 /* Konu cumlesinin icindeki sayi da OLCU rengini korur. Eskiden cumlenin
    rengini aliyordu (`inherit`); gerekcesi "kirmizi hukmun ortasinda yesil
    sayi hukmu boler" idi. Sayi artik yesil olmadigi icin o catisma yok. */
