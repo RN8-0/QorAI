@@ -566,8 +566,14 @@ export default function Home() {
 
         {!searchMode && (
           <>
-            {/* FOR YOU — top, 3×3 */}
-            <Section title={t('home.forYou')} products={feed.forYou} loading={loading} t={t} dense />
+            {/* "SENIN ICIN" YALNIZ GIRIS YAPMISA. Ziyaretcinin profili yok;
+                anonim kullaniciya "Senin Icin" demek hem yanlis hem tuhaf —
+                gosterilen liste aslinda populer urunler. Girissizken baslik
+                "One Cikanlar" olur, ayni liste dogru adiyla cizilir. */}
+            <Section
+              title={user ? t('home.forYou') : t('home.popular')}
+              products={feed.forYou} loading={loading} t={t} dense
+            />
 
             {/* TRENDING — top, 3×3 */}
             <Section title={t('home.trendingToday')} products={feed.trending} loading={loading} t={t} dense seeAllTo="/category/smartphones?sort=trend" />

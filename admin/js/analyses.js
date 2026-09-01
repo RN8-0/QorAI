@@ -1297,6 +1297,7 @@
   }
 
   function renderProgress(durum, hata) {
+    // Serit renderProgress'ten SONRA yeniden basilir (bkz. fonksiyon sonu).
     var b = $('anNewBody');
     if (!b) return;
     var lang = _run ? _run.lang : 'tr';
@@ -1333,6 +1334,15 @@
     if (hata) sureDurdur();
     else if ($('anSure')) { if (!_sureTimer) sureBaslat(); }
     else sureDurdur();
+    // KUYRUK SERIDI GERI KONUR. Bu fonksiyon `anNewBody`yi bastan yaziyor,
+    // yani serit her ilerleme adiminda siliniyordu; kuyruk kosarken hangi
+    // urunde oldugumuz hicbir yerde gorunmuyordu.
+    if (_kuyrukAktif) {
+      var bb = $('anNewBody');
+      if (bb && !$('anKuyrukSerit')) {
+        bb.insertAdjacentHTML('afterbegin', '<div id="anKuyrukSerit">' + kuyrukSeridi() + '</div>');
+      }
+    }
   }
 
   function analysesBackToQuiz() { if (_run) renderQuiz(); }
@@ -1454,7 +1464,16 @@
   // cizilmiyor, dolayisiyla ilerlemeyi ancak boyle gosterebiliyoruz.
   function kuyrukSeridiTazele() {
     var k = $('anKaynak');
-    if (k) renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+    if (k) { renderUretAra(($('anProdQ') || {}).value || '', window.__anHits); return; }
+    // ILERLEME EKRANINDAYIZ: renderProgress `anNewBody`yi bastan yaziyor ve
+    // `anKaynak` yok oluyor. Serit o zaman ilerleme ekraninin USTUNE
+    // yazilir, yoksa kuyruk kosarken hicbir yerde gorunmuyordu.
+    var b = $('anNewBody');
+    if (!b) return;
+    var mevcut = $('anKuyrukSerit');
+    var html = kuyrukSeridi();
+    if (mevcut) { mevcut.innerHTML = html; return; }
+    b.insertAdjacentHTML('afterbegin', '<div id="anKuyrukSerit">' + html + '</div>');
   }
 
   async function analysesKuyrukBasla() {
@@ -1712,7 +1731,10 @@
       // sayfa kaydi `?id=` ile cekiyor — kayit yoksa onizleyecek bir sey de
       // yok. Ayrica bu kadar cagrinin sonucu sekme kazara kapanirsa kaybolmasin.
       mark('save', 'run');
-      await kaydet('draft');
+      // DONUS DEGERI KONTROL EDILIR. Yoksa slug/meta catismasi ya da PB
+      // hatasi "basarili" sayilip kuyruga ✓ yaziliyordu.
+      var kayitOk = await kaydet('draft');
+      if (!kayitOk) throw new Error(_kaydetHata || 'Taslak kaydedilemedi');
       mark('save', 'done');
       // KUYRUKTAYSA EDITORU ACMA: sonraki urune gecilecek, araya taslak
       // duzenleyicisini sokmak akisi keser ve `_editing`i kuyrugun altindan
@@ -2211,29 +2233,36 @@
       + '</div>';
   }
 
+  // kaydet() basarisizlikta THROW ETMEZ, `false` doner ve sebebi yalnizca
+  // toast'ta gosterir. Kuyruk bunu "bitti" sayip ✓ yazdi: uc iPhone 14
+  // varyanti icin sirayla kosuldu, ekranda 3/3 TAMAMLANDI gorundu ve PB'de
+  // TEK KAYIT OLUSMADI (olculdu 2026-09-01). Toast da kaybolduğu icin sebep
+  // hic ogrenilemedi. Sebep artik burada saklaniyor; kuyruk okuyup loga
+  // yaziyor.
+  var _kaydetHata = '';
+  function kaydetRed(msg) { _kaydetHata = msg; toast(msg, 'e'); return false; }
+
   async function kaydet(durum) {
+    _kaydetHata = '';
     var a = _editing;
-    if (!a.slug) { toast('Slug boş olamaz', 'e'); return false; }
+    if (!a.slug) return kaydetRed('Slug boş olamaz');
     var carpanSlug = slugCakismasi(a);
     if (carpanSlug) {
-      toast('Bu slug zaten kullanılıyor: ' + (subjectOf(carpanSlug) || carpanSlug.id), 'e');
-      return false;
+      return kaydetRed('Bu slug zaten kullanılıyor: ' + (subjectOf(carpanSlug) || carpanSlug.id));
     }
     if (durum === 'published') {
-      if (!reportOf(a, 'tr')) { toast('Rapor verisi olmayan analiz yayınlanamaz', 'e'); return false; }
+      if (!reportOf(a, 'tr')) return kaydetRed('Rapor verisi olmayan analiz yayınlanamaz');
       // MUKERRER YAYIN KAPISI. Slug catismasi yalnizca adrese bakiyor; ayni
       // urun farkli bir baslikla farkli bir slug uretip bu denetimi
       // gecebiliyordu. Kimlik KONUDAN turetiliyor (bkz. konuCakismasi).
       var ayniKonu = konuCakismasi(kayitKonuAnahtari(a), a.id, true);
       if (ayniKonu) {
-        toast('Bu konunun yayında analizi zaten var: “' + (subjectOf(ayniKonu) || ayniKonu.slug)
-          + '”. Önce onu yayından kaldır ya da bunu taslak bırak.', 'e');
-        return false;
+        return kaydetRed('Bu konunun yayında analizi zaten var: “' + (subjectOf(ayniKonu) || ayniKonu.slug)
+          + '”. Önce onu yayından kaldır ya da bunu taslak bırak.');
       }
       var carp = metaCakismasi(a);
       if (carp.length) {
-        toast('Yinelenen meta: ' + carp[0] + ' — düzeltmeden yayınlanamaz', 'e');
-        return false;
+        return kaydetRed('Yinelenen meta: ' + carp[0] + ' — düzeltmeden yayınlanamaz');
       }
       if (!a.publishedAt) a.publishedAt = new Date().toISOString();
     }
@@ -2247,7 +2276,7 @@
       var i = _items.findIndex(function (o) { return o.id === rec.id; });
       if (i >= 0) _items[i] = rec; else _items.unshift(rec);
       return true;
-    } catch (e) { toast('Kaydedilemedi: ' + (e.message || e), 'e'); return false; }
+    } catch (e) { return kaydetRed('Kaydedilemedi: ' + (e.message || e)); }
   }
 
   async function analysesTaslakKaydet() {

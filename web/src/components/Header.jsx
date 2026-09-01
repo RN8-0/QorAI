@@ -66,9 +66,11 @@ export default function Header() {
   // altinda yine gorunur ve kafa karistirir. Cekmece aciklen bar tamamen
   // kaldiriliyor — zaten ayni gezinme baglantilari cekmecenin icinde var.
   // Sinif <body> uzerinde cunku bar bu bilesenin AGACINDA degil (App.jsx).
-  // Alt bardaki "Kategoriler" bu cekmeceyi acar (bkz. BottomNav.jsx). Iki
-  // bilesen ayri agaclarda oldugu icin (App.jsx) ortak state yok; tek yonlu
-  // bir olay yeterli, paylasilan bir store kurmaya deger bir sey degil.
+  // Cekmeceyi DISARIDAN acma kancasi. Alt bardaki "Kategoriler" dugmesi icin
+  // eklenmisti; o dugme kullanici istegiyle kaldirildi (2026-09-01) ama kanca
+  // duruyor: baska bir yerden cekmeceyi acmak gerekirse tek satirlik bir
+  // `dispatchEvent` yetiyor. Iki bilesen ayri agaclarda (App.jsx), o yuzden
+  // ortak state degil tek yonlu olay.
   useEffect(() => {
     const ac = () => setDrawer(true);
     window.addEventListener('qor:open-drawer', ac);
