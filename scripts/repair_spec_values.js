@@ -184,6 +184,48 @@ function imzaHaritasi(product) {
 // jeton yerine `inches` yazilir ("1/1.56 I 'm not . Sensor Size" ->
 // "1/1.56 inches Sensor Size").
 const NL = String.fromCharCode(10);
+
+// KURATORLU KALIPLAR -- sozlugun cozemedigi SABIT YAPILI Turkce ifadeler.
+//
+// Olculdu 2026-09-01 (2400 urun): satir bazli eslesmeden sonra geriye
+// 52 gecis / SADECE 5 kalip kaldi ve hepsinin Turkce karsiligi net:
+//     "N Dakikada N Saatlik Kullanim"   (26)
+//     "N Dakikada Kablosuz Tam Dolum"   (16)
+//     "N Dakikada N Gun Kullanim"        (4)
+//     "N Dakikada N Saat Kullanim"       (2)
+// Bunlar serbest metin degil SABLON; sayilar disinda hepsi ayni. Bu yuzden
+// karsiliklari elle yaziliyor -- makine cevirisi burada "N minutesda N
+// hourslik Use" uretiyordu, yani hatanin kaynagi.
+// Kalip TUTMAZSA hicbir sey yapilmaz; uydurma ceviri URETILMEZ.
+const KURATOR = [
+  [/^(\d+)\s*dakikada\s*(\d+)\s*saatlik\s*kullanim$/i,
+    (m) => m[2] + ' hours of use in ' + m[1] + ' minutes'],
+  [/^(\d+)\s*dakikada\s*(\d+)\s*saat\s*kullanim$/i,
+    (m) => m[2] + ' hours of use in ' + m[1] + ' minutes'],
+  [/^(\d+)\s*dakikada\s*(\d+)\s*gun\s*kullanim$/i,
+    (m) => m[2] + ' days of use in ' + m[1] + ' minutes'],
+  [/^(\d+)\s*dakikada\s*kablosuz\s*tam\s*dolum?$/i,
+    (m) => 'fully charged wirelessly in ' + m[1] + ' minutes'],
+  [/^(\d+)\s*dakikada\s*tam\s*dolum?$/i,
+    (m) => 'fully charged in ' + m[1] + ' minutes'],
+];
+// Turkce'yi ASCII'ye katla ki kalip 'Kullanım'/'Gün' gibi yazimlarda da tutsun.
+function katla(t) {
+  return String(t == null ? '' : t).toLowerCase()
+    .replace(/i/g, 'i').replace(/i/g, 'i')
+    .replace(/[ı]/g, 'i').replace(/[İ]/g, 'i')
+    .replace(/[ç]/g, 'c').replace(/[ğ]/g, 'g').replace(/[ö]/g, 'o')
+    .replace(/[ş]/g, 's').replace(/[ü]/g, 'u')
+    .replace(/\s+/g, ' ').trim();
+}
+function kuratorCevir(trSatir) {
+  const k = katla(trSatir);
+  for (const [re, yap] of KURATOR) {
+    const m = k.match(re);
+    if (m) return yap(m);
+  }
+  return '';
+}
 const INC_BOZUK = /I\s*'m\s*not\s*\.?/gi;
 
 function duzelt(map, harita, sigHarita, satirHarita) {
@@ -252,8 +294,9 @@ function satirImzaHaritasi(product) {
       if (!ham || !sig) continue;
       sayac[sig] = (sayac[sig] || 0) + 1;
       let cev;
-      try { cev = L.resolve(ham); } catch (_) { continue; }
-      if (!cev || String(cev) === ham || BOZUK.test(String(cev))) continue;
+      try { cev = L.resolve(ham); } catch (_) { cev = ''; }
+      if (!cev || String(cev) === ham || BOZUK.test(String(cev))) cev = kuratorCevir(ham);
+      if (!cev || BOZUK.test(String(cev))) continue;
       harita[sig] = String(cev);
     }
   }
@@ -329,8 +372,12 @@ async function runPool(items, worker) {
         .find((x) => BOZUK.test(String((p.specs || {})[x]))
           && String(res.patch.specs[x]) !== String((p.specs || {})[x]));
       if (k) {
-        ornek.push(p.name.slice(0, 28) + ' | ' + k + ': "'
-          + String(p.specs[k]).slice(0, 24) + '" -> "' + res.patch.specs[k] + '"');
+        // Ornek KIRPILMAZ (satir sonlari gorunur yapilir): kirpik ornek
+        // ikı kez dogru bir ikameyi yanlis gosterdi ve gereksiz alarm yarattı.
+        const gor = (x) => String(x).split(NL).join(' | ');
+        ornek.push(p.name.slice(0, 26) + NL
+          + '        ESKI: ' + gor(p.specs[k]) + NL
+          + '        YENI: ' + gor(res.patch.specs[k]));
       }
     }
     if (!APPLY) return;

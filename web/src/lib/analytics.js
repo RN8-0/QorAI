@@ -81,12 +81,39 @@ function send(name, params) {
   if (started && pending.length < 50) pending.push([name, params]);
 }
 
+// BASLIK OTURMADAN GONDERME.
+//
+// `document.title` gezinme aninda okunuyordu ve bu, Analytics'e YANLIS
+// baslik yaziyordu. Sebep: katalogun 107.685 urununden yalnizca 3.754'u
+// (%3,5) on-render ediliyor; kalan adreslerde sunucu "Page not found"
+// kabugunu donuyor. SPA sayfayi DOGRU render ediyor ama bu efekt
+// `useSeo` basligi yazmadan ONCE kosuyor, dolayisiyla calisir durumdaki
+// bir urun sayfasi Analytics'te "Page not found" olarak sayiliyordu.
+// Kullanicinin gordugu "Page not found 18 goruntuleme, +%260" bunun ta
+// kendisi -- sayfalar bulunamiyor DEGIL, YANLIS ETIKETLENIYOR.
+//
+// Cozum: baslik degisene kadar (ya da 2 sn) bekle, sonra gonder. Olay
+// zaten erteleniyor (ilk etkilesim ya da 6 sn), bu bekleme olcumu
+// geciktirmiyor.
+const KABUK_BASLIKLARI = /^(page not found|sayfa bulunamadi|sayfa bulunamadı|qor ai)/i;
+
 export function trackPageView(path) {
-  send('page_view', {
-    page_path: path,
-    page_location: location.origin + path,
-    page_title: document.title,
-  });
+  const basla = Date.now();
+  const ilk = document.title;
+  const gonder = () => {
+    send('page_view', {
+      page_path: path,
+      page_location: location.origin + path,
+      page_title: document.title,
+    });
+  };
+  const bekle = () => {
+    const simdi = document.title;
+    const oturdu = simdi !== ilk || !KABUK_BASLIKLARI.test(simdi);
+    if (oturdu || Date.now() - basla > 2000) { gonder(); return; }
+    setTimeout(bekle, 120);
+  };
+  bekle();
 }
 
 export function trackEvent(name, params) {
