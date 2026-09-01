@@ -1,122 +1,183 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// FİYAT SEYRİ GRAFİĞİ — Recharts
+// FİYAT SEYRİ GRAFİĞİ — elle yazılmış SVG
 //
-// NEDEN KÜTÜPHANE: bu grafik daha önce elle yazılmış SVG'ydi. Eksen, ızgara,
-// tooltip, animasyon, responsive ölçüm — hepsi tek tek elde kuruluyordu ve
-// hiçbiri kütüphane kalitesine ulaşmadı. Recharts React için fiili standart
-// (haftalık ~50M indirme), SVG tabanlı, animasyon yerleşik ve Tailwind
-// gerektirmiyor — bu proje token tabanlı kendi CSS'ini kullandığı için bu
-// son madde belirleyiciydi (react-bits / shadcn-extras Tailwind istiyor).
+// RECHARTS'TAN GERİ DÖNÜLDÜ (2026-09-01) ve bu, bu dosyanın önceki notunda
+// yazılı kararın BİLEREK tersine çevrilmesidir. O not haklıydı ama gerekçesi
+// bu grafiğe uymuyor:
 //
-// TEMBEL YÜKLENİR: `AiCharts.jsx` bunu `React.lazy` ile çağırır, böylece
-// recharts yalnızca fiyat grafiği GERÇEKTEN çizilen sayfalarda inar.
+//   · "eksen, ızgara, tooltip, animasyon, responsive ölçüm elde kurulamadı"
+//     — burada TOOLTIP GEREKMİYOR: aynı sayılar grafiğin hemen altındaki
+//     "6 ay sonra / En iyi pencere / Beklenen değişim" satırında zaten
+//     yazılı. Dinamik ölçüm de gerekmiyor: 7 SABİT nokta, `viewBox` +
+//     `preserveAspectRatio` ile ölçekleniyor.
+//   · Bedeli ölçüldü: recharts paketi 382 KB ve sitenin EN ÇOK OKUNAN
+//     sayfasında (analiz) duruyor. Yedi veri noktası için kabul edilemez.
 //
-// VERİ UYDURULMAZ: eksen YÜZDE DEĞİŞİM gösterir. Rapor bir yön (düşüş/yükseliş)
-// ve bir aralık (%10-15) veriyor; aylık kesin tutar hiçbir yerde yok, o yüzden
-// grafik de tutar basmaz.
+// TASARIM KARARLARI (proje tokenları + ~/.claude/CLAUDE.md kuralları):
+//   · Biçim: belirsizlik BANDI + orta çizgi + vurgulanmış son nokta. Bant
+//     mesajın kendisi — bu bir tahmin, tek bir çizgi olduğundan fazlasını
+//     iddia eder.
+//   · Renk: anlam taşır. Düşüş = yeşil (alıcı için iyi), yükseliş = kırmızı,
+//     yatay = kehribar. Gradyan YOK, kutu/gölge YOK.
+//   · Izgara: kutulu ızgara yerine tek noktalı %0 taban çizgisi + soluk
+//     yatay kılavuzlar. Ayrım hairline'dan gelir.
+//   · Tipografi: ay etiketleri ve yüzdeler mono/tabular.
+//   · Hareket: TEK orkestre anı — görünür olunca çizgi soldan sağa çizilir
+//     (stroke-dasharray), bant arkasından açılır, son nokta en sonda oturur.
+//     `prefers-reduced-motion` ile tamamen kapanır.
+//
+// VERİ UYDURULMAZ: eksen YÜZDE DEĞİŞİM gösterir. Rapor bir yön ve bir aralık
+// veriyor; aylık kesin tutar hiçbir yerde yok, grafik de tutar basmaz.
 // ═══════════════════════════════════════════════════════════════════════════
-import {
-  Area, CartesianGrid, ComposedChart, Line, ReferenceLine,
-  ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
+import { useEffect, useRef, useState } from 'react';
 
-function TipKutusu({ active, payload, label, color, L }) {
-  if (!active || !payload || !payload.length) return null;
-  const row = payload[0]?.payload;
-  if (!row) return null;
-  const fmt = (v) => {
-    const d = Math.round(v * 10) / 10;
-    if (Math.abs(d) < 0.05) return '0%';
-    return `${d > 0 ? '+' : '−'}%${Math.abs(d) % 1 === 0 ? Math.abs(d) : Math.abs(d).toFixed(1)}`;
-  };
-  return (
-    <div className="aic-rc-tip">
-      <strong>{label}</strong>
-      <b style={{ color }}>{fmt(row.orta)}</b>
-      <small>{L('range', 'aralık')} {fmt(row.bant[0])} … {fmt(row.bant[1])}</small>
-    </div>
-  );
+const W = 720;          // viewBox genişliği — ekranda genişliğe göre ölçeklenir
+const H = 190;          // viewBox yüksekliği
+const PAD_L = 46;       // sol: yüzde etiketleri
+const PAD_R = 16;
+const PAD_T = 14;
+const PAD_B = 30;       // alt: ay etiketleri
+
+/** Görünür olunca bir kez `true` olur. Animasyon SAYFA AÇILIRKEN değil,
+ *  kullanıcı grafiğe geldiğinde başlasın diye.
+ *
+ *  EŞİK 0.25 DEĞİL 0 (ölçüldü 2026-09-01): analiz sayfası derin ve tembel
+ *  içerik yüklendikçe YENİDEN YERLEŞİYOR; grafik görüş alanına girip hemen
+ *  çıkıyordu ve %25 eşiği hiç dolmuyordu — animasyon HİÇ başlamıyor, grafik
+ *  boş (bant genişliği 0) kalıyordu. Sıfır eşik ilk pikselde ateşler.
+ *
+ *  İKİNCİ SAVUNMA: gözlemci hiç ateşlemezse grafik SONSUZA KADAR boş kalır.
+ *  Bu, animasyonun kaybolmasından çok daha kötü. Bir saniye sonra konum
+ *  elle kontrol edilir; ekrandaysa animasyon başlar. */
+function useGorunur(ref) {
+  const [gorunur, setGorunur] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (typeof IntersectionObserver !== 'function') { setGorunur(true); return undefined; }
+    let bitti = false;
+    const ac = () => { if (!bitti) { bitti = true; setGorunur(true); } };
+    const io = new IntersectionObserver((girisler) => {
+      if (girisler.some((g) => g.isIntersecting)) { ac(); io.disconnect(); }
+    }, { threshold: 0, rootMargin: '0px 0px -8% 0px' });
+    io.observe(el);
+    const yedek = setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight && r.bottom > 0) { ac(); io.disconnect(); }
+    }, 1000);
+    return () => { clearTimeout(yedek); io.disconnect(); };
+  }, [ref]);
+  return gorunur;
 }
+
+const yuzdeEtiket = (v) => {
+  const d = Math.round(v * 10) / 10;
+  if (Math.abs(d) < 0.05) return '0%';
+  return `${d > 0 ? '+' : '−'}%${Math.abs(d) % 1 === 0 ? Math.abs(d) : Math.abs(d).toFixed(1)}`;
+};
 
 export default function PriceChart({
   data = [], color = '#22c55e', bestIndex = -1, L = (en) => en, reduced = false,
 }) {
+  const kap = useRef(null);
+  const gorunur = useGorunur(kap);
   if (!data.length) return null;
-  const tick = (v) => {
-    const d = Math.round(v * 10) / 10;
-    if (Math.abs(d) < 0.05) return '0%';
-    return `${d > 0 ? '+' : '−'}%${Math.abs(d)}`;
-  };
-  const bestAy = bestIndex >= 0 && data[bestIndex] ? data[bestIndex].ay : null;
+
+  // ── Ölçek. Bandın iki ucu ve orta çizgi birlikte sınırları belirler;
+  //    %0 her zaman eksende kalır ki "değişim yok" çizgisi okunabilsin.
+  const hepsi = data.flatMap((d) => [d.orta, d.bant[0], d.bant[1]]);
+  const hamMin = Math.min(0, ...hepsi);
+  const hamMax = Math.max(0, ...hepsi);
+  const pay = Math.max(0.6, (hamMax - hamMin) * 0.14);
+  const yMin = hamMin - pay;
+  const yMax = hamMax + pay;
+  const x = (i) => PAD_L + (i * (W - PAD_L - PAD_R)) / Math.max(1, data.length - 1);
+  const y = (v) => PAD_T + ((yMax - v) / (yMax - yMin || 1)) * (H - PAD_T - PAD_B);
+
+  const cizgi = data.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.orta).toFixed(1)}`).join(' ');
+  const bant = [
+    ...data.map((d, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(d.bant[1]).toFixed(1)}`),
+    ...data.slice().reverse().map((d, i) => `L${x(data.length - 1 - i).toFixed(1)},${y(d.bant[0]).toFixed(1)}`),
+    'Z',
+  ].join(' ');
+
+  // Yatay kılavuzlar: %0 + üst/alt uçlar. Üçten fazlası gürültü.
+  const kilavuzlar = [...new Set([0, hamMax, hamMin].map((v) => Math.round(v * 10) / 10))]
+    .filter((v) => v >= yMin && v <= yMax);
+
+  const sonI = data.length - 1;
+  const sonY = y(data[sonI].orta);
+  const uzunluk = 1400;   // dasharray için kaba yol uzunluğu; fazlası zararsız
+  const kapaliOrtam = reduced;
+  const oynat = gorunur && !kapaliOrtam;
+
   return (
-    <div className="aic-rc">
-      <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={data} margin={{ top: 18, right: 26, left: 6, bottom: 4 }}>
-          <defs>
-            <linearGradient id="aicPriceFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.34} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.03} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="var(--border)" strokeDasharray="3 4" vertical={false} />
-          <XAxis
-            dataKey="ay"
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: 'var(--text3)', fontSize: 12, fontWeight: 700 }}
-            dy={6}
-          />
-          <YAxis
-            tickFormatter={tick}
-            tickLine={false}
-            axisLine={false}
-            width={52}
-            tick={{ fill: 'var(--text3)', fontSize: 11, fontWeight: 700 }}
-          />
-          {/* Bugün = %0 referansı */}
-          <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="5 5" />
-          {bestAy && (
-            <ReferenceLine
-              x={bestAy}
-              stroke={color}
-              strokeDasharray="4 4"
-              strokeOpacity={0.6}
-              label={{
-                value: L('best window', 'en iyi pencere'),
-                position: 'insideTopLeft',
-                fill: color,
-                fontSize: 11,
-                fontWeight: 800,
-              }}
+    <div className="aic-pc" ref={kap}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio="none"
+        className={`aic-pc-svg${oynat ? ' oynat' : ''}${kapaliOrtam ? ' sabit' : ''}`}
+        role="img"
+        aria-label={L('Expected price change over the next six months',
+          'Önümüzdeki altı ayda beklenen fiyat değişimi')}
+      >
+        {/* Bant soldan sağa açılır: clip dikdörtgeni genişler. */}
+        <defs>
+          <clipPath id="aicPcClip">
+            <rect className="aic-pc-clip" x="0" y="0" width={W} height={H} />
+          </clipPath>
+        </defs>
+
+        {/* Yatay kılavuzlar — hairline, kutu yok. */}
+        {kilavuzlar.map((v) => (
+          <g key={`k${v}`}>
+            <line
+              x1={PAD_L} x2={W - PAD_R} y1={y(v)} y2={y(v)}
+              className={v === 0 ? 'aic-pc-taban' : 'aic-pc-kilavuz'}
             />
-          )}
-          <Tooltip
-            cursor={{ stroke: 'var(--text3)', strokeDasharray: '3 3' }}
-            content={<TipKutusu color={color} L={L} />}
+            <text x={PAD_L - 8} y={y(v) + 3.5} className="aic-pc-yetiket" textAnchor="end">
+              {yuzdeEtiket(v)}
+            </text>
+          </g>
+        ))}
+
+        {/* En iyi pencere: dikey işaret. Ayrı bir açıklama satırı yerine
+            doğrudan eksende — okuyucu ayı grafikte görür. */}
+        {bestIndex >= 0 && bestIndex < data.length && (
+          <line
+            x1={x(bestIndex)} x2={x(bestIndex)} y1={PAD_T} y2={H - PAD_B}
+            className="aic-pc-pencere" style={{ stroke: color }}
           />
-          {/* Belirsizlik bandı — aralığın alt ve üst ucu */}
-          <Area
-            type="monotone"
-            dataKey="bant"
-            stroke="none"
-            fill="url(#aicPriceFill)"
-            isAnimationActive={!reduced}
-            animationDuration={900}
+        )}
+
+        <g clipPath="url(#aicPcClip)">
+          <path d={bant} className="aic-pc-bant" style={{ fill: color }} />
+          <path
+            d={cizgi} className="aic-pc-cizgi" style={{ stroke: color }}
+            strokeDasharray={uzunluk}
           />
-          {/* Orta eğri */}
-          <Line
-            type="monotone"
-            dataKey="orta"
-            stroke={color}
-            strokeWidth={3}
-            dot={{ r: 3.5, fill: color, strokeWidth: 0 }}
-            activeDot={{ r: 6, fill: color, stroke: 'var(--surface-2)', strokeWidth: 2.5 }}
-            isAnimationActive={!reduced}
-            animationDuration={1200}
-            animationEasing="ease-out"
+        </g>
+
+        {/* Ara noktalar sönük, SON nokta vurgulu: hüküm oradadır. */}
+        {data.map((d, i) => (
+          <circle
+            key={`n${d.ay}-${i}`} cx={x(i)} cy={y(d.orta)} r={i === sonI ? 4.5 : 2.6}
+            className={`aic-pc-nokta${i === sonI ? ' son' : ''}`}
+            style={{ fill: color, animationDelay: `${340 + i * 60}ms` }}
           />
-        </ComposedChart>
-      </ResponsiveContainer>
+        ))}
+        <circle cx={x(sonI)} cy={sonY} r="9" className="aic-pc-halka" style={{ stroke: color }} />
+
+        {/* Ay etiketleri */}
+        {data.map((d, i) => (
+          <text
+            key={`a${d.ay}-${i}`} x={x(i)} y={H - 10}
+            className={`aic-pc-ay${i === bestIndex ? ' iyi' : ''}`} textAnchor="middle"
+          >
+            {d.ay}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }

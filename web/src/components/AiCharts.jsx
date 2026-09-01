@@ -1249,6 +1249,15 @@ const POS_KOK = [
   'profesyonel kalite', 'okunabilirlik',
   'yardımcı ol', 'yardimci ol', 'uyumlu', 'denge', 'çözümdür', 'cozumdur',
   'uygun', 'güncel kal', 'guncel kal', 'koruma', 'korur',
+  // ── INGILIZCE OLUMLU SOZLUK (2026-09-01) ───────────────────────────────
+  // 'smooth' KOKU BURADA KALIYOR ama artik tek basina cumleyi yesile
+  // cekemiyor: olumsuz sozluk genisledigi icin "impacting the perceived
+  // smoothness" cumlesinde 'impacting' onu dengeliyor.
+  'excels', 'excel ', 'enhance', 'superior', 'solid', 'capable', 'robust',
+  'versatile', 'efficient', 'seamless', 'vibrant', 'sharp', 'crisp',
+  'long-lasting', 'worth', 'advantage', 'benefit', 'strength', 'well-suited',
+  'dependable', 'high-performing', 'refined', 'comfortable', 'ample',
+  'admirably', 'substantial improvement', 'improvements in',
   'praise', 'excellent', 'outstanding', 'strong', 'impressive', 'leading',
   'recommend', 'great', 'best', 'smooth', 'reliable', 'durable', 'fast',
 ];
@@ -1271,6 +1280,23 @@ const NEG_KOK = [
   // cümlelerde tek bir olumsuz kök bile eşleşmiyordu.
   'tıkırtı', 'tikirti', 'vızıltı', 'vizilti', 'uğultu', 'ugultu', 'gürültü', 'gurultu',
   'bobin sesi', 'coil whine', 'titreşim', 'titresim', 'aşırı ısın', 'asiri isin',
+  // ── INGILIZCE OLUMSUZ SOZLUK (2026-09-01) ──────────────────────────────
+  // Turkce liste yillar icinde zenginlesti, Ingilizce'de yalnizca
+  // problem/weak/poor/lacks gibi bir avuc kok vardi. Olculdu: 8 gercek EN
+  // cumlesinin 3'u yanlis renkteydi, ucu de olumsuz.
+  //
+  // 'impacting' BILEREK burada: rapor dilinde "impacting the perceived
+  // smoothness / battery life" kalibi daima olumsuz. Ciplak 'impact'
+  // ALINMADI ("positive impact" tersine doner).
+  'dated', 'outdated', 'aging', 'ageing', 'inconvenience', 'inconvenient',
+  'degradation', 'degrade', 'deteriorat', 'shortcoming', 'downside',
+  'compromise', 'falls short', 'fall short', 'sluggish', 'bulky', 'cumbersome',
+  'mediocre', 'underwhelm', 'subpar', 'lackluster', 'lacklustre', 'dealbreaker',
+  'noisy', 'missing', 'absent', 'worse', 'worst', 'costly', 'pricey',
+  'throttl', 'bottleneck', 'discontinued', 'trade-off', 'tradeoff',
+  'criticism', 'frustrat', 'struggle', 'concern', 'impacting', 'damage',
+  'restrict', 'shortfall', 'downgrade', 'inferior', 'dim ', 'drains',
+  'battery drain', 'no telephoto', 'not as ', 'less than',
   'rahatsız', 'rahatsiz', 'tepki süresi', 'noisy', 'rattle', 'buzzing', 'throttl',
   // TEMKİN İŞARETLERİ. Model bir kusuru doğrudan söylemek yerine "gözlenmeli /
   // dikkate alınmalı" diye yazıyor; bunlar hüküm olarak OLUMSUZ taraftadır.
@@ -1740,8 +1766,8 @@ export function PriceProjection({
         {waitLabel && <span className={`aic-price-cta ${wait}`}>{waitLabel}</span>}
       </div>
 
-      {/* Grafik TEMBEL: recharts yalnizca fiyat grafigi gercekten cizilen
-          sayfalarda inar (bkz. components/PriceChart.jsx). */}
+      {/* Grafik TEMBEL kalir: kendi yuku artik kucuk (elle SVG, recharts
+          kaldirildi) ama analiz sayfalarinin cogunda hic cizilmiyor. */}
       <Suspense fallback={<div className="aic-rc aic-rc-loading" aria-hidden="true" />}>
         <PriceChart data={data} color={col} bestIndex={bestIdx} L={L} reduced={reduced} />
       </Suspense>

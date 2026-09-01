@@ -1284,3 +1284,66 @@
 @media (prefers-reduced-motion: reduce) {
   .aic-prose-p { animation: none; }
 }
+
+/* ── FİYAT SEYRİ GRAFİĞİ (elle SVG, recharts kaldırıldı 2026-09-01) ────────
+   Gerekçe ve tasarım kararları: components/PriceChart.jsx başlığı.
+   Kutu/gölge yok, gradyan yok; ayrım hairline'dan, vurgu tipografiden. */
+.aic-pc { width: 100%; margin: 6px 0 2px; }
+.aic-pc-svg { display: block; width: 100%; height: 190px; overflow: visible; }
+
+.aic-pc-kilavuz { stroke: var(--divider); stroke-width: 1; }
+/* %0 tabanı noktalı: "değişim yok" çizgisi veri değil REFERANS. */
+.aic-pc-taban { stroke: var(--border-strong); stroke-width: 1; stroke-dasharray: 2 4; }
+.aic-pc-yetiket,
+.aic-pc-ay {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px; font-weight: 600; fill: var(--text-3);
+}
+.aic-pc-ay.iyi { fill: var(--text); font-weight: 800; }
+
+/* En iyi pencere işareti — dikey, soluk, kesik. */
+.aic-pc-pencere { stroke-width: 1.5; stroke-dasharray: 3 5; opacity: .38; }
+
+.aic-pc-bant { opacity: .14; }
+.aic-pc-cizgi { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── DİNLENME DURUMU = TAMAMLANMIŞ GRAFİK ──────────────────────────────────
+   ÖNCE TERSİYDİ (clip genişliği 0, çizgi tamamen kesik, noktalar saydam) ve
+   animasyon başlamazsa grafik SONSUZA KADAR BOŞ kalıyordu. Ölçüldü
+   2026-09-01: bu sayfa tembel içerik yüklendikçe yeniden yerleşiyor, grafik
+   görüş alanına girip çıkıyor ve IntersectionObserver hiç ateşlemiyordu —
+   yani kullanıcı boş bir kutu görüyordu.
+
+   Kural: SÜS, İÇERİĞİ BOZAMAZ. Varsayılan artık son hâl; `.oynat` sınıfı
+   geldiğinde animasyon SIFIRDAN oynar. Tetikleyici hiç gelmezse okuyucu
+   yine doğru grafiği görür, yalnız animasyonu kaçırır. */
+.aic-pc-clip { width: 720px; }
+.aic-pc-cizgi { stroke-dashoffset: 0; }
+.aic-pc-nokta { opacity: 1; }
+.aic-pc-halka { fill: none; stroke-width: 1.5; opacity: .35; }
+
+/* ── TEK ORKESTRE AN ────────────────────────────────────────────────────────
+   Görünür olunca: bant soldan sağa açılır (720 ms), çizgi onunla birlikte
+   çizilir, noktalar sırayla oturur, son nokta halkasıyla kapanır.
+   `.sabit` = prefers-reduced-motion: her şey son hâlinde, hareket yok. */
+.aic-pc-svg.oynat .aic-pc-clip { animation: aicPcAc 720ms cubic-bezier(.22,.61,.36,1) both; }
+.aic-pc-svg.oynat .aic-pc-cizgi { animation: aicPcCiz 820ms cubic-bezier(.22,.61,.36,1) both; }
+.aic-pc-svg.oynat .aic-pc-nokta { animation: aicPcNokta 260ms ease-out both; }
+.aic-pc-svg.oynat .aic-pc-halka { animation: aicPcHalka 420ms ease-out 820ms both; }
+/* `.sabit` (hareket azaltma) ayrı kurala gerek duymuyor: dinlenme durumu
+   zaten son hâl, `.oynat` da basılmıyor. */
+
+@keyframes aicPcAc { from { width: 0; } to { width: 720px; } }
+@keyframes aicPcCiz { from { stroke-dashoffset: 1400; } to { stroke-dashoffset: 0; } }
+@keyframes aicPcNokta { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+@keyframes aicPcHalka { from { opacity: 0; transform: scale(.5); } to { opacity: .35; transform: scale(1); } }
+
+.aic-pc-nokta, .aic-pc-halka { transform-box: fill-box; transform-origin: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aic-pc-svg .aic-pc-clip,
+  .aic-pc-svg .aic-pc-cizgi,
+  .aic-pc-svg .aic-pc-nokta,
+  .aic-pc-svg .aic-pc-halka { animation: none !important; }
+}
