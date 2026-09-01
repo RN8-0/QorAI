@@ -299,8 +299,8 @@ function analizSatiri(a, lang, pfx) {
 // sayfalari yalniz kendi urunlerine link veriyordu, birbirlerine HIC — yani
 // sitenin en degerli kumesi icinde crawler dolasimi sifirdi. Kendisi listeden
 // duser; komsu yoksa hicbir sey basilmaz.
-function analizKomsuBlogu(a, lang, analizByKategori, kategoriBySlug) {
-  const cat = a && a.productSlug ? kategoriBySlug.get(a.productSlug) : null;
+function analizKomsuBlogu(a, lang, analizByKategori, analizKategorisi) {
+  const cat = a ? analizKategorisi(a) : '';
   if (!cat) return '';
   const rows = (analizByKategori.get(cat) || [])
     .filter((x) => x && x.slug && x.slug !== a.slug)
@@ -3014,14 +3014,20 @@ async function main() {
     analizBySlug.set(a.productSlug, { slug: a.slug, diller });
   }
 
-  // KATEGORI -> ANALIZ. Kayitta kategori alani yok; urun slug'i uzerinden
-  // katalogdan turetiliyor. Kategori sayfalari yuksek otoriteli hub'lar ve
-  // konu olarak da dogru komsu — analize giden en degerli ic link burasi.
+  // KATEGORI -> ANALIZ. Kategori sayfalari yuksek otoriteli hub'lar ve konu
+  // olarak da en yakin komsu — analize giden en degerli ic link burasi.
+  //
+  // Kaynak ONCE kaydin kendi `category` alani (admin/js/analyses.js ->
+  // kayitKur onu yaziyor; olculdu 2026-09-01: yayindaki 19 kaydin 19'unda
+  // dolu). Katalogdan turetme YEDEK olarak duruyor: alan bos kalmis eski bir
+  // kayit ya da elle acilmis bir kayit yine de dogru kategoriye baglansin.
   const kategoriBySlug = new Map();
   for (const d of products) if (d && d.slug && d.category) kategoriBySlug.set(d.slug, d.category);
+  const analizKategorisi = (a) => String(a.category || '').trim()
+    || (a.productSlug ? kategoriBySlug.get(a.productSlug) : '') || '';
   const analizByKategori = new Map();
   for (const a of analyses) {
-    const cat = a.productSlug ? kategoriBySlug.get(a.productSlug) : null;
+    const cat = analizKategorisi(a);
     if (!cat) continue;
     if (!analizByKategori.has(cat)) analizByKategori.set(cat, []);
     analizByKategori.get(cat).push(a);
@@ -3656,7 +3662,7 @@ async function main() {
           url, image: img, imageAlt: analysisSubject(a, lang) || anBaslik, type: 'article',
           alternates, routeKey: 'blogpost', lang,
           jsonLd: { '@context': 'https://schema.org', '@graph': graph },
-        }, localizeBodyLinks(analizBody(a, lang) + analizKomsuBlogu(a, lang, analizByKategori, kategoriBySlug), lang)));
+        }, localizeBodyLinks(analizBody(a, lang) + analizKomsuBlogu(a, lang, analizByKategori, analizKategorisi), lang)));
         analizUrls.push({
           loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt),
           changefreq: 'monthly', priority: lang === SEO_DEFAULT_LOCALE ? '0.8' : '0.7',

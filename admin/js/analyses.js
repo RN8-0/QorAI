@@ -738,11 +738,14 @@
             + '</div></div>'
             + (mevcut
               ? '<button class="btn btn-ghost" onclick="analysesEdit(&quot;' + mevcut.id + '&quot;)">Mevcudu aç</button>'
-              : '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Seç</button>')
+              : '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Seç</button> '
+                + '<button class="btn btn-ghost" onclick="analysesKuyrugaEkle(' + i + ')"'
+                + (kuyruktaVar(p.id) ? ' disabled>Kuyrukta' : '>+ Kuyruk') + '</button>')
             + '</div>';
         }).join('') + '</div>'
         : (hits ? '<p class="an-empty">Sonuç yok.</p>' : '<p class="an-hint">Katalogda arama Typesense üzerinden yapılır — sitedeki aramanın aynısı.</p>'))
-      + '</div>';
+      + '</div>'
+      + kuyrukSeridi();
     var el = $('anProdQ');
     if (el) {
       el.focus();
@@ -1364,6 +1367,114 @@
   // konuyu daraltmak icin gerekli (hangi abonelik, hangi kullanim).
   function quizGerekli(r) { return r.kind !== 'product'; }
 
+  // -- URUN KUYRUGU -----------------------------------------------------
+  //
+  // Faz 1'de quiz kalkinca urun analizi bastan sona ELSIZ bir akis oldu:
+  // arastirma -> TR rapor -> EN rapor -> meta -> taslak. Geriye kalan tek
+  // el emegi her urun icin tek tek "Sec"e basmakti. Kuyruk bunu kaldirir:
+  // 10 urun sec, sirayla kendi kendine uretsin.
+  //
+  // PARALEL DEGIL, SIRAYLA. Gerekcesi qor_ai_run.js'te yazili: karsilastirma
+  // eszamanliligi 5'ten 2'ye dusuruldu cunku "bes paralel istek kota
+  // penceresini bir anda tuketip 429 dalgasi uretiyordu". Her biri kendi
+  // icinde arastirma + rapor cagrisi yapan 4 paralel ANALIZ ayni duvara daha
+  // sert carpardi. Sirali kuyruk ayni kazanci (elsiz uretim) risksiz verir.
+  //
+  // BIR URUN PATLARSA KUYRUK DURMAZ: hata kaydedilir, sonrakine gecilir.
+  // Yarim kalan on dakikalik kosuyu tek bir 429 yuzunden komple kaybetmek
+  // kuyrugun butun amacini bosa cikarirdi.
+  var _kuyruk = [];
+  var _kuyrukAktif = false;
+  var _kuyrukLog = [];
+
+  function kuyruktaVar(id) {
+    return _kuyruk.some(function (x) { return x.id === id; });
+  }
+
+  function analysesKuyrugaEkle(i) {
+    var hit = (window.__anHits || [])[i];
+    if (!hit || kuyruktaVar(hit.id)) return;
+    var engel = uretimKapisi('product', { product: hit });
+    if (engel) { toast(engel, 'e'); return; }
+    _kuyruk.push({ id: hit.id, name: hit.name || '' });
+    renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
+  function analysesKuyruktanCikar(id) {
+    _kuyruk = _kuyruk.filter(function (x) { return x.id !== id; });
+    renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
+  function analysesKuyrukTemizle() {
+    _kuyruk = [];
+    _kuyrukLog = [];
+    renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
+  function kuyrukSeridi() {
+    if (!_kuyruk.length && !_kuyrukLog.length) return '';
+    var sira = _kuyruk.map(function (x) {
+      return '<span class="an-var">' + esc(x.name || x.id)
+        + ' <a href="#" onclick="analysesKuyruktanCikar(&quot;' + x.id + '&quot;);return false"'
+        + ' style="text-decoration:none">&times;</a></span>';
+    }).join(' ');
+    var log = _kuyrukLog.map(function (l) {
+      return '<div class="an-meta"><span>' + (l.ok ? 'OK' : 'HATA') + ' &middot; ' + esc(l.name)
+        + (l.err ? ' &mdash; ' + esc(l.err) : '') + '</span></div>';
+    }).join('');
+    return '<div class="an-card">'
+      + '<h3>Kuyruk &middot; ' + _kuyruk.length + ' urun</h3>'
+      + (sira ? '<div class="an-meta" style="flex-wrap:wrap;gap:6px">' + sira + '</div>' : '')
+      + (log ? '<div style="margin-top:10px">' + log + '</div>' : '')
+      + '<div class="an-bar" style="margin-top:10px">'
+      + (_kuyrukAktif
+        ? '<span class="an-hint">Kuyruk calisiyor... bu sekmeyi acik birak.</span>'
+        : (_kuyruk.length
+          ? '<button class="btn btn-primary" onclick="analysesKuyrukBasla()">Kuyrugu baslat (' + _kuyruk.length + ')</button> '
+          : '')
+          + '<button class="btn btn-ghost" onclick="analysesKuyrukTemizle()">Temizle</button>')
+      + '</div></div>';
+  }
+
+  async function analysesKuyrukBasla() {
+    if (_kuyrukAktif || !_kuyruk.length) return;
+    _kuyrukAktif = true;
+    _kuyrukLog = [];
+    while (_kuyruk.length) {
+      var isim = _kuyruk[0].name || _kuyruk[0].id;
+      try {
+        await kuyrukTekUrun(_kuyruk[0]);
+        _kuyrukLog.push({ ok: true, name: isim });
+      } catch (e) {
+        // TEK URUN PATLARSA KUYRUK SURER.
+        _kuyrukLog.push({ ok: false, name: isim, err: e.message || String(e) });
+      }
+      _kuyruk.shift();
+    }
+    _kuyrukAktif = false;
+    _run = null;
+    var basarili = _kuyrukLog.filter(function (l) { return l.ok; }).length;
+    var hatali = _kuyrukLog.length - basarili;
+    toast('Kuyruk bitti: ' + basarili + ' uretildi, ' + hatali + ' hata', 'i');
+    analysesUretTur('product');
+  }
+
+  // Tek urunu bastan sona kosar ve TASLAK KAYDEDILINCE cozulur.
+  // `analysesRunReport` TR -> EN gecisini kendi icinde yapiyor; bitisini
+  // beklemek icin taslak kaydinin sinyali kullaniliyor (bkz. r.kuyruk).
+  function kuyrukTekUrun(girdi) {
+    return new Promise(function (coz, red) {
+      (async function () {
+        try {
+          var product = await QorAiRun.loadProduct(girdi.id);
+          _run = yeniRun('product', { product: product }, []);
+          _run.kuyruk = { coz: coz, red: red };
+          await analysesRunReport();
+        } catch (e) { red(e); }
+      }());
+    });
+  }
+
   // Kaynak turune gore quiz — ilk adimda da, ikinci dilde de ayni yol.
   function quizUret(r, lang) {
     if (r.kind === 'product') return Promise.resolve([]);
@@ -1577,11 +1688,16 @@
       mark('save', 'run');
       await kaydet('draft');
       mark('save', 'done');
+      // KUYRUKTAYSA EDITORU ACMA: sonraki urune gecilecek, araya taslak
+      // duzenleyicisini sokmak akisi keser ve `_editing`i kuyrugun altindan
+      // degistirir. Taslaklar Analizler listesinden toplu incelenir.
+      if (r.kuyruk) { r.kuyruk.coz(); return; }
       renderEditor();
     } catch (e) {
       var acik = Object.keys(durum).filter(function (k) { return durum[k] === 'run'; });
       acik.forEach(function (k) { durum[k] = 'fail'; });
       renderProgress(durum, e.message || String(e));
+      if (r.kuyruk) r.kuyruk.red(e);
     }
   }
 
@@ -2158,6 +2274,10 @@
   window.analysesSubCikar = analysesSubCikar;
   window.analysesSubEkle = analysesSubEkle;
   window.analysesPickProduct = analysesPickProduct;
+  window.analysesKuyrugaEkle = analysesKuyrugaEkle;
+  window.analysesKuyruktanCikar = analysesKuyruktanCikar;
+  window.analysesKuyrukTemizle = analysesKuyrukTemizle;
+  window.analysesKuyrukBasla = analysesKuyrukBasla;
   window.analysesCmpSearch = analysesCmpSearch;
   window.analysesCmpEkle = analysesCmpEkle;
   window.analysesCmpCikar = analysesCmpCikar;
