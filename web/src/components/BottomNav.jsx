@@ -57,18 +57,34 @@ const ICONS = {
 // acildiginda ise ilk sirayi yeniden aliyorlar.
 const ITEMS = [
   { to: '/', key: 'nav.home', end: true, icon: ICONS.home },
-  { to: '/category', key: 'nav.categories', icon: ICONS.grid },
+  // KATEGORILER GEZINMEZ, CEKMECEYI ACAR.
+  // `/category` (kategorisiz) SPA'da gercek bir sayfa DEGIL: Category.jsx
+  // `if (!cat) return <Navigate to="/" replace />` ile ana sayfaya atiyor
+  // (eskiden beri boyle). Alt bara link olarak konunca mobilde "Kategoriler'e
+  // basiyorum ana sayfa geliyor" oluyordu. Kategorilerin TAM listesi zaten
+  // hamburger cekmecesinde (Header.jsx -> hd-drawer-cats), dugme orayi acar.
+  { drawer: true, key: 'nav.categories', icon: ICONS.grid },
   { to: '/analiz', key: 'nav.analyses', icon: ICONS.analyses },
   { to: '/blog', key: 'nav.blog', icon: ICONS.blog },
   { to: '/link-analysis', key: 'nav.linkAnalysis', icon: ICONS.link },
   { to: '/subscriptions', key: 'nav.subscriptions', icon: ICONS.subs },
-].filter((it) => routeOpen(it.to)).slice(0, 4);
+].filter((it) => it.drawer || routeOpen(it.to)).slice(0, 4);
 
 export default function BottomNav() {
   const t = useT();
   return (
     <nav className="botnav" aria-label="primary">
-      {ITEMS.map((it) => (
+      {ITEMS.map((it) => (it.drawer ? (
+        <button
+          key="drawer"
+          type="button"
+          className="botnav-item"
+          onClick={() => window.dispatchEvent(new CustomEvent('qor:open-drawer'))}
+        >
+          {it.icon}
+          <span>{t(it.key)}</span>
+        </button>
+      ) : (
         <NavLink
           key={it.to}
           to={it.to}
@@ -78,7 +94,7 @@ export default function BottomNav() {
           {it.icon}
           <span>{t(it.key)}</span>
         </NavLink>
-      ))}
+      )))}
     </nav>
   );
 }

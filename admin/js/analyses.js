@@ -476,7 +476,10 @@
   // KALDIRILDI — gerekcesi dosya basliginda. Tek secenegin sekmesi olmaz.
   function analysesNew() {
     styles();
-    _run = null;
+    // KUYRUK KOSARKEN SIFIRLAMA. Onceden bu satir kosulsuz `_run = null`
+    // yapiyordu: baska bir bolume girip donunce uretim ekrani sifirlaniyor,
+    // ilerleme kayboluyordu (is arka planda surse bile takip edilemiyordu).
+    if (!_kuyrukAktif) _run = null;
     var root = $('analysesAdminRoot');
     root.innerHTML = ''
       + '<div class="an-head an-head-slim">'
@@ -502,7 +505,7 @@
 
   function analysesUretTur(tur) {
     _uretTur = tur || 'product';
-    _run = null;
+    if (!_kuyrukAktif) _run = null;
     var b = $('anNewBody');
     if (!b) return;
     b.innerHTML = ''
@@ -714,6 +717,7 @@
     var b = $('anKaynak');
     if (!b) return;
     b.innerHTML = ''
+      + kuyrukSeridi()
       + '<div class="an-card">'
       + '<h3>1 · Analiz edilecek ürün</h3>'
       + '<div class="an-bar">'
@@ -744,8 +748,7 @@
             + '</div>';
         }).join('') + '</div>'
         : (hits ? '<p class="an-empty">Sonuç yok.</p>' : '<p class="an-hint">Katalogda arama Typesense üzerinden yapılır — sitedeki aramanın aynısı.</p>'))
-      + '</div>'
-      + kuyrukSeridi();
+      + '</div>';
     var el = $('anProdQ');
     if (el) {
       el.focus();
@@ -1386,6 +1389,8 @@
   var _kuyruk = [];
   var _kuyrukAktif = false;
   var _kuyrukLog = [];
+  var _kuyrukSuren = '';   // su an uretilen urunun adi
+  var _kuyrukToplam = 0;   // kuyruk baslarkenki adet
 
   function kuyruktaVar(id) {
     return _kuyruk.some(function (x) { return x.id === id; });
@@ -1412,23 +1417,32 @@
   }
 
   function kuyrukSeridi() {
-    if (!_kuyruk.length && !_kuyrukLog.length) return '';
-    var sira = _kuyruk.map(function (x) {
-      return '<span class="an-var">' + esc(x.name || x.id)
-        + ' <a href="#" onclick="analysesKuyruktanCikar(&quot;' + x.id + '&quot;);return false"'
-        + ' style="text-decoration:none">&times;</a></span>';
+    if (!_kuyruk.length && !_kuyrukLog.length && !_kuyrukSuren) return '';
+    var biten = _kuyrukLog.length;
+    var toplam = _kuyrukToplam || (_kuyruk.length + biten);
+    var yuzde = toplam ? Math.round((biten / toplam) * 100) : 0;
+    var sira = _kuyruk.map(function (x, i) {
+      return '<span class="an-var">' + (i + 1) + '. ' + esc(x.name || x.id)
+        + (_kuyrukAktif ? '' : ' <a href="#" onclick="analysesKuyruktanCikar(&quot;' + x.id
+          + '&quot;);return false" style="text-decoration:none">&times;</a>')
+        + '</span>';
     }).join(' ');
     var log = _kuyrukLog.map(function (l) {
-      return '<div class="an-meta"><span>' + (l.ok ? 'OK' : 'HATA') + ' &middot; ' + esc(l.name)
+      return '<div class="an-meta"><span>' + (l.ok ? '&#10003;' : '&#10007;') + ' ' + esc(l.name)
         + (l.err ? ' &mdash; ' + esc(l.err) : '') + '</span></div>';
     }).join('');
     return '<div class="an-card">'
-      + '<h3>Kuyruk &middot; ' + _kuyruk.length + ' urun</h3>'
+      + '<h3>Kuyruk &middot; ' + biten + '/' + toplam + ' tamamlandi</h3>'
+      + (_kuyrukAktif
+        ? '<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin:6px 0 10px">'
+          + '<div style="height:100%;width:' + yuzde + '%;background:var(--accent,#7c5cff);transition:width .3s"></div></div>'
+          + '<p class="an-hint"><strong>Uretiliyor:</strong> ' + esc(_kuyrukSuren || '-')
+          + ' &mdash; bu sekmeyi acik birak, baska bolume gecsen de is surer.</p>'
+        : '')
       + (sira ? '<div class="an-meta" style="flex-wrap:wrap;gap:6px">' + sira + '</div>' : '')
       + (log ? '<div style="margin-top:10px">' + log + '</div>' : '')
       + '<div class="an-bar" style="margin-top:10px">'
-      + (_kuyrukAktif
-        ? '<span class="an-hint">Kuyruk calisiyor... bu sekmeyi acik birak.</span>'
+      + (_kuyrukAktif ? ''
         : (_kuyruk.length
           ? '<button class="btn btn-primary" onclick="analysesKuyrukBasla()">Kuyrugu baslat (' + _kuyruk.length + ')</button> '
           : '')
@@ -1436,12 +1450,22 @@
       + '</div></div>';
   }
 
+  // Serit kendi basina tazelenir: kuyruk kosarken arama ekrani yeniden
+  // cizilmiyor, dolayisiyla ilerlemeyi ancak boyle gosterebiliyoruz.
+  function kuyrukSeridiTazele() {
+    var k = $('anKaynak');
+    if (k) renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
   async function analysesKuyrukBasla() {
     if (_kuyrukAktif || !_kuyruk.length) return;
     _kuyrukAktif = true;
     _kuyrukLog = [];
+    _kuyrukToplam = _kuyruk.length;
     while (_kuyruk.length) {
       var isim = _kuyruk[0].name || _kuyruk[0].id;
+      _kuyrukSuren = isim;
+      kuyrukSeridiTazele();
       try {
         await kuyrukTekUrun(_kuyruk[0]);
         _kuyrukLog.push({ ok: true, name: isim });
@@ -1450,8 +1474,10 @@
         _kuyrukLog.push({ ok: false, name: isim, err: e.message || String(e) });
       }
       _kuyruk.shift();
+      kuyrukSeridiTazele();
     }
     _kuyrukAktif = false;
+    _kuyrukSuren = '';
     _run = null;
     var basarili = _kuyrukLog.filter(function (l) { return l.ok; }).length;
     var hatali = _kuyrukLog.length - basarili;

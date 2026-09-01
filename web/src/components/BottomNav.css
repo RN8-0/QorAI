@@ -52,7 +52,27 @@ body.qor-drawer-open .botnav { display: none !important; }
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    line-height: 1;
+    /* `line-height: 1` IDI ve INEN HARFLERI KESIYORDU: satir kutusu tam
+       yazi boyu kadar oluyor, `overflow: hidden` (ellipsis icin sart) da
+       altta tasan kismi kirpiyordu — "Blog" ve "Kategoriler"in g'sinin alti
+       gorunmuyordu. 1.35 satir kutusunu inen harfi kapsayacak kadar buyutur;
+       cubuk 62 px sabit yukseklikte oldugu icin yerlesim degismez. */
+    line-height: 1.35;
+  }
+
+  /* Kategoriler artik <button> (cekmeceyi aciyor, gezinmiyor). Tarayici
+     varsayilanlarini sifirla ki komsu <a>'larla birebir ayni gorunsun. */
+  button.botnav-item {
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
   }
   .botnav-item:active { transform: scale(0.94); }
   .botnav-item.active {

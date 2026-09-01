@@ -352,16 +352,11 @@ export default function AiReportView({
 
         <StatTiles items={[
           { icon: '🎯', label: L('Overall', 'Genel puan'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
-          // FIYAT KUTUSU. PB'de fiyat VARSA gosterilir; yoksa kutu hic
-          // cizilmez (sifir/"-" yazmak yaniltici olurdu). Kaynak: cagirandan
-          // gelen `priceInfo` ya da katalog eslesmesi.
-          !hidePriceTile && outlookPrice.price > 0 ? {
-            icon: '🏷',
-            label: L('Price', 'Fiyat'),
-            value: formatPriceAmount(outlookPrice.price, outlookPrice.currency, lang) || formatPrice(outlookPrice.price),
-            color: 'var(--price)',
-            hint: outlookPrice.stale ? L('may be a few days old', 'birkaç gün eski olabilir') : L('catalog price', 'katalog fiyatı'),
-          } : null,
+          // FIYAT KUTUSU KALDIRILDI (2026-09-01). Fiyat, urunun hemen
+          // yaninda ve 'Nereden alinir' listesinde ZATEN yaziyor; ayni
+          // sayiyi bir de rozet olarak tekrarlamak hem yer kapliyor hem
+          // hangisinin guncel oldugu sorusunu doguruyordu. `hidePriceTile`
+          // propu cagiranlarda duruyor, davranisi degistirmiyor.
           data.personaScore ? { icon: '👤', label: L('Everyday use', 'Günlük kullanım'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
           data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
           data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı') : L('model knowledge', 'model bilgisi') } : null,
