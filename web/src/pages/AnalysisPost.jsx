@@ -20,7 +20,9 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { getProduct } from '../lib/typesense';
-import { formatPriceAmount, priceForCountry } from '../lib/format';
+import { amazonGoPath, formatPriceAmount, priceForCountry } from '../lib/format';
+import { fetchProductOffers } from '../lib/offers';
+import OfferList from '../components/OfferList.jsx';
 import { useGeoCountry } from '../lib/geo';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, SEO_DEFAULT_LOCALE, truncate } from '../lib/seo';
@@ -103,20 +105,39 @@ export default function AnalysisPost() {
   // (yalniz `productId`); urunun kendisi Typesense'te. Tek ek istek, yalnizca
   // urun analizinde ve yalnizca id varsa. Fiyat yoksa hicbir sey cizilmez.
   const [fiyat, setFiyat] = useState(null);
+  // URUN KAYDI ve TEKLIFLER — analiz sayfasinda SATIN ALMA YOLU yoktu.
+  //
+  // Olculdu (2026-09-01): 19 analiz sayfasinin hicbirinde magaza linki yok.
+  // `AiReportView` bir `StoreCta` ciziyor ama o yalnizca raporun kendisinde
+  // AMAZON URL'i olan akislarda (link analizi) calisiyor; urun analizinde
+  // boyle bir alan yok, dolayisiyla dugme sessizce hic gorunmuyordu.
+  //
+  // Trafigi getiren sayfalar bunlar ve gelir modeli affiliate. Karar
+  // verdirip okuyucuyu bos birakan bir sayfa, isini yarim yapiyor.
+  // YENI BILESEN YAZILMADI: urun sayfasindaki `OfferList` aynen kullaniliyor
+  // (siralama saf ucuzdan pahaliya, Amazon sabitlenmez).
+  const [urun, setUrun] = useState(null);
+  const [teklifler, setTeklifler] = useState([]);
   const geoCountry = useGeoCountry();
   useEffect(() => {
     let live = true;
     const pid = a && a.productId ? String(a.productId) : '';
-    if (!pid || !geoCountry) { setFiyat(null); return undefined; }
+    if (!pid || !geoCountry) { setFiyat(null); setUrun(null); setTeklifler([]); return undefined; }
     getProduct(pid)
       .then((p) => {
         if (!live || !p) return;
+        setUrun(p);
         const pc = priceForCountry(p, geoCountry);
         if (pc && pc.price > 0) setFiyat(pc);
         else if (Number(p.lowestPriceUSD) > 0) setFiyat({ price: Number(p.lowestPriceUSD), currency: 'USD' });
         else setFiyat(null);
       })
-      .catch(() => { if (live) setFiyat(null); });
+      .catch(() => { if (live) { setFiyat(null); setUrun(null); } });
+    // Teklifler AYRI istek: fiyat kutusu Typesense'ten, magaza listesi PB'den
+    // gelir (urun sayfasindaki ayrimin aynisi).
+    fetchProductOffers(pid)
+      .then((items) => { if (live) setTeklifler(items); })
+      .catch(() => { if (live) setTeklifler([]); });
     return () => { live = false; };
   }, [a && a.productId, geoCountry]);
 
@@ -334,6 +355,24 @@ export default function AnalysisPost() {
             <p className="an-empty">{L('This analysis has no report data.', 'Bu analizde rapor verisi yok.')}</p>
           )}
         </Suspense>
+
+        {/* MAGAZA LISTESI — raporun ALTINDA, "tum analizler" linkinden once.
+            Okuyucu karari tam burada verdi; satin alma yolu bu noktada
+            durmali. Teklif yoksa bolum hic cizilmez. */}
+        {teklifler.length > 0 && (
+          <section className="an-offers" style={{ marginTop: 28 }}>
+            <h2 style={{ fontSize: 20, margin: '0 0 12px' }}>
+              {L('Where to buy', 'Nereden alınır')}
+            </h2>
+            <OfferList
+              offers={teklifler}
+              country={geoCountry}
+              lang={lang}
+              geoCountry={geoCountry}
+              amazonHref={urun ? amazonGoPath(urun, geoCountry) : ''}
+            />
+          </section>
+        )}
 
         <p className="an-back"><Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link></p>
       </div>
