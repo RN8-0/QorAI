@@ -28,7 +28,7 @@ import { META as LEGAL_META, COPY as LEGAL_COPY } from '../src/lib/legalContent.
 // baslik ile kullanicinin gordugu baslik ayrisir.
 import {
   analysisFaq, analysisKind, analysisLead, analysisMetaDescription,
-  analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
+  analysisMetaTitle, analysisQuiz, analysisQuizHidden, analysisRenderLangs, analysisReport, analysisSubject,
   analysisSubjectNames, analysisTitle, analysisUnified,
 } from '../src/lib/analysisRecord.js';
 // Tekrar agi: ON-RENDER ile SITE ayni modulu kosar (bkz. reportDedupe.js).
@@ -219,7 +219,7 @@ const ANALIZ_LISTE_TEXT = {
     chronicNone: 'The ownership search turned up no recurring failure for this model — no defect pattern, bad batch or firmware regression that owners keep reporting.',
     freqWidespread: 'widespread', freqCommon: 'common', freqOccasional: 'occasional',
     services: 'Services compared', winner: 'Best match', decisive: 'What actually decides it',
-    fit: 'Overall fit', featuresSec: 'Features and content', ux: 'Experience',
+    fit: 'Overall assessment', featuresSec: 'Features and content', ux: 'Experience',
     risk: 'Community and risk', plan: 'Your usage plan', reco: 'Recommendation',
     score: 'Score', pros: 'What works', cons: 'What does not',
     headToHead: 'Head to head', products: 'Products compared',
@@ -253,7 +253,7 @@ const ANALIZ_LISTE_TEXT = {
     chronicNone: 'Sahiplik taramasında bu modele ait tekrar eden bir arıza çıkmadı — sahiplerin sürekli bildirdiği bir kusur örüntüsü, hatalı parti ya da yazılım sorunu bulunamadı.',
     freqWidespread: 'yaygın', freqCommon: 'sık', freqOccasional: 'ara sıra',
     services: 'Karşılaştırılan servisler', winner: 'En iyi eşleşme', decisive: 'Kararı belirleyen farklar',
-    fit: 'Genel uyum', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
+    fit: 'Genel değerlendirme', featuresSec: 'Özellikler ve içerik', ux: 'Deneyim',
     risk: 'Topluluk ve risk', plan: 'Kullanım planın', reco: 'Öneri',
     score: 'Puan', pros: 'İyi yanları', cons: 'Zayıf yanları',
     headToHead: 'Karşı karşıya', products: 'Karşılaştırılan ürünler',
@@ -817,7 +817,9 @@ function analizBody(a, lang) {
   // govdedeki blok bastirilir (React tarafinda `hideQuiz` propu ayni isi
   // yapiyor; ikisi ayrisirsa crawler ile okuyucu farkli sayfa gorur).
   const kunye = analysisQuiz(a, lang);
-  const quizGizle = kunye.length > 0;
+  // TEK KAYNAK (analysisRecord.js): kunye kapaliyken govdedeki blok da
+  // bastirilir, yoksa quiz kunyeden cikip govdede yeniden belirirdi.
+  const quizGizle = analysisQuizHidden(a, lang);
 
   let govde = '';
   if (ham) {

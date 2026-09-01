@@ -577,7 +577,11 @@ async function runProductReport(o) {
   var research = '';
   try {
     research = await askGrounded(
-      P.buildProductResearchPrompt(product, lang, { quizAnswers: answers }),
+      // QUIZ YOKSA EKSEN. `compareFactorAxis` tek urunu de kabul ediyor
+      // (list = Array.isArray ? : [products]) — yeni bir tablo gerekmedi.
+      P.buildProductResearchPrompt(product, lang, {
+        quizAnswers: answers, factorAxis: P.compareFactorAxis(product, lang),
+      }),
       lang, 2048
     );
   } catch (_) { research = ''; }
@@ -592,6 +596,9 @@ async function runProductReport(o) {
   // 28.9k karakterlik olan priceForecast'in ortasinda KESILDI ve ayristirilamadi.
   var prompt = P.buildFullPrompt(product, lang, {}, {
     quizAnswers: answers,
+    // Quiz yanitlanmadiginda prompt bu eksene gore yaziyor; bos baglam
+    // birakmak yanlis baglam vermekle ayni sonucu verirdi.
+    factorAxis: P.compareFactorAxis(product, lang),
     research: research,
     similarProducts: o.similar || [],
     offers: o.offers || [],

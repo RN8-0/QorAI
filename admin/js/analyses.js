@@ -1071,10 +1071,9 @@
       // Quiz ve rapor TAM PB kaydindan uretilir: Typesense dokumaninda
       // specSections yok, oysa prompt'un tasidigi en degerli baglam o.
       var product = await QorAiRun.loadProduct(hit.id);
-      var quiz = await QorAiRun.generateQuiz(product, 'tr');
-      if (!quiz.length) throw new Error('Quiz üretilemedi');
-      _run = yeniRun('product', { product: product }, quiz);
-      renderQuiz();
+      // Urun analizinde quiz adimi YOK: dogrudan rapora gecilir.
+      _run = yeniRun('product', { product: product }, []);
+      analysesRunReport();
     } catch (e) {
       b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
         + '<p class="an-err">' + esc(e.message || e) + '</p>'
@@ -1350,9 +1349,24 @@
     return QorAiRun.runLinkReport({ bases: r.bases, lang: lang, answers: answers, onStage: onStage });
   }
 
+  // URUN ANALIZINDE QUIZ YOK (2026-09-01).
+  //
+  // Quizi adminde BIZ cozuyorduk ve yayinlanan sayfa "bu analiz su cevaplara
+  // gore yapildi" + tek bir uyum hukmu gosteriyordu. O cevaplari okuyucu
+  // vermedi: 1440p isteyene de istemeyene de ayni "orta uyum" cikiyordu.
+  // Artik urun raporu kategoriden DETERMINISTIK turemis degerlendirme
+  // eksenine gore yaziliyor (qor_ai_prompts.js -> evaluationAxisBlock) ve
+  // hukum kullanim profili basina veriliyor.
+  //
+  // Yan kazanc: dil basina bir quiz uretimi cagrisi ortadan kalkti.
+  //
+  // Link / abonelik / karsilastirma akislarina DOKUNULMADI — onlarin quizi
+  // konuyu daraltmak icin gerekli (hangi abonelik, hangi kullanim).
+  function quizGerekli(r) { return r.kind !== 'product'; }
+
   // Kaynak turune gore quiz — ilk adimda da, ikinci dilde de ayni yol.
   function quizUret(r, lang) {
-    if (r.kind === 'product') return QorAiRun.generateQuiz(r.product, lang);
+    if (r.kind === 'product') return Promise.resolve([]);
     if (r.kind === 'compare') return QorAiRun.generateCompareQuiz(r.products, lang);
     if (r.kind === 'subscription') return QorAiRun.subscriptionQuiz(r.names, lang);
     return QorAiRun.linkQuiz(r.bases, lang);
@@ -1532,6 +1546,14 @@
 
       // TURKCE BITTI -> INGILIZCE QUIZ. Sorular BASTAN uretilir; ceviri degil.
       if (lang === 'tr') {
+        // Quiz gerektirmeyen turde (urun) ikinci dile DOGRUDAN gecilir;
+        // aksi halde bos bir quiz ekrani cizilir ve akis orada tikanirdi.
+        if (!quizGerekli(r)) {
+          r.lang = 'en';
+          r.questions = [];
+          r.answers = [];
+          return analysesRunReport();
+        }
         mark('next-quiz', 'run');
         var q = await quizUret(r, 'en');
         if (!q.length) throw new Error('İngilizce quiz üretilemedi');

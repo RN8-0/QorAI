@@ -1289,7 +1289,38 @@ function quizLines(answers = []) {
   return list.length ? list.join('\n') : 'No product-specific quiz answers were provided.';
 }
 
-function promptContext({ quizAnswers = [], research = '', similarProducts = [], offers = [], heroSpecs = [] } = {}, lang) {
+// -- DEGERLENDIRME EKSENI: QUIZIN YERINE GECEN BLOK ------------------------
+//
+// Yayinlanan analizlerde quiz ARTIK YANITLANMIYOR (bkz. analyses.js ->
+// quizUret). Onceden quizi adminde biz cozuyorduk ve sayfadaki hukum
+// ("orta uyum") o bes cevaba aitti; okuyucu o cevaplari vermedigi icin
+// sayfa kimseye hitap etmiyordu.
+//
+// Yerine gecen sey BOSLUK DEGIL: kategoriden DETERMINISTIK turemis eksen.
+// compareFactorAxis zaten karsilastirmada kullaniliyordu (eksen olmadan
+// her cagri kendi etiketini uydurup tabloyu sifirla dolduruyordu); ayni
+// eksen tek urunde de gecerli. EK AI ISTEGI YOK, eksen koddan geliyor.
+//
+// Ikinci parca kullanim profilleri: tek bir uyum yuzdesi yerine "kim icin
+// evet, kim icin hayir". Long-tail sorgulari karsilayan da bu.
+function evaluationAxisBlock(axis, lang) {
+  const list = (Array.isArray(axis) ? axis : []).map((f) => f && f.label).filter(Boolean);
+  const tr = String(lang || 'en').slice(0, 2).toLowerCase() === 'tr';
+  const axisPart = list.length
+    ? 'Evaluate the product on this fixed axis, every item, in this order:\n'
+      + list.map((l, i) => (i + 1) + '. ' + l).join('\n')
+    : 'Evaluate the product across every dimension that matters in its category.';
+  return 'NO QUIZ WAS ANSWERED. This analysis must serve EVERY reader, not one assumed buyer.\n'
+    + axisPart + '\n'
+    + 'Then give a verdict PER USE PROFILE: 3-4 realistic profiles for this category, '
+    + 'including at least one the product is clearly WRONG for. Each profile gets a '
+    + 'concrete buy / think / skip call and the number that justifies it.\n'
+    + 'Never write a single overall "fit" or "match" verdict as if one reader existed. '
+    + 'Never address the reader as if they had answered questions.'
+    + (tr ? '\nWrite every user-facing string in Turkish.' : '');
+}
+
+function promptContext({ quizAnswers = [], factorAxis = [], research = '', similarProducts = [], offers = [], heroSpecs = [] } = {}, lang) {
   const similar = (Array.isArray(similarProducts) ? similarProducts : [])
     .slice(0, 8)
     .map((p) => cleanProductForPrompt(p, lang));
@@ -1304,6 +1335,7 @@ function promptContext({ quizAnswers = [], research = '', similarProducts = [], 
     }));
   return {
     quizAnswers: quizLines(quizAnswers),
+    factorAxis: Array.isArray(factorAxis) ? factorAxis : [],
     research: String(research || '').slice(0, 6500),
     similarProducts: similar,
     offers: offerRows,
@@ -1400,7 +1432,9 @@ function buildProductResearchPrompt(p, lang, context = {}) {
     + `${chronicResearchGate(category)} `
     + 'Also note what owners bring up unprompted as the best part. ' +
     'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
-    `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
+    (Array.isArray(context.quizAnswers) && context.quizAnswers.length
+      ? `Product-specific quiz answers:\n${quizLines(context.quizAnswers)}\n\n`
+      : `EVALUATION AXIS (no quiz was answered):\n${evaluationAxisBlock(context.factorAxis, lang)}\n\n`) +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
   );
 }
@@ -1522,7 +1556,9 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +
-    `PRODUCT-SPECIFIC QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (Array.isArray(context.quizAnswers) && context.quizAnswers.length
+      ? `PRODUCT-SPECIFIC QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n`
+      : `EVALUATION AXIS - NO QUIZ WAS ANSWERED:\n${evaluationAxisBlock(ctx.factorAxis, lang)}\n\n`) +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
     `QOR CATALOG ALTERNATIVES:\n${JSON.stringify(ctx.similarProducts, null, 2)}\n\n` +
     `OFFER CONTEXT:\n${JSON.stringify(ctx.offers, null, 2)}\n\n` +

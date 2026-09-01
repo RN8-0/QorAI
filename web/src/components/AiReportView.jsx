@@ -99,11 +99,22 @@ export function StoreCta({ url, lang, L, compact = false, source = 'link_analysi
   );
 }
 
+// "UYUM" DEGIL "SEVIYE" (2026-09-01).
+//
+// Etiket "Orta uyum" idi ve sayfanin en ustundeki hero seridinde duruyordu.
+// Iki sorunu vardi. Birincisi dogruluk: puanin %60'i katalogtan gelen mutlak
+// teknik puan (bkz. calibratedScore), yani sayi zaten buyuk olcude urunun
+// KENDI seviyesi — kimseye ozel bir uyum degil. Ikincisi ve asil olani:
+// "uyum" KIME uyum sorusunu doguruyor, okuyucu ise hicbir soru yanitlamadi.
+// Quiz yayindan kalkinca (bkz. analysisRecord.js -> SHOW_QUIZ_KUNYE) o
+// soruyu yanitlayacak hicbir sey kalmadi.
+//
+// Seviye ifadesi ayni sayiyi, kimseye yakistirmadan soyluyor.
 export function bandLabel(s, L) {
-  return s >= 85 ? L('Excellent match', 'Mükemmel uyum')
-    : s >= 70 ? L('Strong match', 'Güçlü uyum')
-      : s >= 50 ? L('Fair match', 'Orta uyum')
-        : L('Weak match', 'Zayıf uyum');
+  return s >= 85 ? L('Excellent', 'Üst seviye')
+    : s >= 70 ? L('Strong', 'Güçlü seviye')
+      : s >= 50 ? L('Mid-range', 'Orta seviye')
+        : L('Entry level', 'Giriş seviyesi');
 }
 
 // Eski kayıtlarda düz string, yeni kayıtlarda {title, detail} — tek şekle indir.
@@ -340,7 +351,7 @@ export default function AiReportView({
         <CatalogMatchCard match={data.catalogMatch} L={L} lang={lang} />
 
         <StatTiles items={[
-          { icon: '🎯', label: L('Match', 'Uyum'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
+          { icon: '🎯', label: L('Overall', 'Genel puan'), value: score, color: scoreColor(score), hint: bandLabel(score, L) },
           // FIYAT KUTUSU. PB'de fiyat VARSA gosterilir; yoksa kutu hic
           // cizilmez (sifir/"-" yazmak yaniltici olurdu). Kaynak: cagirandan
           // gelen `priceInfo` ya da katalog eslesmesi.
@@ -351,7 +362,7 @@ export default function AiReportView({
             color: 'var(--price)',
             hint: outlookPrice.stale ? L('may be a few days old', 'birkaç gün eski olabilir') : L('catalog price', 'katalog fiyatı'),
           } : null,
-          data.personaScore ? { icon: '👤', label: L('Fits your life', 'Yaşamına uyum'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
+          data.personaScore ? { icon: '👤', label: L('Everyday use', 'Günlük kullanım'), value: Math.round(data.personaScore), color: scoreColor(data.personaScore) } : null,
           data.communityScore ? { icon: '🌐', label: L('Owner satisfaction', 'Kullanıcı memnuniyeti'), value: Math.round(data.communityScore), color: scoreColor(data.communityScore) } : null,
           data.confidence ? { icon: '🔬', label: L('Evidence', 'Kanıt gücü'), value: `${Math.round(data.confidence)}%`, hint: data.researched ? L('web-researched', 'web taramalı') : L('model knowledge', 'model bilgisi') } : null,
         ].filter(Boolean)} />

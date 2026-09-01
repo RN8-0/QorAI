@@ -323,7 +323,33 @@ export function analysisMetaDescription(rec, lang) {
  * tasiyor. Ikisi ayrisirsa Ingilizce sayfada Turkce soru cikar — bu tam
  * olarak bir kez yasandi.
  */
+/**
+ * QUIZ KUNYESI YAYINDA KAPALI (2026-09-01).
+ *
+ * Yayinlanan analizler admin panelinde uretiliyor ve quizi ORADA biz
+ * yanitliyorduk. Sonuc: sayfanin en ustunde "BU ANALIZ SU CEVAPLARA GORE
+ * YAPILDI" + bes cevap + tek bir uyum hukmu. O cevaplari okuyucu vermedi;
+ * "orta uyum" hukmu 1440p isteyen icin de istemeyen icin de ayni cikiyordu,
+ * yani sayfa herkese hitap etmiyordu.
+ *
+ * Kunye gizlenince govdedeki "cevaplarin sonucu nasil degistirdi" blogu da
+ * bastirilmali — yoksa quiz kunyeden cikip govdenin icinde yeniden belirir.
+ * Iki yerin ayni karari vermesi icin tek fonksiyon: `analysisQuizHidden`.
+ * Site (AnalysisPost.jsx) ve on-render (seo.mjs) ayni fonksiyonu cagirir.
+ *
+ * Kayittaki `quizInsights` verisine DOKUNULMADI: eski 19 analiz oldugu gibi
+ * duruyor, yalnizca cizilmiyor. Bayrak `true` olursa hepsi geri gelir.
+ */
+export const SHOW_QUIZ_KUNYE = false;
+
+/** Govdedeki quiz blogu gizlensin mi? Kunye ciziliyorsa (tekrar olmasin) ya
+ *  da kunye tamamen kapaliysa EVET. */
+export function analysisQuizHidden(rec, lang) {
+  return !SHOW_QUIZ_KUNYE || analysisQuiz(rec, lang).length > 0;
+}
+
 export function analysisQuiz(rec, lang) {
+  if (!SHOW_QUIZ_KUNYE) return [];
   const raw = analysisReport(rec, lang);
   if (!raw) return [];
   // Dort yer: urun raporunda `product` altinda, link/abonelik raporunda ust

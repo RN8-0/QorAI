@@ -37,7 +37,7 @@ const SubscriptionReportView = lazy(() => import('../components/SubscriptionRepo
 const CompareResult = lazy(() => import('../pages/LinkAnalysis.jsx').then((m) => ({ default: m.CompareResult })));
 import {
   analysisFaq, analysisKind, analysisKindShort, analysisLead, analysisMetaDescription,
-  analysisMetaTitle, analysisQuiz, analysisRenderLangs, analysisReport, analysisSubject,
+  analysisMetaTitle, analysisQuiz, analysisQuizHidden, analysisRenderLangs, analysisReport, analysisSubject,
   analysisTitle, analysisUnified,
 } from '../lib/analysisRecord';
 import './Analyses.css';
@@ -127,6 +127,11 @@ export default function AnalysisPost() {
   const baslik = a ? analysisTitle(a, lang) : L('Analysis', 'Analiz');
   const faq = a ? analysisFaq(a, lang) : [];
   const quiz = a ? analysisQuiz(a, lang) : [];
+  // Govdedeki quiz blogunun gizlenip gizlenmeyecegi TEK KAYNAKTAN gelir
+  // (analysisRecord.js). Onceden `quiz.length > 0` idi; kunye kapatilinca bu
+  // ifade false'a dusuyor ve quiz kunyeden cikip GOVDENIN icinde yeniden
+  // beliriyordu — tam olarak kaldirmak istedigimiz sey.
+  const gizleQuiz = a ? analysisQuizHidden(a, lang) : true;
   const yol = `/analiz/${slug || ''}`;
   // hreflang, ON-RENDER'IN GERCEKTEN URETTIGI adresleri gostermek zorunda.
   // `hreflangAlternates()` her iki dili birden yazar; bir analizin yalnizca tek
@@ -305,14 +310,14 @@ export default function AnalysisPost() {
             yani crawler saglam sayfayi, okuyucu bozugunu goruyordu. */}
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
-            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} techScore={a.techScore} priceInfo={fiyat} />
+            <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={gizleQuiz} techScore={a.techScore} priceInfo={fiyat} />
           ) : kind === 'subscription' && Array.isArray(ham?.services) ? (
             <SubscriptionReportView
               result={ham}
               winnerName={ham?.winner?.best || ham?.winner?.overall || ham?.winner?.name || ''}
               L={L}
               t={t}
-              hideQuiz={quiz.length > 0}
+              hideQuiz={gizleQuiz}
             />
           ) : (ham?.type === 'compare_full_report' || ham?.comparison) && Array.isArray(ham?.products) ? (
             /* hideQuiz: kunye USTTE ciziliyor. Onsuz ayni sorular her urunun
@@ -320,11 +325,11 @@ export default function AnalysisPost() {
                bunlari HIC cizmiyor — yani crawler ile okuyucu farkli sayfa
                gorurdu. Ayni prop urun/abonelik/link akislarinda da bu isi
                yapiyor. */
-            <AiAnalysisView kind="compareFull" data={ham} lang={lang} hideQuiz={quiz.length > 0} />
+            <AiAnalysisView kind="compareFull" data={ham} lang={lang} hideQuiz={gizleQuiz} />
           ) : Array.isArray(ham?.products) ? (
-            <CompareResult data={ham} L={L} lang={lang} hideQuiz={quiz.length > 0} />
+            <CompareResult data={ham} L={L} lang={lang} hideQuiz={gizleQuiz} />
           ) : unified ? (
-            <AiReportView data={unified} L={L} lang={lang} showHead={false} hideQuiz={quiz.length > 0} />
+            <AiReportView data={unified} L={L} lang={lang} showHead={false} hideQuiz={gizleQuiz} />
           ) : (
             <p className="an-empty">{L('This analysis has no report data.', 'Bu analizde rapor verisi yok.')}</p>
           )}
