@@ -1,1 +1,77 @@
-{"category":"gaming_consoles","label":"Oyun Konsolu","title":"En İyi Oyun Konsolları 2026: Seçim Rehberi","lead":"Oyun dünyası sürekli gelişirken, doğru konsolu seçmek keyifli bir deneyim için kritik öneme sahip. İster evde, ister yolda oyun oynamayı sevenlerden olun, beklentilerinize uygun bir model mutlaka var.","sections":[{"h":"Taşınabilirlik mi, Güç mü?","body":"Modern oyun konsolları artık sadece oturma odasıyla sınırlı değil. El konsolları, masaüstü bilgisayar performansı sunarken, ev tipi konsollar da kendi ekosistemleriyle benzersiz deneyimler vadediyor. Seçim yaparken nerede ve ne sıklıkla oyun oynayacağınızı göz önünde bulundurmalısınız."},{"h":"Nelere Dikkat Etmeli? İşlemci, Ekran ve Pil Ömrü","body":"Bir oyun konsolu alırken işlemci gücü, oyunların akıcılığı için belirleyici. Ekran kalitesi ve boyutu, görsel deneyimi doğrudan etkilerken, özellikle taşınabilir modellerde pil ömrü kesintisiz oyun keyfi için hayati. Ayrıca depolama alanı ve genişletme seçenekleri de uzun vadeli kullanımda önem taşıyor."},{"h":"Ekosistem ve Oyun Kütüphanesi","body":"Konsol tercihi aynı zamanda bir ekosistem tercihi anlamına gelir. Her markanın kendine özgü bir oyun kütüphanesi ve abonelik servisleri bulunur. Sevdiğiniz oyunlara erişim ve arkadaşlarınızla birlikte oynama imkanı sunan platformu seçmek, uzun vadeli memnuniyetinizi artıracaktır."}],"picks":[{"name":"Acer Nitro Blaze 8 (GN782U)","why":"Yüksek performansıyla dikkat çeken bu model, en yeni oyunları bile akıcı bir şekilde çalıştırma gücüne sahip.","id":"pi0udi8ddks7fnu","slug":"acer-nitro-blaze-8"},{"name":"Acer Nitro Blaze 11 (GN7112U)","why":"Gelişmiş donanımı ve optimize edilmiş yapısıyla, hem evde hem de yolda üst düzey bir oyun deneyimi sunuyor.","id":"jfaxqwtwtdip6x8","slug":"acer-nitro-blaze-11"},{"name":"Asus ROG Xbox Ally X (AMD Ryzen AI Z2 Extreme) (RC73XA)","why":"AMD'nin güçlü işlemcisiyle donatılan bu el konsolu, taşınabilirlik ve performansı dengeli bir şekilde birleştiriyor.","id":"8h12ja08cn3sezh","slug":"asus-rog-xbox-ally-x"},{"name":"MSI Claw 8 EX AI+","why":"Yapay zeka destekli işlemcisi sayesinde oyunlarda daha akıcı kare hızları ve optimize edilmiş güç tüketimi vadediyor.","id":"1b1c2xr14hnmqzg","slug":"msi-claw-8-ex-ai-plus"},{"name":"Lenovo Legion Go 2","why":"Büyük ekranı ve yenilikçi kontrolcüleriyle hem el konsolu hem de tablet benzeri bir kullanım imkanı sunuyor.","id":"wg25dlbb6u45f6f","slug":"lenovo-legion-go-2"},{"name":"MSI Claw A1M (Intel Core Ultra 7 155H / 1 TB) (A1M-089)","why":"Intel'in en yeni Ultra 7 işlemcisiyle güçlendirilen bu model, hem oyun hem de günlük kullanım için yüksek performans sağlıyor.","id":"id1wb4wz72f6ejj","slug":"msi-claw-a1m"}],"faq":[{"q":"El konsolları masaüstü bilgisayarların yerini tutabilir mi?","a":"Günümüz el konsolları, birçok modern oyunu yüksek ayarlarda oynatabilecek güce sahip olsa da, en üst düzey grafik ve performans için hala masaüstü bilgisayarlar daha avantajlıdır."},{"q":"Oyun konsolu alırken depolama alanı ne kadar önemli?","a":"Modern oyunlar genellikle çok yer kaplar, bu yüzden yeterli depolama alanı veya kolay genişletilebilirlik seçenekleri, oyun koleksiyonunuzu rahatça yönetmek için kritik öneme sahiptir."},{"q":"Wi-Fi 6E veya Wi-Fi 7 gibi yeni nesil bağlantı teknolojileri oyun deneyimini nasıl etkiler?","a":"Bu teknolojiler, online oyunlarda daha düşük gecikme süresi ve bulut oyun servislerinde daha kararlı bir akış sağlayarak genel deneyimi önemli ölçüde iyileştirir."},{"q":"Gelecekte oyun konsollarında hangi yenilikleri bekleyebiliriz?","a":"Yapay zeka destekli performans optimizasyonları, bulut oyun servislerinin daha da yaygınlaşması ve gelişmiş sanal gerçeklik entegrasyonu, yakın gelecekte beklenen başlıca yenilikler arasında yer alıyor."}],"updatedAt":"2026-08-26T01:17:39.855Z"}
+{
+  "category": "gaming_consoles",
+  "label": "Oyun Konsolu",
+  "title": "En İyi Oyun Konsolları 2026: Seçim Rehberi",
+  "lead": "Oyun dünyası sürekli gelişirken, doğru konsolu seçmek keyifli bir deneyim için kritik öneme sahip. İster evde, ister yolda oyun oynamayı sevenlerden olun, beklentilerinize uygun bir model mutlaka var.",
+  "sections": [
+    {
+      "h": "Taşınabilirlik mi, Güç mü?",
+      "body": "Modern oyun konsolları artık sadece oturma odasıyla sınırlı değil. El konsolları, masaüstü bilgisayar performansı sunarken, ev tipi konsollar da kendi ekosistemleriyle benzersiz deneyimler vadediyor. Seçim yaparken nerede ve ne sıklıkla oyun oynayacağınızı göz önünde bulundurmalısınız."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli? İşlemci, Ekran ve Pil Ömrü",
+      "body": "Bir oyun konsolu alırken işlemci gücü, oyunların akıcılığı için belirleyici. Ekran kalitesi ve boyutu, görsel deneyimi doğrudan etkilerken, özellikle taşınabilir modellerde pil ömrü kesintisiz oyun keyfi için hayati. Ayrıca depolama alanı ve genişletme seçenekleri de uzun vadeli kullanımda önem taşıyor."
+    },
+    {
+      "h": "Ekosistem ve Oyun Kütüphanesi",
+      "body": "Konsol tercihi aynı zamanda bir ekosistem tercihi anlamına gelir. Her markanın kendine özgü bir oyun kütüphanesi ve abonelik servisleri bulunur. Sevdiğiniz oyunlara erişim ve arkadaşlarınızla birlikte oynama imkanı sunan platformu seçmek, uzun vadeli memnuniyetinizi artıracaktır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Acer Nitro Blaze 8 (GN782U)",
+      "why": "Yüksek performansıyla dikkat çeken bu model, en yeni oyunları bile akıcı bir şekilde çalıştırma gücüne sahip.",
+      "id": "pi0udi8ddks7fnu",
+      "slug": "acer-nitro-blaze-8"
+    },
+    {
+      "name": "Acer Nitro Blaze 11 (GN7112U)",
+      "why": "Gelişmiş donanımı ve optimize edilmiş yapısıyla, hem evde hem de yolda üst düzey bir oyun deneyimi sunuyor.",
+      "id": "jfaxqwtwtdip6x8",
+      "slug": "acer-nitro-blaze-11"
+    },
+    {
+      "name": "Asus ROG Xbox Ally X (AMD Ryzen AI Z2 Extreme) (RC73XA)",
+      "why": "AMD'nin güçlü işlemcisiyle donatılan bu el konsolu, taşınabilirlik ve performansı dengeli bir şekilde birleştiriyor.",
+      "id": "8h12ja08cn3sezh",
+      "slug": "asus-rog-xbox-ally-x"
+    },
+    {
+      "name": "MSI Claw 8 EX AI+",
+      "why": "Yapay zeka destekli işlemcisi sayesinde oyunlarda daha akıcı kare hızları ve optimize edilmiş güç tüketimi vadediyor.",
+      "id": "1b1c2xr14hnmqzg",
+      "slug": "msi-claw-8-ex-ai-plus"
+    },
+    {
+      "name": "Lenovo Legion Go 2",
+      "why": "Büyük ekranı ve yenilikçi kontrolcüleriyle hem el konsolu hem de tablet benzeri bir kullanım imkanı sunuyor.",
+      "id": "wg25dlbb6u45f6f",
+      "slug": "lenovo-legion-go-2"
+    },
+    {
+      "name": "MSI Claw A1M (Intel Core Ultra 7 155H / 1 TB) (A1M-089)",
+      "why": "Intel'in en yeni Ultra 7 işlemcisiyle güçlendirilen bu model, hem oyun hem de günlük kullanım için yüksek performans sağlıyor.",
+      "id": "id1wb4wz72f6ejj",
+      "slug": "msi-claw-a1m"
+    }
+  ],
+  "faq": [
+    {
+      "q": "El konsolları masaüstü bilgisayarların yerini tutabilir mi?",
+      "a": "Günümüz el konsolları, birçok modern oyunu yüksek ayarlarda oynatabilecek güce sahip olsa da, en üst düzey grafik ve performans için hala masaüstü bilgisayarlar daha avantajlıdır."
+    },
+    {
+      "q": "Oyun konsolu alırken depolama alanı ne kadar önemli?",
+      "a": "Modern oyunlar genellikle çok yer kaplar, bu yüzden yeterli depolama alanı veya kolay genişletilebilirlik seçenekleri, oyun koleksiyonunuzu rahatça yönetmek için kritik öneme sahiptir."
+    },
+    {
+      "q": "Wi-Fi 6E veya Wi-Fi 7 gibi yeni nesil bağlantı teknolojileri oyun deneyimini nasıl etkiler?",
+      "a": "Bu teknolojiler, online oyunlarda daha düşük gecikme süresi ve bulut oyun servislerinde daha kararlı bir akış sağlayarak genel deneyimi önemli ölçüde iyileştirir."
+    },
+    {
+      "q": "Gelecekte oyun konsollarında hangi yenilikleri bekleyebiliriz?",
+      "a": "Yapay zeka destekli performans optimizasyonları, bulut oyun servislerinin daha da yaygınlaşması ve gelişmiş sanal gerçeklik entegrasyonu, yakın gelecekte beklenen başlıca yenilikler arasında yer alıyor."
+    }
+  ],
+  "updatedAt": "2026-08-26T01:17:39.855Z"
+}

@@ -1,1 +1,71 @@
-{"category":"drones","label":"Drone","title":"En İyi Drone Modelleri 2026: Göklerde Özgürlük Rehberi","lead":"Gökyüzünden nefes kesici görüntüler yakalamak, maceralarınızı eşsiz açılardan kaydetmek veya sadece uçuş keyfini yaşamak mı istiyorsunuz? Drone teknolojisi her geçen gün gelişiyor ve size bu heyecanı yaşatacak birçok seçenek sunuyor.","sections":[{"h":"Neden Bir Drone Almalısınız?","body":"Drone'lar sadece hobi araçları değil; fotoğrafçılıktan videografiye, emlak çekimlerinden tarım uygulamalarına kadar geniş bir yelpazede kullanılıyor. Hava çekimleriyle projelerinize profesyonel bir dokunuş katabilir, doğanın güzelliklerini daha önce hiç görmediğiniz açılardan keşfedebilirsiniz. Kontrolü öğrenmek ise sandığınızdan çok daha kolay."},{"h":"Drone Seçerken Nelere Dikkat Etmeli?","body":"Bir drone alırken kamera kalitesi (4K veya 8K video yeteneği), uçuş süresi, menzil ve engel algılama sistemleri kilit öneme sahiptir. Taşınabilirlik, özellikle sık seyahat edenler için vazgeçilmez bir özelliktir. Ayrıca, başlangıç seviyesi modellerin kullanım kolaylığı ve dayanıklılığı, ileri seviye cihazların ise profesyonel çekim yetenekleri ve akıllı uçuş modları öne çıkar."},{"h":"Kullanım Amacınıza Göre Doğru Drone","body":"Eğer profesyonel kalitede sinematik çekimler peşindeyseniz, güçlü sensörlere ve uzun uçuş süresine sahip amiral gemisi modelleri düşünebilirsiniz. Seyahatlerinizde kolayca yanınızda taşıyabileceğiniz kompakt ve hafif modeller ise anlık çekimler için idealdir. Başlangıç seviyesinde bütçe dostu bir seçenek arayanlar için ise temel uçuş fonksiyonlarına sahip, öğrenmesi kolay dronelar uygun olacaktır."}],"picks":[{"name":"DJI Mavic 4 Pro Creator Combo Drone (CP.MA.00000847.01)","why":"Profesyonel video ve fotoğrafçılar için eşsiz görüntü kalitesi ve gelişmiş otonom uçuş özellikleriyle sınıfının en iyisidir.","id":"20oj94ryjk4asye","slug":"dji-mavic-4-pro-creator-combo"},{"name":"DJI Mavic 4 Pro Creator Combo Drone (CP.MA.00000847.01)","why":"Gelişmiş çekim yeteneklerini uzun uçuş süreleri ve zengin aksesuarlarla birleştirerek kesintisiz bir deneyim sunar.","id":"20oj94ryjk4asye","slug":"dji-mavic-4-pro-creator-combo"},{"name":"Autel Robotics Evo II 8K Rugged Bundle Drone","why":"Zorlu koşullarda bile üstün 8K video kalitesi ve sağlam yapısıyla profesyonel kullanım için güvenilir bir alternatiftir.","id":"gjgb4j3ijjlirax","slug":"autel-robotics-evo-ii-8k-rugged-bundle"},{"name":"DJI Mini 5 Pro Fly More Combo RC-N3 Drone (Fly More Combo (DJI RC-N3))","why":"Hafif ve kompakt tasarımıyla taşınabilirlik sunarken, etkileyici kamera yetenekleri ve akıllı özellikleriyle dikkat çeker.","id":"xj154pglt90j34x","slug":"dji-mini-5-pro-fly-more-combo"},{"name":"Buyfun E98 RC Drone","why":"Uygun fiyatıyla başlangıç seviyesindeki kullanıcılar için drone dünyasına giriş yapmak ve temel uçuş dinamiklerini öğrenmek için ideal bir seçenektir.","id":"iulyw97ck2paaj4","slug":"buyfun-e98-rc"}],"faq":[{"q":"Drone uçurmak için herhangi bir izne ihtiyacım var mı?","a":"Türkiye'de Sivil Havacılık Genel Müdürlüğü (SHGM) tarafından belirlenen kurallar çerçevesinde, drone ağırlığına ve kullanım amacına göre kayıt veya izin gerekebilir. Genel olarak 500 gram üzeri dronelar için kayıt zorunludur."},{"q":"Drone'ların ortalama uçuş süresi ne kadardır?","a":"Modeline göre değişiklik göstermekle birlikte, çoğu tüketici drone'u tek şarjla 15 ila 35 dakika arasında uçuş süresi sunar. Daha uzun süre uçuş için ek bataryalar tercih edilebilir."},{"q":"Başlangıç seviyesi bir drone için nelere dikkat etmeliyim?","a":"Başlangıç seviyesi için fiyat-performans dengesi iyi, kolay kontrol edilebilir, GPS destekli ve mümkünse çarpma anında hasarı azaltacak korumalara sahip modelleri tercih etmek iyi bir başlangıç olabilir."},{"q":"Drone'umla çekim yaparken gizlilik kurallarına uymak önemli mi?","a":"Evet, çekim yaparken kişisel gizlilik haklarına saygı göstermek ve özel mülkler üzerinde izinsiz uçuş veya çekim yapmamak yasal ve etik açıdan büyük önem taşır."}],"updatedAt":"2026-08-25T01:18:34.286Z"}
+{
+  "category": "drones",
+  "label": "Drone",
+  "title": "En İyi Drone Modelleri 2026: Göklerde Özgürlük Rehberi",
+  "lead": "Gökyüzünden nefes kesici görüntüler yakalamak, maceralarınızı eşsiz açılardan kaydetmek veya sadece uçuş keyfini yaşamak mı istiyorsunuz? Drone teknolojisi her geçen gün gelişiyor ve size bu heyecanı yaşatacak birçok seçenek sunuyor.",
+  "sections": [
+    {
+      "h": "Neden Bir Drone Almalısınız?",
+      "body": "Drone'lar sadece hobi araçları değil; fotoğrafçılıktan videografiye, emlak çekimlerinden tarım uygulamalarına kadar geniş bir yelpazede kullanılıyor. Hava çekimleriyle projelerinize profesyonel bir dokunuş katabilir, doğanın güzelliklerini daha önce hiç görmediğiniz açılardan keşfedebilirsiniz. Kontrolü öğrenmek ise sandığınızdan çok daha kolay."
+    },
+    {
+      "h": "Drone Seçerken Nelere Dikkat Etmeli?",
+      "body": "Bir drone alırken kamera kalitesi (4K veya 8K video yeteneği), uçuş süresi, menzil ve engel algılama sistemleri kilit öneme sahiptir. Taşınabilirlik, özellikle sık seyahat edenler için vazgeçilmez bir özelliktir. Ayrıca, başlangıç seviyesi modellerin kullanım kolaylığı ve dayanıklılığı, ileri seviye cihazların ise profesyonel çekim yetenekleri ve akıllı uçuş modları öne çıkar."
+    },
+    {
+      "h": "Kullanım Amacınıza Göre Doğru Drone",
+      "body": "Eğer profesyonel kalitede sinematik çekimler peşindeyseniz, güçlü sensörlere ve uzun uçuş süresine sahip amiral gemisi modelleri düşünebilirsiniz. Seyahatlerinizde kolayca yanınızda taşıyabileceğiniz kompakt ve hafif modeller ise anlık çekimler için idealdir. Başlangıç seviyesinde bütçe dostu bir seçenek arayanlar için ise temel uçuş fonksiyonlarına sahip, öğrenmesi kolay dronelar uygun olacaktır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "DJI Mavic 4 Pro Creator Combo Drone (CP.MA.00000847.01)",
+      "why": "Profesyonel video ve fotoğrafçılar için eşsiz görüntü kalitesi ve gelişmiş otonom uçuş özellikleriyle sınıfının en iyisidir.",
+      "id": "20oj94ryjk4asye",
+      "slug": "dji-mavic-4-pro-creator-combo"
+    },
+    {
+      "name": "DJI Mavic 4 Pro Creator Combo Drone (CP.MA.00000847.01)",
+      "why": "Gelişmiş çekim yeteneklerini uzun uçuş süreleri ve zengin aksesuarlarla birleştirerek kesintisiz bir deneyim sunar.",
+      "id": "20oj94ryjk4asye",
+      "slug": "dji-mavic-4-pro-creator-combo"
+    },
+    {
+      "name": "Autel Robotics Evo II 8K Rugged Bundle Drone",
+      "why": "Zorlu koşullarda bile üstün 8K video kalitesi ve sağlam yapısıyla profesyonel kullanım için güvenilir bir alternatiftir.",
+      "id": "gjgb4j3ijjlirax",
+      "slug": "autel-robotics-evo-ii-8k-rugged-bundle"
+    },
+    {
+      "name": "DJI Mini 5 Pro Fly More Combo RC-N3 Drone (Fly More Combo (DJI RC-N3))",
+      "why": "Hafif ve kompakt tasarımıyla taşınabilirlik sunarken, etkileyici kamera yetenekleri ve akıllı özellikleriyle dikkat çeker.",
+      "id": "xj154pglt90j34x",
+      "slug": "dji-mini-5-pro-fly-more-combo"
+    },
+    {
+      "name": "Buyfun E98 RC Drone",
+      "why": "Uygun fiyatıyla başlangıç seviyesindeki kullanıcılar için drone dünyasına giriş yapmak ve temel uçuş dinamiklerini öğrenmek için ideal bir seçenektir.",
+      "id": "iulyw97ck2paaj4",
+      "slug": "buyfun-e98-rc"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Drone uçurmak için herhangi bir izne ihtiyacım var mı?",
+      "a": "Türkiye'de Sivil Havacılık Genel Müdürlüğü (SHGM) tarafından belirlenen kurallar çerçevesinde, drone ağırlığına ve kullanım amacına göre kayıt veya izin gerekebilir. Genel olarak 500 gram üzeri dronelar için kayıt zorunludur."
+    },
+    {
+      "q": "Drone'ların ortalama uçuş süresi ne kadardır?",
+      "a": "Modeline göre değişiklik göstermekle birlikte, çoğu tüketici drone'u tek şarjla 15 ila 35 dakika arasında uçuş süresi sunar. Daha uzun süre uçuş için ek bataryalar tercih edilebilir."
+    },
+    {
+      "q": "Başlangıç seviyesi bir drone için nelere dikkat etmeliyim?",
+      "a": "Başlangıç seviyesi için fiyat-performans dengesi iyi, kolay kontrol edilebilir, GPS destekli ve mümkünse çarpma anında hasarı azaltacak korumalara sahip modelleri tercih etmek iyi bir başlangıç olabilir."
+    },
+    {
+      "q": "Drone'umla çekim yaparken gizlilik kurallarına uymak önemli mi?",
+      "a": "Evet, çekim yaparken kişisel gizlilik haklarına saygı göstermek ve özel mülkler üzerinde izinsiz uçuş veya çekim yapmamak yasal ve etik açıdan büyük önem taşır."
+    }
+  ],
+  "updatedAt": "2026-08-25T01:18:34.286Z"
+}

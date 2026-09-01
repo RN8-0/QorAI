@@ -1,1 +1,81 @@
-{"category":"pc_cases","label":"Kasa","title":"En İyi Bilgisayar Kasaları 2024: Tam Kapsamlı Rehber","lead":"Bilgisayarınızın kalbi olan donanımları koruyan ve soğutan kasa, performansınızı doğrudan etkiler. Doğru kasa seçimi, hem sisteminizin ömrünü uzatır hem de estetik bir görünüm kazandırır.","sections":[{"h":"Hava Akışı ve Soğutma","body":"İyi bir kasa, içerideki sıcak havayı dışarı atarken, serin havayı içeri alabilmelidir. Ön panelin mesh yapısı, fan destekleri ve radyatör uyumluluğu, sisteminizin stabil çalışması için hayati önem taşır. Bu, özellikle yüksek performanslı bileşenler kullanan oyuncular ve içerik üreticileri için kritik bir konudur."},{"h":"Nelere Dikkat Etmeli?","body":"Kasa seçerken anakart boyutunuzu (ATX, Micro-ATX, Mini-ITX), ekran kartınızın uzunluğunu ve CPU soğutucunuzun yüksekliğini göz önünde bulundurmalısınız. Ayrıca, depolama birimleri için yeterli yuva, kablo yönetimi için alan ve genişleme slotlarının sayısı da önemli detaylardır."},{"h":"Estetik ve Kullanım Kolaylığı","body":"Şeffaf yan paneller, RGB aydınlatma seçenekleri ve minimalist tasarımlar kişisel zevkinize hitap edebilir. USB portlarının ve ses girişlerinin kolay erişilebilir konumda olması, toz filtrelerinin temizlenebilirliği ve genel montaj kolaylığı, uzun vadede kullanım keyfinizi artırır."},{"h":"Entegre Güç Kaynağı Avantajı","body":"Bazı kasalar, genellikle fiyat/performans odaklı segmentte, dahili bir güç kaynağı ile gelir. Bu modeller, özellikle bütçe dostu sistemler kuranlar için ekstra bir maliyet kalemini ortadan kaldırır ve uyumluluk konusunda kolaylık sağlar. Ancak güç kaynağının kalitesi ve sertifikasyonu da göz ardı edilmemelidir."}],"picks":[{"name":"BitFenix DH50 850W Bilgisayar Kasası","why":"Yüksek watt'lı entegre güç kaynağı ile güçlü sistemler için pratik bir başlangıç sunar.","id":"ifbt0riqg27cryj","slug":"bitfenix-dh50-850w"},{"name":"NZXT H5 Flow Bilgisayar Kasası (CC-H52FB-01)","why":"Mükemmel hava akışı tasarımı ve şık minimalist görünümüyle öne çıkar.","id":"z2fxvbtkko8en52","slug":"nzxt-h5-flow-cc-h52fb-01"},{"name":"GameBooster Nyvra Alpha 750W Bilgisayar Kasası","why":"Fiyat/performans dengesiyle dikkat çeken, entegre güç kaynaklı popüler bir seçenektir.","id":"1r4mm8orlrv3z3s","slug":"gamebooster-nyvra-alpha-750w-siyah"},{"name":"Cooler Master Elite 502 750W Bilgisayar Kasası (E502-KGNN75-S00)","why":"Güvenilir bir markanın 750W güç kaynağı ile gelen, dengeli bir çözüm sunar.","id":"2w1h1kldc2d5a0s","slug":"cooler-master-elite-502-750w"},{"name":"Raijintek Agos Max MS4 Bilgisayar Kasası (0R20B00262)","why":"Geniş iç hacmi ve etkili soğutma potansiyeli arayanlar için idealdir.","id":"pp2z64no2fwcxag","slug":"raijintek-agos-max-ms4-0r20b00262"},{"name":"Fazeon F18 650W Bilgisayar Kasası (F18E650BBM)","why":"Bütçe dostu sistemler için 650W güç kaynağıyla birlikte gelen, kullanışlı bir alternatiftir.","id":"skfxglc818osajp","slug":"fazeon-f18-650w-f18e650bbm"}],"faq":[{"q":"Kasa boyutu performansı etkiler mi?","a":"Doğrudan performansı etkilemez ancak büyük kasalar daha iyi hava akışı ve daha geniş bileşen uyumluluğu sunabilir."},{"q":"Dahili güç kaynaklı kasalar tercih edilmeli mi?","a":"Bütçe odaklı sistemler için maliyeti düşürür; ancak güç kaynağının kalitesi ve gücü sisteminize uygun olmalıdır."},{"q":"RGB aydınlatma gerçekten gerekli mi?","a":"Tamamen kişisel tercihe bağlıdır, performansa bir etkisi yoktur, sadece estetik bir görünüm sağlar."},{"q":"Kasa içindeki kablo yönetimi neden önemli?","a":"Kablo yönetimi hem estetik görünümü iyileştirir hem de hava akışını engelleyerek soğutma performansını düşürmesini önler."}],"updatedAt":"2026-08-24T01:18:16.036Z"}
+{
+  "category": "pc_cases",
+  "label": "Kasa",
+  "title": "En İyi Bilgisayar Kasaları 2024: Tam Kapsamlı Rehber",
+  "lead": "Bilgisayarınızın kalbi olan donanımları koruyan ve soğutan kasa, performansınızı doğrudan etkiler. Doğru kasa seçimi, hem sisteminizin ömrünü uzatır hem de estetik bir görünüm kazandırır.",
+  "sections": [
+    {
+      "h": "Hava Akışı ve Soğutma",
+      "body": "İyi bir kasa, içerideki sıcak havayı dışarı atarken, serin havayı içeri alabilmelidir. Ön panelin mesh yapısı, fan destekleri ve radyatör uyumluluğu, sisteminizin stabil çalışması için hayati önem taşır. Bu, özellikle yüksek performanslı bileşenler kullanan oyuncular ve içerik üreticileri için kritik bir konudur."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Kasa seçerken anakart boyutunuzu (ATX, Micro-ATX, Mini-ITX), ekran kartınızın uzunluğunu ve CPU soğutucunuzun yüksekliğini göz önünde bulundurmalısınız. Ayrıca, depolama birimleri için yeterli yuva, kablo yönetimi için alan ve genişleme slotlarının sayısı da önemli detaylardır."
+    },
+    {
+      "h": "Estetik ve Kullanım Kolaylığı",
+      "body": "Şeffaf yan paneller, RGB aydınlatma seçenekleri ve minimalist tasarımlar kişisel zevkinize hitap edebilir. USB portlarının ve ses girişlerinin kolay erişilebilir konumda olması, toz filtrelerinin temizlenebilirliği ve genel montaj kolaylığı, uzun vadede kullanım keyfinizi artırır."
+    },
+    {
+      "h": "Entegre Güç Kaynağı Avantajı",
+      "body": "Bazı kasalar, genellikle fiyat/performans odaklı segmentte, dahili bir güç kaynağı ile gelir. Bu modeller, özellikle bütçe dostu sistemler kuranlar için ekstra bir maliyet kalemini ortadan kaldırır ve uyumluluk konusunda kolaylık sağlar. Ancak güç kaynağının kalitesi ve sertifikasyonu da göz ardı edilmemelidir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "BitFenix DH50 850W Bilgisayar Kasası",
+      "why": "Yüksek watt'lı entegre güç kaynağı ile güçlü sistemler için pratik bir başlangıç sunar.",
+      "id": "ifbt0riqg27cryj",
+      "slug": "bitfenix-dh50-850w"
+    },
+    {
+      "name": "NZXT H5 Flow Bilgisayar Kasası (CC-H52FB-01)",
+      "why": "Mükemmel hava akışı tasarımı ve şık minimalist görünümüyle öne çıkar.",
+      "id": "z2fxvbtkko8en52",
+      "slug": "nzxt-h5-flow-cc-h52fb-01"
+    },
+    {
+      "name": "GameBooster Nyvra Alpha 750W Bilgisayar Kasası",
+      "why": "Fiyat/performans dengesiyle dikkat çeken, entegre güç kaynaklı popüler bir seçenektir.",
+      "id": "1r4mm8orlrv3z3s",
+      "slug": "gamebooster-nyvra-alpha-750w-siyah"
+    },
+    {
+      "name": "Cooler Master Elite 502 750W Bilgisayar Kasası (E502-KGNN75-S00)",
+      "why": "Güvenilir bir markanın 750W güç kaynağı ile gelen, dengeli bir çözüm sunar.",
+      "id": "2w1h1kldc2d5a0s",
+      "slug": "cooler-master-elite-502-750w"
+    },
+    {
+      "name": "Raijintek Agos Max MS4 Bilgisayar Kasası (0R20B00262)",
+      "why": "Geniş iç hacmi ve etkili soğutma potansiyeli arayanlar için idealdir.",
+      "id": "pp2z64no2fwcxag",
+      "slug": "raijintek-agos-max-ms4-0r20b00262"
+    },
+    {
+      "name": "Fazeon F18 650W Bilgisayar Kasası (F18E650BBM)",
+      "why": "Bütçe dostu sistemler için 650W güç kaynağıyla birlikte gelen, kullanışlı bir alternatiftir.",
+      "id": "skfxglc818osajp",
+      "slug": "fazeon-f18-650w-f18e650bbm"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Kasa boyutu performansı etkiler mi?",
+      "a": "Doğrudan performansı etkilemez ancak büyük kasalar daha iyi hava akışı ve daha geniş bileşen uyumluluğu sunabilir."
+    },
+    {
+      "q": "Dahili güç kaynaklı kasalar tercih edilmeli mi?",
+      "a": "Bütçe odaklı sistemler için maliyeti düşürür; ancak güç kaynağının kalitesi ve gücü sisteminize uygun olmalıdır."
+    },
+    {
+      "q": "RGB aydınlatma gerçekten gerekli mi?",
+      "a": "Tamamen kişisel tercihe bağlıdır, performansa bir etkisi yoktur, sadece estetik bir görünüm sağlar."
+    },
+    {
+      "q": "Kasa içindeki kablo yönetimi neden önemli?",
+      "a": "Kablo yönetimi hem estetik görünümü iyileştirir hem de hava akışını engelleyerek soğutma performansını düşürmesini önler."
+    }
+  ],
+  "updatedAt": "2026-08-24T01:18:16.036Z"
+}
