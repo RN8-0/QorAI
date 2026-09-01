@@ -780,11 +780,15 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
               <div className="aic-diff-body">
                 {x.title && <strong>{proseParts(x.title, `dt${i}`, names)}</strong>}
                 {sag ? (
+                  /* İKİ TARAF GÖRÜNÜR BİÇİMDE AYRILIR. Önce araya yalnız bir
+                     "↔" konmuştu ve canlıda "--" gibi silik çıkıp iki yarıyı
+                     tek bir metin bloğu gibi gösteriyordu. Ayıraç artık
+                     ETİKETLİ bir hairline; her yarı da kendi şeridinde. */
                   <div className="aic-diff-sides">
                     <p className={`aic-diff-side aic-tone${toneClass(sol)}`}>
                       {proseParts(sol, `da${i}`, names)}
                     </p>
-                    <span className="aic-diff-vs" aria-hidden="true">↔</span>
+                    <span className="aic-diff-vs">{L('meanwhile', 'buna karşılık')}</span>
                     <p className={`aic-diff-side aic-tone${toneClass(sag)}`}>
                       {proseParts(sag, `db${i}`, names)}
                     </p>

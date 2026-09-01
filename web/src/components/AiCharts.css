@@ -788,17 +788,28 @@
    tarafı cümleyi okuyarak ayırmak zorundaydı.
    Artık cümle KENDİ dönüş noktasından ikiye ayrılıyor (bkz. splitPivot) ve
    iki yarı üst üste, aralarında ↔ ile duruyor. Kalıp yoksa tek paragraf. */
+/* HER FARK KENDİ KARTINDA (2026-09-01). Önce yalnızca hairline ile
+   ayrılıyorlardı ve canlıda altı fark tek bir metin sütunu gibi okunuyordu —
+   kullanıcı "bölümlememişsin, karışık" dedi. Kart burada süs değil SINIR:
+   bir farkın nerede bitip ötekinin nerede başladığını söylüyor. */
 .aic-diffs { margin: 4px 0; }
-.aic-diff-grid { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.aic-diff-grid {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
 .aic-diff {
   display: flex;
   gap: 12px;
-  padding: 13px 2px;
-  border-top: 1px solid var(--divider, var(--border));
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 10px);
+  background: var(--surface-2);
   animation: aicRise .4s cubic-bezier(.22,.61,.36,1) both;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
-.aic-diff:first-child { border-top: 0; padding-top: 4px; }
 .aic-diff-no {
   flex: none;
   width: 24px;
@@ -826,32 +837,30 @@
   line-height: 1.6;
   color: var(--text-soft, var(--text2));
 }
-/* İki taraf: sol dikey ray + aralarında ↔. Kutu YOK — ayrım hairline ile. */
-.aic-diff-sides { display: grid; gap: 5px; }
+/* İki taraf: her biri kendi dikey şeridinde, aralarında ETİKETLİ ayıraç.
+   "↔" tek başına denendi ve canlıda "--" gibi silik çıktı; iki yarı tek bir
+   metin bloğu gibi okunuyordu. */
+.aic-diff-sides { display: grid; gap: 0; }
 .aic-diff-side {
   position: relative;
-  padding-left: 13px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid color-mix(in srgb, var(--text3) 35%, transparent);
 }
-.aic-diff-side::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: .55em;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: .4;
+.aic-diff-side:first-child {
+  border-left-color: color-mix(in srgb, var(--ink-blue) 34%, transparent);
 }
-.aic-diff-side:first-child::before { opacity: .6; }
+/* Ayıraç: küçük harfli etiket + tam genişlik hairline. */
 .aic-diff-vs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 2px 0;
-  font-size: 10px;
+  gap: 9px;
+  margin: 9px 0 9px 12px;
+  font-size: 9.5px;
   font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
   color: var(--text3);
+  white-space: nowrap;
 }
 .aic-diff-vs::after {
   content: '';
@@ -965,11 +974,18 @@
 .aic-prose-head.hid,
 .aic-prose-li.hid { display: none; }
 /* Konu cümlesi: gözün paragrafı 0,3 saniyede tarayıp geçmesini sağlayan tek
-   tutamak. Renk DEĞİL ağırlık kullanır — renk vurgusu sayılara ayrıldı. */
+   tutamak.
+   TABAN RENK SİYAH DEĞİL (2026-09-01). `leadTone` artık NÖTR de dönebiliyor
+   ve nötr konu cümleleri bu tabandan siyah-kalın çıkıyordu — "Kararın
+   gerekçesi" bloğunda üst üste koyu paragraf başları oluştu. Kural: siyah-
+   kalın YALNIZCA ürün adına ait. Yönü belli olan cümle rengini alttaki
+   `.pos` / `.neg` kurallarından alır; nötr cümle yalnızca AĞIRLIKLA ayrışır. */
 .aic-prose-lead {
-  color: var(--text);
+  color: var(--text-soft, var(--text2));
   font-weight: 750;
 }
+/* Ürün adı konu cümlesinin içinde de siyah-kalın kalır — tek istisna. */
+.aic-prose-lead .aic-name { color: var(--text); }
 /* Hukmun YONU renkten okunur ve ton USTTEKI KARTLARLA ayni okunmali
    ("Sahiplerin en cok sevdigi" / "Kronik sorunlar"). `--ink-green` (#047857)
    yaninda SOLUK kaliyordu; emerald-600 / red-600 gozle o kartlarin canli
