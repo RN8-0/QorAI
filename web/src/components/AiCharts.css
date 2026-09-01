@@ -1061,11 +1061,13 @@
   font-size: 1em;
   font-weight: 800;
   letter-spacing: -.02em;
-  /* TABAN RENK MAVİ DEĞİL, DEVRALINAN RENK (2026-09-01).
-     Kural (kullanıcı): bir spec'ten bahsediliyorsa asla mavi yazılmaz —
-     iyi bağlamda yeşil, kötü bağlamda kırmızı. Tonu HESAPLANAMAYAN nötr
-     cümlede sayı artık cümlenin kendi rengini alır; mavi kalıntısı yok. */
-  color: inherit;
+  /* TABAN RENK YEŞİL (2026-09-01, kullanıcı kararı).
+     Önce `inherit` idi: tonu hesaplanamayan NÖTR cümlelerde sayı gövde
+     metninin rengini alıyordu, yani "256 GB" / "60 Hz" / "6.1 inç" siyah
+     ya da gri çıkıyordu ve ölçü olduğu hiç belli olmuyordu. Artık taban
+     yeşil; OLUMSUZ cümlede aşağıdaki kural kırmızıya çevirir (o renk
+     bilgi taşıyor, korundu). */
+  color: var(--ink-green);
   white-space: nowrap;
 }
 
@@ -1079,8 +1081,11 @@
    agirligini da iceriyor (bkz. leadTone). */
 .aic-tone-pos .aic-num { color: var(--lead-pos); }
 .aic-tone-neg .aic-num { color: var(--lead-neg); }
-/* Konu cumlesinin kendi rengi zaten ton rengi; sayi onu bolmesin. */
-.aic-prose-lead .aic-num { color: inherit; }
+/* Konu cumlesinin KENDI rengi zaten ton rengi; sayi onu bolmesin — ama
+   yalniz RENKLI (pos/neg) leadlerde. Notr leadde `inherit` sayiyi yine
+   griye dusuruyordu, o yuzden kosulsuz degil. */
+.aic-prose-lead.pos .aic-num,
+.aic-prose-lead.neg .aic-num { color: inherit; }
 
 /* ── SAYI DA KALIN GÖRÜNMELİ ──────────────────────────────────────────────
    Kalın bir hükmün içindeki "2600 nit" / "6.9 inç" komşusundan İNCE

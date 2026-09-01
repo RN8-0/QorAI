@@ -10,7 +10,7 @@ import './AiAnalysis.css';
 import ProductImg from './ProductImg.jsx';
 import Gauge from './Gauge.jsx';
 import { productPath } from '../lib/routes';
-import { formatPrice, formatPriceAmount, priceForCountry } from '../lib/format';
+import { CURRENCY_BY_COUNTRY, formatPrice, formatPriceAmount, priceForCountry } from '../lib/format';
 import { getProduct, getProductBySlug } from '../lib/typesense';
 import { useGeoCountry } from '../lib/geo';
 import { displayProductName, cleanProductName } from '../lib/productNames';
@@ -427,7 +427,16 @@ function altPrice(a, geoCountry, lang, canli) {
   if (pc && pc.price > 0) {
     return <span className="ai-alt-price">{formatPriceAmount(pc.price, pc.currency, lang)}</span>;
   }
-  if (Number(kaynak?.lowestPriceUSD) > 0) {
+  // ULKE FIYATI YOKSA BASKA ULKENIN FIYATI GOSTERILMEZ.
+  // Turkiye'den giren okuyucuya Honor Magic5 icin "$1,237" yaziyordu:
+  // TL fiyati olmadigi icin lowestPriceUSD'ye dusuyordu. Kural (kullanici,
+  // kalici): secili ulkenin fiyati yoksa fiyat HIC gosterilmez.
+  //
+  // USD tabanina dusmek YALNIZCA ziyaretcinin ulkesi sitenin fiyat
+  // destekledigi ulkelerden DEGILSE dogru: orada zaten ulke fiyati diye bir
+  // sey yok, USD tek anlamli olcu.
+  const ulkeDestekli = !!CURRENCY_BY_COUNTRY[String(geoCountry || '').toUpperCase()];
+  if (!ulkeDestekli && Number(kaynak?.lowestPriceUSD) > 0) {
     return <span className="ai-alt-price">{formatPrice(kaynak.lowestPriceUSD)}</span>;
   }
   return null;
