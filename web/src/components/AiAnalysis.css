@@ -721,8 +721,8 @@
 }
 /* Tutamak, maddenin YÖNÜNÜ taşır (siyah değil): artılarda yeşil,
    eksilerde kırmızı. Siyah-kalın yalnızca ürün adına ayrılmıştır. */
-.ai-cmp-card-side.for .aic-clause { color: var(--lead-pos); }
-.ai-cmp-card-side.against .aic-clause { color: var(--lead-neg); }
+.ai-cmp-card-side.for .aic-clause { color: var(--lead-pos); font-weight: 800; }
+.ai-cmp-card-side.against .aic-clause { color: var(--lead-neg); font-weight: 800; }
 
 /* ── KİME UYGUN / DEĞİL ──────────────────────────────────────────────────
    İki-üç cümlelik paragraftı; her cümle kendi satırında. Kutu yok, hairline. */
@@ -745,10 +745,10 @@
 .ai-cmp-who-row li {
   font-size: 13px; line-height: 1.55; color: var(--text-soft, var(--text2));
 }
-.ai-cmp-who-row.for .aic-num,
-.ai-cmp-who-row.for .aic-clause { color: var(--lead-pos); }
-.ai-cmp-who-row.against .aic-num,
-.ai-cmp-who-row.against .aic-clause { color: var(--lead-neg); }
+.ai-cmp-who-row.for .aic-num { color: var(--lead-pos); }
+.ai-cmp-who-row.against .aic-num { color: var(--lead-neg); }
+.ai-cmp-who-row.for .aic-clause { color: var(--lead-pos); font-weight: 800; }
+.ai-cmp-who-row.against .aic-clause { color: var(--lead-neg); font-weight: 800; }
 
 .ai-cmp-card-more {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 13px;

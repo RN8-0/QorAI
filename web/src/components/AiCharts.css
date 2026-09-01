@@ -877,8 +877,8 @@
    başka hiçbir kelime siyah vurgulanmaz, spec asla mavi yazılmaz. */
 /* Tutamak da kalın DEĞİL — ayrımı rengi yapıyor. */
 .aic-clause { font-weight: inherit; color: inherit; }
-.aic-tone-pos > .aic-clause { color: var(--lead-pos); }
-.aic-tone-neg > .aic-clause { color: var(--lead-neg); }
+.aic-tone-pos > .aic-clause { color: var(--lead-pos); font-weight: 800; }
+.aic-tone-neg > .aic-clause { color: var(--lead-neg); font-weight: 800; }
 /* Ürün adı tutamağın İÇİNDE de siyah-kalın kalır — tek istisna budur. */
 .aic-clause .aic-name { color: var(--text); font-weight: 850; }
 .aic-clause-rest { color: var(--text-soft, var(--text2)); }
@@ -1004,8 +1004,12 @@
   --lead-pos: #34D399;
   --lead-neg: #F87171;
 }
-.aic-prose-lead.pos { color: var(--lead-pos); }
-.aic-prose-lead.neg { color: var(--lead-neg); }
+/* RENKLİ = KALIN (kullanıcı kuralı, 2026-09-01). Kalın yazı yönü OLAN
+   cümlenin hakkı; nötr cümle kalın değil, yalnızca yumuşak gri. Yani sayfada
+   kalın olan üç şey var: ürün adı (siyah), olumlu hüküm (yeşil), olumsuz
+   hüküm (kırmızı). */
+.aic-prose-lead.pos { color: var(--lead-pos); font-weight: 800; }
+.aic-prose-lead.neg { color: var(--lead-neg); font-weight: 800; }
 .aic-prose-head {
   margin: 16px 0 8px;
   font-size: 13px;

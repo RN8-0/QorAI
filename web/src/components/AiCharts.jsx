@@ -1235,6 +1235,20 @@ const POS_KOK = [
   // Tek anlamlı kalite sıfatları. ('kalite' TEK BAŞINA alınmadı — "kamera
   // kalitesi düşük" cümlesinde olumsuzu dengelerdi; sıfat hâli güvenli.)
   'kaliteli', 'rahatça', 'rahatca', 'verimli', 'keskin',
+  // ÖLÇÜMLE EKLENDİ (2026-09-01). İki canlı kaydın 441 cümlesi tarandı:
+  // %41'i hiçbir köke eşleşmiyordu, oysa çoğu açıkça olumluydu — model
+  // hükmü bu fiillerle kuruyor. Hepsi TEK ANLAMLI seçildi; çok anlamlı
+  // olanlar ("sunar", "sağlar") ALINMADI çünkü olumsuz cümlede de geçiyor.
+  'kesintisiz', 'rahatlıkla', 'rahatlikla', 'kolayca', 'kolaylaştır', 'kolaylastir',
+  'garantili', 'geride bırak', 'geride birak', 'önüne geç', 'onune gec',
+  'fazlasıyla', 'fazlasiyla', 'esnek', 'uyum sağl', 'uyum sagl',
+  // "karşıl" TEK BAŞINA ALINMAZ: "karşılaştırma", "karşılık" ve "karşın"
+  // içinde de geçiyor. Yalnız beklenti/ihtiyaç ile kurulan kalıplar.
+  'beklentisini karşıl', 'beklentiyi karşıl', 'beklentilerini karşıl',
+  'ihtiyacını karşıl', 'beklentileri aş', 'beklentisini fazlasıyla',
+  'profesyonel kalite', 'okunabilirlik',
+  'yardımcı ol', 'yardimci ol', 'uyumlu', 'denge', 'çözümdür', 'cozumdur',
+  'uygun', 'güncel kal', 'guncel kal', 'koruma', 'korur',
   'praise', 'excellent', 'outstanding', 'strong', 'impressive', 'leading',
   'recommend', 'great', 'best', 'smooth', 'reliable', 'durable', 'fast',
 ];
@@ -1258,6 +1272,10 @@ const NEG_KOK = [
   'tıkırtı', 'tikirti', 'vızıltı', 'vizilti', 'uğultu', 'ugultu', 'gürültü', 'gurultu',
   'bobin sesi', 'coil whine', 'titreşim', 'titresim', 'aşırı ısın', 'asiri isin',
   'rahatsız', 'rahatsiz', 'tepki süresi', 'noisy', 'rattle', 'buzzing', 'throttl',
+  // TEMKİN İŞARETLERİ. Model bir kusuru doğrudan söylemek yerine "gözlenmeli /
+  // dikkate alınmalı" diye yazıyor; bunlar hüküm olarak OLUMSUZ taraftadır.
+  'gözlemlenmeli', 'gozlemlenmeli', 'dikkate alınmalı', 'dikkate alinmali',
+  'göz önünde bulundurul', 'goz onunde bulundurul', 'yüksek bir seviyede',
 ];
 const TONE_DONUS = new RegExp(TONE_HEAD + '(ancak|fakat|ama |ne var ki|buna karşın|buna karsin|rağmen|ragmen|however|but |although|yet )', 'i');
 // Kok listesindeki tek ozel karakter bosluk; yine de kacis guvenligi icin
@@ -1363,7 +1381,7 @@ function leadTone(text) {
   //      kısıtlamalar ve sorunlar da dile getirilmektedir"). Böyle bir cümleyi
   //      tek renge zorlamak okuyucuya yanlış hüküm okutuyordu.
   if (pos === 0 && neg === 0) return '';
-  if (pos > 0 && neg > 0 && Math.max(pos, neg) <= 2 * Math.min(pos, neg)) return '';
+  if (pos > 0 && neg > 0 && Math.max(pos, neg) <= 1.4 * Math.min(pos, neg)) return '';
   return pos > neg ? 'pos' : 'neg';
 }
 
