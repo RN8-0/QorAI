@@ -1680,7 +1680,14 @@ function categoryPath(category) {
 // (`/analiz/<slug>` + `/tr/analiz/<slug>`), hreflang artık gerçek alternatifi
 // gösteriyor, gövde türe göre (ürün / link / abonelik) yazılıyor ve başlık ile
 // açıklama admin'de üretilen meta'dan geliyor.
-const SEO_CONTENT_VERSION = '2026-08-22';
+// 2026-09-01'e cekildi: bu tarihte ON-RENDER CIKTISI GERCEKTEN degisti --
+// (a) spec sozlugune 5 kelime eklendi ve her sayfadaki etiketler duzeldi
+//     ("Sequential Okuma" -> "Sequential Read", "Data Yolu" -> "Data Bus"),
+// (b) <html lang> her sayfada kendi dilini yazmaya basladi (/tr/* lang="en"
+//     ile yayindaydi).
+// lastmod UYDURULMAZ; burada gercek bir icerik degisikligi var ve Google'a
+// yeniden tarama sinyali vermek dogru. Onceki deger 10 gun eskiydi.
+const SEO_CONTENT_VERSION = '2026-09-01';
 
 function lastmodFromTs(value) {
   const n = Number(value) || 0;
@@ -1931,14 +1938,14 @@ const HOME_TEXT = {
     p1: 'Qor AI; telefon, laptop, ekran kartı, kulaklık, televizyon, akıllı saat ve PC bileşenlerinden dijital aboneliklere kadar binlerce ürünü yapay zekâ ile inceleyip karşılaştırmanı sağlayan bir alışveriş ve ürün karar asistanıdır. Ürünleri ara, yan yana karşılaştır, bir ürün linkini yapıştırıp anında AI analizini al, abonelikleri değerlendir ve sana en uygun seçeneği saniyeler içinde bul.',
     p2: 'Her üründe Qor AI teknik skoru, güncel fiyatlar, öne çıkan özellikler ve benzer modellerle karşılaştırma bir arada sunulur. Aşağıdan kategorilere göz at ya da bir aracı seç.',
     cats: 'Kategoriler', tools: 'Araçlar',
-    toolLinks: [['/category', 'Tüm Kategoriler'], ['/subscriptions', 'Abonelik Karşılaştır'], ['/link-analysis', 'Link Analizi'], ['/ai-chat', 'Qor AI Sohbet'], ['/quiz', 'Kişisel Quiz'], ['/blog', 'Blog & Alım Rehberleri'], ['/premium', 'Premium'], ['/about', 'Hakkımızda']],
+    toolLinks: [['/category', 'Tüm Kategoriler'], ['/analiz', 'Qor AI Analizleri'], ['/subscriptions', 'Abonelik Karşılaştır'], ['/link-analysis', 'Link Analizi'], ['/ai-chat', 'Qor AI Sohbet'], ['/quiz', 'Kişisel Quiz'], ['/blog', 'Blog & Alım Rehberleri'], ['/premium', 'Premium'], ['/about', 'Hakkımızda']],
   },
   en: {
     h1: 'Qor AI — AI Product & Subscription Advisor',
     p1: 'Qor AI is a shopping and product-decision assistant that uses AI to research and compare thousands of products — phones, laptops, GPUs, headphones, TVs, smartwatches and PC components — as well as digital subscriptions. Search products, compare them side by side, paste a product link for an instant AI analysis, evaluate subscriptions and find the option that fits you best in seconds.',
     p2: 'Every product shows the Qor AI tech score, current prices, key features and a comparison with similar models. Browse the categories below or pick a tool.',
     cats: 'Categories', tools: 'Tools',
-    toolLinks: [['/category', 'All categories'], ['/subscriptions', 'Compare subscriptions'], ['/link-analysis', 'Link analysis'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Personal quiz'], ['/blog', 'Blog & buying guides'], ['/premium', 'Premium'], ['/about', 'About']],
+    toolLinks: [['/category', 'All categories'], ['/analiz', 'Qor AI analyses'], ['/subscriptions', 'Compare subscriptions'], ['/link-analysis', 'Link analysis'], ['/ai-chat', 'Qor AI Chat'], ['/quiz', 'Personal quiz'], ['/blog', 'Blog & buying guides'], ['/premium', 'Premium'], ['/about', 'About']],
   },
 };
 
