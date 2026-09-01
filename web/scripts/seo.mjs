@@ -263,6 +263,53 @@ const ANALIZ_LISTE_TEXT = {
   },
 };
 
+// ── ANALIZ IC LINKLERI ────────────────────────────────────────────────────
+//
+// Olculdu (2026-09-01): urun kabuklari analize link veriyordu (18/19) ama
+// ANA SAYFA, KATEGORI sayfalari ve analizlerin KENDISI vermiyordu — yani
+// sitenin tek ozgun icerigine giden yol tek yonlu ve dardi. Analiz kumesi
+// icinde dolasim hic yoktu: bir analize gelen crawler oradan baska bir
+// analize gecemiyordu.
+//
+// Blok, verilecek link YOKSA hicbir sey basmaz (bos baslik birakmaz).
+function analizLinkBlogu(list, lang, baslik) {
+  const rows = (Array.isArray(list) ? list : []).filter((x) => x && x.href && x.text);
+  if (!rows.length) return '';
+  return `<h2 style="font-size:20px;margin:26px 0 8px">${esc(baslik)}</h2>`
+    + '<ul style="list-style:none;padding:0;margin:0">'
+    + rows.map((r) => `<li style="margin:6px 0"><a href="${r.href}" style="color:#2563eb;text-decoration:none">${esc(r.text)}</a>`
+      + (r.meta ? `<span style="color:#64748b;font-size:12.5px"> · ${esc(r.meta)}</span>` : '')
+      + '</li>').join('')
+    + '</ul>';
+}
+
+// Bir analiz kaydini link satirina cevirir. Dil suzgeci SART: o dilde raporu
+// olmayan analize link vermek uretilmemis bir kabuga yollamak demek.
+function analizSatiri(a, lang, pfx) {
+  const diller = analysisRenderLangs(a, SEO_DEFAULT_LOCALE).filter((l) => SEO_LOCALES.includes(l));
+  if (!a.slug || !diller.includes(lang)) return null;
+  return {
+    href: `${pfx}/analiz/${a.slug}`,
+    text: analysisTitle(a, lang),
+    meta: a.techScore ? `Qor AI ${a.techScore}/100` : '',
+  };
+}
+
+// Bir analizin AYNI KATEGORIDEKI komsulari. Olculdu (2026-09-01): analiz
+// sayfalari yalniz kendi urunlerine link veriyordu, birbirlerine HIC — yani
+// sitenin en degerli kumesi icinde crawler dolasimi sifirdi. Kendisi listeden
+// duser; komsu yoksa hicbir sey basilmaz.
+function analizKomsuBlogu(a, lang, analizByKategori, kategoriBySlug) {
+  const cat = a && a.productSlug ? kategoriBySlug.get(a.productSlug) : null;
+  if (!cat) return '';
+  const rows = (analizByKategori.get(cat) || [])
+    .filter((x) => x && x.slug && x.slug !== a.slug)
+    .slice(0, 6)
+    .map((x) => analizSatiri(x, lang, localePrefix(lang)))
+    .filter(Boolean);
+  return analizLinkBlogu(rows, lang, lang === 'tr' ? 'Benzer analizler' : 'Related analyses');
+}
+
 function analizListeBody(analyses, lang) {
   const tx = ANALIZ_LISTE_TEXT[lang] || ANALIZ_LISTE_TEXT[SEO_DEFAULT_LOCALE];
   const pfx = localePrefix(lang);
@@ -1197,7 +1244,7 @@ function compareLinksFor(items, lang, sinir = 12) {
   return out;
 }
 
-function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKategoriler = [], compareVar = true) {
+function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKategoriler = [], compareVar = true, katAnalizleri = []) {
   const tx = CAT_BODY_TEXT[lang] || CAT_BODY_TEXT.tr;
   const lbl = esc(label);
   // İç linkler AYNI DİL AĞACINDA kalmalı: /tr/category sayfası öneksiz
@@ -1218,6 +1265,12 @@ function categoryBody(label, categoryUrl, items, guide, lang = 'tr', digerKatego
     + `<p style="line-height:1.7;color:#334155;max-width:680px">${esc(tx.intro(label))}</p>`
     + (links ? `<ul style="columns:2;column-gap:32px;margin:18px 0;padding:0;list-style:none">${links}</ul>` : '')
     + (compareVar ? karsilastirmaBolumu(items, lang) : '')
+    // KATEGORIDEKI ANALIZLER — urun listesinin HEMEN ardindan, diger
+    // kategorilerden ONCE: konu olarak en yakin komsu bu.
+    + analizLinkBlogu(
+      (katAnalizleri || []).map((a) => analizSatiri(a, lang, pfx)).filter(Boolean),
+      lang, lang === 'tr' ? `${label} analizleri` : `${label} analyses`,
+    )
     + digerKategoriBolumu(digerKategoriler, lang)
     + `</main>`;
 }
@@ -1955,7 +2008,7 @@ const HOME_TEXT = {
   },
 };
 
-function homeBody(guides, lang = 'tr') {
+function homeBody(guides, lang = 'tr', analyses = []) {
   const tx = HOME_TEXT[lang] || HOME_TEXT.tr;
   const cats = [...guides.keys()]
     .map((cat) => ({ href: categoryPath(cat), label: categoryLabel(cat, lang) }))
@@ -1978,6 +2031,13 @@ function homeBody(guides, lang = 'tr') {
     + `<ul style="columns:2;-webkit-columns:2;list-style:none;padding:0;margin:0">${catLinks}</ul>`
     + `<h2 style="font-size:20px;margin:24px 0 8px">${esc(tx.tools)}</h2>`
     + `<ul style="list-style:none;padding:0;margin:0">${tools}</ul>`
+    // SON ANALIZLER — ana sayfa sitenin en guclu tek sayfasi ve buradan
+    // analizlere HIC link yoktu (yalniz `/analiz` listesine bir tane).
+    + analizLinkBlogu(
+      (Array.isArray(analyses) ? analyses : []).slice(0, 8)
+        .map((a) => analizSatiri(a, lang, localePrefix(lang))).filter(Boolean),
+      lang, lang === 'tr' ? 'Son Qor AI analizleri' : 'Latest Qor AI analyses',
+    )
     + '</main>';
 }
 
@@ -2877,6 +2937,12 @@ async function main() {
   //    real, crawlable #root body; the rest carry per-route meta only (category /
   //    product / blog get their rich bodies in later steps). This is the fix for
   //    the empty <div id="root"></div> that the AdSense reviewer kept rejecting.
+  // ANALIZ KAYITLARI BURADA CEKILIR, static rota dongusunden ONCE:
+  // ana sayfa kabugu son analizlere link veriyor (homeBody -> analizLinkBlogu).
+  // Once asagida, urun kabuklarinin hemen ustunde cekiliyordu ve o sira
+  // "Cannot access 'analyses' before initialization" ile build'i durdurdu.
+  const analyses = await fetchAnalyses();
+
   for (const r of STATIC_ROUTES) {
     const multilang = isMultilangRoute(r);
     // Tek dilli rotalar VARSAYILAN dile yazılır (kök adres). Burada 'tr'
@@ -2886,7 +2952,7 @@ async function main() {
     const locales = multilang ? SEO_LOCALES : [SEO_DEFAULT_LOCALE];
     for (const lang of locales) {
       let body = '';
-      if (r.dir === '') body = homeBody(guides, lang);
+      if (r.dir === '') body = homeBody(guides, lang, analyses);
       else if (LEGAL_META[r.dir]) body = legalBody(r.dir, lang);
       else if (LANDING[r.dir]) body = landingBody(r.dir, guides, lang);
       body = localizeBodyLinks(body, lang);
@@ -2937,7 +3003,7 @@ async function main() {
   //     urunu ciplak SPA kabugu olarak kaliyordu (#root govdesi 0 karakter).
   //  2) Urun sayfasi analize LINK verir. Onsuz /analiz/<slug> site icinde
   //     hicbir yerden baglantisi olmayan bir ada: yalniz sitemap'ten kesfedilir.
-  const analyses = await fetchAnalyses();
+  // `analyses` YUKARIDA cekildi (ana sayfa kabugu da ona link veriyor).
   const analizBySlug = new Map();
   for (const a of analyses) {
     if (!a.slug || !a.productSlug) continue;
@@ -2946,6 +3012,19 @@ async function main() {
     const diller = analysisRenderLangs(a, SEO_DEFAULT_LOCALE).filter((l) => SEO_LOCALES.includes(l));
     if (!diller.length) continue;
     analizBySlug.set(a.productSlug, { slug: a.slug, diller });
+  }
+
+  // KATEGORI -> ANALIZ. Kayitta kategori alani yok; urun slug'i uzerinden
+  // katalogdan turetiliyor. Kategori sayfalari yuksek otoriteli hub'lar ve
+  // konu olarak da dogru komsu — analize giden en degerli ic link burasi.
+  const kategoriBySlug = new Map();
+  for (const d of products) if (d && d.slug && d.category) kategoriBySlug.set(d.slug, d.category);
+  const analizByKategori = new Map();
+  for (const a of analyses) {
+    const cat = a.productSlug ? kategoriBySlug.get(a.productSlug) : null;
+    if (!cat) continue;
+    if (!analizByKategori.has(cat)) analizByKategori.set(cat, []);
+    analizByKategori.get(cat).push(a);
   }
 
   // 2b) curated selection — pick the top-N de-duplicated, image-bearing models
@@ -3209,7 +3288,8 @@ async function main() {
         jsonLd: { '@context': 'https://schema.org', '@graph': [collection, itemList, breadcrumb, ...(faqLd ? [faqLd] : [])] },
       // Karşılaştırma bölümü YALNIZ o kategoride compare sayfası üretiliyorsa
       // basılır; aksi halde kategori sayfası 404'e link verir (bkz. 2e).
-      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang, digerKategoriler(cat), COMPARE_TIERS.has(KATEGORI_TIER[cat] || 'D')), lang)));
+      }, localizeBodyLinks(categoryBody(label, url, picked, guide, lang, digerKategoriler(cat),
+        COMPARE_TIERS.has(KATEGORI_TIER[cat] || 'D'), analizByKategori.get(cat) || []), lang)));
       categoryShells += 1;
     }
   }
@@ -3449,7 +3529,20 @@ async function main() {
           // tarayici/tarayici-botu Ingilizce govdeyi lang="tr" altinda
           // gormesin (2026-07-27: uc dil de lang="tr" ile yayindaydi).
           lang,
-          jsonLd: { '@context': 'https://schema.org', '@graph': [articleLd] },
+          jsonLd: {
+            '@context': 'https://schema.org',
+            '@graph': [articleLd, {
+              // BreadcrumbList URL yapisindan turer, yeni veri gerektirmez.
+              // 22/22 blog yazisinda EKSIKTI (olculdu 2026-09-01) — oysa
+              // CLAUDE.md "BreadcrumbList everywhere" diyor.
+              '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+                { '@type': 'ListItem', position: 2, name: lang === 'tr' ? 'Blog' : 'Blog', item: `${SITE}/blog` },
+                { '@type': 'ListItem', position: 3, name: t('title'), item: url },
+              ],
+            }],
+          },
         }, blogArticleBody(a, lang, blogPriceMap)));
         blogUrls.push({ loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt), changefreq: 'weekly', priority: '0.7' });
       }
@@ -3563,7 +3656,7 @@ async function main() {
           url, image: img, imageAlt: analysisSubject(a, lang) || anBaslik, type: 'article',
           alternates, routeKey: 'blogpost', lang,
           jsonLd: { '@context': 'https://schema.org', '@graph': graph },
-        }, localizeBodyLinks(analizBody(a, lang), lang)));
+        }, localizeBodyLinks(analizBody(a, lang) + analizKomsuBlogu(a, lang, analizByKategori, kategoriBySlug), lang)));
         analizUrls.push({
           loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt),
           changefreq: 'monthly', priority: lang === SEO_DEFAULT_LOCALE ? '0.8' : '0.7',
