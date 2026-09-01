@@ -57,15 +57,6 @@ export default function Header() {
   const [catMenu, setCatMenu] = useState(false);
   const L = (en, tr) => (lang === 'tr' ? tr : en);
 
-  // MOBIL CEKMECE ACIKKEN ALT BAR GIZLENIR.
-  // Olculdu (2026-08-16, 390x844): alt bar `position: fixed` ve z-index 120,
-  // cekmecenin ortu katmani ise 99 — yani bar cekmecenin USTUNDE kaliyordu ve
-  // dort kategoriyi ortuyordu (UPS, USB Bellek, Islemci Sogutucu, Laptop
-  // Sogutucu); son iki satir da 844 px'lik ekranin disina tasiyordu, yani
-  // seciliemiyordu. z-index'i yukseltmek yetmez: bar yari saydam ortunun
-  // altinda yine gorunur ve kafa karistirir. Cekmece aciklen bar tamamen
-  // kaldiriliyor — zaten ayni gezinme baglantilari cekmecenin icinde var.
-  // Sinif <body> uzerinde cunku bar bu bilesenin AGACINDA degil (App.jsx).
   // Cekmeceyi DISARIDAN acma kancasi. Alt bardaki "Kategoriler" dugmesi icin
   // eklenmisti; o dugme kullanici istegiyle kaldirildi (2026-09-01) ama kanca
   // duruyor: baska bir yerden cekmeceyi acmak gerekirse tek satirlik bir
@@ -77,6 +68,15 @@ export default function Header() {
     return () => window.removeEventListener('qor:open-drawer', ac);
   }, []);
 
+  // MOBIL CEKMECE ACIKKEN ALT BAR GIZLENIR.
+  // Olculdu (2026-08-16, 390x844): alt bar `position: fixed` ve z-index 120,
+  // cekmecenin ortu katmani ise 99 — yani bar cekmecenin USTUNDE kaliyordu ve
+  // dort kategoriyi ortuyordu (UPS, USB Bellek, Islemci Sogutucu, Laptop
+  // Sogutucu); son iki satir da 844 px'lik ekranin disina tasiyordu, yani
+  // seciliemiyordu. z-index'i yukseltmek yetmez: bar yari saydam ortunun
+  // altinda yine gorunur ve kafa karistirir. Cekmece aciklen bar tamamen
+  // kaldiriliyor — zaten ayni gezinme baglantilari cekmecenin icinde var.
+  // Sinif <body> uzerinde cunku bar bu bilesenin AGACINDA degil (App.jsx).
   useEffect(() => {
     const k = 'qor-drawer-open';
     document.body.classList.toggle(k, drawer);
