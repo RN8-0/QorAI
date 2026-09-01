@@ -25,7 +25,6 @@ import {
   DistributionBar,
   FactorList,
   ForumFindings,
-  DecisiveDifferences,
   HeatMatrix,
   RichProse,
   ProConList,
@@ -253,8 +252,8 @@ export default function SubscriptionReportView({ result, winnerName, L, t, hideQ
       {services.length > 1 && <ScoreChart services={services} L={L} />}
       <HeatMatrix products={services} L={L} />
 
-      {/* Farklar ORTAK bilesen — urun/link/abonelik ayni kart izgarasi. */}
-      <DecisiveDifferences items={diffs} names={services.map((s2) => s2.name).filter(Boolean)} L={L} />
+      {/* "Kararı belirleyen farklar" KALDIRILDI (2026-09-01, kullanıcı
+          isteği) — üç karşılaştırma akışında da yok. */}
 
       {!hideQuiz && <QuizImpact items={insights} L={L} />}
 

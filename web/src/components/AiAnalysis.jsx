@@ -17,7 +17,6 @@ import { displayProductName, cleanProductName } from '../lib/productNames';
 import {
   BarFill,
   DistributionBar,
-  DecisiveDifferences,
   HeatMatrix,
   ProseClause,
   ProseLine,
@@ -777,10 +776,11 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
         </div>
       )}
 
-      {/* KARARI BELIRLEYEN FARKLAR karta girmez: bunlar tek bir urune ait
-          degil, urunler ARASINDAKI olculer. Kartlar "bu cihaz nasil",
-          bu blok "hangisi neyde onde" sorusunu yanitliyor. */}
-      <DecisiveDifferences items={cmp.decisiveDifferences} names={names} L={L} />
+      {/* "KARARI BELİRLEYEN FARKLAR" KALDIRILDI (2026-09-01, kullanıcı
+          isteği): karşılaştırmada böyle bir bölüm istenmiyor. Aynı olgular
+          zaten her ürünün KENDİ kartında (artılar/eksiler) ve faktör
+          tahtasında duruyor. Veri (`cmp.decisiveDifferences`) kayıtta
+          korunuyor; yalnızca çizilmiyor. */}
 
       {String(cmp.recommendation || '').trim() && (
         /* Tek uzun metin, EN ALTTA ve kisaltilmis. Karar yukarida kartlarda

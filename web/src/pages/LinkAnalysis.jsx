@@ -21,7 +21,6 @@ import {
   CriticalPoints,
   DecisionBadge,
   FactorList,
-  DecisiveDifferences,
   HeatMatrix,
   ProConList,
   QuizImpact,
@@ -218,10 +217,9 @@ export function CompareResult({ data, L, lang, hideQuiz = false }) {
         <CompareScoreChart products={products} L={L} />
         <HeatMatrix products={products} L={L} />
 
-        {/* Farklar ARTIK ORTAK BILESEN: urun / link / abonelik karsilastirmasi
-            ayni kart izgarasini cizer (bkz. AiCharts -> DecisiveDifferences).
-            Ucu de ayri gorunuyordu. */}
-        <DecisiveDifferences items={diffs} names={products.map((p) => p.name).filter(Boolean)} L={L} />
+        {/* "Kararı belirleyen farklar" KALDIRILDI (2026-09-01, kullanıcı
+            isteği) — ürün karşılaştırmasında da kaldırıldı, üç akış aynı
+            kalsın. */}
 
         {!hideQuiz && <QuizImpact items={insights} L={L} />}
 

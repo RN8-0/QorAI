@@ -639,8 +639,9 @@ function anKarsilastirmaGovde(r, tx, quizGizle = false) {
 
   g += anFaktorMatrisi(urunler, cmp.factorMatrix, tx);
 
-  const farklar = anBaslikliListe(cmp.decisiveDifferences);
-  if (farklar) { g += anH2(tx.decisive); g += farklar; }
+  // "Kararı belirleyen farklar" bölümü SİTEDEN kaldırıldı (2026-09-01,
+  // kullanıcı isteği); ön-render de çizmemeli, yoksa crawler'ın gördüğü
+  // sayfa okuyucununkinden ayrışır.
   // KARSI KARSIYA — SITEDEKIYLE AYNI SIRA VE AYNI YAPI.
   // Site urun basina serit ciziyor (lehine / aleyhine); yapi kayitta varsa
   // burada da urun basina yazilir. Yoksa duz nesir — BOLUNMEDEN, cunku o
@@ -721,8 +722,7 @@ function anAbonelikGovde(r, tx, quizGizle = false) {
   // satirlar birebir hizalanir.
   g += anFaktorMatrisi(servisler, null, tx);
 
-  const farklar = anBaslikliListe(r.decisiveDifferences);
-  if (farklar) { g += anH2(tx.decisive); g += farklar; }
+  // "Kararı belirleyen farklar" bölümü SİTEDEN kaldırıldı (2026-09-01).
 
   if (!quizGizle) g += anQuizEtkisi(r.quizInsights, tx);
 

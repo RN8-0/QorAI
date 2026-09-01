@@ -875,7 +875,8 @@
    RENK DAYATMAZ: içinde bulunduğu tonu alır (artı → yeşil, eksi → kırmızı).
    KURAL (kullanıcı, 2026-09-01): siyah-kalın YALNIZCA ürün adına aittir;
    başka hiçbir kelime siyah vurgulanmaz, spec asla mavi yazılmaz. */
-.aic-clause { font-weight: 750; color: inherit; }
+/* Tutamak da kalın DEĞİL — ayrımı rengi yapıyor. */
+.aic-clause { font-weight: inherit; color: inherit; }
 .aic-tone-pos > .aic-clause { color: var(--lead-pos); }
 .aic-tone-neg > .aic-clause { color: var(--lead-neg); }
 /* Ürün adı tutamağın İÇİNDE de siyah-kalın kalır — tek istisna budur. */
@@ -980,9 +981,12 @@
    gerekçesi" bloğunda üst üste koyu paragraf başları oluştu. Kural: siyah-
    kalın YALNIZCA ürün adına ait. Yönü belli olan cümle rengini alttaki
    `.pos` / `.neg` kurallarından alır; nötr cümle yalnızca AĞIRLIKLA ayrışır. */
+/* KALIN DEĞİL. Kural (kullanıcı, 2026-09-01): ürün adı DIŞINDA hiçbir şey
+   koyu ya da kalın olmayacak. Konu cümlesinin ayrımını artık yalnızca RENK
+   taşıyor: yönü belliyse yeşil/kırmızı, belli değilse yumuşak gri. */
 .aic-prose-lead {
   color: var(--text-soft, var(--text2));
-  font-weight: 750;
+  font-weight: inherit;
 }
 /* Ürün adı konu cümlesinin içinde de siyah-kalın kalır — tek istisna. */
 .aic-prose-lead .aic-name { color: var(--text); }
