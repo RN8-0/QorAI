@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import SiteBackground from './components/SiteBackground.jsx';
-import { trackPageView } from './lib/analytics.js';
+import { trackEvent, trackPageView } from './lib/analytics.js';
 import { useAuth } from './lib/auth.jsx';
 import { useCompare } from './lib/compare.js';
 import AiFab, { hasActiveAnalysis } from './components/AiFab.jsx';
@@ -70,6 +70,29 @@ function BootDone() {
   return null;
 }
 
+/* OLU ADRES SAYFA GORUNTULEMESI OLARAK SAYILMAZ.
+ *
+ * nginx artik olu adreslere gercek 404 donuyor (docs/nginx_website.conf),
+ * ama o 404 kabugu yine SPA'yi aciyor ve SPA her rota degisiminde bir sayfa
+ * goruntulemesi yaziyordu. Sonuc: GA4'un "en cok goruntulenen sayfalar"
+ * raporunda "Page not found" ust siralarda — okuyucuyu yaniltan bir satir.
+ *
+ * Olu adres artik `page_not_found` OLAYI olarak raporlanir: hacim kaybolmuyor
+ * (hangi adreslerin oldugu da geliyor), yalnizca sayfa goruntuleme raporunu
+ * kirletmiyor.
+ *
+ * Desenler asagidaki <Routes> ile AYNI kalmak zorunda; biri eklenirse buraya
+ * da eklenmeli. Eslesmeyen bir desen yalnizca fazladan bir sayfa goruntulemesi
+ * demek — sessizce yanlis bir sey OLMAZ.
+ */
+const ROTA_DESENLERI = [
+  '/', '/search', '/category', '/category/:cat', '/product', '/product/:id',
+  '/compare', '/compare/:pair', '/ai-chat', '/link-analysis', '/subscriptions',
+  '/premium', '/quiz', '/go', '/blog', '/blog/:slug', '/analiz', '/analiz/:slug',
+  '/profile', '/terms', '/privacy', '/refund', '/cookies', '/contact', '/about', '/faq',
+];
+const bilinenRota = (yol) => ROTA_DESENLERI.some((d) => matchPath({ path: d, end: true }, yol));
+
 // Kapali moda bagli rota (bkz. lib/siteMode.js). Sayfa bileseni ve rota
 // SILINMEDI — yalnizca element degistirildi, dolayisiyla bayragi `true`
 // yapmak sayfayi oldugu gibi geri getirir.
@@ -119,7 +142,9 @@ export default function App() {
   // global smooth'u geri koyduğunda sayfa geçişi yeniden bozulmasın.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    trackPageView(`${loc.pathname}${loc.search}`);
+    const yol = `${loc.pathname}${loc.search}`;
+    if (bilinenRota(loc.pathname)) trackPageView(yol);
+    else trackEvent('page_not_found', { path: loc.pathname });
   }, [loc.pathname, loc.search]);
 
   // Onboarding quiz is offered once to new signed-in users, but it is SKIPPABLE

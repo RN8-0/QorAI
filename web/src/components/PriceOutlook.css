@@ -39,12 +39,16 @@
 /* ── Ana hüküm: kartın iki büyük sayısı ─────────────────────────────────── */
 .po-ana { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
 .po-blok { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+/* IKI BUYUK SAYI DA TREND RENGINDE (2026-09-02, kullanici karari):
+   dususte yesil, yukseliste kirmizi, yatayda kehribar — grafigin rayiyla
+   ayni renk. Onceden bugunku fiyat notr metin rengindeydi ve kart iki farkli
+   renk ailesi tasiyordu. */
 .po-buyuk {
   font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
   font-variant-numeric: tabular-nums;
   font-size: clamp(24px, 4.2vw, 32px);
   font-weight: 800; letter-spacing: -.02em; line-height: 1.05;
-  color: var(--text); white-space: nowrap;
+  color: var(--po-renk); white-space: nowrap;
 }
 .po-degisim { color: var(--po-renk); }
 .po-etiket { font-size: 12.5px; color: var(--text-3); font-weight: 600; }
@@ -76,18 +80,23 @@
 }
 .po-durak:nth-child(2) { align-items: center; text-align: center; }
 .po-durak:last-child:not(:first-child) { align-items: flex-end; text-align: right; }
+/* HIZA OLCULDU (2026-09-02): ray merkezi 418.6, nokta merkezleri 415.6 —
+   tam 3 px yukarida duruyordu. Sebep `box-sizing: border-box`: kenarlik
+   boyutun ICINDE kaliyor, dolayisiyla nokta 14 px degil 9 px yuksekligindeydi
+   ve `top` hesabim o varsayima gore yanlisti. Ray: 3 px + 12 px alt bosluk,
+   yani merkezi durak kutusunun 13.5 px ustunde. top = -13.5 - yukseklik/2. */
 .po-nokta {
-  position: absolute; top: -21px; width: 9px; height: 9px; border-radius: 50%;
+  position: absolute; top: -18px; width: 9px; height: 9px; border-radius: 50%;
   background: var(--surface); border: 2.5px solid var(--po-renk);
 }
 .po-durak:first-child .po-nokta { left: 0; }
 .po-durak:nth-child(2) .po-nokta { left: 50%; margin-left: -4.5px; }
 .po-durak:last-child:not(:first-child) .po-nokta { right: 0; }
 /* Hedef nokta DOLU: karar noktası odur. */
-.po-durak.hedef .po-nokta { background: var(--po-renk); width: 11px; height: 11px; top: -22px; }
+.po-durak.hedef .po-nokta { background: var(--po-renk); width: 11px; height: 11px; top: -19px; }
 /* Ara olay: kesikli çember ve BİRAZ DAHA BÜYÜK. 9 px'te kesik kenar
    ekranda neredeyse düz görünüyordu — olay ile hedefi ayıran tek işaret o. */
-.po-durak.olay .po-nokta { border-style: dashed; width: 10px; height: 10px; top: -21.5px; }
+.po-durak.olay .po-nokta { border-style: dashed; width: 10px; height: 10px; top: -18.5px; }
 .po-ad { font-size: 12.5px; font-weight: 800; color: var(--text); line-height: 1.25; }
 .po-alt {
   font-size: 11.5px; color: var(--text-3); line-height: 1.3;
