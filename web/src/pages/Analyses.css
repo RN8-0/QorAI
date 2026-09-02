@@ -232,3 +232,59 @@
   .an-meta { row-gap: 6px; }
   .an-vs { flex: 1 1 100%; }
 }
+
+/* ── FIYATLAR (analiz sayfasi) ─────────────────────────────────────────────
+   Blok URUN ADININ HEMEN ALTINDA duruyor; onceden raporun EN ALTINDAYDI ve
+   okuyucu fiyati gormek icin butun analizi kaydirmak zorundaydi. Satirlar
+   OfferList'in `compact` surumu — dikeyde yer kaplamasin diye.
+
+   Ulke secici urun sayfasindakiyle AYNI gorunumde ama KENDI siniflari var:
+   ProductDetail.css bu rotada yuklenmiyor, `pd-ship-to` burada stilsiz
+   kalirdi. */
+.an-offers { margin: 14px 0 6px; }
+.an-offers-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 0 0 8px;
+}
+.an-offers-head h2 {
+  margin: 0; font-size: 13px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-3);
+}
+.an-ship { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.an-ship-lbl { font-size: 12.5px; font-weight: 750; color: var(--text-2); white-space: nowrap; }
+.an-ship-sel {
+  appearance: none; -webkit-appearance: none;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 5px 26px 5px 10px; font: inherit; font-size: 13px; font-weight: 650;
+  cursor: pointer; transition: border-color .12s ease;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+                    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: right 12px center, right 7px center;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+.an-ship-sel:hover { border-color: var(--border-strong); }
+.an-ship-sel:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 560px) {
+  /* TEK SATIR. Sarilinca baslik ve secici alt alta dusuyor ve blok 65 px'e
+     cikiyordu (olculdu) — tam da azaltmak istedigimiz dikey yer. `min-width:0`
+     olmadan select kendi en uzun secenegi kadar (257 px) genis kalip satiri
+     kiriyor. */
+  .an-offers-head { gap: 8px; flex-wrap: nowrap; }
+  .an-offers-head h2 { white-space: nowrap; }
+  .an-ship-lbl { display: none; }   /* dar ekranda bayrak + ulke adi yeter */
+  .an-ship { min-width: 0; flex: 0 1 auto; }
+  .an-ship-sel {
+    max-width: 100%; font-size: 12.5px; padding: 4px 22px 4px 8px;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+}
+
+/* `compact` KOLON olcusudur (karsilastirma sutunu icin 14,5 px). Burada satir
+   tam genislikte: yalnizca DIKEY yogunlugu istiyoruz, fiyati kucultmeyi degil
+   — fiyat sayfanin en cok bakilan sayisi. 18 px: temel 22'nin altinda ama
+   kolon olcusunun belirgin ustunde. */
+.an-offers .pd-prices-list-compact .pd-price-amt { font-size: 18px; }
+.an-offers .pd-prices-list-compact .pd-price-amt-link { font-size: 13px; }
+.an-offers .pd-prices-list-compact .pd-price-store { font-size: 13.5px; }

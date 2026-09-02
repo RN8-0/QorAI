@@ -20,7 +20,9 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { getProduct } from '../lib/typesense';
-import { amazonGoPath, formatPriceAmount, priceForCountry } from '../lib/format';
+import {
+  AMAZON_ONELINK_COUNTRIES, amazonGoPath, countryDisplayName, formatPriceAmount, priceForCountry,
+} from '../lib/format';
 import { fetchProductOffers } from '../lib/offers';
 import OfferList from '../components/OfferList.jsx';
 import { useGeoCountry } from '../lib/geo';
@@ -47,6 +49,11 @@ import './Analyses.css';
 // `la-*` sinifları burada YASAR. AiReportView paylasilan modul oldugu icin
 // CSS'ini kendisi import etmiyor; kullanan SAYFA import eder.
 import './LinkAnalysis.css';
+
+const FLAG = {
+  TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸',
+  NL: '🇳🇱', PL: '🇵🇱', SE: '🇸🇪', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦',
+};
 
 export default function AnalysisPost() {
   const { slug } = useParams();
@@ -120,18 +127,27 @@ export default function AnalysisPost() {
   const [urun, setUrun] = useState(null);
   const [teklifler, setTeklifler] = useState([]);
   const geoCountry = useGeoCountry();
+  // ── TESLIMAT ULKESI ───────────────────────────────────────────────────────
+  // Urun sayfasindaki `priceCountry` ile AYNI kalip: secim YERELDIR, sitenin
+  // geo'sunu degistirmez (baska sayfaya gecince ziyaretcinin kendi pazarina
+  // doner). Bos oldugu surece tespit edilen geo kullanilir.
+  const [ulkeSecim, setUlkeSecim] = useState('');
+  const ulke = String(ulkeSecim || geoCountry || '').toUpperCase();
   useEffect(() => {
     let live = true;
     const pid = a && a.productId ? String(a.productId) : '';
-    if (!pid || !geoCountry) { setFiyat(null); setUrun(null); setTeklifler([]); return undefined; }
+    if (!pid || !ulke) { setFiyat(null); setUrun(null); setTeklifler([]); return undefined; }
     getProduct(pid)
       .then((p) => {
         if (!live || !p) return;
         setUrun(p);
-        const pc = priceForCountry(p, geoCountry);
-        if (pc && pc.price > 0) setFiyat(pc);
-        else if (Number(p.lowestPriceUSD) > 0) setFiyat({ price: Number(p.lowestPriceUSD), currency: 'USD' });
-        else setFiyat(null);
+        // SECILI ULKENIN FIYATI YOKSA FIYAT YOKTUR.
+        // Burada `lowestPriceUSD` yedegi vardi ve olculdu: Almanya secilince
+        // iPhone 17 Pro "$3.324" gosteriyordu — bu Turkiye fiyatinin (116.219 TL)
+        // dolara cevrilmis hali, Almanya'da boyle bir teklif YOK. Yani okuyucuya
+        // kendi pazarinda gecerli olmayan bir fiyat vaat ediliyordu.
+        const pc = priceForCountry(p, ulke);
+        setFiyat(pc && pc.price > 0 ? pc : null);
       })
       .catch(() => { if (live) { setFiyat(null); setUrun(null); } });
     // Teklifler AYRI istek: fiyat kutusu Typesense'ten, magaza listesi PB'den
@@ -140,7 +156,7 @@ export default function AnalysisPost() {
       .then((items) => { if (live) setTeklifler(items); })
       .catch(() => { if (live) setTeklifler([]); });
     return () => { live = false; };
-  }, [a && a.productId, geoCountry]);
+  }, [a && a.productId, ulke]);
 
   const kind = a ? analysisKind(a) : 'product';
   const ham = a ? analysisReport(a, lang) : null;
@@ -286,6 +302,50 @@ export default function AnalysisPost() {
           </div>
         </div>
 
+        {/* ── FIYATLAR — URUN ADININ HEMEN ALTINDA ─────────────────────────
+            Onceden raporun EN ALTINDAYDI: okuyucu karari verdikten sonra
+            fiyati gormek icin butun analizi kaydirmak zorundaydi. Kompakt
+            surum (`compact`) dikeyde yer kaplamasin diye. Ulke secici urun
+            sayfasindakiyle AYNI kaynaktan besleniyor. */}
+        {teklifler.length > 0 && (() => {
+          // Bu URUN icin gercekten teklifi olan ulkeler + Amazon vitrinleri +
+          // ziyaretcinin pazari. Urun sayfasindaki listeyle ayni kaynak; her
+          // ulkeyi listelemek yanlis olurdu — teklifi olmayan ulke secilince
+          // liste bos kalir (kural: baska ulkenin fiyati GOSTERILMEZ).
+          const teklifUlkeleri = [...new Set(teklifler
+            .map((o) => String(o.country || '').toUpperCase()).filter(Boolean))];
+          const ulkeSecenekleri = [...new Set([
+            ulke, geoCountry.toUpperCase(), ...AMAZON_ONELINK_COUNTRIES, ...teklifUlkeleri,
+          ].filter(Boolean))];
+          return (
+          <section className="an-offers">
+            <div className="an-offers-head">
+              <h2>{L('Where to buy', 'Nereden alınır')}</h2>
+              <label className="an-ship">
+                <span className="an-ship-lbl">📍 {L('Ship to', 'Teslimat')}</span>
+                <select
+                  className="an-ship-sel"
+                  value={ulke}
+                  onChange={(e) => setUlkeSecim(e.target.value)}
+                >
+                  {ulkeSecenekleri.map((c) => (
+                    <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${countryDisplayName(c, lang)}`}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <OfferList
+              offers={teklifler}
+              country={ulke}
+              lang={lang}
+              geoCountry={geoCountry}
+              compact
+              amazonHref={urun ? amazonGoPath(urun, ulke) : ''}
+            />
+          </section>
+          );
+        })()}
+
         {/* ANALIZI URETEN QUIZ — RAPORUN USTUNDE.
             Okuyucu quizi cozmedi; "92/100 uyum" kimin uyumu oldugu
             soylenmeden anlamsiz. Rapordaki "cevaplarin neyi degistirdi"
@@ -362,23 +422,6 @@ export default function AnalysisPost() {
         </Suspense>
         </SentimentProvider>
 
-        {/* MAGAZA LISTESI — raporun ALTINDA, "tum analizler" linkinden once.
-            Okuyucu karari tam burada verdi; satin alma yolu bu noktada
-            durmali. Teklif yoksa bolum hic cizilmez. */}
-        {teklifler.length > 0 && (
-          <section className="an-offers" style={{ marginTop: 28 }}>
-            <h2 style={{ fontSize: 20, margin: '0 0 12px' }}>
-              {L('Where to buy', 'Nereden alınır')}
-            </h2>
-            <OfferList
-              offers={teklifler}
-              country={geoCountry}
-              lang={lang}
-              geoCountry={geoCountry}
-              amazonHref={urun ? amazonGoPath(urun, geoCountry) : ''}
-            />
-          </section>
-        )}
 
         <p className="an-back"><Link to="/analiz">{L('← All analyses', '← Tüm analizler')}</Link></p>
       </div>

@@ -29,7 +29,6 @@
   padding-left: 32px;
 }
 .pd-meta-sep { margin: 0 6px; opacity: .55; }
-.pd-meta-free { color: var(--ok, #16a34a); font-weight: 800; }
 .pd-meta-out { color: var(--danger, #dc2626); font-weight: 800; }
 /* Mağaza favicon'u (Epey vitrin satırları + linkli mağazalar) */
 .pd-store-fav { width: 22px; height: 22px; border-radius: 6px; margin-right: 10px; background: #fff; object-fit: contain; flex: 0 0 22px; }

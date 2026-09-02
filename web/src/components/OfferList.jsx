@@ -67,7 +67,7 @@ export function sortedOffers(offers, country) {
 }
 
 /**
- * Satirin ALT SATIRI: kargo + fiyatin ne zaman dogrulandigi (+ stok uyarisi).
+ * Satirin ALT SATIRI: stok uyarisi (kargo icin asagidaki nota bak).
  *
  * NEDEN: 2026-08-16'da Epey ile yan yana olculdu — Epey her fiyat satirinda
  * saticiyi, "Ucretsiz Kargo"yu ve "13 dk once"yi gosteriyor; bizim satirimizda
@@ -92,13 +92,15 @@ function taze(iso, L) {
 
 function OfferMeta({ offer, lang, L, compact }) {
   const parca = [];
-  // Kargo: 0 ise ucretsiz, pozitifse tutari yaz (kullanici toplam maliyeti
-  // gormeden karar veremez).
-  if (offer.shipping === 0) {
-    parca.push(<span key="k" className="pd-meta-free">{L('Free shipping', 'Ücretsiz kargo')}</span>);
-  } else if (offer.shipping > 0) {
-    parca.push(<span key="k">{L('+ shipping', '+ kargo')} {formatOfferPrice({ ...offer, price: offer.shipping }, lang)}</span>);
-  }
+  // ── KARGO YAZILMIYOR (2026-09-02) ────────────────────────────────────────
+  // "Ucretsiz kargo" `shipping === 0` uzerinden basiliyordu. Olculdu:
+  // 198.274 teklifin yalnizca 6.843'unde (%3,5) shipping > 0. Kalan %96,5'te
+  // 0 demek "kargo bedava" DEGIL, "kargo hic olculmedi" demek — scraper bu
+  // alani doldurmuyor, varsayilan sifir kaliyor.
+  //
+  // Yani okuyucuya PARA hakkinda dogrulanmamis bir iddia gosteriliyordu.
+  // Olcmedigimiz bir seyi soylemektense hic soylememek dogru; satir da
+  // dikeyde yer kapliyordu. Veri gercekten toplanmaya baslarsa geri gelir.
   if (offer.inStock === false) {
     parca.push(<span key="s" className="pd-meta-out">{L('Out of stock', 'Stokta yok')}</span>);
   }
