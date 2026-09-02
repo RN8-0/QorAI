@@ -1711,6 +1711,13 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // Etiketlemek ucuz, etiketsiz birakmak gorunur bir kayip.
     '- paragraphSentiment coverage: a paragraph you wrote to EVALUATE the product must be labelled. Only leave a paragraph out when its opening sentence is purely factual with no judgement at all (a bare spec list, a date, a plain price observation). If you hesitate between neutral and a judgement, label the judgement: an evaluative paragraph left unlabelled is rendered as flat unmarked text. Extra entries are harmless, missing ones are not.\n' +
     '- paragraphSentiment, reported faults: a sentence that reports a defect, a failure, a complaint, a return or a difficulty owners ran into is NEGATIVE even when it is phrased as a flat observation with no judging word ("Some users received units with dead pixels out of the box"). A flatly worded report of something working well is POSITIVE. In Turkish the concessive suffix "-sa da / -se de" ("olumlu olsa da, bazı endişeler var") carries the judgement in the SECOND clause exactly like "ancak" and "rağmen".\n' +
+    // FIYAT BOLUMU KOMPLE RENKSIZ KALIYORDU.
+    // Onceki kural "plain price observation" -> notr diyordu ve model bunu
+    // priceForecast'in TAMAMINA uyguluyordu: olculdu 2026-09-03, canli
+    // iPhone 17 Pro sayfasinda fiyat bolumunun DORT paragrafinin dordu de
+    // siyahti. Hata kurali uygulamakta degil KURALIN KENDISINDEYDI: fiyat
+    // cumlesi urun hakkinda degil ALICI hakkinda hukum tasir.
+    '- paragraphSentiment, price and timing: priceForecast paragraphs are judged FROM THE BUYER\'S SIDE, not as product traits. positive = good news for the buyer (price falling, a discount window coming, waiting pays off, good time to buy, fair value); negative = bad news for the buyer (price high or rising, no meaningful drop expected, you pay a premium, poor value, scarcity pushing prices up). Leave neutral ONLY a bare figure or date with no direction. "Its price tends to remain stable, with significant drops rare" is NEGATIVE (the buyer saves nothing); "Waiting until Q1 could yield better deals" is POSITIVE. Do not leave a whole price section unlabelled.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +

@@ -63,9 +63,28 @@ HARD RULES — these are where naive labelling fails:
    when the trait itself sounds good ("While efficient, it conflicts with the
    user's preference for raw power").
 
-6. FACTS ARE NEUTRAL. Do not force a label. A spec, a release date, a market
-   observation or a neutral price statement is neutral even if the product is
-   generally good.
+6. FACTS ARE NEUTRAL. Do not force a label. A spec, a release date or a bare
+   price figure is neutral even if the product is generally good.
+
+   BUT PRICE AND TIMING ARE JUDGED FROM THE BUYER'S SIDE.
+   A price/value/timing sentence is not "about the product", it is about what
+   the reader pays and when — and it almost always carries a direction. Judge
+   it by whether it is good news or bad news FOR THE BUYER:
+     positive  price is falling, a discount or sale window is coming, waiting
+               pays off, it is a good time to buy, the price is fair for what
+               you get, the value holds up
+     negative  price is high or rising, no meaningful drop is expected, you
+               will pay a premium, it is poor value, stock is scarce and
+               pushes the price up, buying now costs you money you could save
+     neutral   ONLY a bare figure or date with no direction at all
+               ("Listings sit between 33,249 TL and 39,049 TL.",
+                "Apple typically announces the next generation in September.")
+   Examples that MUST be labelled, not left neutral:
+     "Its price tends to remain stable, with significant drops rare."  -> negative
+     "Waiting until Q1 could yield better deals."                      -> positive
+     "The biggest drop usually comes when the successor launches."     -> positive
+     "Fiyatların yakın zamanda düşmesi beklenmiyor."                   -> negative
+     "Yılbaşı kampanyalarında ciddi indirim görülebilir."              -> positive
 
    BUT A REPORTED FAULT IS NOT A FACT. A sentence that reports a defect, a
    failure, a complaint, a return, or a difficulty owners ran into is
