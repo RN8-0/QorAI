@@ -1120,7 +1120,13 @@ function esc(s) {
 // 1900 RP…" hem yarım bilgi hem baştansavma görünüyor. Son boşluktan kesip
 // noktalamayı temizliyoruz; geriye kelime sınırı kalmazsa (tek uzun jeton)
 // eski davranışa düşer.
-function truncate(s, max = 158) {
+/* Aciklamayi Google'in kirpma sinirina sigdir.
+   VARSAYILAN 155 — CLAUDE.md'nin kurali ("meta description, max 155") ve
+   admin editorunun `clampText(...,155)` kapisi bu. Onceki 158 UC KARAKTER
+   FAZLAYDI ve sessizce butun kategori sayfalarini sinirin ustune tasiyordu:
+   olculdu 2026-09-02, uretilmis ciktida 46 kategori sayfasinin tamami
+   156-157 karakterde. */
+function truncate(s, max = 155) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
   if (t.length <= max) return t;
   const kaba = t.slice(0, max - 1);
@@ -1634,7 +1640,7 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   const nb = localizedName(b, lang);
   // Ürün çifti başlığın DEĞİŞMEZ çekirdeği: "A vs B" kırpılırsa sayfa hangi
   // iki ürünü karşılaştırdığını söyleyemez hâle gelir. Sadece son ekler düşer.
-  const title = fitTitle(`${na} vs ${nb}`, tx.titleTail, 70);
+  const title = fitTitle(`${na} vs ${nb}`, tx.titleTail, 60);
   const description = truncate(
     tx.desc(na, nb, label),
   );
@@ -1695,7 +1701,16 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
 // Dogru davranis: baslik PARCALARDAN kurulur ve sigmayan parca DUSURULUR.
 // Google zaten kendi kirpiyor; bizim kirpmamiz yalnizca kelimeyi yok ediyor.
 // Ilk parca (urun adi) ASLA kesilmez — sigmazsa tek basina kalir.
-function fitTitle(head, tailParts, max = 68) {
+/* Basligi Google'in kirpma sinirina SIGDIR — istege bagli kuyruklari dusurerek.
+   VARSAYILAN 60, cunku CLAUDE.md'nin kurali bu ("unique title, max 60 chars")
+   ve Google pratikte ~600px / ~60 karakterde kirpiyor. Onceki 68/70 degerleri
+   sinirin USTUNDEYDI: olculdu 2026-09-02 canli sayfalarda
+     /analiz/apple-iphone-17-pro-512gb      title 62
+     /tr/analiz/apple-iphone-17-pro-512gb   title 67
+   Ikisi de metaTitle (53 / 58) + " | Qor AI" (9) toplamiydi. Kuyruk zaten
+   FEDA EDILEBILIR olsun diye ayri parca yazilmis; tavan 60 olunca kendisi
+   dusuyor ve marka eki yuzunden ASIL BASLIK kirpilmiyor. */
+function fitTitle(head, tailParts, max = 60) {
   const h = String(head || '').replace(/\s+/g, ' ').trim();
   const parts = (tailParts || []).filter((p) => p && String(p).trim());
   for (let drop = 0; drop <= parts.length; drop += 1) {
@@ -1703,6 +1718,13 @@ function fitTitle(head, tailParts, max = 68) {
     const candidate = kept.reduce((acc, p) => acc + p, h);
     if (candidate.length <= max) return candidate;
   }
+  // BASLIK KIRPILMAZ — PARCA DUSURULUR, HEPSI BU.
+  // Bir kez kirpma eklendi ve `seo-audit.mjs` haklı olarak build'i kirdi:
+  // "46/300 <title> kelime ortasinda kesilmis (…). fitTitle() parca
+  // dusurmeli, kirpmamali." Kural dogru: "AMD Ryzen Threadripper 9980X vs
+  // AMD Ryzen Threadripper Pro…" baslıgı, uzun ama TAM bir baslıktan daha
+  // kotudur. Dusurulecek parca kalmadiysa baslik OLDUGU GIBI doner; sinira
+  // sigdirmak isteniyorsa CAGIRAN TARAF daha kisa bir head vermelidir.
   return h;
 }
 
@@ -1748,7 +1770,7 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE, price 
   // Türkçe başlık göstermek tam da "İngilizce arıyorum Türkçe çıkıyor"
   // şikayetinin sebebiydi.
   const dispName = localizedName(d, lang);
-  const title = fitTitle(dispName, tx.titleParts(!!price), 68);
+  const title = fitTitle(dispName, tx.titleParts(!!price), 60);
   // Lead the description with a few REAL spec values so it is unique per product
   // and long enough (Bing flagged descriptions as too short + too templated).
   //
@@ -2022,16 +2044,29 @@ function routePreloadTags(routeKey) {
 }
 
 function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = title, type = 'website', noindex = false, jsonLd = null, alternates = null, preloadImage = '', routeKey = '' }) {
+  /* SON KAPI — SINIR BURADA GARANTI ALTINA ALINIR.
+     Cagiran her yer `truncate`/`fitTitle` kullanmiyor: sabit rota
+     aciklamalari (ana sayfa, /compare, /premium…) dogrudan yaziliyordu ve
+     bir kismi 155'in ustundeydi. Sinir tek bir yerde uygulanmazsa her yeni
+     rota ayni hatayi tekrar edebilir. Olculdu 2026-09-02: uretilmis ciktida
+     46 kategori + sabit rotalar sinirin ustundeydi. */
+  // BASLIGA DOKUNULMAZ: kirpmak yasak (yukariya bak), parca dusurmek de
+  // burada yapilamaz — hangi parcanin feda edilebilir oldugunu yalnizca
+  // cagiran taraf bilir. Basligi sinira sigdirmak `fitTitle` cagrilarinin
+  // isi; burada yalnizca ACIKLAMA garantiye alinir, cunku aciklamada
+  // kirpma normaldir ve Google da zaten oyle gosterir.
+  const baslik = String(title || '');
+  const aciklama = truncate(String(description || ''), 155);
   const lines = [
-    `<title>${esc(title)}</title>`,
-    `<meta name="description" content="${esc(description)}" />`,
+    `<title>${esc(baslik)}</title>`,
+    `<meta name="description" content="${esc(aciklama)}" />`,
     `<link rel="canonical" href="${esc(url)}" />`,
     ...((alternates || []).map((alt) => `<link rel="alternate" hreflang="${esc(alt.hreflang)}" href="${esc(alt.href)}" />`)),
     `<meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'}" />`,
     `<meta property="og:type" content="${esc(type)}" />`,
     '<meta property="og:site_name" content="Qor AI" />',
-    `<meta property="og:title" content="${esc(title)}" />`,
-    `<meta property="og:description" content="${esc(description)}" />`,
+    `<meta property="og:title" content="${esc(baslik)}" />`,
+    `<meta property="og:description" content="${esc(aciklama)}" />`,
     // LCP gorseli: HTML ile BIRLIKTE inmeye baslar. Bu olmadan zincir
     // HTML -> JS -> Typesense -> render -> gorsel seklinde UC ardisik gidis-donus
     // oluyordu (olculdu: kategori LCP 9,5 sn / urun 7,5 sn, yavas 4G).
@@ -2040,8 +2075,8 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
     `<meta property="og:image:alt" content="${esc(imageAlt)}" />`,
     `<meta property="og:url" content="${esc(url)}" />`,
     '<meta name="twitter:card" content="summary_large_image" />',
-    `<meta name="twitter:title" content="${esc(title)}" />`,
-    `<meta name="twitter:description" content="${esc(description)}" />`,
+    `<meta name="twitter:title" content="${esc(baslik)}" />`,
+    `<meta name="twitter:description" content="${esc(aciklama)}" />`,
     `<meta name="twitter:image" content="${esc(image)}" />`,
     `<meta name="twitter:image:alt" content="${esc(imageAlt)}" />`,
   ];
@@ -3383,7 +3418,7 @@ async function main() {
       };
       const tx = CAT_SEO_TEXT[lang] || CAT_SEO_TEXT.tr;
       writeHtml(`${prefix}${path}`.replace(/^\//, ''), renderPage(template, {
-        title: truncate(tx.title(label), 68),
+        title: truncate(tx.title(label), 60),
         description: truncate(tx.desc(label)),
         url,
         lang,
@@ -3631,7 +3666,10 @@ async function main() {
           mainEntityOfPage: url,
         };
         writeHtml(`blog/${s}`, renderPage(template, {
-          title: metaT || truncate(`${t('title')} | Qor AI`, 70), description: truncate(metaD || t('lead')),
+          // metaTitle varsa AYNEN kullanilir (admin onu zaten 60'a kirpiyor);
+          // yoksa marka eki DUSURULEBILIR bir kuyruk olarak eklenir ve
+          // baslik 60'a sigar (bkz. fitTitle basligi).
+          title: metaT || fitTitle(t('title'), [' | Qor AI'], 60), description: truncate(metaD || t('lead')),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
           routeKey: 'blogpost',
           // <html lang> bu sayfanin GERCEK dili olsun: JS calistirmayan bir
@@ -3776,7 +3814,7 @@ async function main() {
           ],
         });
         writeHtml(`${prefix}/analiz/${a.slug}`.replace(/^\//, ''), renderPage(template, {
-          title: fitTitle(anBaslik, [' | Qor AI'], 68),
+          title: fitTitle(anBaslik, [' | Qor AI'], 60),
           description: truncate(anOzet),
           url, image: img, imageAlt: analysisSubject(a, lang) || anBaslik, type: 'article',
           alternates, routeKey: 'blogpost', lang,
