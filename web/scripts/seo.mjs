@@ -2081,7 +2081,12 @@ function seoBlock({ title, description, url, image = DEFAULT_IMG, imageAlt = tit
     `<meta name="twitter:image:alt" content="${esc(imageAlt)}" />`,
   ];
   if (jsonLd) {
-    lines.push(`<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
+    // id="seo-jsonld" ZORUNLU — istemci bu bloğu DEĞİŞTİRİR, ikincisini eklemez.
+    // `web/src/lib/seo.js` `document.getElementById('seo-jsonld')` ile arıyor;
+    // ön-render id'siz bastığı için bulamıyor ve İKİNCİ bir blok ekliyordu.
+    // Ölçüldü 2026-09-02, canlı /tr/analiz sayfası: aynı @id'li Article +
+    // FAQPage + BreadcrumbList üçlüsü İKİ KEZ basılıyordu.
+    lines.push(`<script type="application/ld+json" id="seo-jsonld">${JSON.stringify(jsonLd)}</script>`);
   }
   return lines.join('\n  ');
 }
