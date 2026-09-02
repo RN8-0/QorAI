@@ -337,14 +337,39 @@ export default function BlogPost() {
   const metaDescription = (pick(post, 'metaDescription') || post?.metaDescription || '').trim();
 
   // Inject ids into h2/h3 of the body + build a table of contents.
-  const { bodyHtml, toc } = useMemo(() => {
-    if (!body) return { bodyHtml: '', toc: [] };
+  //
+  // FAQ DA BURADAN CIKAR — AYRI BIR ALAN YOK ve olmasi da gerekmiyor.
+  // `articles` semasinda `faq_tr`/`faq_en` diye bir alan yok (PB'de olculdu
+  // 2026-09-02) ve eklemek her eski yaziyi da elden gecirmek demekti.
+  // Oysa soru-cevap ZATEN govdede duruyor: soru isaretiyle biten bir baslik
+  // ve ardindan gelen metin. FAQPage semasinin sarti da tam olarak budur —
+  // isaretlenen icerik SAYFADA GORUNUR olmali. Yani burada uydurulan hicbir
+  // sey yok, var olan yapi okunuyor.
+  const { bodyHtml, toc, faq } = useMemo(() => {
+    if (!body) return { bodyHtml: '', toc: [], faq: [] };
     try {
       const doc = new DOMParser().parseFromString(`<div id="b">${body}</div>`, 'text/html');
       const heads = [...doc.querySelectorAll('h2, h3')];
       const t = heads.map((h, i) => { const id = `s-${i}-${slugifyHeading(h.textContent)}`; h.id = id; return { id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 }; });
-      return { bodyHtml: doc.getElementById('b').innerHTML, toc: t.filter((x) => x.text) };
-    } catch { return { bodyHtml: body, toc: [] }; }
+      const sorular = [];
+      heads.forEach((h) => {
+        const q = (h.textContent || '').trim();
+        if (!/[?？]\s*$/.test(q) || q.length < 12) return;
+        // Cevap: bir sonraki BASLIGA kadar olan metin. Baslik gelmeden
+        // bitiyorsa cevap yok demektir, o soru atlanir.
+        let cevap = '';
+        let node = h.nextElementSibling;
+        while (node && !/^H[1-6]$/.test(node.tagName)) {
+          cevap += `${node.textContent || ''} `;
+          node = node.nextElementSibling;
+        }
+        cevap = cevap.replace(/\s+/g, ' ').trim();
+        if (cevap.length >= 40) sorular.push({ q, a: cevap.slice(0, 900) });
+      });
+      // Iki sorunun altinda bir sey FAQ degildir; tek bir soru isaretli
+      // ara baslik butun yaziyi "SSS sayfasi" gibi gostermemeli.
+      return { bodyHtml: doc.getElementById('b').innerHTML, toc: t.filter((x) => x.text), faq: sorular.length >= 2 ? sorular : [] };
+    } catch { return { bodyHtml: body, toc: [], faq: [] }; }
   }, [body]);
 
   // Feed the whole article to the chat bubble so the assistant can read & comment.
@@ -386,14 +411,45 @@ export default function BlogPost() {
     noindex: status === 'notfound' || !!previewId,
     htmlLang: post ? postLang : '',
     alternates: seoAlternates,
+    // SEMA ON-RENDER ILE AYNI OLMAK ZORUNDA.
+    //
+    // Bu sayfa on-render edilmis bir <head> uzerine hidrat oluyor ve `useSeo`
+    // oradaki JSON-LD'yi DEGISTIRIYOR. On-render Article + BreadcrumbList
+    // yaziyordu (seo.mjs), istemci ise yalniz Article — yani JS calistiran
+    // bir tarayici (Googlebot calistiriyor) breadcrumb'i KAYBEDIYORDU.
+    // Iki taraf artik ayni grafi kuruyor.
+    //
+    // FAQPage govdedeki soru basliklarindan turer (bkz. yukaridaki memo);
+    // en az iki soru-cevap yoksa hic yazilmaz.
     jsonLd: post ? {
-      '@context': 'https://schema.org', '@type': 'Article', '@id': `${url}#article`,
-      headline: title, description: metaDescription || lead, ...(cover ? { image: [cover] } : {}),
-      datePublished: publishedAt, dateModified: post.updated,
-      inLanguage: postLang,
-      author: { '@type': 'Organization', name: author || 'Qor AI' },
-      publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: `${SITE_URL}/assets/qor_logo_512.png?v=20260605a` } },
-      mainEntityOfPage: url,
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Article', '@id': `${url}#article`,
+          headline: title, description: metaDescription || lead, ...(cover ? { image: [cover] } : {}),
+          datePublished: publishedAt, dateModified: post.updated,
+          inLanguage: postLang,
+          author: { '@type': 'Organization', name: author || 'Qor AI' },
+          publisher: { '@type': 'Organization', name: 'Qor AI', logo: { '@type': 'ImageObject', url: `${SITE_URL}/assets/qor_logo_512.png?v=20260605a` } },
+          mainEntityOfPage: url,
+        },
+        ...(faq.length ? [{
+          '@type': 'FAQPage', '@id': `${url}#faq`,
+          mainEntity: faq.map((f) => ({
+            '@type': 'Question',
+            name: f.q,
+            acceptedAnswer: { '@type': 'Answer', text: f.a },
+          })),
+        }] : []),
+        {
+          '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE_URL}/` },
+            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog` },
+            { '@type': 'ListItem', position: 3, name: title, item: url },
+          ],
+        },
+      ],
     } : null,
   });
 
