@@ -1883,6 +1883,22 @@
         r.out[lang] = (res.data && typeof res.data === 'object')
           ? QorAiPrompts.cleanProductCodes(Object.assign({}, res.data, { researched: Boolean(res.researched) }))
           : res.data;
+        // İKİNCİ DİLİN ÖLÇÜLERİ BİRİNCİDEN DEVRALINIR.
+        //
+        // Analiz iki AYRI çağrıyla üretiliyor ve model her çağrıda kendi
+        // puanını veriyordu; aynı ürün iki dilde farklı sayılar taşıyordu.
+        // Ölçüldü (canlı iPhone 17 Pro): memnuniyet 82/87, fiyat güveni
+        // 85/80 ve en kötüsü `buyOrWait` TR "buy" / EN "watch" — yani aynı
+        // ürün bir okuyucuya "al", ötekine "bekle" diyordu.
+        //
+        // METİN AYRI KALIR: iki dil iki ayrı okuyucu kitlesi ve birebir
+        // çeviri istemiyoruz. Devralınan tek şey ÖLÇÜ. Hangi alanların
+        // kilitlendiği ve NEDEN bazılarının kilitlenmediği
+        // qor_ai_prompts.js -> lockScoresToBase başlığında yazılı.
+        if (lang !== 'tr' && r.out.tr && r.out[lang]) {
+          var esitlenen = QorAiPrompts.lockScoresToBase(r.out[lang], r.out.tr);
+          if (esitlenen) toast(esitlenen + ' puan Türkçe raporla eşitlendi', 'i');
+        }
         // Karsilastirmada bir urunun raporu iki denemede de gelmediyse motor
         // onu DUSURUYOR. Sessiz kalmak, 6 urun sectigim halde 5 urunlu bir
         // sayfa yayinlamak demek — kayit da rapordan okundugu icin (kayitKur)

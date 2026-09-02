@@ -777,6 +777,103 @@ async function resolveCatalogAlternatives(alternatives, { search, category = '',
    `cleanProductName` nesir uzerinde guvenli: yalnizca bosluksuz, buyuk
    harfli, rakamli ve alti karakterden uzun parantez jetonlarini duser —
    "(512 GB)", "(RTX 5090)", "(120Hz)", "(Wi-Fi 6E)", "(IP68)" hepsi kalir. */
+/* ── İKİ DİLİN SAYILARI AYNI OLMAK ZORUNDA — METNİ DEĞİL ───────────────────
+   Bir analiz iki kez üretiliyor: önce Türkçe, sonra İngilizce. İkisi de AYRI
+   birer AI çağrısı, dolayısıyla puanlar da ayrı ayrı üretiliyor ve aynı ürün
+   iki dilde farklı sayılar taşıyor.
+
+   ÖLÇÜLDÜ 2026-09-02, canlı apple-iphone-17-pro-512gb kaydı:
+     community.satisfaction        TR 82        EN 87
+     community.sentimentBreakdown  TR 65/20/15  EN 70/15/15
+     priceForecast.confidence      TR 85        EN 80
+     priceForecast.buyOrWait       TR "buy"     EN "watch"   <-- ÇELİŞKİ
+     product.factors[].score       8 faktörün 4'ü farklı, en büyük fark 9 puan
+   Sonuncusu bir çeviri farkı değil, doğrudan çelişki: aynı ürün Türk
+   okuyucuya "al", İngiliz okuyucuya "bekle" diyor.
+
+   KURAL: İLK ÜRETİLEN DİL TABANDIR, ikincisi onun sayılarını devralır.
+   Metin ayrı yazılmaya devam eder — iki dil iki ayrı okuyucu kitlesidir ve
+   birebir çeviri istemiyoruz. Değişen tek şey ÖLÇÜ.
+
+   NE KİLİTLENİR, NE KİLİTLENMEZ — ayrım SIRAYA GÜVENİLİP GÜVENİLEMEDİĞİ:
+    · KİLİTLENİR: tekil skalerler (matchScore, decision, satisfaction,
+      buyOrWait…) ve `factors[]` — değerlendirme ekseni kategoriden
+      DETERMİNİSTİK türüyor (compareFactorAxis) ve prompt "aynı etiketler,
+      aynı sıra" diye şart koşuyor, yani i. faktör iki dilde AYNI faktördür.
+    · KİLİTLENMEZ: `criticalPoints[]`, `featureMatches[]`, `community.themes[]`,
+      `chronicIssues[]`. Bunların sırasını model seçiyor; TR'deki 1. tema
+      EN'deki 1. tema OLMAYABİLİR. İndeksle hizalamak yanlış puanı yanlış
+      başlığa yapıştırmak olurdu — sessiz ve daha kötü bir hata. */
+var KILIT_SKALER = ['matchScore', 'confidence', 'decision'];
+
+function _skalerKopyala(hedef, taban, anahtarlar) {
+  if (!hedef || !taban || typeof hedef !== 'object' || typeof taban !== 'object') return 0;
+  var n = 0;
+  anahtarlar.forEach(function (k) {
+    if (taban[k] === undefined || taban[k] === null) return;
+    if (hedef[k] === taban[k]) return;
+    hedef[k] = taban[k];
+    n += 1;
+  });
+  return n;
+}
+
+/** Tek bir ürün düğümü (ürün raporu / karşılaştırmadaki bir ürün). */
+function _urunKilitle(hedef, taban) {
+  if (!hedef || !taban) return 0;
+  var n = _skalerKopyala(hedef, taban, KILIT_SKALER);
+  // Faktörler: eksen deterministik olduğu için indeks hizalaması güvenli.
+  // Yine de UZUNLUK EŞİTLİĞİ aranıyor; model bir faktörü düşürdüyse hizalama
+  // kayar ve o zaman hiç dokunmamak doğrudur.
+  if (Array.isArray(hedef.factors) && Array.isArray(taban.factors)
+    && hedef.factors.length === taban.factors.length) {
+    hedef.factors.forEach(function (f, i) { n += _skalerKopyala(f, taban.factors[i], ['score']); });
+  }
+  return n;
+}
+
+/**
+ * `hedef` raporunun ölçülerini `taban` raporununkilere eşitler.
+ * Rapor nesnesini YERİNDE değiştirir ve değişen alan sayısını döndürür.
+ * Dört akış da (ürün / karşılaştırma / link / abonelik) aynı fonksiyondan
+ * geçer; şekil farkı burada tek yerde ele alınıyor.
+ */
+function lockScoresToBase(hedef, taban) {
+  if (!hedef || !taban || typeof hedef !== 'object' || typeof taban !== 'object') return 0;
+  var n = 0;
+  // Karşılaştırma: ürün başına. İNDEKSLE DEĞİL ADLA eşleştirilir — motor iki
+  // denemede de yazamadığı bir ürünü DÜŞÜREBİLİYOR (runCompareReport ->
+  // dropped) ve o zaman iki dilin listeleri kayar. Ürün adları çevrilmediği
+  // için ad güvenilir bir anahtar.
+  if (Array.isArray(hedef.products) && Array.isArray(taban.products)) {
+    var tabanAd = {};
+    taban.products.forEach(function (p) { if (p && p.name) tabanAd[String(p.name).toLowerCase().trim()] = p; });
+    hedef.products.forEach(function (p) {
+      var t = p && p.name ? tabanAd[String(p.name).toLowerCase().trim()] : null;
+      if (t) n += _urunKilitle(p, t);
+    });
+  }
+  // Tekil ürün raporu: ölçüler `product` altında.
+  if (hedef.product && taban.product) n += _urunKilitle(hedef.product, taban.product);
+  // Link/abonelik "enhanced" şekli ölçüleri KÖKTE taşıyabiliyor.
+  n += _urunKilitle(hedef, taban);
+  // Topluluk ve fiyat tahmini her şekilde kökte duruyor.
+  if (hedef.community && taban.community) {
+    n += _skalerKopyala(hedef.community, taban.community, ['satisfaction']);
+    if (hedef.community.sentimentBreakdown && taban.community.sentimentBreakdown) {
+      n += _skalerKopyala(hedef.community.sentimentBreakdown, taban.community.sentimentBreakdown,
+        ['positive', 'neutral', 'negative']);
+    }
+  }
+  if (hedef.priceForecast && taban.priceForecast) {
+    n += _skalerKopyala(hedef.priceForecast, taban.priceForecast, ['confidence', 'trend', 'buyOrWait']);
+  }
+  // Katalog puanı zaten kaydın kendisinden geliyor ama ikinci dilde model
+  // kendi sayısını yazmış olabilir; taban ne diyorsa o.
+  n += _skalerKopyala(hedef, taban, ['techScore']);
+  return n;
+}
+
 function cleanProductCodes(value, derinlik = 0) {
   if (typeof value === 'string') return cleanProductName(value);
   if (derinlik > 8 || !value || typeof value !== 'object') return value;
@@ -2220,6 +2317,7 @@ root.QorAiPrompts = {
   pickCatalogMatch, resolveCatalogAlternatives,
   // rapor metninden urun kodu temizligi
   cleanProductCodes,
+  lockScoresToBase,
   // puan kalibrasyonu + segment kunyesi
   calibratedScore, segmentTier, scoreBasisNote, scoreScaleGate,
   SCORE_TECH_WEIGHT, SCORE_AI_WEIGHT,
