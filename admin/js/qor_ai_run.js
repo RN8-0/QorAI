@@ -215,9 +215,33 @@ async function askJson(o) {
 // Grounded arastirma — YALNIZ Gemini (Google Search araci onda var).
 // Basarisiz olursa rapor arastirmasiz kosar; bu bir HATA DEGIL, "kanit zayif"
 // demek ve prompt bunu zaten sisteme soyluyor.
+// ── GROUNDED ARAMA PARA HARCAR — TEKRAR DENEMEK ONU IKIYE KATLAR ──────────
+//
+// `googleSearch` araci token'dan AYRI, ISTEK BASINA faturalanir. Yani bu
+// fonksiyonun her turu, cevap alinsa da alinmasa da ucretlidir.
+//
+// OLCULDU 2026-09-02 (sunucu gunlugu, PocketBase konteyneri):
+//   30 Agustos 23:22 -> 23:27  ·  dakikada bir, ust uste 6 kez
+//   "[gemini proxy] upstream error: context deadline exceeded"
+//
+// Bu 6 satirin anlami sudur: arama Google tarafinda KOSTU ve FATURALANDI,
+// bizim 35 saniyelik kronometremiz dolduğu icin sonuc CÖPE ATILDI, sonra
+// ayni arama yeniden yapildi. Ucu de odendi, ucunun de ciktisi atildi,
+// rapor sonunda `research = ''` ile arastirmasiz yazildi.
+//
+// IKI DEGISIKLIK:
+//
+//  1) SURE 35s -> 75s. Grounded arama once web'de arama yapip sonra metni
+//     uretiyor; 35 saniye bunun icin dar. Parasi odenmis bir sonucu istemci
+//     tarafinda kronometreye takilip atmak, mumkun olan en kotu sonuc.
+//
+//  2) ZAMAN ASIMINDA TEKRAR YOK. Yukari akis zaten kostu ve faturalandi;
+//     ayni istegi tekrarlamak yeni bilgi getirmez, yalnizca ikinci kez
+//     odetir. Yalnizca HIZ SINIRI (429) tekrar denenir — orada istek hic
+//     kosmadi, dolayisiyla ucretlendirilmedi de.
 async function askGrounded(prompt, lang, maxOutputTokens) {
   var lastErr;
-  for (var i = 0; i < 3; i++) {
+  for (var i = 0; i < 2; i++) {
     try {
       return await geminiOnce({
         system: P.groundedResearchSystemPrompt(lang),
@@ -226,13 +250,15 @@ async function askGrounded(prompt, lang, maxOutputTokens) {
         temperature: 0.2,
         tools: [{ googleSearch: {} }],
         jsonMode: false,
-        timeoutMs: 35000,
+        timeoutMs: 75000,
       });
     } catch (e) {
       lastErr = e;
-      if (!e.transient || i === 2) break;
-      // Kota hatasinda kisa backoff ise yaramaz; pencere dakikalarla olculuyor.
-      await sleep(e.rateLimited ? 20000 : (700 + i * 500));
+      // YALNIZ kota hatasi tekrarlanir. Zaman asimi / ag hatasi tekrarlanmaz:
+      // arama ucretlendirildi bile, ikinci tur yalnizca ikinci faturadir.
+      if (!e.rateLimited || i === 1) break;
+      // Kota penceresi dakikalarla olculuyor, kisa backoff ise yaramaz.
+      await sleep(20000);
     }
   }
   throw lastErr || new Error('grounded search failed');

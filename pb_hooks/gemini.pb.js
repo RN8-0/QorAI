@@ -71,8 +71,14 @@ routerAdd("POST", "/api/ai/gemini", (e) => {
     });
     return e.json(res.statusCode, res.json || JSON.parse(res.raw || "{}"));
   } catch (err) {
-    console.log("[gemini proxy] upstream error:", err);
-    return e.json(502, { error: "upstream_failed", detail: String(err) });
+    // ANAHTAR GUNLUGE YAZILMAZ.
+    // Olculdu 2026-09-02: Go'nun hata metni istegin TAM URL'sini tasiyor ve
+    // URL'de `?key=...` var. Yani her yukari-akis hatasi Gemini API
+    // anahtarini konteyner gunlugune duz metin olarak basiyordu
+    // (`docker logs` ile okunabilir durumdaydi).
+    var temiz = String(err).replace(/([?&]key=)[^&"\s]+/gi, "$1[REDACTED]");
+    console.log("[gemini proxy] upstream error:", temiz);
+    return e.json(502, { error: "upstream_failed", detail: temiz });
   }
 });
 
