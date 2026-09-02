@@ -1537,6 +1537,12 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '  "alternatives": [\n' +
     '    {"name": "product name", "imageUrl": "copy from Qor catalog context when available, otherwise empty", "url": "copy from Qor catalog context when available, otherwise empty", "source": "qor_catalog|external", "keySpecs": [{"label": "spec", "value": "value"}], "difference": "2-3 sentences vs target", "shortComment": "1-2 sentence recommendation"}\n' +
     '  ],\n' +
+    // PARAGRAF DUYGUSU METINLE BIRLIKTE URETILIR. Onceden on yuz bunu
+    // KELIME SOZLUGUYLE tahmin ediyordu ve gercek cumlelerde yaniliyordu
+    // ("impacting the smoothness" -> yesil, "no problems" -> kirmizi).
+    // Anahtar: paragrafin ILK CUMLESI, kucuk harf, noktalama atilmis,
+    // tek bosluk, 90 karakter (web/src/lib/sentiment.jsx -> paragraphKey).
+    '  "paragraphSentiment": {"<first sentence, lowercased, punctuation stripped, single-spaced, max 90 chars>": "positive|negative"},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n' +
     '}\n\n' +
     'Rules:\n' +
@@ -1577,6 +1583,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
     `- ${segmentGate(p)}\n` +
     `- ${scoreScaleGate(p)}\n` +
+    '- paragraphSentiment: for EVERY multi-sentence prose field you write (product.analysis, community.summary, priceForecast.analysis, bestFor, notFor, overallVerdict, matchComment and each factors[].detail / criticalPoints[].detail), add one entry per paragraph. Judge ONLY THE FIRST SENTENCE of the paragraph, and only as an evaluation OF THE PRODUCT: positive = it praises or states a strength; negative = it criticises, names a weakness, a limitation, a risk or a mismatch with the buyer need. OMIT neutral paragraphs entirely (facts, specs, dates, plain price observations) — the default is neutral. Concessive openers carry the judgement in the SECOND clause (\"While the display is bright, its 60Hz feels dated\" is negative; \"Although expensive, performance is exceptional\" is positive). Negation reverses (\"no problems reported\" is positive). Never label from a single word.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +

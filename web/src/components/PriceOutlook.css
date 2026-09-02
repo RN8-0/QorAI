@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FİYAT GÖRÜNÜMÜ — tahmin zaman çizgisi
+   Gerekçe ve veri sözleşmesi: components/PriceOutlook.jsx başlığı.
+   Eksen yok, ızgara yok, boş çizim alanı yok. Hiyerarşi tipografiden,
+   ayrım hairline'dan gelir. Gradyan ve gölge KULLANILMAZ.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.po {
+  --po-renk: var(--ink-green);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 20px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+/* ── Başlık ─────────────────────────────────────────────────────────────── */
+.po-head { display: flex; align-items: center; gap: 12px; }
+.po-baslik {
+  font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.po-rozet {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 12px; font-weight: 800; letter-spacing: .01em;
+  color: var(--po-renk);
+}
+.po-rozet i { font-style: normal; font-size: 13px; line-height: 1; }
+.po-rozet b {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums; font-weight: 700; opacity: .72;
+  padding-left: 6px; margin-left: 2px; border-left: 1px solid currentColor;
+}
+
+/* ── Ana hüküm: kartın iki büyük sayısı ─────────────────────────────────── */
+.po-ana { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+.po-blok { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.po-buyuk {
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(24px, 4.2vw, 32px);
+  font-weight: 800; letter-spacing: -.02em; line-height: 1.05;
+  color: var(--text); white-space: nowrap;
+}
+.po-degisim { color: var(--po-renk); }
+.po-etiket { font-size: 12.5px; color: var(--text-3); font-weight: 600; }
+.po-ok {
+  align-self: center; color: var(--text-3); font-size: 20px; line-height: 1;
+  opacity: .55; padding: 0 2px;
+}
+
+/* ── Zaman çizgisi ──────────────────────────────────────────────────────── */
+.po-hat { position: relative; padding-top: 4px; }
+.po-ray {
+  position: relative; height: 3px; border-radius: 2px;
+  background: var(--divider); margin: 0 0 12px;
+}
+/* Bekleme bölgesi: şimdi → en iyi pencere. Okuyucu beklemenin uzunluğunu
+   sayı okumadan görür. Tek renk, düşük opaklık — gradyan yok. */
+.po-bolge {
+  position: absolute; inset: 0 0 0 0; border-radius: 2px;
+  background: var(--po-renk); opacity: .34;
+  transform-origin: left center;
+}
+.po-duraklar {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; justify-content: space-between; gap: 12px;
+}
+.po-durak {
+  position: relative; display: flex; flex-direction: column; gap: 2px;
+  flex: 1 1 0; min-width: 0;
+}
+.po-durak:nth-child(2) { align-items: center; text-align: center; }
+.po-durak:last-child:not(:first-child) { align-items: flex-end; text-align: right; }
+.po-nokta {
+  position: absolute; top: -21px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--surface); border: 2.5px solid var(--po-renk);
+}
+.po-durak:first-child .po-nokta { left: 0; }
+.po-durak:nth-child(2) .po-nokta { left: 50%; margin-left: -4.5px; }
+.po-durak:last-child:not(:first-child) .po-nokta { right: 0; }
+/* Hedef nokta DOLU: karar noktası odur. */
+.po-durak.hedef .po-nokta { background: var(--po-renk); width: 11px; height: 11px; top: -22px; }
+/* Ara olay: kesikli çember ve BİRAZ DAHA BÜYÜK. 9 px'te kesik kenar
+   ekranda neredeyse düz görünüyordu — olay ile hedefi ayıran tek işaret o. */
+.po-durak.olay .po-nokta { border-style: dashed; width: 10px; height: 10px; top: -21.5px; }
+.po-ad { font-size: 12.5px; font-weight: 800; color: var(--text); line-height: 1.25; }
+.po-alt {
+  font-size: 11.5px; color: var(--text-3); line-height: 1.3;
+  font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.po-durak.hedef .po-alt { color: var(--po-renk); font-weight: 700; }
+
+/* ── Hüküm + not ────────────────────────────────────────────────────────── */
+.po-hukum {
+  margin: 0; display: flex; gap: 8px; align-items: baseline;
+  font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.45;
+}
+.po-hukum span { color: var(--po-renk); font-size: 12px; }
+.po-not { margin: 0; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+
+/* ── Hareket: İNCE bir vurgu, tasarımın önüne geçmez ────────────────────── */
+/* DİNLENME DURUMU = SON HÂL. Animasyon hiç oynamasa da kart eksiksiz okunur;
+   bu, önceki grafikte boş kutuya sebep olan hatanın tekrarlanmaması için. */
+.po-bolge { transform: scaleX(1); }
+.po.po-in .po-bolge { animation: poBolge 620ms cubic-bezier(.22,.61,.36,1) both; }
+.po.po-in .po-nokta { animation: poNokta 300ms ease-out both; }
+.po.po-in .po-durak:nth-child(2) .po-nokta { animation-delay: 160ms; }
+.po.po-in .po-durak:last-child .po-nokta { animation-delay: 300ms; }
+@keyframes poBolge { from { transform: scaleX(.06); } to { transform: scaleX(1); } }
+@keyframes poNokta { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .po .po-bolge, .po .po-nokta { animation: none !important; }
+}
+
+/* ── Mobil: iki büyük sayı alt alta, zaman çizgisi DİKEY ────────────────── */
+@media (max-width: 560px) {
+  .po { padding: 16px 14px 14px; gap: 16px; }
+  .po-ana { flex-direction: column; gap: 12px; }
+  /* OK GİZLENİR. Dikey yığında döndürülmüş bir ok yetim kalıyordu: iki
+     sayının arasında tek başına duran bir "↓" hiçbir şey söylemiyor,
+     sıralamanın kendisi akışı zaten anlatıyor. */
+  .po-ok { display: none; }
+  .po-ray { display: none; }
+  .po-duraklar { flex-direction: column; gap: 0; }
+  .po-durak,
+  .po-durak:nth-child(2),
+  .po-durak:last-child:not(:first-child) { align-items: flex-start; text-align: left; }
+
+  /* Dikey ray: her durak solunda çizgi + nokta taşır.
+     HİZA: noktaların çapı farklı (9 / 10 / 11 px) olduğu için `left: 0`
+     bırakılınca merkezleri kayıyor ve çizgi zikzak görünüyordu. Nokta
+     sabit 12 px'lik bir kutuya ortalanıyor, çizgi de o kutunun merkezine
+     (6 px) oturuyor. */
+  .po-durak { padding: 0 0 16px 24px; }
+  .po-durak::before {
+    content: ''; position: absolute; left: 5px; top: 14px; bottom: 0;
+    width: 2px; background: var(--divider);
+  }
+  .po-durak:last-child::before { display: none; }
+  /* TRANSFORM KULLANILMAZ. `translateX(-50%)` ile ortalamak doğal görünüyor
+     ama `poNokta` animasyonu `transform: scale()` yazıyor ve `both` ile son
+     karede kalıyor — hizalama animasyondan sonra siliniyordu. Onun yerine
+     mobilde tüm noktalar AYNI ÇAPTA (10 px) ve negatif margin ile
+     ortalanıyor; hedef noktası boyutla değil DOLGUYLA ayrışıyor. */
+  .po-durak .po-nokta,
+  .po-durak.hedef .po-nokta {
+    top: 3px; right: auto !important;
+    left: 6px !important; margin: 0 0 0 -5px !important;
+    width: 10px; height: 10px;
+  }
+}

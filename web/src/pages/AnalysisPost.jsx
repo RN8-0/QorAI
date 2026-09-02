@@ -39,9 +39,10 @@ const SubscriptionReportView = lazy(() => import('../components/SubscriptionRepo
 const CompareResult = lazy(() => import('../pages/LinkAnalysis.jsx').then((m) => ({ default: m.CompareResult })));
 import {
   analysisFaq, analysisKind, analysisKindShort, analysisLead, analysisMetaDescription,
-  analysisMetaTitle, analysisQuiz, analysisQuizHidden, analysisRenderLangs, analysisReport, analysisSubject,
+  analysisMetaTitle, analysisQuiz, analysisQuizHidden, analysisRenderLangs, analysisReport, analysisSentimentIndex, analysisSubject,
   analysisTitle, analysisUnified,
 } from '../lib/analysisRecord';
+import { SentimentProvider } from '../lib/sentiment.jsx';
 import './Analyses.css';
 // `la-*` sinifları burada YASAR. AiReportView paylasilan modul oldugu icin
 // CSS'ini kendisi import etmiyor; kullanan SAYFA import eder.
@@ -329,6 +330,10 @@ export default function AnalysisPost() {
             hic gorunmuyordu. Ilginc olan, ON-RENDER'IN DOGRU cizmesiydi
             (scripts/seo.mjs -> anKarsilastirmaGovde `comparison.*` okuyor) —
             yani crawler saglam sayfayi, okuyucu bozugunu goruyordu. */}
+        {/* DUYGU SAGLAYICISI RAPORUN TAMAMINI SARAR. Dort akis da (urun,
+            karsilastirma, link, abonelik) ayni motoru okur — tur basina ayri
+            sentiment fonksiyonu YOK (bkz. lib/sentiment.jsx). */}
+        <SentimentProvider index={a ? analysisSentimentIndex(a, lang) : null}>
         <Suspense fallback={<p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}>
           {kind === 'product' && ham?.product ? (
             <ProductFullReport data={ham} L={L} lang={lang} hideQuiz={gizleQuiz} techScore={a.techScore} priceInfo={fiyat} />
@@ -355,6 +360,7 @@ export default function AnalysisPost() {
             <p className="an-empty">{L('This analysis has no report data.', 'Bu analizde rapor verisi yok.')}</p>
           )}
         </Suspense>
+        </SentimentProvider>
 
         {/* MAGAZA LISTESI — raporun ALTINDA, "tum analizler" linkinden once.
             Okuyucu karari tam burada verdi; satin alma yolu bu noktada

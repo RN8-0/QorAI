@@ -41,6 +41,12 @@ export function forecastToOutlook(f = {}) {
     expectedChange: String(f.expectedChange || '').trim(),
     note: String(f.analysis || f.note || '').trim(),
     drivers: arr(f.drivers),
+    // `confidence` ve `buyOrWait` EKLENDI (2026-09-02). Ikisi de sema'da
+    // vardi ama ortak sekle hic tasinmiyordu: kart guven yuzdesini ve
+    // "al / bekle / takip et" hukmunu HIC goremiyordu. Eski grafik de
+    // `outlook.buyOrWait` okuyup daima bos buluyordu — sessiz kayipti.
+    confidence: Number(f.confidence) > 0 ? Math.round(Number(f.confidence)) : 0,
+    buyOrWait: String(f.buyOrWait || '').trim().toLowerCase(),
   };
   return (out.bestTime || out.note || out.expectedChange || out.drivers.length) ? out : null;
 }

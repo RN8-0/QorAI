@@ -6,12 +6,15 @@
 //  marka mavi #3b82f6. prefers-reduced-motion'a saygı gösterir.
 // ─────────────────────────────────────────────────────────────────────────
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { sentimentClass, useParagraphSentiment } from '../lib/sentiment.jsx';
+import { proseBlocks } from '../lib/prose.js';
 import './AiCharts.css';
+import './PriceOutlook.css';
 // Faktor tablosunun satir kumesi TEK KAYNAK — on-render (Node) da ayni
 // modulu kosar; bkz. lib/factorRows.js.
 import { factorColumnAverages, factorColumnWins, factorMatrixRows } from '../lib/factorRows.js';
 // Recharts ~136 KB gzip: fiyat grafigi cizilmeyen sayfalar bunu INDIRMEZ.
-const PriceChart = lazy(() => import('./PriceChart.jsx'));
+const PriceOutlook = lazy(() => import('./PriceOutlook.jsx'));
 
 export const CHART_COLORS = {
   strong: '#22c55e',
@@ -759,6 +762,7 @@ export function HeatMatrix({ products = [], matrix = null, L = (en) => en, label
    `names`: metinde geçen ürün/servis adları. Vurgulanınca okuyucu "bu fark
    hangi ürün hakkında" sorusunu paragrafı okumadan yanıtlıyor. */
 export function DecisiveDifferences({ items = [], names = null, L = (en) => en, title = '' }) {
+  const duyguOf = useParagraphSentiment();
   const rows = (Array.isArray(items) ? items : [])
     .map((x) => (typeof x === 'string'
       ? { title: '', detail: x }
@@ -785,17 +789,17 @@ export function DecisiveDifferences({ items = [], names = null, L = (en) => en, 
                      tek bir metin bloğu gibi gösteriyordu. Ayıraç artık
                      ETİKETLİ bir hairline; her yarı da kendi şeridinde. */
                   <div className="aic-diff-sides">
-                    <p className={`aic-diff-side aic-tone${toneClass(sol)}`}>
+                    <p className={`aic-diff-side aic-tone${sentimentClass(duyguOf(sol))}`}>
                       {proseParts(sol, `da${i}`, names)}
                     </p>
                     <span className="aic-diff-vs">{L('meanwhile', 'buna karşılık')}</span>
-                    <p className={`aic-diff-side aic-tone${toneClass(sag)}`}>
+                    <p className={`aic-diff-side aic-tone${sentimentClass(duyguOf(sag))}`}>
                       {proseParts(sag, `db${i}`, names)}
                     </p>
                   </div>
                 ) : (
                   x.detail ? (
-                    <p className={`aic-tone${toneClass(x.detail)}`}>
+                    <p className={`aic-tone${sentimentClass(duyguOf(x.detail))}`}>
                       {proseParts(x.detail, `dd${i}`, names)}
                     </p>
                   ) : null
@@ -1166,36 +1170,8 @@ function proseParts(text, keyPrefix, names) {
   });
   return out;
 }
-
-// Model bazen tek blok, bazen boş satırlı paragraf, bazen "### başlık" yazıyor.
-// Üçünü de aynı şekle indir: [{kind, text}].
-export function proseBlocks(text) {
-  const raw = String(text || '').replace(/```[a-z]*\s*/gi, '').trim();
-  if (!raw) return [];
-  const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  const blocks = [];
-  lines.forEach((line) => {
-    if (/^#{1,6}\s+/.test(line)) {
-      blocks.push({ kind: 'head', text: line.replace(/^#{1,6}\s+/, '').replace(/[:：]\s*$/, '') });
-      return;
-    }
-    if (/^[-•*]\s+/.test(line)) {
-      blocks.push({ kind: 'bullet', text: line.replace(/^[-•*]\s+/, '') });
-      return;
-    }
-    blocks.push({ kind: 'p', text: line.replace(/^>\s+/, '') });
-  });
-  // TEK NEFESTE YAZILMIŞ METİN. Model kimi zaman 600 kelimeyi tek satırda
-  // döndürüyor; o hâlde paragraf ritmi diye bir şey kalmıyor. Cümlelere böl,
-  // üçerli paragraflara topla.
-  if (blocks.length === 1 && blocks[0].kind === 'p' && blocks[0].text.length > 640) {
-    const sents = blocks[0].text.split(/(?<=[.!?])\s+/).filter(Boolean);
-    const packed = [];
-    for (let i = 0; i < sents.length; i += 3) packed.push({ kind: 'p', text: sents.slice(i, i + 3).join(' ') });
-    return packed;
-  }
-  return blocks;
-}
+// `proseBlocks` lib/prose.js'e TASINDI: duygu gocu (scripts/sentiment_backfill.mjs)
+// metni BIREBIR ayni sekilde bolmek zorunda, yoksa etiket anahtarlari tutmaz.
 
 /* KONU CUMLESININ TONU — SIYAH KALAN CUMLE YOK.
    Kural basit: iyi yazilan sey YESIL, elestiri/olumsuzluk KIRMIZI.
@@ -1208,214 +1184,22 @@ export function proseBlocks(text) {
    Berabere kalinca bile siyah birakilmaz: cumlede bir DONUS baglaci varsa
    ("ancak", "fakat") hukum olumsuza doner, yoksa olumlu sayilir. Boylece
    her konu cumlesi bir yon tasir. */
-const TONE_HEAD = '(?<![A-Za-zğüşıöçĞÜŞİÖÇ])';
-const POS_KOK = [
-  'memnuniyet', 'övgü', 'ovgu', 'beğen', 'begen', 'başarı', 'basari',
-  // 'gucl' ASCII 'c' ile yazilmis ve "GUCLU" kelimesinde 'c' DEGIL 'c'
-  // var — yani 'guclu' hicbir zaman olumlu sayilmiyordu. Diakritikli
-  // hali de listede.
-  'güçl', 'gücl', 'gucl',
-  'mükemmel', 'mukemmel', 'etkileyici', 'üstün', 'ustun', 'avantaj', 'olumlu', 'takdir',
-  'lider', 'rakipsiz', 'ideal', 'zirve', 'öne çık', 'one cik', 'tavsiye', 'iyi',
-  'yeterli', 'akıcı', 'akici', 'sorunsuz', 'kolaylık', 'kolaylik', 'geniş', 'genis',
-  // 'yüksek' LİSTEDEN ÇIKARILDI (2026-09-01). Bir HÜKÜM değil BÜYÜKLÜK
-  // bildiriyor: "yüksek yük", "yüksek sıcaklık", "yüksek fiyat", "yüksek ses"
-  // hepsi olumsuz. Ölçüldü canlı RTX 4060 kaydında: "…YÜKSEK yük altında
-  // HDD benzeri bir tıkırtı … rapor etmiştir" cümlesi yalnız bu kök yüzünden
-  // YEŞİL çıkıyordu — bir şikâyet, olumlu diye boyanmış.
-  'uzun ömür', 'uzun omur', 'sağlam', 'saglam', 'dayanıklı',
-  // 'zengin' ÇIKARILDI: "görsel zenginliğe önem veren kullanıcılar için bir
-  // DEZAVANTAJ" cümlesinde kullanıcı tercihini tarif ediyor, ürün hakkında
-  // hüküm bildirmiyordu — olumsuz hükmü dengeleyip cümleyi renksiz bırakıyordu.
-  'dayanikli', 'hızlı', 'hizli', 'premium', 'şık', 'net ',
-  // YOKLUK EKİ = OLUMLU. Bunlar listede yoktu ve "Kusursuz bir ekran ve
-  // sınırsız depolama sunar" cümlesi hiçbir köke eşleşmeyip RENKSİZ
-  // kalıyordu. ('sorunsuz' zaten yukarıda.)
-  'kusursuz', 'sınırsız', 'sinirsiz', 'hatasız', 'hatasiz', 'arızasız', 'arizasiz',
-  // Tek anlamlı kalite sıfatları. ('kalite' TEK BAŞINA alınmadı — "kamera
-  // kalitesi düşük" cümlesinde olumsuzu dengelerdi; sıfat hâli güvenli.)
-  'kaliteli', 'rahatça', 'rahatca', 'verimli', 'keskin',
-  // ÖLÇÜMLE EKLENDİ (2026-09-01). İki canlı kaydın 441 cümlesi tarandı:
-  // %41'i hiçbir köke eşleşmiyordu, oysa çoğu açıkça olumluydu — model
-  // hükmü bu fiillerle kuruyor. Hepsi TEK ANLAMLI seçildi; çok anlamlı
-  // olanlar ("sunar", "sağlar") ALINMADI çünkü olumsuz cümlede de geçiyor.
-  'kesintisiz', 'rahatlıkla', 'rahatlikla', 'kolayca', 'kolaylaştır', 'kolaylastir',
-  'garantili', 'geride bırak', 'geride birak', 'önüne geç', 'onune gec',
-  'fazlasıyla', 'fazlasiyla', 'esnek', 'uyum sağl', 'uyum sagl',
-  // "karşıl" TEK BAŞINA ALINMAZ: "karşılaştırma", "karşılık" ve "karşın"
-  // içinde de geçiyor. Yalnız beklenti/ihtiyaç ile kurulan kalıplar.
-  'beklentisini karşıl', 'beklentiyi karşıl', 'beklentilerini karşıl',
-  'ihtiyacını karşıl', 'beklentileri aş', 'beklentisini fazlasıyla',
-  'profesyonel kalite', 'okunabilirlik',
-  'yardımcı ol', 'yardimci ol', 'uyumlu', 'denge', 'çözümdür', 'cozumdur',
-  'uygun', 'güncel kal', 'guncel kal', 'koruma', 'korur',
-  // ── INGILIZCE OLUMLU SOZLUK (2026-09-01) ───────────────────────────────
-  // 'smooth' KOKU BURADA KALIYOR ama artik tek basina cumleyi yesile
-  // cekemiyor: olumsuz sozluk genisledigi icin "impacting the perceived
-  // smoothness" cumlesinde 'impacting' onu dengeliyor.
-  'excels', 'excel ', 'enhance', 'superior', 'solid', 'capable', 'robust',
-  'versatile', 'efficient', 'seamless', 'vibrant', 'sharp', 'crisp',
-  'long-lasting', 'worth', 'advantage', 'benefit', 'strength', 'well-suited',
-  'dependable', 'high-performing', 'refined', 'comfortable', 'ample',
-  'admirably', 'substantial improvement', 'improvements in',
-  'praise', 'excellent', 'outstanding', 'strong', 'impressive', 'leading',
-  'recommend', 'great', 'best', 'smooth', 'reliable', 'durable', 'fast',
-];
-const NEG_KOK = [
-  'sorun', 'şikayet', 'sikayet', 'kusur', 'arıza', 'ariza', 'hayal kırık', 'hayal kirik',
-  'zayıf', 'zayif', 'düşük', 'dusuk', 'eksik', 'geride kal', 'dezavantaj', 'risk',
-  'olumsuz', 'başarısız', 'basarisiz', 'yetersiz', 'pahalı', 'pahali', 'kısıt', 'kisit',
-  'sınırl', 'sinirl', 'ısınma', 'isinma', 'donma', 'gecikme', 'şarj kayb', 'sarj kayb',
-  'hata', 'çökme', 'cokme', 'bozul', 'aşınma', 'asinma', 'endişe', 'endise',
-  'problem', 'complaint', 'issue', 'weak', 'poor', 'lacks', 'disappoint',
-  'drawback', 'fail', 'expensive', 'limited', 'overheat', 'defect',
-  // Olculdu 2026-08-30: "40W hizli sarj, rakiplerine gore daha YAVASTIR"
-  // cumlesi yesil cikiyordu — 'yavas' listede yoktu, 'hizli' ise SPEC ADI
-  // icinde gecip olumlu sayiliyordu.
-  'yavaş', 'yavas', 'gerisinde', 'kısa süre', 'kisa sure', 'slower', 'behind',
-  // "yuksek fiyat" tuzagi: 'yuksek' olumlu kok, ama fiyatla birlikte
-  // olumsuz. Ifade olarak listede, tek basina 'yuksek' olumlu kalir.
-  'engel', 'yüksek fiyat', 'yuksek fiyat', 'pahalı fiyat', 'barrier', 'high price',
-  // Donanım şikâyetlerinin SÖZLÜĞÜ eksikti: bobin sesi/coil whine bildiren
-  // cümlelerde tek bir olumsuz kök bile eşleşmiyordu.
-  'tıkırtı', 'tikirti', 'vızıltı', 'vizilti', 'uğultu', 'ugultu', 'gürültü', 'gurultu',
-  'bobin sesi', 'coil whine', 'titreşim', 'titresim', 'aşırı ısın', 'asiri isin',
-  // ── INGILIZCE OLUMSUZ SOZLUK (2026-09-01) ──────────────────────────────
-  // Turkce liste yillar icinde zenginlesti, Ingilizce'de yalnizca
-  // problem/weak/poor/lacks gibi bir avuc kok vardi. Olculdu: 8 gercek EN
-  // cumlesinin 3'u yanlis renkteydi, ucu de olumsuz.
-  //
-  // 'impacting' BILEREK burada: rapor dilinde "impacting the perceived
-  // smoothness / battery life" kalibi daima olumsuz. Ciplak 'impact'
-  // ALINMADI ("positive impact" tersine doner).
-  'dated', 'outdated', 'aging', 'ageing', 'inconvenience', 'inconvenient',
-  'degradation', 'degrade', 'deteriorat', 'shortcoming', 'downside',
-  'compromise', 'falls short', 'fall short', 'sluggish', 'bulky', 'cumbersome',
-  'mediocre', 'underwhelm', 'subpar', 'lackluster', 'lacklustre', 'dealbreaker',
-  'noisy', 'missing', 'absent', 'worse', 'worst', 'costly', 'pricey',
-  'throttl', 'bottleneck', 'discontinued', 'trade-off', 'tradeoff',
-  'criticism', 'frustrat', 'struggle', 'concern', 'impacting', 'damage',
-  'restrict', 'shortfall', 'downgrade', 'inferior', 'dim ', 'drains',
-  'battery drain', 'no telephoto', 'not as ', 'less than',
-  'rahatsız', 'rahatsiz', 'tepki süresi', 'noisy', 'rattle', 'buzzing', 'throttl',
-  // TEMKİN İŞARETLERİ. Model bir kusuru doğrudan söylemek yerine "gözlenmeli /
-  // dikkate alınmalı" diye yazıyor; bunlar hüküm olarak OLUMSUZ taraftadır.
-  'gözlemlenmeli', 'gozlemlenmeli', 'dikkate alınmalı', 'dikkate alinmali',
-  'göz önünde bulundurul', 'goz onunde bulundurul', 'yüksek bir seviyede',
-];
-const TONE_DONUS = new RegExp(TONE_HEAD + '(ancak|fakat|ama |ne var ki|buna karşın|buna karsin|rağmen|ragmen|however|but |although|yet )', 'i');
-// Kok listesindeki tek ozel karakter bosluk; yine de kacis guvenligi icin
-// regex-anlamli karakterler kacisliyor.
-const ESC = /[.*+?^${}()|[\]\\]/g;
-const kokRe = (list, kuyruk = '') => new RegExp(
-  `${TONE_HEAD}(?:${list.map((w) => w.replace(ESC, '\\$&')).join('|')})${kuyruk}`,
-  'gi',
-);
-const POS_RE = kokRe(POS_KOK);
-// YOKLUK EKİ KÖKÜ İPTAL EDER: "sorunsuz" olumsuz DEĞİLDİR, "sorunları"
-// olumsuzdur. `sorun` kökü `sorunsuz` içinde de eşleşiyordu ve cümle hem
-// olumlu hem olumsuz sayılıp RENKSİZ kalıyordu (ölçüldü: "…sorunsuz bir
-// deneyim sunar"). Ek, kökün hemen ardından (en çok iki harf sonra)
-// geliyorsa eşleşme düşer. Aynısı kusursuz/sınırsız/hatasız için de geçerli.
-const NEG_RE = kokRe(NEG_KOK, '(?![a-zçğıöşü]{0,2}s[uüıi]z)');
-
-function sayKok(re, text) {
-  re.lastIndex = 0;
-  let n = 0;
-  while (re.exec(text)) n += 1;
-  re.lastIndex = 0;
-  return n;
-}
-
-/* INKAR ISARETI TERS CEVIRIR — ve cevirmeyi unutunca hukum yanlis renge
-   duser. Olculdu 2026-08-30 (canli S26/iPhone/Xiaomi kaydi):
-
-     "Ancak bu, genel deneyimi OLUMSUZ etkileyecek kritik bir nokta DEGILDIR."
-
-   Bu cumle guven veriyor ama sayfada KIRMIZI cikiyordu: "olumsuz" koku
-   sayiliyor, "degildir" hic bakilmiyordu. Ayni kor nokta ters yonde de var:
-   "kamera IYI DEGIL" yesil cikardi.
-
-   Cozum kelime saymadan once CUMLECIKLERE bolmek: inkar eki tasiyan
-   cumlecikte pozitif ve negatif sayimlar YER DEGISTIRIR. Bolme noktalari
-   virgul, noktali virgul ve baglaclar — Turkcede inkar eki fiilin sonunda,
-   yani ait oldugu cumlecigin icinde kalir. */
-/* IKI AYRI KALIP, IKI AYRI SINIR — ve bu ayrimi atlamak fonksiyonu
-   TAMAMEN calismaz yapiyordu. `TONE_HEAD` bir "kelime basi" lookbehind'i
-   (onunde harf olmasin). Ek kaliplari ONA baglayinca "cikMADI" hic
-   eslesmiyordu: "madi"nin onunde 'k' var. Sonuc: inkar tespiti sifir vaka
-   yakaliyordu.
-     · KELIME olarak gecenler (degil, yok...) -> kelime basi sarti VAR
-     · EK olarak gecenler (-madi, -maz, -mayabilir) -> kelime SONU sarti var,
-       basta harf olmasi zaten beklenen sey. */
-const NEG_INKAR = new RegExp(
-  '(?:'
-  + TONE_HEAD + "(?:degil|değil|yok|bulunmuyor|gerektirmez|not |isn't|aren't|no longer|without)"
-  + '|m[ae](?:dı|di|du|dü)(?![a-zA-ZçğıöşüÇĞİÖŞÜ])'
-  + '|m[ae]z(?![a-zA-ZçğıöşüÇĞİÖŞÜ])'
-  // Yalniz TEK ANLAMLI olanlar: "-mayabilir" / "-mayacak" inkardir. Duz
-  // "-maya" ALINMADI — "saymaya basladi" da ayni yuzeye sahip ve inkar degil.
-  + '|m[ae]yabil|m[ae]yacak'
-  + ')',
-  'i',
-);
-const CUMLECIK_RE = /[,;]|\bve\b|\bama\b|\bancak\b|\bfakat\b|\bbut\b|\bhowever\b|\balthough\b/i;
-
-/* OLUMSUZ KOKUN OLUMSUZ OLMADIGI YERLER. "dusuk isik kosullarinda bile canli
-   fotograflar" cumlesi 'dusuk' koku yuzunden KIRMIZI cikiyordu — oysa cumle
-   olumlu ve "dusuk isik" bir cekim kosulu, kusur degil. Bu tamlamalar sayim
-   oncesi metinden dusurulur; koku listeden cikarmak olmazdi, cunku "dusuk
-   depolama" gercekten olumsuz. */
-// "hızlı şarj" EKLENDİ (2026-09-01): bir spec ADI, hüküm değil. Ölçüldü:
-// "40W HIZLI ŞARJ, rakiplerine göre daha yavaştır" cümlesinde baştaki spec
-// adı olumlu sayılıp asıl hükmü (yavaştır) dengeliyor ve cümle renksiz
-// kalıyordu. 'hızlı' tek başına olumlu kalır ("hızlı açılıyor").
-// "kısa sürede" EKLENDİ: `kısa süre` olumsuz kök ("kısa süre dayanıyor") ama
-// "-de" hâliyle SÜREYİ değil HIZI anlatıyor ve olumludur — ölçüldü:
-// "…kısa sürede tam dolum imkânı sunar" cümlesi KIRMIZI çıkıyordu.
-const TONE_MUAF = /(d[uü][sş][uü]k [iı][sş][iı][kğ]|low[- ]light|d[uü][sş][uü]k gecikme|low latency|d[uü][sş][uü]k [iı]s[iı] ?[uü]retimi|h[iı]zl[iı] [sş]arj|fast charging|k[iı]sa s[uü]rede)/gi;
-
-function leadTone(text) {
-  const t = String(text || '');
-  if (!t) return '';
-  let pos = 0;
-  let neg = 0;
-  // HUKUM SONDA VERILIR. Turkce cumlede yuklem sonda; "40W hizli sarj,
-  // rakiplerine gore daha yavastir" cumlesinde bas olumlu bir SPEC ADI
-  // ("hizli sarj"), hukum ise son cumlecikte. Esit sayimda bas kazanip cumle
-  // yesile duruyordu. Son cumlecik iki kat sayilir.
-  const cumlecikler = t.split(CUMLECIK_RE).filter(Boolean);
-  cumlecikler.forEach((cumlecik, i) => {
-    const agirlik = i === cumlecikler.length - 1 ? 2 : 1;
-    const temiz = cumlecik.replace(TONE_MUAF, ' ');
-    const p = sayKok(POS_RE, temiz) * agirlik;
-    const n = sayKok(NEG_RE, temiz) * agirlik;
-    // Inkar varsa isaretler yer degistirir: "olumsuz ... degildir" = olumlu,
-    // "iyi degil" = olumsuz.
-    if (NEG_INKAR.test(cumlecik)) { pos += n; neg += p; } else { pos += p; neg += n; }
-  });
-  // KANIT YOKSA RENK YOK (2026-09-01). Önceki sürüm HER cümleyi yeşil ya da
-  // kırmızı yapmak zorundaydı ve eşitlikte 'pos' dönüyordu — yani TAHMİN
-  // ediyordu. Tahminle renk vermek renk vermemekten kötü: kullanıcı canlı
-  // sayfada olumsuz bir şikâyeti yeşil, olumlu bir hükmü kırmızı gördü.
-  //
-  // Üç çıkış: 'pos' · 'neg' · '' (nötr, sınıf basılmaz → metin kendi rengini
-  // korur, sayı da öyle). Nötr iki durumda oluşur:
-  //   1. hiçbir kök eşleşmedi   → söyleyecek bir şey yok
-  //   2. iki taraf da doluysa ve baskın taraf ötekinin İKİ KATINDAN fazla
-  //      değilse → cümle gerçekten KARIŞIK ("…olumlu seyretmektedir, ancak
-  //      kısıtlamalar ve sorunlar da dile getirilmektedir"). Böyle bir cümleyi
-  //      tek renge zorlamak okuyucuya yanlış hüküm okutuyordu.
-  if (pos === 0 && neg === 0) return '';
-  if (pos > 0 && neg > 0 && Math.max(pos, neg) <= 1.4 * Math.min(pos, neg)) return '';
-  return pos > neg ? 'pos' : 'neg';
-}
-
-// Ton sınıfı — nötrde HİÇBİR sınıf basılmaz (boş `aic-tone-` üretmemek için).
-function toneClass(text) {
-  const t = leadTone(text);
-  return t ? ` aic-tone-${t}` : '';
-}
+// ── PARAGRAF DUYGUSU ARTIK BURADA HESAPLANMIYOR ───────────────────────────
+//
+// Bu bolgede `POS_KOK` / `NEG_KOK` kok listeleri, `leadTone()` ve
+// `toneClass()` vardi: paragrafin ilk cumlesinin olumlu mu olumsuz mu
+// oldugunu KELIME EslESTIREREK tahmin ediyorlardi. Yontem yanlisti, sozluk
+// eksikligi degil:
+//     "…impacting the perceived smoothness"  -> 'smooth' kokuyle YESIL
+//     "no problems reported"                 -> 'problem' kokuyle KIRMIZI
+//     "While efficient, it conflicts with…"  -> 'efficient' kokuyle YESIL
+// Bir kelime, icinde gectigi cumlenin hukmunu tasimiyor.
+//
+// Etiket artik METINLE BIRLIKTE KAYITTA geliyor ve tek bir motordan
+// okunuyor: lib/sentiment.jsx -> classifyParagraphSentiment().
+// Uretim tarafi: yeni analizlerde AI yaziyor (qor_ai_prompts.js
+// paragraphSentiment), eski kayitlar scripts/sentiment_backfill.mjs ile
+// bir kez etiketlendi. Etiket yoksa NOTR — geriye donuk tahmin YOK.
 
 // Paragrafın konu cümlesi: ilk cümle, makul uzunluktaysa.
 //
@@ -1528,9 +1312,10 @@ export function sentencesOf(text) {
    için bu yetmiyordu. `ProseClause` aynı vurguları (sayı, ürün adı, ton)
    korur ama cümleyi `splitClause` ile ikiye ayırıp ilk parçayı KOYU yapar. */
 export function ProseClause({ text, names = null, keyPrefix = 'pc', tone = true }) {
+  const duyguOf = useParagraphSentiment();
   const t = String(text || '').trim();
+  const cls = tone && t ? sentimentClass(duyguOf(t)) : '';
   if (!t) return null;
-  const cls = tone ? toneClass(t) : '';
   const [bas, kalan] = splitClause(t);
   if (!bas) return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
   return (
@@ -1554,19 +1339,21 @@ export function ProseClause({ text, names = null, keyPrefix = 'pc', tone = true 
    otekinde duz metin cikiyordu (olculdu: karsilastirma kartlarinda "2600
    nit" duz, hemen altindaki farklar kartinda altin). */
 export function ProseLine({ text, names = null, keyPrefix = 'pl', tone = true }) {
+  const duyguOf = useParagraphSentiment();
   const t = String(text || '').trim();
-  if (!t) return null;
   // SAYI, ICINDE GECTIGI CUMLENIN YONUNU ALIR. Sabit bir "olcu rengi"
   // denendi (once kehribar, sonra mavi) ama okuyucu icin bilgi tasimiyordu:
   // "40W ... daha yavastir" cumlesindeki 40W ile "90W hizli sarj" cumlesindeki
-  // 90W ayni renkteydi. Ton zaten hesaplaniyor (leadTone); sayi da ondan
-  // besleniyor. Notr baglam yok — leadTone daima pos ya da neg dondurur.
-  const cls = tone ? toneClass(t) : '';
+  // 90W ayni renkteydi. Duygu artik KAYITTAN geliyor (lib/sentiment.jsx);
+  // sayi da ondan besleniyor. Etiket yoksa notr — tahmin yok.
+  const cls = tone && t ? sentimentClass(duyguOf(t)) : '';
+  if (!t) return null;
   return <span className={`aic-tone${cls}`}>{proseParts(t, keyPrefix, names)}</span>;
 }
 
 export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
   const [open, setOpen] = useState(false);
+  const duyguOf = useParagraphSentiment();
   const blocks = proseBlocks(text);
   if (!blocks.length) return null;
   const limit = clamp > 0 && !open ? clamp : blocks.length;
@@ -1584,17 +1371,17 @@ export function RichProse({ text, clamp = 3, L = (en) => en, names = null }) {
     }
     if (b.kind === 'bullet') {
       return (
-        <li className={`aic-prose-li aic-tone${toneClass(b.text)}${hid ? ' hid' : ''}`} key={`l-${i}`}>
+        <li className={`aic-prose-li aic-tone${sentimentClass(duyguOf(b.text))}${hid ? ' hid' : ''}`} key={`l-${i}`}>
           {proseParts(b.text, `l${i}`, names)}
         </li>
       );
     }
     const [lead, rest] = splitLead(b.text);
     return (
-      <p className={`aic-prose-p aic-tone${toneClass(b.text)}${hid ? ' hid' : ''}`}
+      <p className={`aic-prose-p aic-tone${sentimentClass(duyguOf(b.text))}${hid ? ' hid' : ''}`}
         key={`p-${i}`} style={{ '--i': Math.min(i, 6) }}>
         {lead ? (
-          <strong className={`aic-prose-lead${leadTone(lead) ? ` ${leadTone(lead)}` : ''}`}>
+          <strong className={`aic-prose-lead${sentimentClass(duyguOf(b.text))}`}>
             {proseParts(lead, `pl${i}`, names)}
           </strong>
         ) : null}
@@ -1697,7 +1484,6 @@ function monthIndexIn(text, lang) {
 export function PriceProjection({
   outlook = {}, price = 0, currency = '', lang = 'en', L = (en) => en,
 }) {
-  const reduced = usePrefersReducedMotion();
   const trend = ['up', 'down', 'stable'].includes(outlook.trend) ? outlook.trend : '';
   const parsed = parseChangeRange(outlook.expectedChange || outlook.note);
   if (!trend && !parsed) return null;
@@ -1705,91 +1491,18 @@ export function PriceProjection({
   // Yüzde yazmıyorsa yönün tipik büyüklüğü: yükseliş dar, düşüş geniş
   // (elektronikte fiyat aşağı doğru daha hızlı hareket eder), sabit ±2.
   const [lo, hi] = parsed || (sign > 0 ? [2, 6] : sign < 0 ? [4, 12] : [1, 3]);
-  const N = 7;
-  const now = new Date();
-  const ayAdi = (i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    try {
-      return new Intl.DateTimeFormat(lang === 'tr' ? 'tr-TR' : 'en-US', { month: 'short' }).format(d);
-    } catch { return String(d.getMonth() + 1); }
-  };
-  // Eğri: ilk aylar yavaş, sonra hızlanır (kampanya/model döngüsü etkisi).
-  const ease = (i) => Math.pow(i / (N - 1), 0.82);
-  // SABİT = DÜZ ÇİZGİ DEĞİL: orta çizgi %0'da kalır, bant iki yana açılır.
-  const data = Array.from({ length: N }, (_, i) => {
-    const k = ease(i);
-    const orta = sign * ((lo + hi) / 2) * k;
-    const bant = sign === 0
-      ? [-hi * k, hi * k]
-      : sign > 0 ? [lo * k, hi * k] : [-hi * k, -lo * k];
-    return { ay: ayAdi(i), orta, bant };
-  });
-
   const col = sign < 0 ? CHART_COLORS.strong : sign > 0 ? CHART_COLORS.weak : CHART_COLORS.balanced;
-  const bestIdx = monthIndexIn(outlook.bestTime, lang);
-  const yuzde = (v) => {
-    const d = Math.round(v * 10) / 10;
-    if (Math.abs(d) < 0.05) return '0%';
-    return `${d > 0 ? '+' : '−'}%${Math.abs(d) % 1 === 0 ? Math.abs(d) : Math.abs(d).toFixed(1)}`;
-  };
-  const bugunFiyat = price > 0
-    ? (() => {
-      try {
-        return new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-US', {
-          style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0,
-        }).format(Math.round(price));
-      } catch { return `${Math.round(price)}`; }
-    })()
-    : '';
-  const dir = sign < 0
-    ? L('Prices are expected to ease', 'Fiyatların gerilemesi bekleniyor')
-    : sign > 0
-      ? L('Prices are expected to climb', 'Fiyatların yükselmesi bekleniyor')
-      : L('Prices look flat', 'Fiyat yatay görünüyor');
-  const wait = String(outlook.buyOrWait || '').toLowerCase();
-  const waitLabel = wait === 'buy' ? L('Buy now', 'Şimdi al')
-    : wait === 'wait' ? L('Wait', 'Bekle')
-      : wait === 'watch' ? L('Keep watching', 'Takip et') : '';
-  const son = data[N - 1];
 
+  // AYLIK SERİ ÜRETİLMİYOR. Eski sürüm `ease(i)` ile yedi nokta uyduruyor ve
+  // çizgi grafik çiziyordu; elimizde aylık fiyat verisi YOK, yalnız bir yön,
+  // bir yüzde aralığı, bir ufuk ve bir pencere var. Kart artık tam olarak
+  // onları gösteriyor (bkz. components/PriceOutlook.jsx).
   return (
-    <div className="aic-price">
-      <div className="aic-price-top">
-        <div className="aic-price-dir" style={{ color: col }}>
-          <span aria-hidden="true">{sign < 0 ? '↘' : sign > 0 ? '↗' : '→'}</span>
-          <strong>{dir}</strong>
-          <em>
-            {sign === 0 ? '±' : sign < 0 ? '−' : '+'}
-            {lo === hi ? `${lo}%` : `${lo}–${hi}%`} · {L('next 6 months', 'önümüzdeki 6 ay')}
-          </em>
-        </div>
-        {waitLabel && <span className={`aic-price-cta ${wait}`}>{waitLabel}</span>}
-      </div>
-
-      {/* Grafik TEMBEL kalir: kendi yuku artik kucuk (elle SVG, recharts
-          kaldirildi) ama analiz sayfalarinin cogunda hic cizilmiyor. */}
-      <Suspense fallback={<div className="aic-rc aic-rc-loading" aria-hidden="true" />}>
-        <PriceChart data={data} color={col} bestIndex={bestIdx} L={L} reduced={reduced} />
-      </Suspense>
-
-      <div className="aic-price-facts">
-        <span className="aic-price-range">
-          <i aria-hidden="true">🎯</i>{L('In 6 months', '6 ay sonra')}
-          <b style={{ color: col }}>{`${yuzde(son.bant[0])} … ${yuzde(son.bant[1])}`}</b>
-        </span>
-        {outlook.bestTime && (
-          <span><i aria-hidden="true">🗓</i>{L('Best window', 'En iyi pencere')}<b>{outlook.bestTime}</b></span>
-        )}
-        {outlook.expectedChange && (
-          <span><i aria-hidden="true">📉</i>{L('Expected change', 'Beklenen değişim')}<b>{outlook.expectedChange}</b></span>
-        )}
-      </div>
-      <p className="aic-price-note">
-        {bugunFiyat
-          ? `${L('Today', 'Bugün')}: ${bugunFiyat} · ${L('the curve shows percentage change, not a per-month price.', 'eğri yüzde değişimi gösterir, aylık fiyat değil.')} `
-          : ''}
-        {L('An AI estimate, not a price guarantee.', 'AI tahminidir, fiyat garantisi değildir.')}
-      </p>
-    </div>
+    <Suspense fallback={<div className="po po-yer" aria-hidden="true" />}>
+      <PriceOutlook
+        outlook={outlook} price={price} currency={currency} lang={lang} L={L}
+        lo={lo} hi={hi} color={col} trend={trend}
+      />
+    </Suspense>
   );
 }

@@ -133,8 +133,26 @@ export function analysisReport(rec, lang) {
  * Yani `{}` daima "var" demektir. Iki tarafi birden degistirmeden buraya
  * icerik sarti EKLEME.
  */
+
 export function analysisLangs(rec) {
   return ['tr', 'en'].filter((l) => obj(rec?.[`report_${l}`]));
+}
+
+/**
+ * DUYGU HARITASI. Rapor JSON'unun kokunde `paragraphSentiment` alani durur:
+ *   { "<paragraf anahtari>": "positive" | "negative" }
+ * Yeni analizlerde AI yazar, eski kayitlar scripts/sentiment_backfill.mjs
+ * ile bir kez etiketlendi. Notr etiket SAKLANMAZ (varsayilan zaten notr).
+ *
+ * Dile gore ayri: Turkce ve Ingilizce rapor AYRI metinlerdir, dolayisiyla
+ * ayri anahtar kumeleri tasirlar.
+ */
+export function analysisSentimentIndex(rec, lang) {
+  const raw = analysisReport(rec, lang);
+  const m = raw && typeof raw === 'object'
+    ? (raw.paragraphSentiment || raw.product?.paragraphSentiment)
+    : null;
+  return m && typeof m === 'object' ? m : null;
 }
 
 /**
