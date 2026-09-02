@@ -22,6 +22,11 @@ import { paragraphKey } from '../web/src/lib/sentiment.js';
 // AYNI BOLUCU: on yuz de bunu kullanir (components/AiCharts.jsx).
 // Metni farkli bolersek etiket anahtarlari hic tutmaz — olculdu 2026-09-02.
 import { proseBlocks } from '../web/src/lib/prose.js';
+// ON YUZ RAPORU `cleanProductCodes`'tan GECIREREK ciziyor
+// (lib/analysisRecord.js -> analysisReport). Goc ham kayittan okuyunca
+// metinler ayrisiyor ve anahtarlar tutmuyordu: ekrandaki 15 paragrafin
+// yalnizca 2'si eslesti (olculdu 2026-09-02). Ayni temizlik burada da.
+import { cleanProductCodes } from '../web/src/lib/aiPrompts.js';
 
 const YAZ = process.argv.includes('--yaz');
 const SLUG = (process.argv.find((a) => a.startsWith('--slug=')) || '').split('=')[1] || '';
@@ -93,8 +98,10 @@ const main = async () => {
   for (const a of kayitlar) {
     const yama = {};
     for (const lang of ['tr', 'en']) {
-      const rapor = a[`report_${lang}`];
-      if (!rapor || typeof rapor !== 'object') continue;
+      const ham = a[`report_${lang}`];
+      if (!ham || typeof ham !== 'object') continue;
+      // EKRANDAKI METIN = temizlenmis metin. Anahtar ondan turemeli.
+      const rapor = cleanProductCodes(ham);
       if (!process.argv.includes('--zorla') && rapor.paragraphSentiment && Object.keys(rapor.paragraphSentiment).length) {
         console.log(`  · ${a.slug} [${lang}] zaten etiketli, atlandi`);
         continue;
@@ -102,7 +109,13 @@ const main = async () => {
       const paragraflar = [...new Set(paragraflariTopla(rapor))];
       if (!paragraflar.length) continue;
       toplamPar += paragraflar.length;
-      const etiketler = await etiketle(paragraflar);
+      // SINIFLANDIRICIYA ILK CUMLE GIDER, tam paragraf DEGIL.
+      // Etiket zaten ilk cumleye ait ve anahtar da ondan turuyor; tam
+      // paragraf gonderince model sonraki cumlelerden etkilenip kayiyordu
+      // ("512 GB ... fazlasiyla yeterli" NEGATIF cikti). Fixture testi de
+      // tek cumleyle kosuyor — girdi sekli artik testle AYNI.
+      const ilkCumleler = paragraflar.map((t) => t.split(/(?<=[.!?])\s+/)[0] || t);
+      const etiketler = await etiketle(ilkCumleler);
       const harita = {};
       paragraflar.forEach((p, i) => {
         // NOTR SAKLANMAZ: varsayilan zaten notr, haritayi sismenin anlami yok.
@@ -113,7 +126,9 @@ const main = async () => {
       const p = etiketler.filter((x) => x === 'positive').length;
       const n = etiketler.filter((x) => x === 'negative').length;
       console.log(`  · ${a.slug} [${lang}] ${paragraflar.length} paragraf → +${p} / −${n} / ${paragraflar.length - p - n} nötr`);
-      yama[`report_${lang}`] = { ...rapor, paragraphSentiment: harita };
+      // KAYDA HAM RAPOR YAZILIR (temizlik okuma aninda yapiliyor);
+      // yalnizca duygu haritasi eklenir.
+      yama[`report_${lang}`] = { ...ham, paragraphSentiment: harita };
     }
     // KAYITLAR ARASI NEFES. Bir kayit ~5 AI cagrisi; arka arkaya gidince
     // dakikalik kota penceresi doluyor ve goc ortada oluyordu.
