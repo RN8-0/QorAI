@@ -88,6 +88,39 @@ const DEFAULT_IMG = `${SITE}/assets/qor_logo_512.png?v=20260605a`;
 const INDEXNOW_KEY = '2c03809d550d2c5ae87a65ed1f0fcd1e';
 const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  INCE SAYFALAR DIZINDEN CIKARILDI (2026-09-02)  —  TEK ANAHTAR
+//
+//  `true` yapmak eski davranisi (urun+karsilastirma indexlenir) aynen geri
+//  getirir. Baska hicbir yeri degistirmeye gerek yok.
+//
+//  NEDEN:
+//  Olculdu 2026-09-02 — sitemap 8.138 adres:
+//     urun          7.508  (%92,3)   on-render medyan  150 kelime
+//     karsilastirma   450  (%5,5)    on-render medyan  176 kelime
+//     kategori         92             medyan  576
+//     analiz           46             medyan 2.781
+//     blog             22             medyan 1.700 (blok duzeltmesinden sonra)
+//  Yani Google'in gordugu sayfalarin %97,8'i sablon cumle + Epey'den kazinmis
+//  spec tablosu. O tablo zaten Epey'de var: bilgi kazanci SIFIR. AdSense bu
+//  siteyi UC KEZ "dusuk degerli icerik" diye reddetti ve reddedilen sey
+//  analizler degil, bu orandi.
+//
+//  `noindex, follow` SECILDI, `Disallow` DEGIL:
+//    - robots.txt ile engellemek sayfayi dizinden CIKARMAZ (Google adresi
+//      baska yerden gorurse metinsiz indexler) ve ic linkleri de olduren
+//      bir yontemdir.
+//    - `follow` sayesinde urun sayfalarindaki analiz/kategori linkleri hala
+//      taranir; link degeri akmaya devam eder.
+//    - Sayfalar 200 donmeye devam eder: kullanici, uygulama, affiliate ve
+//      site ici arama hicbir sey kaybetmez. Yalnizca arama dizininden cikar.
+//
+//  SITEMAP: noindex bir adresi sitemap'te birakmak GSC'de "Gonderilen URL
+//  noindex olarak isaretlenmis" HATASI uretir. Bu yuzden ayni anahtar
+//  sitemap'ten de dusuruyor.
+// ═══════════════════════════════════════════════════════════════════════════
+const SEO_INDEX_THIN = process.env.SEO_INDEX_THIN === '1';
+
 // Published blog articles (public read — listRule is status="published"). Drives
 // the prerendered /blog listing + /blog/<slug> article pages.
 // Yayinlanmis URUN ANALIZLERI (public read — listRule status="published").
@@ -1590,6 +1623,8 @@ function compareSeo(a, b, label, lang = SEO_DEFAULT_LOCALE) {
   };
   return {
     title, description, url, lang, image: imgA, imageAlt: `${na} vs ${nb}`, type: 'website',
+    // Ince sayfa: dizin disi ama takip edilir (bkz. SEO_INDEX_THIN).
+    noindex: !SEO_INDEX_THIN,
     jsonLd: { '@context': 'https://schema.org', '@graph': [webPage, itemList, breadcrumb] },
   };
 }
@@ -1738,6 +1773,8 @@ function productSeo(d, label, keySpecs = null, lang = SEO_DEFAULT_LOCALE, price 
   }
   return {
     title, description, url, lang, image: img, imageAlt: dispName, type: 'product',
+    // Ince sayfa: dizin disi ama takip edilir (bkz. SEO_INDEX_THIN).
+    noindex: !SEO_INDEX_THIN,
     jsonLd: { '@context': 'https://schema.org', '@graph': graph },
   };
 }
@@ -3747,7 +3784,13 @@ async function main() {
       priority: l === SEO_DEFAULT_LOCALE ? '0.5' : '0.4',
     }));
   });
-  const allUrls = [...routeUrls, ...categoryUrls, ...productUrls, ...compareUrls, ...blogUrls, ...analizUrls];
+  // noindex adres sitemap'te DURMAZ: GSC "Gonderilen URL noindex olarak
+  // isaretlenmis" hatasi verir ve tarama butcesini bos yere yakar.
+  const inceUrls = SEO_INDEX_THIN ? [...productUrls, ...compareUrls] : [];
+  const allUrls = [...routeUrls, ...categoryUrls, ...inceUrls, ...blogUrls, ...analizUrls];
+  if (!SEO_INDEX_THIN) {
+    console.log(`[seo] ince sayfalar dizin disi: ${productUrls.length} urun + ${compareUrls.length} karsilastirma adresi noindex+sitemap disi (geri almak: SEO_INDEX_THIN=1)`);
+  }
 
   const renderUrlset = (items) =>
     '<?xml version="1.0" encoding="UTF-8"?>\n'

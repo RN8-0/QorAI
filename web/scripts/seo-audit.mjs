@@ -68,14 +68,32 @@ function main() {
     'empty /product placeholder must be noindex',
   );
 
+  // ── URUN SAYFALARININ DIZIN DURUMU ────────────────────────────────────────
+  // 2026-09-02'ye kadar burada "urun sayfasi indexlenebilir OLMALI" yaziyordu.
+  // O gun karar tersine dondu: 7.508 urun + 450 karsilastirma adresi
+  // `noindex, follow` yapildi (gerekce seo.mjs -> SEO_INDEX_THIN blogunda).
+  //
+  // Kontrol KALDIRILMADI, anahtara bagli hale getirildi: hangi mod secilirse
+  // secilsin, TERSI bir kayma hata verir. Yani bu satir hala bir kaza
+  // yakalayicisi — yalnizca beklenen deger degisti.
+  const INDEX_THIN = process.env.SEO_INDEX_THIN === '1';
   const realProductDirs = sampleDirs('product', 3);
   assert(realProductDirs.length > 0, 'no prerendered product pages found');
   for (const dir of realProductDirs) {
     const shell = read(`${dir}/index.html`);
-    assert(!/<meta name="robots" content="noindex/i.test(shell), `${dir} must be indexable`);
-    assert(/max-image-preview:large/.test(shell), `${dir} must allow large image previews`);
+    const noindexli = /<meta name="robots" content="noindex/i.test(shell);
+    if (INDEX_THIN) {
+      assert(!noindexli, `${dir} must be indexable (SEO_INDEX_THIN=1)`);
+      assert(/max-image-preview:large/.test(shell), `${dir} must allow large image previews`);
+    } else {
+      assert(noindexli, `${dir} noindex OLMALI — ince sayfa dizin disi birakildi`);
+      assert(/noindex, follow/i.test(shell), `${dir} 'follow' KAYBOLMUS — ic linkler taranamaz olur`);
+    }
+    // Govde her iki modda da dolu olmali: sayfa kullaniciya ve app'e hizmet
+    // vermeye devam ediyor, yalnizca arama dizininden cikti.
     assert(rootBody(shell).length > 200, `${dir} prerender body is missing or too small`);
   }
+
 
   // ── uniqueness guard ──────────────────────────────────────────────────────
   // The nightly cron runs seo.mjs without a vite build; a template-sanitisation
@@ -216,6 +234,9 @@ function main() {
   const files = sitemapFiles(sitemapIndex);
   let total = 0;
   let product = 0;
+  let compareUrl = 0;
+  let analizUrl = 0;
+  let blogUrl = 0;
   let category = 0;
   let badAmp = 0;
   let todayStamps = 0;
@@ -224,14 +245,33 @@ function main() {
   for (const file of files) {
     const xml = read(file);
     total += [...xml.matchAll(/<url>/g)].length;
-    product += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/product\//g)].length;
+    product += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/(?:tr\/)?product\//g)].length;
+    compareUrl += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/(?:tr\/)?compare\//g)].length;
+    analizUrl += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/(?:tr\/)?analiz\/[a-z0-9]/g)].length;
+    blogUrl += [...xml.matchAll(/<loc>https:\/\/qorai\.net\/(?:tr\/)?blog\/[a-z0-9]/g)].length;
     category += [...xml.matchAll(/\/category\/[a-z0-9]/g)].length;
     badAmp += [...xml.matchAll(/<loc>[^<]*&(?!(?:amp|lt|gt|quot|apos);)[^<]*<\/loc>/g)].length;
     todayStamps += [...xml.matchAll(new RegExp(`<lastmod>${today}</lastmod>`, 'g'))].length;
   }
 
-  assert(total > minProductUrls, `sitemap has too few URLs (${total})`);
-  assert(product >= minProductUrls, `sitemap has too few product URLs (${product})`);
+  // ── SITEMAP BEKLENTISI ANAHTARA BAGLI ─────────────────────────────────────
+  // SEO_INDEX_THIN=1 : eski davranis — sitemap urun adresleriyle dolu olmali.
+  // varsayilan       : urun/karsilastirma noindex, dolayisiyla sitemap'te
+  //                    SIFIR tane olmali. noindex adresi sitemap'te birakmak
+  //                    GSC'de "Gonderilen URL noindex olarak isaretlenmis"
+  //                    hatasi uretir.
+  if (INDEX_THIN) {
+    assert(total > minProductUrls, `sitemap has too few URLs (${total})`);
+    assert(product >= minProductUrls, `sitemap has too few product URLs (${product})`);
+  } else {
+    assert(product === 0, `sitemap'te ${product} urun adresi var ama hepsi noindex — GSC hatasi uretir`);
+    assert(compareUrl === 0, `sitemap'te ${compareUrl} karsilastirma adresi var ama hepsi noindex`);
+    // Dizinde kalan kume: kategori + blog + analiz + statik. Bunun cok
+    // dusmesi ic linklerin ya da bir uretim adiminin koptugu anlamina gelir.
+    assert(total >= 120, `sitemap cok kucuk (${total}) — analiz/blog/kategori uretimi kopmus olabilir`);
+    assert(analizUrl >= 20, `sitemap'te yalnizca ${analizUrl} analiz adresi var`);
+    assert(blogUrl >= 15, `sitemap'te yalnizca ${blogUrl} blog adresi var`);
+  }
   assert(category >= 10, `sitemap has too few category URLs (${category})`);
   assert(badAmp === 0, 'sitemap contains unescaped ampersands');
   // lastmod must reflect real content changes. If most of the sitemap is stamped
