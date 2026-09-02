@@ -268,9 +268,21 @@ function main() {
     assert(compareUrl === 0, `sitemap'te ${compareUrl} karsilastirma adresi var ama hepsi noindex`);
     // Dizinde kalan kume: kategori + blog + analiz + statik. Bunun cok
     // dusmesi ic linklerin ya da bir uretim adiminin koptugu anlamina gelir.
-    assert(total >= 120, `sitemap cok kucuk (${total}) — analiz/blog/kategori uretimi kopmus olabilir`);
-    assert(analizUrl >= 20, `sitemap'te yalnizca ${analizUrl} analiz adresi var`);
-    assert(blogUrl >= 15, `sitemap'te yalnizca ${blogUrl} blog adresi var`);
+    // ── ICERIK HACMINE SABIT TABAN KOYMA ────────────────────────────────
+    // Ilk yazimda burada `analizUrl >= 20` ve `blogUrl >= 15` vardi. O sayilar
+    // O GUNKU icerik hacmiydi, bir DOGRULUK olcusu degil: 2026-09-02'de
+    // kullanici 23 analizin hepsini yeniden uretmek icin sildi ve denetim
+    // aninda kirmizi yandi — yani gece cron'u, ortada hicbir teknik hata
+    // yokken calismayi birakacakti. Denetim kullanicinin icerik kararini
+    // veto edemez.
+    //
+    // Taban artik icerikten BAGIMSIZ olan kumede: kategori kabuklari (90) +
+    // statik rotalar. Bunlar uretim adimlari kopmadikca hep uretilir, yani
+    // gercek bir kopmayi yakalar; analiz/blog sayisi 0 olabilir ve bu
+    // gecerli bir durumdur.
+    assert(total >= 100, `sitemap cok kucuk (${total}) — kategori/statik uretimi kopmus olabilir`);
+    if (analizUrl === 0) console.log('[seo-audit] not: sitemapte analiz adresi yok (yayinda analiz bulunmuyor)');
+    if (blogUrl === 0) console.log('[seo-audit] not: sitemapte blog adresi yok');
   }
   assert(category >= 10, `sitemap has too few category URLs (${category})`);
   assert(badAmp === 0, 'sitemap contains unescaped ampersands');

@@ -120,7 +120,13 @@ export default function Header() {
         <div className="container appbar-inner">
           <Link to="/" className="brand" onClick={() => setDrawer(false)}>
             <img src="/assets/qor_logo_144.png?v=20260814a" alt="Qor AI" />
-            {isPremium
+            {/* MARKA HER ZAMAN "Qor AI".
+                Premium kullanicida site adi "Premium" ile DEGISTIRILIYORDU:
+                ust barda sitenin kendi adi kayboluyordu. Premium satisa
+                kapaliyken bu ayrica bir kalinti — kapali bir urunun adini
+                logonun yerine yazmak. `routeOpen('/premium')` tek anahtar:
+                Premium geri acilirsa rozet de geri gelir. */}
+            {isPremium && routeOpen('/premium')
               ? <span className="wm wm-premium">Premium</span>
               : <span className="wm">Qor<b className="grad-text"> AI</b></span>}
           </Link>

@@ -21,7 +21,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { getProduct } from '../lib/typesense';
 import {
-  AMAZON_ONELINK_COUNTRIES, amazonGoPath, countryDisplayName, formatPriceAmount, priceForCountry,
+  amazonGoPath, formatPriceAmount, priceForCountry,
 } from '../lib/format';
 import { fetchProductOffers } from '../lib/offers';
 import OfferList from '../components/OfferList.jsx';
@@ -50,10 +50,6 @@ import './Analyses.css';
 // CSS'ini kendisi import etmiyor; kullanan SAYFA import eder.
 import './LinkAnalysis.css';
 
-const FLAG = {
-  TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸',
-  NL: '🇳🇱', PL: '🇵🇱', SE: '🇸🇪', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦',
-};
 
 export default function AnalysisPost() {
   const { slug } = useParams();
@@ -127,12 +123,11 @@ export default function AnalysisPost() {
   const [urun, setUrun] = useState(null);
   const [teklifler, setTeklifler] = useState([]);
   const geoCountry = useGeoCountry();
-  // ── TESLIMAT ULKESI ───────────────────────────────────────────────────────
-  // Urun sayfasindaki `priceCountry` ile AYNI kalip: secim YERELDIR, sitenin
-  // geo'sunu degistirmez (baska sayfaya gecince ziyaretcinin kendi pazarina
-  // doner). Bos oldugu surece tespit edilen geo kullanilir.
-  const [ulkeSecim, setUlkeSecim] = useState('');
-  const ulke = String(ulkeSecim || geoCountry || '').toUpperCase();
+  // ── FIYATIN ULKESI ────────────────────────────────────────────────────────
+  // TEK KAYNAK: ziyaretcinin baglandigi ulke. Elle secici 2026-09-02'de
+  // kaldirildi — urun sayfasinda da kaldirildi, iki sayfa ayni kurali
+  // konusuyor. Amazon linki de ayni ulkenin vitrinine gider.
+  const ulke = String(geoCountry || '').toUpperCase();
   useEffect(() => {
     let live = true;
     const pid = a && a.productId ? String(a.productId) : '';
@@ -307,32 +302,10 @@ export default function AnalysisPost() {
             fiyati gormek icin butun analizi kaydirmak zorundaydi. Kompakt
             surum (`compact`) dikeyde yer kaplamasin diye. Ulke secici urun
             sayfasindakiyle AYNI kaynaktan besleniyor. */}
-        {teklifler.length > 0 && (() => {
-          // Bu URUN icin gercekten teklifi olan ulkeler + Amazon vitrinleri +
-          // ziyaretcinin pazari. Urun sayfasindaki listeyle ayni kaynak; her
-          // ulkeyi listelemek yanlis olurdu — teklifi olmayan ulke secilince
-          // liste bos kalir (kural: baska ulkenin fiyati GOSTERILMEZ).
-          const teklifUlkeleri = [...new Set(teklifler
-            .map((o) => String(o.country || '').toUpperCase()).filter(Boolean))];
-          const ulkeSecenekleri = [...new Set([
-            ulke, geoCountry.toUpperCase(), ...AMAZON_ONELINK_COUNTRIES, ...teklifUlkeleri,
-          ].filter(Boolean))];
-          return (
+        {teklifler.length > 0 && (
           <section className="an-offers">
             <div className="an-offers-head">
               <h2>{L('Where to buy', 'Nereden alınır')}</h2>
-              <label className="an-ship">
-                <span className="an-ship-lbl">📍 {L('Ship to', 'Teslimat')}</span>
-                <select
-                  className="an-ship-sel"
-                  value={ulke}
-                  onChange={(e) => setUlkeSecim(e.target.value)}
-                >
-                  {ulkeSecenekleri.map((c) => (
-                    <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${countryDisplayName(c, lang)}`}</option>
-                  ))}
-                </select>
-              </label>
             </div>
             <OfferList
               offers={teklifler}
@@ -343,8 +316,7 @@ export default function AnalysisPost() {
               amazonHref={urun ? amazonGoPath(urun, ulke) : ''}
             />
           </section>
-          );
-        })()}
+        )}
 
         {/* ANALIZI URETEN QUIZ — RAPORUN USTUNDE.
             Okuyucu quizi cozmedi; "92/100 uyum" kimin uyumu oldugu

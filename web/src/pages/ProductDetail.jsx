@@ -16,7 +16,7 @@ import { pb } from '../lib/pocketbase';
 import { getSavedProductAnalysis, saveProductAnalysisHistory } from '../lib/pbHistory';
 import { getRecentProducts } from '../lib/recentViewed';
 import { useI18n } from '../i18n/index.jsx';
-import { AMAZON_ONELINK_COUNTRIES, amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, countryDisplayName, keySpecChips, priceForCountry } from '../lib/format';
+import { amazonUrlForProduct, amazonGoPath, catMeta, categoryLabel, keySpecChips, priceForCountry } from '../lib/format';
 import { useGeoCountry } from '../lib/geo';
 import { bestOfferForLang, fetchProductOffers, formatOfferPrice, offerClickPath } from '../lib/offers';
 import OfferList, { sortedOffers } from '../components/OfferList.jsx';
@@ -625,25 +625,18 @@ export default function ProductDetail() {
   const [offersLoading, setOffersLoading] = useState(false);
   const [compareBase, setCompareBase] = useState(null);
   const [compareMsg, setCompareMsg] = useState('');
-  // Ship-to country for the price list. Defaults to the IP-detected country but
-  // the visitor can override it (e.g. someone in TR comparing the DE price, or
-  // when the cached geo lags behind a VPN). '' until the user picks / geo loads.
-  const [priceCountry, setPriceCountry] = useState('');
-  const priceCountryTouched = useRef(false);
+  // ── ULKE SECICI KALDIRILDI (2026-09-02) ──────────────────────────────────
+  // Fiyatin ulkesi ARTIK TEK KAYNAKTAN gelir: ziyaretcinin baglandigi ulke
+  // (lib/geo.js -> useGeoCountry). Elle secim yoktu sayilir — okuyucunun
+  // %99'u kendi pazarinin fiyatini ariyor — ama secici her sayfada yer
+  // kapliyor ve "hangi fiyat benim icin gecerli" sorusunu doguruyordu.
+  // Amazon linki de ayni ulkenin vitrinine gider (amazonGoPath).
 
   // One consolidated AI analysis: a single API call returns all five sections
   // (deep, alternatives, advisor, prediction, forum). The user is charged once
   // (detail_ai_full = 3 Qor Coins, free/unlimited on Premium).
   const [aiFull, setAiFull] = useState({ phase: 'idle', busy: false, notice: '', data: null, questions: [] });
   const aiUserKeyRef = useRef('');
-
-  // Seed the ship-to country from the detected geo once it resolves, unless the
-  // visitor has already picked one manually.
-  useEffect(() => {
-    if (priceCountryTouched.current) return;
-    const cc = String(geoCountry || '').toUpperCase();
-    if (cc) setPriceCountry(cc);
-  }, [geoCountry]);
 
   const [similar, setSimilar] = useState([]);
   const [variants, setVariants] = useState([]);
@@ -1224,54 +1217,19 @@ export default function ProductDetail() {
         {/* Detail flow: prices → variants → specs/AI tabs → reviews */}
         <div className="pd-detail-flow">
           {(() => {
-            // Countries that actually have a retailer offer for this product
-            // (Amazon excluded — it has its own geo link), plus the visitor's
-            // detected geo, so the ship-to selector always lists somewhere useful.
-            const offerCountries = [...new Set(
-              offers
-                .filter((o) => o.url && String(o.network || '').toLowerCase() !== 'amazon' && !/(^|\.)amazon\./i.test(o.url))
-                .map((o) => String(o.country || '').toUpperCase())
-                .filter(Boolean),
-            )];
-            const sel = String(priceCountry || geoCountry || 'US').toUpperCase();
-            // Always offer a stable base list (so TR never disappears after the
-            // user switches to DE), plus the detected geo and any country that
-            // actually has an offer for this product.
-            const FLAG = { TR: '🇹🇷', DE: '🇩🇪', GB: '🇬🇧', US: '🇺🇸', FR: '🇫🇷', IT: '🇮🇹', ES: '🇪🇸', NL: '🇳🇱', PL: '🇵🇱', SE: '🇸🇪', AT: '🇦🇹', CH: '🇨🇭', BE: '🇧🇪', CA: '🇨🇦' };
-            // Every Amazon storefront the OneLink store earns from, plus the
-            // detected geo and any country with a retailer offer.
-            const countryOptions = [...new Set([
-              String(geoCountry || '').toUpperCase(),
-              ...AMAZON_ONELINK_COUNTRIES,
-              ...offerCountries,
-              sel,
-            ].filter(Boolean))];
-
-            const amazonUrl = amazonUrlForProduct(p, sel || 'US');
+            // Fiyatin ulkesi TEK KAYNAKTAN: ziyaretcinin baglandigi ulke.
+            // Secici kaldirildi (2026-09-02) — Amazon linki de ayni ulkenin
+            // vitrinine gider, dolayisiyla sayfada tek bir pazar konusuluyor.
+            const sel = String(geoCountry || 'US').toUpperCase();
+            const amazonUrl = amazonUrlForProduct(p, sel);
             // Liste mantigi + gorunumu PAYLASILAN bilesende (components/OfferList.jsx):
             // urun sayfasi ve karsilastirma sayfasi AYNI kodu kullanir.
             const priceRows = sortedOffers(offers, sel);
-            if (!amazonUrl && priceRows.length === 0 && countryOptions.length <= 1) return null;
+            if (!amazonUrl && priceRows.length === 0) return null;
             return (
               <section className="pd-block">
-                {/* Title + ship-to selector on one aligned row (selector right,
-                    not floating alone in the centre). */}
                 <div className="pd-prices-head">
                   <h2 className="pd-block-title pd-block-title-inline">{L('Prices', 'Fiyatlar')}</h2>
-                  {countryOptions.length > 0 && (
-                    <label className="pd-ship-to">
-                      <span className="pd-ship-to-lbl">📍 {L('Ship to', 'Teslimat')}</span>
-                      <select
-                        className="pd-ship-to-sel"
-                        value={sel}
-                        onChange={(e) => { priceCountryTouched.current = true; setPriceCountry(e.target.value); }}
-                      >
-                        {countryOptions.map((c) => (
-                          <option key={c} value={c}>{`${FLAG[c] || '🌍'} ${countryDisplayName(c, lang)}`}</option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
                 </div>
                 <OfferList
                   offers={offers}

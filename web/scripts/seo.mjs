@@ -3761,7 +3761,20 @@ async function main() {
   for (const [cat, picked] of [...curatedByCat.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const p = categoryPath(cat);
     if (!p) continue;
-    const lastmod = lastmodFromTs(Math.max(0, ...picked.map(prodTs)));
+    // ── KATEGORI lastmod: SEO_CONTENT_VERSION, urun zaman damgasi DEGIL ─────
+    // ONCEDEN `max(prodTs)` idi ve prodTs = `updatedAtTs`, yani "kayda EN SON
+    // DOKUNAN IS". Gece fiyat kosusu her urune dokundugu icin bu deger fiilen
+    // HER GUN bugune kayiyordu — kategori sayfasinin metni degismemis olsa
+    // bile. Yani lastmod gercek bir degisim sinyali degil, gurultuydu.
+    //
+    // Sorun 8.138 adreslik sitemap'te GORUNMUYORDU: 7.508 urun adresi eski
+    // tarihlerle orani seyreltiyordu. Ince sayfalar dizinden cikinca kategori
+    // adresleri cogunluga gecti ve denetim churn'u yakaladi (78/132).
+    //
+    // Kategori kabugunun ICERIGI kurasyon + sablondan olusur; ikisi de
+    // SEO_CONTENT_VERSION ile surumleniyor. Dogru sinyal bu: build tekrar
+    // kossa bile ILERLEMEZ, yalnizca icerik gercekten degisince degisir.
+    const lastmod = SEO_CONTENT_VERSION;
     categoryUrls.push({ loc: `${SITE}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
     for (const l of SEO_LOCALES.filter((x) => x !== SEO_DEFAULT_LOCALE)) categoryUrls.push({ loc: `${SITE}/${l}${p}`, lastmod, changefreq: 'weekly', priority: '0.8' });
   }

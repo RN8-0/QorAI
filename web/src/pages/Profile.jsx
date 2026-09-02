@@ -183,7 +183,13 @@ function Overview({ user, t }) {
     ? new Date(prem.expiresAt).toLocaleDateString()
     : '';
 
-  if (prem.isPremium) {
+  // PREMIUM KARTI SITE MODUNA BAGLI.
+  // Ucretsiz kullanicinin gordugu upsell zaten `routeOpen('/premium')` ile
+  // gizlenmisti; ZATEN PREMIUM olan kullanicinin karti gizlenmemisti. Sonuc:
+  // Premium siteden kaldirilmis olmasina ragmen profilde "Premium member ·
+  // 27.04.2027'ye kadar aktif" karti duruyordu. Ayni anahtar ikisini de
+  // yonetir — Premium geri acilinca kart da geri gelir.
+  if (prem.isPremium && routeOpen('/premium')) {
     return (
       <div className="fade-up">
         <div className="pf-card pf-premium">
@@ -286,7 +292,10 @@ function AccountTab({ user, t }) {
   return (
     <div className="fade-up">
       <RegionSetting user={user} />
-      <SubscriptionSetting user={user} />
+      {/* Abonelik yonetimi de Premium'a bagli: satis kapaliyken "aboneligi
+          iptal et" karti gosterecek bir sey yok. Mevcut aboneler Play ya da
+          Polar uzerinden yonetmeye devam edebilir. */}
+      {routeOpen('/premium') && <SubscriptionSetting user={user} />}
       <DangerZone user={user} t={t} />
     </div>
   );
