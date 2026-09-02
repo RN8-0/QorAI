@@ -1930,11 +1930,20 @@ KURALLAR:
   // Sitenin ne olduğu — her prompt'un başına giden tek cümlelik kimlik.
   // CLAUDE.md'deki "subject and tone" bölümünün karşılığı; buradan sapan bir
   // konu önerisi siteye ait değildir.
-  const KONSEPT = 'Qor AI (qorai.net): Türk ve İngilizce okuyan alışverişçiler için '
-    + 'yapay zekâ destekli ürün karşılaştırma kataloğu. Teknik ve kanıt önce; '
-    + 'asla satış dili değil — her iddia okuyucunun doğrulayabileceği bir sayı. '
-    + 'Katalog ağırlıklı telefon, laptop, tablet, kulaklık, monitör, TV, akıllı '
-    + 'saat, oyun konsolu, robot süpürge. Fiyatlar Türkiye pazarı (TL).';
+  /* SITE GLOBAL. Kok adres (`/`) INGILIZCE servis ediliyor ve Turkce
+     `/tr/` altinda; yani okuyucularin cogu Turkiye disinda.
+     Onceki metin "Fiyatlar Turkiye pazari (TL)" diyordu ve konu sihirbazi
+     bunu harfiyen uyguluyordu: "Turkiye'de satisa sunuldu", "Turkiye pazari
+     ozelinde doviz kuru" gibi basliklar uretiyordu. Kullanicinin tespiti:
+     "amerikadaki adam turkiyeye google pixel 10 gelecekmis ne yapsin".
+     Dogru. Konu KURESEL olmali; fiyat baglami varsa USD/EUR/GBP uzerinden
+     ve gerekiyorsa TR'ye AYRICA deginilir, tersi degil. */
+  const KONSEPT = 'Qor AI (qorai.net): a global, AI-assisted product comparison '
+    + 'catalogue. Primary audience reads ENGLISH (site root is English); a Turkish '
+    + 'edition exists at /tr as a translation. Technical and evidence-first, never '
+    + 'salesy — every claim is a number the reader can check. Catalogue covers '
+    + 'phones, laptops, tablets, headphones, monitors, TVs, smartwatches, game '
+    + 'consoles and robot vacuums.';
 
   let _konular = null;      // sihirbazın döndürdüğü konu listesi
   let _konuYukleniyor = false;
@@ -1979,8 +1988,12 @@ KURALLAR:
   function renderTopicBody() {
     const b = document.getElementById('be_topic_body'); if (!b) return;
     if (_konuYukleniyor) {
-      b.innerHTML = `<p style="opacity:.75;line-height:1.7">Google araması yapılıyor ve konular sıralanıyor…<br>
-        <span style="opacity:.6;font-size:13px">Bu adım güncel aramayı kullanır ve istek başına ücretlidir — bir kez koşturup listeyi biriktir.</span></p>`;
+      // Panel `aiIlerlemeYaz` tarafindan buraya eklenir; burada yalnizca
+      // aciklama satiri durur, yoksa iki kez cizilirdi.
+      b.innerHTML = `<p style="opacity:.6;font-size:13px;line-height:1.7">
+        Bu adım canlı Google aramasını kullanır ve <b>istek başına</b> ücretlidir —
+        bir kez koşturup 15-20 konuyu biriktir, her yazı için tekrar çalıştırma.</p>`;
+      aiIlerlemeYaz();
       return;
     }
     if (!_konular) {
@@ -2036,7 +2049,8 @@ ${mevcutBasliklar().map((t) => `- ${t}`).join('\n') || '- (henüz yok)'}
 ${hint ? `\nKULLANICININ VERDİĞİ YÖN: ${hint}\n` : ''}
 SADECE geçerli JSON döndür, başka hiçbir şey yazma:
 {"topics":[{
-  "title":"<Türkçe yazı başlığı — merak uyandıran ama abartısız, 45-70 karakter>",
+  "title":"<English article title — specific and curious but not clickbait, 45-70 characters>",
+  "title_tr":"<same title in Turkish, natural not translated-sounding>",
   "angle":"<bu yazı ötekilerden NEYLE ayrışıyor: 1-2 cümle>",
   "why":"<neden ŞİMDİ: aramada bulduğun somut olay/tarih/fiyat hareketi>",
   "intent":"<bilgi arama|karşılaştırma|satın alma|sorun çözme>",
@@ -2046,7 +2060,16 @@ SADECE geçerli JSON döndür, başka hiçbir şey yazma:
 
 KURALLAR:
 - Konular sitenin kategorilerinde OLMALI (telefon, laptop, tablet, kulaklık, monitör, TV, akıllı saat, konsol, robot süpürge).
-- Fiyat/pazar bağlamı TÜRKİYE olmalı.
+- KONU KÜRESEL OLMALI. Sitenin kök adresi İNGİLİZCE ve okuyucuların çoğu
+  Türkiye dışında. "X ürünü Türkiye'de satışa sunuldu", "Türkiye fiyatı",
+  "döviz kuru etkisi" gibi TEK ÜLKEYE ait konular ÖNERME — Amerika'daki ya da
+  Almanya'daki okuyucu için hiçbir şey ifade etmez.
+  Fiyattan söz edeceksen USD/EUR/GBP üzerinden ve küresel bir hareket olarak
+  söz et (üretici zammı, bellek maliyeti, lansman fiyatı). Bir konu YALNIZCA
+  tek bir ülkede anlamlıysa o konu bu site için yanlıştır.
+- Aramayı İNGİLİZCE sorgularla yap; küresel kaynaklara (Reddit, The Verge,
+  Ars Technica, Notebookcheck, GSMArena, RTINGS, uluslararası YouTube
+  incelemeleri) ulaşman gerekiyor. Yerel haber sitelerini kaynak alma.
 - "why" alanına aramada gerçekten gördüğün bir şey yaz; bulamadıysan o konuyu ÖNERME.
 - Tıklama tuzağı başlık yazma; sayı veren, somut başlık yaz.
 - KANIT TAZE OLMALI. Arama sana ESKİ haberleri de getirir; ${bugun} tarihinden
@@ -2054,13 +2077,25 @@ KURALLAR:
   kaynak "2024 sonunda çıkacak" gibi geçmişte kalmış bir beklentiden söz
   ediyorsa o kaynak bayattır — o konuyu ya at ya da güncel kaynakla değiştir.
   Aynı maddede hem gelecek hem geçmiş tarih varsa o maddeyi hiç yazma.`;
+    aiIlerlemeBaslat('🧭 Konu aranıyor', [
+      ['ara', 'Google\'da güncel küresel trendler taranıyor'],
+      ['sirala', 'Konular fırsata göre sıralanıyor ve yazılmışlar eleniyor'],
+    ]);
     try {
+      aiAdim('ara', 'run');
       const r = await grounded(prompt, 8192);
+      aiAdim('ara', 'done');
+      aiAdim('sirala', 'run');
       const list = r.json && Array.isArray(r.json.topics) ? r.json.topics : null;
-      if (!list || !list.length) throw new Error('Konu listesi çözülemedi');
+      if (!list || !list.length) {
+        throw new Error(`Konu listesi çözülemedi (${(r.text || '').length.toLocaleString('tr-TR')} karakterlik yanıt)`);
+      }
       _konular = list.filter((k) => k && k.title);
+      aiAdim('sirala', 'done');
+      aiIlerlemeBitir();
       toast(`${_konular.length} konu bulundu`, 's');
     } catch (e) {
+      aiIlerlemeBitir(e.message || String(e));
       toast('Konu araması başarısız: ' + (e.message || e), 'e');
     } finally {
       _konuYukleniyor = false; renderTopicBody();
@@ -2090,8 +2125,18 @@ KURALLAR:
   // şablonlar önceden hazır olsun istemiyorum, gemini tam kontrol". Bu yüzden
   // prompt yapı DAYATMIYOR; yalnızca sınırları söylüyor (uydurma yok, kaynak
   // kataloğun kendisi, SEO sınırları) ve gerisini modele bırakıyor.
-  function yazarPrompt(konu, arastirma) {
+  /* TEK CAGRIDA IKI DIL = KESIK JSON.
+     Onceki surum `langs: {tr, en}` isteyip her ikisini birden yazdiriyordu.
+     Cikti `maxOutputTokens`'i asinca Gemini `finishReason: MAX_TOKENS` ile
+     yarida kesiyor, JSON ayristirilamiyor ve kullanici "AI yanitini
+     cozemedi" hatasi aliyordu — kelime butcesi 1400-2200'e cikarildiktan
+     SONRA bu her seferinde oluyordu.
+     Artik DIL BASINA AYRI CAGRI: her cagrinin ciktisi yariya iniyor, kesilme
+     bitiyor. Ikinci dil ayrica BIRINCININ AYNASI (bkz. `taban` parametresi) —
+     analiz tarafinda ayni sorun ayni sekilde cozuldu. */
+  function yazarPrompt(konu, arastirma, lang, taban) {
     const bugun = new Date().toISOString().slice(0, 10);
+    const dilAd = lang === 'tr' ? 'TÜRKÇE' : 'İNGİLİZCE (English)';
     return `${KONSEPT}
 
 BUGÜN: ${bugun}
@@ -2104,8 +2149,21 @@ ${konu.intent ? `ARAMA NİYETİ: ${konu.intent}` : ''}
 GÜNCEL ARAŞTIRMA NOTLARI (bunlara dayan, hafızandan tarih/fiyat uydurma):
 ${arastirma || '(araştırma yapılamadı — tarih ve fiyat iddiasında BULUNMA, yalnızca kalıcı doğruları yaz)'}
 
-GÖREVİN: Yayına hazır, TAM bir blog yazısı üret. TR ve EN, ikisi de tam metin.
+GÖREVİN: Yayına hazır, TAM bir blog yazısı üret. YALNIZCA ${dilAd} yaz — tek dil.
 
+${taban ? `BU YAZI DİĞER DİLDE ZATEN VAR. Yeni bir yazı KURGULAMA; aşağıdaki
+yazının ${dilAd} sürümünü yaz. Aynı bölümler, aynı sıra, aynı ürünler, aynı
+sayılar. Kelimesi kelimesine çeviri yapma — hedef dilde doğal yaz — ama
+HİÇBİR bölüm ekleme, çıkarma ya da yeniden sıralama.
+SAYILAR BİREBİR TUTMALI: <h2> sayısı aynı, SSS sorusu sayısı aynı, öğe
+sayısı aynı. Diğer dilde 5 soru varsa sende de TAM 5 olacak — bir tane
+fazla ya da eksik yazma.
+Ürün listesi ("items") birebir AYNI olmalı: aynı adet, aynı sıra, aynı
+"search" değerleri (katalog adları çevrilmez).
+
+DİĞER DİLDEKİ YAZI:
+${JSON.stringify(taban).slice(0, 60000)}
+` : ''}
 YAPIYI SEN KURARSIN. Şablon dayatılmıyor: bölüm sayısını, başlıkları, sıralamayı,
 kaç ürün anlatacağını, görsellerin nereye ve hangi boyutta geleceğini konuya göre
 SEN belirle. İyi bir yazı için ne gerekiyorsa onu yap.
@@ -2114,10 +2172,7 @@ SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:
 {
   "category": "<kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
   "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
-  "langs": {
-    "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
-    "en": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" }
-  },
+  "lang": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
   "items": [
     { "kind": "product|subscription|service",
       "search": "<YALNIZ kind=product: sade katalog adı, marka + model, fiyat/ek İÇERMEZ>",
@@ -2126,8 +2181,7 @@ SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:
       "site": "<markanın resmî alan adı, emin değilsen boş>",
       "blocks": [
         { "type": "text", "style": "paragraph",
-          "tr": "<BU ÖĞENİN TAM METNİ — EN AZ 170 KELİME, 3 paragraf. 1) ne olduğu ve kime hitap ettiği, 2) ölçülebilir farkı: en az üç somut sayı (mAh, nit, Hz, GB, saat, TL), 3) neye dikkat etmeli / kime UYGUN DEĞİL. Düz metin, HTML yok; kalın için **yıldız**, madde için satır başına '- '.>",
-          "en": "<same item, written natively in English, EN AZ 170 words, 3 paragraphs>" },
+          "text": "<BU ÖĞENİN TAM METNİ — EN AZ 170 KELİME, 3 paragraf. 1) ne olduğu ve kime hitap ettiği, 2) ölçülebilir farkı: en az üç somut sayı (mAh, nit, Hz, GB, saat, USD), 3) neye dikkat etmeli / kime UYGUN DEĞİL. Düz metin, HTML yok; kalın için **yıldız**, madde için satır başına '- '.>" },
         { "type": "image", "pos": "left|right|full|center", "size": "s|m|l", "cap_tr": "", "cap_en": "" }
       ] }
   ]
@@ -2146,11 +2200,10 @@ METİN
 - body_html/conclusion_html GEÇERLİ HTML: <h2>/<h3>, <p>, <ul><li>, <strong>, <table>.
 - items[].blocks metinleri DÜZ METİN — hiçbir HTML etiketi koyma. Kalın için **yıldız**,
   madde için satır başına "- ", ara başlık için "## ".
-- Türkçe metin ÇEVİRİ KOKMAMALI; EN metni de öyle. İkisini ayrı ayrı yaz, birbirinin
-  birebir çevirisi olmak zorunda değil.
+- Metin ÇEVİRİ KOKMAMALI; hedef dilde doğal, o dilde yazılmış gibi olsun.
 
 UZUNLUK — BURAYA DİKKAT, EN SIK YAPILAN HATA BU
-- Dil başına TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:
+- TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:
   body_html + conclusion_html + items[] içindeki BÜTÜN blok metinleri.
 - Bütçe şöyle dağılır ve HER BİRİ ayrı ayrı tutturulmalıdır:
     body_html          en az 250 kelime  (konuyu kur, karar kriterini söyle)
@@ -2185,33 +2238,58 @@ DÜRÜSTLÜK
    */
   async function blogAiWrite(konu) {
     if (!_editing) { toast('Önce bir makale aç', 'w'); return; }
-    const baslik = typeof konu === 'string' ? konu : (konu.title || '');
+    const k = typeof konu === 'string' ? { title: konu } : (konu || {});
+    const baslik = k.title || '';
     if (!baslik) { toast('Konu boş', 'w'); return; }
-    const durum = (s) => toast(s, 'i');
+    aiIlerlemeBaslat('✍️ Yazılıyor · ' + baslik.slice(0, 60), [
+      ['ara', 'Güncel bilgi aranıyor (Google, küresel kaynaklar)'],
+      ['en', 'İngilizce makale yazılıyor'],
+      ['tr', 'Türkçe sürüm yazılıyor (aynı yapı, aynı ürünler)'],
+      ['urun', 'Ürünler katalogda eşleştiriliyor'],
+      ['gorsel', 'Görseller bulunuyor'],
+      ['qa', 'Düzen ve kalite kontrolü'],
+    ]);
     try {
-      // 2) ARAŞTIRMA — grounded. Başarısız olursa yazı yine üretilir ama
-      //    prompt modele "tarih/fiyat iddiasında bulunma" diyor.
-      durum('1/3 · Güncel bilgi aranıyor…');
+      /* 1) ARASTIRMA — grounded, BIR KEZ. Iki dil de ayni notlari kullanir:
+         hem tutarlilik hem de istek basina faturalanan aramadan tasarruf. */
+      aiAdim('ara', 'run');
       let notlar = '';
       try {
-        const r = await grounded(`Konu: "${baslik}". Türkiye pazarı için bu konuda BUGÜN geçerli olguları topla: `
-          + 'yeni çıkan/çıkacak modeller ve tarihleri, güncel fiyat aralıkları (TL), stok/bulunabilirlik, '
-          + 'kullanıcı şikâyetleri, uzman incelemelerinin ortak noktaları, yakın zamanlı zam/indirim hareketleri. '
-          + 'Madde madde yaz, her maddede kaynağın ne dediğini belirt. JSON DEĞİL düz metin.', 4096);
+        const r = await grounded('Topic: "' + baslik + '". Gather the facts that are true TODAY for a GLOBAL audience: '
+          + 'newly released or upcoming models and their dates, current price ranges in USD/EUR/GBP, availability, '
+          + 'recurring owner complaints, what expert reviews agree on, recent price moves. '
+          + 'Search in English and prefer international sources (Reddit, The Verge, Ars Technica, Notebookcheck, '
+          + 'GSMArena, RTINGS, major YouTube reviews). Write bullet points; say what each source claims. Plain text, NOT JSON.', 4096);
         notlar = r.text;
       } catch (e) { toast('Araştırma atlandı: ' + (e.message || e), 'w'); }
+      aiAdim('ara', 'done');
 
-      // 3) YAZIM — grounded değil, JSON modunda.
-      durum('2/3 · Yazı üretiliyor (1-2 dk)…');
-      const data = await callGeminiJson(yazarPrompt(typeof konu === 'string' ? { title: konu } : konu, notlar), 32768);
-      if (!data || !data.langs) throw new Error('Yazı çözülemedi');
-      const langs = data.langs || {};
-      const filled = ['tr', 'en'].filter((c) => langs[c] && String(langs[c].title || '').trim());
-      if (!filled.length) throw new Error('Başlık üretilemedi');
+      /* 2) YAZIM — DIL BASINA AYRI CAGRI.
+         Once INGILIZCE (sitenin kok dili ve arastirmanin dili), sonra Turkce
+         sürüm onun AYNASI olarak. Tek cagrida iki dil istemek ciktinin jeton
+         sinirini asmasina ve JSON'un yarida kesilmesine yol aciyordu —
+         kullanicinin gordugu "AI yanitini cozemedi" hatasi tam olarak buydu. */
+      const yaz = async (lang, taban) => {
+        const d = await callGeminiJson(yazarPrompt(k, notlar, lang, taban), 32768);
+        const L = d && (d.lang || (d.langs && d.langs[lang]));
+        if (!L || !String(L.title || '').trim()) throw new Error(lang.toUpperCase() + ' başlığı üretilemedi');
+        return { meta: d, L: L };
+      };
+      aiAdim('en', 'run');
+      const enSonuc = await yaz('en', null);
+      aiAdim('en', 'done');
+      aiAdim('tr', 'run');
+      let trSonuc = null;
+      try { trSonuc = await yaz('tr', enSonuc.meta); } catch (e) {
+        // Turkce sürüm patlarsa Ingilizce yazi KAYBOLMAZ; kullanici
+        // "TR -> EN cevir" dugmesiyle ya da tekrar deneyerek tamamlar.
+        toast('Türkçe sürüm üretilemedi: ' + (e.message || e), 'w');
+      }
+      aiAdim('tr', trSonuc ? 'done' : 'fail');
 
       flushEditors(); syncPane();
-      for (const c of filled) {
-        const L = langs[c];
+      const yerlestir = (c, L) => {
+        if (!L) return;
         const set = (f, v) => { if (v != null && String(v).trim()) _editing[f] = String(v); };
         set('title_' + c, L.title);
         set('lead_' + c, L.lead);
@@ -2223,34 +2301,66 @@ DÜRÜSTLÜK
         if (body) _editing['body_' + c] = /<\w+[^>]*>/.test(body) ? body : mdToHtml(body);
         const concl = L.conclusion_html || L.conclusion_md || L.conclusion || '';
         if (concl) _editing['conclusion_' + c] = /<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl);
-      }
+      };
+      yerlestir('en', enSonuc.L);
+      if (trSonuc) yerlestir('tr', trSonuc.L);
+
+      const data = enSonuc.meta;
       if (data.category) _editing.category = data.category;
       _editing.template = TPL_BODIES[String(data.template || '').trim()] ? String(data.template).trim() : (_editing.template || '');
 
-      // ÖĞELER AYNI HATTAN GEÇER: katalog eşleştirme, görsel bulma ve sınır
-      // temizliği içe aktarmayla TEK kod yolunda kalsın.
+      /* OGELER AYNI HATTAN GECER: katalog eslestirme, gorsel bulma ve sinir
+         temizligi ice aktarmayla TEK kod yolunda kalsin.
+         Blok metinleri artik dil basina geliyor (`text`); iki dilin ogeleri
+         INDEKSLE eslesiyor cunku Turkce cagri "ayni adet, ayni sira" sartiyla
+         yaziliyor. Uzunluk tutmazsa TR metni bos kalir, oge KAYBOLMAZ ve
+         durum kullaniciya soylenir — sessiz veri kaybi yok. */
       const items = Array.isArray(data.items) ? data.items : [];
+      const trItems = (trSonuc && Array.isArray(trSonuc.meta.items)) ? trSonuc.meta.items : [];
+      const trUyumlu = trItems.length === items.length;
+      if (!trUyumlu && trItems.length) {
+        toast('Türkçe öğe sayısı tutmadı (' + trItems.length + ' ≠ ' + items.length + ') — TR metinleri boş bırakıldı', 'w');
+      }
+      aiAdim('urun', 'run');
       if (items.length) {
-        const norm = items.map((it) => ({
-          kind: it.kind || 'product',
-          search: it.search || it.name || '',
-          name: it.name || it.search || '',
-          brand: it.brand || '',
-          site: it.site || '',
-          link: it.link || '',
-          blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '' }]).map((b) => {
-            if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '' };
-            return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '' };
-          }),
-        }));
+        const norm = items.map((it, i) => {
+          const trIt = trUyumlu ? (trItems[i] || {}) : {};
+          const trBloklar = Array.isArray(trIt.blocks) ? trIt.blocks : [];
+          const kaynak = (Array.isArray(it.blocks) && it.blocks.length) ? it.blocks : [{ type: 'text', text: '' }];
+          return {
+            kind: it.kind || 'product',
+            search: it.search || it.name || '',
+            name: it.name || it.search || '',
+            name_tr: trIt.name || '',
+            name_en: it.name || '',
+            brand: it.brand || '',
+            site: it.site || '',
+            link: it.link || '',
+            blocks: kaynak.map((b, j) => {
+              const trB = trBloklar[j] || {};
+              if ((b.type || b.t) === 'image') {
+                return {
+                  t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm',
+                  w: Number(b.w) || '', cap_tr: trB.cap || trB.cap_tr || '', cap_en: b.cap || b.cap_en || '',
+                };
+              }
+              return {
+                t: 'text', style: b.style || 'paragraph',
+                en: b.text || b.en || '',
+                tr: trB.text || trB.tr || '',
+              };
+            }),
+          };
+        });
         await importItems(norm, true);
       }
+      aiAdim('urun', 'done');
       sanitizeImported();
       _srcMode = { body: false, concl: false };
       renderEditor();
       blogMarkDirty();
 
-      durum('3/3 · Görseller aranıyor…');
+      aiAdim('gorsel', 'run');
       if (items.length) {
         try {
           await resolveItemImages((s) => toast(s, 'i'));
@@ -2259,9 +2369,14 @@ DÜRÜSTLÜK
           renderEditor();
         } catch (e) { toast('Görsel araması başarısız: ' + (e.message || e), 'w'); }
       }
-      toast('Taslak hazır — incele, gerekirse “✏️ Değiştir” ile komut ver', 's');
+      aiAdim('gorsel', 'done');
+      aiAdim('qa', 'run');
       await blogAiQa(true);
+      aiAdim('qa', 'done');
+      aiIlerlemeBitir();
+      toast('Taslak hazır — incele, gerekirse “✏️ Değiştir” ile komut ver', 's');
     } catch (e) {
+      aiIlerlemeBitir(e.message || String(e));
       toast('Yazı üretilemedi: ' + (e.message || e), 'e');
     }
   }
@@ -2920,12 +3035,102 @@ ${JSON.stringify(outline)}`;
     if (!res.ok || data.error) throw new Error((data.error && (data.error.message || data.error)) || data.message || `AI isteği başarısız (${res.status})`);
     const cand = (data.candidates || [])[0] || {};
     const text = ((cand.content || {}).parts || []).map((p) => p.text || '').join('').trim();
-    if (!text) throw new Error('AI boş yanıt döndü (içerik çok uzun olabilir)');
+    // BITIS SEBEBI HATA MESAJINA GIRER.
+    // "AI yanıtı çözülemedi" yıllarca opak bir hataydı: gerçek sebep neredeyse
+    // her zaman `finishReason: MAX_TOKENS` — yani JSON yarıda kesildi ve
+    // ayrıştırılamadı. Sebebi yazmayan hata mesajı, teşhisi kullanıcıya
+    // yıkıyordu.
+    const sebep = cand.finishReason || '';
+    const kesik = /MAX_TOKENS/i.test(sebep);
+    if (!text) {
+      throw new Error(kesik
+        ? 'AI yanıtı jeton sınırına takıldı (içerik çok uzun) — daha kısa iste'
+        : `AI boş yanıt döndü${sebep ? ' (' + sebep + ')' : ''}`);
+    }
     try { return JSON.parse(text); } catch (_) {
       const m = text.match(/\{[\s\S]*\}/);
       if (m) { try { return JSON.parse(m[0]); } catch (__) { /* düş */ } }
-      throw new Error('AI yanıtı çözülemedi');
+      throw new Error(kesik
+        ? `AI yanıtı YARIDA KESİLDİ (${text.length.toLocaleString('tr-TR')} karakter, jeton sınırı doldu). İçerik tek çağrıya sığmıyor.`
+        : `AI yanıtı çözülemedi (${text.length.toLocaleString('tr-TR')} karakter${sebep ? ', ' + sebep : ''})`);
     }
+  }
+
+  /* ── YAZAR / SIHIRBAZ ILERLEME PANELI ──────────────────────────────────────
+     Konu bulma ve makale yazma 1-4 dakika sürüyor ve ekranda HİÇBİR ŞEY
+     olmuyordu: kullanıcı ne yapıldığını, nerede kalındığını ve takılıp
+     takılmadığını göremiyordu. Analiz tarafında bu sorun aynı şekilde
+     çözülmüştü (analyses.js → renderProgress); burada da aynı desen.
+
+     Panel KENDİ DÜĞÜMÜNDE durur ve `renderEditor()` onu sildiğinde yeniden
+     yerleştirilir — tıpkı analiz kuyruk şeridi gibi. */
+  let _aiAdimlar = null;   // [[anahtar, etiket]]
+  let _aiDurum = {};       // anahtar -> 'run' | 'done' | 'fail'
+  let _aiBaslik = '';
+  let _aiBas = 0;
+  let _aiTik = null;
+
+  function aiIlerlemeBaslat(baslik, adimlar) {
+    _aiBaslik = baslik; _aiAdimlar = adimlar; _aiDurum = {}; _aiBas = Date.now();
+    if (!_aiTik) _aiTik = setInterval(aiIlerlemeYaz, 1000);
+    aiIlerlemeYaz();
+  }
+  function aiAdim(anahtar, durum) {
+    if (!_aiAdimlar) return;
+    _aiDurum[anahtar] = durum || 'run';
+    aiIlerlemeYaz();
+  }
+  function aiIlerlemeBitir(hata) {
+    if (_aiTik) { clearInterval(_aiTik); _aiTik = null; }
+    if (hata && _aiAdimlar) {
+      Object.keys(_aiDurum).forEach((k) => { if (_aiDurum[k] === 'run') _aiDurum[k] = 'fail'; });
+      _aiHata = hata;
+      aiIlerlemeYaz();
+      return;
+    }
+    _aiAdimlar = null; _aiHata = '';
+    const el = document.getElementById('be_ai_progress');
+    if (el) el.remove();
+  }
+  let _aiHata = '';
+
+  function aiIlerlemeHtml() {
+    if (!_aiAdimlar) return '';
+    const biten = _aiAdimlar.filter(([k]) => _aiDurum[k] === 'done').length;
+    const yuzde = Math.round((biten / Math.max(1, _aiAdimlar.length)) * 100);
+    const sn = Math.floor((Date.now() - _aiBas) / 1000);
+    const sure = sn < 60 ? `${sn} sn` : `${Math.floor(sn / 60)} dk ${sn % 60} sn`;
+    return `<div class="be-report" style="border-left:3px solid var(--accent,#7c5cff)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <b>${esc(_aiBaslik)}</b><span style="opacity:.6;font-size:12px">${biten}/${_aiAdimlar.length} · ${sure}</span>
+      </div>
+      <div style="height:4px;border-radius:2px;background:rgba(127,127,127,.2);overflow:hidden;margin-bottom:10px">
+        <div style="height:100%;width:${yuzde}%;background:var(--accent,#7c5cff);transition:width .3s"></div></div>
+      ${_aiAdimlar.map(([k, ad]) => {
+    const d = _aiDurum[k] || '';
+    const ik = d === 'done' ? '✓' : d === 'run' ? '⏳' : d === 'fail' ? '✕' : '·';
+    const renk = d === 'done' ? 'opacity:.6' : d === 'run' ? 'font-weight:700' : d === 'fail' ? 'color:#f87171' : 'opacity:.45';
+    return `<div style="display:flex;gap:8px;align-items:center;padding:2px 0;${renk}"><span style="width:14px">${ik}</span>${esc(ad)}</div>`;
+  }).join('')}
+      ${_aiHata ? `<div style="margin-top:8px;color:#f87171">${esc(_aiHata)}</div>` : ''}
+    </div>`;
+  }
+
+  function aiIlerlemeYaz() {
+    if (!_aiAdimlar) return;
+    const html = aiIlerlemeHtml();
+    let el = document.getElementById('be_ai_progress');
+    if (el) { el.innerHTML = html; return; }
+    // Sihirbaz modalı açıksa oraya, değilse editörün üstüne.
+    const hedef = document.getElementById('be_topic_body')
+      || document.querySelector('#be_qa_report')
+      || document.querySelector('.be-main');
+    if (!hedef) return;
+    el = document.createElement('div');
+    el.id = 'be_ai_progress';
+    el.innerHTML = html;
+    if (hedef.id === 'be_topic_body') hedef.appendChild(el);
+    else hedef.parentNode.insertBefore(el, hedef);
   }
   const LANG_NAME = { en: 'İngilizce (English)' };
   // Kaynak dildeki tüm metinleri toplayıp tek JSON'da çevirtir, sonra aynı
