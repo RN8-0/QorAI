@@ -476,7 +476,15 @@
       + '</div></div>'
       + '<div class="an-acts">'
       + (a.status === 'published'
-        ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + SITE + '/analiz/' + esc(a.slug) + '">Sitede aç</a>' : '')
+        ? '<a class="btn btn-ghost" target="_blank" rel="noopener" href="' + SITE + '/analiz/' + esc(a.slug) + '">Sitede aç</a>'
+        // TASLAKTA TEK TIKLA YAYIN. Kuyruk on taslak urettiginde hepsini tek
+        // tek acip yayinlamak gerekiyordu; buton ayni denetimlerden gecer
+        // (bkz. analysesListedenYayinla), yalnizca ekran degistirmez.
+        // Raporu olmayan kaydi yayinlatmaya calismak anlamsiz — buton o
+        // durumda hic cizilmez, "Ac" ile eksigi gorulur.
+        : (reportOf(a, 'tr')
+          ? '<button class="btn btn-primary" onclick="analysesListedenYayinla(\'' + a.id + '\')">Yayınla</button>'
+          : ''))
       // "Duzenle" DEGIL: ekran duzenlemiyor, gosteriyor ve yayinliyor.
       + '<button class="btn" onclick="analysesEdit(\'' + a.id + '\')">Aç</button>'
       + '<button class="btn btn-ghost" onclick="analysesDelete(\'' + a.id + '\')">Sil</button>'
@@ -1408,16 +1416,24 @@
 
   function analysesBackToQuiz() { if (_run) renderQuiz(); }
 
-  // Tek dilde rapor — TUR fark eder, gerisi ayni.
+  /* Tek dilde rapor — TUR fark eder, gerisi ayni.
+     `arastirma` ve `taban` IKINCI DILDE dolu gelir:
+       arastirma  ilk dilin grounded arama ciktisi — TEKRAR ARANMAZ
+       taban      ilk dilin raporu — ikinci dil olgu uretmez, cevirir
+     Ikisinin de gerekcesi qor_ai_prompts.js -> mirrorFactsBlock basliginda. */
   function raporUret(r, lang, answers, similar, onStage) {
+    var arastirma = lang !== 'tr' ? (r.research || '') : '';
+    var taban = lang !== 'tr' ? (r.out.tr || null) : null;
     if (r.kind === 'product') {
       return QorAiRun.runProductReport({
         product: r.product, lang: lang, answers: answers, similar: similar, onStage: onStage,
+        research: arastirma, baseReport: taban,
       });
     }
     if (r.kind === 'compare') {
       return QorAiRun.runCompareReport({
         products: r.products, lang: lang, answers: answers, onStage: onStage,
+        research: arastirma,
       });
     }
     if (r.kind === 'subscription') {
@@ -1883,6 +1899,12 @@
         r.out[lang] = (res.data && typeof res.data === 'object')
           ? QorAiPrompts.cleanProductCodes(Object.assign({}, res.data, { researched: Boolean(res.researched) }))
           : res.data;
+        // ARASTIRMA METNI KOSUDA SAKLANIR: ikinci dil ayni kaniti kullanir ve
+        // grounded aramayi TEKRARLAMAZ. Arama token'dan ayri, ISTEK BASINA
+        // faturalaniyor — bu satir analiz basina bir aramanin parasidir.
+        if (!r.research && typeof res.research === 'string' && res.research.trim()) {
+          r.research = res.research;
+        }
         // İKİNCİ DİLİN ÖLÇÜLERİ BİRİNCİDEN DEVRALINIR.
         //
         // Analiz iki AYRI çağrıyla üretiliyor ve model her çağrıda kendi
@@ -2518,6 +2540,32 @@
     if (await kaydet('draft')) { toast('Yayından kaldırıldı', 'i'); renderEditor(); }
   }
 
+  /**
+   * LISTEDEN TEK TIKLA YAYINLA — editoru acmadan.
+   *
+   * Kuyruk on taslagi arka arkaya uretiyor ve hepsini yayinlamak icin tek tek
+   * "Ac" -> "Yayinla" -> "Geri" gerekiyordu. Bu buton ayni kapilardan gecer
+   * (`kaydet('published')` slug/meta/mukerrer denetimlerini kosturur), sadece
+   * ekran degistirmez. Reddedilirse sebep toast olarak cikar ve kayit taslak
+   * kalir — sessiz basarisizlik YOK.
+   */
+  async function analysesListedenYayinla(id) {
+    var a = _items.filter(function (x) { return x.id === id; })[0];
+    if (!a) { toast('Kayıt bulunamadı', 'e'); return; }
+    var onceki = _editing;
+    // `kaydet` global `_editing` uzerinden calisir; hedefi gecici olarak
+    // bu kayit yapip isimiz bitince ESKI HALINE dondururuz, yoksa acik bir
+    // taslak duzenlemesi listeden yayinlama yuzunden kaybolurdu.
+    _editing = Object.assign({}, a);
+    try {
+      var rec = await kaydet('published');
+      if (rec) { toast('Yayınlandı: ' + (subjectOf(rec) || rec.slug), 's'); }
+    } finally {
+      _editing = onceki;
+    }
+    renderList($('anSearch') ? $('anSearch').value : '', $('anStatus') ? $('anStatus').value : '', $('anKind') ? $('anKind').value : '');
+  }
+
   // Meta begenilmediyse: raporu yeniden uretmeden YALNIZ yayin metnini tazele.
   async function analysesMetaYenile() {
     var a = _editing;
@@ -2578,6 +2626,7 @@
   window.analysesLang = analysesLang;
   window.analysesTaslakKaydet = analysesTaslakKaydet;
   window.analysesYayinla = analysesYayinla;
+  window.analysesListedenYayinla = analysesListedenYayinla;
   window.analysesYayindanKaldir = analysesYayindanKaldir;
   window.analysesMetaYenile = analysesMetaYenile;
 })();

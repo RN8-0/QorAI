@@ -818,17 +818,29 @@ function _skalerKopyala(hedef, taban, anahtarlar) {
   return n;
 }
 
+/* Aynı uzunluktaki iki listeyi İNDEKSLE hizalayıp sayısal/enum alanları kopyalar.
+   UZUNLUK EŞİTLİĞİ ŞART: model bir maddeyi düşürdüyse hizalama kayar ve
+   yanlış puanı yanlış başlığa yapıştırmak, hiç dokunmamaktan kötüdür. */
+function _listeKilitle(hedefListe, tabanListe, anahtarlar) {
+  if (!Array.isArray(hedefListe) || !Array.isArray(tabanListe)) return 0;
+  if (!hedefListe.length || hedefListe.length !== tabanListe.length) return 0;
+  var n = 0;
+  hedefListe.forEach(function (x, i) { n += _skalerKopyala(x, tabanListe[i], anahtarlar); });
+  return n;
+}
+
 /** Tek bir ürün düğümü (ürün raporu / karşılaştırmadaki bir ürün). */
 function _urunKilitle(hedef, taban) {
   if (!hedef || !taban) return 0;
   var n = _skalerKopyala(hedef, taban, KILIT_SKALER);
   // Faktörler: eksen deterministik olduğu için indeks hizalaması güvenli.
-  // Yine de UZUNLUK EŞİTLİĞİ aranıyor; model bir faktörü düşürdüyse hizalama
-  // kayar ve o zaman hiç dokunmamak doğrudur.
-  if (Array.isArray(hedef.factors) && Array.isArray(taban.factors)
-    && hedef.factors.length === taban.factors.length) {
-    hedef.factors.forEach(function (f, i) { n += _skalerKopyala(f, taban.factors[i], ['score']); });
-  }
+  n += _listeKilitle(hedef.factors, taban.factors, ['score']);
+  // KRİTİK NOKTALAR ARTIK KİLİTLENİYOR.
+  // Eskiden dışarıdaydı çünkü sırayı model seçiyordu. Artık ikinci dil
+  // birinci dilin listesini AYNA olarak alıyor (mirrorFactsBlock) ve
+  // "aynı adet, aynı sıra" şartıyla yazıyor; uzunluk eşitliği de burada
+  // ayrıca aranıyor, yani ayna tutmadıysa hiç dokunulmuyor.
+  n += _listeKilitle(hedef.criticalPoints, taban.criticalPoints, ['severity']);
   return n;
 }
 
@@ -864,10 +876,18 @@ function lockScoresToBase(hedef, taban) {
       n += _skalerKopyala(hedef.community.sentimentBreakdown, taban.community.sentimentBreakdown,
         ['positive', 'neutral', 'negative']);
     }
+    // TEMALAR VE KRONİK SORUNLAR ARTIK KİLİTLİ — ayna sayesinde sıra garanti.
+    // Kullanıcının kuralı: "ürün özellikleri, kronik sorunları, kullanıcı
+    // memnuniyeti her ülkede aynı oranda ve aynı sorunlar olmalı".
+    n += _listeKilitle(hedef.community.themes, taban.community.themes, ['strength', 'sentiment']);
+    n += _listeKilitle(hedef.community.chronicIssues, taban.community.chronicIssues, ['frequency']);
   }
-  if (hedef.priceForecast && taban.priceForecast) {
-    n += _skalerKopyala(hedef.priceForecast, taban.priceForecast, ['confidence', 'trend', 'buyOrWait']);
-  }
+  /* FİYAT TAHMİNİ KİLİTLENMEZ — kullanıcının açık kuralı:
+     "sadece fiyat kısmında farklı yorum yapılabilir, o da ülkeden ülkeye
+     değiştiği için". TL kuru, Türkiye stok durumu ve yerel kampanyalar
+     İngilizce okuyucunun pazarıyla aynı değil; ikisini eşitlemek birine
+     yanlış pazarın tavsiyesini vermek olurdu. Ürüne ait her şey (özellik,
+     kronik sorun, memnuniyet) kilitli; pazara ait olan serbest. */
   // Katalog puanı zaten kaydın kendisinden geliyor ama ikinci dilde model
   // kendi sayısını yazmış olabilir; taban ne diyorsa o.
   n += _skalerKopyala(hedef, taban, ['techScore']);
@@ -1573,6 +1593,70 @@ function buildCompareResearchPrompt(products, lang, context = {}) {
 
 // Consolidated single-call prompt: quiz answers + catalog specs + optional web
 // research become one continuous report in the requested order.
+/* ── IKINCI DILIN AYNASI: OLGU URETME, CEVIR ───────────────────────────────
+   Analiz iki AYRI cagriyla uretiliyor ve her cagri KENDI grounded aramasini
+   yapiyordu. Arama sorgulari o dilde uretildigi icin iki dil BASKA
+   kaynaklara gidiyordu — olculdu 2026-09-03, canli grounding metadata:
+     TR sorgulari "iPhone 17 Pro sorunlari" -> sikayetvar.com x4,
+        donanimhaber.com, samsungazetesi.com
+     EN sorgulari ise ingilizce kaynaklara
+   Sonuc: ayni urunun iki dilde BAMBASKA kronik sorunlari ve yuzdeleri.
+   Olculdu, dort kaydin dordunde de:
+     iPhone 17 Pro  TR "Kamera Kalitesi 90%"  EN "Camera Quality 95%"
+     TR kronik: kamera parlaklik / ekran arizasi / garanti
+     EN kronik: scratchgate / renk solmasi / Wi-Fi
+   Ayni urun, ayni hafta, iki farkli gercek. Savunulacak tarafi yok.
+
+   COZUM: ikinci dil ILK DILIN raporunu ayna olarak alir. Yeni olgu uretmez,
+   var olani cevirir — ayni sayi, ayni sira, ayni adet.
+
+   FIYAT BILEREK DISARIDA: kullanicinin kurali — "sadece fiyat kisminda
+   farkli yorum yapilabilir, o da ulkeden ulkeye degistigi icin". TL kuru ve
+   Turkiye stok durumu Ingilizce okuyucunun pazariyla ayni degil. */
+function mirrorFactsBlock(mirror, lang) {
+  if (!mirror || typeof mirror !== 'object') return '';
+  const pr = mirror.product || {};
+  const co = mirror.community || pr.community || {};
+  const dil = languageName(lang);
+  const satir = (v) => JSON.stringify(v);
+  const bolum = [];
+  if (pr.matchScore != null || pr.confidence != null || pr.decision) {
+    bolum.push(`verdict: matchScore=${pr.matchScore}, confidence=${pr.confidence}, decision=${satir(pr.decision)}`);
+  }
+  if (Array.isArray(pr.factors) && pr.factors.length) {
+    bolum.push(`factors (${pr.factors.length}, SAME ORDER):\n` + pr.factors
+      .map((f, i) => `  ${i + 1}. ${f.label} = ${f.score}`).join('\n'));
+  }
+  if (Array.isArray(pr.criticalPoints) && pr.criticalPoints.length) {
+    bolum.push(`criticalPoints (${pr.criticalPoints.length}, SAME ORDER):\n` + pr.criticalPoints
+      .map((c, i) => `  ${i + 1}. ${c.title} [severity: ${c.severity}]`).join('\n'));
+  }
+  if (co.satisfaction != null) bolum.push(`community.satisfaction = ${co.satisfaction}`);
+  if (co.sentimentBreakdown) bolum.push(`community.sentimentBreakdown = ${satir(co.sentimentBreakdown)}`);
+  if (Array.isArray(co.themes) && co.themes.length) {
+    bolum.push(`community.themes (${co.themes.length}, SAME ORDER):\n` + co.themes
+      .map((t, i) => `  ${i + 1}. ${t.label} = ${t.strength} [${t.sentiment}]`).join('\n'));
+  }
+  if (Array.isArray(co.chronicIssues) && co.chronicIssues.length) {
+    bolum.push(`community.chronicIssues (${co.chronicIssues.length}, SAME ORDER):\n` + co.chronicIssues
+      .map((c, i) => `  ${i + 1}. ${c.title} [${c.frequency}]`).join('\n'));
+  }
+  if (Array.isArray(co.lovedFeatures) && co.lovedFeatures.length) {
+    bolum.push(`community.lovedFeatures (${co.lovedFeatures.length}, SAME ORDER):\n` + co.lovedFeatures
+      .map((c, i) => `  ${i + 1}. ${c.title}`).join('\n'));
+  }
+  if (!bolum.length) return '';
+  return 'MIRROR THESE FACTS — THIS ANALYSIS ALREADY EXISTS IN ANOTHER LANGUAGE.\n'
+    + `The same product was analysed from the same research. Your job is to write it in ${dil}, NOT to research it again.\n\n`
+    + bolum.join('\n') + '\n\n'
+    + 'HARD RULES FOR THE MIRRORED PARTS:\n'
+    + `- Reproduce every list above with the SAME NUMBER of entries, in the SAME ORDER. Translate the label/title into ${dil}; keep brand, model and technical terms as they are.\n`
+    + '- Copy every NUMBER exactly: scores, strengths, satisfaction, the sentiment breakdown, severity and frequency values. Do not round, adjust or "improve" them.\n'
+    + '- Do NOT add an item that is not listed, and do NOT drop one that is. If you believe an item is wrong, still reproduce it — consistency between the two language versions outweighs your own second opinion.\n'
+    + '- The prose (analysis, summary, detail, verdict, bestFor, notFor) is yours to write naturally in the target language; it must describe THESE facts and no others.\n'
+    + '- EXCEPTION — priceForecast is NOT mirrored. Price, currency, availability and the buy/wait timing differ by market, so write that section for the reader of this language on its own merits.\n\n';
+}
+
 function buildFullPrompt(p, lang, profile = {}, context = {}) {
   // Quiz yanitlandi mi? Semanin quiz'e dayanan kurallari buna bagli.
   const quizVar = Array.isArray(context.quizAnswers) && context.quizAnswers.length > 0;
@@ -1719,6 +1803,9 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // cumlesi urun hakkinda degil ALICI hakkinda hukum tasir.
     '- paragraphSentiment, price and timing: priceForecast paragraphs are judged FROM THE BUYER\'S SIDE, not as product traits. positive = good news for the buyer (price falling, a discount window coming, waiting pays off, good time to buy, fair value); negative = bad news for the buyer (price high or rising, no meaningful drop expected, you pay a premium, poor value, scarcity pushing prices up). Leave neutral ONLY a bare figure or date with no direction. "Its price tends to remain stable, with significant drops rare" is NEGATIVE (the buyer saves nothing); "Waiting until Q1 could yield better deals" is POSITIVE. Do not leave a whole price section unlabelled.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
+    // AYNA BLOGU: model sema kurallarini okumadan once "bu analiz zaten
+    // var, sen ceviriyorsun" bilgisini almali.
+    (context.mirror ? mirrorFactsBlock(context.mirror, lang) : '') +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +
     (Array.isArray(context.quizAnswers) && context.quizAnswers.length

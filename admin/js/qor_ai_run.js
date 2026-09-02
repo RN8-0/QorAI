@@ -584,6 +584,7 @@ async function runCompareReport(o) {
   return {
     data: { type: 'compare_full_report', products: ok, comparison: verdict },
     researched: Boolean(research),
+    research: research,
     dropped: dusen,
   };
 }
@@ -599,18 +600,39 @@ async function runProductReport(o) {
   var stage = o.onStage || function () {};
   var startedAt = Date.now();
 
-  stage('research', lang);
+  /* ── ARASTIRMA BIR KEZ KOSAR, IKI DIL AYNI OLGUYU PAYLASIR ───────────────
+     ONCEDEN her dil KENDI grounded aramasini yapiyordu ve arama sorgulari
+     o dilde uretiliyordu. Olculdu 2026-09-03, canli grounding metadata:
+       TR kosu sorgulari: "iPhone 17 Pro sorunlari", "iPhone 17 Pro Reddit
+       sorunlari" -> kaynaklar sikayetvar.com x4, donanimhaber.com,
+       samsungazetesi.com
+     Ingilizce kosu ingilizce sorgu uretip BASKA kaynaklara gidiyordu. Iki
+     ayri kaynak kumesi = iki ayri olgu kumesi. Sonuc, ayni urunun iki dilde
+     BAMBASKA kronik sorunlari ve yuzdeleri olmasiydi (olculdu: 4 kaydin
+     4'unde de temalar, kronik sorunlar ve yuzdeler farkli).
+
+     Artik arastirma metni cagirana geri veriliyor (`research`) ve ikinci dil
+     onu OLDUGU GIBI kullaniyor. Iki kazanc birden:
+       · iki dil ayni kanittan yaziyor -> veri tutarli
+       · grounded arama TOKEN'DAN AYRI, ISTEK BASINA faturalaniyor; analiz
+         basina iki yerine BIR arama = o kalemde %50 tasarruf. */
   var research = '';
-  try {
-    research = await askGrounded(
-      // QUIZ YOKSA EKSEN. `compareFactorAxis` tek urunu de kabul ediyor
-      // (list = Array.isArray ? : [products]) — yeni bir tablo gerekmedi.
-      P.buildProductResearchPrompt(product, lang, {
-        quizAnswers: answers, factorAxis: P.compareFactorAxis(product, lang),
-      }),
-      lang, 2048
-    );
-  } catch (_) { research = ''; }
+  if (typeof o.research === 'string' && o.research.trim()) {
+    research = o.research;
+    stage('research', lang);
+  } else {
+    stage('research', lang);
+    try {
+      research = await askGrounded(
+        // QUIZ YOKSA EKSEN. `compareFactorAxis` tek urunu de kabul ediyor
+        // (list = Array.isArray ? : [products]) — yeni bir tablo gerekmedi.
+        P.buildProductResearchPrompt(product, lang, {
+          quizAnswers: answers, factorAxis: P.compareFactorAxis(product, lang),
+        }),
+        lang, 2048
+      );
+    } catch (_) { research = ''; }
+  }
   // Kardes varyant temizligi — seri adiyla kosan grounded arama amiral
   // gemisinin malzemesini getiriyor. Gerekce ve olcum: qor_ai_prompts.js.
   research = P.scrubSiblingResearch(research, product, lang);
@@ -628,6 +650,9 @@ async function runProductReport(o) {
     research: research,
     similarProducts: o.similar || [],
     offers: o.offers || [],
+    // IKINCI DILIN AYNASI. Ilk dilin raporu verildiginde model yeni olgu
+    // URETMEZ, olani cevirir (bkz. qor_ai_prompts.js -> mirrorFactsBlock).
+    mirror: o.baseReport || null,
   });
   var txt = await askRaw({
     system: 'You are Qor AI. Return only valid JSON in language code ' + lang + '. Use current research and Qor catalog context over stale model memory. Every user-facing text field must be in the requested language; keep only brand/product names and technical terms as-is.',
@@ -684,7 +709,9 @@ async function runProductReport(o) {
   // KATALOG PUANI RAPORA YAZILIR: gosterilen puan okuma aninda
   // 0.60 x techScore + 0.40 x uyum olarak hesaplaniyor.
   data.techScore = Number(product && product.techScore) || 0;
-  return { data: data, researched: Boolean(research) };
+  // `research` GERI VERILIR: ikinci dil ayni metni kullanip grounded aramayi
+  // TEKRARLAMAZ (istek basina faturalanan tek kalem odur).
+  return { data: data, researched: Boolean(research), research: research };
 }
 
 /**
@@ -759,7 +786,9 @@ async function runLinkReport(o) {
       });
     } catch (_) { /* eslestirme raporu bozmaz */ }
   }
-  return { data: data, researched: Boolean(research) };
+  // `research` GERI VERILIR: ikinci dil ayni metni kullanip grounded aramayi
+  // TEKRARLAMAZ (istek basina faturalanan tek kalem odur).
+  return { data: data, researched: Boolean(research), research: research };
 }
 
 /** ABONELIK ANALIZI — sitedeki subscriptionAnalysisJobs.js akisinin AYNISI. */
@@ -788,7 +817,9 @@ async function runSubscriptionReport(o) {
   if (!data || !Array.isArray(data.services) || !data.services.length) {
     throw new Error('Abonelik raporu boş (' + lang + ')');
   }
-  return { data: data, researched: Boolean(research) };
+  // `research` GERI VERILIR: ikinci dil ayni metni kullanip grounded aramayi
+  // TEKRARLAMAZ (istek basina faturalanan tek kalem odur).
+  return { data: data, researched: Boolean(research), research: research };
 }
 
 /**
