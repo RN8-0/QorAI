@@ -593,6 +593,7 @@
       <input class="ba-search" placeholder="🔍 Makale ara (başlık, slug, kategori)…" value="${esc(_listQ)}" oninput="blogListSearch(this.value)" />
       ${[['all', 'Tümü'], ['published', 'Yayında'], ['draft', 'Taslak']].map(([v, n]) =>
         `<button class="ba-chip ${_listStatus === v ? 'on' : ''}" onclick="blogListFilter('${v}')">${n}</button>`).join('')}
+      <button class="ba-chip" onclick="blogTopicOpen()" title="Güncel arama trendlerine ve sitenin kendi kataloğuna göre konu önerir; seçtiğin konuyu baştan sona yazar">🧭 Konu bul &amp; yaz</button>
       <button class="ba-chip" onclick="blogAuditAll()" title="Tüm makalelerde dil/slug, SEO, görsel ve içerik sorunlarını tarar">🔍 Tümünü denetle${(() => {
         const n = _items.reduce((s, a) => s + articleHealth(a, a.products).filter((x) => x.level === 'error').length, 0);
         return n ? ` <b style="color:#f87171">(${n})</b>` : '';
@@ -785,7 +786,8 @@
           <div class="be-main">
             <div class="ba-tabs">
               ${LANGS.map(([c, n]) => `<div class="ba-tab ${c === _lang ? 'on' : ''}" onclick="blogTab('${c}')" data-lang="${c}"><span class="dot ${langDone(a, c) ? 'on' : ''}"></span>${n}</div>`).join('')}
-              <button type="button" class="ba-mini" id="be_qa_btn" style="margin-left:auto" onclick="blogAiQa()" title="Yapay zekâ makaleyi okur: her görselin nereye/ne boyutta geleceğine metne göre karar verir ve yayın öncesi sorunları listeler">🤖 AI düzen &amp; kontrol</button>
+              <button type="button" class="ba-mini" id="be_cmd_btn" style="margin-left:auto" onclick="blogAiCommandOpen()" title="Taslağı gündelik dille değiştir: “girişi kısalt”, “fiyat tablosu ekle”, “SSS'ye iki soru daha”. Model yalnızca dokunduğu alanı döndürür.">✏️ Değiştir</button>
+              <button type="button" class="ba-mini" id="be_qa_btn" onclick="blogAiQa()" title="Yapay zekâ makaleyi okur: her görselin nereye/ne boyutta geleceğine metne göre karar verir ve yayın öncesi sorunları listeler">🤖 AI düzen &amp; kontrol</button>
               <button type="button" class="ba-mini" id="be_tr_btn" onclick="blogTranslateMenu()" title="TR içeriği yapay zekâ ile İngilizceye çevirir (başlık, özet, gövde, ürün metinleri, SEO)">🌍 TR → EN çevir</button>
               <span class="ba-wc" id="be_wc" style="margin-left:10px"></span>
             </div>
@@ -1536,27 +1538,51 @@ KURALLAR:
      Dokuzun dördü. Typesense ARAMASI kusursuz çalışıyordu — doğru ürün ilk
      sırada geliyor, kapı onu reddediyordu.
 
-     Üç sınıf ayrıldı:
+     İKİ sınıf yumuşak:
       · YIL (2015-2035). Katalog adı yılı yazmaz; "MacBook Air M4 (2026)"
         ile "MacBook Air 13.6\" M4" aynı üründür.
-      · EKRAN BOYUTU (10-18 tam sayı). Katalog ya ondalık yazıyor (13.6),
-        ya "(15.6 İnç)" diyor, ya hiç yazmıyor.
       · ALT-MODEL KODU (harf+rakam karışık, ≥5 karakter) — ama YALNIZCA aday
-        adı da kendi kodunu taşıyorsa. Lenovo'nun pazarlama kodu "15IAN8" ile
-        Epey'in SKU'su "83K2001WTR015" aynı ürünün iki farklı kodlamasıdır;
-        biri diğerinde geçmez ve geçmesi de beklenmez.
+        BAŞKA BİR KODLAMA SİSTEMİNDEN geliyorsa (aşağıya bak). Lenovo'nun
+        pazarlama kodu "15IAN8" ile Epey'in SKU'su "83K2001WTR015" aynı
+        ürünün iki farklı kodlamasıdır; biri diğerinde geçmez.
 
-     KASITEN SERT BIRAKILANLAR: "M4" / "S24" / "A315" gibi 4 karakterden kısa
-     kodlar. M3 ile M4, S24 ile S25 AYRI ÜRÜNDÜR ve bunları yumuşatmak tam da
-     "yanlış ürüne bağlamak" olurdu. */
+     ── ÇIPLAK SAYI YUMUŞATMASI DENENDİ VE GERİ ALINDI ──────────────────────
+     İlk sürümde "10-18 arası iki haneli sayı = ekran boyutu" diye bir sınıf
+     vardı ("Galaxy Book4 Pro 14" kurtulsun diye). CANLI TESTTE İKİ YANLIŞ
+     EŞLEŞME ÜRETTİ (2026-09-02, yazarın ürettiği gerçek yazı):
+        Xiaomi Redmi Note 14 Pro  ->  Xiaomi Redmi Note 5 Pro   YANLIŞ
+        OPPO Reno 15              ->  Oppo Reno (CPH1917)       YANLIŞ
+     Çünkü o sayı ekran boyutu değil NESİL numarasıydı. İkisini ayırmanın
+     güvenilir bir yolu yok — "Book4 Pro 14"ün 14'ü boyut, "Note 14 Pro"nun
+     14'ü nesil ve ikisi de aynı şekle sahip. Sınıf tamamen kaldırıldı:
+     "Book4 Pro 14" artık özel öğe olarak eklenir, bu kayıp kabul edilebilir;
+     yanlış ürüne bağlamak değildir.
+
+     KASITEN SERT: "M4" / "S24" / "A315" gibi kısa kodlar. M3 ile M4, S24 ile
+     S25 AYRI ÜRÜNDÜR. */
   const _yilMi = (t) => /^(20(1[5-9]|2\d|3[0-5]))$/.test(t);
-  const _ekranBoyutuMu = (t) => /^\d{2}$/.test(t) && Number(t) >= 10 && Number(t) <= 18;
   const _altModelKodu = (t) => t.length >= 5 && /[a-zğüşöçı]/.test(t) && /\d/.test(t);
-  const _kodTasiyor = (nt) => nt.some((t) => t.length >= 5 && /[a-z]/.test(t) && /\d/.test(t));
+
+  /* Aday BAŞKA bir kodlama sisteminden mi geliyor?
+     "15IAN8" ile "83K2001WTR015" ortak önek taşımaz — farklı sistemler, biri
+     diğerinde geçmez, eksik kalması normaldir. Ama "1000XM5" ile "1000XM6"
+     AYNI sistemin komşu nesilleridir ve altı karakterlik ortak öneki bunu
+     ele verir; onları birbirine bağlamak "Sony WH-1000XM6" arayan okuyucuya
+     XM5 kartı göstermek olurdu. Üç karakterlik ortak önek eşiği bu ikisini
+     ayırıyor. */
+  function _farkliKodlamaMi(t, nt) {
+    const kodlar = nt.filter((x) => x.length >= 4 && /[a-z]/.test(x) && /\d/.test(x));
+    if (!kodlar.length) return false;
+    return !kodlar.some((k) => {
+      let n = 0;
+      while (n < k.length && n < t.length && k[n] === t[n]) n += 1;
+      return n >= 3;
+    });
+  }
 
   function _yumusakMi(t, nt) {
-    if (_yilMi(t) || _ekranBoyutuMu(t)) return true;
-    return _altModelKodu(t) && _kodTasiyor(nt);
+    if (_yilMi(t)) return true;
+    return _altModelKodu(t) && _farkliKodlamaMi(t, nt);
   }
 
   function matchScore(query, candidateName) {
@@ -1846,6 +1872,466 @@ KURALLAR:
   // "TITLE:/SLUG:" etiketli bölümler, bazen 3 dil arka arkaya. Katı ayrıştırıcı
   // yerine metni olduğu gibi Gemini'ye verip ŞEMAYA çevirtiyoruz — biçim
   // serbest, çıktı her zaman aynı.
+  /* ══════════════════════════════════════════════════════════════════════════
+     KONU SİHİRBAZI + GEMİNİ YAZAR
+     ──────────────────────────────────────────────────────────────────────────
+     Bugüne kadarki akış şuydu: kullanıcı yazıyı Claude'da elle yazıyor, buraya
+     yapıştırıyor, "Akıllı içe aktar" onu şemaya çeviriyordu. Yazının kendisi
+     insan emeğiydi ve blog 10 yazıda kalmıştı.
+
+     NEDEN ÖNEMLİ: AdSense'in üçüncü reddi "düşük değer — ~%97,5 ince şablon"
+     idi ve oradaki tek kaldıraç ÖZGÜN İÇERİK. İndekslenebilir 8.076 adresin
+     yalnız 21'i blog; yani sitenin şablon olmayan tek içeriği bu ve en dar
+     boğazı da bu.
+
+     ÜÇ ADIM, ÜÇÜ DE AYRI ÇAĞRI (böylece her biri tek başına tekrarlanabilir):
+       1. KONU  — Google Search'lü (grounded) tek çağrı, N konu döndürür.
+                  Haftada bir koşturulup konular biriktirilmeli: grounded arama
+                  token'dan AYRI, İSTEK BAŞINA faturalanıyor (bkz. qor_ai_run.js
+                  askGrounded başlığı). 20 konuluk tek liste = yazı başına 1/20.
+       2. ARAŞTIRMA — seçilen konu için grounded tek çağrı: güncel olgular,
+                  tarihler, fiyat sinyalleri. Model kendi hafızasından yazarsa
+                  yazı ilk günden bayat çıkar.
+       3. YAZIM — grounded DEĞİL, JSON modunda tek çağrı. Tüm yapıyı model
+                  kurar: başlıklar, bölüm sırası, kaç ürün, görsel nereye ve
+                  hangi boyutta. ŞABLON DAYATILMIYOR (kullanıcının açık isteği).
+
+     ŞEMA `AUTO_SCHEMA_PROMPT` İLE AYNI. Bilerek: çıktı `importItems` +
+     `resolveItemImages` + `sanitizeImported` hattından geçiyor, yani ürün
+     eşleştirme, görsel bulma ve sınır temizliği tek bir yerde duruyor. İkinci
+     bir hat açmak o üçünün ayrışması demekti. */
+
+  // Sitenin ne olduğu — her prompt'un başına giden tek cümlelik kimlik.
+  // CLAUDE.md'deki "subject and tone" bölümünün karşılığı; buradan sapan bir
+  // konu önerisi siteye ait değildir.
+  const KONSEPT = 'Qor AI (qorai.net): Türk ve İngilizce okuyan alışverişçiler için '
+    + 'yapay zekâ destekli ürün karşılaştırma kataloğu. Teknik ve kanıt önce; '
+    + 'asla satış dili değil — her iddia okuyucunun doğrulayabileceği bir sayı. '
+    + 'Katalog ağırlıklı telefon, laptop, tablet, kulaklık, monitör, TV, akıllı '
+    + 'saat, oyun konsolu, robot süpürge. Fiyatlar Türkiye pazarı (TL).';
+
+  let _konular = null;      // sihirbazın döndürdüğü konu listesi
+  let _konuYukleniyor = false;
+
+  /** Mevcut yazıların başlıkları — model AYNI konuyu ikinci kez önermesin. */
+  function mevcutBasliklar() {
+    return _items.map((a) => (a.title_tr || a.title_en || a.slug || '').trim()).filter(Boolean);
+  }
+
+  /**
+   * Grounded (Google Search'lü) çağrı. `askGrounded` JSON modunu KULLANMAZ —
+   * Gemini `googleSearch` aracıyla `responseMimeType: application/json`
+   * kombinasyonunu kabul etmiyor. Bu yüzden metin döner ve `parseAiJson` ile
+   * çözülür (aynı çözücü analiz motorunda da kullanılıyor).
+   */
+  async function grounded(prompt, maxOut) {
+    const R = window.QorAiRun;
+    const P = window.QorAiPrompts;
+    if (!R || !R.askGrounded) throw new Error('AI motoru yüklenmedi (qor_ai_run.js)');
+    const txt = await R.askGrounded(prompt, 'tr', maxOut || 4096);
+    return { text: String(txt || ''), json: P && P.parseAiJson ? P.parseAiJson(txt) : null };
+  }
+
+  // ── 1) KONU SİHİRBAZI ───────────────────────────────────────────────────
+  function blogTopicOpen() {
+    if (document.getElementById('be_topic_modal')) return;
+    const m = document.createElement('div');
+    m.className = 'be-modal'; m.id = 'be_topic_modal';
+    m.onclick = (e) => { if (e.target === m) blogTopicClose(); };
+    m.innerHTML = `<div class="be-modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <strong style="font-size:16px">🧭 Konu bulma sihirbazı</strong>
+        <button class="ba-mini" onclick="blogTopicClose()">✕ Kapat</button>
+      </div>
+      <div id="be_topic_body"></div>
+    </div>`;
+    document.body.appendChild(m);
+    renderTopicBody();
+  }
+  function blogTopicClose() { const m = document.getElementById('be_topic_modal'); if (m) m.remove(); }
+
+  function renderTopicBody() {
+    const b = document.getElementById('be_topic_body'); if (!b) return;
+    if (_konuYukleniyor) {
+      b.innerHTML = `<p style="opacity:.75;line-height:1.7">Google araması yapılıyor ve konular sıralanıyor…<br>
+        <span style="opacity:.6;font-size:13px">Bu adım güncel aramayı kullanır ve istek başına ücretlidir — bir kez koşturup listeyi biriktir.</span></p>`;
+      return;
+    }
+    if (!_konular) {
+      b.innerHTML = `<p style="opacity:.8;line-height:1.7">Güncel arama trendlerine ve <b>sitenin kendi kataloğuna</b> göre konu önerir.
+        Zaten yazılmış ${mevcutBasliklar().length} başlık modele veriliyor, aynı konu ikinci kez önerilmez.</p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0">
+        <label style="font-size:13px;opacity:.8">Kaç konu</label>
+        <select class="ba-input" id="be_topic_n" style="width:90px"><option>10</option><option selected>15</option><option>20</option></select>
+        <input class="ba-input" id="be_topic_hint" style="flex:1;min-width:240px" placeholder="İstersen yön ver: “laptop”, “bütçe telefon”, “kulaklık” (boş bırakabilirsin)" />
+        <button class="btn btn-primary btn-purple" onclick="blogTopicFetch()">Konuları getir</button>
+      </div>`;
+      return;
+    }
+    b.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="opacity:.75;font-size:13px">${_konular.length} konu · en yüksek fırsat üstte</span>
+        <button class="ba-mini" onclick="blogTopicReset()">↺ Yeniden ara</button>
+      </div>
+      ${_konular.map((k, i) => `<div class="be-report" style="margin-bottom:8px">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(k.title || '')}</div>
+            <div style="opacity:.8;font-size:13px;line-height:1.6">${esc(k.angle || '')}</div>
+            <div style="opacity:.65;font-size:12px;margin-top:6px;line-height:1.6">
+              <b>Neden şimdi:</b> ${esc(k.why || '—')}<br>
+              <b>Arama niyeti:</b> ${esc(k.intent || '—')} · <b>Hedef kelime:</b> ${esc(k.keyword || '—')}
+              ${k.products && k.products.length ? `<br><b>Katalogdan:</b> ${esc(k.products.join(' · '))}` : ''}
+            </div>
+          </div>
+          <button class="btn btn-primary btn-purple btn-sm" style="flex-shrink:0" onclick="blogTopicPick(${i})">Bu konuyu yaz</button>
+        </div>
+      </div>`).join('')}`;
+  }
+
+  function blogTopicReset() { _konular = null; renderTopicBody(); }
+
+  async function blogTopicFetch() {
+    const n = Number((document.getElementById('be_topic_n') || {}).value) || 15;
+    const hint = ((document.getElementById('be_topic_hint') || {}).value || '').trim();
+    _konuYukleniyor = true; renderTopicBody();
+    const bugun = new Date().toISOString().slice(0, 10);
+    const prompt = `${KONSEPT}
+
+BUGÜN: ${bugun}
+
+GÖREV: Bu site için ${n} blog konusu öner ve FIRSATA GÖRE SIRALA (en iyisi ilk).
+
+ZORUNLU: Google aramasını kullan. Öneriler ŞU ANKİ trendlere, yeni çıkmış ürünlere,
+yaklaşan lansmanlara, fiyat hareketlerine ve insanların BU HAFTA aradığı sorulara
+dayanmalı. Kendi hafızandan genel geçer konu üretme.
+
+ZATEN YAZILMIŞ BAŞLIKLAR — bunların konusunu TEKRARLAMA:
+${mevcutBasliklar().map((t) => `- ${t}`).join('\n') || '- (henüz yok)'}
+${hint ? `\nKULLANICININ VERDİĞİ YÖN: ${hint}\n` : ''}
+SADECE geçerli JSON döndür, başka hiçbir şey yazma:
+{"topics":[{
+  "title":"<Türkçe yazı başlığı — merak uyandıran ama abartısız, 45-70 karakter>",
+  "angle":"<bu yazı ötekilerden NEYLE ayrışıyor: 1-2 cümle>",
+  "why":"<neden ŞİMDİ: aramada bulduğun somut olay/tarih/fiyat hareketi>",
+  "intent":"<bilgi arama|karşılaştırma|satın alma|sorun çözme>",
+  "keyword":"<tek hedef anahtar kelime öbeği, Türkçe>",
+  "products":["<sitede olması muhtemel 2-5 ürün adı, marka+model>"]
+}]}
+
+KURALLAR:
+- Konular sitenin kategorilerinde OLMALI (telefon, laptop, tablet, kulaklık, monitör, TV, akıllı saat, konsol, robot süpürge).
+- Fiyat/pazar bağlamı TÜRKİYE olmalı.
+- "why" alanına aramada gerçekten gördüğün bir şey yaz; bulamadıysan o konuyu ÖNERME.
+- Tıklama tuzağı başlık yazma; sayı veren, somut başlık yaz.
+- KANIT TAZE OLMALI. Arama sana ESKİ haberleri de getirir; ${bugun} tarihinden
+  90 günden daha geriye giden bir olayı "neden şimdi" diye gösterme. Bulduğun
+  kaynak "2024 sonunda çıkacak" gibi geçmişte kalmış bir beklentiden söz
+  ediyorsa o kaynak bayattır — o konuyu ya at ya da güncel kaynakla değiştir.
+  Aynı maddede hem gelecek hem geçmiş tarih varsa o maddeyi hiç yazma.`;
+    try {
+      const r = await grounded(prompt, 8192);
+      const list = r.json && Array.isArray(r.json.topics) ? r.json.topics : null;
+      if (!list || !list.length) throw new Error('Konu listesi çözülemedi');
+      _konular = list.filter((k) => k && k.title);
+      toast(`${_konular.length} konu bulundu`, 's');
+    } catch (e) {
+      toast('Konu araması başarısız: ' + (e.message || e), 'e');
+    } finally {
+      _konuYukleniyor = false; renderTopicBody();
+    }
+  }
+
+  /**
+   * Seçilen konu → BOŞ taslak aç ve yazdır.
+   *
+   * `blogNew()` DEĞİL: o yalnızca şablon galerisini çiziyor, `_editing`e
+   * dokunmuyor — yazar da "önce bir makale aç" deyip duruyordu. Boş taslağı
+   * `blogTplPick('')` kurar ve şablon gövdesi yazmaz; yapıyı modelin kurması
+   * gerekiyor (kullanıcının açık isteği).
+   */
+  async function blogTopicPick(i) {
+    const k = (_konular || [])[i]; if (!k) return;
+    blogTopicClose();
+    injectStyles();
+    await loadCats();
+    blogTplPick('');
+    await blogAiWrite(k);
+  }
+
+  // ── 2+3) GEMİNİ YAZAR ───────────────────────────────────────────────────
+  //
+  // ŞABLON YOK. Kullanıcının açık isteği: "tek bir şablona bağlı kalınsın ya da
+  // şablonlar önceden hazır olsun istemiyorum, gemini tam kontrol". Bu yüzden
+  // prompt yapı DAYATMIYOR; yalnızca sınırları söylüyor (uydurma yok, kaynak
+  // kataloğun kendisi, SEO sınırları) ve gerisini modele bırakıyor.
+  function yazarPrompt(konu, arastirma) {
+    const bugun = new Date().toISOString().slice(0, 10);
+    return `${KONSEPT}
+
+BUGÜN: ${bugun}
+
+KONU: ${konu.title || konu}
+${konu.angle ? `AÇI: ${konu.angle}` : ''}
+${konu.keyword ? `HEDEF ANAHTAR KELİME: ${konu.keyword}` : ''}
+${konu.intent ? `ARAMA NİYETİ: ${konu.intent}` : ''}
+
+GÜNCEL ARAŞTIRMA NOTLARI (bunlara dayan, hafızandan tarih/fiyat uydurma):
+${arastirma || '(araştırma yapılamadı — tarih ve fiyat iddiasında BULUNMA, yalnızca kalıcı doğruları yaz)'}
+
+GÖREVİN: Yayına hazır, TAM bir blog yazısı üret. TR ve EN, ikisi de tam metin.
+
+YAPIYI SEN KURARSIN. Şablon dayatılmıyor: bölüm sayısını, başlıkları, sıralamayı,
+kaç ürün anlatacağını, görsellerin nereye ve hangi boyutta geleceğini konuya göre
+SEN belirle. İyi bir yazı için ne gerekiyorsa onu yap.
+
+SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:
+{
+  "category": "<kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
+  "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
+  "langs": {
+    "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
+    "en": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" }
+  },
+  "items": [
+    { "kind": "product|subscription|service",
+      "search": "<YALNIZ kind=product: sade katalog adı, marka + model, fiyat/ek İÇERMEZ>",
+      "name": "<yazıda görünen başlık>",
+      "brand": "<marka adı>",
+      "site": "<markanın resmî alan adı, emin değilsen boş>",
+      "blocks": [
+        { "type": "text", "style": "paragraph", "tr": "", "en": "" },
+        { "type": "image", "pos": "left|right|full|center", "size": "s|m|l", "cap_tr": "", "cap_en": "" }
+      ] }
+  ]
+}
+
+GÖRSELLER
+- Ürün görselleri KATALOGDAN gelir; sen URL YAZMA, "url" alanını boş bırak ya da hiç koyma.
+  Sistem her ürünün görselini kendisi bulup senin işaretlediğin yere yerleştirir.
+- Görsel bloğunu METNE GÖRE konumlandır: uzun anlatımın yanına "right"/"left" (size "s"/"m"),
+  bir ürünü öne çıkarıyorsan "full"/"center" (size "l"). Her öğeye en fazla 1-2 görsel.
+- "cap_tr"/"cap_en": görselin altına düşecek tek satırlık açıklama — ürün adını tekrarlama,
+  görselde NE GÖRÜLDÜĞÜNÜ ya da neden önemli olduğunu yaz.
+
+METİN
+- body_html ürün bölümlerinden ÖNCEKİ giriş/genel yazı; conclusion_html ürünlerden SONRAKİ sonuç.
+- body_html/conclusion_html GEÇERLİ HTML: <h2>/<h3>, <p>, <ul><li>, <strong>, <table>.
+- items[].blocks metinleri DÜZ METİN — hiçbir HTML etiketi koyma. Kalın için **yıldız**,
+  madde için satır başına "- ", ara başlık için "## ".
+- Türkçe metin ÇEVİRİ KOKMAMALI; EN metni de öyle. İkisini ayrı ayrı yaz, birbirinin
+  birebir çevirisi olmak zorunda değil.
+
+UZUNLUK — BURAYA DİKKAT, EN SIK YAPILAN HATA BU
+- Dil başına TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:
+  body_html + conclusion_html + items[] içindeki BÜTÜN blok metinleri.
+- Asıl metin ÖĞELERİN İÇİNDE olmalı: her öğenin metni EN AZ 150 kelime —
+  ne olduğu, ölçülebilir farkı (sayı ver), kime uygun, neye dikkat etmeli.
+  Tek paragraflık öğe yazma; iki-üç paragraf yaz.
+- body_html en az 250 kelime: konuyu kur, okuyucunun karar kriterini söyle.
+- conclusion_html en az 200 kelime + SSS bölümü.
+- Kısa yazı bu sitede işe yaramıyor: sayfa "ince içerik" sayılıp değersizleşiyor.
+  Uzunluğu doldurma cümlesiyle değil, DAHA FAZLA SOMUT BİLGİYLE karşıla.
+
+SEO — SİTENİN KURALLARI
+- metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN. Yazmadan önce karakter say.
+- Yazıda TAM OLARAK BİR H1 yok; başlık ayrı alanda duruyor, gövde <h2> ile başlar.
+- SSS BÖLÜMÜ ZORUNLU: conclusion_html'in içine ya da body_html'in sonuna, soru işaretiyle
+  BİTEN <h2> başlıkları ve altlarında 2-4 cümlelik cevaplar olacak şekilde EN AZ 3 soru koy.
+  Site bu başlıkları okuyup FAQPage yapısal verisini otomatik üretiyor; soru işareti yoksa
+  o veri hiç oluşmaz. Sorular gerçekten sorulan sorular olsun, doldurma değil.
+- Anahtar kelimeyi başlıkta, ilk paragrafta ve en az bir <h2>'de geçir; doldurma yapma.
+
+DÜRÜSTLÜK
+- Fiyat, tarih, "şu anda satışta" gibi iddiaları YALNIZCA araştırma notlarında varsa yaz.
+- Emin olmadığın sayıyı yazma; "yaklaşık", "araştırma sırasında" gibi ifadelerle çerçevele.
+- Reklam dili yok: "muhteşem", "inanılmaz", "kaçırmayın" yasak. Sayı ver, hüküm ver.`;
+  }
+
+  /**
+   * Konudan yayına hazır taslak. `konu` ya sihirbazdan gelen nesne ya da
+   * kullanıcının yazdığı düz metin.
+   */
+  async function blogAiWrite(konu) {
+    if (!_editing) { toast('Önce bir makale aç', 'w'); return; }
+    const baslik = typeof konu === 'string' ? konu : (konu.title || '');
+    if (!baslik) { toast('Konu boş', 'w'); return; }
+    const durum = (s) => toast(s, 'i');
+    try {
+      // 2) ARAŞTIRMA — grounded. Başarısız olursa yazı yine üretilir ama
+      //    prompt modele "tarih/fiyat iddiasında bulunma" diyor.
+      durum('1/3 · Güncel bilgi aranıyor…');
+      let notlar = '';
+      try {
+        const r = await grounded(`Konu: "${baslik}". Türkiye pazarı için bu konuda BUGÜN geçerli olguları topla: `
+          + 'yeni çıkan/çıkacak modeller ve tarihleri, güncel fiyat aralıkları (TL), stok/bulunabilirlik, '
+          + 'kullanıcı şikâyetleri, uzman incelemelerinin ortak noktaları, yakın zamanlı zam/indirim hareketleri. '
+          + 'Madde madde yaz, her maddede kaynağın ne dediğini belirt. JSON DEĞİL düz metin.', 4096);
+        notlar = r.text;
+      } catch (e) { toast('Araştırma atlandı: ' + (e.message || e), 'w'); }
+
+      // 3) YAZIM — grounded değil, JSON modunda.
+      durum('2/3 · Yazı üretiliyor (1-2 dk)…');
+      const data = await callGeminiJson(yazarPrompt(typeof konu === 'string' ? { title: konu } : konu, notlar), 32768);
+      if (!data || !data.langs) throw new Error('Yazı çözülemedi');
+      const langs = data.langs || {};
+      const filled = ['tr', 'en'].filter((c) => langs[c] && String(langs[c].title || '').trim());
+      if (!filled.length) throw new Error('Başlık üretilemedi');
+
+      flushEditors(); syncPane();
+      for (const c of filled) {
+        const L = langs[c];
+        const set = (f, v) => { if (v != null && String(v).trim()) _editing[f] = String(v); };
+        set('title_' + c, L.title);
+        set('lead_' + c, L.lead);
+        set('slug_' + c, slugify(L.slug || L.title || ''));
+        set('metaTitle_' + c, L.metaTitle);
+        set('metaDescription_' + c, L.metaDescription);
+        set('tags_' + c, Array.isArray(L.tags) ? L.tags.join(', ') : L.tags);
+        const body = L.body_html || L.body_md || L.body || '';
+        if (body) _editing['body_' + c] = /<\w+[^>]*>/.test(body) ? body : mdToHtml(body);
+        const concl = L.conclusion_html || L.conclusion_md || L.conclusion || '';
+        if (concl) _editing['conclusion_' + c] = /<\w+[^>]*>/.test(concl) ? concl : mdToHtml(concl);
+      }
+      if (data.category) _editing.category = data.category;
+      _editing.template = TPL_BODIES[String(data.template || '').trim()] ? String(data.template).trim() : (_editing.template || '');
+
+      // ÖĞELER AYNI HATTAN GEÇER: katalog eşleştirme, görsel bulma ve sınır
+      // temizliği içe aktarmayla TEK kod yolunda kalsın.
+      const items = Array.isArray(data.items) ? data.items : [];
+      if (items.length) {
+        const norm = items.map((it) => ({
+          kind: it.kind || 'product',
+          search: it.search || it.name || '',
+          name: it.name || it.search || '',
+          brand: it.brand || '',
+          site: it.site || '',
+          link: it.link || '',
+          blocks: (Array.isArray(it.blocks) && it.blocks.length ? it.blocks : [{ type: 'text', tr: '', en: '' }]).map((b) => {
+            if ((b.type || b.t) === 'image') return { t: 'image', url: b.url || '', pos: b.pos || 'right', size: b.size || 'm', w: Number(b.w) || '', cap_tr: b.cap_tr || '', cap_en: b.cap_en || '' };
+            return { t: 'text', style: b.style || 'paragraph', tr: b.tr || '', en: b.en || '' };
+          }),
+        }));
+        await importItems(norm, true);
+      }
+      sanitizeImported();
+      _srcMode = { body: false, concl: false };
+      renderEditor();
+      blogMarkDirty();
+
+      durum('3/3 · Görseller aranıyor…');
+      if (items.length) {
+        try {
+          await resolveItemImages((s) => toast(s, 'i'));
+          sanitizeImported();
+          autoPickCover();
+          renderEditor();
+        } catch (e) { toast('Görsel araması başarısız: ' + (e.message || e), 'w'); }
+      }
+      toast('Taslak hazır — incele, gerekirse “✏️ Değiştir” ile komut ver', 's');
+      await blogAiQa(true);
+    } catch (e) {
+      toast('Yazı üretilemedi: ' + (e.message || e), 'e');
+    }
+  }
+
+  // ── 4) KOMUTLA DEĞİŞİKLİK ───────────────────────────────────────────────
+  //
+  // Taslak hazır olduktan sonra kullanıcı ekranda okuyup "girişi kısalt,
+  // fiyat tablosu ekle, üçüncü ürünü çıkar" diyebilmeli. Model MEVCUT metni
+  // görür ve YALNIZCA değiştirdiği alanları döndürür; dokunulmayan alan
+  // olduğu gibi kalır (tam metni her seferinde yeniden ürettirmek hem pahalı
+  // hem de kullanıcının beğendiği bölümleri kaybettiriyordu).
+  function blogAiCommandOpen() {
+    if (document.getElementById('be_cmd_modal')) return;
+    const m = document.createElement('div');
+    m.className = 'be-modal'; m.id = 'be_cmd_modal';
+    m.onclick = (e) => { if (e.target === m) blogAiCommandClose(); };
+    m.innerHTML = `<div class="be-modal-box" style="max-width:720px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <strong style="font-size:16px">✏️ Yazıyı değiştir</strong>
+        <button class="ba-mini" onclick="blogAiCommandClose()">✕ Kapat</button>
+      </div>
+      <p style="opacity:.8;line-height:1.7;margin-top:0">Ne istediğini gündelik dille yaz. Model yazının tamamını görür ve
+      <b>yalnızca dokunduğu alanları</b> döndürür — beğendiğin bölümler yerinde kalır.</p>
+      <textarea class="ba-input" id="be_cmd_text" rows="4" placeholder="Örnek: Girişi iki paragrafa indir. Fiyat karşılaştırma tablosu ekle. Sonuç bölümüne “kimin almaması gerekir” paragrafı koy. SSS'ye iki soru daha ekle."></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+        <button class="btn btn-primary btn-purple" onclick="blogAiCommandRun()">Uygula</button>
+        <span style="opacity:.6;font-size:12px" id="be_cmd_status"></span>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+    const t = document.getElementById('be_cmd_text'); if (t) t.focus();
+  }
+  function blogAiCommandClose() { const m = document.getElementById('be_cmd_modal'); if (m) m.remove(); }
+
+  async function blogAiCommandRun() {
+    const ta = document.getElementById('be_cmd_text');
+    const komut = ta ? ta.value.trim() : '';
+    if (!komut) { toast('Önce ne istediğini yaz', 'w'); return; }
+    const st = document.getElementById('be_cmd_status');
+    if (st) st.textContent = 'Uygulanıyor…';
+    flushEditors(); syncPane();
+    const a = _editing;
+    const mevcut = {
+      tr: { title: a.title_tr || '', lead: a.lead_tr || '', body_html: a.body_tr || '', conclusion_html: a.conclusion_tr || '', metaTitle: a.metaTitle_tr || '', metaDescription: a.metaDescription_tr || '' },
+      en: { title: a.title_en || '', lead: a.lead_en || '', body_html: a.body_en || '', conclusion_html: a.conclusion_en || '', metaTitle: a.metaTitle_en || '', metaDescription: a.metaDescription_en || '' },
+      items: _products.map((p) => ({ name: p.name, blocks: (p.blocks || []).filter((b) => b.t === 'text').map((b) => ({ tr: b.tr, en: b.en })) })),
+    };
+    const prompt = `${KONSEPT}
+
+Aşağıda yayına hazırlanan bir blog yazısının MEVCUT hâli var. Kullanıcı bir DEĞİŞİKLİK istiyor.
+
+KULLANICININ İSTEĞİ:
+${komut}
+
+MEVCUT YAZI (JSON):
+${JSON.stringify(mevcut).slice(0, 120000)}
+
+SADECE geçerli JSON döndür. YALNIZCA DEĞİŞTİRDİĞİN ALANLARI koy — dokunmadığın alanı
+hiç yazma, çünkü yazmadığın alan olduğu gibi korunur:
+{
+  "langs": { "tr": { "title": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "" }, "en": { ... } },
+  "note": "<ne yaptığını tek cümlede özetle>"
+}
+
+KURALLAR:
+- İstek tek bir dili anıyorsa yalnız o dili değiştir; ikisini de anıyorsa ikisini birden.
+- body_html/conclusion_html GEÇERLİ HTML olmalı (<h2>, <p>, <ul><li>, <strong>, <table>).
+- metaTitle 60, metaDescription 155 karakteri AŞMASIN.
+- SSS başlıkları soru işaretiyle BİTMELİ; site FAQPage verisini oradan üretiyor.
+- İstenmeyen hiçbir şeyi değiştirme. "Girişi kısalt" dendiyse sonucu ELLEME.
+- İçerik öğelerini (ürün kartları) bu çağrıda değiştiremezsin; onlar editörden düzenlenir.
+  Kullanıcı ürün eklenmesini/çıkarılmasını istiyorsa "note" alanında bunu söyle.`;
+    try {
+      const out = await callGeminiJson(prompt, 32768);
+      const langs = (out && out.langs) || {};
+      let n = 0;
+      ['tr', 'en'].forEach((c) => {
+        const L = langs[c]; if (!L) return;
+        const put = (alan, deger) => {
+          if (deger == null || !String(deger).trim()) return;
+          _editing[alan] = String(deger); n += 1;
+        };
+        put('title_' + c, L.title);
+        put('lead_' + c, L.lead);
+        put('metaTitle_' + c, L.metaTitle);
+        put('metaDescription_' + c, L.metaDescription);
+        if (L.body_html) { _editing['body_' + c] = L.body_html; n += 1; }
+        if (L.conclusion_html) { _editing['conclusion_' + c] = L.conclusion_html; n += 1; }
+      });
+      if (!n) { toast('Model hiçbir alanı değiştirmedi' + (out && out.note ? ' — ' + out.note : ''), 'w'); if (st) st.textContent = ''; return; }
+      blogAiCommandClose();
+      sanitizeImported();
+      _srcMode = { body: false, concl: false };
+      renderEditor();
+      blogMarkDirty();
+      toast((out.note ? out.note + ' · ' : '') + n + ' alan güncellendi', 's');
+    } catch (e) {
+      if (st) st.textContent = '';
+      toast('Uygulanamadı: ' + (e.message || e), 'e');
+    }
+  }
+
   const AUTO_SCHEMA_PROMPT = `Sen bir içerik dönüştürücüsün. Aşağıdaki HAM METİN bir blog makalesidir; biçimi serbesttir (başlık etiketleri, birden çok dil, markdown, dağınık notlar olabilir).
 
 GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK.
@@ -2673,6 +3159,12 @@ ${JSON.stringify(payload)}`;
   window.blogBackupRestore = blogBackupRestore; window.blogBackupDiscard = blogBackupDiscard;
   window.blogTranslate = blogTranslate; window.blogTranslateMenu = blogTranslateMenu;
   window.blogAiQa = blogAiQa; window.blogQaClose = blogQaClose; window.blogAuditAll = blogAuditAll;
+  // Konu sihirbazı + Gemini yazar + komutla değişiklik.
+  window.blogTopicOpen = blogTopicOpen; window.blogTopicClose = blogTopicClose;
+  window.blogTopicFetch = blogTopicFetch; window.blogTopicPick = blogTopicPick;
+  window.blogTopicReset = blogTopicReset; window.blogAiWrite = blogAiWrite;
+  window.blogAiCommandOpen = blogAiCommandOpen; window.blogAiCommandClose = blogAiCommandClose;
+  window.blogAiCommandRun = blogAiCommandRun;
   // Teşhis kancası: katalog eşleştirme ve görsel çözümleme, yazıya alakasız
   // ürün sokan / yazıyı görselsiz bırakan hataların ta kendisiydi. Konsoldan
   // tek tek denenebilsin diye dışarı veriliyor (UI'da kullanılmaz).
