@@ -1540,12 +1540,34 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // PARAGRAF DUYGUSU METINLE BIRLIKTE URETILIR. Onceden on yuz bunu
     // KELIME SOZLUGUYLE tahmin ediyordu ve gercek cumlelerde yaniliyordu
     // ("impacting the smoothness" -> yesil, "no problems" -> kirmizi).
-    // Anahtar: paragrafin ILK CUMLESI, kucuk harf, noktalama atilmis,
-    // tek bosluk, 90 karakter (web/src/lib/sentiment.jsx -> paragraphKey).
-    '  "paragraphSentiment": {"<first sentence, lowercased, punctuation stripped, single-spaced, max 90 chars>": "positive|negative"},\n' +
+    //
+    // ANAHTARI MODELDEN NORMALIZE ISTEMIYORUZ ARTIK.
+    // Eski metin "lowercased, punctuation stripped, single-spaced, max 90
+    // chars" diyordu; model bunu UYGULAMIYORDU (olculdu 2026-09-02: 54
+    // etiketin 54'u ham cumle, noktalamali ve 90 karakterden uzun). Okuma
+    // tarafi ise `paragraphKey`den geciyordu, yani hicbir anahtar tutmuyor
+    // ve yeni analizlerin TEK BIR paragrafi bile renklenmiyordu.
+    // Normalizasyon artik okuma tarafinda TEK yerde yapiliyor
+    // (web/src/lib/sentiment.js -> sentimentIndex); modelden istenen sey
+    // yalnizca cumleyi OLDUGU GIBI kopyalamak.
+    '  "paragraphSentiment": {"<the paragraph\'s opening sentence, copied verbatim>": "positive|negative"},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "specific month/season/window", "buyOrWait": "buy|wait|watch", "drivers": ["5 concrete drivers"], "analysis": "5-7 substantial paragraphs with researched reasoning and caveats"}\n' +
     '}\n\n' +
     'Rules:\n' +
+    // PARAGRAF SINIRINI MODEL CIZMELI — YOKSA BIZ UYDURUYORUZ.
+    //
+    // OLCULDU 2026-09-02 (canli apple-iphone-17-pro-512gb kaydi):
+    //   report_tr.product.analysis  2985 karakter, satir sonu 0
+    //   report_en.product.analysis  2936 karakter, satir sonu 0
+    // Yani "5-7 substantial paragraphs" isteyip TEK SATIR aliyorduk ve
+    // `web/src/lib/prose.js -> proseBlocks` metni UCER CUMLELIK bloklara
+    // kendi paketliyordu. Bunun iki bedeli var:
+    //   1. Paragraf ritmi modelin degil, bir bolme kuralinin eseri.
+    //   2. `paragraphSentiment` anahtari "paragrafin ilk cumlesi" demek,
+    //      ama model hangi cumlenin paragraf basina denk gelecegini
+    //      BILEMEZ. Olculdu: 22 paragrafin yalnizca 6'si etiketle bulustu.
+    // Bos satir istemek ikisini birden cozuyor; uydurma bolme kalkiyor.
+    '- PARAGRAPH BREAKS ARE MANDATORY: in every prose field that asks for more than one paragraph (product.analysis, community.summary, priceForecast.analysis), separate the paragraphs with a blank line (\\n\\n) inside the JSON string. Never return a multi-paragraph field as one unbroken run of sentences — the reader splits on those blank lines, and without them the paragraph boundaries are invented for you.\n' +
     '- community.sentimentBreakdown must be integer percentages summing to ~100, realistic (never all-positive) and consistent with community.summary.\n' +
     '- community.themes must include 5-6 recurring discussion topics with varied sentiment (never all positive).\n' +
     // KRONIK SORUN != EKSI. Eksiler urunun ozelliklerinden cikarilabilir
@@ -1583,7 +1605,15 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
     `- ${segmentGate(p)}\n` +
     `- ${scoreScaleGate(p)}\n` +
-    '- paragraphSentiment: for EVERY multi-sentence prose field you write (product.analysis, community.summary, priceForecast.analysis, bestFor, notFor, overallVerdict, matchComment and each factors[].detail / criticalPoints[].detail), add one entry per paragraph. Judge ONLY THE FIRST SENTENCE of the paragraph, and only as an evaluation OF THE PRODUCT: positive = it praises or states a strength; negative = it criticises, names a weakness, a limitation, a risk or a mismatch with the buyer need. OMIT neutral paragraphs entirely (facts, specs, dates, plain price observations) — the default is neutral. Concessive openers carry the judgement in the SECOND clause (\"While the display is bright, its 60Hz feels dated\" is negative; \"Although expensive, performance is exceptional\" is positive). Negation reverses (\"no problems reported\" is positive). Never label from a single word.\n' +
+    '- paragraphSentiment: for EVERY multi-sentence prose field you write (product.analysis, community.summary, priceForecast.analysis, bestFor, notFor, overallVerdict, matchComment and each factors[].detail / criticalPoints[].detail), add one entry per paragraph. THE KEY IS THE PARAGRAPH\'S OPENING SENTENCE COPIED VERBATIM — same words, same punctuation, same casing, do not shorten, do not rewrite, do not lowercase it. Judge ONLY that opening sentence, and only as an evaluation OF THE PRODUCT: positive = it praises or states a strength; negative = it criticises, names a weakness, a limitation, a risk or a mismatch with the buyer need. Concessive openers carry the judgement in the SECOND clause (\"While the display is bright, its 60Hz feels dated\" is negative; \"Although expensive, performance is exceptional\" is positive). Negation reverses (\"no problems reported\" is positive). Never label from a single word.\n' +
+    // NOTR OLMAK ARTIK ISTISNA, VARSAYILAN DEGIL.
+    // Onceki metin "OMIT neutral paragraphs entirely" diyordu ve model bunu
+    // asiri uyguluyordu: olculdu (canli iPhone 17 Pro kaydi) "This device
+    // excels with its powerful Apple A19 Pro chip" gibi acikca OVGU olan
+    // paragraflar etiketsiz kaliyor, ekranda duz siyah ciiziliyordu.
+    // Etiketlemek ucuz, etiketsiz birakmak gorunur bir kayip.
+    '- paragraphSentiment coverage: a paragraph you wrote to EVALUATE the product must be labelled. Only leave a paragraph out when its opening sentence is purely factual with no judgement at all (a bare spec list, a date, a plain price observation). If you hesitate between neutral and a judgement, label the judgement: an evaluative paragraph left unlabelled is rendered as flat unmarked text. Extra entries are harmless, missing ones are not.\n' +
+    '- paragraphSentiment, reported faults: a sentence that reports a defect, a failure, a complaint, a return or a difficulty owners ran into is NEGATIVE even when it is phrased as a flat observation with no judging word ("Some users received units with dead pixels out of the box"). A flatly worded report of something working well is POSITIVE. In Turkish the concessive suffix "-sa da / -se de" ("olumlu olsa da, bazı endişeler var") carries the judgement in the SECOND clause exactly like "ancak" and "rağmen".\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(p, context.offers)}\n\n` +
     `PRODUCT CONTEXT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nHero specs: ${JSON.stringify(ctx.heroSpecs)}\n\n` +

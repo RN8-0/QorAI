@@ -44,6 +44,16 @@ export const NEUTRAL = 'neutral';
  *
  * BU FONKSIYON GOC BETIGIYLE BIREBIR AYNI OLMAK ZORUNDA
  * (scripts/sentiment_backfill.mjs bunu import eder).
+ *
+ * SONDAKI `.trim()` DILIMLEMEDEN SONRA — ve bu sart.
+ * `.trim().slice(0, 90)` sirasi, 90. karakter bir BOSLUGA denk geldiginde
+ * sonu bosluklu bir anahtar uretiyordu; ayni metin bir kez daha ayni
+ * fonksiyondan gecirilince o bosluk kirpilip anahtar DEGISIYORDU. Yani
+ * fonksiyon kendi ciktisinda sabit nokta degildi. `sentimentIndex` kayittaki
+ * anahtari da buradan gecirdigi icin iki taraf tam da bu cumlelerde
+ * ayrisiyordu. Olculdu 2026-09-02 (canli TR kaydi): 22 paragrafin 2'si —
+ * "…olumlu olsa da bazı " ve "…yaşayan ve garanti " — yalnizca bu yuzden
+ * renksizdi. Kirpma en sona alininca fonksiyon idempotent oldu.
  */
 export function paragraphKey(text) {
   const t = String(text || '').trim();
@@ -54,17 +64,44 @@ export function paragraphKey(text) {
     .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 90);
+    .slice(0, 90)
+    .trim();
 }
 
-/** Kayittaki duygu haritasini normalize et: {anahtar: 'positive'|…}. */
+/**
+ * Kayittaki duygu haritasini normalize et: {anahtar: 'positive'|…}.
+ *
+ * ANAHTAR BURADA `paragraphKey`DEN GECIRILIR — ONCEDEN GECIRILMIYORDU.
+ *
+ * Iki yazar var ve ikisi anahtari FARKLI uretiyordu:
+ *   · goc betigi  `harita[paragraphKey(p)]` yaziyor       -> normalize
+ *   · AI          prompt'un tarif ettigi normalizasyonu   -> HAM
+ *     ("lowercased, punctuation stripped, max 90 chars") uygulamiyor
+ * Okuma tarafi ise DAIMA `paragraphKey(text)` ile ariyordu. Sonuc: goc
+ * edilmis ESKI kayitlar renkleniyor, AI'nin yazdigi YENI kayitlarin tek bir
+ * paragrafi bile renklenmiyordu. Kullanicinin gordugu tam olarak buydu.
+ *
+ * OLCULDU 2026-09-02 (apple-iphone-17-pro-512gb, canli kayit):
+ *   HAM anahtarla        TR 0/25 · EN 0/23 paragraf esles(m)edi
+ *   paragraphKey ile     TR 16/25 · EN 19/23
+ * Kalan fark modelin notr sayip HIC etiketlemedigi paragraflar ve
+ * `proseBlocks` yeniden paketlemesi — o ayri bir is, ama sifir degil.
+ *
+ * Normalizasyonu OKUMA tarafina koymak bilincli: tek huni burasi, yani hem
+ * eski hem yeni kayitlar yeniden uretilmeden duzeliyor. Yazan her tarafa
+ * ayni kurali tekrar tekrar ogretmek yerine anahtar TEK yerde uretiliyor.
+ */
 export function sentimentIndex(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = new Map();
   for (const [k, v] of Object.entries(raw)) {
     const d = String(v || '').toLowerCase();
-    if (d === POSITIVE || d === NEGATIVE) out.set(String(k), d);
     // 'neutral' SAKLANMAZ: varsayilan zaten notr, haritayi sisirmenin anlami yok.
+    if (d !== POSITIVE && d !== NEGATIVE) continue;
+    const anahtar = paragraphKey(k);
+    // Zaten normalize yazilmis anahtar (goc betigi) bu islemden DEGISMEDEN
+    // cikar — `paragraphKey` kendi ciktisinda sabit noktadir.
+    if (anahtar) out.set(anahtar, d);
   }
   return out.size ? out : null;
 }

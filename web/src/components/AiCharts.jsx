@@ -1210,6 +1210,21 @@ function proseParts(text, keyPrefix, names) {
 const SENT_END_RE = /[.!?]+(?=\s)/g;
 const ABBR_TAIL_RE = /(?:^|[\s(])[A-Za-zÇĞİÖŞÜ]\d+$/;
 
+// KONU CÜMLESİ BULUNAMAZSA PARAGRAF RENKSİZ KALIYORDU.
+//
+// Renk `.aic-prose-lead` üstünde duruyor; `splitLead` null dönünce o eleman
+// hiç basılmıyor ve paragraf — etiketi POZİTİF bile olsa — düz siyah
+// çiziliyordu. Ölçüldü 2026-09-02 (canlı iPhone 17 Pro analizi, TR): 22
+// paragrafın 4'ünde konu cümlesi yoktu, biri açıkça olumlu bir paragraftı.
+//
+// İki sebep vardı, ikisi de Türkçe cümle uzunluğundan:
+//   · 190 karakter tavanı — ölçülen ilk cümleler 200 ve 223 karakter.
+//   · TEK CÜMLELİK paragraf — `rest` boş kalıyor, `rest.length > 40` düşüyor.
+// Tavan 240'a çıktı ve tek cümlelik paragrafta cümlenin KENDİSİ konu cümlesi
+// sayılıyor. Uydurma yok: iki durumda da işaretlenen şey paragrafın ilk
+// cümlesinin ta kendisi.
+const LEAD_MAX = 240;
+
 function splitLead(text) {
   const s = String(text || '').trim();
   SENT_END_RE.lastIndex = 0;
@@ -1218,15 +1233,20 @@ function splitLead(text) {
     const end = m.index + m[0].length;
     const next = s.slice(end).replace(/^\s+/, '').charAt(0);
     const okNext = next && (next === next.toLocaleUpperCase('tr') && /[A-Za-zÇĞİÖŞÜ"“(]/.test(next));
-    if (end >= 20 && end <= 190 && okNext && !ABBR_TAIL_RE.test(s.slice(0, m.index))) {
+    if (end >= 20 && end <= LEAD_MAX && okNext && !ABBR_TAIL_RE.test(s.slice(0, m.index))) {
       const lead = s.slice(0, end);
       const rest = s.slice(end).trim();
-      return rest.length > 40 ? [lead, rest] : [null, s];
+      if (rest.length > 40) return [lead, rest];
+      // Kalan çok kısa: bölmek paragrafı ikiye ayırmaya değmez, ama cümle
+      // yine de paragrafın ilk cümlesi — tamamı konu cümlesi sayılır.
+      return s.length <= LEAD_MAX ? [s, ''] : [null, s];
     }
-    if (end > 190) break;
+    if (end > LEAD_MAX) break;
     m = SENT_END_RE.exec(s);
   }
-  return [null, s];
+  // Hiç cümle sonu yok = paragraf TEK cümle. Makul uzunluktaysa o cümle
+  // paragrafın konu cümlesidir; uzunsa işaretlemeden bırakılır.
+  return s.length <= LEAD_MAX ? [s, ''] : [null, s];
 }
 
 /* ── CÜMLEYİ İKİYE BÖL: "ne" ve "ne demek" ────────────────────────────────

@@ -67,10 +67,26 @@ HARD RULES — these are where naive labelling fails:
    observation or a neutral price statement is neutral even if the product is
    generally good.
 
+   BUT A REPORTED FAULT IS NOT A FACT. A sentence that reports a defect, a
+   failure, a complaint, a return, or a difficulty owners ran into is
+   NEGATIVE even when it is phrased as a flat observation with no judging
+   word in it. "Ownership" wording does not make it neutral.
+     "Some users received units with dead pixels out of the box."  -> negative
+     "Kutudan çıktığı gibi ekran arızası yaşayan kullanıcılar da
+      mevcuttur."                                                  -> negative
+   Symmetrically, a flatly worded report of something working well is
+   POSITIVE ("Owners report the battery lasts a full day").
+
 7. INPUT MAY BE TURKISH. The same six rules apply unchanged. Turkish
    concessive and negation markers to watch:
      ancak / ama / fakat / ne var ki / buna karşın   -> judgement follows
      -e rağmen / -e karşın                            -> judgement follows
+     // "-sa da / -se de" EKI EKSIKTI ve olculdu: "…görüşleri genel olarak
+     // olumlu OLSA DA, bazı önemli endişeler de dile getirilmektedir."
+     // notr etiketlendi, ekranda siyah kaldi. Turkce'de en sik kullanilan
+     // odun baglaci bu ve listede yoktu.
+     -sa da / -se de (olsa da, etse de, olmakla birlikte)  -> judgement follows
+     yine de / bununla birlikte / öte yandan          -> judgement follows
      değil / yok / bulunmuyor / -maz / -mez           -> reverses
      "sorunsuz", "kusursuz", "sınırsız" are POSITIVE even though they
      contain the roots "sorun", "kusur", "sınır".
