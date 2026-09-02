@@ -177,6 +177,10 @@
       '.an-kota:empty{display:none}',
       /* "Yayinda analizi var" rozeti — ayni konunun ikinci analizi uretilmesin. */
       '.an-var{background:rgba(16,185,129,.14);color:#047857;font-weight:700}',
+      /* Kuyruk seridindeki "Aç" / "Önizle" — satir yuksekligini bozmasin. */
+      '.btn-xs{padding:3px 9px;font-size:11px;border-radius:7px;text-decoration:none}',
+      /* Kuyruk seridi kart araligini kendisi tasir; bos oldugunda yer kaplamaz. */
+      '#anKuyrukSerit:empty{display:none}',
       '.an-kota{margin:10px 0 0;padding:8px 11px;border-radius:8px;font-size:13px;font-weight:700;',
       '  background:rgba(245,158,11,.12);color:#b45309}',
       '.an-bar-fill{height:100%;background:var(--accent,#7c5cff);transition:width .4s ease-out}',
@@ -322,8 +326,13 @@
     styles();
     var root = $('analysesAdminRoot');
     if (!root) return;
-    _run = null;
-    _editing = null;
+    // KUYRUK KOSARKEN SIFIRLAMA YOK. Bu iki satir kosulsuzdu ve kuyrugu
+    // KILITLIYORDU: `analysesRunReport` TR -> EN gecisinde kendini yeniden
+    // cagiriyor, `_run` bu arada silinmisse "if (!_run) return" ile cikiyor
+    // ve kuyrugun bekledigi promise hic cozulmuyordu (bkz. analysesRunReport
+    // basligi). Kosu artik parametreyle tasiniyor ama bu koruma da kalsin:
+    // yarim kalmis bir uretime baska bir bolumden donunce ilerleme gorunsun.
+    if (!_kuyrukAktif) { _run = null; _editing = null; }
     _slugHata = ''; _slugTaslak = '';
     root.innerHTML = '<p class="an-empty">Yükleniyor…</p>';
     try {
@@ -353,6 +362,10 @@
     var yayin = _items.filter(function (a) { return a.status === 'published'; }).length;
 
     root.innerHTML = ''
+      // KUYRUK LISTE EKRANINDA DA GORUNUR. Onceden yalnizca "Yeni analiz"
+      // ekranindaydi; kuyruk kosarken listeye donen kullanici hicbir iz
+      // goremiyor ve isin durdugunu saniyordu.
+      + '<div id="anKuyrukSerit">' + kuyrukSeridi() + '</div>'
       + ozetSerit()
       + '<div class="an-bar">'
       + '<input id="anSearch" placeholder="Konu ya da slug ara…" style="min-width:260px" value="' + esc(filtre) + '">'
@@ -509,7 +522,7 @@
     var b = $('anNewBody');
     if (!b) return;
     b.innerHTML = ''
-      + adimlar(0)
+      + adimlar('kaynak', _uretTur)
       + '<div class="an-tabbar an-tabbar-sub">'
       + URET_TUR.map(function (x) {
         return '<button class="' + (x[0] === _uretTur ? 'on' : '') + '" onclick="analysesUretTur(\'' + x[0] + '\')">'
@@ -717,7 +730,9 @@
     var b = $('anKaynak');
     if (!b) return;
     b.innerHTML = ''
-      + kuyrukSeridi()
+      // Serit KENDI dugumunde: saniyede bir tazeleniyor ve arama ekranini
+      // bastan cizmek arama kutusunun odagini kaybettiriyordu.
+      + '<div id="anKuyrukSerit">' + kuyrukSeridi() + '</div>'
       + '<div class="an-card">'
       + '<h3>1 · Analiz edilecek ürün</h3>'
       + '<div class="an-bar">'
@@ -1038,16 +1053,35 @@
     }
   }
 
-  function adimlar(i) {
-    var ad = [
-      ['Kaynak', 'ürün · karşılaştırma · link · abonelik'],
-      ['Quiz', 'soruları yanıtla'],
-      ['Rapor', 'TR + EN üret'],
-      ['Yayın', 'önizle ve yayınla'],
-    ];
-    return '<div class="an-steps">' + ad.map(function (x, k) {
-      var cls = k < i ? 'done' : (k === i ? 'on' : '');
-      return '<div class="an-step ' + cls + '">' + (k + 1) + '. ' + x[0] + '<em>' + x[1] + '</em></div>';
+  // ADIM SERIDI TURE GORE KURULUR — SABIT INDEKSLE DEGIL ANAHTARLA.
+  //
+  // Urun analizinde quiz 2026-09-01'de kaldirildi (bkz. quizGerekli) ama serit
+  // hala "2. Quiz / sorulari yanitla" yaziyordu: ekran var olmayan bir adimi
+  // vaat ediyor, "3. Rapor" da hicbir zaman ucuncu adim olmuyordu. Sabit
+  // indeks (adimlar(2)) kaldirilan adimda kayar; anahtar kaymaz.
+  var ADIM_AD = {
+    kaynak: ['Kaynak', 'ürün · karşılaştırma · link · abonelik'],
+    quiz: ['Quiz', 'soruları yanıtla'],
+    rapor: ['Rapor', 'TR + EN üret'],
+    yayin: ['Yayın', 'önizle ve yayınla'],
+  };
+
+  function adimSirasi(kind) {
+    var tur = kind || (_run && _run.kind) || _uretTur;
+    return tur === 'product'
+      ? ['kaynak', 'rapor', 'yayin']
+      : ['kaynak', 'quiz', 'rapor', 'yayin'];
+  }
+
+  function adimNo(anahtar, kind) { return adimSirasi(kind).indexOf(anahtar) + 1; }
+
+  function adimlar(anahtar, kind) {
+    var sira = adimSirasi(kind);
+    var i = sira.indexOf(anahtar);
+    return '<div class="an-steps">' + sira.map(function (k, n) {
+      var cls = i >= 0 && n < i ? 'done' : (k === anahtar ? 'on' : '');
+      return '<div class="an-step ' + cls + '">' + (n + 1) + '. ' + ADIM_AD[k][0]
+        + '<em>' + ADIM_AD[k][1] + '</em></div>';
     }).join('') + '</div>';
   }
 
@@ -1072,7 +1106,7 @@
     var engel = uretimKapisi('product', { product: hit });
     if (engel) { toast(engel, 'e'); return; }
     b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
-      + '<p class="an-empty">Ürün yükleniyor ve quiz hazırlanıyor…</p></div>';
+      + '<p class="an-empty">Ürün yükleniyor…</p></div>';
     try {
       // Quiz ve rapor TAM PB kaydindan uretilir: Typesense dokumaninda
       // specSections yok, oysa prompt'un tasidigi en degerli baglam o.
@@ -1081,7 +1115,7 @@
       _run = yeniRun('product', { product: product }, []);
       analysesRunReport();
     } catch (e) {
-      b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
+      b.innerHTML = '<div class="an-card"><h3>Başlatılamadı</h3>'
         + '<p class="an-err">' + esc(e.message || e) + '</p>'
         + '<button class="btn btn-primary" onclick="analysesPickProduct(' + i + ')">Tekrar dene</button> '
         + '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Başka ürün</button></div>';
@@ -1145,7 +1179,7 @@
     var r = _run;
     var yanit = r.questions.filter(function (q, i) { return r.answers[i] != null; }).length;
     b.innerHTML = ''
-      + adimlar(1)
+      + adimlar('quiz', r.kind)
       + '<div class="an-note">'
       + (r.lang === 'tr'
         ? '<strong>1/2 · Türkçe quiz.</strong> Sitedeki analizin ürettiği quiz\'in aynısı. '
@@ -1231,7 +1265,7 @@
   // sayac isin nerede oldugunu gosteriyor.
   var _cmpIlerleme = null;
 
-  function progAdimlari(lang, kind) {
+  function dilAdimlari(lang, kind) {
     var ad = lang === 'tr' ? 'Türkçe' : 'İngilizce';
     var raporAd = ad + ' · rapor';
     if (kind === 'compare') {
@@ -1247,6 +1281,27 @@
       [lang + '-research', ad + ' · web araştırması'],
       [lang + '-report', raporAd],
     ];
+  }
+
+  /**
+   * ILERLEME LISTESI — QUIZLI VE QUIZSIZ TUR AYNI SEY DEGIL.
+   *
+   * QUIZLI turlerde (karsilastirma / link / abonelik) akis kullanicinin
+   * cevabinda DURUYOR, dolayisiyla liste yalnizca icinde bulunulan dili
+   * gosterir; ikinci dil ayri bir quiz ekranindan sonra baslar.
+   *
+   * URUNDE quiz yok: TR ve EN pes pese, ELSIZ kosuyor. Tek dilin listesini
+   * gostermek ilerlemeyi iki kez sifirdan basliyor gibi gosteriyordu (TR
+   * %100'e varinca cubuk aniden %0'a doner ve is asilmis gibi durur) ve
+   * kaldirilmis quiz adimini "Ingilizce quiz hazirlaniyor" diye ekrana geri
+   * getiriyordu. Quizsiz turde iki dil + meta + kayit TEK listede.
+   */
+  function progAdimlari(lang, kind) {
+    if (!quizKind(kind)) {
+      return dilAdimlari('tr', kind).concat(dilAdimlari('en', kind)).concat(PROG_SON);
+    }
+    return dilAdimlari(lang, kind)
+      .concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
   }
   var PROG_SON = [
     ['meta', 'Yayın metası ve SSS (TR + EN)'],
@@ -1296,18 +1351,25 @@
     }, 1000);
   }
 
-  function renderProgress(durum, hata) {
+  // `run` ACIKCA GECILIR, global `_run`a guvenilmez: baska bir bolume girip
+  // cikmak `_run`u sifirliyor (loadAnalysesAdmin) ve kuyruk kosarken ilerleme
+  // ekrani bos bir kosuyu cizmeye calisiyordu.
+  function renderProgress(durum, hata, run) {
     // Serit renderProgress'ten SONRA yeniden basilir (bkz. fonksiyon sonu).
     var b = $('anNewBody');
     if (!b) return;
-    var lang = _run ? _run.lang : 'tr';
-    var liste = progAdimlari(lang, _run ? _run.kind : '')
-      .concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
+    var r = run || _run;
+    var lang = r ? r.lang : 'tr';
+    var kind = r ? r.kind : '';
+    var liste = progAdimlari(lang, kind);
     var biten = liste.filter(function (p) { return durum[p[0]] === 'done'; }).length;
     var yuzde = Math.round((biten / Math.max(1, liste.length)) * 100);
-    b.innerHTML = adimlar(2)
-      + '<div class="an-card"><h3>3 · ' + (lang === 'tr' ? 'Türkçe' : 'İngilizce')
-      + ' rapor üretiliyor · ' + esc(runKonu(_run)) + '</h3>'
+    b.innerHTML = adimlar('rapor', kind)
+      + '<div class="an-card"><h3>' + adimNo('rapor', kind) + ' · '
+      // Quizsiz turde liste iki dili birden gosteriyor; basliga tek bir dil
+      // yazmak o listeyle celisirdi.
+      + (quizKind(kind) ? (lang === 'tr' ? 'Türkçe' : 'İngilizce') + ' rapor üretiliyor' : 'Rapor üretiliyor')
+      + ' · ' + esc(runKonu(r)) + '</h3>'
       // Rapor 1-3 dakika surebiliyor. Sabit bir liste "asildi mi" sorusunu
       // yanitlamiyor; cubuk + donen gosterge + sayan sure isin YASADIGINI
       // gosteriyor.
@@ -1327,7 +1389,11 @@
       + (hata
         ? '<p class="an-err">' + esc(hata) + '</p>'
           + '<button class="btn btn-primary" onclick="analysesRunReport()">Tekrar dene</button> '
-          + '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
+          // "Quiz'e don" YALNIZ quizli turde. Urunde quiz ekrani yok; buton
+          // bos bir quiz cizip akisi orada tikiyordu.
+          + (quizKind(kind)
+            ? '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
+            : '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Vazgeç</button>')
         : '<p class="an-hint">Araştırma adımı başarısız olursa rapor yine üretilir — sadece "kanıt zayıf" olarak işaretlenir.</p>')
       + '<p id="anKota" class="an-kota"></p>'
       + '</div>';
@@ -1337,12 +1403,7 @@
     // KUYRUK SERIDI GERI KONUR. Bu fonksiyon `anNewBody`yi bastan yaziyor,
     // yani serit her ilerleme adiminda siliniyordu; kuyruk kosarken hangi
     // urunde oldugumuz hicbir yerde gorunmuyordu.
-    if (_kuyrukAktif) {
-      var bb = $('anNewBody');
-      if (bb && !$('anKuyrukSerit')) {
-        bb.insertAdjacentHTML('afterbegin', '<div id="anKuyrukSerit">' + kuyrukSeridi() + '</div>');
-      }
-    }
+    kuyrukSeritYaz();
   }
 
   function analysesBackToQuiz() { if (_run) renderQuiz(); }
@@ -1378,7 +1439,10 @@
   //
   // Link / abonelik / karsilastirma akislarina DOKUNULMADI — onlarin quizi
   // konuyu daraltmak icin gerekli (hangi abonelik, hangi kullanim).
-  function quizGerekli(r) { return r.kind !== 'product'; }
+  // Ture gore soru: `quizKind` kayit olmadan da cevaplanabilir (ilerleme
+  // listesi ve adim seridi kosunun kendisinden ONCE ciziliyor).
+  function quizKind(kind) { return kind !== 'product'; }
+  function quizGerekli(r) { return quizKind(r && r.kind); }
 
   // -- URUN KUYRUGU -----------------------------------------------------
   //
@@ -1401,6 +1465,16 @@
   var _kuyrukLog = [];
   var _kuyrukSuren = '';   // su an uretilen urunun adi
   var _kuyrukToplam = 0;   // kuyruk baslarkenki adet
+  var _kuyrukAdim = '';    // suren urunun O ANKI adimi (arastirma / rapor / kayit)
+  var _kuyrukBas = 0;      // suren urunun baslama zamani — gecen sure icin
+  var _kuyrukTik = null;   // saniyede bir seridi tazeleyen sayac
+  var _kuyrukDur = false;  // "sirasi gelince dur" istegi
+
+  // GECEN SURE, saniye cinsinden okunur bicimde.
+  function sureMetni(ms) {
+    var sn = Math.max(0, Math.floor(ms / 1000));
+    return sn < 60 ? sn + ' sn' : Math.floor(sn / 60) + ' dk ' + (sn % 60) + ' sn';
+  }
 
   function kuyruktaVar(id) {
     return _kuyruk.some(function (x) { return x.id === id; });
@@ -1426,85 +1500,170 @@
     renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
   }
 
+  /**
+   * KUYRUK SERIDI — CANLI DURUM, TEK BAKISTA.
+   *
+   * Onceki surumde uc ayri sey eksikti ve ucu de "sistem calisiyor mu"
+   * sorusunu cevapsiz birakiyordu:
+   *
+   *  1. SUREN URUN LISTEDE DE DURUYORDU. `_kuyruk.shift()` ancak urun BITINCE
+   *     kosuyor, dolayisiyla su an uretilen urun hem "Uretiliyor:" satirinda
+   *     hem bekleyenler seridinde 1. sirada yesil duruyordu — ekranda ayni
+   *     urun iki kez, ikisi de "bekliyor" gibi.
+   *  2. HANGI ADIMDA OLDUGU GORUNMUYORDU. Yalnizca ad yaziyordu; bir urun
+   *     3-5 dakika suruyor ve o sure boyunca ekran hic degismiyordu.
+   *  3. BITEN URUN ACILAMIYORDU. Log satiri duz metindi; taslak kaydedilmis
+   *     olmasina ragmen gormek icin kuyrugun bitmesini beklemek gerekiyordu.
+   */
   function kuyrukSeridi() {
     if (!_kuyruk.length && !_kuyrukLog.length && !_kuyrukSuren) return '';
     var biten = _kuyrukLog.length;
     var toplam = _kuyrukToplam || (_kuyruk.length + biten);
-    var yuzde = toplam ? Math.round((biten / toplam) * 100) : 0;
-    var sira = _kuyruk.map(function (x, i) {
-      return '<span class="an-var">' + (i + 1) + '. ' + esc(x.name || x.id)
+    // Suren urun de "tamamlandi" sayilmaz ama cubukta yarim adim yer tutar;
+    // yoksa tek urunluk kuyrukta cubuk bastan sona %0 kaliyordu.
+    var ilerleme = _kuyrukAktif ? biten + 0.5 : biten;
+    var yuzde = toplam ? Math.round((ilerleme / toplam) * 100) : 0;
+
+    // BEKLEYENLER: kosarken ilk siradaki ZATEN uretiliyor, listeden dusulur.
+    var bekleyen = _kuyrukAktif ? _kuyruk.slice(1) : _kuyruk;
+    var sira = bekleyen.map(function (x, i) {
+      return '<span class="an-var">' + (biten + (_kuyrukAktif ? 2 : 1) + i) + '. ' + esc(x.name || x.id)
         + (_kuyrukAktif ? '' : ' <a href="#" onclick="analysesKuyruktanCikar(&quot;' + x.id
           + '&quot;);return false" style="text-decoration:none">&times;</a>')
         + '</span>';
     }).join(' ');
-    var log = _kuyrukLog.map(function (l) {
-      return '<div class="an-meta"><span>' + (l.ok ? '&#10003;' : '&#10007;') + ' ' + esc(l.name)
-        + (l.err ? ' &mdash; ' + esc(l.err) : '') + '</span></div>';
+
+    // BITENLER: basarili olan ANINDA acilabilir — taslak zaten kayitli.
+    var log = _kuyrukLog.map(function (l, i) {
+      return '<div class="an-meta" style="justify-content:flex-start">'
+        + '<span>' + (i + 1) + '. ' + (l.ok ? '&#10003;' : '&#10007;') + ' ' + esc(l.name) + '</span>'
+        + (l.sure ? '<span>' + esc(sureMetni(l.sure)) + '</span>' : '')
+        + (l.err ? '<span class="an-pill warn">' + esc(l.err) + '</span>' : '')
+        + (l.ok && l.id
+          ? '<button class="btn btn-ghost btn-xs" onclick="analysesEdit(&quot;' + l.id + '&quot;)">Aç</button>'
+            + '<a class="btn btn-ghost btn-xs" target="_blank" rel="noopener" href="'
+            + esc(SITE + '/tr/analiz/' + encodeURIComponent(l.slug || '') + '?id=' + encodeURIComponent(l.id))
+            + '">Önizle</a>'
+          : '')
+        + '</div>';
     }).join('');
+
     return '<div class="an-card">'
-      + '<h3>Kuyruk &middot; ' + biten + '/' + toplam + ' tamamlandi</h3>'
+      + '<h3>Kuyruk &middot; ' + biten + '/' + toplam + ' tamamlandı</h3>'
       + (_kuyrukAktif
-        ? '<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin:6px 0 10px">'
-          + '<div style="height:100%;width:' + yuzde + '%;background:var(--accent,#7c5cff);transition:width .3s"></div></div>'
-          + '<p class="an-hint"><strong>Uretiliyor:</strong> ' + esc(_kuyrukSuren || '-')
-          + ' &mdash; bu sekmeyi acik birak, baska bolume gecsen de is surer.</p>'
+        ? '<div class="an-bar-track"><div class="an-bar-fill" style="width:' + yuzde + '%"></div></div>'
+          + '<div class="an-meta" style="justify-content:flex-start;margin-bottom:6px">'
+          + '<span><i class="an-spin" aria-hidden="true"></i> <strong>' + (biten + 1) + '. '
+          + esc(_kuyrukSuren || '-') + '</strong></span>'
+          + '<span>' + esc(_kuyrukAdim || 'hazırlanıyor') + '</span>'
+          + '<span>' + esc(_kuyrukBas ? sureMetni(Date.now() - _kuyrukBas) : '') + '</span>'
+          + '</div>'
+          + '<p class="an-hint">Bu sekmeyi açık bırak — <strong>başka bölüme geçsen de iş sürer</strong>'
+          + (_kuyrukDur ? '. <strong>Bu ürün bitince duracak.</strong>' : '.') + '</p>'
         : '')
       + (sira ? '<div class="an-meta" style="flex-wrap:wrap;gap:6px">' + sira + '</div>' : '')
       + (log ? '<div style="margin-top:10px">' + log + '</div>' : '')
       + '<div class="an-bar" style="margin-top:10px">'
-      + (_kuyrukAktif ? ''
+      + (_kuyrukAktif
+        ? (_kuyrukDur
+          ? '<button class="btn btn-ghost" onclick="analysesKuyrukDurdurIptal()">Durdurmaktan vazgeç</button>'
+          : '<button class="btn btn-ghost" onclick="analysesKuyrukDurdur()">Bu ürün bitince dur</button>')
         : (_kuyruk.length
-          ? '<button class="btn btn-primary" onclick="analysesKuyrukBasla()">Kuyrugu baslat (' + _kuyruk.length + ')</button> '
+          ? '<button class="btn btn-primary" onclick="analysesKuyrukBasla()">Kuyruğu başlat (' + _kuyruk.length + ')</button> '
           : '')
           + '<button class="btn btn-ghost" onclick="analysesKuyrukTemizle()">Temizle</button>')
       + '</div></div>';
   }
 
-  // Serit kendi basina tazelenir: kuyruk kosarken arama ekrani yeniden
-  // cizilmiyor, dolayisiyla ilerlemeyi ancak boyle gosterebiliyoruz.
-  function kuyrukSeridiTazele() {
-    var k = $('anKaynak');
-    if (k) { renderUretAra(($('anProdQ') || {}).value || '', window.__anHits); return; }
-    // ILERLEME EKRANINDAYIZ: renderProgress `anNewBody`yi bastan yaziyor ve
-    // `anKaynak` yok oluyor. Serit o zaman ilerleme ekraninin USTUNE
-    // yazilir, yoksa kuyruk kosarken hicbir yerde gorunmuyordu.
-    var b = $('anNewBody');
-    if (!b) return;
+  // Serit YALNIZCA kendi dugumunu tazeler. Onceden `renderUretAra` cagriliyordu:
+  // butun arama ekrani yeniden ciziliyor, arama kutusu odagi ve imleci basa
+  // doneyordu — saniyede bir tazelenen bir seritte kullanilamaz.
+  function kuyrukSeritYaz() {
     var mevcut = $('anKuyrukSerit');
-    var html = kuyrukSeridi();
-    if (mevcut) { mevcut.innerHTML = html; return; }
-    b.insertAdjacentHTML('afterbegin', '<div id="anKuyrukSerit">' + html + '</div>');
+    if (mevcut) { mevcut.innerHTML = kuyrukSeridi(); return; }
+    var b = $('anNewBody') || $('analysesAdminRoot');
+    if (!b) return;
+    b.insertAdjacentHTML('afterbegin', '<div id="anKuyrukSerit">' + kuyrukSeridi() + '</div>');
   }
+
+  function kuyrukTikBasla() {
+    if (_kuyrukTik) return;
+    _kuyrukTik = setInterval(kuyrukSeritYaz, 1000);
+  }
+
+  function kuyrukTikDurdur() {
+    if (_kuyrukTik) { clearInterval(_kuyrukTik); _kuyrukTik = null; }
+  }
+
+  // Adim adi seride yazilir; renderProgress'teki `mark` bunu besler.
+  function kuyrukAdim(ad) {
+    if (!_kuyrukAktif) return;
+    _kuyrukAdim = ad || '';
+    kuyrukSeritYaz();
+  }
+
+  function analysesKuyrukDurdur() { _kuyrukDur = true; kuyrukSeritYaz(); }
+  function analysesKuyrukDurdurIptal() { _kuyrukDur = false; kuyrukSeritYaz(); }
 
   async function analysesKuyrukBasla() {
     if (_kuyrukAktif || !_kuyruk.length) return;
     _kuyrukAktif = true;
+    _kuyrukDur = false;
     _kuyrukLog = [];
     _kuyrukToplam = _kuyruk.length;
+    kuyrukTikBasla();
     while (_kuyruk.length) {
       var isim = _kuyruk[0].name || _kuyruk[0].id;
       _kuyrukSuren = isim;
-      kuyrukSeridiTazele();
+      _kuyrukAdim = 'hazırlanıyor';
+      _kuyrukBas = Date.now();
+      kuyrukSeritYaz();
+      var bas = Date.now();
       try {
-        await kuyrukTekUrun(_kuyruk[0]);
-        _kuyrukLog.push({ ok: true, name: isim });
+        // COZUM DEGERI KAYITTIR: biten urun ANINDA acilabilsin diye id/slug
+        // seride yaziliyor (bkz. kuyrukSeridi -> "Aç" / "Önizle").
+        var kayit = await kuyrukTekUrun(_kuyruk[0]);
+        _kuyrukLog.push({
+          ok: true, name: isim, sure: Date.now() - bas,
+          id: kayit && kayit.id, slug: kayit && kayit.slug,
+        });
       } catch (e) {
         // TEK URUN PATLARSA KUYRUK SURER.
-        _kuyrukLog.push({ ok: false, name: isim, err: e.message || String(e) });
+        _kuyrukLog.push({ ok: false, name: isim, sure: Date.now() - bas, err: e.message || String(e) });
       }
       _kuyruk.shift();
-      kuyrukSeridiTazele();
+      _kuyrukAdim = '';
+      kuyrukSeritYaz();
+      // "Bu urun bitince dur": yarim kalan bir kosuyu KESMEZ, siradakine
+      // gecmez. Kalanlar kuyrukta durur, tekrar baslatilabilir.
+      if (_kuyrukDur) break;
     }
     _kuyrukAktif = false;
     _kuyrukSuren = '';
+    _kuyrukAdim = '';
+    _kuyrukBas = 0;
+    kuyrukTikDurdur();
     _run = null;
     var basarili = _kuyrukLog.filter(function (l) { return l.ok; }).length;
     var hatali = _kuyrukLog.length - basarili;
-    toast('Kuyruk bitti: ' + basarili + ' uretildi, ' + hatali + ' hata', 'i');
-    analysesUretTur('product');
+    toast((_kuyrukDur ? 'Kuyruk durduruldu: ' : 'Kuyruk bitti: ')
+      + basarili + ' üretildi, ' + hatali + ' hata', 'i');
+    _kuyrukDur = false;
+    // Ekran baska bir bolume gecmis olabilir.
+    if ($('anNewBody')) {
+      analysesUretTur('product');
+    } else if ($('analysesAdminRoot')) {
+      // LISTEDEYIZ: yeni taslaklar listeye girsin (kaydet() `_items`e zaten
+      // yazdi) ve serit "kosuyor" halinden ciksin. Bu satir olmadan serit
+      // sayac durdugu icin DONMUS kaliyordu: "2/2 tamamlandi" yazarken
+      // altinda hala "3. Urun B - hazirlaniyor" duruyordu.
+      renderList();
+    } else {
+      kuyrukSeritYaz();
+    }
   }
 
-  // Tek urunu bastan sona kosar ve TASLAK KAYDEDILINCE cozulur.
+  // Tek urunu bastan sona kosar ve TASLAK KAYDEDILINCE kayitla cozulur.
   // `analysesRunReport` TR -> EN gecisini kendi icinde yapiyor; bitisini
   // beklemek icin taslak kaydinin sinyali kullaniliyor (bkz. r.kuyruk).
   function kuyrukTekUrun(girdi) {
@@ -1512,9 +1671,17 @@
       (async function () {
         try {
           var product = await QorAiRun.loadProduct(girdi.id);
-          _run = yeniRun('product', { product: product }, []);
-          _run.kuyruk = { coz: coz, red: red };
-          await analysesRunReport();
+          var r = yeniRun('product', { product: product }, []);
+          r.kuyruk = { coz: coz, red: red };
+          _run = r;
+          // KOSU ACIKCA GECILIR. `analysesRunReport()` parametresiz
+          // cagrilinca global `_run`a bakiyordu ve baska bolume gecince
+          // (loadAnalysesAdmin -> `_run = null`) kosu YARIDA SESSIZCE
+          // OLUYORDU: TR raporu bitiyor, ikinci dile gecerken fonksiyon
+          // `if (!_run) return;` ile cikiyor, promise HIC cozulmuyor ve
+          // kuyruk sonsuza kadar o urunde bekliyordu. Kullanicinin
+          // "ekrandan cikinca duruyor" dedigi sey buydu.
+          await analysesRunReport(r);
         } catch (e) { red(e); }
       }());
     });
@@ -1647,19 +1814,48 @@
     return '';
   }
 
-  async function analysesRunReport() {
-    if (!_run) return;
-    var r = _run;
+  /**
+   * KOSU ARTIK PARAMETREYLE TASINIR, GLOBALLE DEGIL.
+   *
+   * `analysesRunReport()` parametresizken `_run`a bakiyordu ve TR -> EN
+   * gecisini de kendini `_run` uzerinden yeniden cagirarak yapiyordu.
+   * `loadAnalysesAdmin()` ise her ziyarette KOSULSUZ `_run = null` yaziyor.
+   * Sonuc: kuyruk kosarken baska bir bolume girip Analizler'e donmek
+   *   1. `_run`u siliyor,
+   *   2. Turkce rapor bitince ikinci dil icin yapilan ozyineli cagri
+   *      `if (!_run) return;` ile SESSIZCE cikiyor,
+   *   3. `r.kuyruk.coz()` hic cagrilmiyor, promise hic cozulmuyor,
+   *   4. `analysesKuyrukBasla` o urunde SONSUZA KADAR bekliyor.
+   * Kullanicinin "ekrandan cikinca duruyor, devam etmiyor" dedigi hata
+   * buydu — is arka planda olmuyordu, kuyruk kilitleniyordu.
+   *
+   * ILERLEME DURUMU DA KOSUNUN USTUNDE (`r.durum`): quizsiz turde iki dil
+   * TEK listede gosteriliyor ve her cagrida yeni bir `durum = {}` acmak
+   * Turkce adimlarin isaretini siliyordu.
+   */
+  async function analysesRunReport(run) {
+    var r = run || _run;
+    if (!r) return;
     var lang = r.lang;
-    var durum = {};
+    r.durum = r.durum || {};
+    var durum = r.durum;
     _cmpIlerleme = null;
-    renderProgress(durum);
+    renderProgress(durum, '', r);
     var answers = r.questions.map(function (q, i) {
       return { question: q.text, answer: r.answers[i] };
     }).filter(function (a) { return a.answer != null; });
     r.cevaplar[lang] = answers;
 
-    function mark(key, st) { durum[key] = st; renderProgress(durum); }
+    function mark(key, st) {
+      durum[key] = st;
+      // Kuyruk seridi de ayni adimi gosterir: liste ekranindayken ilerleme
+      // ekrani yok, tek gorunur yer serit.
+      if (st === 'run' && r.kuyruk) {
+        var etiket = progAdimlari(lang, r.kind).filter(function (p) { return p[0] === key; })[0];
+        kuyrukAdim(etiket ? etiket[1] : key);
+      }
+      renderProgress(durum, '', r);
+    }
 
     try {
       if (r.kind === 'product' && !r.similar) r.similar = await QorAiRun.similarProducts(r.product, 8);
@@ -1672,7 +1868,7 @@
           if (stage === 'research') mark(lang + '-research', 'run');
           if (stage === 'report') { mark(lang + '-research', 'done'); mark(lang + '-report', 'run'); }
           // Yalniz karsilastirmada: urun basina ilerleme sayaci.
-          if (stage === 'progress') { _cmpIlerleme = bilgi; renderProgress(durum); }
+          if (stage === 'progress') { _cmpIlerleme = bilgi; renderProgress(durum, '', r); }
           if (stage === 'verdict') { mark(lang + '-report', 'done'); mark(lang + '-verdict', 'run'); }
         });
         // `researched` BAYRAGI KAYDA GIRMELI. Motor bunu her turde donduruyor
@@ -1708,7 +1904,8 @@
           r.lang = 'en';
           r.questions = [];
           r.answers = [];
-          return analysesRunReport();
+          // KOSU ACIKCA GECILIR — global `_run` bu arada silinmis olabilir.
+          return analysesRunReport(r);
         }
         mark('next-quiz', 'run');
         var q = await quizUret(r, 'en');
@@ -1725,26 +1922,32 @@
       var meta = await metaUret(runKonu(r), r.kind, r.out.tr);
       mark('meta', 'done');
 
-      _editing = kayitKur(r);
-      metaYaz(_editing, meta);
+      var kayit = kayitKur(r);
+      metaYaz(kayit, meta);
       // TASLAK OLARAK HEMEN KAYDET. Onizleme sitedeki sayfanin kendisi ve o
       // sayfa kaydi `?id=` ile cekiyor — kayit yoksa onizleyecek bir sey de
       // yok. Ayrica bu kadar cagrinin sonucu sekme kazara kapanirsa kaybolmasin.
       mark('save', 'run');
       // DONUS DEGERI KONTROL EDILIR. Yoksa slug/meta catismasi ya da PB
       // hatasi "basarili" sayilip kuyruga ✓ yaziliyordu.
-      var kayitOk = await kaydet('draft');
+      //
+      // KUYRUKTA `_editing`E DOKUNULMAZ. Global editor kaydini kuyrugun
+      // altindan degistirmek iki sekilde zarar veriyordu: baska bir bolume
+      // girip cikmak (loadAnalysesAdmin -> `_editing = null`) kaydi
+      // dusuruyor, kullanicinin actigi bir taslak da kuyruk tarafindan
+      // ezilebiliyordu.
+      var kayitOk = r.kuyruk ? await kaydet('draft', kayit) : (_editing = kayit, await kaydet('draft'));
       if (!kayitOk) throw new Error(_kaydetHata || 'Taslak kaydedilemedi');
       mark('save', 'done');
       // KUYRUKTAYSA EDITORU ACMA: sonraki urune gecilecek, araya taslak
-      // duzenleyicisini sokmak akisi keser ve `_editing`i kuyrugun altindan
-      // degistirir. Taslaklar Analizler listesinden toplu incelenir.
-      if (r.kuyruk) { r.kuyruk.coz(); return; }
+      // duzenleyicisini sokmak akisi keser. Taslaklar Analizler listesinden
+      // ya da kuyruk seridindeki "Aç" ile tek tek incelenir.
+      if (r.kuyruk) { r.kuyruk.coz(kayitOk); return; }
       renderEditor();
     } catch (e) {
       var acik = Object.keys(durum).filter(function (k) { return durum[k] === 'run'; });
       acik.forEach(function (k) { durum[k] = 'fail'; });
-      renderProgress(durum, e.message || String(e));
+      renderProgress(durum, e.message || String(e), r);
       if (r.kuyruk) r.kuyruk.red(e);
     }
   }
@@ -1816,7 +2019,7 @@
       + '<span class="an-head-sp"></span>'
       + eylemler(a, yayinda)
       + '</div>'
-      + adimlar(3)
+      + adimlar('yayin', kind)
       + (rapor ? '' : '<div class="an-note an-note-err">Rapor verisi yok — bu kayıt yayınlanamaz.</div>')
       + '<div class="an-tabbar">'
       + LANGS.map(function (x) {
@@ -2242,9 +2445,19 @@
   var _kaydetHata = '';
   function kaydetRed(msg) { _kaydetHata = msg; toast(msg, 'e'); return false; }
 
-  async function kaydet(durum) {
+  /**
+   * `hedef` VERILIRSE global `_editing`e DOKUNULMAZ.
+   *
+   * Kuyruk kendi kaydini yazarken editorun acik kaydini degistirmemeli:
+   * baska bir bolume girip cikmak `_editing`i sifirliyor ve kayit
+   * kuyrugun altindan kayboluyordu. Donus degeri de artik `true` degil
+   * KAYDIN KENDISI — biten urun seride "Aç" / "Önizle" ile cikabilsin diye
+   * id ve slug gerekiyor. (`false` yine basarisizlik; ikisi de dogru
+   * degerlendirilir.)
+   */
+  async function kaydet(durum, hedef) {
     _kaydetHata = '';
-    var a = _editing;
+    var a = hedef || _editing;
     if (!a.slug) return kaydetRed('Slug boş olamaz');
     var carpanSlug = slugCakismasi(a);
     if (carpanSlug) {
@@ -2271,11 +2484,11 @@
       var rec = a.id
         ? await getPb().collection('analyses').update(a.id, a, { $autoCancel: false })
         : await getPb().collection('analyses').create(a, { $autoCancel: false });
-      _editing = rec;
+      if (!hedef) _editing = rec;
       // Liste onbellegi de tazelensin: slug/meta catisma denetimi _items'a bakiyor.
       var i = _items.findIndex(function (o) { return o.id === rec.id; });
       if (i >= 0) _items[i] = rec; else _items.unshift(rec);
-      return true;
+      return rec;
     } catch (e) { return kaydetRed('Kaydedilemedi: ' + (e.message || e)); }
   }
 
@@ -2333,6 +2546,8 @@
   window.analysesKuyruktanCikar = analysesKuyruktanCikar;
   window.analysesKuyrukTemizle = analysesKuyrukTemizle;
   window.analysesKuyrukBasla = analysesKuyrukBasla;
+  window.analysesKuyrukDurdur = analysesKuyrukDurdur;
+  window.analysesKuyrukDurdurIptal = analysesKuyrukDurdurIptal;
   window.analysesCmpSearch = analysesCmpSearch;
   window.analysesCmpEkle = analysesCmpEkle;
   window.analysesCmpCikar = analysesCmpCikar;
