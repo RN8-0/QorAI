@@ -3101,10 +3101,37 @@ async function main() {
       body = localizeBodyLinks(body, lang);
       const prefix = localePrefix(lang);
       const dir = `${prefix}${r.path}`.replace(/^\//, '');
+      const rUrl = `${SITE}${prefix}${r.path}`;
+      const rMeta = { ...r.seo, ...localizedRouteMeta(r, lang) };
+      /* SABIT ROTALARDA HIC YAPISAL VERI YOKTU.
+         Olculdu 2026-09-02, canli sitemap taramasi: 136 adresin 16'sinda
+         (/about, /faq, /contact, /privacy, /refund, /cookies, /category ve
+         TR karsiliklari) tek bir JSON-LD blogu bile yoktu. CLAUDE.md ise
+         "BreadcrumbList everywhere" diyor.
+         Sema URL YAPISINDAN turer, yeni veri gerektirmez: kok + sayfa. */
+      const rLd = r.seo?.jsonLd || (r.seo?.noindex ? null : {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'WebPage', '@id': `${rUrl}#webpage`, url: rUrl,
+            name: rMeta.title, description: rMeta.description,
+            inLanguage: lang, isPartOf: { '@id': `${SITE}/#website` },
+          },
+          {
+            '@type': 'BreadcrumbList', '@id': `${rUrl}#breadcrumb`,
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${prefix || '/'}` },
+              // Ana sayfada ikinci basamak YOK: kendi kendine kirinti olmaz.
+              ...(r.dir === '' ? [] : [{ '@type': 'ListItem', position: 2, name: rMeta.title, item: rUrl }]),
+            ],
+          },
+        ],
+      });
       writeHtml(dir, renderPage(template, {
-        ...r.seo, ...localizedRouteMeta(r, lang),
-        url: `${SITE}${prefix}${r.path}`,
+        ...rMeta,
+        url: rUrl,
         lang,
+        ...(rLd ? { jsonLd: rLd } : {}),
         // Kabuktaki hero metni yalnizca ana sayfada kalsin (bkz. renderPage).
         isHome: r.dir === '',
         routeKey: r.dir,
@@ -3634,7 +3661,19 @@ async function main() {
         title: tx.title, description: tx.desc, url, lang, type: 'website',
         routeKey: 'blog',
         alternates: hreflangAlts('/blog'),
-        jsonLd: { '@context': 'https://schema.org', '@type': 'Blog', '@id': `${url}#blog`, name: 'Qor AI Blog', url },
+        jsonLd: {
+          '@context': 'https://schema.org',
+          '@graph': [
+            { '@type': 'Blog', '@id': `${url}#blog`, name: 'Qor AI Blog', url, inLanguage: lang },
+            {
+              '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${localePrefix(lang) || '/'}` },
+                { '@type': 'ListItem', position: 2, name: 'Blog', item: url },
+              ],
+            },
+          ],
+        },
       }, localizeBodyLinks(blogListBody(articles), lang)));
       blogUrls.push({
         loc: url, lastmod: blogListLastmod, changefreq: 'daily',
@@ -3752,8 +3791,20 @@ async function main() {
         routeKey: 'blog',
         alternates: hreflangAlts('/analiz'),
         jsonLd: {
-          '@context': 'https://schema.org', '@type': 'CollectionPage',
-          '@id': `${url}#page`, url, name: tx.h1,
+          '@context': 'https://schema.org',
+          '@graph': [
+            { '@type': 'CollectionPage', '@id': `${url}#page`, url, name: tx.h1, inLanguage: lang },
+            // Liste sayfasinda kirinti ANLAMLI: Qor AI > Analizler.
+            // Olculdu 2026-09-02: sitemap'teki 136 adresin 6'sinda kirinti
+            // yoktu; ikisi ana sayfa (Google zaten istemiyor), dordu liste.
+            {
+              '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+              itemListElement: [
+                { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}${prefix || '/'}` },
+                { '@type': 'ListItem', position: 2, name: tx.h1, item: url },
+              ],
+            },
+          ],
         },
         headExtra: analizTohumBlogu(analyses),
       }, localizeBodyLinks(analizListeBody(analyses, lang), lang)));
