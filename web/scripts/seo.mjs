@@ -951,8 +951,38 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
     const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(pAd)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a>` : '';
+    // ── BLOK MODELI (yeni editor) ─────────────────────────────────────────
+    // OLCULDU 2026-09-02: 11 makalenin 10'u urun metnini `blocks` icinde
+    // tutuyor, YALNIZCA 1'i eski `desc_*` alanlarini kullaniyor. Bu fonksiyon
+    // yalnizca `desc_*` okuyordu, dolayisiyla o 10 makalenin (= 20 URL) ASIL
+    // GOVDESI ham HTML'e HIC yazilmiyordu.
+    //
+    // Kamerali telefonlar yazisi: canlida 1.591 kelime, on-render'da 324.
+    // Yani Googlebot ve AdSense incelemecisi giris + urun listesi + affiliate
+    // linki + sonuc goruyordu — "ince affiliate icerigi"nin ta kendisi.
+    // Editoryel gerekcenin %80'i JS calismadan once yoktu.
+    //
+    // Kural (CLAUDE.md): icerigi yalnizca JS kostuktan sonra beliren
+    // indexlenebilir rota YAYINLANMAZ.
+    const bloklar = Array.isArray(p.blocks) ? p.blocks : [];
+    const blokIcerik = !bloklar.length ? '' : bloklar.map((b) => {
+        if (b && b.t === 'image') {
+          const u = String(b.url || '');
+          if (!/^https?:\/\//i.test(u)) return '';
+          const bh = IMG_H[b.size] || IMG_H.m;
+          const cap = esc(b[`cap_${lang}`] || b.cap_tr || b.cap_en || b.cap || '');
+          return `<figure style="margin:14px 0"><img src="${esc(u)}" alt="${cap || esc(pAd)}" style="display:block;max-width:100%;max-height:${bh}px;object-fit:contain;border-radius:12px" loading="lazy" />`
+            + (cap ? `<figcaption style="font-size:13.5px;color:#64748b;margin-top:6px">${cap}</figcaption>` : '')
+            + `</figure>`;
+        }
+        // Dil dususu tr/en ile SINIRLI: Almanca 2026-08-21'de kaldirildi,
+        // eski kayitlarda duran `de` alani yanlislikla yayina donmesin.
+        const txt = String((b && (b[lang] || b.tr || b.en)) || '').trim();
+        return txt ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${esc(txt)}</p>` : '';
+    }).join('');
     let inner;
-    if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
+    if (blokIcerik) inner = blokIcerik;      // blok modeli varsa o kazanir
+    else if (layout === 'text' || !img) inner = dEl(d1) + dEl(d2);
     else if (layout === 'top') inner = imgEl + dEl(d1) + dEl(d2);
     else if (layout === 'left' || layout === 'right') {
       const imgCol = `<div style="flex:0 0 40%">${imgEl}</div>`;
