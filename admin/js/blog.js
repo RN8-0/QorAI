@@ -1521,10 +1521,50 @@ KURALLAR:
   ]);
   const _uniq = (arr) => [...new Set(arr)];
   const _hasDigit = (t) => /\d/.test(t);
+
+  /* ── "KAÇMASI SERBEST" KELIMELER — RAKAMLI DIYE HEPSI MODEL NUMARASI DEĞİL
+     ──────────────────────────────────────────────────────────────────────────
+     Eski kural şuydu: eksik kalan kelime rakam içeriyorsa eşleşme REDDEDİLİR
+     ("model numarası kaçamaz"). İçgüdü doğru ama üç ayrı şeyi aynı kefeye
+     koyuyordu ve "ürünler bulunamıyor" şikâyetinin tamamı buradan çıkıyor.
+
+     ÖLÇÜLDÜ 2026-09-02, canlı Typesense, bir AI'ın yazacağı 9 tipik adla:
+       Apple MacBook Air M4 (2026)      → eksik "2026"     ✗
+       Lenovo IdeaPad Slim 3 15IAN8     → eksik "15ian8"   ✗
+       Samsung Galaxy Book4 Pro 14      → eksik "14"       ✗
+       HP Pavilion Plus 14              → eksik plus, 14   ✗
+     Dokuzun dördü. Typesense ARAMASI kusursuz çalışıyordu — doğru ürün ilk
+     sırada geliyor, kapı onu reddediyordu.
+
+     Üç sınıf ayrıldı:
+      · YIL (2015-2035). Katalog adı yılı yazmaz; "MacBook Air M4 (2026)"
+        ile "MacBook Air 13.6\" M4" aynı üründür.
+      · EKRAN BOYUTU (10-18 tam sayı). Katalog ya ondalık yazıyor (13.6),
+        ya "(15.6 İnç)" diyor, ya hiç yazmıyor.
+      · ALT-MODEL KODU (harf+rakam karışık, ≥5 karakter) — ama YALNIZCA aday
+        adı da kendi kodunu taşıyorsa. Lenovo'nun pazarlama kodu "15IAN8" ile
+        Epey'in SKU'su "83K2001WTR015" aynı ürünün iki farklı kodlamasıdır;
+        biri diğerinde geçmez ve geçmesi de beklenmez.
+
+     KASITEN SERT BIRAKILANLAR: "M4" / "S24" / "A315" gibi 4 karakterden kısa
+     kodlar. M3 ile M4, S24 ile S25 AYRI ÜRÜNDÜR ve bunları yumuşatmak tam da
+     "yanlış ürüne bağlamak" olurdu. */
+  const _yilMi = (t) => /^(20(1[5-9]|2\d|3[0-5]))$/.test(t);
+  const _ekranBoyutuMu = (t) => /^\d{2}$/.test(t) && Number(t) >= 10 && Number(t) <= 18;
+  const _altModelKodu = (t) => t.length >= 5 && /[a-zğüşöçı]/.test(t) && /\d/.test(t);
+  const _kodTasiyor = (nt) => nt.some((t) => t.length >= 5 && /[a-z]/.test(t) && /\d/.test(t));
+
+  function _yumusakMi(t, nt) {
+    if (_yilMi(t) || _ekranBoyutuMu(t)) return true;
+    return _altModelKodu(t) && _kodTasiyor(nt);
+  }
+
   function matchScore(query, candidateName) {
     const qt = _uniq(tokensOf(query));
     const nt = _uniq(tokensOf(candidateName));
-    if (!qt.length || !nt.length) return { f1: 0, sigOk: false, brandOk: false, missing: qt, ok: false };
+    if (!qt.length || !nt.length) {
+      return { f1: 0, sigOk: false, brandOk: false, missing: qt, ok: false, gevsekOk: false };
+    }
     const nSet = new Set(nt);
     const inter = qt.filter((t) => nSet.has(t)).length;
     const qCov = inter / qt.length;
@@ -1538,21 +1578,54 @@ KURALLAR:
     // Tek eksik kelimeye tolerans: rakamsız olmalı (model numarası kaçamaz) ve
     // geri kalan örtüşme makul olmalı.
     const nearOk = sig.length > 2 && missing.length === 1 && !_hasDigit(missing[0]) && f1 >= 0.5;
-    return { f1, sigOk, brandOk, missing, ok: brandOk && (sigOk || nearOk) };
+    // GEVŞEK KAPI — yalnızca sert kapıdan hiçbir aday geçemezse kullanılır
+    // (bkz. resolveCatalogItem iki geçişi). Eksik kelimelerin HEPSİ yumuşak
+    // sınıftan olmak zorunda; bir tanesi bile gerçek ayırt edici ise kapı
+    // kapalı kalır ("HP Pavilion Plus 14" → "plus" sert, eşleşme YOK).
+    const sertEksik = missing.filter((t) => !_yumusakMi(t, nt));
+    const gevsekOk = sig.length > 2 && sertEksik.length === 0 && missing.length > 0 && f1 >= 0.35;
+    return { f1, sigOk, brandOk, missing, sertEksik, gevsekOk, ok: brandOk && (sigOk || nearOk) };
   }
+
+  /**
+   * Katalog eşleşmesi — İKİ GEÇİŞ: önce sert, sonra gevşek.
+   *
+   * Sert geçişten bir aday çıkarsa gevşek geçiş HİÇ çalışmaz; yani yumuşatma
+   * yalnızca "hiç eşleşme yok" durumunu kurtarır, doğru eşleşmeyi bozamaz.
+   *
+   * `perPage` 5 → 12: katalog adları SKU taşıyor ve tek ürünün 6-8 varyantı
+   * arka arkaya geliyor; doğru varyant ilk beşin dışında kalabiliyordu.
+   */
   async function resolveCatalogItem(q) {
     try {
-      const r = await window.TsClient.search(q, { perPage: 5 });
+      const r = await window.TsClient.search(q, { perPage: 12 });
       const hits = (r.hits || []).map((h) => h.document);
       if (!hits.length) return null;
-      let best = null; let bestF1 = -1;
-      for (const d of hits) {
-        const m = matchScore(q, `${d.brand || ''} ${d.name || ''}`);
-        if (!m.ok) continue;
-        if (m.f1 > bestF1) { bestF1 = m.f1; best = d; }
-      }
+      const sec = (kapi) => {
+        let best = null; let bestF1 = -1;
+        for (const d of hits) {
+          const m = matchScore(q, `${d.brand || ''} ${d.name || ''}`);
+          if (!kapi(m)) continue;
+          if (m.f1 > bestF1) { bestF1 = m.f1; best = d; }
+        }
+        return best;
+      };
+      let gevsek = false;
+      let best = sec((m) => m.ok);
+      if (!best) { best = sec((m) => m.brandOk && m.gevsekOk); gevsek = Boolean(best); }
       if (!best) return null;
-      return { id: best.id, slug: best.slug || slugify(best.name), name: best.name, brand: best.brand || '', techScore: best.techScore || 0, imageUrl: best.imageUrl || '' };
+      return {
+        id: best.id,
+        slug: best.slug || slugify(best.name),
+        name: best.name,
+        brand: best.brand || '',
+        techScore: best.techScore || 0,
+        imageUrl: best.imageUrl || '',
+        // İçe aktarma raporu bunu yazar: gevşek eşleşmede kartta katalogun
+        // KENDİ adı görünür, yani okuyucu varyantı zaten görür — ama yazarın
+        // da bunu bir kez gözden geçirmesi gerekir.
+        gevsekEslesme: gevsek,
+      };
     } catch (_) { return null; }
   }
   // ── GÖRSEL ÇÖZÜMLEME (marka logosu / ürün görseli) ────────────
@@ -1722,7 +1795,12 @@ KURALLAR:
           // Katalog görselini öğeye taşı — sanitizeImported() bunu ilk görsel
           // bloğu olarak yerleştirir (yayınlanan yazıda ürün görseli çıksın).
           _products.push({ ...hit, kind: 'product', image: hit.imageUrl || '', blocks: it.blocks });
-          report.push({ q, ok: true, label: `${q} → ${hit.name} (katalog)` });
+          report.push(hit.gevsekEslesme
+            // GEVŞEK EŞLEŞME AYRI RAPORLANIR: ürün hattı ve marka doğru ama
+            // yıl / ekran boyutu / alt-model kodu tutmuyor. Kartta katalogun
+            // kendi adı görünür; yine de yazar bir kez bakmalı.
+            ? { q, ok: true, warn: true, label: `${q} → ${hit.name} (katalog · yakın varyant — kontrol et)` }
+            : { q, ok: true, label: `${q} → ${hit.name} (katalog)` });
           blogProdFetchPrice(hit.id);
           continue;
         }
@@ -1757,7 +1835,7 @@ KURALLAR:
         <b>İçe aktarma raporu — ürün eşleştirme</b>
         <button class="ba-mini" onclick="blogImportReportClose()">✕</button>
       </div>
-      ${_importReport.map((r) => `<div class="${r.ok ? 'r-ok' : 'r-warn'}">${r.ok ? '✓' : '⚠'} ${esc(r.label)}</div>`).join('')}
+      ${_importReport.map((r) => `<div class="${r.ok && !r.warn ? 'r-ok' : 'r-warn'}">${r.ok && !r.warn ? '✓' : r.warn ? '≈' : '⚠'} ${esc(r.label)}</div>`).join('')}
       <div style="opacity:.6;margin-top:6px;font-size:12px">⚠ olanları istersen sil + üstteki aramayla doğru ürünü ekle (blokları kopyalamak için önce yenisini ekle, sonra eskisini sil).</div>
     </div>`;
   }
