@@ -589,6 +589,111 @@ async function runCompareReport(o) {
   };
 }
 
+/* ── PARAGRAF DUYGUSU: ADANMIS SINIFLANDIRICI ─────────────────────────────
+   Rapor modeli etiketlemeyi guvenilir yapmiyor. OLCULDU 2026-09-03, ayna
+   duzeltmesinden SONRA uretilmis alti dil-kaydinda:
+     "Zamanlama ve deger" bolumu  4 kayitta KOMPLE etiketsiz (0/5 paragraf)
+     "Kime uygun" / "degil"       5 kayitta KOMPLE etiketsiz
+   Ustelik yanlis da etiketliyor: "Ceramic Shield 2 on yuzey ve IPX8 ...
+   korunma saglar" cumlesi KIRMIZI cikmisti — model paragrafin TAMAMINA
+   bakiyor, oysa kural ILK CUMLE.
+
+   Sebep basit: rapor modeli ayni anda yirmi is yapiyor ve son bolumlerde
+   etiketlemeyi dusuruyor. Adanmis siniflandirici TEK IS yapiyor ve 42
+   vakalik fixture testinden 42/42 geciyor (scripts/sentiment_test.mjs).
+
+   MALIYET: 25'lik gruplar, thinkingBudget 0, cikti ~24 jeton/paragraf.
+   Tipik bir rapor 20-30 paragraf, yani DIL BASINA TEK ucuz cagri. Grounded
+   aramadan tasarruf edilen tutarin yaninda ihmal edilebilir. */
+async function labelParagraphs(paragraflar, grup) {
+  var n = grup || 25;
+  var hepsi = [];
+  for (var i = 0; i < paragraflar.length; i += n) {
+    var dilim = paragraflar.slice(i, i + n);
+    var istek = dilim.map(function (t, k) {
+      return (k + 1) + '. ' + String(t).replace(/\s+/g, ' ').trim();
+    }).join('\n\n');
+    var etiketler = null;
+    try {
+      var txt = await askRaw({
+        system: P.PARAGRAF_SINIFLANDIRICI,
+        user: istek,
+        maxOutputTokens: Math.max(512, dilim.length * 24),
+        temperature: 0,
+        jsonMode: true,
+      });
+      var j = P.parseAiJson(txt);
+      if (j && Array.isArray(j.labels) && j.labels.length === dilim.length) etiketler = j.labels;
+    } catch (_) { etiketler = null; }
+    // Etiket gelmezse NOTR: uydurma renk vermektense renk vermemek dogru.
+    var guvenli = etiketler || dilim.map(function () { return 'neutral'; });
+    hepsi = hepsi.concat(guvenli.map(function (x) {
+      var v = String(x || '').toLowerCase();
+      return (v === 'positive' || v === 'negative') ? v : 'neutral';
+    }));
+  }
+  return hepsi;
+}
+
+/* Rapordaki NESIR alanlarini EKRANDAKI paragraflara boler.
+   `proseBlocks` on yuzun kullandigi bolucunun TA KENDISI (tek kaynak,
+   qor_ai_prompts.js) — iki taraf metni farkli bolerse anahtarlar tutmaz. */
+var NESIR_ALANLARI = [
+  'analysis', 'summary', 'matchComment', 'bestFor', 'notFor', 'overallVerdict',
+  'detail', 'comment', 'note', 'recommendation', 'verdict', 'headline',
+];
+
+function nesirParagraflari(dugum, out, derinlik) {
+  out = out || []; derinlik = derinlik || 0;
+  if (!dugum || derinlik > 6) return out;
+  if (Array.isArray(dugum)) {
+    dugum.forEach(function (x) { nesirParagraflari(x, out, derinlik + 1); });
+    return out;
+  }
+  if (typeof dugum !== 'object') return out;
+  Object.keys(dugum).forEach(function (k) {
+    var v = dugum[k];
+    if (k === 'paragraphSentiment') return;
+    if (typeof v === 'string') {
+      if (NESIR_ALANLARI.indexOf(k) < 0) return;
+      P.proseBlocks(v).forEach(function (b) {
+        if (b.kind === 'head') return;              // baslik hukum tasimaz
+        var par = String(b.text || '').trim();
+        if (par.length < 40) return;                // cok kisa: hukum yok
+        if (out.indexOf(par) < 0) out.push(par);
+      });
+      return;
+    }
+    nesirParagraflari(v, out, derinlik + 1);
+  });
+  return out;
+}
+
+/**
+ * Raporun `paragraphSentiment` haritasini ADANMIS siniflandiriciyla yeniden
+ * kurar ve rapor modelinin yazdigini EZER. Rapor nesnesini yerinde degistirir,
+ * etiketlenen paragraf sayisini dondurur.
+ *
+ * ANAHTAR HAM ILK CUMLE olarak yazilir; okuma tarafi zaten tek huniden
+ * normalize ediyor (web/src/lib/sentiment.js -> sentimentIndex). Admin'de
+ * ikinci bir `paragraphKey` kopyasi tutmak, tam da bir kez yasanmis olan
+ * "iki taraf anahtari farkli uretiyor" hatasini geri getirirdi.
+ */
+async function attachParagraphSentiment(rapor) {
+  if (!rapor || typeof rapor !== 'object') return 0;
+  var paragraflar = nesirParagraflari(rapor);
+  if (!paragraflar.length) return 0;
+  var etiketler = await labelParagraphs(paragraflar);
+  var harita = {};
+  paragraflar.forEach(function (par, i) {
+    var d = etiketler[i];
+    if (d !== 'positive' && d !== 'negative') return;  // notr SAKLANMAZ
+    harita[par] = d;
+  });
+  rapor.paragraphSentiment = harita;
+  return Object.keys(harita).length;
+}
+
 /**
  * TEK DILDE rapor. Sirasi ve tazelik onarimi sitedeki
  * runProductAnalysisJob() ile birebir ayni.
@@ -903,6 +1008,7 @@ root.QorAiRun = {
   askRaw: askRaw,
   askJson: askJson,
   askGrounded: askGrounded,
+  attachParagraphSentiment: attachParagraphSentiment,
   searchProducts: searchProducts,
   loadProduct: loadProduct,
   similarProducts: similarProducts,

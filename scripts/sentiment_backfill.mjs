@@ -2,8 +2,10 @@
 //  ESKI ANALIZLERE DUYGU ETIKETI — TEK SEFERLIK GOC
 //
 //  Kosum:  node scripts/sentiment_backfill.mjs            (deneme, yazmaz)
-//          node scripts/sentiment_backfill.mjs --yaz      (PB'ye yazar)
+//          node scripts/sentiment_backfill.mjs --yaz      (yayindakiler)
+//          node scripts/sentiment_backfill.mjs --yaz --tumu   (taslaklar dahil)
 //          node scripts/sentiment_backfill.mjs --yaz --slug=apple-iphone-17
+//          --zorla  : etiketi olan kayitlari da YENIDEN etiketler
 //
 //  NEDEN GEREKLI: on yuz artik duygu TAHMIN ETMIYOR (bkz. web/src/lib/
 //  sentiment.jsx). Yeni analizlerde etiketi AI raporla birlikte yaziyor;
@@ -89,7 +91,13 @@ async function pb(yol, secenek = {}) {
 
 const main = async () => {
   if (YAZ) await girisYap();
-  const filtre = SLUG ? `slug="${SLUG}"` : 'status="published"';
+  /* VARSAYILAN YALNIZ YAYINDAKILER — taslak henuz kimseye gorunmuyor ve her
+     kosuda onlari da etiketlemek bosuna AI cagrisi.
+     `--tumu` TASLAKLARI DA KAPSAR. Gerekli: kuyruk on taslak uretip
+     birakiyor ve o taslaklar yayina alinmadan once dogru etiketlenmis
+     olmali; yoksa yayinlanan sayfa renksiz ciktikten SONRA fark ediliyor. */
+  const TUMU = process.argv.includes('--tumu');
+  const filtre = SLUG ? `slug="${SLUG}"` : (TUMU ? 'id!=""' : 'status="published"');
   const liste = await pb(`/api/collections/analyses/records?perPage=200&filter=${encodeURIComponent(filtre)}`);
   const kayitlar = liste.items || [];
   console.log(`[goc] ${kayitlar.length} kayit${YAZ ? '' : '  (DENEME — yazilmayacak)'}\n`);

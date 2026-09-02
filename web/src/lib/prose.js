@@ -15,30 +15,10 @@
 
 // Model bazen tek blok, bazen boş satırlı paragraf, bazen "### başlık" yazıyor.
 // Üçünü de aynı şekle indir: [{kind, text}].
-export function proseBlocks(text) {
-  const raw = String(text || '').replace(/```[a-z]*\s*/gi, '').trim();
-  if (!raw) return [];
-  const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
-  const blocks = [];
-  lines.forEach((line) => {
-    if (/^#{1,6}\s+/.test(line)) {
-      blocks.push({ kind: 'head', text: line.replace(/^#{1,6}\s+/, '').replace(/[:：]\s*$/, '') });
-      return;
-    }
-    if (/^[-•*]\s+/.test(line)) {
-      blocks.push({ kind: 'bullet', text: line.replace(/^[-•*]\s+/, '') });
-      return;
-    }
-    blocks.push({ kind: 'p', text: line.replace(/^>\s+/, '') });
-  });
-  // TEK NEFESTE YAZILMIŞ METİN. Model kimi zaman 600 kelimeyi tek satırda
-  // döndürüyor; o hâlde paragraf ritmi diye bir şey kalmıyor. Cümlelere böl,
-  // üçerli paragraflara topla.
-  if (blocks.length === 1 && blocks[0].kind === 'p' && blocks[0].text.length > 640) {
-    const sents = blocks[0].text.split(/(?<=[.!?])\s+/).filter(Boolean);
-    const packed = [];
-    for (let i = 0; i < sents.length; i += 3) packed.push({ kind: 'p', text: sents.slice(i, i + 3).join(' ') });
-    return packed;
-  }
-  return blocks;
-}
+/* GOVDE ARTIK BURADA DEGIL — TEK KAYNAK admin/js/qor_ai_prompts.js.
+   Ayni bolucuyu admin motoru da kullaniyor (yeni analizlerde paragraf
+   etiketleri onunla uretiliyor). Iki kopya olsaydi yazan ve okuyan taraf
+   metni farkli boler, anahtarlar hic tutmazdi. */
+import '../../../admin/js/qor_ai_prompts.js';
+
+export const proseBlocks = globalThis.QorAiPrompts.proseBlocks;

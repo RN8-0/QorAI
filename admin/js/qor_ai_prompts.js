@@ -804,6 +804,150 @@ async function resolveCatalogAlternatives(alternatives, { search, category = '',
       `chronicIssues[]`. Bunların sırasını model seçiyor; TR'deki 1. tema
       EN'deki 1. tema OLMAYABİLİR. İndeksle hizalamak yanlış puanı yanlış
       başlığa yapıştırmak olurdu — sessiz ve daha kötü bir hata. */
+/* ── PARAGRAF DUYGUSU: SINIFLANDIRMA ARTIK RAPOR MODELINDEN ALINMIYOR ──────
+   Rapor modeline "yaziyi yaz VE her paragrafi etiketle" demek calismiyor:
+   model yirmi isi ayni anda yapiyor ve etiketlemeyi SON bolumlerde
+   dusuruyor. OLCULDU 2026-09-03, ayna duzeltmesinden SONRA uretilmis alti
+   dil-kaydinda:
+     FIYAT / zamanlama bolumu   4 kayitta KOMPLE etiketsiz (0/5)
+     "Kime uygun" / "degil"     5 kayitta KOMPLE etiketsiz
+   Ayrica yanlis etiketliyor: "Ceramic Shield 2 on yuzey ve IPX8 ... korunma
+   saglar" cumlesi KIRMIZI cikti — cunku model paragrafin TAMAMINA bakti,
+   oysa kural ILK CUMLE.
+
+   Adanmis siniflandirici TEK IS yapiyor ve 42 vakalik fixture testinden
+   42/42 geciyor (scripts/sentiment_test.mjs). Artik etiketleri O uretiyor;
+   rapor modelinin yazdigi `paragraphSentiment` UZERINE YAZILIR.
+
+   PROMPT BURADA CUNKU UC TARAF PAYLASIYOR: admin motoru (yeni analizler),
+   scripts/sentiment_lib.mjs (geriye donuk goc) ve fixture testi. Ikinci bir
+   kopya kacinilmaz olarak ayrisirdi — bu projede tam olarak o hata bir kez
+   yasandi (goc `paragraphKey` yaziyordu, AI ham cumle). */
+var PARAGRAF_SINIFLANDIRICI = `You label paragraphs from product analyses.
+
+For each numbered paragraph, judge ONLY ITS FIRST SENTENCE, and only as an
+evaluation OF THE PRODUCT:
+
+  positive  the first sentence praises the product or states a strength
+  negative  the first sentence criticises the product, names a weakness,
+            a limitation, a risk, a mismatch with the buyer's need, or a
+            trade-off that costs the buyer something
+  neutral   the first sentence states a fact, a spec, context, a date, a
+            price observation or a definition without judging the product
+
+HARD RULES — these are where naive labelling fails:
+
+1. JUDGE THE FIRST SENTENCE ONLY. Later sentences may reverse the mood;
+   ignore them.
+     "The display is excellent. However, the 60Hz may disappoint." -> positive
+     "The 60Hz is a real weakness. However, colours are great."    -> negative
+
+2. CONCESSIVE OPENERS FLIP THE WEIGHT. In "although / while / despite /
+   even though X, Y", the judgement lives in Y, not X.
+     "While the display is bright, its 60Hz feels dated."       -> negative
+     "Although expensive, its performance is exceptional."      -> positive
+
+3. NEGATION REVERSES. "not bad", "no problems reported", "doesn't overheat",
+   "never stutters" are POSITIVE. "not great", "fails to deliver" are NEGATIVE.
+
+4. A WORD IS NOT A LABEL. "smooth" can sit inside a complaint
+   ("impacting the smoothness"); "problem" can sit inside praise
+   ("no problems in daily use"). Read the clause, not the vocabulary.
+
+5. MISMATCH IS NEGATIVE. If the first sentence says a trait conflicts with,
+   falls short of, or does not meet what the buyer wants, label negative even
+   when the trait itself sounds good ("While efficient, it conflicts with the
+   user's preference for raw power").
+
+6. FACTS ARE NEUTRAL. Do not force a label. A spec, a release date or a bare
+   price figure is neutral even if the product is generally good.
+
+   BUT PRICE AND TIMING ARE JUDGED FROM THE BUYER'S SIDE.
+   A price/value/timing sentence is not "about the product", it is about what
+   the reader pays and when — and it almost always carries a direction. Judge
+   it by whether it is good news or bad news FOR THE BUYER:
+     positive  price is falling, a discount or sale window is coming, waiting
+               pays off, it is a good time to buy, the price is fair for what
+               you get, the value holds up
+     negative  price is high or rising, no meaningful drop is expected, you
+               will pay a premium, it is poor value, stock is scarce and
+               pushes the price up, buying now costs you money you could save
+     neutral   ONLY a bare figure or date with no direction at all
+               ("Listings sit between 33,249 TL and 39,049 TL.",
+                "Apple typically announces the next generation in September.")
+   Examples that MUST be labelled, not left neutral:
+     "Its price tends to remain stable, with significant drops rare."  -> negative
+     "Waiting until Q1 could yield better deals."                      -> positive
+     "The biggest drop usually comes when the successor launches."     -> positive
+     "Fiyatların yakın zamanda düşmesi beklenmiyor."                   -> negative
+     "Yılbaşı kampanyalarında ciddi indirim görülebilir."              -> positive
+
+   BUT A REPORTED FAULT IS NOT A FACT. A sentence that reports a defect, a
+   failure, a complaint, a return, or a difficulty owners ran into is
+   NEGATIVE even when it is phrased as a flat observation with no judging
+   word in it. "Ownership" wording does not make it neutral.
+     "Some users received units with dead pixels out of the box."  -> negative
+     "Kutudan çıktığı gibi ekran arızası yaşayan kullanıcılar da
+      mevcuttur."                                                  -> negative
+   Symmetrically, a flatly worded report of something working well is
+   POSITIVE ("Owners report the battery lasts a full day").
+
+7. INPUT MAY BE TURKISH. The same six rules apply unchanged. Turkish
+   concessive and negation markers to watch:
+     ancak / ama / fakat / ne var ki / buna karşın   -> judgement follows
+     -e rağmen / -e karşın                            -> judgement follows
+     // "-sa da / -se de" EKI EKSIKTI ve olculdu: "…görüşleri genel olarak
+     // olumlu OLSA DA, bazı önemli endişeler de dile getirilmektedir."
+     // notr etiketlendi, ekranda siyah kaldi. Turkce'de en sik kullanilan
+     // odun baglaci bu ve listede yoktu.
+     -sa da / -se de (olsa da, etse de, olmakla birlikte)  -> judgement follows
+     yine de / bununla birlikte / öte yandan          -> judgement follows
+     değil / yok / bulunmuyor / -maz / -mez           -> reverses
+     "sorunsuz", "kusursuz", "sınırsız" are POSITIVE even though they
+     contain the roots "sorun", "kusur", "sınır".
+   Turkish puts the verb last, so the judgement usually sits at the END of
+   the first sentence — read it to the end before deciding.
+     "512 GB depolama çoğu kullanıcı için fazlasıyla yeterli."  -> positive
+     "Uzun yazılım desteği ve dayanıklı yapısı öne çıkıyor."    -> positive
+     "60 Hz ekran bu fiyat sınıfı için geride kalıyor."         -> negative
+     "Parlak ekrana rağmen 60 Hz tazeleme hızı yetersiz."       -> negative
+     "Cihaz 6,3 inç OLED ekrana sahiptir."                      -> neutral
+
+Return ONLY a JSON object: {"labels": ["positive", "neutral", ...]} with
+exactly one label per input paragraph, in the same order. No other text.`;
+
+/* Metni EKRANDA CIZILEN paragraflara boler.
+   `web/src/lib/prose.js` bunu yeniden export eder — TEK KOPYA olmak ZORUNDA:
+   etiket anahtari paragrafin ilk cumlesinden turuyor, dolayisiyla yazan ve
+   okuyan taraf metni farkli bolerse anahtarlar hic tutmaz. */
+function proseBlocks(text) {
+  const raw = String(text || '').replace(/```[a-z]*\s*/gi, '').trim();
+  if (!raw) return [];
+  const lines = raw.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const blocks = [];
+  lines.forEach((line) => {
+    if (/^#{1,6}\s+/.test(line)) {
+      blocks.push({ kind: 'head', text: line.replace(/^#{1,6}\s+/, '').replace(/[:：]\s*$/, '') });
+      return;
+    }
+    if (/^[-•*]\s+/.test(line)) {
+      blocks.push({ kind: 'bullet', text: line.replace(/^[-•*]\s+/, '') });
+      return;
+    }
+    blocks.push({ kind: 'p', text: line.replace(/^>\s+/, '') });
+  });
+  // TEK NEFESTE YAZILMIŞ METİN. Model kimi zaman 600 kelimeyi tek satırda
+  // döndürüyor; o hâlde paragraf ritmi diye bir şey kalmıyor. Cümlelere böl,
+  // üçerli paragraflara topla.
+  if (blocks.length === 1 && blocks[0].kind === 'p' && blocks[0].text.length > 640) {
+    const sents = blocks[0].text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const packed = [];
+    for (let i = 0; i < sents.length; i += 3) packed.push({ kind: 'p', text: sents.slice(i, i + 3).join(' ') });
+    return packed;
+  }
+  return blocks;
+}
+
 var KILIT_SKALER = ['matchScore', 'confidence', 'decision'];
 
 function _skalerKopyala(hedef, taban, anahtarlar) {
@@ -2412,6 +2556,8 @@ root.QorAiPrompts = {
   // rapor metninden urun kodu temizligi
   cleanProductCodes,
   lockScoresToBase,
+  PARAGRAF_SINIFLANDIRICI,
+  proseBlocks,
   // puan kalibrasyonu + segment kunyesi
   calibratedScore, segmentTier, scoreBasisNote, scoreScaleGate,
   SCORE_TECH_WEIGHT, SCORE_AI_WEIGHT,

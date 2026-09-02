@@ -1283,11 +1283,15 @@
         [lang + '-research', ad + ' · web araştırması'],
         [lang + '-report', raporAd],
         [lang + '-verdict', ad + ' · karşılaştırma hükmü'],
+        [lang + '-sentiment', ad + ' · paragraf değerlendirmesi'],
       ];
     }
     return [
       [lang + '-research', ad + ' · web araştırması'],
       [lang + '-report', raporAd],
+      // Paragraf renkleri ayrı bir adım: rapor modeli değil adanmış
+      // sınıflandırıcı üretiyor (bkz. attachParagraphSentiment).
+      [lang + '-sentiment', ad + ' · paragraf değerlendirmesi'],
     ];
   }
 
@@ -1904,6 +1908,28 @@
         // faturalaniyor — bu satir analiz basina bir aramanin parasidir.
         if (!r.research && typeof res.research === 'string' && res.research.trim()) {
           r.research = res.research;
+        }
+        // PARAGRAF ETİKETLERİ ADANMIŞ SINIFLANDIRICIYLA YENİDEN KURULUR.
+        //
+        // Rapor modelinin yazdığı `paragraphSentiment` güvenilir değil:
+        // ölçüldü (2026-09-03, altı dil-kaydı) "Zamanlama ve değer" bölümü
+        // 4 kayıtta, "Kime uygun/değil" 5 kayıtta KOMPLE etiketsizdi ve
+        // olumlu bir cümle kırmızı çıkmıştı. Adanmış sınıflandırıcı tek iş
+        // yapıyor ve fixture testinden 42/42 geçiyor. Gerekçe ve maliyet
+        // hesabı qor_ai_run.js -> labelParagraphs başlığında.
+        //
+        // Başarısız olursa rapor YİNE yayınlanır — renk kaybı, veri kaybı
+        // değil. Bu adım için akışı durdurmak orantısız olurdu.
+        if (r.out[lang] && typeof r.out[lang] === 'object') {
+          try {
+            mark(lang + '-sentiment', 'run');
+            var etiketSayisi = await QorAiRun.attachParagraphSentiment(r.out[lang]);
+            mark(lang + '-sentiment', 'done');
+            if (!etiketSayisi) toast('Paragraf etiketi üretilemedi (' + lang + ') — metin renksiz kalacak', 'w');
+          } catch (e) {
+            mark(lang + '-sentiment', 'fail');
+            toast('Paragraf etiketleme atlandı: ' + (e.message || e), 'w');
+          }
         }
         // İKİNCİ DİLİN ÖLÇÜLERİ BİRİNCİDEN DEVRALINIR.
         //
