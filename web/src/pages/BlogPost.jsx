@@ -336,41 +336,63 @@ export default function BlogPost() {
   const metaTitle = (pick(post, 'metaTitle') || post?.metaTitle || '').trim();
   const metaDescription = (pick(post, 'metaDescription') || post?.metaDescription || '').trim();
 
+  /* Soru-cevap ciftlerini bir HTML parcasindan cikarir.
+     Ayri bir `faq` alani YOK ve olmasi da gerekmiyor: `articles` semasinda
+     boyle bir alan bulunmuyor (PB'de olculdu 2026-09-02) ve eklemek her eski
+     yaziyi elden gecirmek demekti. Soru-cevap ZATEN govdede duruyor — soru
+     isaretiyle biten bir baslik ve ardindan gelen metin. FAQPage semasinin
+     sarti da tam olarak budur: isaretlenen icerik SAYFADA GORUNUR olmali.
+
+     KAPILAR ON-RENDER ILE BIREBIR AYNI (web/scripts/seo.mjs -> sssCikar).
+     Iki taraf ayrisirsa ayni sayfa JS'siz ve JS'li halde FARKLI yapisal veri
+     gosterir. */
+  const sssCiftleri = (html) => {
+    if (!html) return [];
+    const doc = new DOMParser().parseFromString(`<div id="f">${html}</div>`, 'text/html');
+    const out = [];
+    [...doc.querySelectorAll('h2, h3')].forEach((h) => {
+      const q = (h.textContent || '').trim();
+      if (!/[?？]\s*$/.test(q) || q.length < 12) return;
+      // Cevap: bir sonraki BASLIGA kadar olan metin. Baslik gelmeden
+      // bitiyorsa cevap yok demektir, o soru atlanir.
+      let cevap = '';
+      let node = h.nextElementSibling;
+      while (node && !/^H[1-6]$/.test(node.tagName)) {
+        cevap += `${node.textContent || ''} `;
+        node = node.nextElementSibling;
+      }
+      cevap = cevap.replace(/\s+/g, ' ').trim();
+      if (cevap.length >= 40) out.push({ q, a: cevap.slice(0, 900) });
+    });
+    return out;
+  };
+
   // Inject ids into h2/h3 of the body + build a table of contents.
-  //
-  // FAQ DA BURADAN CIKAR — AYRI BIR ALAN YOK ve olmasi da gerekmiyor.
-  // `articles` semasinda `faq_tr`/`faq_en` diye bir alan yok (PB'de olculdu
-  // 2026-09-02) ve eklemek her eski yaziyi da elden gecirmek demekti.
-  // Oysa soru-cevap ZATEN govdede duruyor: soru isaretiyle biten bir baslik
-  // ve ardindan gelen metin. FAQPage semasinin sarti da tam olarak budur —
-  // isaretlenen icerik SAYFADA GORUNUR olmali. Yani burada uydurulan hicbir
-  // sey yok, var olan yapi okunuyor.
-  const { bodyHtml, toc, faq } = useMemo(() => {
-    if (!body) return { bodyHtml: '', toc: [], faq: [] };
+  const { bodyHtml, toc } = useMemo(() => {
+    if (!body) return { bodyHtml: '', toc: [] };
     try {
       const doc = new DOMParser().parseFromString(`<div id="b">${body}</div>`, 'text/html');
       const heads = [...doc.querySelectorAll('h2, h3')];
       const t = heads.map((h, i) => { const id = `s-${i}-${slugifyHeading(h.textContent)}`; h.id = id; return { id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 }; });
-      const sorular = [];
-      heads.forEach((h) => {
-        const q = (h.textContent || '').trim();
-        if (!/[?？]\s*$/.test(q) || q.length < 12) return;
-        // Cevap: bir sonraki BASLIGA kadar olan metin. Baslik gelmeden
-        // bitiyorsa cevap yok demektir, o soru atlanir.
-        let cevap = '';
-        let node = h.nextElementSibling;
-        while (node && !/^H[1-6]$/.test(node.tagName)) {
-          cevap += `${node.textContent || ''} `;
-          node = node.nextElementSibling;
-        }
-        cevap = cevap.replace(/\s+/g, ' ').trim();
-        if (cevap.length >= 40) sorular.push({ q, a: cevap.slice(0, 900) });
-      });
+      return { bodyHtml: doc.getElementById('b').innerHTML, toc: t.filter((x) => x.text) };
+    } catch { return { bodyHtml: body, toc: [] }; }
+  }, [body]);
+
+  /* SSS GOVDE **VE SONUC** BOLUMUNDEN TOPLANIR.
+     Ilk surum yalnizca `body`ye bakiyordu ve SSS bolumu pratikte SONUC
+     bolumunun sonuna yaziliyor (yazar prompt'u da oraya koyuyor, eski
+     yazilara da oraya eklendi). Sonuc: soru-cevap sayfada GORUNUYOR ama
+     FAQPage hic uretilmiyordu — on-render `sssCikar(body, conclusion)`
+     diyordu, istemci demiyordu, yani iki taraf ayrismisti. Olculdu
+     2026-09-02: "Sık sorulan sorular" ekranda, JSON-LD'de 0 soru. */
+  const faq = useMemo(() => {
+    try {
+      const hepsi = sssCiftleri(body).concat(sssCiftleri(conclusion));
       // Iki sorunun altinda bir sey FAQ degildir; tek bir soru isaretli
       // ara baslik butun yaziyi "SSS sayfasi" gibi gostermemeli.
-      return { bodyHtml: doc.getElementById('b').innerHTML, toc: t.filter((x) => x.text), faq: sorular.length >= 2 ? sorular : [] };
-    } catch { return { bodyHtml: body, toc: [], faq: [] }; }
-  }, [body]);
+      return hepsi.length >= 2 ? hepsi : [];
+    } catch { return []; }
+  }, [body, conclusion]);
 
   // Feed the whole article to the chat bubble so the assistant can read & comment.
   usePageContext(

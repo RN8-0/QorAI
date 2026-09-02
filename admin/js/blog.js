@@ -1585,6 +1585,30 @@ KURALLAR:
     return _altModelKodu(t) && _farkliKodlamaMi(t, nt);
   }
 
+  /* ── RAKİP HAT ADI: EKSİK KELİMENİN YERİNE BAŞKASI GEÇMİŞSE EŞLEŞME YOK ──
+     Ölçüldü 2026-09-02, yazarın ürettiği gerçek yazıda:
+        "Sonos Ace Ultra"  ->  "Sonos Arc Ultra Soundbar"   YANLIŞ
+     Kulaklık, soundbar'a bağlandı. `nearOk` "tek eksik kelime rakamsızsa
+     tolere et" diyordu ve üç anlamlı kelimenin biri (ace) eksik olduğunda
+     bile geçiriyordu — kimliğin üçte biri eksik demekti.
+
+     ASIL SİNYAL şu: aday, eksik kelimenin YERİNE kendi ayırt edici kelimesini
+     koymuş. "ace" yok ama "arc" var; ikisi de harf, ikisi de kısa, ikisi de
+     ürün HATTININ adı. Bu bir eksiklik değil, ÇELİŞKİDİR.
+     Aday fazladan bir açıklama kelimesi taşıyorsa ("Laptop", "Ultrabook",
+     "Kablosuz") bu kural tetiklenmez: uzunluk yakınlığı aranıyor. */
+  function _rakipHatAdi(eksik, qt, nt) {
+    if (!eksik || /\d/.test(eksik)) return false;
+    const qSet = new Set(qt);
+    return nt.some((t) => {
+      if (qSet.has(t) || MATCH_STOPWORDS.has(t)) return false;
+      if (/\d/.test(t)) return false;              // model kodu, hat adı değil
+      if (t.length < 3 || t.length > 12) return false;
+      // Uzunlukları birbirine yakınsa aynı rolü oynuyorlardır (ace ↔ arc).
+      return Math.abs(t.length - eksik.length) <= 2;
+    });
+  }
+
   function matchScore(query, candidateName) {
     const qt = _uniq(tokensOf(query));
     const nt = _uniq(tokensOf(candidateName));
@@ -1601,9 +1625,11 @@ KURALLAR:
     const sigOk = sig.length > 0 && missing.length === 0;
     const brand = sig[0] || '';
     const brandOk = brand ? nSet.has(brand) : false;
-    // Tek eksik kelimeye tolerans: rakamsız olmalı (model numarası kaçamaz) ve
-    // geri kalan örtüşme makul olmalı.
-    const nearOk = sig.length > 2 && missing.length === 1 && !_hasDigit(missing[0]) && f1 >= 0.5;
+    // Tek eksik kelimeye tolerans: rakamsız olmalı (model numarası kaçamaz),
+    // geri kalan örtüşme makul olmalı ve adayda o kelimenin YERİNE geçmiş bir
+    // rakip hat adı BULUNMAMALI (bkz. _rakipHatAdi — "Ace" ↔ "Arc" olayı).
+    const nearOk = sig.length > 2 && missing.length === 1 && !_hasDigit(missing[0])
+      && f1 >= 0.5 && !_rakipHatAdi(missing[0], qt, nt);
     // GEVŞEK KAPI — yalnızca sert kapıdan hiçbir aday geçemezse kullanılır
     // (bkz. resolveCatalogItem iki geçişi). Eksik kelimelerin HEPSİ yumuşak
     // sınıftan olmak zorunda; bir tanesi bile gerçek ayırt edici ise kapı
@@ -2099,7 +2125,9 @@ SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:
       "brand": "<marka adı>",
       "site": "<markanın resmî alan adı, emin değilsen boş>",
       "blocks": [
-        { "type": "text", "style": "paragraph", "tr": "", "en": "" },
+        { "type": "text", "style": "paragraph",
+          "tr": "<BU ÖĞENİN TAM METNİ — EN AZ 170 KELİME, 3 paragraf. 1) ne olduğu ve kime hitap ettiği, 2) ölçülebilir farkı: en az üç somut sayı (mAh, nit, Hz, GB, saat, TL), 3) neye dikkat etmeli / kime UYGUN DEĞİL. Düz metin, HTML yok; kalın için **yıldız**, madde için satır başına '- '.>",
+          "en": "<same item, written natively in English, EN AZ 170 words, 3 paragraphs>" },
         { "type": "image", "pos": "left|right|full|center", "size": "s|m|l", "cap_tr": "", "cap_en": "" }
       ] }
   ]
@@ -2124,13 +2152,17 @@ METİN
 UZUNLUK — BURAYA DİKKAT, EN SIK YAPILAN HATA BU
 - Dil başına TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:
   body_html + conclusion_html + items[] içindeki BÜTÜN blok metinleri.
-- Asıl metin ÖĞELERİN İÇİNDE olmalı: her öğenin metni EN AZ 150 kelime —
-  ne olduğu, ölçülebilir farkı (sayı ver), kime uygun, neye dikkat etmeli.
-  Tek paragraflık öğe yazma; iki-üç paragraf yaz.
-- body_html en az 250 kelime: konuyu kur, okuyucunun karar kriterini söyle.
-- conclusion_html en az 200 kelime + SSS bölümü.
-- Kısa yazı bu sitede işe yaramıyor: sayfa "ince içerik" sayılıp değersizleşiyor.
-  Uzunluğu doldurma cümlesiyle değil, DAHA FAZLA SOMUT BİLGİYLE karşıla.
+- Bütçe şöyle dağılır ve HER BİRİ ayrı ayrı tutturulmalıdır:
+    body_html          en az 250 kelime  (konuyu kur, karar kriterini söyle)
+    her bir öğe metni  en az 170 kelime  (öğe sayısı × 170 = ana gövde)
+    conclusion_html    en az 200 kelime  + SSS bölümü
+  Örnek: 5 öğeli bir yazıda 250 + 5×170 + 200 = 1300 kelime taban demektir.
+- ASIL METİN ÖĞELERİN İÇİNDEDİR. En sık yaptığın hata öğelere iki-üç cümlelik
+  metin yazmak; bu yazıyı "ince içerik" yapıyor ve sayfa değersizleşiyor.
+- Uzunluğu doldurma cümlesiyle değil, DAHA FAZLA SOMUT BİLGİYLE karşıla:
+  sayı, ölçüm, karşılaştırma, kime uygun değil.
+- SON KONTROL: JSON'u göndermeden önce her öğenin metnini kelime kelime say.
+  170'in altında kalan varsa GERİ DÖN ve o öğeyi genişlet.
 
 SEO — SİTENİN KURALLARI
 - metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN. Yazmadan önce karakter say.

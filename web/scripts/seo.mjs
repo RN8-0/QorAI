@@ -946,6 +946,42 @@ function safeBodyHtml(html) {
   return String(html || '').replace(/<(?!\/?(?:h2|h3|p|ul|ol|li|strong|em|br|a|blockquote|img|u|s)\b)[^>]*>/gi, '');
 }
 
+/* ── SSS GÖVDEDEN ÇIKAR — AYRI BİR ALAN YOK ────────────────────────────────
+   `articles` şemasında `faq_tr`/`faq_en` diye bir alan yok (PB'de ölçüldü
+   2026-09-02) ve eklemek her eski yazıyı elden geçirmek demekti. Oysa
+   soru-cevap ZATEN gövdede duruyor: soru işaretiyle biten bir başlık ve
+   ardından gelen metin. FAQPage şemasının şartı da tam olarak budur —
+   işaretlenen içerik SAYFADA GÖRÜNÜR olmalı.
+
+   KAPILAR İSTEMCİ TARAFIYLA BİREBİR AYNI OLMAK ZORUNDA
+   (web/src/pages/BlogPost.jsx). İki taraf ayrışırsa aynı sayfa JS'siz ve
+   JS'li halde FARKLI yapısal veri gösterir; Google ikisini de görür ve
+   tutarsızlık yapısal verinin tamamına güveni düşürür. Kapılar:
+     · başlık "?" ile bitmeli ve ≥ 12 karakter olmalı
+     · cevap metni ≥ 40 karakter olmalı
+     · en az İKİ soru-cevap olmalı (tek soru bir SSS sayfası yapmaz)
+     · cevap 900 karakterde kırpılır
+   Node'da DOMParser yok; başlıklar arası bölme regex ile yapılıyor ama
+   sonuç aynı. */
+function sssCikar(...govdeler) {
+  const html = govdeler.filter(Boolean).join('\n');
+  if (!html) return [];
+  const metin = (h) => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ').trim();
+  const out = [];
+  // Her <h2>/<h3> başlığı ve ONDAN SONRAKİ bir sonraki başlığa kadar olan metin.
+  const re = /<(h[23])\b[^>]*>([\s\S]*?)<\/\1>([\s\S]*?)(?=<h[1-6]\b|$)/gi;
+  let m = re.exec(html);
+  while (m) {
+    const q = metin(m[2]);
+    const a = metin(m[3]);
+    if (/[?？]$/.test(q) && q.length >= 12 && a.length >= 40) out.push({ q, a: a.slice(0, 900) });
+    m = re.exec(html);
+  }
+  return out.length >= 2 ? out : [];
+}
+
 function articleCoverUrl(a) {
   if (/^https?:\/\//i.test(a.cover || '')) return a.cover;
   if (a.coverFile) return `${PB_URL}/api/files/articles/${a.id}/${a.coverFile}`;
@@ -3604,17 +3640,33 @@ async function main() {
           lang,
           jsonLd: {
             '@context': 'https://schema.org',
-            '@graph': [articleLd, {
-              // BreadcrumbList URL yapisindan turer, yeni veri gerektirmez.
-              // 22/22 blog yazisinda EKSIKTI (olculdu 2026-09-01) — oysa
-              // CLAUDE.md "BreadcrumbList everywhere" diyor.
-              '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
-              itemListElement: [
-                { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
-                { '@type': 'ListItem', position: 2, name: lang === 'tr' ? 'Blog' : 'Blog', item: `${SITE}/blog` },
-                { '@type': 'ListItem', position: 3, name: t('title'), item: url },
-              ],
-            }],
+            '@graph': [articleLd,
+              // FAQPage govdedeki SORU BASLIKLARINDAN turer — ayri bir alan
+              // yok ve gerekmiyor (bkz. sssCikar). Istemci tarafi ayni grafi
+              // kuruyor (web/src/pages/BlogPost.jsx); ikisi AYRISIRSA JS
+              // calistiran bir tarayici on-render'in semasini kaybeder.
+              ...(() => {
+                const sss = sssCikar(t('body'), t('conclusion'));
+                return sss.length ? [{
+                  '@type': 'FAQPage', '@id': `${url}#faq`,
+                  mainEntity: sss.map((f) => ({
+                    '@type': 'Question',
+                    name: f.q,
+                    acceptedAnswer: { '@type': 'Answer', text: f.a },
+                  })),
+                }] : [];
+              })(),
+              {
+                // BreadcrumbList URL yapisindan turer, yeni veri gerektirmez.
+                // 22/22 blog yazisinda EKSIKTI (olculdu 2026-09-01) — oysa
+                // CLAUDE.md "BreadcrumbList everywhere" diyor.
+                '@type': 'BreadcrumbList', '@id': `${url}#breadcrumb`,
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'Qor AI', item: `${SITE}/` },
+                  { '@type': 'ListItem', position: 2, name: lang === 'tr' ? 'Blog' : 'Blog', item: `${SITE}/blog` },
+                  { '@type': 'ListItem', position: 3, name: t('title'), item: url },
+                ],
+              }],
           },
         }, blogArticleBody(a, lang, blogPriceMap)));
         blogUrls.push({ loc: url, lastmod: lastmodAtLeastVersion(a.updated || a.publishedAt), changefreq: 'weekly', priority: '0.7' });
