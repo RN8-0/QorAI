@@ -303,7 +303,13 @@ if (root.QorAiLink) {
 }
 
 // ── katalog ────────────────────────────────────────────────────────────────
-var LEAN = 'id,name,brand,category,techScore,imageUrl,slug,priceTR,priceUSD,lowestPriceUSD';
+/* ALAN LISTESI: GERCEK ULKE FIYATLARI DA GELIR.
+   Onceden yalnizca `lowestPriceUSD` vardi ve o, yerel fiyatin bayat kur
+   tablosundan gecirilmis hali. Alternatif adaylari modele fiyatsiz gidince
+   model bosluga o sayiyi koyuyordu (olculdu: yayindaki kartlarda
+   "Price: 2165 USD", gercegi 75.699 TL). `pricesByCountry` o pazarda
+   OKUNMUS tutarlari tasir; `segmentPriceLocal` oradan yaziyor. */
+var LEAN = 'id,name,brand,category,techScore,imageUrl,slug,priceTR,priceUS,priceUSD,pricesByCountry,lowestPriceUSD';
 
 async function searchProducts(q, perPage) {
   var r = await window.TsClient.search(q, { perPage: perPage || 12, includeFields: LEAN });

@@ -69,7 +69,17 @@ async function gemini(prompt, maxOut = 4096) {
   return null;
 }
 
-/** Raporun icindeki TUM dizeleri gezer; `fn` doner ise degistirir. */
+/** Raporun icindeki TUM dizeleri gezer; `fn` doner ise degistirir.
+ *
+ *  `paragraphSentiment` OZEL: degeri degil ANAHTARI metindir. Anahtar,
+ *  paragrafin kendi metni; okuma tarafi rengi ilk cumleden turetilen bu
+ *  anahtarla buluyor (web/src/lib/sentiment.js -> paragraphKey). Ilk
+ *  cumleyi duzeltip anahtari birakmak o paragrafin RENGINI SILER, o yuzden
+ *  anahtarlar da ayni degistirmeden gecirilir.
+ *
+ *  Onceki surum bu dugumu komple atliyordu. Iki sonucu vardi: renk kaybi ve
+ *  -- daha sinsisi -- dogrulama kapisinin eski anahtardaki "USD"yi gorup
+ *  kaydi "hala bozuk" sayip HIC YAZMAMASI (olculdu: 3 kayit atlandi). */
 function dizeleriDegistir(dugum, fn, derinlik = 0) {
   if (!dugum || derinlik > 8) return dugum;
   if (typeof dugum === 'string') { const y = fn(dugum); return y == null ? dugum : y; }
@@ -77,7 +87,17 @@ function dizeleriDegistir(dugum, fn, derinlik = 0) {
   if (typeof dugum !== 'object') return dugum;
   const out = {};
   for (const k of Object.keys(dugum)) {
-    out[k] = k === 'paragraphSentiment' ? dugum[k] : dizeleriDegistir(dugum[k], fn, derinlik + 1);
+    if (k === 'paragraphSentiment' && dugum[k] && typeof dugum[k] === 'object'
+        && !Array.isArray(dugum[k])) {
+      const harita = {};
+      for (const [anahtar, deger] of Object.entries(dugum[k])) {
+        const yeniAnahtar = fn(anahtar);
+        harita[yeniAnahtar == null ? anahtar : yeniAnahtar] = deger;
+      }
+      out[k] = harita;
+      continue;
+    }
+    out[k] = dizeleriDegistir(dugum[k], fn, derinlik + 1);
   }
   return out;
 }
@@ -90,6 +110,8 @@ for (const rec of liste.items) {
   const cumleler = new Set();
   for (const lang of ['tr', 'en']) {
     const rep = rec[`report_${lang}`]; if (!rep) continue;
+    // Anahtarlar da taranir ama `cumleler` bir Set: anahtar govdedeki
+    // paragrafin kopyasi oldugu icin ayni cumle ikinci kez eklenmez.
     dizeleriDegistir(rep, (s) => { const m = s.match(USD_RE); if (m) m.forEach((c) => cumleler.add(c.trim())); return null; });
   }
   if (!cumleler.size) continue;

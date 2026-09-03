@@ -530,8 +530,9 @@ function cleanProductForPrompt(p, lang) {
     brand: p?.brand || '',
     category: p?.category || '',
     techScore: Number(p?.techScore) || 0,
-    // Cevrilmis USD DEGIL: modele giden her fiyat yerel para biriminde.
-    price: segmentPriceLocal(p).label || null,
+    // Cevrilmis USD DEGIL: modele giden her fiyat yerel para biriminde ve
+    // hangi pazara ait oldugu yazili.
+    price: segmentPriceLocal(p, lang).label || null,
     url: productPath(p),
     imageUrl: p?.imageUrl || (Array.isArray(p?.images) ? p.images[0] : ''),
     specs: productSpecsContext(p, 18),
@@ -585,10 +586,57 @@ const PEER_MAX_PER_BRAND = 2;
    Orada sorun degil cunku butun katalog AYNI tablodan geciyor, yani bant
    GORECELI olarak dogru ve o sayi HICBIR YERDE okuyucuya ya da modele
    gosterilmiyor. Modele giden metin `segmentPriceLocal` kullanir. */
-function segmentPriceLocal(p) {
+/* ULKE -> PARA BIRIMI. Cevrim tablosu DEGIL: hangi sayinin hangi para
+   biriminde okundugunu soyleyen etiket. */
+const ULKE_PARA = {
+  TR: 'TRY', US: 'USD', GB: 'GBP', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR',
+  NL: 'EUR', PL: 'PLN', SE: 'SEK', JP: 'JPY', CN: 'CNY', IN: 'INR', AE: 'AED',
+};
+
+function segmentPriceLocal(p, lang) {
+  // 1) PB kaydi (loadProduct) yerel fiyati dogrudan tasir.
   const v = Number(p?.lowestPrice) || 0;
-  const cur = String(p?.lowestPriceCurrency || '').toUpperCase();
-  return { v, cur, label: v > 0 ? `${v} ${cur}`.trim() : '' };
+  if (v > 0) {
+    const cur = String(p?.lowestPriceCurrency || '').toUpperCase();
+    return { v, cur, label: `${v} ${cur}`.trim() };
+  }
+  /* 2) TYPESENSE BELGESI. Sema `lowestPrice`/`lowestPriceCurrency`
+        TASIMIYOR (olculdu 2026-09-03) ama GERCEK ulke fiyatlarini tasiyor:
+        `pricesByCountry` ("{\"TR\":75699}") ve duz `priceTR` / `priceUS`...
+        Bunlar o pazarda okunmus tutarlar; kurla uretilmis DEGIL.
+
+        Alternatif adaylari buradan geliyor ve bu dal olmadan modele
+        FIYATSIZ gidiyorlardi -- model de bosluga `lowestPriceUSD`i
+        koyuyordu. Yayinlanan kartlarda gorulen "2165 USD" tam olarak bu:
+        75.699 TL'nin bayat kurdan gecmis hali. */
+  let harita = p?.pricesByCountry;
+  if (typeof harita === 'string' && harita.trim()) {
+    try { harita = JSON.parse(harita); } catch (_) { harita = null; }
+  }
+  if (!harita || typeof harita !== 'object') harita = null;
+
+  // Okuyucunun dili once denenir; yoksa ilk dolu ulke.
+  const tercih = String(lang || '').slice(0, 2).toLowerCase() === 'tr'
+    ? ['TR', 'US', 'GB', 'DE'] : ['US', 'GB', 'DE', 'TR'];
+  const adaylar = [];
+  tercih.forEach((c) => {
+    const dogrudan = Number(p?.[`price${c}`]) || 0;
+    const haritadan = harita ? Number(harita[c]) || 0 : 0;
+    const tutar = dogrudan || haritadan;
+    if (tutar > 0) adaylar.push([tutar, c]);
+  });
+  if (!adaylar.length && harita) {
+    Object.keys(harita).forEach((c) => {
+      const tutar = Number(harita[c]) || 0;
+      if (tutar > 0) adaylar.push([tutar, String(c).toUpperCase()]);
+    });
+  }
+  if (!adaylar.length) return { v: 0, cur: '', label: '' };
+  const [tutar, ulke] = adaylar[0];
+  const cur = ULKE_PARA[ulke] || ulke;
+  // Pazar ADIYLA birlikte verilir: "75699 TRY (TR)". Model boylece
+  // "bu hangi ulkenin fiyati" sorusunu cevirmeye kalkmadan yanitlar.
+  return { v: tutar, cur, label: `${tutar} ${cur} (${ulke})` };
 }
 
 function segmentPriceUSD(p) {
