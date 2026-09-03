@@ -1758,9 +1758,39 @@ function fiyatEtiketi(tutar, para, lang) {
 
 function _fiyatVarMi(metin) { return _fiyatRe().test(String(metin || '')); }
 
-/** Fiyat rakami iceren cumleleri atar. */
+/* BAS CUMLE ATILINCA GERIYE ASKIDA METIN KALABILIR — AMA IKI FARKLI TURU VAR
+   ve ikisine ayni sey yapmak yanlis:
+
+   1. BAGLAC ATILIR. "Ayrica, 4x optik yakinlastirmada ... titresimler bazi
+      kullanicilar icin rahatsiz edici olabilir." Baglac dusunce geriye TAM
+      bir cumle kaliyor ve o cumle GERCEK bir sikayet. Dusurmek icerik kaybi;
+      dogrusu yalnizca "Ayrica," ekini atmak.
+
+   2. GONDERME DUSER. "Bu durum, butce odakli kullanicilar icin bir engel
+      teskil edebilir." Burada gostericinin KENDISI ozne ve isaret ettigi sey
+      silinmis; eki atmak "butce odakli kullanicilar icin bir engel teskil
+      edebilir" gibi ozneSIZ bir parca birakir.
+
+   Ilk surum ikisini de dusuruyordu (olculdu: gercek bir kamera sikayeti
+   kayboluyordu); ondan onceki surum de "Bu cihaz yine de..." gibi saglam
+   cumleleri yakaliyordu. */
+var _BAGLAC_ATILIR = /^\s*(ayr[ıi]ca|bunun yan[ıi] s[ıi]ra|ek olarak|bu nedenle|bu y[üu]zden|bu sebeple|dolay[ıi]s[ıi]yla|moreover|furthermore|additionally|in addition|therefore|hence|consequently|as a result|that said)\s*,?\s*/i;
+var _GONDERME_DUSER = /^\s*(bu\s*,|bunlar\s*,|bunun\s*,|buna\s*,|bunu\s*,|o da\s*,|bu durum|bu ise|bu da\b|this\s*,|these\s*,|it\s+(is|was|can|may|does)\b)/i;
+
+/** Fiyat rakami iceren cumleleri atar; askida kalani baglactan arindirir. */
 function _fiyatCumleleriniAt(metin) {
-  var kalan = _cumleler(metin).filter(function (c) { return !_fiyatVarMi(c); });
+  var cumleler = _cumleler(metin);
+  var kalan = cumleler.filter(function (c) { return !_fiyatVarMi(c); });
+  if (!kalan.length) return '';
+  if (kalan[0] !== cumleler[0]) {
+    // Gondermenin isaret ettigi cumle silindi: parca anlamsiz, duser.
+    if (_GONDERME_DUSER.test(kalan[0])) return '';
+    // Baglac atilir, cumle kalir; bas harf buyutulur.
+    if (_BAGLAC_ATILIR.test(kalan[0])) {
+      var kirpik = kalan[0].replace(_BAGLAC_ATILIR, '');
+      kalan[0] = kirpik.charAt(0).toLocaleUpperCase('tr') + kirpik.slice(1);
+    }
+  }
   return kalan.join(' ').replace(/\s{2,}/g, ' ').trim();
 }
 

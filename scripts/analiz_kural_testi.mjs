@@ -113,7 +113,9 @@ const rapor = {
       name: iphone.name,
       cons: ['1189 GBP\'lik fiyat etiketiyle yüksek bir başlangıç maliyetine sahiptir.', 'Wi-Fi sorunları rapor edilmiştir.'],
       criticalPoints: [
-        { title: 'Yüksek Başlangıç Fiyatı', detail: 'Cihazın 1189 GBP\'lik fiyat etiketi yüksek bir yatırım gerektirir.' },
+        // GERCEK VAKA: fiyat rakami ILK cumlede, arkasindan GERI GONDERME.
+        // Ilk cumle atilinca "Bu durum" havada kalir; madde komple dusmeli.
+        { title: 'Yüksek Başlangıç Fiyatı', detail: 'Cihazın 1189 GBP\'lik fiyat etiketi yüksek bir yatırım gerektirir. Bu durum, bütçe odaklı kullanıcılar için bir engel teşkil edebilir.' },
         { title: 'Wi-Fi Sorunları', detail: 'Bağlantı kopmaları rapor edilmiştir.' },
       ],
       factors: [{ label: 'Fiyat/performans', score: 70, detail: '1189 GBP\'lik fiyat etiketiyle üst segmentte yer alır.' }],
@@ -137,7 +139,9 @@ yaz(!/88968\.45/.test(j), 'ham sayı biçimlendi');
 yaz(/88\.968,45 TL/.test(rapor.products[0].priceForecast.analysis), 'TR biçimi uygulandı');
 yaz(/127\.949 TL/.test(rapor.products[1].factors[0].detail), 'faktör detayı katalog fiyatına döndü');
 yaz(rapor.products[1].cons.length === 1 && /Wi-Fi/.test(rapor.products[1].cons[0]), 'cons: yalnız fiyat maddesi düştü');
-yaz(rapor.products[1].criticalPoints.length === 1, 'kritik nokta: detayı boşalan düştü');
+yaz(rapor.products[1].criticalPoints.length === 1, 'kritik nokta: fiyat maddesi düştü');
+yaz(!JSON.stringify(rapor.products[1].criticalPoints).includes('Bu durum'),
+  'askıda kalan geri gönderme bırakılmadı');
 yaz(!rapor.products[1].priceForecast.drivers.some((d) => /GBP/.test(d)), 'yabancı para etkeni düştü');
 yaz(rapor.comparison.decisiveDifferences.length === 1, 'decisiveDifferences: fiyat maddesi düştü');
 yaz(/200 MP/.test(rapor.comparison.decisiveDifferences[0]), 'fiyatsız fark KORUNDU');
