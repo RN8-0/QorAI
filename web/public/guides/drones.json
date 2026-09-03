@@ -52,7 +52,7 @@
   "faq": [
     {
       "q": "Drone uçurmak için herhangi bir izne ihtiyacım var mı?",
-      "a": "Türkiye'de Sivil Havacılık Genel Müdürlüğü (SHGM) tarafından belirlenen kurallar çerçevesinde, drone ağırlığına ve kullanım amacına göre kayıt veya izin gerekebilir. Genel olarak 500 gram üzeri dronelar için kayıt zorunludur."
+      "a": "Çoğu ülkede drone kullanımı sivil havacılık otoritesinin kurallarına tabidir: cihazın ağırlığına ve kullanım amacına göre kayıt veya izin gerekebilir, ağırlık eşiği ülkeden ülkeye değişir. Uçurmadan önce bulunduğun yerin güncel kurallarını kontrol et."
     },
     {
       "q": "Drone'ların ortalama uçuş süresi ne kadardır?",
