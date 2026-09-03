@@ -16,6 +16,7 @@ import {
   analysisKind, analysisKindShort, analysisLead, analysisRenderLangs, analysisSubject,
   analysisSubjectNames, analysisTitle,
 } from '../lib/analysisRecord';
+import { categoryLabel } from '../lib/format';
 import './Analyses.css';
 
 // ── ON-RENDER TOHUMU ──────────────────────────────────────────────────────
@@ -71,6 +72,18 @@ export default function Analyses() {
   // Uc tur ayni listede durur; filtre yalnizca gorunumu daraltir (ayri rota
   // acmak dizine ince, neredeyse bos sayfalar eklerdi).
   const [tur, setTur] = useState('');
+  /* KATEGORI FILTRESI (kullanici istegi, 2026-09-03): "ürün abonelik ne ise
+     mesela akıllı telefon laptop tv gibi seçilince sadece o ürünler gelecek".
+     Kayitta `category` zaten dolu; eksik olan yalnizca arayuzdu. */
+  const [kategori, setKategori] = useState('');
+  /* FASETLER PB'DEN, YUKLU SAYFADAN DEGIL.
+     Onceden tur butonlari `items.some(...)` ile YUKLU 24 kayittan
+     tureiliyordu: ilk sayfada karsilastirma kaydi yoksa "Karşılaştırma"
+     butonu HIC basilmiyordu. Kullanicinin "bazen çıkıyor bazen çıkmıyor"
+     dedigi ve mobilde de gorunmeyen sey buydu — olculdu 2026-09-03
+     (canli /tr/analiz, 390px): `.an-filters` DOM'da hic yok.
+     Fasetler tum yayindaki kayitlardan bir kez sayilir (iki alan, ~2 KB). */
+  const [fasetler, setFasetler] = useState({ turler: [], kategoriler: [] });
   // ARAMA. Onceden yoktu: okuyucu istedigi urunun analizini ancak listeyi
   // gozle tarayarak bulabiliyordu. Filtreleme YEREL — sayfada duran kayitlar
   // uzerinde calisir, PB'ye her tusa basista istek atmaz.
@@ -130,14 +143,62 @@ export default function Analyses() {
     'report_en.type', 'report_en.researched', 'report_en.confidence',
   ].join(',');
 
+  /* FASET SAYIMI — bir kez, tum yayindaki kayitlardan. */
+  useEffect(() => {
+    let live = true;
+    pb.collection('analyses')
+      .getFullList({ fields: 'kind,category', batch: 500, $autoCancel: false })
+      .then((hepsi) => {
+        if (!live) return;
+        const t = new Set();
+        const k = new Set();
+        (hepsi || []).forEach((a) => {
+          const tk = analysisKind(a);
+          if (tk) t.add(tk);
+          if (a.category) k.add(a.category);
+        });
+        setFasetler({
+          turler: ['product', 'compare', 'link', 'subscription'].filter((x) => t.has(x)),
+          kategoriler: [...k].sort(),
+        });
+      })
+      .catch(() => { /* faset yoksa filtre cubugu cizilmez, liste calisir */ });
+    return () => { live = false; };
+  }, []);
+
+  /* ARAMA DEBOUNCE. Her tusa PB istegi atmak tek hostu gereksiz yorar. */
+  const [araGec, setAraGec] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setAraGec(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  /* PB FILTRESI — ARAMA VE FILTRE ARTIK SUNUCUDA.
+     Onceden ikisi de YERELDI: yalnizca yuklu 24 kayit uzerinde calisiyordu.
+     Olculdu 2026-09-03: PB'de 86 yayinda analiz var, sayfada 24 duruyordu ve
+     "15 plus" aramasi "Eşleşen analiz yok" diyordu — kayit 3. sayfadaydi.
+     Kullanicinin "iphone 15 plus var ama yok" dedigi buydu. */
+  const pbFiltresi = () => {
+    const parcalar = [];
+    if (tur) parcalar.push(`kind = ${JSON.stringify(tur)}`);
+    if (kategori) parcalar.push(`category = ${JSON.stringify(kategori)}`);
+    if (araGec) {
+      const s = JSON.stringify(`%${araGec}%`);
+      parcalar.push(`(productName ~ ${s} || productBrand ~ ${s} || title_tr ~ ${s} || title_en ~ ${s} || slug ~ ${s})`);
+    }
+    return parcalar.join(' && ');
+  };
+
   useEffect(() => {
     let live = true;
     // Ekranda gosterilecek bir sey varsa (tohum ya da onceki deneme) beklemeye
     // dusmeyiz: liste durur, tazelenmesi sessizce arkada olur.
     setLoading((onceki) => (items.length ? false : onceki || true));
     setHata(false);
+    const filtre = pbFiltresi();
+    setSayfa(1);
     zamanAsimli(pb.collection('analyses')
-      .getList(1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, $autoCancel: false }))
+      .getList(1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, filter: filtre, $autoCancel: false }))
       .then((r) => {
         if (!live) return;
         setItems(r.items || []);
@@ -149,13 +210,13 @@ export default function Analyses() {
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tekrar]);
+  }, [tekrar, tur, kategori, araGec]);
 
   const dahaGetir = () => {
     if (yukleniyorDaha) return;
     setYukleniyorDaha(true);
     pb.collection('analyses')
-      .getList(sayfa + 1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, $autoCancel: false })
+      .getList(sayfa + 1, SAYFA, { sort: '-publishedAt', fields: LIST_FIELDS, filter: pbFiltresi(), $autoCancel: false })
       .then((r) => {
         setItems((o) => [...o, ...(r.items || [])]);
         setSayfa(r.page);
@@ -165,14 +226,16 @@ export default function Analyses() {
       .finally(() => setYukleniyorDaha(false));
   };
 
-  const turler = ['product', 'compare', 'link', 'subscription'].filter((k) => items.some((a) => analysisKind(a) === k));
-  // Arama urun adina, baslıga ve markaya bakar — okuyucu "s23" ya da "samsung"
-  // yazip bulabilsin. Turkce kucultme sart: "İ".toLowerCase() noktali "i̇"
-  // uretir ve "iphone" aramasi kendi baslıgini bulamaz.
+  const turler = fasetler.turler;
+  /* Filtreleme PB'de yapiliyor; burada YEREL bir suzme YOK. Tek istisna
+     tohum: PB yaniti gelene kadar ekranda duran on-render kayitlari filtreye
+     uymayabilir, o yuzden filtre secikken tohum yerel olarak da suzulur. */
   const kucult = (s) => String(s || '').toLocaleLowerCase('tr');
-  const ara = kucult(q).trim();
-  const gorunen = items
+  const ara = kucult(araGec).trim();
+  const filtreSecili = Boolean(tur || kategori || ara);
+  const gorunen = (!filtreSecili || !loading) ? items : items
     .filter((a) => (tur ? analysisKind(a) === tur : true))
+    .filter((a) => (kategori ? a.category === kategori : true))
     .filter((a) => (ara
       ? [a.productName, a.productBrand, analysisTitle(a, lang), a.slug]
         .some((v) => kucult(v).includes(ara))
@@ -246,6 +309,23 @@ export default function Analyses() {
               {turler.map((k) => (
                 <button key={k} type="button" className={tur === k ? 'on' : ''} onClick={() => setTur(k)}>
                   {turAdi(k)}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* KATEGORI SERIDI. Tur seridinden AYRI duruyor cunku iki farkli
+              soruyu yanitliyorlar: tur "ne tur analiz" (urun/karsilastirma),
+              kategori "hangi urun ailesi" (telefon/kulaklik/TV). Ikisini tek
+              seride karistirmak, secili olanin hangi eksende oldugunu
+              okunmaz hale getirirdi. */}
+          {fasetler.kategoriler.length > 1 && (
+            <div className="an-filters an-filters-cat">
+              <button type="button" className={kategori ? '' : 'on'} onClick={() => setKategori('')}>
+                {L('All categories', 'Tüm kategoriler')}
+              </button>
+              {fasetler.kategoriler.map((k) => (
+                <button key={k} type="button" className={kategori === k ? 'on' : ''} onClick={() => setKategori(k)}>
+                  {categoryLabel(k, lang)}
                 </button>
               ))}
             </div>

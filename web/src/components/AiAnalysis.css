@@ -348,9 +348,26 @@
   background: #fff;
   border: 1px solid var(--border);
 }
+/* GORSEL KUTUYA SIGAR, KIRPILMAZ.
+   OLCULDU 2026-09-03 (canli /tr/analiz/apple-iphone-16-pro-512gb, Playwright):
+       .ai-alt-media kutusu   76 x 76   (overflow: hidden)
+       .ai-alt-media img      74 x 193  <-- kutudan tasiyor
+   `height: 100%` yaziliydi ve kural EŞLEŞİYORDU (computed object-fit
+   "contain" geliyordu), ama computed height 193px cikiyordu: kutu bir grid
+   konteyneri ve grid ogesinin varsayilan `min-height: auto` degeri, yer
+   kaplayan bir <img>'in DOGAL oranini taban kabul ediyor. Genislik 74px'e
+   oturunca 46x120'lik dosya 193px yuksekliyor ve `height:100%` eziliyor;
+   `overflow: hidden` de tasan alt yariyi kesiyordu. Kullanicinin
+   "gorsellerin yarisi gorunuyor" dedigi sey buydu.
+
+   Cozum yuzde degil SINIR vermek: max-* ile oran korunur, kutuyu asamaz.
+   Ayni kalip LinkAnalysis.css `.la-alt-media img` icinde zaten boyle ve
+   orada bu hata hic yasanmadi. min-* sifirlamasi grid tabanini kaldirir. */
 .ai-alt-media img {
-  width: 100%;
-  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  min-height: 0;
   object-fit: contain;
 }
 .ai-alt-media span {

@@ -137,6 +137,30 @@
 .an-filters button:hover { color: var(--text); border-color: var(--border-strong); }
 .an-filters button.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 
+/* ── KATEGORI SERIDI ───────────────────────────────────────────────────────
+ * Tur seridinden ince bir hairline ile ayrilir: ikisi farkli eksen ("ne tur
+ * analiz" / "hangi urun ailesi"), yan yana sarilinca hangi cipin hangi
+ * eksende oldugu okunmuyordu. Ayirma kutu ya da golge ile degil, 1px cizgi
+ * ve bosluk ile yapiliyor.
+ *
+ * MOBILDE SARMA YERINE TEK SATIR + KAYDIRMA: 10 kategori 390px'te dort satir
+ * sariyor ve listenin kendisini ekranin altina itiyordu. Yatay serit,
+ * kaydirilabilir oldugu belli olsun diye sag kenarda kesilir. */
+.an-filters-cat { padding-top: 10px; border-top: 1px solid var(--divider); }
+
+@media (max-width: 720px) {
+  .an-filters-cat {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    margin-inline: calc(-1 * var(--an-gutter, 0px));
+    padding-inline: var(--an-gutter, 0px);
+  }
+  .an-filters-cat::-webkit-scrollbar { display: none; }
+  .an-filters-cat button { flex: 0 0 auto; }
+}
+
 /* ── tek analiz — YALNIZ sayfa başlığı ve künye ─────────────
  * Raporun kendisi ProductFullReport / AiReportView tarafından çizilir; bu
  * bloklar yalnızca onun üstündeki başlık şeridi. */

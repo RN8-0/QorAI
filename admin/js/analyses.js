@@ -1430,6 +1430,40 @@
     renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
   }
 
+  /* ── DUSEN ISI GERI AL ────────────────────────────────────────────────────
+     Kota dolmasi, ag hatasi ya da tek seferlik bir AI hatasi kalici degil;
+     is duser ve kuyruk devam eder. Onceden bu isleri geri getirmenin tek
+     yolu urunleri TEK TEK yeniden aratmakti (olculdu 2026-09-03: 24 isin
+     17'si "GEMINI HARCAMA TAVANI DOLDU" ile dustu, kullanici 17 urunu elle
+     aramak zorunda kaldi).
+
+     Kayit `_kuyrukLog` icinde duruyor; tek eksik onu kuyruga geri koymakti.
+     Geri konan is LOGDAN DUSER: ayni urun hem "başarısız" listesinde hem
+     bekleyen kuyrukta gorunurse hangi durumda oldugu okunmaz. */
+  function kuyrugaGeriKoy(l) {
+    if (!l || l.ok || !l.urunId || kuyruktaVar(l.urunId)) return false;
+    _kuyruk.push({ id: l.urunId, name: l.name || '' });
+    _kuyrukLog = _kuyrukLog.filter(function (x) { return x !== l; });
+    // Toplam yeniden hesaplansin; yoksa cubuk "24/24" diye kilitli kalir.
+    _kuyrukToplam = _kuyruk.length + _kuyrukLog.length;
+    return true;
+  }
+
+  function analysesTekrarDene(i) {
+    if (!kuyrugaGeriKoy(_kuyrukLog[i])) return;
+    toast('Kuyruğa geri kondu — "Kuyruğu başlat" ile devam et', 'i');
+    renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
+  function analysesDusenleriKuyrugaAl() {
+    var dusenler = _kuyrukLog.filter(function (l) { return !l.ok && l.urunId; });
+    var n = 0;
+    dusenler.forEach(function (l) { if (kuyrugaGeriKoy(l)) n += 1; });
+    if (!n) { toast('Geri alınacak başarısız iş yok', 'w'); return; }
+    toast(n + ' iş kuyruğa geri kondu — "Kuyruğu başlat" ile devam et', 'i');
+    renderUretAra(($('anProdQ') || {}).value || '', window.__anHits);
+  }
+
   /**
    * KUYRUK SERIDI — CANLI DURUM, TEK BAKISTA.
    *
@@ -1475,8 +1509,19 @@
             + esc(SITE + '/tr/analiz/' + encodeURIComponent(l.slug || '') + '?id=' + encodeURIComponent(l.id))
             + '">Önizle</a>'
           : '')
+        // DUSEN IS GERI ALINABILIR. Kota dolmasi gecici bir durum; kullanici
+        // limiti yukselttikten sonra tek tikla ayni urunu kuyruga koyabilmeli.
+        + (!l.ok && l.urunId && !kuyruktaVar(l.urunId)
+          ? '<button class="btn btn-ghost btn-xs" onclick="analysesTekrarDene(' + i + ')">Tekrar dene</button>'
+          : '')
         + '</div>';
     }).join('');
+
+    /* TOPLU TEKRAR. Tek tek 17 butona basmak, elle aratmaktan yalnizca biraz
+       daha iyi olurdu. Dusen isler TOPLU olarak kuyruga geri konur. */
+    var dusenler = _kuyrukLog.filter(function (l) {
+      return !l.ok && l.urunId && !kuyruktaVar(l.urunId);
+    });
 
     return '<div class="an-card">'
       + '<h3>Kuyruk &middot; ' + biten + '/' + toplam + ' tamamlandı</h3>'
@@ -1501,6 +1546,10 @@
         : (_kuyruk.length
           ? '<button class="btn btn-primary" onclick="analysesKuyrukBasla()">Kuyruğu başlat (' + _kuyruk.length + ')</button> '
           : '')
+          + (dusenler.length
+            ? '<button class="btn btn-primary" onclick="analysesDusenleriKuyrugaAl()">Başarısızları tekrar dene ('
+              + dusenler.length + ')</button> '
+            : '')
           + '<button class="btn btn-ghost" onclick="analysesKuyrukTemizle()">Temizle</button>')
       + '</div></div>';
   }
@@ -1559,7 +1608,16 @@
         });
       } catch (e) {
         // TEK URUN PATLARSA KUYRUK SURER.
-        _kuyrukLog.push({ ok: false, name: isim, sure: Date.now() - bas, err: e.message || String(e) });
+        /* URUN KIMLIGI LOGA YAZILIR — TEKRAR DENEYEBILMEK ICIN.
+           Onceden yalnizca ad ve hata mesaji saklaniyordu; kota dolunca
+           (olculdu 2026-09-03: 24 isin 17'si "GEMINI HARCAMA TAVANI DOLDU")
+           basarisiz olanlari yeniden kuyruga koymanin TEK yolu urunleri
+           tek tek elle yeniden aratmakti. Kimlik burada duruyorsa "Tekrar
+           dene" bir tiklama. */
+        _kuyrukLog.push({
+          ok: false, name: isim, sure: Date.now() - bas, err: e.message || String(e),
+          urunId: _kuyruk[0] && _kuyruk[0].id,
+        });
       }
       _kuyruk.shift();
       _kuyrukAdim = '';
@@ -2556,6 +2614,8 @@
   window.analysesKuyrugaEkle = analysesKuyrugaEkle;
   window.analysesKuyruktanCikar = analysesKuyruktanCikar;
   window.analysesKuyrukTemizle = analysesKuyrukTemizle;
+  window.analysesTekrarDene = analysesTekrarDene;
+  window.analysesDusenleriKuyrugaAl = analysesDusenleriKuyrugaAl;
   window.analysesKuyrukBasla = analysesKuyrukBasla;
   window.analysesKuyrukDurdur = analysesKuyrukDurdur;
   window.analysesKuyrukDurdurIptal = analysesKuyrukDurdurIptal;
