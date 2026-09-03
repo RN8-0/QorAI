@@ -492,14 +492,29 @@ function productSpecsContext(p, limit = 40) {
   return rows.slice(0, limit).join('; ');
 }
 
+/* ── MODELE CEVRILMIS USD DEGIL, YEREL FIYAT VERILIR ──────────────────────
+   `lowestPriceUSD` yerel fiyatin SABIT bir kur tablosundan gecirilmis hali
+   (scripts/fx_rates.js). O tablo elle guncelleniyor ve bayatlayabiliyor.
+
+   OLCULDU 2026-09-03, canli kayit — Apple iPhone 17e (512 GB):
+     lowestPrice        68.999 TRY   (dogru)
+     FX_TO_USD.TR       0.0286       -> 1 USD = 34,97 TL   (FX_VERSION 2026.05)
+     lowestPriceUSD     1.973,37     (tabloya gore dogru, GERCEKTE degil)
+   Rapor da bunu aynen yazdi: "Yaklasik 1973 USD'lik fiyatiyla amiral gemisi
+   segmentinde" — Apple'in butce modeli icin sacma bir cumle. Model yalan
+   soylemedi, KENDISINE VERILEN sayiyi yazdi.
+
+   Cozum kuru tahmin etmek DEGIL: modele yerel fiyati PAZARIYLA BIRLIKTE
+   vermek. "68999 TRY (Turkey)" her zaman dogrudur ve cevrim hatasi
+   uretilemez. Kur tablosu duzeldiginde bu satirin degismesi gerekmez. */
 function productLine(p, lang) {
   const ks = productSpecsContext(p, 42);
   const priceFresh = Date.parse(p?.bestOfferExpiresAt || '') > Date.now();
-  const price = priceFresh && Number(p?.lowestPriceUSD) > 0
-    ? `${Number(p.lowestPriceUSD).toFixed(0)} USD`
-    : priceFresh && Number(p?.lowestPrice) > 0
-      ? `${Number(p.lowestPrice)} ${p.lowestPriceCurrency || ''}`
-      : '-';
+  const yerel = Number(p?.lowestPrice) > 0
+    ? `${Number(p.lowestPrice)} ${p.lowestPriceCurrency || ''}`.trim()
+    : '';
+  const pazar = String(p?.lowestPriceCurrency || '').toUpperCase() === 'TRY' ? ' (Turkish market)' : '';
+  const price = priceFresh && yerel ? `${yerel}${pazar}` : '-';
   const name = displayProductName(p, lang);
   return { name, brand: p?.brand || '', category: p?.category || '', score: p?.techScore || '-', price, ks };
 }
@@ -515,7 +530,8 @@ function cleanProductForPrompt(p, lang) {
     brand: p?.brand || '',
     category: p?.category || '',
     techScore: Number(p?.techScore) || 0,
-    priceUSD: Math.round(segmentPriceUSD(p)) || null,
+    // Cevrilmis USD DEGIL: modele giden her fiyat yerel para biriminde.
+    price: segmentPriceLocal(p).label || null,
     url: productPath(p),
     imageUrl: p?.imageUrl || (Array.isArray(p?.images) ? p.images[0] : ''),
     specs: productSpecsContext(p, 18),
@@ -554,6 +570,27 @@ const PEER_MAX_PER_BRAND = 2;
 /** Segment matematigi icin fiyat. TAZELIK ARANMAZ: bir urunun segmenti
  *  teklifin son kullanma tarihiyle degismez. Prompt'a YAZILAN fiyat hala
  *  `productLine` icindeki tazelik kapisindan geciyor. */
+/* ── MODELE GIDEN HER FIYAT YEREL PARA BIRIMINDE ─────────────────────────
+   KURAL (kullanici, 2026-09-03): "kesinlikle kur ile islem yapilmayacak,
+   her ulkede vergi ayni degil". Dogru: 68.999 TL'lik bir Turkiye fiyatini
+   kurla bolup "1973 USD" demek, iki ulkenin vergisini ve fiyatlandirmasini
+   ayni saymak demek. Cikan sayi hicbir pazarda gecerli degil.
+
+   Bu yuzden modelin OKUDUGU ve YAZDIGI her fiyat yerel para biriminde ve
+   pazariyla birlikte veriliyor.
+
+   TEK ISTISNA ve nedeni: Typesense semasinda YALNIZCA `lowestPriceUSD`
+   indeksli (migration/ts_index.js), yerel `lowestPrice` yok. Alternatif
+   ADAYLARINI ararken kullanilan sayisal bant o alandan gecmek zorunda.
+   Orada sorun degil cunku butun katalog AYNI tablodan geciyor, yani bant
+   GORECELI olarak dogru ve o sayi HICBIR YERDE okuyucuya ya da modele
+   gosterilmiyor. Modele giden metin `segmentPriceLocal` kullanir. */
+function segmentPriceLocal(p) {
+  const v = Number(p?.lowestPrice) || 0;
+  const cur = String(p?.lowestPriceCurrency || '').toUpperCase();
+  return { v, cur, label: v > 0 ? `${v} ${cur}`.trim() : '' };
+}
+
 function segmentPriceUSD(p) {
   const usd = Number(p?.lowestPriceUSD) || 0;
   return usd > 0 ? usd : 0;
@@ -641,15 +678,21 @@ function rankPeerCandidates(product, candidates, limit = 8) {
 /** Modele yazilan segment kurali — sorgu kapisinin PROMPT karsiligi. Katalog
  *  listesi zaten filtreli, ama model HARICI bir urun de onerebiliyor. */
 function segmentGate(product) {
-  const price = segmentPriceUSD(product);
+  // FIYAT BANDI YEREL PARA BIRIMINDE YAZILIR. Onceden bu satir modele
+  // cevrilmis USD sayisini soyluyordu ve model onu rapora aynen geciriyordu:
+  // olculdu 2026-09-03, "yaklasik 1973 USD'lik fiyatiyla amiral gemisi
+  // segmentinde" (gercek: 68.999 TL, Turkiye). Cevrim kaldirildi.
+  const yerel = segmentPriceLocal(product);
   const score = Number(product?.techScore) || 0;
   const satirlar = [
     'SEGMENT HARD GATE FOR ALTERNATIVES. An alternative only helps a reader who can actually buy it.',
   ];
-  if (price > 0) {
+  if (yerel.v > 0) {
     satirlar.push(
-      `This product sits at roughly ${Math.round(price)} USD, so every alternative must land between `
-      + `${Math.round(price * PEER_PRICE_LO)} and ${Math.round(price * PEER_PRICE_HI)} USD.`,
+      `This product sits at roughly ${Math.round(yerel.v)} ${yerel.cur} in its own market, so every `
+      + `alternative must land between ${Math.round(yerel.v * PEER_PRICE_LO)} and `
+      + `${Math.round(yerel.v * PEER_PRICE_HI)} ${yerel.cur}. Compare within this currency only — `
+      + `do NOT convert to another currency, taxes and pricing differ per market.`,
     );
   }
   if (score > 0) {
@@ -1703,6 +1746,12 @@ function buildProductResearchPrompt(p, lang, context = {}) {
     `${modelIdentityGate(p, lang)}\n\n` +
     `${freshnessRules()}\n${languageGate(lang)}\n${researchSourceGate(lang)}\n\n` +
     'Use current web search. Focus on official spec pages, current retailer/store pages, public ownership/review sentiment from Reddit, YouTube reviews, large retailer reviews, specialist review sites, and recent market/price-cycle signals. '
+    // TARTISMALI SPEC'LERI ACIKCA SOR.
+    // Katalog bazi alanlari HIC tasimiyor: olculdu 2026-09-03, iPhone 17e
+    // kaydinda ekran YENILEME HIZI yok (tek "Hz" degerleri islemci
+    // frekansi). Arastirma da sormadigi icin rapor 60 Hz tartismasindan hic
+    // soz etmedi — oysa alicinin en cok konustugu konu oydu.
+    + 'ALSO ask explicitly about the spec areas buyers argue about in this category and report what you find, even when the catalog does not list them: display refresh rate (60 Hz vs 120 Hz and whether owners complain about it), charging wattage and real charge time, RAM amount, storage type/expandability, port and connectivity generation, and anything the maker was criticised for leaving out of the box. If a source says the product is behind its rivals on one of these, say so plainly with the number. '
     + `${chronicResearchGate(category)} `
     + 'Also note what owners bring up unprompted as the best part. ' +
     'First determine whether the product is announced/released/available today, then summarize ownership evidence. Do not invent direct quotes, exact review counts, or exact current prices. If evidence is weak, say so clearly.\n\n' +
@@ -1946,7 +1995,15 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // siyahti. Hata kurali uygulamakta degil KURALIN KENDISINDEYDI: fiyat
     // cumlesi urun hakkinda degil ALICI hakkinda hukum tasir.
     '- paragraphSentiment, price and timing: priceForecast paragraphs are judged FROM THE BUYER\'S SIDE, not as product traits. positive = good news for the buyer (price falling, a discount window coming, waiting pays off, good time to buy, fair value); negative = bad news for the buyer (price high or rising, no meaningful drop expected, you pay a premium, poor value, scarcity pushing prices up). Leave neutral ONLY a bare figure or date with no direction. "Its price tends to remain stable, with significant drops rare" is NEGATIVE (the buyer saves nothing); "Waiting until Q1 could yield better deals" is POSITIVE. Do not leave a whole price section unlabelled.\n' +
-    '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n\n' +
+    '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n' +
+    // FIYATI CEVIRME. Katalog fiyati YEREL para biriminde ve pazariyla
+    // birlikte veriliyor. Model onu baska bir para birimine cevirdiginde
+    // kendi kafasindaki kuru kullaniyor ve sonuc sacma cikiyor (olculdu:
+    // 68.999 TL'lik butce telefonu "yaklasik 1973 USD'lik amiral gemisi"
+    // diye yazildi). Cevrim yapilacaksa VERI KATMANINDA yapilir.
+    '- CURRENCY: the catalog price is given in its OWN currency with the market named. Quote it EXACTLY as given, in that currency. NEVER convert it to another currency and never restate it as a global/US price — you do not have an exchange rate and the converted figure is always wrong. If the reader\'s market is not the one given, say which market the figure belongs to instead of converting it.\n' +
+    // SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
+    '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n\n' +
     // AYNA BLOGU: model sema kurallarini okumadan once "bu analiz zaten
     // var, sen ceviriyorsun" bilgisini almali.
     (context.mirror ? mirrorFactsBlock(context.mirror, lang) : '') +
