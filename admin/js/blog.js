@@ -148,6 +148,16 @@
       .ba-src{width:100%;min-height:260px;background:#0e131a;border:1px solid var(--border,#2a3140);border-radius:9px;color:#a5f3fc;font:12.5px/1.6 ui-monospace,monospace;padding:12px}
       /* öğeler */
       .ba-prod{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface,#161b24)}
+      /* SURUKLE-BIRAK. Tutamak AYRI bir eleman: kartin tamamini draggable
+         yapmak icindeki input/textarea'larda metin secmeyi bozuyor. */
+      .ba-grip{cursor:grab;user-select:none;font-size:15px;line-height:1;opacity:.45;padding:3px 5px;border-radius:6px;transition:opacity .12s,background .12s}
+      .ba-grip:hover{opacity:1;background:rgba(127,127,127,.14)}
+      .ba-grip:active{cursor:grabbing}
+      .ba-dragging{opacity:.4}
+      /* Birakma cizgisi: hedefin UST ya da ALT kenari. Kutu boyamak yerine
+         cizgi, birakinca ogenin NEREYE gidecegini tek bakista soyluyor. */
+      .ba-drop-before{box-shadow:0 -3px 0 -1px var(--accent,#7c5cff)}
+      .ba-drop-after{box-shadow:0 3px 0 -1px var(--accent,#7c5cff)}
       .ba-prod img{width:60px;height:60px;object-fit:contain;background:#fff;border-radius:8px;flex:0 0 60px}
       .ba-prod-ord{display:flex;flex-direction:column;gap:4px}
       .ba-mini{padding:4px 9px;border-radius:8px;border:1px solid var(--border,#3a4150);background:transparent;color:inherit;cursor:pointer;font-size:12px}
@@ -1224,15 +1234,111 @@
     return `<div style="margin-top:8px"><img src="${esc(nu)}" data-px="${esc(px)}" style="max-height:78px;border-radius:8px;background:#fff" onload="${onload}" onerror="${onerr}"/><span class="bk-imgwarn" style="display:none;font-size:11px;color:#f59e0b">⚠ Görsel yüklenemedi — doğrudan görsel linki gerekli (.png/.jpg/.svg) ya da “Yükle” ile cihazdan ekle.</span></div>`;
   }
 
+  /* ══ SURUKLE-BIRAK ═══════════════════════════════════════════════════════
+     Onceki duzen yalnizca ↑/↓ dugmeleriyle siralaniyordu: alti ogeli bir
+     yaziyi yeniden dizmek onlarca tiklama demekti ve blogu bir ogeden
+     otekine tasimanin YOLU YOKTU (sil + yeniden yaz).
+
+     Tutamak (⠿) AYRI bir eleman ve `draggable` YALNIZ onda. Kartin tamamini
+     surukleyebilir yapmak icindeki <input>/<textarea> alanlarinda metin
+     secmeyi bozuyor — kullanici yaziyi secmeye calisirken kart kalkiyor.
+
+     Iki tur var ve ikisi de ayni mekanizmayi kullanir:
+       item  : yazidaki ogelerin sirasi
+       block : bir ogenin ICINDEKI metin/gorsel bloklari — BASKA BIR OGEYE de
+               birakilabilir (yazi kurgusunu degistirmenin en sik yolu bu).
+     Birakma noktasi hedefin ortasina gore UST/ALT olarak hesaplanir ve
+     cizgiyle gosterilir; "hangi tarafa dusecek" tahmin edilmez. */
+  let _drag = null;   // {tur:'item'|'block', i, j}
+
+  function _dropTemizle() {
+    document.querySelectorAll('.ba-drop-before,.ba-drop-after')
+      .forEach((e) => e.classList.remove('ba-drop-before', 'ba-drop-after'));
+  }
+
+  function blogDragStart(ev, tur, i, j) {
+    _drag = { tur, i: Number(i), j: j == null ? null : Number(j) };
+    // Firefox surukleme baslatmak icin veri ISTER; icerik kullanilmiyor.
+    try { ev.dataTransfer.setData('text/plain', tur); } catch (_) { /* */ }
+    ev.dataTransfer.effectAllowed = 'move';
+    const kart = ev.currentTarget.closest(tur === 'item' ? '.ba-prod' : '.bk-block');
+    if (kart) { kart.classList.add('ba-dragging'); try { ev.dataTransfer.setDragImage(kart, 20, 20); } catch (_) { /* */ } }
+  }
+
+  function blogDragEnd() {
+    _drag = null;
+    _dropTemizle();
+    document.querySelectorAll('.ba-dragging').forEach((e) => e.classList.remove('ba-dragging'));
+  }
+
+  /** Fare hedefin ust yarisinda mi? Birakma noktasi buna gore. */
+  function _ustYari(ev, el) {
+    const r = el.getBoundingClientRect();
+    return (ev.clientY - r.top) < r.height / 2;
+  }
+
+  function blogDragOver(ev, tur, i, j) {
+    if (!_drag || _drag.tur !== tur) return;          // tur karisimi yok
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'move';
+    const el = ev.currentTarget;
+    _dropTemizle();
+    el.classList.add(_ustYari(ev, el) ? 'ba-drop-before' : 'ba-drop-after');
+  }
+
+  /** Diziden `from` indeksini alip `to` indeksine tasir (yerinde). */
+  function _tasi(dizi, from, to) {
+    if (from === to || from < 0 || from >= dizi.length) return false;
+    const [x] = dizi.splice(from, 1);
+    dizi.splice(to > from ? to - 1 : to, 0, x);
+    return true;
+  }
+
+  function blogDrop(ev, tur, i, j) {
+    if (!_drag || _drag.tur !== tur) { blogDragEnd(); return; }
+    ev.preventDefault();
+    ev.stopPropagation();
+    const oncesi = _ustYari(ev, ev.currentTarget);
+    const hedefI = Number(i);
+    const hedefJ = j == null ? null : Number(j);
+    let degisti = false;
+
+    if (tur === 'item') {
+      degisti = _tasi(_products, _drag.i, hedefI + (oncesi ? 0 : 1));
+    } else {
+      const kaynak = _products[_drag.i];
+      const hedef = _products[hedefI];
+      if (kaynak && hedef && Array.isArray(kaynak.blocks) && Array.isArray(hedef.blocks)) {
+        if (_drag.i === hedefI) {
+          degisti = _tasi(kaynak.blocks, _drag.j, hedefJ + (oncesi ? 0 : 1));
+        } else {
+          // OGELER ARASI TASIMA. Blok kaynaktan cikar, hedefe girer.
+          const [b] = kaynak.blocks.splice(_drag.j, 1);
+          if (b) {
+            hedef.blocks.splice(hedefJ + (oncesi ? 0 : 1), 0, b);
+            // Kaynak blogusuz kalmasin: editorun her ogede en az bir blogu
+            // olmasini bekleyen yerleri var (bkz. ensureBlocks).
+            if (!kaynak.blocks.length) ensureBlocks(kaynak);
+            degisti = true;
+          }
+        }
+      }
+    }
+    blogDragEnd();
+    if (degisti) { renderProducts(); blogMarkDirty(); }
+  }
+
   function renderProducts() {
     const box = document.getElementById('b_prodlist'); if (!box) return;
     const langName = (LANGS.find(([c]) => c === _lang) || [])[1] || _lang;
     _products.forEach(ensureBlocks);
     box.innerHTML = _products.map((p, i) => `
-      <div class="ba-prod">
+      <div class="ba-prod" ondragover="blogDragOver(event,'item',${i})" ondrop="blogDrop(event,'item',${i})" ondragleave="this.classList.remove('ba-drop-before','ba-drop-after')">
         <div class="ba-prod-ord">
-          <button class="ba-mini" onclick="blogProdMove(${i},-1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button class="ba-mini" onclick="blogProdMove(${i},1)" ${i === _products.length - 1 ? 'disabled' : ''}>↓</button>
+          <span class="ba-grip" draggable="true" title="Sürükleyip sırayı değiştir"
+                ondragstart="blogDragStart(event,'item',${i})" ondragend="blogDragEnd()">⠿</span>
+          <button class="ba-mini" onclick="blogProdMove(${i},-1)" ${i === 0 ? 'disabled' : ''} title="Yukarı taşı">↑</button>
+          <button class="ba-mini" onclick="blogProdMove(${i},1)" ${i === _products.length - 1 ? 'disabled' : ''} title="Aşağı taşı">↓</button>
         </div>
         <img src="${esc(p.image || p.imageUrl || p.logo || '')}" onerror="this.style.visibility='hidden'"/>
         <div style="flex:1;min-width:0">
@@ -1246,8 +1352,8 @@
                ${(p.kind || 'product') === 'product' ? `<div style="font-size:12px;margin-bottom:8px"><span style="opacity:.55">💰 Canlı fiyat (cron):</span> <b>${p._livePrice ? esc(p._livePrice) : '<span style=\'opacity:.5\'>okunuyor…</span>'}</b></div>` : ''}`}
           <div class="bk-blocks">
             ${p.blocks.map((b, j) => b.t === 'image'
-              ? `<div class="bk-block">
-                   <div class="bk-block-bar"><span>🖼 Görsel ${j + 1}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
+              ? `<div class="bk-block" ondragover="blogDragOver(event,'block',${i},${j})" ondrop="blogDrop(event,'block',${i},${j})" ondragleave="this.classList.remove('ba-drop-before','ba-drop-after')">
+                   <div class="bk-block-bar"><span><span class="ba-grip" draggable="true" title="Sürükle — başka öğeye de bırakabilirsin" ondragstart="blogDragStart(event,'block',${i},${j})" ondragend="blogDragEnd()">⠿</span> 🖼 Görsel ${j + 1}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">
                      <input class="ba-input" style="flex:1;min-width:150px;font-size:12px" placeholder="Görsel URL" value="${esc(b.url || '')}" oninput="blogBlockField(${i},${j},'url',this.value)" />
                      <label class="ba-mini" style="cursor:pointer;white-space:nowrap">📷 Yükle<input type="file" accept="image/*" style="display:none" onchange="blogUploadBlockImage(this,${i},${j})"></label>
@@ -1264,8 +1370,8 @@
                    <input class="ba-input" style="font-size:12px;margin-top:6px" placeholder="Altyazı (opsiyonel, ${esc(langName)}) — görselin altında küçük yazıyla görünür" value="${esc(b['cap_' + _lang] || '')}" oninput="blogBlockField(${i},${j},'cap_${_lang}',this.value)" />
                    ${_imgPreviewHtml(b.url)}
                  </div>`
-              : `<div class="bk-block">
-                   <div class="bk-block-bar"><span>✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
+              : `<div class="bk-block" ondragover="blogDragOver(event,'block',${i},${j})" ondrop="blogDrop(event,'block',${i},${j})" ondragleave="this.classList.remove('ba-drop-before','ba-drop-after')">
+                   <div class="bk-block-bar"><span><span class="ba-grip" draggable="true" title="Sürükle — başka öğeye de bırakabilirsin" ondragstart="blogDragStart(event,'block',${i},${j})" ondragend="blogDragEnd()">⠿</span> ✍ Metin ${j + 1} · ${esc(langName)}</span><span class="bk-block-ord"><button class="ba-mini" onclick="blogBlockMove(${i},${j},-1)" ${j === 0 ? 'disabled' : ''}>↑</button><button class="ba-mini" onclick="blogBlockMove(${i},${j},1)" ${j === p.blocks.length - 1 ? 'disabled' : ''}>↓</button><button class="ba-mini" style="color:#f87171" onclick="blogBlockRemove(${i},${j})">✕</button></span></div>
                    <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
                      <select class="ba-input" style="width:170px;font-size:12px" onchange="blogBlockField(${i},${j},'style',this.value)" title="Metin tipi">
                        ${[['paragraph', '¶ Paragraf'], ['heading', '◆ Büyük başlık'], ['subheading', '— Alt başlık'], ['bullets', '• Madde listesi']].map(([v, n]) => `<option value="${v}"${(b.style || 'paragraph') === v ? ' selected' : ''}>${n}</option>`).join('')}
@@ -1775,8 +1881,23 @@ KURALLAR:
   // import sırasında geliyor; burada kalan marka/hizmet öğeleri çözülür.
   async function resolveItemImages(onStatus) {
     const say = (s) => { if (typeof onStatus === 'function') onStatus(s); };
+    /* YALNIZ ABONELIK/HIZMET. Logo arama bir ABONELIK satirinda dogru sey
+       (Netflix satirinda Netflix logosu), ama bir URUN makalesinde felaket:
+       katalogda bulunamayan urune Google favicon'u ya da marka logosu
+       koyuyordu. Olculdu 2026-09-03, canli taslak: "iPhone 18 Pro" ogesinin
+       gorseli `google.com/s2/favicons?domain=apple.com`, kapak gorseli de
+       buyutulmus bir Apple logosuydu.
+       Kullanicinin karari: "gorselleri ai bulmasin, boktan gorseller
+       buluyor". Urun gorselleri KATALOGDAN gelir (gercek urun fotografi);
+       katalogda yoksa gorsel BOS kalir ve yazar elle koyar. */
     const pending = [];
-    _products.forEach((p, i) => { if (!itemHasImage(p)) pending.push({ i, p, name: String(p['name_' + _lang] || p.name || p.name_tr || '').trim() }); });
+    _products.forEach((p, i) => {
+      if (itemHasImage(p)) return;
+      const kind = p.kind || 'product';
+      const logoMantikli = kind === 'subscription' || (kind === 'custom' && domainOf(p.site || p.link));
+      if (!logoMantikli) return;
+      pending.push({ i, p, name: String(p['name_' + _lang] || p.name || p.name_tr || '').trim() });
+    });
     if (!pending.length) return { filled: 0, pending: 0 };
 
     say(`${pending.length} öğe için görsel aranıyor…`);
@@ -1813,7 +1934,11 @@ KURALLAR:
   function autoPickCover() {
     if (effectiveCover()) return '';
     const byKind = (k) => _products.filter((p) => (p.kind || 'product') === k).map(itemImageUrl).find(Boolean);
-    const pick = byKind('product') || byKind('subscription') || _products.map(itemImageUrl).find(Boolean) || '';
+    /* MARKA LOGOSU KAPAK OLMAZ. `imageSource === 'brand-logo'` olan gorseller
+       kapak adayligindan cikarilir: olculdu 2026-09-03, kapak buyutulmus bir
+       Apple logosuydu ve paylasim onizlemesinde de o cikiyordu. */
+    const gercekFoto = (p) => p.imageSource !== 'brand-logo' && itemImageUrl(p);
+    const pick = byKind('product') || _products.map(gercekFoto).find(Boolean) || byKind('subscription') || '';
     if (pick) _editing.cover = pick;
     return pick;
   }
@@ -2014,7 +2139,8 @@ KURALLAR:
       ${_konular.map((k, i) => `<div class="be-report" style="margin-bottom:8px">
         <div style="display:flex;gap:12px;align-items:flex-start">
           <div style="flex:1">
-            <div style="font-weight:700;font-size:15px;margin-bottom:4px">${esc(k.title || '')}</div>
+            <div style="font-weight:700;font-size:15px;margin-bottom:2px">${esc(k.title_tr || k.title || '')}</div>
+            ${k.title_tr && k.title ? `<div style="opacity:.45;font-size:12px;margin-bottom:4px">EN: ${esc(k.title)}</div>` : ''}
             <div style="opacity:.8;font-size:13px;line-height:1.6">${esc(k.angle || '')}</div>
             <div style="opacity:.65;font-size:12px;margin-top:6px;line-height:1.6">
               <b>Neden şimdi:</b> ${esc(k.why || '—')}<br>
@@ -2226,6 +2352,22 @@ SEO — SİTENİN KURALLARI
   o veri hiç oluşmaz. Sorular gerçekten sorulan sorular olsun, doldurma değil.
 - Anahtar kelimeyi başlıkta, ilk paragrafta ve en az bir <h2>'de geçir; doldurma yapma.
 
+ÖĞELER KONUYA AİT OLMAK ZORUNDA
+- "items" listesine YALNIZCA yazının gerçekten ele aldığı ürünleri koy. Başlık
+  bir ürün hakkındaysa, başka bir ürüne bölüm açma.
+  Ölçüldü: "Apple'ın 9 Eylül etkinliğinden neler beklenmeli?" başlıklı yazıya
+  model "iPhone 17 Pro" bölümü eklemişti — okuyucunun sorduğu soruyla ilgisiz.
+- Konu henüz ÇIKMAMIŞ bir ürünse (beklenti, sızıntı, etkinlik önizlemesi),
+  "items" BOŞ olabilir ve olmalıdır da: var olmayan bir ürünün kartını açmak
+  okuyucuya satın alınabilir bir şey varmış izlenimi verir.
+- Karşılaştırma amaçlı bir önceki nesle DEĞİNMEK serbest — ama gövde metninde,
+  ayrı bir ürün öğesi olarak DEĞİL.
+
+GÖRSELLER — URL YAZMA
+- "url" alanını HER ZAMAN boş bırak. Ürün görselleri katalogdan gelir; senin
+  bulduğun adresler ya kırık ya da marka logosu oluyor. Sen yalnızca görselin
+  NEREYE ve HANGİ BOYUTTA geleceğini söyle.
+
 DÜRÜSTLÜK
 - Fiyat, tarih, "şu anda satışta" gibi iddiaları YALNIZCA araştırma notlarında varsa yaz.
 - Emin olmadığın sayıyı yazma; "yaklaşık", "araştırma sırasında" gibi ifadelerle çerçevele.
@@ -2246,7 +2388,7 @@ DÜRÜSTLÜK
       ['en', 'İngilizce makale yazılıyor'],
       ['tr', 'Türkçe sürüm yazılıyor (aynı yapı, aynı ürünler)'],
       ['urun', 'Ürünler katalogda eşleştiriliyor'],
-      ['gorsel', 'Görseller bulunuyor'],
+      ['gorsel', 'Katalog görselleri yerleştiriliyor'],
       ['qa', 'Düzen ve kalite kontrolü'],
     ]);
     try {
@@ -3402,6 +3544,9 @@ ${JSON.stringify(payload)}`;
   window.blogTopicReset = blogTopicReset; window.blogAiWrite = blogAiWrite;
   window.blogAiCommandOpen = blogAiCommandOpen; window.blogAiCommandClose = blogAiCommandClose;
   window.blogAiCommandRun = blogAiCommandRun;
+  // Surukle-birak (satir ici ondrag* nitelikleri global bekliyor).
+  window.blogDragStart = blogDragStart; window.blogDragOver = blogDragOver;
+  window.blogDrop = blogDrop; window.blogDragEnd = blogDragEnd;
   // Teşhis kancası: katalog eşleştirme ve görsel çözümleme, yazıya alakasız
   // ürün sokan / yazıyı görselsiz bırakan hataların ta kendisiydi. Konsoldan
   // tek tek denenebilsin diye dışarı veriliyor (UI'da kullanılmaz).
