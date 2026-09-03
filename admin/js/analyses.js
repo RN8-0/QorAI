@@ -1307,6 +1307,28 @@
     kuyrukSeritYaz();
   }
 
+  /* KOSUDAKI URUNLERIN KATALOG FIYATLARI — `enforcePriceDiscipline` icin.
+     Kaynak DAIMA katalog; kur ile islem yapilmaz. Typesense belgesi yerel
+     `lowestPrice` tasimadigi icin `segmentPriceLocal` gercek ulke fiyatina
+     (pricesByCountry / priceTR ...) duser.
+     Link ve abonelikte katalog fiyati YOKTUR: bos harita doner, kapi yalnizca
+     yasak alanlari temizler ve bicimi duzeltir — para birimi degistirmez. */
+  function katalogFiyatlari(r) {
+    var harita = {};
+    var liste = r.kind === 'compare' ? (r.products || [])
+      : (r.kind === 'product' && r.product ? [r.product] : []);
+    liste.forEach(function (p) {
+      var f = QorAiPrompts.segmentPriceLocal(p, 'tr');
+      if (!f || !(Number(f.v) > 0)) return;
+      var ad = QorAiPrompts.displayProductName(p, 'tr') || p.name || '';
+      if (ad) harita[ad] = { tutar: Number(f.v), para: String(f.cur || '').toUpperCase() };
+      // Ingilizce rapor urunu baska adla yazabilir; iki ad da haritada olsun.
+      var adEn = QorAiPrompts.displayProductName(p, 'en') || '';
+      if (adEn && adEn !== ad) harita[adEn] = harita[ad];
+    });
+    return harita;
+  }
+
   /* Tek dilde rapor — TUR fark eder, gerisi ayni.
      `arastirma` ve `taban` IKINCI DILDE dolu gelir:
        arastirma  ilk dilin grounded arama ciktisi — TEKRAR ARANMAZ
@@ -1785,6 +1807,22 @@
         r.out[lang] = (res.data && typeof res.data === 'object')
           ? QorAiPrompts.cleanProductCodes(Object.assign({}, res.data, { researched: Boolean(res.researched) }))
           : res.data;
+        /* FIYAT DISIPLINI — PROMPT'A GUVENILMEZ.
+           Olculdu 2026-09-03: katalog iPhone icin TRY fiyati tasiyor ve
+           prompt'a o gidiyor, ama arastirma notlarindaki Ingiltere fiyatini
+           gormus model rapora ALTI yerde "1189 GBP" yazdi — biri duz yanlis
+           ("Turkiye pazarindaki 1189 GBP"). Kural metni bunu engellemedi,
+           cunku kural olasiliksal; kod kesin.
+           SIRA SART: `attachParagraphSentiment`ten ONCE kosar, yoksa metin
+           degisince paragraf anahtarlari tutmaz ve renk kaybolur. */
+        if (r.out[lang] && typeof r.out[lang] === 'object') {
+          try {
+            var duzeltilen = QorAiPrompts.enforcePriceDiscipline(
+              r.out[lang], katalogFiyatlari(r), lang,
+            );
+            if (duzeltilen) toast(duzeltilen + ' alanda fiyat disiplini uygulandı (' + lang + ')', 'i');
+          } catch (e) { toast('Fiyat disiplini atlandı: ' + (e.message || e), 'w'); }
+        }
         // ARASTIRMA METNI KOSUDA SAKLANIR: ikinci dil ayni kaniti kullanir ve
         // grounded aramayi TEKRARLAMAZ. Arama token'dan ayri, ISTEK BASINA
         // faturalaniyor — bu satir analiz basina bir aramanin parasidir.

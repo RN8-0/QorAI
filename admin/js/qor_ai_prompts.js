@@ -594,13 +594,23 @@ const ULKE_PARA = {
 };
 
 function segmentPriceLocal(p, lang) {
-  // 1) PB kaydi (loadProduct) yerel fiyati dogrudan tasir.
+  /* 1) PAZAR FIYATI ONCE. `lowestPrice` ULKEYE GORE DEGIL, KURESEL EN DUSUK
+        teklife gore dolar; onu once okumak yanlis ulkenin sayisini secer.
+        Olculdu 2026-09-03, apple-iphone-17-pro-max-512gb:
+            lowestPrice 1189 GBP   <- Ingiltere, en ucuz
+            prices      {"DE":1499,"GB":1189,"TR":127949}
+        Prompt'a "1189 GBP" gitti, model de rapora oyle yazdi; sayfa basligi
+        ise TR fiyatini (127.949 TL) gosteriyordu. Metin ve baslik AYNI
+        sayiyi soylemek zorunda. */
+  const pazar = _pazarFiyati(p, lang);
+  if (pazar) return pazar;
+  // 2) Pazar fiyati yoksa katalogun kendi tek fiyati.
   const v = Number(p?.lowestPrice) || 0;
   if (v > 0) {
     const cur = String(p?.lowestPriceCurrency || '').toUpperCase();
     return { v, cur, label: `${v} ${cur}`.trim() };
   }
-  /* 2) TYPESENSE BELGESI. Sema `lowestPrice`/`lowestPriceCurrency`
+  /* 3) TYPESENSE BELGESI. Sema `lowestPrice`/`lowestPriceCurrency`
         TASIMIYOR (olculdu 2026-09-03) ama GERCEK ulke fiyatlarini tasiyor:
         `pricesByCountry` ("{\"TR\":75699}") ve duz `priceTR` / `priceUS`...
         Bunlar o pazarda okunmus tutarlar; kurla uretilmis DEGIL.
@@ -609,34 +619,54 @@ function segmentPriceLocal(p, lang) {
         FIYATSIZ gidiyorlardi -- model de bosluga `lowestPriceUSD`i
         koyuyordu. Yayinlanan kartlarda gorulen "2165 USD" tam olarak bu:
         75.699 TL'nin bayat kurdan gecmis hali. */
-  let harita = p?.pricesByCountry;
+  const ts = _pazarFiyati(p, lang, true);
+  return ts || { v: 0, cur: '', label: '' };
+}
+
+/* Ulke bazli fiyat secici. Kur ile islem YOK: her sayi o pazarda okunmus
+   tutardir, yalnizca HANGISI secilecek sorusunu yanitlar.
+
+   REFERANS PAZAR TR. Katalog Epey kaynakli (~106k TR urunu) ve yayinlanan
+   analiz sayfasi TR fiyatini gosteriyor; metnin baslikla ayni sayiyi
+   soylemesi icin TR once gelir. TR yoksa okuyucunun diline yakin pazar,
+   o da yoksa dolu olan ilk pazar — hangisi secildiyse ADI da yazilir. */
+function _pazarFiyati(p, lang, tsAlanlariDa) {
+  let harita = p?.prices;
   if (typeof harita === 'string' && harita.trim()) {
     try { harita = JSON.parse(harita); } catch (_) { harita = null; }
   }
-  if (!harita || typeof harita !== 'object') harita = null;
+  if (!harita || typeof harita !== 'object' || Array.isArray(harita)) harita = null;
+  let ts = p?.pricesByCountry;
+  if (typeof ts === 'string' && ts.trim()) { try { ts = JSON.parse(ts); } catch (_) { ts = null; } }
+  if (!ts || typeof ts !== 'object') ts = null;
 
-  // Okuyucunun dili once denenir; yoksa ilk dolu ulke.
-  const tercih = String(lang || '').slice(0, 2).toLowerCase() === 'tr'
-    ? ['TR', 'US', 'GB', 'DE'] : ['US', 'GB', 'DE', 'TR'];
-  const adaylar = [];
-  tercih.forEach((c) => {
-    const dogrudan = Number(p?.[`price${c}`]) || 0;
-    const haritadan = harita ? Number(harita[c]) || 0 : 0;
-    const tutar = dogrudan || haritadan;
-    if (tutar > 0) adaylar.push([tutar, c]);
-  });
-  if (!adaylar.length && harita) {
-    Object.keys(harita).forEach((c) => {
-      const tutar = Number(harita[c]) || 0;
-      if (tutar > 0) adaylar.push([tutar, String(c).toUpperCase()]);
-    });
+  const oku = (c) => {
+    const a = harita ? harita[c] : null;
+    const dogrudanA = Number(a && typeof a === 'object' ? a.price : a) || 0;
+    const dogrudanB = ts ? Number(ts[c]) || 0 : 0;
+    const dogrudanC = tsAlanlariDa ? Number(p?.[`price${c}`]) || 0 : 0;
+    return dogrudanA || dogrudanB || dogrudanC;
+  };
+
+  const tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+  const tercih = tr ? ['TR', 'US', 'GB', 'DE'] : ['TR', 'US', 'GB', 'DE'];
+  for (const c of tercih) {
+    const tutar = oku(c);
+    if (tutar > 0) {
+      const cur = ULKE_PARA[c] || c;
+      return { v: tutar, cur, label: `${tutar} ${cur} (${c})` };
+    }
   }
-  if (!adaylar.length) return { v: 0, cur: '', label: '' };
-  const [tutar, ulke] = adaylar[0];
-  const cur = ULKE_PARA[ulke] || ulke;
-  // Pazar ADIYLA birlikte verilir: "75699 TRY (TR)". Model boylece
-  // "bu hangi ulkenin fiyati" sorusunu cevirmeye kalkmadan yanitlar.
-  return { v: tutar, cur, label: `${tutar} ${cur} (${ulke})` };
+  const kalanlar = Object.keys(harita || ts || {});
+  for (const c of kalanlar) {
+    const tutar = oku(String(c).toUpperCase()) || oku(c);
+    if (tutar > 0) {
+      const u = String(c).toUpperCase();
+      const cur = ULKE_PARA[u] || u;
+      return { v: tutar, cur, label: `${tutar} ${cur} (${u})` };
+    }
+  }
+  return null;
 }
 
 function segmentPriceUSD(p) {
@@ -1641,32 +1671,242 @@ function quizLines(answers = []) {
   return list.length ? list.join('\n') : 'No product-specific quiz answers were provided.';
 }
 
-/* -- FIYAT KURALLARI: TEK KAYNAK, DORT AKISIN HEPSI ------------------------
-   Bu uc kural 2026-09-03'e kadar YALNIZCA `buildFullPrompt` icindeydi, yani
-   sadece URUN analizinde geceriliydi. Karsilastirma ve link raporlari ayni
-   modele ayni fiyat verisini gonderiyor ama bu kurallari GORMUYORDU: "1973
-   USD" hatasi orada aynen mumkundu. Metin buraya tasindi ve dort prompt'un
-   dordu de buradan okuyor -- ikinci bir kopya cikarsa yine ayrisir. */
-function priceRulesBlock() {
-  return (
-    // 1. FIYATI CEVIRME. Katalog fiyati YEREL para biriminde ve pazariyla
-    //    birlikte veriliyor. Model baska bir para birimine cevirdiginde
-    //    kendi kafasindaki kuru kullaniyor ve sonuc sacma cikiyor (olculdu:
-    //    68.999 TL'lik butce telefonu "yaklasik 1973 USD'lik amiral gemisi"
-    //    diye yazildi). Cevrim gerekiyorsa VERI KATMANINDA yapilir.
-    '- CURRENCY: the catalog price is given in its OWN currency with the market named. Quote it EXACTLY as given, in that currency. NEVER convert it to another currency and never restate it as a global/US price — you do not have an exchange rate and the converted figure is always wrong. If the reader\'s market is not the one given, say which market the figure belongs to instead of converting it. When several products are compared, compare their prices WITHIN the same currency; never convert one to match another.\n'
-    // 2. SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
-    + '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n'
-    // 3. FIYAT "DIKKAT EDILMESI GEREKENLER"E YAZILMAZ.
-    //    Kullanicinin karari (2026-09-03): "fiyat bilgisi dogru degilse illa
-    //    fiyat bilgisi cekmesine gerek yok, oraya eklemese de olur". Sayfada
-    //    ZATEN ayri bir fiyat bolumu var (priceForecast + canli magaza
-    //    listesi). Ayni sayiyi bir de uyari maddesi diye tekrarlamak hem yer
-    //    israfi hem de sayi yanlissa hatayi IKINCI KEZ basmak demek --
-    //    olculdu 2026-09-03: "Yaklasik 1973 USD'lik fiyatiyla yuksek bir
-    //    maliyete sahiptir" satiri tam da `weaknesses` icindeydi.
-    + '- NEVER put a price figure in weaknesses, cons, criticalPoints, factors[].detail, notFor or decisiveDifferences. Those lists are for what the product IS and DOES — something the reader can check on a spec sheet or in ownership reports. "It costs X" is not a weakness; the price already has its own section (priceForecast) and its own live store list on the page. You may still judge VALUE there, just without quoting an amount: name the tier it competes in and what it gives up or gains against that tier. The ONLY field that may contain a price figure is priceForecast.\n'
+/* -- FIYAT DISIPLINI: DETERMINISTIK KAPI ----------------------------------
+
+   PROMPT KURALI YETMIYOR. Olculdu 2026-09-03, canli karsilastirma
+   (samsung-galaxy-s26-ultra-...-vs-apple-iphone-17-pro-max-512-gb): katalog
+   iPhone icin TRY fiyati tasiyor ve prompt'a o gidiyor, ama arastirma
+   notlarinda Ingiltere fiyati geciyor ve model ONU baz aldi. Rapora ALTI
+   ayri yerde "1189 GBP" yazildi:
+     products[1].cons[0]                 "1189 GBP'lik fiyat etiketiyle..."
+     products[1].criticalPoints[3]       "Cihazin 1189 GBP'lik fiyat etiketi"
+     products[1].factors[7].detail       "1189 GBP'lik fiyat etiketiyle..."
+     products[1].priceForecast.analysis  "mevcut 1189 GBP fiyat"
+     comparison.decisiveDifferences[5]   "Turkiye pazarindaki 1189 GBP'lik"  <- duz yanlis
+     comparison.recommendation           "iPhone'un 1189 GBP'lik fiyat etiketi"
+   Ustelik ayni karsilastirmada oteki urun TRY ile anlatiliyordu: okuyucuya
+   iki farkli para birimi "kiyaslanmis" gibi sunuldu.
+
+   Ayrica ham katalog sayisi bicimlendirilmeden basiliyordu: "88968.45 TRY".
+
+   Bu yuzden metin, MODELDEN CIKTIKTAN SONRA koddan geciyor. Uc is yapar:
+
+     1. YASAK ALANLAR  (cons/weaknesses/criticalPoints/factors[].detail/
+        notFor/decisiveDifferences/headToHeadByProduct/drivers)
+        Fiyat rakami iceren CUMLE atilir. Madde tumuyle fiyat cumlesiyse
+        madde duser. Gerekce: sayfada zaten ayri bir fiyat bolumu ve canli
+        magaza listesi var; ayni sayiyi uyari maddesi diye tekrarlamak, sayi
+        yanlissa hatayi ikinci kez basmak demek (kullanicinin karari).
+
+     2. SERBEST ALANLAR (analysis / priceForecast / topluluk / hukum)
+        KATALOG PARA BIRIMI DISINDAKI her tutar, o urunun katalog fiyatiyla
+        DEGISTIRILIR. Hangi urune ait oldugu cozulemezse cumle atilir.
+        UYDURMA YOK: katalogda fiyat yoksa yine cumle atilir.
+
+     3. BICIM  "88968.45 TRY" -> "88.968,45 TL" (tr) / "88,968.45 TRY" (en).
+
+   KUR ILE ISLEM YAPILMAZ. Buradaki tek kaynak katalogun kendi tutari. */
+
+var _PARA_KODLARI = 'USD|EUR|GBP|TRY|TL|JPY|CNY|INR|AED|PLN|SEK|CHF|CAD|AUD|RUB|KRW';
+var _PARA_SIMGE = '\\$|€|£|₺|¥';
+var _SIMGE_KODU = { '$': 'USD', '€': 'EUR', '£': 'GBP', '₺': 'TRY', '¥': 'JPY' };
+
+function _fiyatRe() {
+  return new RegExp(
+    '(?:(?:' + _PARA_SIMGE + ')\\s?\\d[\\d.,]*\\d|(?:' + _PARA_SIMGE + ')\\s?\\d)'
+    + '|(?:\\d[\\d.,]*\\s?(?:' + _PARA_SIMGE + '))'
+    + '|(?:\\d[\\d.,]*\\s?(?:' + _PARA_KODLARI + ')\\b)',
+    'gi',
   );
+}
+
+/** Bir eslesmenin para birimi kodu. */
+function _paraKodu(esles) {
+  var simge = String(esles).match(new RegExp(_PARA_SIMGE));
+  if (simge) return _SIMGE_KODU[simge[0]] || '';
+  var kod = String(esles).match(new RegExp('(' + _PARA_KODLARI + ')\\b', 'i'));
+  if (!kod) return '';
+  var k = kod[1].toUpperCase();
+  return k === 'TL' ? 'TRY' : k;
+}
+
+/* Cumleye bolme. Ondalik noktasi cumle sonu SANILMAMALI ("88968.45"): ayirac
+   yalnizca noktalama + BOSLUK oldugunda gecerli. */
+function _cumleler(metin) {
+  return String(metin || '').split(/(?<=[.!?…])\s+/);
+}
+
+/** Katalog tutarini okunur bicimde yazar. Cevrim YOK, yalnizca bicim. */
+function fiyatEtiketi(tutar, para, lang) {
+  var v = Number(tutar) || 0;
+  if (!(v > 0)) return '';
+  var kod = String(para || '').toUpperCase();
+  var tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+  var sayi = v.toLocaleString(tr ? 'tr-TR' : 'en-US', { maximumFractionDigits: 2 });
+  return sayi + ' ' + (tr && kod === 'TRY' ? 'TL' : kod);
+}
+
+function _fiyatVarMi(metin) { return _fiyatRe().test(String(metin || '')); }
+
+/** Fiyat rakami iceren cumleleri atar. */
+function _fiyatCumleleriniAt(metin) {
+  var kalan = _cumleler(metin).filter(function (c) { return !_fiyatVarMi(c); });
+  return kalan.join(' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+/**
+ * Yabanci para tutarlarini `etiket` ile degistirir; degistirilemeyen
+ * (etiket yoksa) cumleleri atar. Katalog para biriminde olan tutarlar
+ * yalnizca BICIMLENIR.
+ */
+function _paraBirligi(metin, etiket, kanonik, lang) {
+  return _cumleler(metin).map(function (cumle) {
+    var re = _fiyatRe();
+    var atilsin = false;
+    var yeni = String(cumle).replace(re, function (esles) {
+      var kod = _paraKodu(esles);
+      if (!kod) return esles;
+      if (kod === kanonik) {
+        // Ayni para birimi: yalnizca bicim duzeltilir ("88968.45 TRY").
+        var ham = String(esles).replace(new RegExp('(' + _PARA_SIMGE + '|' + _PARA_KODLARI + ')', 'gi'), '').trim();
+        var sayi = _sayiOku(ham);
+        return sayi > 0 ? fiyatEtiketi(sayi, kanonik, lang) : esles;
+      }
+      if (!etiket) { atilsin = true; return esles; }
+      return etiket;
+    });
+    return atilsin ? '' : yeni;
+  }).filter(Boolean).join(' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+/* "88968.45" / "88.968,45" / "1,189" -> sayi. Ayirac karisikligi TEK
+   kurala baglanir: SON ayirac ondalik ise ondan sonrasi kesir. */
+function _sayiOku(ham) {
+  var t = String(ham || '').replace(/\s/g, '');
+  if (!t) return 0;
+  var sonNokta = t.lastIndexOf('.');
+  var sonVirgul = t.lastIndexOf(',');
+  var son = Math.max(sonNokta, sonVirgul);
+  if (son < 0) return Number(t) || 0;
+  var kesirBasamak = t.length - son - 1;
+  // 3 basamak ve ayirac tek ise BINLIK ayiracidir (1.189 = 1189).
+  if (kesirBasamak === 3) return Number(t.replace(/[.,]/g, '')) || 0;
+  var tam = t.slice(0, son).replace(/[.,]/g, '');
+  return Number(tam + '.' + t.slice(son + 1)) || 0;
+}
+
+/* Fiyat rakaminin YASAK oldugu ALAN ADLARI. Yol degil AD: rapor sekli
+   turden ture ve surumden surume degisiyor (olculdu: `priceForecast` kimi
+   kayitta kokte, kimisinde product altinda). Ad uzerinden karar vermek
+   sekilden bagimsizdir. */
+var _YASAK_ADLAR = ['cons', 'weaknesses', 'notFor', 'bestFor',
+  'criticalPoints', 'decisiveDifferences', 'case', 'for', 'against'];
+
+/* Bu adlarin ALTINDAKI her dize fiyat cumlesinden arindirilir; digerlerinde
+   yalnizca para birimi birlestirilir. `factors` BILEREK yok: bir
+   "Fiyat/performans" faktorunun aciklamasindan tutari silmek kutuyu bos
+   birakiyordu (olculdu, fixture testi). */
+
+/**
+ * RAPORU YERINDE DUZELTIR, degisen alan sayisini doner.
+ *
+ * `fiyatlar`  urun adi -> { tutar, para }   (tek urunlu raporda tek nesne de olur)
+ * `lang`      sayi bicimi ve para etiketi
+ *
+ * NOT: `paragraphSentiment` DOKUNULMAZ ve bu fonksiyon etiketlemeden ONCE
+ * kosmalidir — metin sonradan degisirse anahtarlar tutmaz ve paragraf
+ * rengi kaybolur (bu tuzaga fix_usd_prices.mjs'te bir kez dusuldu).
+ */
+function enforcePriceDiscipline(rapor, fiyatlar, lang) {
+  if (!rapor || typeof rapor !== 'object') return 0;
+  var harita = fiyatlar && typeof fiyatlar === 'object' ? fiyatlar : {};
+  var tekilFiyat = (typeof harita.tutar !== 'undefined') ? harita : null;
+  var adlar = tekilFiyat ? [] : Object.keys(harita);
+
+  function fiyatiCoz(ad) {
+    if (tekilFiyat) return tekilFiyat;
+    var k = String(ad || '').trim();
+    if (!k) return null;
+    if (harita[k]) return harita[k];
+    var alt = adlar.find(function (x) { return x && (x.indexOf(k) >= 0 || k.indexOf(x) >= 0); });
+    return alt ? harita[alt] : null;
+  }
+
+  // KANONIK PARA BIRIMI: ilk dolu katalog fiyatinin para birimi.
+  var kanonik = '';
+  var hepsi = tekilFiyat ? [tekilFiyat] : adlar.map(function (k) { return harita[k]; });
+  hepsi.some(function (f) {
+    if (f && Number(f.tutar) > 0 && f.para) { kanonik = String(f.para).toUpperCase(); return true; }
+    return false;
+  });
+
+  /* TEK URUNLU RAPORDA VARSAYILAN BAGLAM. Boylece kokteki `priceForecast`
+     de o urunun fiyatiyla duzelir — sekle bagli kalmaz. */
+  var varsayilan = '';
+  if (tekilFiyat) varsayilan = fiyatEtiketi(tekilFiyat.tutar, tekilFiyat.para, lang);
+  else if (adlar.length === 1) varsayilan = fiyatEtiketi(harita[adlar[0]].tutar, harita[adlar[0]].para, lang);
+
+  var n = 0;
+
+  function dize(v, etiket, yasak) {
+    if (!_fiyatVarMi(v)) return v;
+    var y = yasak ? _fiyatCumleleriniAt(v) : _paraBirligi(v, etiket, kanonik, lang);
+    if (y !== v) n += 1;
+    return y;
+  }
+
+  function gez(dugum, etiket, yasak, derinlik) {
+    if (derinlik > 8 || dugum == null) return dugum;
+    if (typeof dugum === 'string') return dize(dugum, etiket, yasak);
+    if (Array.isArray(dugum)) {
+      return dugum
+        .map(function (x) { return gez(x, etiket, yasak, derinlik + 1); })
+        .filter(function (x) {
+          // Fiyat cumlesi atilinca bosalan MADDE duser.
+          if (typeof x === 'string') return x.trim().length > 0;
+          return true;
+        });
+    }
+    if (typeof dugum !== 'object') return dugum;
+
+    // Urun dugumu: bundan sonrasi BU urunun fiyatiyla calisir.
+    var yerel = etiket;
+    if (typeof dugum.name === 'string') {
+      var f = fiyatiCoz(dugum.name);
+      if (f) yerel = fiyatEtiketi(f.tutar, f.para, lang);
+    }
+
+    Object.keys(dugum).forEach(function (k) {
+      if (k === 'paragraphSentiment') return;
+      var altYasak = yasak || _YASAK_ADLAR.indexOf(k) >= 0;
+      if (k === 'drivers' && Array.isArray(dugum[k])) {
+        /* ETKENLER: YABANCI para birimini ANAN madde duser. "GBP kur
+           dalgalanmalari" bir Turkiye fiyatinin etkeni degildir. */
+        var kodRe = new RegExp('\\b(' + _PARA_KODLARI + ')\\b', 'i');
+        var yeniD = dugum[k].filter(function (d) {
+          var m = String(d || '').match(kodRe);
+          if (!m) return true;
+          var kk = m[1].toUpperCase(); if (kk === 'TL') kk = 'TRY';
+          return !kanonik || kk === kanonik;
+        });
+        if (yeniD.length !== dugum[k].length) { dugum[k] = yeniD; n += 1; }
+        return;
+      }
+      dugum[k] = gez(dugum[k], yerel, altYasak, derinlik + 1);
+    });
+
+    // Detayi bosalan KRITIK NOKTA duser (baslik tek basina uyari degildir).
+    if (Array.isArray(dugum.criticalPoints)) {
+      var kalan = dugum.criticalPoints.filter(function (x) {
+        return x && typeof x === 'object' ? String(x.detail || '').trim() : true;
+      });
+      if (kalan.length !== dugum.criticalPoints.length) { dugum.criticalPoints = kalan; n += 1; }
+    }
+    return dugum;
+  }
+
+  gez(rapor, varsayilan, false, 0);
+  return n;
 }
 
 /* -- QUIZ KAPISI: CEVAP YOKSA SORU DA YOK ---------------------------------
@@ -2729,11 +2969,13 @@ root.QorAiPrompts = {
   siblingDetectParts, sentenceIsSiblingOnly,
   quizLines, promptContext,
   // alternatif segment kapisi + katalog eslestirme
-  segmentPriceUSD, peerFilterExpr, peerModelKey, rankPeerCandidates, segmentGate,
+  segmentPriceUSD, segmentPriceLocal, peerFilterExpr, peerModelKey, rankPeerCandidates, segmentGate,
   pickCatalogMatch, resolveCatalogAlternatives,
   // rapor metninden urun kodu temizligi
   cleanProductCodes,
   lockScoresToBase,
+  // fiyat disiplini — modelden CIKAN metni kod duzeltir (prompt yetmiyor)
+  enforcePriceDiscipline, fiyatEtiketi,
   PARAGRAF_SINIFLANDIRICI,
   proseBlocks,
   // puan kalibrasyonu + segment kunyesi

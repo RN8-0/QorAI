@@ -587,7 +587,7 @@ export function ProductFullReport({ data, L, lang, hideQuiz = false, techScore =
    RENK SÖZLÜĞÜ SAYFA BOYUNCA TEK:
      yeşil = iyi · kırmızı = kötü · mavi = ÖLÇÜ (sayılar, bkz. .aic-num)
    Ürünü renk değil KARTIN KENDİSİ söyler. */
-function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0, taban = 0 }) {
+function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0, taban = 0, beraber = false }) {
   // Çubuk GÖRÜNÜNCE dolar; kart sayfanın ortasında ve mount'ta biten bir
   // animasyonu kimse görmüyordu (bkz. AiCharts → useDrawIn).
   const [kap, drawn, reduced] = useDrawIn();
@@ -635,8 +635,13 @@ function CompareCard({ lane, L, names = null, enUcuzKey = '', lider = 0, taban =
               transition: reduced ? 'none' : `width .8s cubic-bezier(.22,.61,.36,1) ${Math.min(lane.rank * 90, 400)}ms`,
             }} />
           </div>
-          <span className={'ai-cmp-card-delta' + (fark === 0 ? ' lead' : '')}>
-            {fark === 0 ? `★ ${L('leader', 'lider')}` : fark}
+          {/* TEPE PUAN PAYLASILIYORSA "LIDER" DEGIL "BERABERE".
+              Iki urunun de puani ayni oldugunda ikisine birden yildiz
+              basiliyordu; ekranda hem "ikinciyle fark: berabere" hem de iki
+              tane "★ lider" duruyordu. Kazanani kart zaten soyluyor. */}
+          <span className={'ai-cmp-card-delta' + (fark === 0 && !beraber ? ' lead' : '')}>
+            {fark !== 0 ? fark
+              : (beraber ? `= ${L('tied', 'berabere')}` : `★ ${L('leader', 'lider')}`)}
           </span>
         </div>
       )}
@@ -728,6 +733,8 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
   // bantta (95/94/92) hiçbir fark göstermiyordu.
   const taban = Math.max(0, Math.min(lider - 1, enAz - 3));
   const ikinci = puanlar.length > 1 ? [...puanlar].sort((a, b) => b - a)[1] : 0;
+  // Tepe puani KAC urun paylasiyor? Birden fazlaysa "lider" rozeti yaniltir.
+  const liderSayisi = puanlar.filter((v) => v === lider).length;
   const kazanan = lanes.find((l) => l.win) || null;
 
   return (
@@ -780,7 +787,8 @@ function ComparisonOverview({ cmp = {}, L, names = null, lanes = [] }) {
         <div className="ai-cmp-cards">
           {lanes.map((l) => (
             <CompareCard key={l.key} lane={l} L={L} names={names}
-              enUcuzKey={enUcuzKey} lider={lider} taban={taban} />
+              enUcuzKey={enUcuzKey} lider={lider} taban={taban}
+              beraber={liderSayisi > 1} />
           ))}
         </div>
       )}
