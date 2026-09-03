@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["spa/index-xztKWY4_.js","spa/aitext-dzRABHwo.js","spa/vendor-CtqMrWKR.js","spa/index-JJ0G8BMD.css"])))=>i.map(i=>d[i]);
+import{_ as c,aH as i}from"./index-xztKWY4_.js";async function l(r,{category:e="",lang:s="en"}={}){const a=Array.isArray(r)?r:[];if(!a.length)return a;const{searchProductsLean:n}=await c(async()=>{const{searchProductsLean:t}=await import("./index-xztKWY4_.js").then(o=>o.a_);return{searchProductsLean:t}},__vite__mapDeps([0,1,2,3]));return i(a,{search:t=>n(t,8),category:e,lang:s})}export{l as a};
