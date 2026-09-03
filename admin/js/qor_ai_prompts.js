@@ -510,11 +510,21 @@ function productSpecsContext(p, limit = 40) {
 function productLine(p, lang) {
   const ks = productSpecsContext(p, 42);
   const priceFresh = Date.parse(p?.bestOfferExpiresAt || '') > Date.now();
-  const yerel = Number(p?.lowestPrice) > 0
-    ? `${Number(p.lowestPrice)} ${p.lowestPriceCurrency || ''}`.trim()
-    : '';
-  const pazar = String(p?.lowestPriceCurrency || '').toUpperCase() === 'TRY' ? ' (Turkish market)' : '';
-  const price = priceFresh && yerel ? `${yerel}${pazar}` : '-';
+  /* FIYAT `segmentPriceLocal`DEN. Onceden bu satir `p.lowestPrice` +
+     `lowestPriceCurrency` okuyordu ve O ALAN ULKEYE GORE DEGIL, KURESEL EN
+     DUSUK teklife gore doluyor. Olculdu 2026-09-03,
+     apple-iphone-17-pro-max-512gb:
+         lowestPrice 1189 GBP      <- Ingiltere, en ucuz pazar
+         prices      {"DE":1499,"GB":1189,"TR":127949}
+     Prompt'un "Approx catalog price" satirini yazan yer BURASI, yani
+     rapordaki "1189 GBP"nin geldigi kanal da buydu. Sayfa basligi ayni
+     anda TR fiyatini gosteriyordu (127.949 TL): metin ile baslik ayni
+     urunun iki farkli fiyatini soyluyordu.
+     `segmentPriceLocal` once pazar fiyatini okur ve pazarin adini da
+     yazar ("127949 TRY (TR)"), yani sabit "(Turkish market)" ekine de
+     gerek kalmadi. */
+  const yerel = segmentPriceLocal(p, lang);
+  const price = priceFresh && yerel.label ? yerel.label : '-';
   const name = displayProductName(p, lang);
   return { name, brand: p?.brand || '', category: p?.category || '', score: p?.techScore || '-', price, ks };
 }
@@ -1907,6 +1917,39 @@ function enforcePriceDiscipline(rapor, fiyatlar, lang) {
 
   gez(rapor, varsayilan, false, 0);
   return n;
+}
+
+/* -- FIYAT KURALLARI: TEK KAYNAK, DORT AKISIN HEPSI ------------------------
+   Bu kurallar 2026-09-03'e kadar YALNIZCA `buildFullPrompt` icindeydi, yani
+   sadece URUN analizinde geceriliydi. Karsilastirma ve link raporlari ayni
+   modele ayni fiyat verisini gonderiyor ama bu kurallari GORMUYORDU.
+   Metin buraya tasindi ve dort prompt'un dordu de buradan okuyor -- ikinci
+   bir kopya cikarsa yine ayrisir.
+
+   NOT: kurallar prompt'un YARISI. OtekI yarisi `enforcePriceDiscipline`:
+   model kurala uymadiginda metni KOD duzeltir (olculdu: model kendisine
+   verilen "1189 GBP"yi sadakatle yazdi, kural onu durdurmadi cunku sayi
+   zaten prompt'tan geliyordu). */
+function priceRulesBlock() {
+  return (
+    // 1. YALNIZ KATALOG FIYATI, YALNIZ KENDI PARA BIRIMINDE.
+    '- CURRENCY: the ONLY price you may quote is the catalog price given for that product, in the currency it is given in. Quote it EXACTLY as given. NEVER convert it to another currency — you do not have an exchange rate and the converted figure is always wrong.\n'
+    // 2. ARASTIRMA NOTLARINDAKI YABANCI PAZAR FIYATI. Model cevirmedi; baska
+    //    bir ulkenin fiyatini aldi ve urunun fiyati diye yazdi (olculdu
+    //    2026-09-03: TRY fiyati olan iPhone icin alti yerde "1189 GBP", biri
+    //    "Turkiye pazarindaki 1189 GBP" diye duz yanlis).
+    + '- NEVER take a price from the research notes, a foreign store page or your own memory of another market. If the notes mention a UK, US or EU price and the catalog price is in another currency, the notes\' figure DOES NOT go in the report — not as a comparison, not in brackets, not as "roughly". A product whose catalog price is in TRY is described in TRY and nothing else.\n'
+    + '- In a comparison every product is quoted in the SAME currency (they come from the same market). If one product has no catalog price, use NO figure for it rather than reaching for another market\'s number.\n'
+    // 3. SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
+    + '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n'
+    // 4. FIYAT "DIKKAT EDILMESI GEREKENLER"E YAZILMAZ.
+    //    Kullanicinin karari (2026-09-03): "fiyat bilgisi dogru degilse illa
+    //    fiyat bilgisi cekmesine gerek yok, oraya eklemese de olur". Sayfada
+    //    ZATEN ayri bir fiyat bolumu var (priceForecast + canli magaza
+    //    listesi). Ayni sayiyi bir de uyari maddesi diye tekrarlamak, sayi
+    //    yanlissa hatayi IKINCI KEZ basmak demek.
+    + '- NEVER put a price figure in weaknesses, cons, criticalPoints, notFor or decisiveDifferences. Those lists are for what the product IS and DOES — something the reader can check on a spec sheet or in ownership reports. "It costs X" is not a weakness; the price already has its own section (priceForecast) and its own live store list on the page. You may still judge VALUE there, just without quoting an amount: name the tier it competes in and what it gives up or gains against that tier. The only fields that may carry a price figure are priceForecast and the value/price-performance entry of factors[].\n'
+  );
 }
 
 /* -- QUIZ KAPISI: CEVAP YOKSA SORU DA YOK ---------------------------------
