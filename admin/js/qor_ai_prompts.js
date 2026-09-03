@@ -2003,7 +2003,16 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // diye yazildi). Cevrim yapilacaksa VERI KATMANINDA yapilir.
     '- CURRENCY: the catalog price is given in its OWN currency with the market named. Quote it EXACTLY as given, in that currency. NEVER convert it to another currency and never restate it as a global/US price — you do not have an exchange rate and the converted figure is always wrong. If the reader\'s market is not the one given, say which market the figure belongs to instead of converting it.\n' +
     // SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
-    '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n\n' +
+    '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n' +
+    // FIYAT "DIKKAT EDILMESI GEREKENLER"E YAZILMAZ.
+    // Kullanicinin karari (2026-09-03): "fiyat bilgisi dogru degilse illa
+    // fiyat bilgisi cekmesine gerek yok, oraya eklemese de olur".
+    // Sayfada ZATEN ayri bir fiyat bolumu var (priceForecast + canli magaza
+    // listesi). Ayni sayiyi bir de uyari maddesi diye tekrarlamak hem yer
+    // israfi hem de sayi yanlissa hatayi IKINCI KEZ basmak demek — olculdu
+    // 2026-09-03: "Yaklasik 1973 USD'lik fiyatiyla yuksek bir maliyete
+    // sahiptir" satiri tam da `weaknesses` icindeydi.
+    '- NEVER put a price figure in weaknesses, criticalPoints, factors[].detail or notFor. Those lists are for what the product IS and DOES — something the reader can check on a spec sheet or in ownership reports. "It costs X" is not a weakness; the price already has its own section (priceForecast) and its own live store list on the page. You may still judge VALUE there, just without quoting an amount: name the tier it competes in and what it gives up or gains against that tier. The ONLY field that may contain a price figure is priceForecast.\n\n' +
     // AYNA BLOGU: model sema kurallarini okumadan once "bu analiz zaten
     // var, sen ceviriyorsun" bilgisini almali.
     (context.mirror ? mirrorFactsBlock(context.mirror, lang) : '') +

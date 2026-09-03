@@ -150,7 +150,11 @@
       .ba-prod{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border,#262c38);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--surface,#161b24)}
       /* SURUKLE-BIRAK. Tutamak AYRI bir eleman: kartin tamamini draggable
          yapmak icindeki input/textarea'larda metin secmeyi bozuyor. */
-      .ba-grip{cursor:grab;user-select:none;font-size:15px;line-height:1;opacity:.45;padding:3px 5px;border-radius:6px;transition:opacity .12s,background .12s}
+      /* Opaklik .45'ten .8'e: ilk surumde tutamak o kadar soluk ciktiki
+         kullanici "hicbir farklilik yok" dedi. Surukleyebilirlik GORUNMEZSE
+         var olmamis gibidir. */
+      .ba-grip{cursor:grab;user-select:none;font-size:16px;line-height:1;opacity:.8;padding:3px 6px;border-radius:6px;
+               background:rgba(127,127,127,.12);transition:opacity .12s,background .12s}
       .ba-grip:hover{opacity:1;background:rgba(127,127,127,.14)}
       .ba-grip:active{cursor:grabbing}
       .ba-dragging{opacity:.4}

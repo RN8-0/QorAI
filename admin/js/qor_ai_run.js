@@ -501,14 +501,25 @@ async function runCompareReport(o) {
     + 'Every user-facing text field must be in the requested language; keep only '
     + 'brand/product names and technical terms as-is.';
 
+  /* ARASTIRMA BIR KEZ — urun akisiyla ayni gerekce (bkz. runProductReport).
+     Cagiran taraf ilk dilin ciktisini `o.research` ile geri veriyor; ikinci
+     dil ARAMAZ. Karsilastirmada bu en buyuk tasarruf kalemi: grounded arama
+     token'dan AYRI, ISTEK BASINA faturalaniyor ve karsilastirma zaten
+     akisin en pahalisi.
+     ONCEDEN eksikti: `analyses.js` parametreyi geciriyordu ama bu fonksiyon
+     onu HIC OKUMUYORDU, yani iki dil iki ayri arama yapmaya devam ediyordu. */
   stage('research', lang);
   var research = '';
-  try {
-    research = await askGrounded(
-      P.buildCompareResearchPrompt(products, lang, { quizAnswers: answers }),
-      lang, 2048
-    );
-  } catch (_) { research = ''; }
+  if (typeof o.research === 'string' && o.research.trim()) {
+    research = o.research;
+  } else {
+    try {
+      research = await askGrounded(
+        P.buildCompareResearchPrompt(products, lang, { quizAnswers: answers }),
+        lang, 2048
+      );
+    } catch (_) { research = ''; }
+  }
   research = P.scrubSiblingResearch(research, products, lang);
 
   stage('report', lang);
