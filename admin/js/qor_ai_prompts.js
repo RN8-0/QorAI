@@ -1775,7 +1775,33 @@ function _fiyatVarMi(metin) { return _fiyatRe().test(String(metin || '')); }
    kayboluyordu); ondan onceki surum de "Bu cihaz yine de..." gibi saglam
    cumleleri yakaliyordu. */
 var _BAGLAC_ATILIR = /^\s*(ayr[ıi]ca|bunun yan[ıi] s[ıi]ra|ek olarak|bu nedenle|bu y[üu]zden|bu sebeple|dolay[ıi]s[ıi]yla|moreover|furthermore|additionally|in addition|therefore|hence|consequently|as a result|that said)\s*,?\s*/i;
-var _GONDERME_DUSER = /^\s*(bu\s*,|bunlar\s*,|bunun\s*,|buna\s*,|bunu\s*,|o da\s*,|bu durum|bu ise|bu da\b|this\s*,|these\s*,|it\s+(is|was|can|may|does)\b)/i;
+/* "It is ..." BU LISTEDE DEGIL. Ingilizce nesirde "It" neredeyse daima
+   URUNU gosterir, onceki cumleyi degil: "It is not suitable for users who
+   prioritize a high refresh rate display." tek basina anlamli bir cumledir
+   ve dusurmek icerik kaybi olurdu (olculdu: 12 kayitta `notFor` boyle
+   basliyor). Ayni sebeple "This/These" yalniz VIRGULLU kullanimda ya da
+   "This means/makes" kalibinda sayilir. */
+var _GONDERME_DUSER = /^\s*(bu\s*,|bunlar\s*,|bunun\s*,|buna\s*,|bunu\s*,|o da\s*,|bu durum|bu ise|bu da\b|this\s*,|these\s*,|this (means|makes|leads|results)\b)/i;
+
+/**
+ * ASKIDA KALAN BAS METNI TEMIZLER (disa acik: onarim betikleri de kullanir).
+ *
+ * Doner:  '' -> madde dusmeli (gonderme, isaret ettigi cumle silinmis)
+ *         metin -> baglac atilmis hali (ya da dokunulmamis hali)
+ *
+ * IKINCI BIR KOPYA YAZILMAZ. Bu desenler bir kez onarim betigine
+ * kopyalanmisti ve hemen ayristi: biri kelime siniri tasiyor, oteki
+ * tasimiyordu. Tek kaynak burasi; betikler bu fonksiyonu cagirir.
+ */
+function trimDanglingLead(metin) {
+  var t = String(metin || '');
+  if (_GONDERME_DUSER.test(t)) return '';
+  if (_BAGLAC_ATILIR.test(t)) {
+    var k = t.replace(_BAGLAC_ATILIR, '');
+    return k.charAt(0).toLocaleUpperCase('tr') + k.slice(1);
+  }
+  return t;
+}
 
 /** Fiyat rakami iceren cumleleri atar; askida kalani baglactan arindirir. */
 function _fiyatCumleleriniAt(metin) {
@@ -3047,6 +3073,7 @@ root.QorAiPrompts = {
   // rapor metninden urun kodu temizligi
   cleanProductCodes,
   lockScoresToBase,
+  trimDanglingLead,
   // fiyat disiplini — modelden CIKAN metni kod duzeltir (prompt yetmiyor)
   enforcePriceDiscipline, fiyatEtiketi,
   PARAGRAF_SINIFLANDIRICI,
