@@ -1593,6 +1593,75 @@ function quizLines(answers = []) {
   return list.length ? list.join('\n') : 'No product-specific quiz answers were provided.';
 }
 
+/* -- FIYAT KURALLARI: TEK KAYNAK, DORT AKISIN HEPSI ------------------------
+   Bu uc kural 2026-09-03'e kadar YALNIZCA `buildFullPrompt` icindeydi, yani
+   sadece URUN analizinde geceriliydi. Karsilastirma ve link raporlari ayni
+   modele ayni fiyat verisini gonderiyor ama bu kurallari GORMUYORDU: "1973
+   USD" hatasi orada aynen mumkundu. Metin buraya tasindi ve dort prompt'un
+   dordu de buradan okuyor -- ikinci bir kopya cikarsa yine ayrisir. */
+function priceRulesBlock() {
+  return (
+    // 1. FIYATI CEVIRME. Katalog fiyati YEREL para biriminde ve pazariyla
+    //    birlikte veriliyor. Model baska bir para birimine cevirdiginde
+    //    kendi kafasindaki kuru kullaniyor ve sonuc sacma cikiyor (olculdu:
+    //    68.999 TL'lik butce telefonu "yaklasik 1973 USD'lik amiral gemisi"
+    //    diye yazildi). Cevrim gerekiyorsa VERI KATMANINDA yapilir.
+    '- CURRENCY: the catalog price is given in its OWN currency with the market named. Quote it EXACTLY as given, in that currency. NEVER convert it to another currency and never restate it as a global/US price — you do not have an exchange rate and the converted figure is always wrong. If the reader\'s market is not the one given, say which market the figure belongs to instead of converting it. When several products are compared, compare their prices WITHIN the same currency; never convert one to match another.\n'
+    // 2. SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
+    + '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n'
+    // 3. FIYAT "DIKKAT EDILMESI GEREKENLER"E YAZILMAZ.
+    //    Kullanicinin karari (2026-09-03): "fiyat bilgisi dogru degilse illa
+    //    fiyat bilgisi cekmesine gerek yok, oraya eklemese de olur". Sayfada
+    //    ZATEN ayri bir fiyat bolumu var (priceForecast + canli magaza
+    //    listesi). Ayni sayiyi bir de uyari maddesi diye tekrarlamak hem yer
+    //    israfi hem de sayi yanlissa hatayi IKINCI KEZ basmak demek --
+    //    olculdu 2026-09-03: "Yaklasik 1973 USD'lik fiyatiyla yuksek bir
+    //    maliyete sahiptir" satiri tam da `weaknesses` icindeydi.
+    + '- NEVER put a price figure in weaknesses, cons, criticalPoints, factors[].detail, notFor or decisiveDifferences. Those lists are for what the product IS and DOES — something the reader can check on a spec sheet or in ownership reports. "It costs X" is not a weakness; the price already has its own section (priceForecast) and its own live store list on the page. You may still judge VALUE there, just without quoting an amount: name the tier it competes in and what it gives up or gains against that tier. The ONLY field that may contain a price figure is priceForecast.\n'
+  );
+}
+
+/* -- QUIZ KAPISI: CEVAP YOKSA SORU DA YOK ---------------------------------
+   Admin panelinde quiz 2026-09-03'te DORT TURDEN DE kaldirildi.
+
+   URUN prompt'unda kapi ZATEN vardi ("product.quizInsights MUST be an empty
+   array"). KARSILASTIRMA prompt'larinda YOKTU: cevap listesi bos gelse bile
+   sema "quizInsights": [{...}] istiyor ve kural satiri "4-6 quizInsights tied
+   to the ACTUAL quiz answers" diyordu. Model olmayan cevaplari UYDURUYORDU --
+   yayinlanan sayfadaki "Cevaplarin neyi degistirdi" bolumu, kimsenin
+   vermedigi cevaplarla doluyordu. Ayni sorun hukum ve arastirma
+   cagrilarinda da vardi: "Comparison quiz answers: No product-specific quiz
+   answers were provided." satirini modele gondermek, ona bir quiz oldugunu
+   soylemenin en kotu yoluydu.
+
+   KOSULLU, cunku SITE quizi hala kullaniyor
+   (web/src/lib/compareAnalysisJobs.js -> generateCompareQuiz). Cevap varsa
+   davranis AYNEN eskisi gibi; yoksa quiz yerine degerlendirme ekseni. */
+function quizVarMi(context) {
+  return Array.isArray(context && context.quizAnswers) && context.quizAnswers.length > 0;
+}
+
+/** Karsilastirma prompt'larinda quiz blogunun yerine gecen metin.
+ *  `evaluationAxisBlock` BURADA KULLANILMAZ: o blok `product.factors`
+ *  etiketlerini de dayatiyor, oysa karsilastirmada ayni isi
+ *  `factorAxisContract` yapiyor -- ikisi ayni anda gidince model hangi
+ *  listeye uyacagini sasiriyor. */
+function compareNoQuizBlock() {
+  return 'NO QUIZ WAS ANSWERED - there is no reader profile.\n'
+    + 'Judge every product on the shared factor axis above and on the evidence in '
+    + 'the research notes, writing for EVERY reader rather than one assumed buyer.\n'
+    + 'bestFor must name 2-3 concrete use profiles with the number that justifies each; '
+    + 'notFor must name at least one reader who should NOT buy it.\n'
+    + 'Never state or imply a reader preference, priority, budget or answer: none was given.';
+}
+
+/** quizInsights kurali -- cevap yoksa alan BOS kalir. */
+function quizInsightsKurali(context) {
+  return quizVarMi(context)
+    ? '- Include 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product).\n'
+    : '- quizInsights MUST be an empty array []. No quiz was answered: never invent a question, an answer, an impact score or a reader priority.\n';
+}
+
 // -- DEGERLENDIRME EKSENI: QUIZIN YERINE GECEN BLOK ------------------------
 //
 // Yayinlanan analizlerde quiz ARTIK YANITLANMIYOR (bkz. analyses.js ->
@@ -1779,7 +1848,9 @@ function buildCompareResearchPrompt(products, lang, context = {}) {
     // yoksa liste bos donuyor.
     + `${chronicResearchGate((products || []).map((p) => p?.category).find(Boolean))} ` +
     'Then note the decisive differences that matter for a buyer choosing one. Do not invent quotes, exact counts, or exact live prices.\n\n' +
-    `Comparison quiz answers:\n${quizLines(context.quizAnswers)}\n\n` +
+    (quizVarMi(context)
+      ? `Comparison quiz answers:\n${quizLines(context.quizAnswers)}\n\n`
+      : 'NO QUIZ WAS ANSWERED. Research what matters to EVERY buyer in this category, not to one assumed profile.\n\n') +
     `Reply in ${langName(lang)} with concise research notes only; no JSON is required.`
   );
 }
@@ -1996,23 +2067,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // cumlesi urun hakkinda degil ALICI hakkinda hukum tasir.
     '- paragraphSentiment, price and timing: priceForecast paragraphs are judged FROM THE BUYER\'S SIDE, not as product traits. positive = good news for the buyer (price falling, a discount window coming, waiting pays off, good time to buy, fair value); negative = bad news for the buyer (price high or rising, no meaningful drop expected, you pay a premium, poor value, scarcity pushing prices up). Leave neutral ONLY a bare figure or date with no direction. "Its price tends to remain stable, with significant drops rare" is NEGATIVE (the buyer saves nothing); "Waiting until Q1 could yield better deals" is POSITIVE. Do not leave a whole price section unlabelled.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n' +
-    // FIYATI CEVIRME. Katalog fiyati YEREL para biriminde ve pazariyla
-    // birlikte veriliyor. Model onu baska bir para birimine cevirdiginde
-    // kendi kafasindaki kuru kullaniyor ve sonuc sacma cikiyor (olculdu:
-    // 68.999 TL'lik butce telefonu "yaklasik 1973 USD'lik amiral gemisi"
-    // diye yazildi). Cevrim yapilacaksa VERI KATMANINDA yapilir.
-    '- CURRENCY: the catalog price is given in its OWN currency with the market named. Quote it EXACTLY as given, in that currency. NEVER convert it to another currency and never restate it as a global/US price — you do not have an exchange rate and the converted figure is always wrong. If the reader\'s market is not the one given, say which market the figure belongs to instead of converting it.\n' +
-    // SAGDUYU KAPISI. Veri katmani bozuk olabilir; model bunu YUTMAMALI.
-    '- PRICE SANITY: if the given catalog price contradicts what the product plainly is (a budget model quoted above flagship money, or a flagship quoted at throwaway money), do NOT build an argument on that number. Say the listed price and note that it looks inconsistent with the segment, or omit the figure — never reason from a number you can see is wrong.\n' +
-    // FIYAT "DIKKAT EDILMESI GEREKENLER"E YAZILMAZ.
-    // Kullanicinin karari (2026-09-03): "fiyat bilgisi dogru degilse illa
-    // fiyat bilgisi cekmesine gerek yok, oraya eklemese de olur".
-    // Sayfada ZATEN ayri bir fiyat bolumu var (priceForecast + canli magaza
-    // listesi). Ayni sayiyi bir de uyari maddesi diye tekrarlamak hem yer
-    // israfi hem de sayi yanlissa hatayi IKINCI KEZ basmak demek — olculdu
-    // 2026-09-03: "Yaklasik 1973 USD'lik fiyatiyla yuksek bir maliyete
-    // sahiptir" satiri tam da `weaknesses` icindeydi.
-    '- NEVER put a price figure in weaknesses, criticalPoints, factors[].detail or notFor. Those lists are for what the product IS and DOES — something the reader can check on a spec sheet or in ownership reports. "It costs X" is not a weakness; the price already has its own section (priceForecast) and its own live store list on the page. You may still judge VALUE there, just without quoting an amount: name the tier it competes in and what it gives up or gains against that tier. The ONLY field that may contain a price figure is priceForecast.\n\n' +
+    `${priceRulesBlock()}\n` +
     // AYNA BLOGU: model sema kurallarini okumadan once "bu analiz zaten
     // var, sen ceviriyorsun" bilgisini almali.
     (context.mirror ? mirrorFactsBlock(context.mirror, lang) : '') +
@@ -2373,10 +2428,12 @@ function buildComparePrompt(products, lang, profile = {}, context = {}) {
     `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
     `${factorAxisContract(compareFactorAxis(products, lang))}\n` +
-    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must be scored on the SHARED FACTOR AXIS above (same labels, same order) and include ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on quiz answers, profile signals, catalog specs and research notes.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
+    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must be scored on the SHARED FACTOR AXIS above (same labels, same order) and include ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n${quizInsightsKurali(context)}- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
     `PRODUCTS:\n${lines}\n\nPRODUCT PAYLOAD:\n${JSON.stringify(productPayload, null, 2)}\n\n` +
-    `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (quizVarMi(context)
+      ? `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n`
+      : `${compareNoQuizBlock()}\n\n`) +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
     `WEB RESEARCH NOTES:\n${ctx.research || 'No grounded research notes were available; rely on catalog specs and clearly label uncertainty.'}`
   );
@@ -2418,7 +2475,9 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     `  "factors": [${axisSchema}],\n` +
     '  "criticalPoints": [{"title": "short warning/insight", "detail": "2 sentences", "severity": "high|mid|low"}],\n' +
     '  "quizInsights": [{"topic": "topic", "answer": "the user answer", "impact": <-100..100>, "note": "1-2 sentences"}],\n' +
-    '  "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": "need inferred from quiz/profile", "score": <0-100>, "comment": "2 evidence-based sentences"}],\n' +
+    '  "featureMatches": [{"label": "feature/spec", "productValue": "catalog value", "userNeed": '
+      + (quizVarMi(context) ? '"need inferred from quiz/profile"' : '"the buyer need this spec serves in this category"')
+      + ', "score": <0-100>, "comment": "2 evidence-based sentences"}],\n' +
     '  "analysis": "5-7 substantial paragraphs, each 45-85 words",\n' +
     '  "pros": ["6 detailed pros"],\n' +
     '  "cons": ["5 detailed cons"],\n' +
@@ -2428,11 +2487,13 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "lovedFeatures": [{"title": "what owners single out", "detail": "1 sentence"}], "chronicIssues": [{"title": "recurring ownership problem", "detail": "1 sentence", "frequency": "widespread|common|occasional"}], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
-    `Rules:\n- factors: EXACTLY the ${axis.length} shared-axis entries listed above, same labels, same order. 8-10 feature matches so the UI can render spec-fit grids.\n- Include 4-6 criticalPoints, 4-6 quizInsights tied to the ACTUAL quiz answers below (impact negative when an answer works against this product), and 4-6 community.themes with varied sentiment.\n- Scores realistic and varied, based on quiz answers, profile signals, catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n\n` +
+    `Rules:\n- factors: EXACTLY the ${axis.length} shared-axis entries listed above, same labels, same order. 8-10 feature matches so the UI can render spec-fit grids.\n- Include 4-6 criticalPoints and 4-6 community.themes with varied sentiment.\n${quizInsightsKurali(context)}- Scores realistic and varied, based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(product)}\n\n` +
     `PRODUCT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nFull payload: ${JSON.stringify(cleanProductForPrompt(product, lang))}\n\n` +
     `COMPARED AGAINST: ${peers.join(', ') || '-'}\n\n` +
-    `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (quizVarMi(context)
+      ? `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n`
+      : `${compareNoQuizBlock()}\n\n`) +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
     `WEB RESEARCH NOTES:\n${ctx.research || 'No grounded research notes were available; rely on catalog specs and clearly label uncertainty.'}`
   );
@@ -2491,10 +2552,13 @@ function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, c
     + '  · headToHeadByProduct = what each product is LIKE to live with, on its own terms.\n'
     + '  · recommendation = the DECISION and who each product is for — it may name a fact once to justify the call, never to re-explain it.\n'
     + '  Before writing an item, check whether another block already carries it; if it does, drop it or write the genuinely different angle. Repeating one fact across all three is the most common failure here.\n'
-    + '- Stay within the counts so the JSON is COMPLETE and valid.\n\n' +
+    + '- Stay within the counts so the JSON is COMPLETE and valid.\n'
+    + priceRulesBlock() + '\n' +
     `PRODUCTS (in column order): ${names.join(', ')}\n\n` +
     `PER-PRODUCT REVIEW SUMMARIES:\n${JSON.stringify(summaries, null, 2)}\n\n` +
-    `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n` +
+    (quizVarMi(context)
+      ? `COMPARISON QUIZ ANSWERS:\n${ctx.quizAnswers}\n\n`
+      : `${compareNoQuizBlock()}\n\n`) +
     (prof ? `USER PROFILE / USER-RECOGNITION SIGNALS:\n${prof}\n\n` : '') +
     `WEB RESEARCH NOTES:\n${ctx.research || 'No grounded research notes were available.'}`
   );

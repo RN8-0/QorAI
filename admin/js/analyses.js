@@ -4,8 +4,8 @@
 //
 //  IKI IS YAPAR:
 //   1. ANALIZ URETIR. Kaynagi sec (urun / karsilastirma / link / abonelik),
-//      quiz'i BURADA yanitla, rapor TR + EN olarak uretilsin. Quiz ve rapor
-//      prompt'lari SITENIN prompt'larinin AYNISI — kopya degil, ayni dosya
+//      rapor TR + EN olarak uretilsin. QUIZ YOK (2026-09-03, dort turde de):
+//      rapor prompt'lari SITENIN prompt'larinin AYNISI — kopya degil, ayni dosya
 //      (admin/js/qor_ai_prompts.js; site tarafi web/src/lib/aiPrompts.js ile
 //      ayni dosyayi ice aktariyor).
 //   2. Yayin meta'sini uretir ve YINELENMEYI ENGELLER: ayni dilde iki analiz
@@ -296,18 +296,8 @@
       '.an-step.done{border-top-color:var(--green);color:var(--text2)}',
       '.an-step em{display:block;font-style:normal;font-size:11px;font-weight:500;color:var(--text3);margin-top:2px}',
 
-      '.an-q{border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:10px;background:var(--bg2)}',
-      '.an-q > p{margin:0 0 12px;font-size:14.5px;line-height:1.6;color:var(--text1)}',
-      '.an-q > p b{font-variant-numeric:tabular-nums;color:var(--text3);font-weight:650;margin-right:8px}',
-      /* Quiz'de secenek sayisi DAIMA 4 (prompt'un sart kostugu sey). auto-fit
-         3+1 gibi dengesiz bir satir birakiyordu; iki sutun 2+2 veriyor. */
-      '.an-opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}',
-      '@media (max-width:720px){.an-opts{grid-template-columns:1fr}}',
-      '.an-opt{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1px solid var(--border);',
-      '  border-radius:var(--radius-sm);background:var(--bg3);cursor:pointer;font-size:13px;line-height:1.5;color:var(--text2);transition:border-color .12s,color .12s}',
-      '.an-opt:hover{border-color:var(--bg5);color:var(--text1)}',
-      '.an-opt.on{border-color:var(--accent);color:var(--text1);background:var(--accent3)}',
-      '.an-opt input{margin:3px 0 0;accent-color:var(--accent);flex:0 0 auto}',
+      /* `.an-q` / `.an-opts` / `.an-opt` KALDIRILDI: quiz ekrani 2026-09-03'te
+         silindi ve bu kurallarin tek kullanicisi oydu. */
 
       '.an-prog{display:flex;flex-direction:column;gap:2px;max-width:660px;margin:18px auto}',
       '.an-prog div{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);',
@@ -513,9 +503,9 @@
 
   // ── 1) Yeni analiz: KAYNAK TUR SEC ────────────────────────
   //
-  //  Uc turun de KAYNAGI farkli, gerisi AYNI: quiz -> TR rapor -> cevap
-  //  cevirisi -> EN rapor -> meta -> taslak. O yuzden yalnizca bu adim
-  //  ture gore degisiyor; quiz ve uretim ekrani ortak.
+  //  Dort turun de KAYNAGI farkli, gerisi AYNI: arastirma -> TR rapor ->
+  //  EN rapor (ilk dilin aynasi) -> meta -> taslak. O yuzden yalnizca bu
+  //  adim ture gore degisiyor; uretim ekrani ortak.
   var _uretTur = 'product';
   var URET_TUR = [
     ['product', 'Ürün', 'katalogdan ara'],
@@ -561,9 +551,12 @@
   // cagrisi. Derinlik urun sayisindan bagimsiz; sinirlayan tek sey SURE.
   var CMP_MAX = 12;
 
-  // Kac AI cagrisi olacagini ONCEDEN soyle. Iki dil bagimsiz kosuyor:
-  // dil basina 1 arastirma + N urun raporu + 1 hukum, ustune 2 quiz ve 1 meta.
-  function cmpCagriSayisi(n) { return 2 * (2 + n) + 1; }
+  // Kac AI cagrisi olacagini ONCEDEN soyle.
+  //   1 grounded arastirma  (PAYLASIMLI — ikinci dil tekrar aramaz)
+  //   dil basina N urun raporu + 1 hukum + 1 paragraf etiketleme
+  //   1 yayin metasi
+  // Quiz cagrilari (analiz basina 2) 2026-09-03'te kalkti.
+  function cmpCagriSayisi(n) { return 1 + 2 * (n + 2) + 1; }
 
   /* ── TEK KATEGORI KURALI ─────────────────────────────────────────────────
      Sitede bu kural VAR (web/src/lib/compare.js -> tryAdd, reason:'category'
@@ -717,20 +710,9 @@
     }
     var cmpEngel = uretimKapisi('compare', { products: _cmpSecili });
     if (cmpEngel) { toast(cmpEngel, 'e'); return; }
-    var b = $('anKaynak');
-    b.innerHTML = '<div class="an-card"><h3>1 · Hazırlanıyor</h3>'
-      + '<p class="an-empty">Karşılaştırma quizi hazırlanıyor…</p></div>';
-    try {
-      var quiz = await QorAiRun.generateCompareQuiz(_cmpSecili, 'tr');
-      if (!quiz.length) throw new Error('Quiz üretilemedi');
-      _run = yeniRun('compare', { products: _cmpSecili.slice() }, quiz);
-      renderQuiz();
-    } catch (e) {
-      b.innerHTML = '<div class="an-card"><h3>Quiz üretilemedi</h3>'
-        + '<p class="an-err">' + esc(e.message || e) + '</p>'
-        + '<button class="btn btn-primary" onclick="analysesCmpBasla()">Tekrar dene</button> '
-        + '<button class="btn btn-ghost" onclick="analysesUretTur(\'compare\')">Ürünleri değiştir</button></div>';
-    }
+    // QUIZ YOK (2026-09-03): kaynaktan DOGRUDAN rapora gecilir.
+    _run = yeniRun('compare', { products: _cmpSecili.slice() });
+    analysesRunReport();
   }
 
   // ── Kaynak: KATALOG URUNU ──────────────────────────────────
@@ -791,7 +773,8 @@
       + (hata ? '<p class="an-err">' + esc(hata) + '</p>' : '')
       + '<button class="btn btn-primary" onclick="analysesLinkBasla()">Linkleri tanı</button>'
       + '<div class="an-hint">Tek link → tekil analiz. İki ve üzeri → karşılaştırma. '
-      + 'Linki tanıma, quiz ve rapor <strong>sitedeki Link Analizi ile aynı motoru</strong> kullanır.</div>'
+      + 'Linki tanıma ve rapor <strong>sitedeki Link Analizi ile aynı motoru</strong> kullanır. '
+      + 'Quiz sorulmaz — rapor kategoriden türeyen değerlendirme eksenine göre yazılır.</div>'
       + '</div>';
     var el = $('anLinks');
     if (el) el.focus();
@@ -820,8 +803,6 @@
       }
       var linkEngel = uretimKapisi('link', { bases: bases });
       if (linkEngel) { renderLinkGiris(linkEngel); return; }
-      var q = await QorAiRun.linkQuiz(bases, 'tr');
-      if (!q.length) throw new Error('Quiz üretilemedi');
       // KATALOG ESLESMESI burada aranir: kayit kurulurken (kayitKur) async
       // cagri yapilamiyor. Eslesirse analiz sayfasi urun sayfasina ic link
       // verir; eslesme zayifsa null doner ve link yazilmaz.
@@ -833,8 +814,8 @@
           });
         } catch (_) { katalog = null; }
       }
-      _run = yeniRun('link', { bases: bases, katalog: katalog }, q);
-      renderQuiz();
+      _run = yeniRun('link', { bases: bases, katalog: katalog });
+      analysesRunReport();
     } catch (e) {
       renderLinkGiris('Tanınamadı: ' + (e.message || e));
     }
@@ -1048,38 +1029,32 @@
     }
     var subEngel = uretimKapisi('subscription', { names: names });
     if (subEngel) { renderAbonelikGiris(subEngel); return; }
-    var b = $('anKaynak');
-    b.innerHTML = '<div class="an-card"><h3>1 · Quiz hazırlanıyor</h3>'
-      + '<p class="an-empty">' + esc(names.join(' · ')) + '</p></div>';
     try {
-      var q = await QorAiRun.subscriptionQuiz(names, 'tr');
-      if (!q.length) throw new Error('Quiz üretilemedi');
-      _run = yeniRun('subscription', { names: names }, q);
-      renderQuiz();
+      _run = yeniRun('subscription', { names: names });
+      analysesRunReport();
     } catch (e) {
       renderAbonelikGiris('Başlatılamadı: ' + (e.message || e));
     }
   }
 
-  // ADIM SERIDI TURE GORE KURULUR — SABIT INDEKSLE DEGIL ANAHTARLA.
+  // ADIM SERIDI — QUIZ ADIMI YOK, DORT TURDE DE AYNI.
   //
-  // Urun analizinde quiz 2026-09-01'de kaldirildi (bkz. quizGerekli) ama serit
-  // hala "2. Quiz / sorulari yanitla" yaziyordu: ekran var olmayan bir adimi
-  // vaat ediyor, "3. Rapor" da hicbir zaman ucuncu adim olmuyordu. Sabit
-  // indeks (adimlar(2)) kaldirilan adimda kayar; anahtar kaymaz.
+  // Quiz once yalnizca URUNDEN kaldirilmisti (2026-09-01) ve serit ture gore
+  // dallaniyordu; karsilastirma/link/abonelik hala "2. Quiz / sorulari
+  // yanitla" gosteriyordu. 2026-09-03'te quiz dort turden de kaldirildi, yani
+  // dal da gerekmiyor.
+  //
+  // Sabit indeks yerine ANAHTAR kullanilmasinin gerekcesi duruyor: adim
+  // eklenip cikarildiginda adimlar(2) gibi bir cagri sessizce kayar.
   var ADIM_AD = {
     kaynak: ['Kaynak', 'ürün · karşılaştırma · link · abonelik'],
-    quiz: ['Quiz', 'soruları yanıtla'],
     rapor: ['Rapor', 'TR + EN üret'],
     yayin: ['Yayın', 'önizle ve yayınla'],
   };
 
-  function adimSirasi(kind) {
-    var tur = kind || (_run && _run.kind) || _uretTur;
-    return tur === 'product'
-      ? ['kaynak', 'rapor', 'yayin']
-      : ['kaynak', 'quiz', 'rapor', 'yayin'];
-  }
+  var ADIM_SIRA = ['kaynak', 'rapor', 'yayin'];
+
+  function adimSirasi() { return ADIM_SIRA; }
 
   function adimNo(anahtar, kind) { return adimSirasi(kind).indexOf(anahtar) + 1; }
 
@@ -1106,7 +1081,7 @@
     }
   }
 
-  // ── 2) Quiz ────────────────────────────────────────────────
+  // ── 2) Kaynak seçildi → rapor ──────────────────────────────
   async function analysesPickProduct(i) {
     var hit = (window.__anHits || [])[i];
     if (!hit) return;
@@ -1153,13 +1128,11 @@
 
   // Uretim durumu. `lang` HANGI DILDE oldugumuz; iki dil bagimsiz kosuyor,
   // o yuzden cevaplar ve raporlar dil basina ayri tutuluyor.
-  function yeniRun(kind, kaynak, questions) {
+  function yeniRun(kind, kaynak) {
     return Object.assign({
       kind: kind,
       lang: 'tr',
-      questions: questions,
-      answers: [],
-      cevaplar: { tr: null, en: null },
+      cevaplar: { tr: [], en: [] },
       out: { tr: null, en: null },
       similar: null,
     }, kaynak);
@@ -1182,91 +1155,18 @@
     return (r.bases || []).map(function (b) { return b.title; }).filter(Boolean).join(' · ');
   }
 
-  function renderQuiz() {
-    var b = $('anNewBody');
-    var r = _run;
-    var yanit = r.questions.filter(function (q, i) { return r.answers[i] != null; }).length;
-    b.innerHTML = ''
-      + adimlar('quiz', r.kind)
-      + '<div class="an-note">'
-      + (r.lang === 'tr'
-        ? '<strong>1/2 · Türkçe quiz.</strong> Sitedeki analizin ürettiği quiz\'in aynısı. '
-          + 'Bunu yanıtla, Türkçe rapor çıksın; ardından <strong>ayrı bir İngilizce quiz</strong> gelecek.'
-        : '<strong>2/2 · İngilizce quiz.</strong> Türkçe rapor hazır. Bu sorular '
-          + '<strong>çeviri değil</strong>, İngilizce okuyucu için baştan üretildi — iki dil iki ayrı varyant.')
-      + ' Verdiğin cevaplar uyum puanını belirler ve yayınlanan sayfada <strong>en üstte</strong> görünür.</div>'
-      + '<div class="an-card">'
-      + '<h3 id="anQuizHead">2 · ' + (r.lang === 'tr' ? 'TR' : 'EN') + ' · ' + esc(runKonu(r)) + ' · ' + yanit + '/' + r.questions.length + ' yanıtlandı</h3>'
-      + r.questions.map(function (q, qi) {
-        return '<div class="an-q"><p><b>' + (qi + 1) + '.</b>' + esc(q.text) + '</p>'
-          + '<div class="an-opts">'
-          + q.options.map(function (o, oi) {
-            var on = r.answers[qi] === o;
-            return '<label class="an-opt' + (on ? ' on' : '') + '">'
-              + '<input type="radio" name="anq' + qi + '"' + (on ? ' checked' : '')
-              + ' onchange="analysesAnswer(' + qi + ',' + oi + ')">'
-              + '<span>' + esc(o) + '</span></label>';
-          }).join('')
-          + '</div></div>';
-      }).join('')
-      + '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'
-      + '<button class="btn btn-primary" id="anQuizGo" onclick="analysesRunReport()"' + (yanit < r.questions.length ? ' disabled' : '') + '>'
-      + (yanit < r.questions.length
-        ? 'Tüm soruları yanıtla'
-        : (r.lang === 'tr' ? 'Türkçe raporu üret' : 'İngilizce raporu üret ve bitir')) + '</button>'
-      + '<button class="btn btn-ghost" onclick="analysesUretTur(\'' + r.kind + '\')">Vazgeç</button>'
-      + (r.lang === 'en'
-        ? '<span class="an-hint" style="align-self:center;margin:0">Türkçe rapor hazır — vazgeçersen o da gider.</span>'
-        : '')
-      + '</div>'
-      + '<p class="an-hint">Her dil kendi araştırmasını ve raporunu üretir; '
-      + 'toplam 2 quiz + 4 rapor çağrısı + yayın metası. Bu sekmeyi kapatma.</p>'
-      + '</div>';
-  }
+  // QUIZ EKRANI SILINDI (2026-09-03): `renderQuiz`, `analysesAnswer` ve
+  // `analysesBackToQuiz` ile birlikte. Dort turde de kaynak seciminden
+  // DOGRUDAN rapora geciliyor.
 
-  // TUM QUIZ'I YENIDEN CIZMEZ. Ilk surumde her cevap renderQuiz() cagiriyordu:
-  // 6 soruluk quizde her tiklamada sayfa bastan cizilip kaydirma konumu basa
-  // doneyordu (ve ust uste tiklamalar birbirini yiyordu). Degisen tek sey
-  // secili secenek, sayac ve butonun durumu — yalnizca onlar guncellenir.
-  function analysesAnswer(qi, oi) {
-    if (!_run) return;
-    _run.answers[qi] = _run.questions[qi].options[oi];
-    var kart = document.querySelectorAll('#anNewBody .an-q')[qi];
-    if (kart) {
-      var secenekler = kart.querySelectorAll('.an-opt');
-      for (var i = 0; i < secenekler.length; i++) {
-        secenekler[i].classList.toggle('on', i === oi);
-      }
-    }
-    var yanit = _run.questions.filter(function (q, i) { return _run.answers[i] != null; }).length;
-    var baslik = $('anQuizHead');
-    if (baslik) {
-      baslik.textContent = '2 · ' + (_run.lang === 'tr' ? 'TR' : 'EN') + ' · ' + runKonu(_run)
-        + ' · ' + yanit + '/' + _run.questions.length + ' yanıtlandı';
-    }
-    var btn = $('anQuizGo');
-    if (btn) {
-      var tam = yanit === _run.questions.length;
-      btn.disabled = !tam;
-      btn.textContent = tam
-        ? (_run.lang === 'tr' ? 'Türkçe raporu üret' : 'İngilizce raporu üret ve bitir')
-        : 'Tüm soruları yanıtla';
-    }
-  }
-
-  // ── 3) Rapor üret — HER DIL KENDI QUIZI ILE ────────────────
+  // ── 3) Rapor üret — TR, ardindan EN ────────────────────────
   //
-  //  ONCEKI SURUM: quiz BIR KEZ Turkce yanitlaniyor, ayni cevaplar cevrilip
-  //  Ingilizce rapora veriliyordu. Iki sorunu vardi:
-  //   1. Cevap dizesi Ingilizce rapora OLDUGU GIBI kopyalaniyordu (olculdu:
-  //      6/6). Ceviri adimi bunu kapatti ama ustune bir AI cagrisi ekledi.
-  //   2. Daha onemlisi: Turkce quizin sorulari Turkce kullanicinin
-  //      onceliklerine gore kuruluyor. Ayni sorulari cevirip Ingilizce rapora
-  //      vermek, Ingilizce sayfaya BASKA BIRININ oncelikleriyle yazilmis bir
-  //      analiz koymak demekti.
-  //
-  //  SIMDI: iki dil BAGIMSIZ. Once Turkce quiz + Turkce rapor, sonra
-  //  Ingilizce quiz (bastan uretilir) + Ingilizce rapor. Iki ayri varyant.
+  //  Iki dil pes pese ve ELSIZ kosar. Aralarindaki tek bag:
+  //    · grounded ARASTIRMA paylasilir (ikinci dil tekrar aramaz — istek
+  //      basina faturalanan tek kalem odur ve iki ayri arama iki ayri
+  //      kaynak kumesi, yani iki ayri olgu kumesi demekti)
+  //    · ikinci dil birincinin raporunu AYNA olarak alir; olgu uretmez
+  //  Metin ayri kalir, OLCULER kilitlenir (bkz. lockScoresToBase).
   // Karsilastirmada her urun KENDI AI cagrisini aliyor (bkz. qor_ai_run.js ->
   // runCompareReport) ve ustune bir hukum cagrisi geliyor. Tek satirlik
   // "rapor" cubugu 12 urunluk bir kosuda on dakika kimildamadan duruyordu;
@@ -1296,24 +1196,15 @@
   }
 
   /**
-   * ILERLEME LISTESI — QUIZLI VE QUIZSIZ TUR AYNI SEY DEGIL.
+   * ILERLEME LISTESI — IKI DIL TEK LISTEDE.
    *
-   * QUIZLI turlerde (karsilastirma / link / abonelik) akis kullanicinin
-   * cevabinda DURUYOR, dolayisiyla liste yalnizca icinde bulunulan dili
-   * gosterir; ikinci dil ayri bir quiz ekranindan sonra baslar.
-   *
-   * URUNDE quiz yok: TR ve EN pes pese, ELSIZ kosuyor. Tek dilin listesini
-   * gostermek ilerlemeyi iki kez sifirdan basliyor gibi gosteriyordu (TR
-   * %100'e varinca cubuk aniden %0'a doner ve is asilmis gibi durur) ve
-   * kaldirilmis quiz adimini "Ingilizce quiz hazirlaniyor" diye ekrana geri
-   * getiriyordu. Quizsiz turde iki dil + meta + kayit TEK listede.
+   * Quiz kalkinca akis hicbir yerde kullanicinin elinde durmuyor: TR ve EN
+   * pes pese kosuyor. Tek dilin listesini gostermek ilerlemeyi iki kez
+   * sifirdan basliyor gibi gosteriyordu — TR %100'e varinca cubuk aniden
+   * %0'a doner ve is asilmis gibi durur. Iki dil + meta + kayit TEK liste.
    */
   function progAdimlari(lang, kind) {
-    if (!quizKind(kind)) {
-      return dilAdimlari('tr', kind).concat(dilAdimlari('en', kind)).concat(PROG_SON);
-    }
-    return dilAdimlari(lang, kind)
-      .concat(lang === 'en' ? PROG_SON : [['next-quiz', 'İngilizce quiz hazırlanıyor']]);
+    return dilAdimlari('tr', kind).concat(dilAdimlari('en', kind)).concat(PROG_SON);
   }
   var PROG_SON = [
     ['meta', 'Yayın metası ve SSS (TR + EN)'],
@@ -1378,9 +1269,9 @@
     var yuzde = Math.round((biten / Math.max(1, liste.length)) * 100);
     b.innerHTML = adimlar('rapor', kind)
       + '<div class="an-card"><h3>' + adimNo('rapor', kind) + ' · '
-      // Quizsiz turde liste iki dili birden gosteriyor; basliga tek bir dil
-      // yazmak o listeyle celisirdi.
-      + (quizKind(kind) ? (lang === 'tr' ? 'Türkçe' : 'İngilizce') + ' rapor üretiliyor' : 'Rapor üretiliyor')
+      // Liste iki dili birden gosteriyor; basliga tek bir dil yazmak o
+      // listeyle celisirdi.
+      + 'Rapor üretiliyor'
       + ' · ' + esc(runKonu(r)) + '</h3>'
       // Rapor 1-3 dakika surebiliyor. Sabit bir liste "asildi mi" sorusunu
       // yanitlamiyor; cubuk + donen gosterge + sayan sure isin YASADIGINI
@@ -1401,11 +1292,9 @@
       + (hata
         ? '<p class="an-err">' + esc(hata) + '</p>'
           + '<button class="btn btn-primary" onclick="analysesRunReport()">Tekrar dene</button> '
-          // "Quiz'e don" YALNIZ quizli turde. Urunde quiz ekrani yok; buton
-          // bos bir quiz cizip akisi orada tikiyordu.
-          + (quizKind(kind)
-            ? '<button class="btn btn-ghost" onclick="analysesBackToQuiz()">Quiz\'e dön</button>'
-            : '<button class="btn btn-ghost" onclick="analysesUretTur(\'product\')">Vazgeç</button>')
+          // Quiz ekrani YOK: geri donulecek tek yer kaynak secimi.
+          + '<button class="btn btn-ghost" onclick="analysesUretTur(\''
+          + (kind || 'product') + '\')">Vazgeç</button>'
         : '<p class="an-hint">Araştırma adımı başarısız olursa rapor yine üretilir — sadece "kanıt zayıf" olarak işaretlenir.</p>')
       + '<p id="anKota" class="an-kota"></p>'
       + '</div>';
@@ -1417,8 +1306,6 @@
     // urunde oldugumuz hicbir yerde gorunmuyordu.
     kuyrukSeritYaz();
   }
-
-  function analysesBackToQuiz() { if (_run) renderQuiz(); }
 
   /* Tek dilde rapor — TUR fark eder, gerisi ayni.
      `arastirma` ve `taban` IKINCI DILDE dolu gelir:
@@ -1446,23 +1333,24 @@
     return QorAiRun.runLinkReport({ bases: r.bases, lang: lang, answers: answers, onStage: onStage });
   }
 
-  // URUN ANALIZINDE QUIZ YOK (2026-09-01).
-  //
-  // Quizi adminde BIZ cozuyorduk ve yayinlanan sayfa "bu analiz su cevaplara
-  // gore yapildi" + tek bir uyum hukmu gosteriyordu. O cevaplari okuyucu
-  // vermedi: 1440p isteyene de istemeyene de ayni "orta uyum" cikiyordu.
-  // Artik urun raporu kategoriden DETERMINISTIK turemis degerlendirme
-  // eksenine gore yaziliyor (qor_ai_prompts.js -> evaluationAxisBlock) ve
-  // hukum kullanim profili basina veriliyor.
-  //
-  // Yan kazanc: dil basina bir quiz uretimi cagrisi ortadan kalkti.
-  //
-  // Link / abonelik / karsilastirma akislarina DOKUNULMADI — onlarin quizi
-  // konuyu daraltmak icin gerekli (hangi abonelik, hangi kullanim).
-  // Ture gore soru: `quizKind` kayit olmadan da cevaplanabilir (ilerleme
-  // listesi ve adim seridi kosunun kendisinden ONCE ciziliyor).
-  function quizKind(kind) { return kind !== 'product'; }
-  function quizGerekli(r) { return quizKind(r && r.kind); }
+  /* QUIZ DORT TURDEN DE KALDIRILDI (2026-09-03).
+
+     2026-09-01'de yalnizca URUNDEN kalkmisti; karsilastirma, link ve
+     abonelik quiz sormaya devam ediyordu. Ayni gerekce onlar icin de
+     gecerliydi: quizi ADMIN cozuyordu, yani yayinlanan sayfadaki
+     "su cevaplara gore" kunyesi okuyucunun degil bizim tercihlerimizdi
+     ve tek bir "orta uyum" hukmu herkese ayni cikiyordu.
+
+     Yerine gecen sey: kategoriden DETERMINISTIK turemis degerlendirme
+     ekseni (qor_ai_prompts.js -> evaluationAxisBlock, karsilastirmada
+     compareNoQuizBlock + factorAxisContract). Hukum tek bir varsayilan
+     alici yerine kullanim profili basina veriliyor.
+
+     KAZANC: analiz basina iki quiz uretim cagrisi (dil basina bir) gitti.
+
+     SITE DOKUNULMADI: ziyaretcinin sitede yaptigi analiz quizi kullanmaya
+     devam ediyor (web/src/lib/productAnalysisJobs.js). Kaldirilan sey
+     ADMINDE URETILEN, YAYINLANAN analizlerin quizi. */
 
   // -- URUN KUYRUGU -----------------------------------------------------
   //
@@ -1707,14 +1595,6 @@
     });
   }
 
-  // Kaynak turune gore quiz — ilk adimda da, ikinci dilde de ayni yol.
-  function quizUret(r, lang) {
-    if (r.kind === 'product') return Promise.resolve([]);
-    if (r.kind === 'compare') return QorAiRun.generateCompareQuiz(r.products, lang);
-    if (r.kind === 'subscription') return QorAiRun.subscriptionQuiz(r.names, lang);
-    return QorAiRun.linkQuiz(r.bases, lang);
-  }
-
   // COK KONULU kaydin adresi. Karsilastirma ve abonelik artik SAYICA SINIRSIZ
   // (12 urun, 8 servis mumkun) ve butun adlari birlestirmek 300 karakterlik bir
   // slug uretiyordu. Iki somut zarari vardi: ön-render `website/analiz/<slug>/`
@@ -1734,8 +1614,10 @@
       kind: r.kind,
       report_tr: r.out.tr,
       report_en: r.out.en,
-      // Iki dilin quizi AYRI; kayit ikisini de tutar.
-      quiz: { tr: r.cevaplar.tr || [], en: r.cevaplar.en || [] },
+      // QUIZ KALDIRILDI: alan semada duruyor (eski kayitlar tasiyor) ama
+      // yeni kayitlarda DAIMA bos. Site bos listede quiz bolumunu hic
+      // cizmiyor (web/src/lib/analysisRecord.js -> analysisQuiz).
+      quiz: { tr: [], en: [] },
       sourceRef: '',
       status: 'draft',
       author: 'Qor AI',
@@ -1861,10 +1743,10 @@
     var durum = r.durum;
     _cmpIlerleme = null;
     renderProgress(durum, '', r);
-    var answers = r.questions.map(function (q, i) {
-      return { question: q.text, answer: r.answers[i] };
-    }).filter(function (a) { return a.answer != null; });
-    r.cevaplar[lang] = answers;
+    // QUIZ YOK: cevap listesi DAIMA bos. Prompt bunu gorunce quizsiz dala
+    // gecer ve `quizInsights`i bos dizi olarak dondurur
+    // (qor_ai_prompts.js -> quizVarMi).
+    var answers = [];
 
     function mark(key, st) {
       durum[key] = st;
@@ -1960,26 +1842,13 @@
       if (r.kind === 'compare') mark(lang + '-verdict', 'done');
       _cmpIlerleme = null;
 
-      // TURKCE BITTI -> INGILIZCE QUIZ. Sorular BASTAN uretilir; ceviri degil.
+      // TURKCE BITTI -> INGILIZCE. Arada quiz YOK; akis elsiz devam eder.
       if (lang === 'tr') {
-        // Quiz gerektirmeyen turde (urun) ikinci dile DOGRUDAN gecilir;
-        // aksi halde bos bir quiz ekrani cizilir ve akis orada tikanirdi.
-        if (!quizGerekli(r)) {
-          r.lang = 'en';
-          r.questions = [];
-          r.answers = [];
-          // KOSU ACIKCA GECILIR — global `_run` bu arada silinmis olabilir.
-          return analysesRunReport(r);
-        }
-        mark('next-quiz', 'run');
-        var q = await quizUret(r, 'en');
-        if (!q.length) throw new Error('İngilizce quiz üretilemedi');
-        mark('next-quiz', 'done');
         r.lang = 'en';
-        r.questions = q;
-        r.answers = [];
-        renderQuiz();
-        return;
+        // KOSU ACIKCA GECILIR — global `_run` bu arada silinmis olabilir
+        // (loadAnalysesAdmin siliyor) ve `_run`a guvenen ozyineleme kuyrugu
+        // kilitliyordu.
+        return analysesRunReport(r);
       }
 
       mark('meta', 'run');
@@ -2307,7 +2176,6 @@
       govde = hucre('Karar', p.decision || '—')
         + hucre('Uyum', num(p.matchScore) + '/100')
         + hucre('Güven', num(p.confidence) + '/100')
-        + hucre('Quiz cevabı', (p.quizInsights || []).length)
         + hucre('Faktör', (p.factors || []).length)
         + hucre('Kritik nokta', (p.criticalPoints || []).length)
         + hucre('Güçlü / zayıf', (p.strengths || []).length + ' / ' + (p.weaknesses || []).length)
@@ -2642,9 +2510,7 @@
   window.analysesCmpEkle = analysesCmpEkle;
   window.analysesCmpCikar = analysesCmpCikar;
   window.analysesCmpBasla = analysesCmpBasla;
-  window.analysesAnswer = analysesAnswer;
   window.analysesRunReport = analysesRunReport;
-  window.analysesBackToQuiz = analysesBackToQuiz;
   window.analysesEdit = analysesEdit;
   window.analysesDelete = analysesDelete;
   window.analysesSaveImage = analysesSaveImage;

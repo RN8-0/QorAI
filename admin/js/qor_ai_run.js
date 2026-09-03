@@ -389,71 +389,22 @@ function katalogAra(ad) {
 
 // ── akis ───────────────────────────────────────────────────────────────────
 
-/* ── QUIZ: MOTORUN KENDISI KOSAR, IKINCI BIR KOPYA YOK ─────────────────────
-   Buradaki iki fonksiyon ONCEDEN quizi KENDI basina uretiyordu (kendi
-   payload'i, kendi jeton tavani). Sitenin quizi ise motordan geliyordu
-   (admin/js/qor_ai_link.js -> generateQuiz / generateCompareQuiz). Iki
-   uygulama kacinilmaz olarak ayristi; olculdu 2026-08-28:
+/* QUIZ ADMIN AKISINDAN TAMAMEN KALDIRILDI (2026-09-03).
+   Once yalnizca URUN analizinden kalkmisti; karsilastirma, link ve abonelik
+   quiz uretmeye devam ediyordu. Iki zarari vardi:
+     1. Quizi ADMIN cozuyordu. Yayinlanan sayfa 'bu analiz su cevaplara gore
+        yapildi' diyor ve uyum puanini o cevaplara dayandiriyordu — oysa o
+        cevaplari okuyucu vermedi.
+     2. Dil basina bir quiz uretim cagrisi (yani analiz basina iki) bosuna
+        faturalaniyordu.
+   `quizBaglami`, `generateQuiz`, `generateCompareQuiz`, `linkQuiz` ve
+   `subscriptionQuiz` SILINDI. Raporlar artik kategoriden deterministik
+   turemis degerlendirme eksenine gore yaziliyor
+   (qor_ai_prompts.js -> evaluationAxisBlock / compareNoQuizBlock).
 
-     · KARSILASTIRMA QUIZI TAVANI  admin 3072 jeton / motor 8192. Alti
-       secenekli, 25-45 kelimelik Turkce sorular 3072'ye SIGMIYOR: JSON
-       yarida kesiliyor, `parseAiJson` null donuyor ve akis "Quiz
-       üretilemedi" ile duruyordu. Kullanicinin "birden fazla urun eklenince
-       sistem cokuyor" dedigi seyin bir bacagi buydu.
-     · SORU SAYISI  admin `compareQuizCount(products.length)` cagiriyordu —
-       fonksiyon DIZI bekliyor. Sayi gelince `Array.isArray` false donuyor,
-       liste bos sayiliyor ve sonuc DAIMA 5 oluyordu; site ayni uründe 6
-       soru soruyordu.
-     · BAGLAM  admin karsilastirmada yalnizca ad/marka/kategori/puan
-       gonderiyordu. Model spec gormeyince kategorinin genel sablonuna
-       duser — "hep ayni sorular" sikayetinin kaynagi.
-
-   Artik ikisi de motoru cagiriyor; parite tanim geregi saglaniyor. */
-
-// Katalog urununden motorun bekledigi baglam metni. Spec'ler SART: model
-// "bu urunde ne kritik" sorusunu ancak gercek degerleri gorunce sorabiliyor.
-function quizBaglami(product, lang) {
-  var specs = P.productSpecsContext(product, 14);
-  return [
-    product.brand ? 'Brand: ' + product.brand : '',
-    product.category ? 'Category: ' + product.category : '',
-    product.techScore ? 'Qor AI tech score: ' + product.techScore + '/100' : '',
-    specs ? 'Key specs: ' + specs : '',
-  ].filter(Boolean).join(' · ').slice(0, 1200);
-}
-
-/** Quiz — SITEDEKI ILE AYNI FONKSIYON (QorAiLink.generateQuiz). */
-async function generateQuiz(product, lang) {
-  return root.QorAiLink.generateQuiz({
-    category: product.category || '',
-    productTitle: P.displayProductName(product, lang),
-    url: P.productPath(product),
-    language: lang,
-    userProfile: {},
-    productContext: quizBaglami(product, lang),
-    siteName: '',
-  });
-}
-
-/** Karsilastirma quizi — SITEDEKI ILE AYNI FONKSIYON. */
-async function generateCompareQuiz(products, lang) {
-  return root.QorAiLink.generateCompareQuiz({
-    products: (products || []).map(function (p) {
-      return {
-        title: P.displayProductName(p, lang),
-        url: P.productPath(p),
-        category: p.category || '',
-        score: p.techScore || 0,
-        // Motor bunu `productContext` diye okuyor. Site burada urunun
-        // `description` alanini veriyor ve katalog urunlerinde o alan
-        // cogunlukla BOS; spec ozeti hem daha dolu hem daha ayirt edici.
-        analysis: quizBaglami(p, lang),
-      };
-    }),
-    language: lang,
-    userProfile: {},
-  });
-}
+   SITE MOTORU DOKUNULMADI: qor_ai_link.js icindeki QorAiLink.generateQuiz
+   ve kardesleri duruyor, ziyaretcinin sitede yaptigi analiz quizi
+   kullanmaya devam ediyor (web/src/lib/productAnalysisJobs.js). */
 
 // N istegi ayni anda degil, en fazla `limit` tanesi kosar — sitedeki
 // mapWithConcurrency ile ayni is. Admin tek kullanicilik ama AI proxy'si
@@ -494,7 +445,9 @@ async function mapWithConcurrency(items, limit, fn) {
 async function runCompareReport(o) {
   var products = o.products || [];
   var lang = o.lang;
-  var answers = o.answers || [];
+  // QUIZ ADMINDE YOK (bkz. yukaridaki not). DAIMA bos: cagiran taraftan
+  // kazara bir cevap listesi gelse bile prompt'un quizsiz dali kullanilir.
+  var answers = [];
   var stage = o.onStage || function () {};
   var sistem = 'You are Qor AI. Return only valid JSON in language code ' + lang
     + '. Use current research and Qor catalog context over stale model memory. '
@@ -649,9 +602,27 @@ async function labelParagraphs(paragraflar, grup) {
 /* Rapordaki NESIR alanlarini EKRANDAKI paragraflara boler.
    `proseBlocks` on yuzun kullandigi bolucunun TA KENDISI (tek kaynak,
    qor_ai_prompts.js) — iki taraf metni farkli bolerse anahtarlar tutmaz. */
+/* LISTE OLCULEREK GENISLETILDI (2026-09-03).
+   Onceki liste URUN raporunun alanlarina gore yazilmisti. Karsilastirma ve
+   abonelik raporlarinin nesri BASKA anahtarlarda duruyor ve o paragraflar
+   hic etiketlenmiyordu -- ekranda SIYAH kaliyorlardi:
+     karsilastirma  comparison.headToHead
+                    comparison.headToHeadByProduct[].case / .for / .against
+                    (AiCharts.jsx -> RichProse ile ciziliyor)
+     abonelik       detailed.fit / .features / .ux / .plan / .community
+                    winner.reason
+                    (SubscriptionReportView.jsx -> RichProse)
+   NOT: 'community' cogu raporda NESNE tutar. Walker once "bu bir dize mi"
+   diye bakiyor, yani nesne olan community yine ic ice geziliyor ve
+   community.summary eskisi gibi yakalaniyor. Listeye eklenmesi YALNIZCA
+   abonelikteki DIZE halini yakalar. */
 var NESIR_ALANLARI = [
   'analysis', 'summary', 'matchComment', 'bestFor', 'notFor', 'overallVerdict',
   'detail', 'comment', 'note', 'recommendation', 'verdict', 'headline',
+  // karsilastirma
+  'headToHead', 'case', 'for', 'against',
+  // abonelik
+  'fit', 'features', 'ux', 'plan', 'community', 'reason',
 ];
 
 function nesirParagraflari(dugum, out, derinlik) {
@@ -712,7 +683,9 @@ async function attachParagraphSentiment(rapor) {
 async function runProductReport(o) {
   var product = o.product;
   var lang = o.lang;
-  var answers = o.answers || [];
+  // QUIZ ADMINDE YOK (bkz. yukaridaki not). DAIMA bos: cagiran taraftan
+  // kazara bir cevap listesi gelse bile prompt'un quizsiz dali kullanilir.
+  var answers = [];
   var stage = o.onStage || function () {};
   var startedAt = Date.now();
 
@@ -844,27 +817,6 @@ async function analyzeLinks(urls, lang) {
   return bases;
 }
 
-async function linkQuiz(bases, lang) {
-  var L = root.QorAiLink;
-  if (bases.length > 1) {
-    return L.generateCompareQuiz({
-      products: bases.map(function (b) { return { title: b.title, category: b.category, url: b.url }; }),
-      language: lang,
-      userProfile: {},
-    });
-  }
-  var b = bases[0];
-  return L.generateQuiz({
-    category: b.category,
-    productTitle: b.title,
-    url: b.url,
-    siteName: b.siteName,
-    productContext: String(b.analysis || '').slice(0, 1200),
-    language: lang,
-    userProfile: {},
-  });
-}
-
 async function runLinkReport(o) {
   var L = root.QorAiLink;
   var bases = o.bases;
@@ -884,8 +836,11 @@ async function runLinkReport(o) {
 
   stage('report', lang);
   var data = bases.length > 1
-    ? await L.compareAnalysis({ bases: bases, answers: o.answers, language: lang, userProfile: {}, research: research })
-    : await L.enhancedAnalysis({ base: bases[0], answers: o.answers, language: lang, userProfile: {}, research: research });
+    // QUIZ YOK: bos cevap listesi prompt'un quizsiz dalini acar
+    // (qor_ai_prompts.js -> quizVarMi). Model quizInsights'i BOS dizi
+    // olarak dondurur; olmayan cevaplari uydurmaz.
+    ? await L.compareAnalysis({ bases: bases, answers: [], language: lang, userProfile: {}, research: research })
+    : await L.enhancedAnalysis({ base: bases[0], answers: [], language: lang, userProfile: {}, research: research });
 
   if (!data || typeof data !== 'object') throw new Error('Rapor çözülemedi (' + lang + ')');
   if (bases.length > 1 && !(Array.isArray(data.products) && data.products.length >= 2)) {
@@ -908,12 +863,6 @@ async function runLinkReport(o) {
 }
 
 /** ABONELIK ANALIZI — sitedeki subscriptionAnalysisJobs.js akisinin AYNISI. */
-async function subscriptionQuiz(names, lang) {
-  return root.QorAiLink.generateSubscriptionQuiz({
-    subscriptionNames: names, language: lang, userProfile: {},
-  });
-}
-
 async function runSubscriptionReport(o) {
   var L = root.QorAiLink;
   var names = o.names;
@@ -1023,14 +972,10 @@ root.QorAiRun = {
   searchProducts: searchProducts,
   loadProduct: loadProduct,
   similarProducts: similarProducts,
-  generateQuiz: generateQuiz,
   runProductReport: runProductReport,
-  generateCompareQuiz: generateCompareQuiz,
   runCompareReport: runCompareReport,
   analyzeLinks: analyzeLinks,
-  linkQuiz: linkQuiz,
   runLinkReport: runLinkReport,
-  subscriptionQuiz: subscriptionQuiz,
   runSubscriptionReport: runSubscriptionReport,
   publishMeta: publishMeta,
 };
