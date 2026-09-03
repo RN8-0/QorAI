@@ -614,11 +614,14 @@ function segmentPriceLocal(p, lang) {
         sayiyi soylemek zorunda. */
   const pazar = _pazarFiyati(p, lang);
   if (pazar) return pazar;
-  // 2) Pazar fiyati yoksa katalogun kendi tek fiyati.
+  // 2) Pazar fiyati yoksa katalogun kendi tek fiyati. AYNI DIL KAPISI:
+  //    `lowestPrice` cogu kayitta TRY tasiyor ve Ingilizce rapor onu
+  //    yazamaz (bkz. `_pazarFiyati` icindeki gerekce).
+  const trDili = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
   const v = Number(p?.lowestPrice) || 0;
-  if (v > 0) {
-    const cur = String(p?.lowestPriceCurrency || '').toUpperCase();
-    return { v, cur, label: `${v} ${cur}`.trim() };
+  const cur0 = String(p?.lowestPriceCurrency || '').toUpperCase();
+  if (v > 0 && (trDili || cur0 !== 'TRY')) {
+    return { v, cur: cur0, label: `${v} ${cur0}`.trim() };
   }
   /* 3) TYPESENSE BELGESI. Sema `lowestPrice`/`lowestPriceCurrency`
         TASIMIYOR (olculdu 2026-09-03) ama GERCEK ulke fiyatlarini tasiyor:
@@ -658,23 +661,40 @@ function _pazarFiyati(p, lang, tsAlanlariDa) {
     return dogrudanA || dogrudanB || dogrudanC;
   };
 
+  /* DIL KAPISI (kullanici kurali, 2026-09-03). Turkce rapor Turkce
+     tarayiciya, yani pratikte bu pazarin okuyucusuna gidiyor; TRY orada
+     dogru sayidir. INGILIZCE rapor KURESEL okuyucuya gidiyor ve ona bu
+     pazarin fiyatini yazmak, ulke adini yazmakla ayni hatanin para birimi
+     hali: Fransa'dan giren okuyucunun odeyecegi tutar degil.
+
+     Olculdu 2026-09-03, canli `analyses`: report_en icinde 53 dizede TL/TRY
+     tutari duruyordu — hepsi prompt'a bu satirdan gitmisti (tercih listesi
+     iki dilde de TR ile basliyordu).
+
+     Sonuc: katalogda (Epey kaynakli, ~%99 TR fiyati) baska pazar fiyati
+     yoksa Ingilizce rapor FIYATSIZ yazilir. Bu bilincli: kur ile cevirmek
+     yasak (her ulkede vergi ayni degil) ve uydurma sayi yazmak daha kotu.
+     Sayfadaki canli magaza listesi ziyaretcinin kendi pazarini zaten
+     gosteriyor. */
   const tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
-  const tercih = tr ? ['TR', 'US', 'GB', 'DE'] : ['TR', 'US', 'GB', 'DE'];
+  const tercih = tr ? ['TR', 'US', 'GB', 'DE'] : ['US', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'PL', 'SE', 'JP', 'CN', 'IN', 'AE'];
+  /* ETIKETTE ULKE KODU YOK. Onceden "127949 TRY (TR)" yaziyordu ve model
+     bunu sadakatle metne tasiyordu ("the Turkish price of ..."). Fiyatin
+     hangi pazardan okundugu modelin isine yaramiyor; yazmasi YASAK olan
+     tek sey de zaten o. */
+  const etiketle = (tutar, c) => {
+    const cur = ULKE_PARA[c] || c;
+    return { v: tutar, cur, label: `${tutar} ${cur}` };
+  };
   for (const c of tercih) {
     const tutar = oku(c);
-    if (tutar > 0) {
-      const cur = ULKE_PARA[c] || c;
-      return { v: tutar, cur, label: `${tutar} ${cur} (${c})` };
-    }
+    if (tutar > 0) return etiketle(tutar, c);
   }
-  const kalanlar = Object.keys(harita || ts || {});
+  const kalanlar = Object.keys(harita || ts || {})
+    .filter((c) => tr || String(c).toUpperCase() !== 'TR');
   for (const c of kalanlar) {
     const tutar = oku(String(c).toUpperCase()) || oku(c);
-    if (tutar > 0) {
-      const u = String(c).toUpperCase();
-      const cur = ULKE_PARA[u] || u;
-      return { v: tutar, cur, label: `${tutar} ${cur} (${u})` };
-    }
+    if (tutar > 0) return etiketle(tutar, String(c).toUpperCase());
   }
   return null;
 }
@@ -765,19 +785,22 @@ function rankPeerCandidates(product, candidates, limit = 8) {
 
 /** Modele yazilan segment kurali — sorgu kapisinin PROMPT karsiligi. Katalog
  *  listesi zaten filtreli, ama model HARICI bir urun de onerebiliyor. */
-function segmentGate(product) {
+/* DIL GECIRILIR. Parametresiz cagri `segmentPriceLocal`in dil kapisina
+   "Turkce degil" diye gorunuyordu ve TURKCE prompt'a Ingiltere fiyati
+   ("roughly 1189 GBP") yaziliyordu — kural testi bunu yakaladi. */
+function segmentGate(product, lang) {
   // FIYAT BANDI YEREL PARA BIRIMINDE YAZILIR. Onceden bu satir modele
   // cevrilmis USD sayisini soyluyordu ve model onu rapora aynen geciriyordu:
   // olculdu 2026-09-03, "yaklasik 1973 USD'lik fiyatiyla amiral gemisi
   // segmentinde" (gercek: 68.999 TL, Turkiye). Cevrim kaldirildi.
-  const yerel = segmentPriceLocal(product);
+  const yerel = segmentPriceLocal(product, lang);
   const score = Number(product?.techScore) || 0;
   const satirlar = [
     'SEGMENT HARD GATE FOR ALTERNATIVES. An alternative only helps a reader who can actually buy it.',
   ];
   if (yerel.v > 0) {
     satirlar.push(
-      `This product sits at roughly ${Math.round(yerel.v)} ${yerel.cur} in its own market, so every `
+      `This product sits at roughly ${Math.round(yerel.v)} ${yerel.cur}, so every `
       + `alternative must land between ${Math.round(yerel.v * PEER_PRICE_LO)} and `
       + `${Math.round(yerel.v * PEER_PRICE_HI)} ${yerel.cur}. Compare within this currency only — `
       + `do NOT convert to another currency, taxes and pricing differ per market.`,
@@ -2024,6 +2047,302 @@ function priceRulesBlock() {
    KOSULLU, cunku SITE quizi hala kullaniyor
    (web/src/lib/compareAnalysisJobs.js -> generateCompareQuiz). Cevap varsa
    davranis AYNEN eskisi gibi; yoksa quiz yerine degerlendirme ekseni. */
+/* ── COGRAFI NOTRLUK: RAPOR TEK, OKUYUCU KURESEL ──────────────────────────
+   OLCULDU 2026-09-03, canli `analyses` koleksiyonu (44 kayit):
+
+     35 / 44  kayitta ulke veya milliyet referansi
+     30       report_tr.priceForecast.analysis
+     19       report_en.priceForecast.analysis
+     14       report_tr.product.reliabilityNotes[].detail
+     53 dize  report_en icinde TL/TRY tutari
+
+   Gecen metinler aynen: "launched in Turkey in July 2026" · "device
+   registration with local authorities (BTK in Turkey)" · "Apple Türkiye
+   Warranty" · "Türkiye'de 85.509 TL'lik fiyat etiketi" · "Döviz kuru
+   dalgalanmaları (Türkiye için)".
+
+   Rapor TEK KEZ uretilip HERKESE ayni gosteriliyor: Fransa'dan giren
+   okuyucu da bu cumleleri goruyor. Ulke adi metne girdigi anda rapor o
+   okuyucunun sayfasinda duz YANLIS bilgi tasiyor -- lansman tarihi onun
+   ulkesininki degil, garanti onun garantisi degil, kur onun kuru degil.
+
+   KURAL (kullanici, 2026-09-03): analiz metninde ulke adi, milliyet ve
+   yerel kurum GECMEZ -- Turkce raporda da gecmez. Para birimi kalir, ulke
+   gider. TRY yalnizca TURKCE raporda okunabilir; Ingilizce rapor kuresel
+   okuyucuya gidiyor ve ona TL yazmak da ayni hatanin para birimi hali.
+
+   TEK ISTISNA: uretim/mense ULKESI duz bir urun olgusu olarak gecebilir
+   ("Chinese manufacturer"), cunku o urunun ozelligi, okuyucunun konumu
+   hakkinda bir varsayim degil.
+
+   IKI KATMAN, cunku prompt olasiliksal kod kesin (bkz. priceRulesBlock'un
+   ayni dersi): `geoRulesBlock` modele soyler, `enforceGeoNeutrality`
+   modelden CIKAN metni duzeltir. */
+function geoRulesBlock(lang) {
+  var tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+  return (
+    '- GEOGRAPHIC NEUTRALITY (HARD RULE): this report is published once and read worldwide. NEVER name a country, nationality, region, national institution or local regulator in ANY user-facing string — not Turkey/Turkiye/Turkish, and not any other country either. "Launched in Turkey in July 2026" is false for every reader outside that country; write "launched in July 2026". "Turkish users report…" becomes "owners report…". "Apple Turkiye warranty" becomes "the manufacturer warranty". The ONLY geographic mention allowed is country of manufacture stated as a plain product fact.\n'
+    + '- NO LOCAL-MARKET FRAMING: never write "in this country", "our market", "the local market" or "domestic retailers", and never reason from national tax, customs, import or device-registration rules (VAT, OTV, KDV, BTK, IMEI registration), national warranty schemes, or one country\'s exchange rate. priceForecast.drivers must hold for EVERY reader: product age, successor timing, stock levels, seasonal sale windows, segment competition, component costs.\n'
+    + '- A CURRENCY IS NOT A LOCATION. You may quote the catalog price in the currency it was given in, but never attach a place to it: write "127.949 TRY", never "127.949 TRY in Turkey", never "the Turkish price", never "the local price".\n'
+    + (tr
+      ? '- Bu kural Turkce metinde de aynen gecerlidir: "Turkiye", "Turk", "ulkemizde", "yerel pazar" ve yerel kurum adlari yazilmaz.\n'
+      : '- If no catalog price is given for a product, write NO price figure at all — do not take one from the research notes or from memory.\n')
+  );
+}
+
+/* ── COGRAFI TEMIZLIK: MODELDEN CIKAN METNI KOD DUZELTIR ──────────────────
+   Iki asama, cunku "ulke adi gecen cumleyi at" tek basina icerik kaybi:
+   olculdu, "Türkiye'de 85.509 TL'lik fiyat etiketi ve bazı ekran
+   sınırlamaları fiyat/performans oranını etkileyebilir" cumlesinin tamami
+   gidiyordu -- oysa hukmun kendisi dogru, yalnizca ILK KELIMESI fazla.
+
+     1. IBARE KIRPMA. Cografi ek cumleden cikarilir, cumle ayakta kalir.
+     2. GUVENLIK AGI. Kirpmadan sonra hala yasak terim tasiyan cumle duser
+        ve askida kalan bas metin `trimDanglingLead`den gecer.
+
+   KAPSAM YALNIZCA BU ULKE, ve bu OLCULEREK daraltildi. Ilk surum 50 ulke
+   adini pazar kaliplariyla birlikte temizliyordu; canli kayitlarda iki duz
+   bilgi kaybi cikti:
+
+     "is primarily released in China"        -> "is primarily released"
+     "6800 mAh (Çin) veya 6000 mAh (global)" -> "6800 mAh veya 6000 mAh (global)"
+
+   Ikisi de urun OLGUSU: cihazin hangi pazara ozel uretildigi ve hangi
+   varyantin hangi bataryayi tasidigi. Okuyucunun konumu hakkinda bir
+   varsayim degiller, dolayisiyla kullanicinin kuralinin konusu da degiller
+   ("telefon hangi ülkeye aitse onun para birimi yazılabilir, Çin'de ise
+   yen"). Silinecek olan sey okuyucuyu YANLIS YERE KOYAN referans: bu
+   ulkenin adi, milliyeti, yerel kurumu ve "ülkemizde" gibi ifadeler. */
+
+// Pazar/okuyucu baglami tasiyan adlar. "in Germany" bir pazar referansi,
+// "designed in California" degil -- ayrimi bu liste yapiyor.
+var _GEO_PAZAR_EN = 'markets?|market conditions|buyers?|users?|customers?|consumers?|owners?|shoppers?|retailers?|resellers?|stores?|shops?|prices?|pricing|price points?|availability|warranty|warranties|carriers?|operators?|distributors?';
+var _GEO_PAZAR_TR = 'pazar[ıi]?|piyasas?[ıi]?|kullan[ıi]c[ıi](?:lar)?|tüketici(?:ler)?|al[ıi]c[ıi](?:lar)?|müşteri(?:ler)?|fiyat(?:lar|lama)?|ma[ğg]aza(?:lar)?|perakendeci(?:ler)?|bayi(?:ler)?|garanti(?:si)?|stok(?:lar)?';
+
+/* TAM YASAK. Bu terimler kirpmadan SONRA hala duruyorsa cumle duser.
+   Turkiye'ye ozgu olanlar burada, cunku kullanicinin kurali bu ulkede
+   kesin: adi da milliyeti de yerel kurumu da gecmeyecek. */
+var _GEO_TAM_YASAK = /(t[üu]rkiye|turkey|turkish|t[üu]rk(?:ler)?\b|t[üu]rk[çc]e|\bBTK\b|\bTSE\b|[üu]lkemiz|yurt\s?i[çc]i|yurt\s?d[ıi][şs][ıi]|imei kay[ıi]t)/i;
+
+/** Cografi ekleri cumleden kirpar. Cumle ayakta kalir. */
+function _geoKirp(metin) {
+  var t = String(metin || '');
+  if (!t) return t;
+  var ham = t;
+
+  // 1. Parantez ici ulke referansiysa parantez duser:
+  //    "Döviz kuru dalgalanmaları (Türkiye için)" -> "Döviz kuru dalgalanmaları"
+  t = t.replace(/\s*[([][^)\]]*(?:T[üu]rkiye|Turkey|Turkish|T[üu]rk)[^)\]]*[)\]]/gi, '');
+
+  /* 2. TR ekli bicimler: "Türkiye'de", "Türkiye'deki", "Türkiye pazarında".
+        EK ALTERNASYONU UZUNDAN KISAYA: "de|deki" sirasi "Türkiye'deki"nin
+        yalnizca "de"sini yiyor ve geriye " ki " birakiyordu (olculdu:
+        "65.449 TL fiyatıyla ki üst-orta segmentte"). */
+  /* PAZAR/PIYASA EKLERI TEK TEK SAYILMAZ, EK KALIBIYLA ALINIR. Sabit liste
+     ("pazarı|pazarında|pazarının") "Türkiye pazarına"nin yalnizca
+     "pazarı"sini yiyip geriye " na " birakiyordu (olculdu, canli
+     vivo-x300-ultra: "Temmuz 2026'da na sunulması"). Turkce ek zinciri
+     acik uclu; kalibin da acik uclu olmasi gerekiyor. */
+  /* ULKEYE BAGLI EDAT DA AYNI KIRPMAYA GIRER. Ulke adini silip edati
+     birakmak cumleyi bozuyordu (olculdu, canli redmi-k100-pro: "fiyatların
+     Türkiye gibi pazarlarda gri ithalat yoluyla…" -> "fiyatların gibi
+     pazarlarda…"). Edat ulkeye baglidir; ulke gidince o da gider. */
+  t = t.replace(/\s*\bT[üu]rkiye['’]?(?:deki|daki|dekiler|den|dan|nin|n[ıi]n|de|da|ne|na|ye|ya|yi|y[ıi])?\s*(?:(?:pazar|piyasa)[a-zçğıöşü]*|genelinde|ko[şs]ullar[ıi]nda)?\s*(?:gibi|kadar|dahil|hari[çc]|d[ıi][şs][ıi]nda)?\s*/gi, ' ');
+  // 3. TR milliyet: "Türk kullanıcılar" -> "kullanıcılar", "Türk lirası" -> "TL"
+  t = t.replace(/\bT[üu]rk\s+[Ll]iras[ıi]\b/g, 'TL');
+  t = t.replace(new RegExp('\\bT[üu]rk\\s+(?=(?:' + _GEO_PAZAR_TR + '))', 'gi'), '');
+  t = t.replace(/\s*\b[üu]lkemizde(?:ki)?\b\s*/gi, ' ');
+  t = t.replace(/\s*\byurt\s?i[çc]inde(?:ki)?\b\s*/gi, ' ');
+
+  // 4. EN edatli bicimler: "in Turkey", "from Turkey", "for Türkiye"
+  t = t.replace(/\s*\b(?:in|within|inside|across|throughout|around|from|for|to|into)\s+(?:the\s+)?(?:Republic\s+of\s+)?(?:T[üu]rkiye|Turkey)\b/gi, '');
+  /* 5. EN sifat + pazar adi: "the Turkish market" -> "the market".
+        APOSTROFSUZ HAL DE SAYILIR: "Apple Turkey Warranty" olculdu ve bu
+        kalip olmadan cumle kirpilamiyor, guvenlik agina dusuyor, yani
+        garanti bilgisinin TAMAMI kayboluyordu (14 kayitta
+        reliabilityNotes[].detail). */
+  t = t.replace(new RegExp('\\b(the\\s+)?(?:Turkish|Turkey[’\']?s?|T[üu]rkiye[’\']?s?)\\s+(?=(?:' + _GEO_PAZAR_EN + '|service|support|coverage|repairs?|models?|units?|variants?|editions?|versions?))', 'gi'), '$1');
+  t = t.replace(/\bTurkish[-–—\s]language\s+/gi, '');
+  t = t.replace(/\bTurkish\s+(?=[a-zçğıöşü])/gi, '');
+  /* IYELIK HALI: "Samsung Turkey's official warranty". Kural 5'in ardindaki
+     kelime listesi burada tutmuyor ("official" bir pazar adi degil) ve
+     cumle guvenlik agina dusuyordu — olculdu, canli samsung-galaxy-s25-256gb:
+     garanti notunun TAMAMI kayboluyordu. Iyelik markaya devredilir. */
+  t = t.replace(/\b([A-Z][\w&.-]*)\s+(?:Turkey|T[üu]rkiye)[’']s\s+/g, '$1’s ');
+  t = t.replace(/\b(the\s+)?(?:Turkey|T[üu]rkiye)[’']s\s+/gi, '$1');
+
+  /* HICBIR SEY KIRPILMADIYSA DIZEYE DOKUNULMAZ.
+     Ilk surum artik temizligini ve bas harf buyutmesini HER dizeye
+     uyguluyordu; olculdu (onizleme, vivo-x300-ultra): "qor_catalog" ->
+     "Qor_catalog", "positive" -> "Positive", "https://resim.epey.com/..."
+     -> "Https://resim.epey.com/...". Alan adi kapisi (_GEO_DOKUNMA) bunlarin
+     bir kismini koruyordu ama `productId` gibi listede olmayan her alan
+     bozuluyordu — ve degisen alan sayaci da bu sahte degisikliklerle
+     siserek gercek temizligi gizliyordu. */
+  if (t === ham) return ham;
+
+  // 7. Kirpma artiklari.
+  t = t.replace(/\(\s*\)|\[\s*\]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([,.;:!?…])/g, '$1')
+    .replace(/([(\[])\s+/g, '$1')
+    .replace(/,\s*,/g, ',')
+    .replace(/^\s*[,;:]\s*/, '')
+    .trim();
+  /* Bas harf yalnizca cumlenin BASI kirpildiysa buyutulur ("Türk
+     kullanıcılar…" -> "Kullanıcılar…"). Bas degismediyse dokunmak, ortadan
+     kirpilmis her cumlenin ilk harfini gereksizce degistirirdi. */
+  if (t && ham.charAt(0) !== t.charAt(0)) t = t.charAt(0).toLocaleUpperCase('tr') + t.slice(1);
+  return t;
+}
+
+/** TL/TRY tutari iceren cumle (Ingilizce rapor icin dil kapisi). */
+function _tryTutariVarMi(metin) {
+  return /(?:\d[\d.,]*\s?(?:TRY|TL)\b)|(?:₺\s?\d)/i.test(String(metin || ''));
+}
+
+/**
+ * Bir dizeyi cografi olarak notr hale getirir.
+ * Doner: temiz metin ('' ise alan/madde dusmeli).
+ */
+function _geoNotrDize(metin, lang) {
+  var tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+  var ham = String(metin || '');
+  if (!ham.trim()) return ham;
+  // PARAGRAF SINIRI KORUNUR. Bos satir raporun paragraf bolumu (ve
+  // `paragraphSentiment` anahtarlarinin dayandigi sey); cumleye bolup
+  // bosluklarla birlestirmek butun paragraflari tek bloga cevirirdi.
+  return ham.split(/\n{2,}/).map(function (paragraf) {
+    var cumleler = _cumleler(paragraf);
+    var ilkAtildi = false;
+    var kalan = [];
+    cumleler.forEach(function (c, i) {
+      var k = _geoKirp(c);
+      // GUVENLIK AGI: kirpma yetmediyse cumle duser.
+      if (k && _GEO_TAM_YASAK.test(k)) k = '';
+      // DIL KAPISI: Ingilizce rapor kuresel okuyucuya gider, TL yazamaz.
+      if (k && !tr && _tryTutariVarMi(k)) k = '';
+      if (!k) { if (i === 0) ilkAtildi = true; return; }
+      kalan.push(k);
+    });
+    if (!kalan.length) return '';
+    if (ilkAtildi) {
+      var bas = trimDanglingLead(kalan[0]);
+      if (!bas) kalan.shift(); else kalan[0] = bas;
+    }
+    return kalan.join(' ').replace(/[ \t]{2,}/g, ' ').trim();
+  }).filter(Boolean).join('\n\n');
+}
+
+/* Bos kalan madde/nesne duser. Fiyat disiplinindeki `criticalPoints`
+   dersinin genellestirilmis hali: baslik tek basina bilgi tasimaz, detayi
+   silinmis bir madde okuyucuya yarim cumle gosterir.
+
+   ICERIK ALANI, durum alani DEGIL. Ilk surum "butun dizeleri bos mu" diye
+   bakiyordu ve madde ayakta kaliyordu, cunku `severity: "high"` da bir
+   dize (olculdu: title ve detail bosalmis bir criticalPoint listede kaldi).
+   Karar ICERIK alanina bakilarak verilir; `severity`/`sentiment` gibi
+   kodlar tek baslarina bir madde yasatmaz. */
+/* TASIYICI alan: maddenin bilgisini o tutar. `title`/`label` BILEREK yok --
+   onlar etiket, tek baslarina "512 GB" ya da "Şarj adaptörü" gibi yarim bir
+   satir birakirlar. Bir spec maddesinin `value`si bosaldiysa madde de
+   bosalmistir (olculdu: `keySpecs[].value` = "117,354.04 TRY" -> ''). */
+var _GEO_ANA_ALAN = /^(detail|value|text|comment|shortComment|note|analysis|summary|difference|answer|reason|case|for|against)$/i;
+
+function _geoBosMu(x) {
+  if (x == null) return true;
+  if (typeof x === 'string') return !x.trim();
+  if (Array.isArray(x)) return x.length === 0;
+  if (typeof x === 'object') {
+    var ana = Object.keys(x).filter(function (k) {
+      return typeof x[k] === 'string' && _GEO_ANA_ALAN.test(k);
+    });
+    if (ana.length) return ana.every(function (k) { return !String(x[k]).trim(); });
+    var dizeler = Object.keys(x).filter(function (k) { return typeof x[k] === 'string'; });
+    if (!dizeler.length) return false;
+    return dizeler.every(function (k) { return !String(x[k]).trim(); });
+  }
+  return false;
+}
+
+/* Dokunulmayan alanlar: adres, gorsel, urun/marka adi ve durum kodlari.
+   Bir urun adinda ulke gecebilir ("Xiaomi 14 Ultra Global") ve adi
+   degistirmek katalog eslesmesini bozardi. */
+var _GEO_DOKUNMA = /^(url|imageUrl|image|href|slug|productImage|sourceUrl|name|brand|productName|productBrand|model|type|id|source|decision|buyOrWait|trend|severity|frequency|sentiment)$/i;
+
+/**
+ * RAPORU YERINDE COGRAFI OLARAK NOTRLESTIRIR, degisen alan sayisini doner.
+ *
+ * SIRA SART: `attachParagraphSentiment`ten ONCE kosar. Metin sonradan
+ * degisirse `paragraphSentiment` anahtarlari tutmaz ve paragraf rengi
+ * kaybolur -- ayni tuzak fix_usd_prices.mjs'te bir kez yasandi.
+ */
+function enforceGeoNeutrality(rapor, lang) {
+  if (!rapor || typeof rapor !== 'object') return 0;
+  var n = 0;
+  /* PARAGRAF RENKLERI TASINIR. `paragraphSentiment` anahtari paragrafin ILK
+     CUMLESI; cumleyi kirpinca anahtar tutmaz ve paragraf ekranda duz siyah
+     kalir. fix_usd_prices.mjs'te bir kez yasandi, orada onarim betigine
+     ayri bir tasima kodu yazilmisti. Burada tasima temizligin KENDI icinde:
+     admin, site ve onarim betigi ayni davranisi alsin diye. */
+  var esleme = {};
+
+  function gez(dugum, derinlik) {
+    if (derinlik > 8) return dugum;
+    if (typeof dugum === 'string') {
+      var yeni = _geoNotrDize(dugum, lang);
+      if (yeni !== dugum) {
+        n += 1;
+        _geoParagrafEsle(dugum, yeni, esleme);
+      }
+      return yeni;
+    }
+    if (Array.isArray(dugum)) {
+      return dugum.map(function (x) { return gez(x, derinlik + 1); })
+        .filter(function (x) { return !_geoBosMu(x); });
+    }
+    if (!dugum || typeof dugum !== 'object') return dugum;
+    Object.keys(dugum).forEach(function (k) {
+      if (k === 'paragraphSentiment') return;
+      if (_GEO_DOKUNMA.test(k) && typeof dugum[k] === 'string') return;
+      dugum[k] = gez(dugum[k], derinlik + 1);
+    });
+    return dugum;
+  }
+
+  gez(rapor, 0);
+  if (n && rapor.paragraphSentiment && typeof rapor.paragraphSentiment === 'object') {
+    var eski = rapor.paragraphSentiment;
+    var yeniHarita = {};
+    Object.keys(eski).forEach(function (anahtar) {
+      var hedef = esleme[anahtar];
+      if (hedef === '') return;               // paragraf tumuyle dustu
+      yeniHarita[hedef || anahtar] = eski[anahtar];
+    });
+    rapor.paragraphSentiment = yeniHarita;
+  }
+  return n;
+}
+
+/** Eski metnin paragraf bas cumlelerini yeni hallerine eslestirir.
+ *  Dusen paragraf '' olarak isaretlenir ki renk haritasindan da dussun. */
+function _geoParagrafEsle(eskiMetin, yeniMetin, esleme) {
+  var basCumle = function (par) {
+    var c = _cumleler(String(par || '').trim())[0] || '';
+    return c.trim();
+  };
+  var eskiPar = String(eskiMetin || '').split(/\n{2,}/).map(basCumle).filter(Boolean);
+  var yeniPar = String(yeniMetin || '').split(/\n{2,}/).map(basCumle).filter(Boolean);
+  /* Paragraf sayisi ayni kaldiysa sira sira eslesir. Degistiyse (bir
+     paragraf tumuyle dustu) eski anahtarlar bilincli olarak DUSURULUR:
+     yanlis paragrafa renk tasimaktansa renksiz birakmak dogru. */
+  if (eskiPar.length === yeniPar.length) {
+    eskiPar.forEach(function (e, i) { if (e !== yeniPar[i]) esleme[e] = yeniPar[i]; });
+    return;
+  }
+  eskiPar.forEach(function (e) { if (yeniPar.indexOf(e) < 0) esleme[e] = ''; });
+}
+
 function quizVarMi(context) {
   return Array.isArray(context && context.quizAnswers) && context.quizAnswers.length > 0;
 }
@@ -2435,7 +2754,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     '- product.factors must include 8-10 varied factor scores for chart bars. Use labels that a buyer understands.\n' +
     '- featureMatches must include 8-10 spec/need matches using real catalog spec values where possible.\n' +
     '- alternatives must include 3 products. Prefer Qor catalog alternatives if they fit; copy imageUrl/url exactly from the context for those. External alternatives may have empty imageUrl/url.\n' +
-    `- ${segmentGate(p)}\n` +
+    `- ${segmentGate(p, lang)}\n` +
     `- ${scoreScaleGate(p)}\n` +
     '- paragraphSentiment: for EVERY multi-sentence prose field you write (product.analysis, community.summary, priceForecast.analysis, bestFor, notFor, overallVerdict, matchComment and each factors[].detail / criticalPoints[].detail), add one entry per paragraph. THE KEY IS THE PARAGRAPH\'S OPENING SENTENCE COPIED VERBATIM — same words, same punctuation, same casing, do not shorten, do not rewrite, do not lowercase it. Judge ONLY that opening sentence, and only as an evaluation OF THE PRODUCT: positive = it praises or states a strength; negative = it criticises, names a weakness, a limitation, a risk or a mismatch with the buyer need. Concessive openers carry the judgement in the SECOND clause (\"While the display is bright, its 60Hz feels dated\" is negative; \"Although expensive, performance is exceptional\" is positive). Negation reverses (\"no problems reported\" is positive). Never label from a single word.\n' +
     // NOTR OLMAK ARTIK ISTISNA, VARSAYILAN DEGIL.
@@ -2454,7 +2773,7 @@ function buildFullPrompt(p, lang, profile = {}, context = {}) {
     // cumlesi urun hakkinda degil ALICI hakkinda hukum tasir.
     '- paragraphSentiment, price and timing: priceForecast paragraphs are judged FROM THE BUYER\'S SIDE, not as product traits. positive = good news for the buyer (price falling, a discount window coming, waiting pays off, good time to buy, fair value); negative = bad news for the buyer (price high or rising, no meaningful drop expected, you pay a premium, poor value, scarcity pushing prices up). Leave neutral ONLY a bare figure or date with no direction. "Its price tends to remain stable, with significant drops rare" is NEGATIVE (the buyer saves nothing); "Waiting until Q1 could yield better deals" is POSITIVE. Do not leave a whole price section unlabelled.\n' +
     '- priceForecast must not pretend to know live prices unless research notes include them. Use market cycles, product age, availability, successor timing and retailer behavior.\n' +
-    `${priceRulesBlock()}\n` +
+    `${priceRulesBlock()}${geoRulesBlock(lang)}\n` +
     // AYNA BLOGU: model sema kurallarini okumadan once "bu analiz zaten
     // var, sen ceviriyorsun" bilgisini almali.
     (context.mirror ? mirrorFactsBlock(context.mirror, lang) : '') +
@@ -2815,7 +3134,7 @@ function buildComparePrompt(products, lang, profile = {}, context = {}) {
     `  "comparison": {"winner": "exact product name", "winnerScore": <0-100>, "scoreGap": <number>, "chart": [{"name": "product", "score": <0-100>, "reason": "short reason"}], "factorMatrix": [{"label": "factor", "scores": [{"name": "product", "score": <0-100>}]}], "decisiveDifferences": ["${v.diffN} detailed differences"], "headToHead": "${v.h2hPara} substantial paragraphs", "recommendation": "${v.recPara} substantial paragraphs explaining which one to buy and why"}\n` +
     '}\n\n' +
     `${factorAxisContract(compareFactorAxis(products, lang))}\n` +
-    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must be scored on the SHARED FACTOR AXIS above (same labels, same order) and include ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n${quizInsightsKurali(context)}- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}\n` +
+    `Rules:\n- Include one products[] entry for EVERY product (${n} total). Names must match exactly.\n- First evaluate products separately; only then decide the final winner.\n- Each product must be scored on the SHARED FACTOR AXIS above (same labels, same order) and include ${v.featN} feature matches so the UI can render charts and spec-fit grids.\n- Write concrete professional prose, not generic summaries. Mention exact specs, compatibility, availability uncertainty, buyer profile, and trade-offs.\n- Stay within the requested paragraph/item counts so the JSON object is COMPLETE and valid for all ${n} products — never truncate mid-object.\n- Scores must be realistic, varied and based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n${quizInsightsKurali(context)}- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}${geoRulesBlock(lang)}\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${(products || []).map((p, i) => `Product ${i + 1}:\n${availabilityContextForProduct(p)}`).join('\n\n')}\n\n` +
     `PRODUCTS:\n${lines}\n\nPRODUCT PAYLOAD:\n${JSON.stringify(productPayload, null, 2)}\n\n` +
     (quizVarMi(context)
@@ -2874,7 +3193,7 @@ function buildCompareProductPrompt(product, lang, profile = {}, context = {}) {
     '  "community": {"satisfaction": <0-100>, "sentimentBreakdown": {"positive": <int>, "neutral": <int>, "negative": <int>}, "themes": [{"label": "topic", "strength": <0-100>, "sentiment": "positive|neutral|negative", "detail": "1 sentence"}], "summary": "3-4 substantial paragraphs", "lovedFeatures": [{"title": "what owners single out", "detail": "1 sentence"}], "chronicIssues": [{"title": "recurring ownership problem", "detail": "1 sentence", "frequency": "widespread|common|occasional"}], "sources": ["source types"]},\n' +
     '  "priceForecast": {"trend": "up|down|stable", "confidence": <0-100>, "expectedChange": "range or uncertainty", "bestTimeToBuy": "window", "buyOrWait": "buy|wait|watch", "drivers": ["drivers"], "analysis": "2-3 substantial paragraphs"}\n' +
     '}\n\n' +
-    `Rules:\n- factors: EXACTLY the ${axis.length} shared-axis entries listed above, same labels, same order. 8-10 feature matches so the UI can render spec-fit grids.\n- Include 4-6 criticalPoints and 4-6 community.themes with varied sentiment.\n${quizInsightsKurali(context)}- Scores realistic and varied, based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}\n` +
+    `Rules:\n- factors: EXACTLY the ${axis.length} shared-axis entries listed above, same labels, same order. 8-10 feature matches so the UI can render spec-fit grids.\n- Include 4-6 criticalPoints and 4-6 community.themes with varied sentiment.\n${quizInsightsKurali(context)}- Scores realistic and varied, based on ${quizVarMi(context) ? 'quiz answers, profile signals, ' : ''}catalog specs and research notes.\n- Stay within the requested counts so the JSON object is COMPLETE and valid — never truncate mid-object.\n- Cite uncertainty instead of inventing live prices, review counts or quotes.\n${priceRulesBlock()}${geoRulesBlock(lang)}\n` +
     `MARKET / AVAILABILITY CONTEXT:\n${availabilityContextForProduct(product)}\n\n` +
     `PRODUCT:\nName: ${name}\nBrand: ${brand || '-'}\nCategory: ${category || '-'}\nQor AI Tech Score: ${score}/100\nApprox catalog price: ${price}\nCatalog specs: ${ks || '-'}\nFull payload: ${JSON.stringify(cleanProductForPrompt(product, lang))}\n\n` +
     `COMPARED AGAINST: ${peers.join(', ') || '-'}\n\n` +
@@ -2940,7 +3259,7 @@ function buildCompareVerdictPrompt(products, reports = [], lang, profile = {}, c
     + '  · recommendation = the DECISION and who each product is for — it may name a fact once to justify the call, never to re-explain it.\n'
     + '  Before writing an item, check whether another block already carries it; if it does, drop it or write the genuinely different angle. Repeating one fact across all three is the most common failure here.\n'
     + '- Stay within the counts so the JSON is COMPLETE and valid.\n'
-    + priceRulesBlock() + '\n' +
+    + priceRulesBlock() + geoRulesBlock(lang) + '\n' +
     `PRODUCTS (in column order): ${names.join(', ')}\n\n` +
     `PER-PRODUCT REVIEW SUMMARIES:\n${JSON.stringify(summaries, null, 2)}\n\n` +
     (quizVarMi(context)
@@ -3076,6 +3395,8 @@ root.QorAiPrompts = {
   trimDanglingLead,
   // fiyat disiplini — modelden CIKAN metni kod duzeltir (prompt yetmiyor)
   enforcePriceDiscipline, fiyatEtiketi,
+  // cografi notrluk — ulke/milliyet adi rapor metnine girmez
+  geoRulesBlock, enforceGeoNeutrality,
   PARAGRAF_SINIFLANDIRICI,
   proseBlocks,
   // puan kalibrasyonu + segment kunyesi

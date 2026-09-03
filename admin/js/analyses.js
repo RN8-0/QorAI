@@ -1823,6 +1823,21 @@
             if (duzeltilen) toast(duzeltilen + ' alanda fiyat disiplini uygulandı (' + lang + ')', 'i');
           } catch (e) { toast('Fiyat disiplini atlandı: ' + (e.message || e), 'w'); }
         }
+        /* COGRAFI NOTRLUK — AYNI GEREKCE, AYNI SIRA.
+           Olculdu 2026-09-03: canli 44 analizin 35'i ulke/milliyet adi
+           tasiyordu ("launched in Turkey in July 2026", "Apple Türkiye
+           Warranty"). Site kuresel; rapor TEK KEZ uretilip herkese ayni
+           gosteriliyor, yani o cumleler bu ulke disindaki her okuyucu icin
+           yanlis. Prompt kurali (geoRulesBlock) tek basina yetmez -- kural
+           olasiliksal, kod kesin.
+           SIRA SART: `attachParagraphSentiment`ten ONCE, yoksa metin
+           degisince paragraf anahtarlari tutmaz ve renk kaybolur. */
+        if (r.out[lang] && typeof r.out[lang] === 'object') {
+          try {
+            var geoDuzeltilen = QorAiPrompts.enforceGeoNeutrality(r.out[lang], lang);
+            if (geoDuzeltilen) toast(geoDuzeltilen + ' alanda ülke/milliyet referansı temizlendi (' + lang + ')', 'i');
+          } catch (e) { toast('Coğrafi nötrlük atlandı: ' + (e.message || e), 'w'); }
+        }
         // ARASTIRMA METNI KOSUDA SAKLANIR: ikinci dil ayni kaniti kullanir ve
         // grounded aramayi TEKRARLAMAZ. Arama token'dan ayri, ISTEK BASINA
         // faturalaniyor — bu satir analiz basina bir aramanin parasidir.

@@ -82,6 +82,12 @@ export const pickCatalogMatch = API.pickCatalogMatch;
 export const resolveCatalogAlternatives = API.resolveCatalogAlternatives;
 // Rapor GOVDESINDEKI urun kodu temizligi (baslik temizligi analysisRecord'da).
 export const cleanProductCodes = API.cleanProductCodes;
+/* Cografi notrluk: rapor metninde ulke/milliyet adi gecmez. Site kuresel,
+   rapor TEK KEZ uretilip herkese ayni gosteriliyor — "launched in Turkey"
+   cumlesi bu ulke disindaki her okuyucu icin yanlis. Olcum ve gerekce:
+   admin/js/qor_ai_prompts.js -> geoRulesBlock. */
+export const geoRulesBlock = API.geoRulesBlock;
+export const enforceGeoNeutrality = API.enforceGeoNeutrality;
 
 // ── puan kalibrasyonu + segment kunyesi ───────────────────────────────────
 // Gosterilen puan OKUMA ANINDA hesaplanir (bkz. reportAdapters). Depoda ham

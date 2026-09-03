@@ -12,7 +12,11 @@ import {
 } from './linkAnalysis';
 import { saveLinkAnalysisHistory } from './pbHistory';
 import { attachCatalogAlternatives } from './catalogAlternatives';
-import { cleanProductCodes } from './aiPrompts';
+import { cleanProductCodes, enforceGeoNeutrality } from './aiPrompts';
+
+/** `enforceGeoNeutrality` raporu YERINDE degistirip sayi doner; burada nesne
+ *  bir ifadenin icinde kullanildigi icin ince bir sarmalayici gerekiyor. */
+function geoTemiz(rapor, lang) { try { enforceGeoNeutrality(rapor, lang); } catch { /* temizlik raporu bozmaz */ } return rapor; }
 
 const STORAGE_KEY = 'qor.linkAnalysis.activeJob';
 const listeners = new Set();
@@ -196,7 +200,9 @@ async function completeSingle(job, answers = []) {
   setJob({
     phase: 'result',
     // Urun kodu rapor metninden duser (bkz. cleanProductCodes).
-    enhanced: { ...cleanProductCodes(data), catalogMatch: activeJob?.catalogMatch || null },
+    // COGRAFI NOTRLUK: rapor metninde ulke/milliyet adi gecmez (site kuresel,
+    // metin herkese ayni gosteriliyor) — admin/js/qor_ai_prompts.js -> geoRulesBlock.
+    enhanced: { ...geoTemiz(cleanProductCodes(data), job.language), catalogMatch: activeJob?.catalogMatch || null },
     compareText: '',
     savedAt: new Date().toISOString(),
     savedId: saved?.id || '',

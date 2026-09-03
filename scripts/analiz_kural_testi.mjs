@@ -83,15 +83,19 @@ for (const [ad, m] of Object.entries(promptlar)) {
     `kur:${kur ? '+' : 'YOK'} yabancı:${yabanci ? '+' : 'YOK'} sağduyu:${sagduyu ? '+' : 'YOK'} uyarı:${uyari ? '+' : 'YOK'}`);
 }
 
+/* ETIKETTE ULKE KODU YOK (2026-09-03). Onceden "127949 TRY (TR)" yaziliyordu
+   ve model bunu metne tasiyordu ("the Turkish price of…"). Rapor kuresel
+   okuyucuya gidiyor; fiyatin hangi pazardan okundugu modelin isine yaramiyor,
+   yazmasi yasak olan tek sey de zaten o (bkz. geoRulesBlock). */
 // ── 3) FIYAT KAYNAGI ───────────────────────────────────────────────────────
 baslik('3) FİYAT KAYNAĞI — küresel en ucuz DEĞİL, pazar fiyatı');
-yaz(P.productLine(iphone, 'tr').price === '127949 TRY (TR)',
+yaz(P.productLine(iphone, 'tr').price === '127949 TRY',
   'productLine ülke fiyatını verir', P.productLine(iphone, 'tr').price);
-yaz(P.segmentPriceLocal(iphone, 'tr').label === '127949 TRY (TR)',
+yaz(P.segmentPriceLocal(iphone, 'tr').label === '127949 TRY',
   'segmentPriceLocal ülke fiyatını verir', P.segmentPriceLocal(iphone, 'tr').label);
-yaz(P.segmentPriceLocal({ priceTR: 75699, pricesByCountry: '{"TR":75699}', lowestPriceUSD: 2164.99 }, 'tr').label === '75699 TRY (TR)',
+yaz(P.segmentPriceLocal({ priceTR: 75699, pricesByCountry: '{"TR":75699}', lowestPriceUSD: 2164.99 }, 'tr').label === '75699 TRY',
   'Typesense belgesinde de pazar fiyatı');
-yaz(P.segmentPriceLocal({ lowestPrice: 1189, lowestPriceCurrency: 'GBP', prices: { GB: 1189 } }, 'tr').label === '1189 GBP (GB)',
+yaz(P.segmentPriceLocal({ lowestPrice: 1189, lowestPriceCurrency: 'GBP', prices: { GB: 1189 } }, 'tr').label === '1189 GBP',
   'TR yoksa var olan pazar (uydurma yok)');
 yaz(P.segmentPriceLocal({ lowestPriceUSD: 1510 }, 'tr').label === '',
   'hiç fiyat yoksa boş (çeviri YOK)');
@@ -176,6 +180,68 @@ for (const [ad, r] of Object.entries(sekiller)) {
   yaz(kacan.length === 0, `${ad} · ${bulunan.length}/${hepsi.size} paragraf`,
     kacan.length ? `KAÇAN: ${kacan.map((x) => x.slice(0, 10)).join(', ')}` : '');
 }
+
+
+// ── 6) COGRAFI NOTRLUK ─────────────────────────────────────────────────────
+//  Site kuresel, rapor TEK KEZ uretilip herkese ayni gosteriliyor: metindeki
+//  "launched in Turkey" cumlesini Fransa'dan giren okuyucu da goruyor.
+//  Olcum (2026-09-03, canli 44 analiz): 35 kayitta ulke/milliyet adi vardi.
+baslik('6) COĞRAFİ NÖTRLÜK — ülke/milliyet adı rapor metnine girmez');
+
+// 6a. PROMPT: rapor yollarinin HEPSI kurali gormeli (bkz. "DÖRT prompt yolu"
+//     dersi: buildFullPrompt'a eklenen kural yalnizca URUNDE gecerliydi).
+for (const [ad, m] of Object.entries(promptlar)) {
+  if (ad.includes('araştırma')) continue;       // arastirma cok dilli kalir
+  yaz(/GEOGRAPHIC NEUTRALITY/.test(m), `${ad} · geo kuralı prompt'ta`);
+}
+
+// 6b. KOD KAPISI: prompt olasiliksal, kod kesin.
+const geoVaka = (metin, lang) => { const r = { x: metin }; P.enforceGeoNeutrality(r, lang); return r.x; };
+const geoVakalar = [
+  ['en', 'The X was launched in Turkey in July 2026.', 'The X was launched in July 2026.'],
+  ['en', 'Turkish users report battery drain.', 'Users report battery drain.'],
+  ['en', 'The device is sold with Samsung Turkey’s official warranty.', 'The device is sold with Samsung’s official warranty.'],
+  ['tr', 'Cihaz Türkiye pazarına Temmuz 2026’da sunuldu.', 'Cihaz Temmuz 2026’da sunuldu.'],
+  ['tr', '65.449 TL fiyatıyla Türkiye’deki üst segmentte yer alır.', '65.449 TL fiyatıyla üst segmentte yer alır.'],
+  ['tr', 'Fiyatların Türkiye gibi pazarlarda değişken olması beklenir.', 'Fiyatların pazarlarda değişken olması beklenir.'],
+  // MENSE BILGISI KORUNUR: urun olgusu, okuyucunun konumu hakkinda varsayim degil.
+  ['en', 'The device is built by a Chinese manufacturer.', 'The device is built by a Chinese manufacturer.'],
+  ['tr', '6800 mAh (Çin) veya 6000 mAh (global) batarya taşır.', '6800 mAh (Çin) veya 6000 mAh (global) batarya taşır.'],
+];
+for (const [dil, giris, beklenen] of geoVakalar) {
+  const c = geoVaka(giris, dil);
+  yaz(c === beklenen, `${dil} · ${giris.slice(0, 32)}…`, c === beklenen ? '' : `ÇIKTI: ${c}`);
+}
+
+// 6c. DIL KAPISI: Ingilizce rapor kuresel okuyucuya gider, TL yazamaz.
+yaz(geoVaka('Its price of 88,968.45 TRY is high. The camera is great.', 'en') === 'The camera is great.',
+  'en · TRY tutarı taşıyan cümle düşer');
+yaz(geoVaka('Fiyatı 68.999 TL seviyesindedir.', 'tr') === 'Fiyatı 68.999 TL seviyesindedir.',
+  'tr · TL korunur (okuyucu bu pazarda)');
+yaz(P.segmentPriceLocal({ prices: { TR: 90999 } }, 'en').label === '',
+  'en · prompt’a TR fiyatı gitmez');
+yaz(P.segmentPriceLocal({ prices: { TR: 90999 } }, 'tr').label === '90999 TRY',
+  'tr · prompt’a TR fiyatı gider');
+
+// 6d. DOKUNULMAZ ALANLAR. Bir surumde bas harf buyutmesi HER dizeye
+//     uygulaniyordu: "qor_catalog" -> "Qor_catalog", "https://…" -> "Https://…".
+const geoDokunma = {
+  alternatives: [{ name: 'Xiaomi 17 Ultra', url: '/product/xiaomi-17', imageUrl: 'https://resim.epey.com/1.png', source: 'qor_catalog' }],
+  community: { themes: [{ label: 'kamera', sentiment: 'positive', detail: 'Kamera iyi bulunuyor.' }] },
+};
+const geoOncesi = JSON.stringify(geoDokunma);
+P.enforceGeoNeutrality(geoDokunma, 'tr');
+yaz(JSON.stringify(geoDokunma) === geoOncesi, 'coğrafi ifade yoksa hiçbir alan değişmez');
+
+// 6e. PARAGRAF RENKLERI TASINIR (anahtar = paragrafın ilk cümlesi).
+const geoRenkli = {
+  product: { analysis: 'Cihaz Türkiye’de çıktı. Ekran parlaktır.\n\nPil ömrü uzundur.' },
+  paragraphSentiment: { 'Cihaz Türkiye’de çıktı.': 'positive', 'Pil ömrü uzundur.': 'positive' },
+};
+P.enforceGeoNeutrality(geoRenkli, 'tr');
+yaz(geoRenkli.paragraphSentiment['Cihaz çıktı.'] === 'positive'
+  && geoRenkli.paragraphSentiment['Pil ömrü uzundur.'] === 'positive',
+'paragraf rengi yeni metne taşındı', JSON.stringify(geoRenkli.paragraphSentiment));
 
 console.log(hata ? `\n${hata} HATA\n` : '\nHEPSİ GEÇTİ\n');
 process.exit(hata ? 1 : 0);

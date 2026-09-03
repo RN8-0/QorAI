@@ -18,7 +18,7 @@ import { getRecentProducts } from './recentViewed';
 import { aiUserProfile } from './qorCoins';
 import { displayProductName } from './productNames';
 import {
-  cleanProductCodes, scrubSiblingResearch, crossModelLeaks,
+  cleanProductCodes, enforceGeoNeutrality, scrubSiblingResearch, crossModelLeaks,
   withModelIdentityRetryInstruction,
   compareFactorAxis, alignFactorsToAxis, alignFactorMatrixToAxis,
 } from './aiPrompts';
@@ -303,9 +303,13 @@ export function runCompareAnalysisJob({ products, lang, user, answers = [] }) {
 
       // Urun kodu rapor metninden duser (bkz. cleanProductCodes): model urun
       // adini cumlelerin icine de yaziyor, baslik temizligi yetmiyor.
-      const text = JSON.stringify(cleanProductCodes({
+      const rapor = cleanProductCodes({
         type: 'compare_full_report', products: okReports, comparison: verdict,
-      }));
+      });
+      // COGRAFI NOTRLUK: rapor metninde ulke/milliyet adi gecmez (site kuresel,
+      // metin herkese ayni gosteriliyor) — admin/js/qor_ai_prompts.js -> geoRulesBlock.
+      try { enforceGeoNeutrality(rapor, lang); } catch { /* temizlik raporu bozmaz */ }
+      const text = JSON.stringify(rapor);
       if (!activeJob || activeJob.id !== job.id) return;
       setJob({ stage: 'composing' });
       setJob({ text, phase: 'result', stage: null });

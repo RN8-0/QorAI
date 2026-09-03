@@ -189,6 +189,24 @@ class AiReportService {
         '- Judge portability against the same class. Around 2.1 kg is normal/acceptable for a 16-inch workstation laptop, not a severe flaw by default.';
   }
 
+  /// COGRAFI NOTRLUK — web ile PARITE.
+  ///
+  /// Kaynak kural: admin/js/qor_ai_prompts.js -> geoRulesBlock. Rapor TEK KEZ
+  /// uretilip herkese ayni gosteriliyor; metne giren ulke adi bu ulke
+  /// disindaki her okuyucu icin yanlis bilgi olur ("launched in Turkey in
+  /// July 2026"). Olculdu 2026-09-03: canli 44 analizin 35'i ulke/milliyet
+  /// adi tasiyordu.
+  ///
+  /// App ile web ayni kurali GORMEK ZORUNDA: prompt'lar ayrisirsa ayni urun
+  /// iki yuzeyde iki farkli rapor uretir (bkz. quiz prompt paritesi dersi).
+  static String _geoRules(String lang) {
+    final tr = lang.toLowerCase().startsWith('tr');
+    return '- GEOGRAPHIC NEUTRALITY (HARD RULE): this report is read worldwide. NEVER name a country, nationality, region, national institution or local regulator in ANY user-facing string — not Turkey/Turkiye/Turkish, and not any other country either. "Launched in Turkey in July 2026" is false for every reader outside that country; write "launched in July 2026". "Turkish users report…" becomes "owners report…". The ONLY geographic mention allowed is country of manufacture stated as a plain product fact.\n'
+        '- NO LOCAL-MARKET FRAMING: never write "in this country", "our market", "the local market" or "domestic retailers", and never reason from national tax, customs, import or device-registration rules (VAT, OTV, KDV, BTK, IMEI registration), national warranty schemes, or one country\'s exchange rate. Price drivers must hold for EVERY reader: product age, successor timing, stock levels, seasonal sale windows, segment competition.\n'
+        '- A CURRENCY IS NOT A LOCATION. Quote the catalog price in the currency it was given in and never attach a place to it: "127.949 TRY", never "127.949 TRY in Turkey", never "the local price".\n'
+        '${tr ? '- Bu kural Turkce metinde de aynen gecerlidir: "Turkiye", "Turk", "ulkemizde", "yerel pazar" ve yerel kurum adlari yazilmaz.\n' : ''}';
+  }
+
   static String _languageGate(String lang) {
     return 'LANGUAGE HARD GATE: Every user-facing sentence, label, list item, source description, button-like value, and explanation must be fully written in ${_langName(lang)}. '
         'Only brand names, official product/model names, source names such as Reddit/YouTube/Amazon, and technical standards such as Thunderbolt, Wi-Fi, RTX, macOS may remain as-is. '
@@ -266,7 +284,7 @@ class AiReportService {
     return 'You are Qor AI\'s senior product analyst and product advisor. Analyse "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}). '
         'Use the product name exactly as given. Do not replace it with a similar model.\n\n'
         '${_identityGate(p, lang)}\n\n'
-        '${_languageGate(lang)}\n\n'
+        '${_languageGate(lang)}\n\n${_geoRules(lang)}\n'
         'CRITICAL OUTPUT ORDER: one single continuous report: match/advisor/deep analysis first, internet/community sentiment second, smart alternatives third, price forecast last.\n'
         '${_freshnessRules()}\n'
         'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n'
@@ -362,7 +380,7 @@ class AiReportService {
         'Produce the PERSONAL DECISION half of a comprehensive match report. '
         'Use the product name exactly as given. Do not replace it with a similar model.\n\n'
         '${_identityGate(p, lang)}\n\n'
-        '${_languageGate(lang)}\n\n'
+        '${_languageGate(lang)}\n\n${_geoRules(lang)}\n'
         '${_freshnessRules()}\n'
         'Use catalog specs and quiz answers as verified inputs. Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n'
         'Write like a professional buyer lab report: concrete, decisive, and detailed. Avoid generic praise. Mention exact catalog specs, compatibility constraints, who benefits, who should avoid it, and why.\n\n'
@@ -409,7 +427,7 @@ class AiReportService {
     return 'You are Qor AI\'s community-research and market analyst. For "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}), '
         'produce the COMMUNITY & MARKET half of the report. The personal-decision half is written separately — do NOT repeat it.\n\n'
         '${_identityGate(p, lang)}\n\n'
-        '${_languageGate(lang)}\n\n'
+        '${_languageGate(lang)}\n\n${_geoRules(lang)}\n'
         '${_freshnessRules()}\n'
         'Use research notes only when they support a claim; if something is not verified, say it is uncertain. Never invent direct quotes, exact review counts, or exact live prices.\n\n'
         'Return ONLY one valid JSON object with this exact structure:\n'
@@ -438,7 +456,7 @@ class AiReportService {
     final peers = peerNames.where((n) => n.isNotEmpty && n != l.name).toList();
     return 'You are Qor AI\'s senior product analyst. Produce ONE product\'s section of a multi-product comparison report. Evaluate ONLY "${l.name}" by ${l.brand.isEmpty ? 'unknown' : l.brand} (category: ${l.category}), but judge it in the CONTEXT of being compared against: ${peers.isEmpty ? 'the other selected products' : peers.join(', ')}.\n\n'
         '${_identityGate(product, lang)}\n\n'
-        '${_languageGate(lang)}\n\n${_freshnessRules()}\n\n'
+        '${_languageGate(lang)}\n\n${_freshnessRules()}\n\n${_geoRules(lang)}\n'
         'Use catalog specs and quiz answers as verified inputs; use research notes only when they support a claim. Write like a professional buyer lab report: concrete, decisive, detailed. Never invent direct quotes, exact review counts, or exact live prices.\n\n'
         'Return ONLY one valid JSON object for THIS product with this exact structure:\n'
         '{\n'
@@ -500,7 +518,7 @@ class AiReportService {
     }).toList();
     final prof = _profileString(profile);
     return 'You are Qor AI\'s senior comparison analyst. Each product already has its own full review (compact summaries below). Produce ONLY the final cross-product comparison verdict.\n\n'
-        '${_languageGate(lang)}\n\n${_freshnessRules()}\n\n'
+        '${_languageGate(lang)}\n\n${_freshnessRules()}\n\n${_geoRules(lang)}\n'
         'Return ONLY one valid JSON object with this exact structure:\n'
         '{\n'
         '  "winner": "exact product name — must be exactly one of: ${names.join(' | ')}",\n'

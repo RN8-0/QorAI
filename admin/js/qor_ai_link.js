@@ -126,6 +126,7 @@ CATEGORY-AWARE ANALYSIS:
 
 LANGUAGE: Write the "analysis" field in ${langName}.
 
+${P.geoRulesBlock(language)}
 SCORING RULES:
 - Score reflects how well this product fits the user (range: 20-95)
 - For tech: consider ecosystem, budget, priorities
@@ -780,6 +781,7 @@ function enhancedAnalysisPrompt(language) {
 
 LANGUAGE: Write ALL text in ${langName}. Factor labels must also be in ${langName}.
 ${addressRule(language)}
+${P.geoRulesBlock(language)}
 
 CRITICAL — CATEGORY-AWARE ANALYSIS:
 - The product can be ANY category: tech, books, clothing, home, sports, beauty, etc.
@@ -850,6 +852,7 @@ function enhancedCommunityPrompt(language) {
 
 LANGUAGE: Write ALL text in ${langName}.
 ${addressRule(language)}
+${P.geoRulesBlock(language)}
 
 RULES:
 - Build EVERYTHING on the research notes when they cover it; they are the current truth. Where they are thin, say plainly that the evidence is limited — never fabricate findings, quotes, review counts or exact prices.
@@ -1023,6 +1026,7 @@ function compareAnalysisPrompt(language) {
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
 ${addressRule(language)}
+${P.geoRulesBlock(language)}
 
 You will receive exact products identified from pasted URLs, the user's comparison quiz answers, and live web/community research notes.
 
@@ -1076,6 +1080,7 @@ function compareVerdictPrompt(language, names = []) {
 
 LANGUAGE: Write ALL text fields in ${langName}. Keep official product names as-is.
 ${addressRule(language)}
+${P.geoRulesBlock(language)}
 
 Rules:
 - "winner.best" MUST be exactly one of: ${names.join(' | ')}.
@@ -1278,6 +1283,7 @@ ${quizText}
 CRITICAL RULES:
 - ALL text values MUST be in ${langName} language
 - ${addressRule(language)}
+${P.geoRulesBlock(language)}
 - The "subscriptions" object MUST contain exactly ${count} entries, one for EACH of: ${names}
 - You MUST complete ALL ${count} service entries. Do not stop early or truncate.
 - compatibility_score must be an integer 0-100 based on how well it fits THIS specific user${isCompare ? '. Two services must NEVER get the same score.' : ''}
@@ -1335,6 +1341,7 @@ function subscriptionVerdictPrompt(names, isCompare, language) {
 
 LANGUAGE: ALL text values MUST be in ${langName}.
 ${addressRule(language)}
+${P.geoRulesBlock(language)}
 
 
 VENDOR NEUTRALITY — HARD RULE (this analysis runs on a model that may BE one of the compared services, or be made by the company that owns one):

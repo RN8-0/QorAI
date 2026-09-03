@@ -4,7 +4,7 @@ import {
   researchSubscriptionsCommunity,
   subscriptionAnalysis,
 } from './linkAnalysis';
-import { cleanProductCodes } from './aiPrompts';
+import { cleanProductCodes, enforceGeoNeutrality } from './aiPrompts';
 import { saveSubscriptionHistory } from './pbHistory';
 
 const STORAGE_KEY = 'qor.subscriptionAnalysis.activeJob';
@@ -116,6 +116,10 @@ async function completeSubscription(job, answers = []) {
     });
     // Urun/servis kodu rapor metninden duser (bkz. cleanProductCodes).
     const data = cleanProductCodes(ham);
+    // COGRAFI NOTRLUK: rapor metninde ulke/milliyet adi gecmez (site
+    // kuresel, rapor herkese ayni gosteriliyor). Gerekce ve olcum:
+    // admin/js/qor_ai_prompts.js -> geoRulesBlock.
+    enforceGeoNeutrality(data, job.language);
     if (!data.services.length) throw new Error('empty analysis');
     const analysis = data.recommendation
       || data?.winner?.recommendation
