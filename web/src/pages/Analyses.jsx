@@ -49,6 +49,23 @@ function analizTohumu() {
   return _tohum;
 }
 
+/* Filtre cipleri de ON-RENDER'DAN gelir (seo.mjs -> qor-analiz-faset).
+   Boylece cipler ilk karede cizilir ve istemci faset icin PB'ye HIC istek
+   atmaz — o sorgu olculdu ve 1348 ms suruyordu. */
+let _fasetTohum = null;
+function analizFasetTohumu() {
+  if (_fasetTohum) return _fasetTohum;
+  _fasetTohum = { turler: [], kategoriler: [] };
+  try {
+    const el = typeof document !== 'undefined' && document.getElementById('qor-analiz-faset');
+    if (el) {
+      const v = JSON.parse(el.textContent || '{}');
+      if (Array.isArray(v.turler) && Array.isArray(v.kategoriler)) _fasetTohum = v;
+    }
+  } catch { /* tohum yoksa PB'den ertelemeli cekilir */ }
+  return _fasetTohum;
+}
+
 // PB istegi ASILI KALABILIR (tek host, soguk baslangic). Fetch'in kendi zaman
 // asimi yok; korumasiz birakilinca `finally` hic kosmuyor ve sayfa sonsuza
 // dek "yükleniyor" diyor. Bu, kullanicinin bildirdigi "hiç yüklenmiyor"
@@ -83,7 +100,7 @@ export default function Analyses() {
      dedigi ve mobilde de gorunmeyen sey buydu — olculdu 2026-09-03
      (canli /tr/analiz, 390px): `.an-filters` DOM'da hic yok.
      Fasetler tum yayindaki kayitlardan bir kez sayilir (iki alan, ~2 KB). */
-  const [fasetler, setFasetler] = useState({ turler: [], kategoriler: [] });
+  const [fasetler, setFasetler] = useState(analizFasetTohumu);
   // ARAMA. Onceden yoktu: okuyucu istedigi urunun analizini ancak listeyi
   // gozle tarayarak bulabiliyordu. Filtreleme YEREL — sayfada duran kayitlar
   // uzerinde calisir, PB'ye her tusa basista istek atmaz.
@@ -143,27 +160,36 @@ export default function Analyses() {
     'report_en.type', 'report_en.researched', 'report_en.confidence',
   ].join(',');
 
-  /* FASET SAYIMI — bir kez, tum yayindaki kayitlardan. */
+  /* FASET SAYIMI — ONCE TOHUM, GEREKIRSE PB.
+     `seo.mjs` fasetleri build aninda head'e yaziyor: cipler ilk karede
+     cikar ve istek atilmaz. Tohum yoksa (eski kabuk, yerel gelistirme)
+     PB'ye dusulur — ama ERTELEYEREK: olculdu, bu sorgu 1348 ms suruyor
+     (sayfadaki en yavas istek) ve listenin onune gecerse "geç yükleniyor"
+     sikayetini buyutur. Once liste gelir, cipler saniyeler icinde eklenir. */
   useEffect(() => {
+    if (fasetler.turler.length || fasetler.kategoriler.length) return undefined;
     let live = true;
-    pb.collection('analyses')
-      .getFullList({ fields: 'kind,category', batch: 500, $autoCancel: false })
-      .then((hepsi) => {
-        if (!live) return;
-        const t = new Set();
-        const k = new Set();
-        (hepsi || []).forEach((a) => {
-          const tk = analysisKind(a);
-          if (tk) t.add(tk);
-          if (a.category) k.add(a.category);
-        });
-        setFasetler({
-          turler: ['product', 'compare', 'link', 'subscription'].filter((x) => t.has(x)),
-          kategoriler: [...k].sort(),
-        });
-      })
-      .catch(() => { /* faset yoksa filtre cubugu cizilmez, liste calisir */ });
-    return () => { live = false; };
+    const zamanlayici = setTimeout(() => {
+      pb.collection('analyses')
+        .getFullList({ fields: 'kind,category', batch: 500, $autoCancel: false })
+        .then((hepsi) => {
+          if (!live) return;
+          const t = new Set();
+          const k = new Set();
+          (hepsi || []).forEach((a) => {
+            const tk = analysisKind(a);
+            if (tk) t.add(tk);
+            if (a.category) k.add(a.category);
+          });
+          setFasetler({
+            turler: ['product', 'compare', 'link', 'subscription'].filter((x) => t.has(x)),
+            kategoriler: [...k].sort(),
+          });
+        })
+        .catch(() => { /* faset yoksa filtre cubugu cizilmez, liste calisir */ });
+    }, 1200);
+    return () => { live = false; clearTimeout(zamanlayici); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ARAMA DEBOUNCE. Her tusa PB istegi atmak tek hostu gereksiz yorar. */

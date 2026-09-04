@@ -430,7 +430,33 @@ function analizTohumBlogu(analyses) {
   });
   // JSON icinde gecen bir `</script>` dizisi bloku ERKEN kapatirdi.
   const json = JSON.stringify(rows).replace(/<\/(script)/gi, '<\\/$1');
-  return `<script type="application/json" id="qor-analiz-seed">${json}</script>`;
+
+  /* ── FASET TOHUMU (tur + kategori) ──────────────────────────────────────
+     Filtre cipleri YAYINDAKI TUM kayitlardan turemek zorunda: yalnizca
+     yuklu sayfaya bakan bir liste, o sayfada karsilastirma yoksa
+     "Karşılaştırma" cipini hic cizmiyordu (kullanicinin "bazen çıkıyor
+     bazen çıkmıyor" dedigi hata).
+
+     Bunu istemcide `getFullList` ile cozmek OLCULDU ve PAHALI: 88 kayit /
+     iki alan icin 1348 ms — sayfadaki EN YAVAS istek, yani "geç yükleniyor"
+     sikayetini kotulestiriyordu (ayni PB'de kategori filtresi 138 ms).
+     Fasetler zaten burada, build aninda elimizde; tohuma yazilinca istemci
+     hic istek atmiyor ve cipler ILK KAREDE cikiyor. */
+  const turSet = new Set();
+  const katSet = new Set();
+  analyses.forEach((a) => {
+    if (!a.slug) return;
+    turSet.add(analysisKind(a));
+    if (a.category) katSet.add(a.category);
+  });
+  const fasetler = {
+    turler: ['product', 'compare', 'link', 'subscription'].filter((k) => turSet.has(k)),
+    kategoriler: [...katSet].sort(),
+  };
+  const fasetJson = JSON.stringify(fasetler).replace(/<\/(script)/gi, '<\\/$1');
+
+  return `<script type="application/json" id="qor-analiz-seed">${json}</script>`
+    + `<script type="application/json" id="qor-analiz-faset">${fasetJson}</script>`;
 }
 
 // ── ON-RENDER GOVDESI ─────────────────────────────────────────────────────
