@@ -389,14 +389,36 @@
         if (b.t !== 'text') return;
         LANG_CODES.forEach(function (c) { if (b[c]) b[c] = htmlToPlain(b[c]); });
       });
-      /* GÖRSEL: öğenin kendi görseli varsa ve bloklarında hiç görsel yoksa
-         otomatik ekle — yoksa yayınlanan yazıda ürün görseli hiç çıkmıyordu.
-         Dergi düzeni için sağ/sol dönüşümlü. */
+      /* GÖRSEL YERLEŞTİRME — AI'IN İŞARETLEDİĞİ YUVAYA.
+         Yazar prompt'u modele "url YAZMA, yalnız görselin NEREYE ve HANGİ
+         BOYUTTA geleceğini söyle" diyor; model de url'süz bir görsel bloğu
+         bırakıyor. Katalog fotoğrafı İŞTE O YUVAYA girer — böylece modelin
+         seçtiği pos/size korunur.
+
+         ÖLÇÜLDÜ 2026-09-04 (canlı koşu): eskiden fotoğraf başa `unshift`
+         ediliyor, modelin bıraktığı boş blok da duruyordu; her öğede bir
+         fotoğraf VE bir "görsel yok" yer tutucusu görünüyordu. Sitede zararsız
+         (boş url render edilmiyor) ama editörde "bu öğede görsel var mı yok mu"
+         sorusunu okunamaz hâle getiriyordu.
+
+         Kural: doldurulamayan boş görsel bloklarından EN FAZLA BİRİ kalır ve
+         yalnızca öğenin hiç görseli yoksa — o da yazarın elle koyacağı yuva
+         (kural 1: katalogda yoksa görsel BOŞ kalır, yazar koyar). */
       var img = p.image || p.imageUrl || p.logo || '';
-      var gorselVar = p.blocks.some(function (b) { return b.t === 'image' && b.url; });
-      if (img && !gorselVar) {
-        p.blocks.unshift({ t: 'image', url: img, pos: i % 2 === 0 ? 'right' : 'left', size: 'm' });
+      var doluVar = p.blocks.some(function (b) { return b.t === 'image' && b.url; });
+      if (img && !doluVar) {
+        var yuva = p.blocks.filter(function (b) { return b.t === 'image' && !b.url; })[0];
+        if (yuva) { yuva.url = img; }
+        else { p.blocks.unshift({ t: 'image', url: img, pos: i % 2 === 0 ? 'right' : 'left', size: 'm' }); }
+        doluVar = true;
       }
+      var bosGorulen = 0;
+      p.blocks = p.blocks.filter(function (b) {
+        if (b.t !== 'image' || b.url) return true;
+        bosGorulen += 1;
+        return !doluVar && bosGorulen === 1;   // görselsiz öğede TEK yuva kalsın
+      });
+      if (!p.blocks.length) p.blocks.push(bosMetinBlok());
     });
   }
 

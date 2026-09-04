@@ -344,10 +344,13 @@ export default function Analyses() {
               listenin kendisini ekranin altina itiyordu — "rasgele bir
               bicimde bu ekranda gozukmesin". Tur seridi CIP kaliyor: uc
               secenek tek satira sigiyor ve hangi turde oldugun sayfanin
-              kimligi; kategori ise daralt-genislet islevi, menuye ait. */}
+              kimligi; kategori ise daralt-genislet islevi, menuye ait.
+
+              GORUNUR ETIKET YOK: secicinin kendisi zaten "Tüm kategoriler"
+              yaziyor, yanina bir de "Kategori" koymak ayni seyi iki kez
+              soylemek olurdu. Ekran okuyucu `aria-label`den okuyor. */}
           {fasetler.kategoriler.length > 1 && (
             <label className="an-cat-select">
-              <span className="an-cat-select-label">{L('Category', 'Kategori')}</span>
               <select
                 value={kategori}
                 onChange={(e) => setKategori(e.target.value)}

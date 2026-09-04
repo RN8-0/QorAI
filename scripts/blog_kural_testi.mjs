@@ -260,6 +260,27 @@ baslik('3) META — sınırlar ve kelime sınırından kırpma');
     'blok metni · HTML düz metne indi', JSON.stringify(p[0].blocks.find((b) => b.t === 'text').tr));
 }
 {
+  /* AI'IN İŞARETLEDİĞİ YUVAYA KOY, ARTIK BOŞ BLOK BIRAKMA.
+     Ölçüldü 2026-09-04 canlı koşuda: her öğede bir fotoğraf VE bir "görsel yok"
+     yer tutucusu duruyordu; modelin bıraktığı boş blok siliniyordu değil,
+     fotoğraf başa ekleniyordu. */
+  const p = [{ kind: 'product', id: 'x', name: 'A', image: 'https://a/b.jpg',
+    blocks: [{ t: 'text', tr: 'm', en: 'm' }, { t: 'image', url: '', pos: 'left', size: 'l' }, { t: 'image', url: '', pos: 'full', size: 'm' }] }];
+  C.sanitizeArticle({}, p);
+  const g = p[0].blocks.filter((b) => b.t === 'image');
+  yaz(g.length === 1 && g[0].url === 'https://a/b.jpg', 'görsel · katalog fotoğrafı AI yuvasına girdi', JSON.stringify(g));
+  yaz(g[0].pos === 'left' && g[0].size === 'l', 'görsel · modelin seçtiği pos/size korundu');
+  yaz(!p[0].blocks.some((b) => b.t === 'image' && !b.url), 'görsel · artık boş görsel bloğu YOK');
+}
+{
+  // Görselsiz öğede TEK yuva kalır — yazarın elle koyacağı yer (kural 1).
+  const q = [{ kind: 'custom', id: 'y', name: 'B',
+    blocks: [{ t: 'text', tr: 'm', en: 'm' }, { t: 'image', url: '', pos: 'right', size: 'm' }, { t: 'image', url: '', pos: 'full', size: 'm' }] }];
+  C.sanitizeArticle({}, q);
+  const bos = q[0].blocks.filter((b) => b.t === 'image');
+  yaz(bos.length === 1 && !bos[0].url, 'görsel · görselsiz öğede tek boş yuva kalıyor', String(bos.length));
+}
+{
   // Görseli olan ama blokta görseli olmayan öğeye otomatik görsel bloğu.
   const p = [{ kind: 'product', id: 'x', name: 'A', image: 'https://a/b.png', blocks: [{ t: 'text', tr: 'x', en: 'y' }] }];
   C.sanitizeArticle({}, p);
@@ -438,8 +459,11 @@ if (!AI) {
     ceviri: () => AI.ceviriPrompt({ title: 'x', items: [] }, 'en'),
     claude: () => AI.claudePrompt(['smartphones']),
     autoSchema: () => AI.autoSchemaPrompt('ham'),
-    markaAlan: () => AI.markaAlanPrompt([{ i: 0, name: 'X' }]),
   };
+  /* `markaAlan` altın kopyada DURUYOR ama artık ÜRETİLMİYOR: kullanıcının
+     kararıyla AI görsel arama yolu tamamen kaldırıldı (2026-09-04, "ben
+     görselleri ekleyebilirim, ai görsel bulmasına gerek yok"). Altın kopyadan
+     silmiyorum — kaydı kalsın, geri getirmek gerekirse metni orada. */
   // komutPrompt'ta BİLEREK değişen tek yer: öğe işlemleri (brief §6.2).
   const BILINCLI_SAPMA = {
     komut: ['İçerik öğelerini (ürün kartları) bu çağrıda değiştiremezsin', 'Kullanıcı ürün eklenmesini/çıkarılmasını istiyorsa'],
@@ -496,6 +520,14 @@ if (!AI) {
   yaz(/sayı, ölçüm, karşılaştırma, kime uygun değil/.test(yazar), 'yazar · somut bilgi numaralandırması');
   yaz(/url" alanını HER ZAMAN boş bırak/.test(yazar), 'yazar · görsel URL yasağı (kural 1)');
   yaz(/"op": "remove"/.test(komut), 'komut · öğe işlemleri (brief §6.2)');
+  // KURAL 1 — GÖRSELLERİ AI BULMASIN. Bu yol iki kez geri geldi, bir daha gelmesin.
+  yaz(AI.markaAlanPrompt === undefined, 'görsel · marka alan adı SORULMUYOR');
+  yaz(AI.logoCandidates === undefined, 'görsel · favicon/logo adayı ÜRETİLMİYOR');
+  yaz(AI.firstLoadableImage === undefined, 'görsel · logo yoklama yolu YOK');
+  {
+    const src = fs.readFileSync('admin/js/blog/blog_ai.js', 'utf8');
+    yaz(!/s2\/favicons|icons\.duckduckgo/.test(src), 'görsel · favicon servisi kaynakta geçmiyor');
+  }
   yaz(!/bu çağrıda değiştiremezsin/.test(komut), 'komut · eski "öğelere dokunamazsın" yasağı kalktı');
 }
 

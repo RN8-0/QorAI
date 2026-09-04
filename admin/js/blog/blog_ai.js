@@ -641,128 +641,49 @@ KURALLAR:
   }
 
   // ══ GÖRSEL ÇÖZÜMLEME ═════════════════════════════════════════════════════
-  var IMG_MIN_PX = 40;
+  /* ══ GÖRSEL: AI ARAMAZ ═══════════════════════════════════════════════════
+     KURAL 1 (kullanıcının değişmez kuralı): "Görselleri AI BULMASIN. boktan
+     görseller buluyor." Ürün görseli KATALOGDAN gelir (gerçek ürün fotoğrafı);
+     katalogda yoksa görsel BOŞ kalır ve yazar elle koyar.
 
-  function probeImage(url, timeoutMs) {
-    return new Promise(function (resolve) {
-      var u = String(url || '').trim();
-      if (!u || typeof root.Image !== 'function') { resolve(null); return; }
-      var img = new root.Image();
-      var done = false;
-      var timer = null;
-      var finish = function (v) { if (done) return; done = true; clearTimeout(timer); img.onload = null; img.onerror = null; resolve(v); };
-      timer = setTimeout(function () { finish(null); }, timeoutMs || 9000);
-      img.onload = function () { finish((img.naturalWidth || 0) >= IMG_MIN_PX ? { url: u, w: img.naturalWidth, h: img.naturalHeight } : null); };
-      img.onerror = function () { finish(null); };
-      img.referrerPolicy = 'no-referrer';
-      img.src = u;
-    });
-  }
+     Buradaki eski kod son kalan AI görsel yoluydu: Gemini'ye markanın alan
+     adını sorup Google favicon / DuckDuckGo ikonu çekiyordu. Abonelik
+     satırında makul görünüyordu ama ölçüldü (2026-09-04, canlı taslak):
+     katalogda bulunamayan "iPhone 18 Pro" ÖZEL ÖĞE olarak eklendi, model
+     site olarak apple.com verdi ve öğenin görseli APPLE LOGOSU oldu.
+     Kullanıcının kararı: "ben görselleri ekleyebilirim, ai blog yazısında
+     görsel bulmasına gerek yok". Yol tamamen kaldırıldı.
 
+     KALAN GÖRSEL KAYNAKLARI — üçü de sitenin KENDİ verisi, arama değil:
+       · katalog ürünü      → Typesense `imageUrl`
+       · abonelik kaydı     → `subscriptions.logo` (elle küratörlü)
+       · yazarın elle koyduğu URL / yüklediği dosya
+     Bu fonksiyon artık AĞA ÇIKMAZ: yalnızca hangi öğelerin görselsiz kaldığını
+     SAYAR, böylece konsol ve denetim "şu öğeye elle görsel koy" diyebilir. */
   function domainOf(value) {
     var d = String(value || '').trim().toLowerCase()
       .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[/?#].*$/, '').replace(/:\d+$/, '');
     return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? d : '';
   }
 
-  // Sıra ÖNEMLİ: markanın kendi sitesinden gelen ikon en doğrusu (ve marka
-  // kullanımı açısından en güvenlisi).
-  function logoCandidates(domain) {
-    var d = domainOf(domain);
-    if (!d) return [];
-    return [
-      'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(d) + '&sz=256',
-      'https://icons.duckduckgo.com/ip3/' + d + '.ico',
-      'https://' + d + '/favicon.ico',
-    ];
+  function gorselsizOgeler(products) {
+    return (products || []).map(function (p, i) { return { i: i, p: p }; })
+      .filter(function (x) { return !C.itemHasImage(x.p); });
   }
 
-  function pbImgProxy(url) {
-    return (pb().baseUrl || '').replace(/\/$/, '') + '/api/img?url=' + encodeURIComponent(url);
-  }
-
-  // Adayları sırayla dene; ilk YÜKLENEN kazanır. Doğrudan yüklenmeyen ama
-  // sunucu proxy'sinden gelen (hotlink korumalı) adresler de kabul edilir —
-  // site zaten aynı proxy'ye düşüyor (BlogPost.jsx imageOnError).
-  async function firstLoadableImage(candidates) {
-    for (var i = 0; i < (candidates || []).length; i++) {
-      var c = candidates[i];
-      if (!c) continue;
-      var direct = await probeImage(c);
-      if (direct) return direct.url;
-      var viaProxy = await probeImage(pbImgProxy(c), 12000);
-      if (viaProxy) return c;
+  // İmza `resolveItemImages` ile aynı kaldı (çağıranlar değişmesin) ama artık
+  // HİÇBİR ŞEY DOLDURMAZ — yalnız rapor eder.
+  function resolveItemImages(products, lang, onStatus) {
+    var eksik = gorselsizOgeler(products);
+    if (typeof onStatus === 'function') {
+      onStatus(eksik.length
+        ? (eksik.length + ' öğede görsel yok — katalogdan gelmedi, elle koyman gerekiyor')
+        : 'Tüm öğelerin görseli katalogdan geldi.');
     }
-    return '';
+    return Promise.resolve({ filled: 0, pending: eksik.length, eksik: eksik });
   }
 
-  async function askItemBrandMeta(entries) {
-    if (!entries.length) return new Map();
-    try {
-      var out = await callGeminiJson(markaAlanPrompt(entries), 3000);
-      var map = new Map();
-      (Array.isArray(out.items) ? out.items : []).forEach(function (row) {
-        var i = Number(row && row.i);
-        if (!Number.isFinite(i)) return;
-        map.set(i, {
-          brand: String(row.brand || '').trim(),
-          site: domainOf(row.site),
-          kind: String(row.kind || '').trim(),
-        });
-      });
-      return map;
-    } catch (_) { return new Map(); }
-  }
 
-  /* GÖRSELİ OLMAYAN ÖĞELERE GÖRSEL — AMA YALNIZ ABONELİK/HİZMET.
-     Logo arama bir ABONELİK satırında doğru şey (Netflix satırında Netflix
-     logosu), ama bir ÜRÜN makalesinde felaket: katalogda bulunamayan ürüne
-     Google favicon'u koyuyordu. Ölçüldü 2026-09-03, canlı taslak: "iPhone 18
-     Pro" öğesinin görseli `google.com/s2/favicons?domain=apple.com`, kapak
-     görseli de büyütülmüş bir Apple logosuydu.
-     Kullanıcının kararı: "görselleri ai bulmasın, boktan görseller buluyor".
-     Ürün görselleri KATALOGDAN gelir; katalogda yoksa görsel BOŞ kalır ve
-     yazar elle koyar. */
-  async function resolveItemImages(products, lang, onStatus) {
-    var say = function (s) { if (typeof onStatus === 'function') onStatus(s); };
-    var pending = [];
-    (products || []).forEach(function (p, i) {
-      if (C.itemHasImage(p)) return;
-      var kind = p.kind || 'product';
-      var logoMantikli = kind === 'subscription' || (kind === 'custom' && domainOf(p.site || p.link));
-      if (!logoMantikli) return;
-      pending.push({ i: i, p: p, name: String(p['name_' + (lang || 'tr')] || p.name || p.name_tr || '').trim() });
-    });
-    if (!pending.length) return { filled: 0, pending: 0 };
-
-    say(pending.length + ' öğe için görsel aranıyor…');
-    // Öğenin kendi alanında zaten alan adı varsa Gemini'ye sormaya gerek yok.
-    var needMeta = pending.filter(function (e) { return !domainOf(e.p.site || e.p.link); });
-    var meta = await askItemBrandMeta(needMeta.map(function (e) { return { i: e.i, name: e.name }; }));
-
-    var filled = 0;
-    var queue = pending.slice();
-    var worker = async function () {
-      for (;;) {
-        var entry = queue.shift();
-        if (!entry) return;
-        var m = meta.get(entry.i) || {};
-        var site = domainOf(entry.p.site || entry.p.link) || m.site || '';
-        if (m.brand && !entry.p.brand) entry.p.brand = m.brand;
-        if (site) entry.p.site = site;
-        var url = await firstLoadableImage(logoCandidates(site));
-        if (url) { entry.p.image = url; entry.p.imageSource = 'brand-logo'; filled += 1; }
-      }
-    };
-    await Promise.all([worker(), worker(), worker()]);
-    say(filled ? (filled + '/' + pending.length + ' öğeye görsel bulundu.') : 'Uygun görsel bulunamadı.');
-    return { filled: filled, pending: pending.length };
-  }
-
-  /* KAPAK: ÜRÜN fotoğrafı logolara tercih edilir.
-     MARKA LOGOSU KAPAK OLMAZ — `imageSource === 'brand-logo'` olan görseller
-     kapak adaylığından çıkarılır: ölçüldü 2026-09-03, kapak büyütülmüş bir
-     Apple logosuydu ve paylaşım önizlemesinde de o çıkıyordu. */
   function autoPickCover(a, products) {
     if (a.cover || a.coverFile) return '';
     var byKind = function (k) {
@@ -781,14 +702,13 @@ KURALLAR:
     konuPrompt: konuPrompt, arastirmaPrompt: arastirmaPrompt, yazarPrompt: yazarPrompt,
     komutPrompt: komutPrompt, qaPrompt: qaPrompt, junkPrompt: junkPrompt,
     autoSchemaPrompt: autoSchemaPrompt, claudePrompt: claudePrompt,
-    ceviriPrompt: ceviriPrompt, markaAlanPrompt: markaAlanPrompt,
+    ceviriPrompt: ceviriPrompt,
     // saf uygulayıcılar
     ogeIslemleriniUygula: ogeIslemleriniUygula,
     // taşıma + ağ
     callGeminiJson: callGeminiJson, grounded: grounded,
     resolveCatalogItem: resolveCatalogItem, ogeleriIceAktar: ogeleriIceAktar,
-    resolveItemImages: resolveItemImages, autoPickCover: autoPickCover,
-    domainOf: domainOf, logoCandidates: logoCandidates, probeImage: probeImage,
-    firstLoadableImage: firstLoadableImage,
+    resolveItemImages: resolveItemImages, gorselsizOgeler: gorselsizOgeler,
+    autoPickCover: autoPickCover, domainOf: domainOf,
   };
 })(typeof globalThis !== 'undefined' ? globalThis : window);

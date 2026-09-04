@@ -501,8 +501,7 @@
   root.blogDebug = {
     matchScore: C.matchScore, bestMatch: C.bestMatch,
     resolveCatalogItem: AI.resolveCatalogItem, domainOf: AI.domainOf,
-    logoCandidates: AI.logoCandidates, probeImage: AI.probeImage,
-    bestLogo: function (d) { return AI.firstLoadableImage(AI.logoCandidates(d)); },
+    gorselsizOgeler: function () { return AI.gorselsizOgeler(S.products).map(function (x) { return C.itemName(x.p, S.lang); }); },
     health: function () { return C.articleHealth(S.editing || {}, S.products); },
     faq: function (c) { return C.faqDurumu(S.editing || {}, c || S.lang); },
     payload: function () { return C.savePayload(S.editing || {}, S.products, {}); },

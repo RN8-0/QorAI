@@ -219,7 +219,7 @@
       ['en', 'İngilizce makale yazılıyor'],
       ['tr', 'Türkçe sürüm yazılıyor (aynı yapı, aynı ürünler)'],
       ['urun', 'Öğeler katalogda eşleştiriliyor'],
-      ['gorsel', 'Katalog görselleri yerleştiriliyor'],
+      ['gorsel', 'Görselsiz öğeler işaretleniyor (AI görsel ARAMAZ)'],
       ['qa', 'Düzen ve kalite kontrolü'],
     ]);
     try {
@@ -455,7 +455,7 @@
     var btn = el('bl_qa_btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ İnceleniyor…'; }
     if (!auto) konsolBaslat('🤖 Düzen & kontrol', [
-      ['gorsel', 'Eksik görseller (abonelik/hizmet) aranıyor'],
+      ['gorsel', 'Görselsiz öğeler işaretleniyor'],
       ['duzen', 'Görsellerin yeri ve boyutu metne göre ayarlanıyor'],
       ['cop', 'Başıboş kaynak adı satırları temizleniyor'],
     ]);
@@ -467,7 +467,7 @@
       gorselBulundu = res.filled || 0;
       if (gorselBulundu) C.sanitizeArticle(S.editing, S.products);
       kapak = AI.autoPickCover(S.editing, S.products);
-      if (!auto) adim('gorsel', 'done', gorselBulundu ? (gorselBulundu + ' görsel bulundu') : 'yeni görsel yok');
+      if (!auto) adim('gorsel', 'done', res.pending ? (res.pending + ' öğeye elle görsel gerekiyor') : 'hepsinde görsel var');
     } catch (_) { if (!auto) adim('gorsel', 'fail'); }
 
     try {
@@ -700,7 +700,7 @@
     var noLinks = (el('bl_imp_nolinks') || {}).checked !== false;
     konsolBaslat('🪄 Akıllı içe aktarma', [
       ['coz', 'Metin şemaya çevriliyor'], ['oge', 'Öğeler katalogda eşleştiriliyor'],
-      ['gorsel', 'Eksik görseller aranıyor'],
+      ['gorsel', 'Görselsiz öğeler işaretleniyor'],
     ]);
     try {
       adim('coz', 'run', raw.length.toLocaleString('tr-TR') + ' karakter');

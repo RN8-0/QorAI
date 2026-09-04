@@ -153,7 +153,6 @@
   font-size: 13.5px;
   color: var(--text-2);
 }
-.an-cat-select-label { font-weight: 600; }
 .an-cat-select select {
   font: inherit;
   font-weight: 600;
