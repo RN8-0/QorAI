@@ -353,6 +353,33 @@
     var t = el('bl_cmd_t'); if (t) t.focus();
   };
 
+  /* KONTROL LISTESINDEN KOMUTA. Denetim yalnizca metinsel sorunlari AI'a
+     verir: eksik slug / kapak / kategori gibi ALAN sorunlarini model zaten
+     duzeltemez (onlar sag raydaki kutulardan doldurulur) ve prompt'a
+     konuldugunda modelin dikkatini dagitiyor. */
+  ACT.hatalariDuzelt = function () {
+    var liste = C.articleHealth(S.editing || {}, S.products)
+      .filter(function (x) { return x.level !== 'info'; });
+    // Alan sorunlari: modelin isi degil, kod/kullanici isi.
+    var ALAN = /(slug|Kapak görseli|Kategori|Yayın tarihi|adresi|link)/i;
+    var metinsel = liste.filter(function (x) { return !ALAN.test(x.text); });
+    var alansal = liste.filter(function (x) { return ALAN.test(x.text); });
+    ACT.cmdOpen();
+    var ta = el('bl_cmd_t');
+    if (!ta) return;
+    ta.value = metinsel.length
+      ? 'Aşağıdaki sorunları düzelt. Yalnızca sorunlu bölümlere dokun, gerisini olduğu gibi bırak:\n\n'
+        + metinsel.map(function (x, k) { return (k + 1) + '. ' + x.text; }).join('\n')
+      : '';
+    var st = el('bl_cmd_s');
+    if (st) {
+      st.textContent = metinsel.length
+        ? (metinsel.length + ' metin sorunu dolduruldu' + (alansal.length ? ' · ' + alansal.length + ' alan sorunu sağ raydan elle doldurulur' : ''))
+        : (liste.length ? 'Kalan sorunlar metin değil alan sorunu — sağ raydaki kutulardan doldur.' : 'Denetimde sorun yok; yine de serbest komut yazabilirsin.');
+    }
+    ta.focus();
+  };
+
   ACT.cmdRun = async function () {
     var ta = el('bl_cmd_t');
     var komut = ta ? ta.value.trim() : '';

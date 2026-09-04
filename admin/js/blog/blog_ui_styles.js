@@ -143,8 +143,16 @@
   .bl-blk.drag{opacity:.35}
   .bl-blk-bar{position:absolute;left:0;top:2px;display:flex;flex-direction:column;gap:3px;opacity:0;transition:opacity .12s ease}
   .bl-blk:hover .bl-blk-bar,.bl-blk:focus-within .bl-blk-bar{opacity:1}
-  .bl-blk-tools{display:none;gap:5px;align-items:center;flex-wrap:wrap;margin:5px 0 8px}
-  .bl-blk:hover .bl-blk-tools,.bl-blk:focus-within .bl-blk-tools{display:flex}
+  /* ARAC CUBUGU AKISTAN CIKMAZ, YALNIZ GORUNURLUGU DEGISIR.
+     Ilk surumde display:none -> display:flex idi: fare bloga girdigi anda kutu
+     akisa katiliyor, blok yeniden diziliyor ve yanindaki float'li gorsel
+     kayiyordu. Kullanicinin tarifi: "imlec getirilince gorsel ve metin kontrol
+     kismi saga kayiyor". BIR ARACIN GORUNMESI BELGEYI OYNATMAMALI.
+     visibility yeri KORUR (display korumaz), o yuzden bant her zaman ayrilmis
+     durur ve gosterip gizlemek sifir yeniden dizilim uretir. */
+  .bl-blk-tools{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin:5px 0 6px;
+                visibility:hidden;opacity:0;transition:opacity .12s ease}
+  .bl-blk:hover > .bl-blk-tools,.bl-blk:focus-within > .bl-blk-tools{visibility:visible;opacity:1}
   .bl-grip{width:20px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:1px solid transparent;
            background:transparent;color:var(--text3);cursor:grab;font-size:13px;line-height:1;padding:0;touch-action:none}
   .bl-grip:hover{background:var(--bg4);color:var(--text)}
@@ -309,7 +317,7 @@
   .bl-cm{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:8px}
 
   @media(prefers-reduced-motion:reduce){
-    .bl-btn,.bl-row,.bl-out-i,.bl-blk-bar,.bl-add,.bl-ai-bar i,.bl-topic{transition:none}
+    .bl-btn,.bl-row,.bl-out-i,.bl-blk-bar,.bl-blk-tools,.bl-add,.bl-ai-bar i,.bl-topic{transition:none}
   }
   `;
 

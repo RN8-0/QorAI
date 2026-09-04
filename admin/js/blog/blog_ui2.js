@@ -107,7 +107,14 @@
       + '<div class="bl-f"><label class="bl-lbl">Etiketler <span style="opacity:.6;text-transform:none">(virgülle)</span></label>'
       + '<input class="bl-in" id="bl_tags" value="' + esc(a['tags_' + c] || '') + '" data-bli="seo" /></div>'
       + '</div>'
-      + '<div class="bl-card"><h4>Kontrol</h4><div id="bl_health"></div></div>'
+      + '<div class="bl-card"><h4>Kontrol</h4><div id="bl_health"></div>'
+      /* SORUNU GORUP DUZELTEMEMEK ISE YARAMAZ. Denetim listesi tek basina bir
+         is listesi degil; bu dugme sorunlari komut kutusuna DOLDURUP aciyor,
+         yani "gordum -> duzelt" tek tikla. */
+      + '<div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">'
+      + '<button class="bl-btn sm" data-bl="hatalariDuzelt" title="Listelenen sorunları yapay zekâya düzelttir">🤖 Sorunları AI ile düzelt</button>'
+      + '<button class="bl-btn sm" data-bl="cmdOpen" title="Serbest komut yaz">✏️ Serbest komut</button>'
+      + '</div></div>'
       + '<div class="bl-card"><h4>Yorumlar</h4><div id="bl_comments" style="font-size:12.5px;color:var(--text3)">'
       + (a.id ? 'Yükleniyor…' : 'Önce makaleyi kaydet.') + '</div></div>';
     P2.serpYaz(); P2.ctxYenile();
