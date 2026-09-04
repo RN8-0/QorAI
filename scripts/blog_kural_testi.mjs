@@ -412,66 +412,91 @@ baslik('7) SLUG — adres değişince istatistik ve yorumlar kopar');
   yaz(bos.metin.includes('kayıp beklenmiyor'), 'istatistiksiz yazıda dili yumuşuyor');
 }
 
-// ═══ 8) PROMPT'LAR ════════════════════════════════════════════════════════
+// ═══ 8) PROMPT'LAR — ALTIN KOPYAYA KARŞI ══════════════════════════════════
 if (!AI) {
-  baslik('8) PROMPT\'LAR — blog_ai.js yüklenemedi, atlandı');
+  baslik("8) PROMPT'LAR — blog_ai.js yüklenemedi, ATLANDI");
+  hata += 1;
 } else {
-  baslik('8) PROMPT\'LAR — gerçekten üretilip içine bakılıyor');
-  const konu = { title: 'Best Student Laptops 2026', title_tr: 'En İyi Öğrenci Laptopları', angle: 'x', keyword: 'k', intent: 'i' };
-  const uretilen = {
-    'yazar · EN': () => AI.yazarPrompt(konu, 'notlar', 'en', null),
-    'yazar · TR (ayna)': () => AI.yazarPrompt(konu, 'notlar', 'tr', { lang: { title: 'x' } }),
-    'konu sihirbazı': () => AI.konuPrompt(15, '', ['Eski Başlık']),
-    'araştırma': () => AI.arastirmaPrompt('Best Student Laptops 2026'),
-    'komut': () => AI.komutPrompt('girişi kısalt', { tr: {}, en: {}, items: [] }),
-    'düzen & kalite': () => AI.qaPrompt({ lang: 'tr', items: [] }),
-    'akıllı içe aktarma': () => AI.autoSchemaPrompt('ham metin'),
-    'çeviri': () => AI.ceviriPrompt({ title: 'x', items: [] }, 'en'),
+  baslik("8) PROMPT'LAR — eski metinden TEK CÜMLE bile düşmemeli");
+  /* NEDEN VAR: 2026-09-04'te yeniden yazım sırasında prompt metinleri
+     "toparlanırken" kurallar sessizce düştü. Konu sihirbazı genel geçer,
+     rekabeti yüksek, trend olmayan konular önermeye başladı; kullanıcı
+     bildirdi. Düşenler: konu prompt'unda fiyat bağlamı ve BAYAT KAYNAK
+     kuralı, yazar prompt'unda "170'in altında kalan varsa GERİ DÖN" ve
+     "doldurma değil".
+     Bu bölüm eski metni (scripts/fixtures/blog_prompt_golden.json, commit
+     6716ebd9) cümle cümle arar. Bir kuralı bilerek değiştirmek gerekirse
+     ALTIN KOPYAYI da güncelle — sessiz kısaltma bir daha olmayacak. */
+  const G = JSON.parse(fs.readFileSync('scripts/fixtures/blog_prompt_golden.json', 'utf8'));
+  const uret = {
+    konu: () => AI.konuPrompt(15, '', ['Eski Başlık']),
+    arastirma: () => AI.arastirmaPrompt('Best Student Laptops 2026'),
+    yazar: () => AI.yazarPrompt({ title: 'X', angle: 'A', keyword: 'K', intent: 'I' }, 'NOTLAR', 'en', null),
+    komut: () => AI.komutPrompt('girişi kısalt', { tr: {}, en: {}, items: [] }),
+    qa: () => AI.qaPrompt({ lang: 'tr', items: [] }),
+    junk: () => AI.junkPrompt(['A', 'B']),
+    ceviri: () => AI.ceviriPrompt({ title: 'x', items: [] }, 'en'),
+    claude: () => AI.claudePrompt(['smartphones']),
+    autoSchema: () => AI.autoSchemaPrompt('ham'),
+    markaAlan: () => AI.markaAlanPrompt([{ i: 0, name: 'X' }]),
   };
-  const metinler = {};
-  for (const [ad, fn] of Object.entries(uretilen)) {
-    let s = '';
-    try { s = fn(); } catch (e) { yaz(false, `üretilebiliyor · ${ad}`, e.message); continue; }
-    metinler[ad] = String(s);
-    yaz(s && s.length > 200, `üretilebiliyor · ${ad}`, `${String(s).length} krk`);
-  }
-  const icerir = (ad, re, kural) => {
-    const s = metinler[ad];
-    if (s == null) { yaz(false, `${kural} (${ad})`, 'prompt üretilemedi'); return; }
-    yaz(re.test(s), `${kural} · ${ad}`);
+  // komutPrompt'ta BİLEREK değişen tek yer: öğe işlemleri (brief §6.2).
+  const BILINCLI_SAPMA = {
+    komut: ['İçerik öğelerini (ürün kartları) bu çağrıda değiştiremezsin', 'Kullanıcı ürün eklenmesini/çıkarılmasını istiyorsa'],
   };
-  // KURAL 1 — görselleri AI BULMASIN
-  icerir('yazar · EN', /url.{0,40}(YAZMA|boş bırak)/i, 'görsel URL yasağı');
-  icerir('yazar · TR (ayna)', /url.{0,40}(YAZMA|boş bırak)/i, 'görsel URL yasağı');
-  icerir('akıllı içe aktarma', /(?:görsel|url)/i, 'görsel alanı tarif ediliyor');
-  // SEO sınırları — seo-audit.mjs build'i düşürüyor
-  for (const ad of ['yazar · EN', 'yazar · TR (ayna)', 'komut', 'akıllı içe aktarma', 'çeviri']) {
-    icerir(ad, /60/, 'metaTitle 60 sınırı');
-    icerir(ad, /155/, 'metaDescription 155 sınırı');
+  /* ALTIN KOPYA KAYNAK BİÇİMİNDE, ÜRETİLEN ÇALIŞMA ZAMANI BİÇİMİNDE.
+     Altın metin eski dosyadan template literal olarak sökülmüştü; içinde hem
+     ${...} ifadeleri hem de kaynak-düzeyi kaçışlar (\n gibi) var. Kıyaslamadan
+     önce ifadeleri atıp kaçışları çöz — yoksa gerçek kayıp ile biçim farkı
+     birbirine karışır. */
+  const SENTINEL = String.fromCharCode(0);
+  const ifadeleriAt = (t) => {
+    let out = '';
+    let depth = 0;
+    for (let i = 0; i < t.length; i++) {
+      const c = t[i];
+      if (c === '$' && t[i + 1] === '{') { depth++; i++; out += SENTINEL; continue; }
+      if (c === '}' && depth > 0) { depth--; continue; }
+      if (!depth) out += c;
+    }
+    return out;
+  };
+  const kacisCoz = (t) => t.replace(new RegExp('\\\\(.)', 'g'),
+    (m, c) => (c === 'n' ? String.fromCharCode(10) : c === 't' ? String.fromCharCode(9) : c));
+  const norm = (t) => String(t).replace(/\s+/g, ' ').trim();
+  const altin = (t) => norm(kacisCoz(ifadeleriAt(String(t))));
+  for (const [ad, fn] of Object.entries(uret)) {
+    let uretilen = '';
+    try { uretilen = norm(fn()); } catch (e) { yaz(false, `üretilebiliyor · ${ad}`, e.message); continue; }
+    yaz(uretilen.length > 100, `üretilebiliyor · ${ad}`, `${uretilen.length} krk`);
+    // Altın metni cümlelere böl; şablon değişkeni içerenleri ve çok kısaları atla.
+    // `yazar` prompt'unun AYNA bloğu yalnız ikinci dil çağrısında çıkar;
+    // iki çağrının BİRLEŞİMİ altın metnin tamamını kapsamalı.
+    if (ad === 'yazar') uretilen += ' ' + norm(AI.yazarPrompt({ title: 'X' }, 'N', 'tr', { lang: { title: 'X' } }));
+    const cumleler = altin(G[ad]).split(/(?<=[.:?]) /)
+      .map((c) => c.trim())
+      .filter((c) => c.length >= 30 && !c.includes(SENTINEL));
+    const eksik = cumleler.filter((c) => !uretilen.includes(c))
+      .filter((c) => !(BILINCLI_SAPMA[ad] || []).some((b) => c.includes(b)));
+    yaz(eksik.length === 0, `altın kopyadan cümle düşmemiş · ${ad}`,
+      eksik.length ? `${eksik.length} EKSİK → ${eksik[0].slice(0, 70)}…` : `${cumleler.length} cümle`);
   }
-  // SSS zorunlu — FAQPage yapısal verisinin TEK kaynağı
-  icerir('yazar · EN', /soru işaretiyle/i, 'SSS soru işareti kuralı');
-  icerir('komut', /soru işaretiyle/i, 'SSS soru işareti kuralı');
-  // Konu KÜRESEL olmalı
-  icerir('konu sihirbazı', /KÜRESEL/, 'konu küresel olmalı');
-  icerir('konu sihirbazı', /Eski Başlık/, 'yazılmış başlıklar modele veriliyor');
-  // Alakasız ürün yasağı
-  icerir('yazar · EN', /(ALAKASIZ|AİT OLMAK ZORUNDA|yalnızca yazının gerçekten)/i, 'konu dışı öğe yasağı');
-  // Fiyat: canlı fiyat siteden gelir, yazıda bayatlar
-  icerir('yazar · EN', /(fiyat|price)/i, 'fiyat kuralı geçiyor');
-  // Ayna çağrısı: ikinci dil birincinin aynası
-  icerir('yazar · TR (ayna)', /(AYNA|birebir AYNI|aynı sıra)/i, 'ikinci dil ayna kuralı');
-  yaz(!/BU YAZI DİĞER DİLDE ZATEN VAR/.test(metinler['yazar · EN'] || ''), 'ilk dil çağrısında ayna bloğu YOK');
-  // Blok metinleri DÜZ METİN
-  icerir('yazar · EN', /DÜZ METİN/i, 'blok metinleri düz metin');
-  icerir('akıllı içe aktarma', /DÜZ METİN/i, 'blok metinleri düz metin');
-  // Komut prompt'u öğelere de dokunabilmeli (eskiden yasaktı)
-  icerir('komut', /"items"/, 'komut · öğe işlemleri şemada');
-  icerir('komut', /(remove|reorder)/, 'komut · öğe kaldırma/sıralama işlemi');
-  // KONSEPT her prompt'ta
-  for (const ad of ['yazar · EN', 'konu sihirbazı', 'komut', 'qa' in metinler ? 'qa' : 'düzen & kalite']) {
-    icerir(ad, /qorai\.net/, 'site kimliği (KONSEPT) geçiyor');
-  }
+  // Kaybedilip geri alınan kuralları AYRICA, adıyla sabitle.
+  const konu = uret.konu();
+  const yazar = uret.yazar();
+  const komut = uret.komut();
+  yaz(/USD\/EUR\/GBP üzerinden ve küresel bir hareket olarak/.test(konu), 'konu · fiyat KÜRESEL bağlam kuralı');
+  yaz(/o kaynak bayattır — o konuyu ya at ya da güncel kaynakla değiştir/.test(konu), 'konu · BAYAT KAYNAK kuralı');
+  yaz(/Kendi hafızandan genel geçer konu üretme/.test(konu), 'konu · genel geçer konu yasağı');
+  yaz(/bulamadıysan o konuyu ÖNERME/.test(konu), 'konu · kanıtsız konu önerilmez');
+  yaz(/90 günden daha geriye giden bir olayı/.test(konu), 'konu · 90 günlük tazelik penceresi');
+  yaz(/Tıklama tuzağı başlık yazma/.test(konu), 'konu · clickbait yasağı');
+  yaz(/altında kalan varsa GERİ DÖN ve o öğeyi genişlet/.test(yazar), 'yazar · 170 kelime GERİ DÖN kuralı');
+  yaz(/doldurma değil/.test(yazar), 'yazar · SSS doldurma yasağı');
+  yaz(/sayı, ölçüm, karşılaştırma, kime uygun değil/.test(yazar), 'yazar · somut bilgi numaralandırması');
+  yaz(/url" alanını HER ZAMAN boş bırak/.test(yazar), 'yazar · görsel URL yasağı (kural 1)');
+  yaz(/"op": "remove"/.test(komut), 'komut · öğe işlemleri (brief §6.2)');
+  yaz(!/bu çağrıda değiştiremezsin/.test(komut), 'komut · eski "öğelere dokunamazsın" yasağı kalktı');
 }
 
 // ═══ 9) CANLI VERİ (opsiyonel) ════════════════════════════════════════════

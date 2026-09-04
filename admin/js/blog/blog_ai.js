@@ -39,253 +39,406 @@
     + 'phones, laptops, tablets, headphones, monitors, TVs, smartwatches, game '
     + 'consoles and robot vacuums.';
 
-  var KATEGORI_ANAHTARLARI = 'smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums';
-  var SABLON_ANAHTARLARI = 'topn|review|vs|guide|howto|faq|deals|alt|news';
+  // Eski blog.js'te sabitti; altin kopyadaki ceviri metni bunu kullaniyor.
+  var LANG_NAME = { en: 'İngilizce (English)' };
+  function bugunStr() { return new Date().toISOString().slice(0, 10); }
 
-  function bugun() { return new Date().toISOString().slice(0, 10); }
+  /* ══ PROMPT'LAR — METİNLER ESKİ blog.js'TEN BİREBİR ═══════════════════════
+     2026-09-04'te yeniden yazım sırasında bu metinler "toparlanırken" kurallar
+     SESSİZCE DÜŞTÜ ve konu sihirbazı genel geçer, rekabeti yüksek, trend
+     olmayan konular önermeye başladı (kullanıcı bildirdi). Düşenler:
+       konu   · "Fiyattan söz edeceksen USD/EUR/GBP üzerinden ve küresel bir
+                 hareket olarak söz et (üretici zammı, bellek maliyeti…)"
+              · "Bulduğun kaynak geçmişte kalmış bir beklentiden söz ediyorsa o
+                 kaynak BAYATTIR — o konuyu ya at ya da güncel kaynakla değiştir"
+       yazar  · "170'in altında kalan varsa GERİ DÖN ve o öğeyi genişlet"
+              · "Sorular gerçekten sorulan sorular olsun, doldurma değil"
+              · "sayı, ölçüm, karşılaştırma, kime uygun değil" numaralandırması
 
-  /* ── ORTAK KURAL BLOKLARI ────────────────────────────────────────────────
-     TEK KAYNAK. Bir kural dört prompt'a elle kopyalanırsa üçünde güncellenip
-     birinde unutuluyor — bu projede tam olarak böyle oldu (analiz tarafında
-     fiyat kuralı ürün prompt'una eklendi, karşılaştırma/link/aboneliğe
-     eklenmedi). Aşağıdaki bloklar fonksiyondur ve HER prompt onları çağırır. */
+     ARTIK PROMPT METNİ ELLE DÜZENLENMEZ. Metinler
+     scripts/fixtures/blog_prompt_golden.json altın kopyasından üretiliyor
+     (scripts/_blog_ai_prompt_geri_al.mjs) ve gerileme testi §8 her cümlenin
+     yerinde durduğunu denetliyor. Bir kuralı gerçekten değiştirmek gerekirse
+     altın kopyayı da bilerek güncelle — sessiz kısaltma YOK. */
 
-  // KURAL 1 — GÖRSELLERİ AI BULMASIN.
-  // Ölçüldü 2026-09-03, canlı taslak: "iPhone 18 Pro" öğesinin görseli
-  // `google.com/s2/favicons?domain=apple.com`, kapak da büyütülmüş bir Apple
-  // logosuydu. Ürün görselleri KATALOGDAN gelir; katalogda yoksa görsel BOŞ
-  // kalır ve yazar elle koyar.
-  function gorselKuralBlogu() {
-    return 'GÖRSELLER — URL YAZMA\n'
-      + '- "url" alanını HER ZAMAN boş bırak ya da hiç koyma. Ürün görselleri KATALOGDAN gelir;\n'
-      + '  senin bulduğun adresler ya kırık ya da marka logosu oluyor.\n'
-      + '- Sen yalnızca görselin NEREYE ve HANGİ BOYUTTA geleceğini söyle.\n'
-      + '- Görsel bloğunu METNE GÖRE konumlandır: uzun anlatımın yanına "right"/"left" (size "s"/"m"),\n'
-      + '  bir öğeyi öne çıkarıyorsan "full"/"center" (size "l"). Her öğeye en fazla 1-2 görsel.\n'
-      + '- "cap_tr"/"cap_en": görselin altına düşecek tek satırlık açıklama — ürün adını tekrarlama,\n'
-      + '  görselde NE GÖRÜLDÜĞÜNÜ ya da neden önemli olduğunu yaz.';
+  function konuPrompt(n, hint, basliklar) {
+    var bugun = bugunStr();
+    var mevcutBasliklar = function () { return basliklar || []; };
+    return `${KONSEPT}
+
+BUGÜN: ${bugun}
+
+GÖREV: Bu site için ${n} blog konusu öner ve FIRSATA GÖRE SIRALA (en iyisi ilk).
+
+ZORUNLU: Google aramasını kullan. Öneriler ŞU ANKİ trendlere, yeni çıkmış ürünlere,
+yaklaşan lansmanlara, fiyat hareketlerine ve insanların BU HAFTA aradığı sorulara
+dayanmalı. Kendi hafızandan genel geçer konu üretme.
+
+ZATEN YAZILMIŞ BAŞLIKLAR — bunların konusunu TEKRARLAMA:
+${mevcutBasliklar().map((t) => `- ${t}`).join('\n') || '- (henüz yok)'}
+${hint ? `\nKULLANICININ VERDİĞİ YÖN: ${hint}\n` : ''}
+SADECE geçerli JSON döndür, başka hiçbir şey yazma:
+{"topics":[{
+  "title":"<English article title — specific and curious but not clickbait, 45-70 characters>",
+  "title_tr":"<same title in Turkish, natural not translated-sounding>",
+  "angle":"<bu yazı ötekilerden NEYLE ayrışıyor: 1-2 cümle>",
+  "why":"<neden ŞİMDİ: aramada bulduğun somut olay/tarih/fiyat hareketi>",
+  "intent":"<bilgi arama|karşılaştırma|satın alma|sorun çözme>",
+  "keyword":"<tek hedef anahtar kelime öbeği, Türkçe>",
+  "products":["<sitede olması muhtemel 2-5 ürün adı, marka+model>"]
+}]}
+
+KURALLAR:
+- Konular sitenin kategorilerinde OLMALI (telefon, laptop, tablet, kulaklık, monitör, TV, akıllı saat, konsol, robot süpürge).
+- KONU KÜRESEL OLMALI. Sitenin kök adresi İNGİLİZCE ve okuyucuların çoğu
+  Türkiye dışında. "X ürünü Türkiye'de satışa sunuldu", "Türkiye fiyatı",
+  "döviz kuru etkisi" gibi TEK ÜLKEYE ait konular ÖNERME — Amerika'daki ya da
+  Almanya'daki okuyucu için hiçbir şey ifade etmez.
+  Fiyattan söz edeceksen USD/EUR/GBP üzerinden ve küresel bir hareket olarak
+  söz et (üretici zammı, bellek maliyeti, lansman fiyatı). Bir konu YALNIZCA
+  tek bir ülkede anlamlıysa o konu bu site için yanlıştır.
+- Aramayı İNGİLİZCE sorgularla yap; küresel kaynaklara (Reddit, The Verge,
+  Ars Technica, Notebookcheck, GSMArena, RTINGS, uluslararası YouTube
+  incelemeleri) ulaşman gerekiyor. Yerel haber sitelerini kaynak alma.
+- "why" alanına aramada gerçekten gördüğün bir şey yaz; bulamadıysan o konuyu ÖNERME.
+- Tıklama tuzağı başlık yazma; sayı veren, somut başlık yaz.
+- KANIT TAZE OLMALI. Arama sana ESKİ haberleri de getirir; ${bugun} tarihinden
+  90 günden daha geriye giden bir olayı "neden şimdi" diye gösterme. Bulduğun
+  kaynak "2024 sonunda çıkacak" gibi geçmişte kalmış bir beklentiden söz
+  ediyorsa o kaynak bayattır — o konuyu ya at ya da güncel kaynakla değiştir.
+  Aynı maddede hem gelecek hem geçmiş tarih varsa o maddeyi hiç yazma.`;
   }
 
-  // SEO sınırları — seo-audit.mjs kesik başlığı yakalayıp BUILD'İ DÜŞÜRÜYOR.
-  function seoKuralBlogu() {
-    return 'SEO — SİTENİN KURALLARI\n'
-      + '- metaTitle ' + C.META_TITLE_MAX + ', metaDescription ' + C.META_DESC_MAX
-      + ' KARAKTERİ AŞMASIN. Yazmadan önce karakter say.\n'
-      + '- Yazıda H1 YOK; başlık ayrı alanda duruyor, gövde <h2> ile başlar.\n'
-      + '- SSS BÖLÜMÜ ZORUNLU: soru işaretiyle BİTEN <h2> başlıkları ve altlarında 2-4 cümlelik\n'
-      + '  cevaplar olacak şekilde EN AZ 3 soru koy. Soru en az 12, cevap en az 40 karakter olmalı;\n'
-      + '  site bu başlıkları okuyup FAQPage yapısal verisini otomatik üretiyor. Soru işareti yoksa\n'
-      + '  ya da cevap kısaysa o veri HİÇ OLUŞMAZ.\n'
-      + '- Anahtar kelimeyi başlıkta, ilk paragrafta ve en az bir <h2>\'de geçir; doldurma yapma.\n'
-      + '- İç link verirken YALNIZCA /blog/<slug> ve /product/<slug> biçimini kullan.\n'
-      + '  /tr/blog/... ADRESİ YOK — yumuşak 404 (noindex) döner.';
-  }
-
-  // Blok metinleri DÜZ METİN; site markdown-benzeri kurallarla render eder.
-  function metinKuralBlogu() {
-    return 'METİN BİÇİMİ\n'
-      + '- body_html ürün bölümlerinden ÖNCEKİ giriş; conclusion_html ürünlerden SONRAKİ sonuç.\n'
-      + '- body_html/conclusion_html GEÇERLİ HTML: <h2>/<h3>, <p>, <ul><li>, <strong>, <table>.\n'
-      + '- items[].blocks metinleri DÜZ METİN — hiçbir HTML etiketi koyma. Kalın için **yıldız**,\n'
-      + '  madde için satır başına "- ", ara başlık için "## ".\n'
-      + '- Metin ÇEVİRİ KOKMAMALI; hedef dilde doğal, o dilde yazılmış gibi olsun.';
-  }
-
-  /* DÜRÜSTLÜK + FİYAT.
-     Blog fiyatları CANLIDAN gelir (seo.mjs:152 ürün fiyatlarını PB'den çekip
-     ön-render'a basıyor); editörde yazılan fiyat metni bayatlar. */
-  function durustlukBlogu() {
-    return 'DÜRÜSTLÜK\n'
-      + '- Fiyat, tarih, "şu anda satışta" gibi iddiaları YALNIZCA araştırma notlarında varsa yaz.\n'
-      + '- ÜRÜN FİYATI YAZMA: site her ürün kartında CANLI fiyatı kendisi gösteriyor, senin\n'
-      + '  yazdığın rakam bir hafta sonra yanlış olur. Fiyat bir SEVİYE olarak anlatılabilir\n'
-      + '  ("amiral gemisi segmenti", "orta segment") ama rakam verilmez.\n'
-      + '- Emin olmadığın sayıyı yazma; "yaklaşık", "araştırma sırasında" gibi ifadelerle çerçevele.\n'
-      + '- Reklam dili yok: "muhteşem", "inanılmaz", "kaçırmayın" yasak. Sayı ver, hüküm ver.';
-  }
-
-  // ── 1) KONU SİHİRBAZI ───────────────────────────────────────────────────
-  function konuPrompt(n, hint, mevcutBasliklar) {
-    var g = bugun();
-    return KONSEPT + '\n\nBUGÜN: ' + g + '\n\n'
-      + 'GÖREV: Bu site için ' + (n || 15) + ' blog konusu öner ve FIRSATA GÖRE SIRALA (en iyisi ilk).\n\n'
-      + 'ZORUNLU: Google aramasını kullan. Öneriler ŞU ANKİ trendlere, yeni çıkmış ürünlere,\n'
-      + 'yaklaşan lansmanlara, fiyat hareketlerine ve insanların BU HAFTA aradığı sorulara\n'
-      + 'dayanmalı. Kendi hafızandan genel geçer konu üretme.\n\n'
-      + 'ZATEN YAZILMIŞ BAŞLIKLAR — bunların konusunu TEKRARLAMA:\n'
-      + ((mevcutBasliklar || []).map(function (t) { return '- ' + t; }).join('\n') || '- (henüz yok)')
-      + (hint ? '\n\nKULLANICININ VERDİĞİ YÖN: ' + hint + '\n' : '\n')
-      + '\nSADECE geçerli JSON döndür, başka hiçbir şey yazma:\n'
-      + '{"topics":[{\n'
-      + '  "title":"<English article title — specific and curious but not clickbait, 45-70 characters>",\n'
-      + '  "title_tr":"<AYNI başlığın TÜRKÇESİ — panel Türkçe, İngilizce başlık gösterme>",\n'
-      + '  "angle":"<bu yazı ötekilerden NEYLE ayrışıyor: 1-2 cümle, TÜRKÇE>",\n'
-      + '  "why":"<neden ŞİMDİ: aramada bulduğun somut olay/tarih/fiyat hareketi, TÜRKÇE>",\n'
-      + '  "intent":"<bilgi arama|karşılaştırma|satın alma|sorun çözme>",\n'
-      + '  "keyword":"<tek hedef anahtar kelime öbeği, Türkçe>",\n'
-      + '  "products":["<sitede olması muhtemel 2-5 ürün adı, marka+model>"]\n'
-      + '}]}\n\n'
-      + 'KURALLAR:\n'
-      + '- Konular sitenin kategorilerinde OLMALI (telefon, laptop, tablet, kulaklık, monitör, TV,\n'
-      + '  akıllı saat, konsol, robot süpürge).\n'
-      + '- KONU KÜRESEL OLMALI. Sitenin kök adresi İNGİLİZCE ve okuyucuların çoğu Türkiye dışında.\n'
-      + '  "X ürünü Türkiye\'de satışa sunuldu", "Türkiye fiyatı", "döviz kuru etkisi" gibi TEK\n'
-      + '  ÜLKEYE ait konular ÖNERME — Amerika\'daki ya da Almanya\'daki okuyucu için hiçbir şey\n'
-      + '  ifade etmez. Bir konu YALNIZCA tek bir ülkede anlamlıysa o konu bu site için yanlıştır.\n'
-      + '- Aramayı İNGİLİZCE sorgularla yap; küresel kaynaklara (Reddit, The Verge, Ars Technica,\n'
-      + '  Notebookcheck, GSMArena, RTINGS, uluslararası YouTube incelemeleri) ulaşman gerekiyor.\n'
-      + '  Yerel haber sitelerini kaynak alma.\n'
-      + '- "title_tr" ZORUNLU: panel Türkçe, konu listesinde İngilizce başlık görmek istemiyorum.\n'
-      + '- "why" alanına aramada gerçekten gördüğün bir şey yaz; bulamadıysan o konuyu ÖNERME.\n'
-      + '- Tıklama tuzağı başlık yazma; sayı veren, somut başlık yaz.\n'
-      + '- KANIT TAZE OLMALI. Arama sana ESKİ haberleri de getirir; ' + g + ' tarihinden 90 günden\n'
-      + '  daha geriye giden bir olayı "neden şimdi" diye gösterme. Aynı maddede hem gelecek hem\n'
-      + '  geçmiş tarih varsa o maddeyi hiç yazma.';
-  }
-
-  // ── 2) ARAŞTIRMA ────────────────────────────────────────────────────────
-  // Grounded, MAKALE BAŞINA BİR KEZ — iki dil de aynı notları kullanır.
-  // Hem tutarlılık hem de istek başına faturalanan aramadan tasarruf.
   function arastirmaPrompt(baslik) {
-    return 'Topic: "' + baslik + '". Gather the facts that are true TODAY for a GLOBAL audience: '
-      + 'newly released or upcoming models and their dates, current price ranges in USD/EUR/GBP, availability, '
-      + 'recurring owner complaints, what expert reviews agree on, recent price moves. '
-      + 'Search in English and prefer international sources (Reddit, The Verge, Ars Technica, Notebookcheck, '
-      + 'GSMArena, RTINGS, major YouTube reviews). Write bullet points; say what each source claims. '
-      + 'Plain text, NOT JSON.';
+    return `Topic: "${baslik}". Gather the facts that are true TODAY for a GLOBAL audience: newly released or upcoming models and their dates, current price ranges in USD/EUR/GBP, availability, recurring owner complaints, what expert reviews agree on, recent price moves. Search in English and prefer international sources (Reddit, The Verge, Ars Technica, Notebookcheck, GSMArena, RTINGS, major YouTube reviews). Write bullet points; say what each source claims. Plain text, NOT JSON.`;
   }
 
-  // ── 3) YAZAR ────────────────────────────────────────────────────────────
-  /* ŞABLON YOK. Kullanıcının açık isteği: "tek bir şablona bağlı kalınsın ya
-     da şablonlar önceden hazır olsun istemiyorum". Prompt yapı DAYATMIYOR;
-     yalnızca sınırları söylüyor ve gerisini modele bırakıyor.
-
-     TEK ÇAĞRIDA İKİ DİL = KESİK JSON. Önceki sürüm `langs: {tr, en}` isteyip
-     ikisini birden yazdırıyordu; çıktı `maxOutputTokens`'ı aşınca Gemini
-     `finishReason: MAX_TOKENS` ile yarıda kesiyor ve kullanıcı "AI yanıtını
-     çözemedi" hatası alıyordu. Artık DİL BAŞINA AYRI ÇAĞRI; ikinci dil
-     birincinin AYNASI (`taban` parametresi). */
   function yazarPrompt(konu, arastirma, lang, taban) {
-    var k = konu || {};
+    var bugun = bugunStr();
     var dilAd = lang === 'tr' ? 'TÜRKÇE' : 'İNGİLİZCE (English)';
-    return KONSEPT + '\n\nBUGÜN: ' + bugun() + '\n\n'
-      + 'KONU: ' + (k.title || k) + '\n'
-      + (k.angle ? 'AÇI: ' + k.angle + '\n' : '')
-      + (k.keyword ? 'HEDEF ANAHTAR KELİME: ' + k.keyword + '\n' : '')
-      + (k.intent ? 'ARAMA NİYETİ: ' + k.intent + '\n' : '')
-      + '\nGÜNCEL ARAŞTIRMA NOTLARI (bunlara dayan, hafızandan tarih/fiyat uydurma):\n'
-      + (arastirma || '(araştırma yapılamadı — tarih ve fiyat iddiasında BULUNMA, yalnızca kalıcı doğruları yaz)')
-      + '\n\nGÖREVİN: Yayına hazır, TAM bir blog yazısı üret. YALNIZCA ' + dilAd + ' yaz — tek dil.\n\n'
-      + (taban
-        ? 'BU YAZI DİĞER DİLDE ZATEN VAR. Yeni bir yazı KURGULAMA; aşağıdaki yazının ' + dilAd + '\n'
-          + 'sürümünü yaz. AYNA KURALI: aynı bölümler, aynı sıra, aynı ürünler, aynı sayılar.\n'
-          + 'Kelimesi kelimesine çeviri yapma — hedef dilde doğal yaz — ama HİÇBİR bölüm ekleme,\n'
-          + 'çıkarma ya da yeniden sıralama.\n'
-          + 'SAYILAR BİREBİR TUTMALI: <h2> sayısı aynı, SSS sorusu sayısı aynı, öğe sayısı aynı.\n'
-          + 'Diğer dilde 5 soru varsa sende de TAM 5 olacak.\n'
-          + 'Ürün listesi ("items") birebir AYNI olmalı: aynı adet, aynı sıra, aynı "search"\n'
-          + 'değerleri (katalog adları çevrilmez).\n\n'
-          + 'DİĞER DİLDEKİ YAZI:\n' + JSON.stringify(taban).slice(0, 60000) + '\n\n'
-        : '')
-      + 'YAPIYI SEN KURARSIN. Şablon dayatılmıyor: bölüm sayısını, başlıkları, sıralamayı,\n'
-      + 'kaç ürün anlatacağını, görsellerin nereye ve hangi boyutta geleceğini konuya göre\n'
-      + 'SEN belirle. İyi bir yazı için ne gerekiyorsa onu yap.\n\n'
-      + 'SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:\n'
-      + '{\n'
-      + '  "category": "<kategori anahtarı: ' + KATEGORI_ANAHTARLARI + '|... yoksa boş>",\n'
-      + '  "template": "<yazının TÜRÜ: ' + SABLON_ANAHTARLARI + '>",\n'
-      + '  "lang": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "",\n'
-      + '            "metaTitle": "", "metaDescription": "", "tags": "" },\n'
-      + '  "items": [\n'
-      + '    { "kind": "product|subscription|service",\n'
-      + '      "search": "<YALNIZ kind=product: sade katalog adı, marka + model, fiyat/ek İÇERMEZ>",\n'
-      + '      "name": "<yazıda görünen başlık>",\n'
-      + '      "brand": "<marka adı>",\n'
-      + '      "site": "<markanın resmî alan adı, emin değilsen boş>",\n'
-      + '      "blocks": [\n'
-      + '        { "type": "text", "style": "paragraph|heading|subheading|bullets",\n'
-      + '          "text": "<BU ÖĞENİN TAM METNİ — EN AZ 170 KELİME, 3 paragraf. 1) ne olduğu ve kime\n'
-      + '                    hitap ettiği, 2) ölçülebilir farkı: en az üç somut sayı (mAh, nit, Hz, GB,\n'
-      + '                    saat), 3) neye dikkat etmeli / kime UYGUN DEĞİL.>" },\n'
-      + '        { "type": "image", "pos": "left|right|full|center", "size": "s|m|l", "cap": "" }\n'
-      + '      ] }\n'
-      + '  ]\n'
-      + '}\n\n'
-      + gorselKuralBlogu() + '\n\n'
-      + metinKuralBlogu() + '\n\n'
-      + 'UZUNLUK — BURAYA DİKKAT, EN SIK YAPILAN HATA BU\n'
-      + '- TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:\n'
-      + '  body_html + conclusion_html + items[] içindeki BÜTÜN blok metinleri.\n'
-      + '- Bütçe şöyle dağılır ve HER BİRİ ayrı ayrı tutturulmalıdır:\n'
-      + '    body_html          en az 250 kelime  (konuyu kur, karar kriterini söyle)\n'
-      + '    her bir öğe metni  en az 170 kelime  (öğe sayısı × 170 = ana gövde)\n'
-      + '    conclusion_html    en az 200 kelime  + SSS bölümü\n'
-      + '- ASIL METİN ÖĞELERİN İÇİNDEDİR. En sık yaptığın hata öğelere iki-üç cümlelik metin\n'
-      + '  yazmak; bu yazıyı "ince içerik" yapıyor ve sayfa değersizleşiyor.\n'
-      + '- Uzunluğu doldurma cümlesiyle değil, DAHA FAZLA SOMUT BİLGİYLE karşıla.\n'
-      + '- SON KONTROL: JSON\'u göndermeden önce her öğenin metnini kelime kelime say.\n\n'
-      + seoKuralBlogu() + '\n\n'
-      + 'ÖĞELER KONUYA AİT OLMAK ZORUNDA\n'
-      + '- "items" listesine YALNIZCA yazının gerçekten ele aldığı ürünleri koy. Başlık bir ürün\n'
-      + '  hakkındaysa, başka bir ürüne bölüm açma. Yazının KONUSUYLA ALAKASIZ öğe YASAK.\n'
-      + '  Ölçüldü: "Apple\'ın 9 Eylül etkinliğinden neler beklenmeli?" başlıklı yazıya model\n'
-      + '  "iPhone 17 Pro" bölümü eklemişti — okuyucunun sorduğu soruyla ilgisiz.\n'
-      + '- Konu henüz ÇIKMAMIŞ bir ürünse (beklenti, sızıntı, etkinlik önizlemesi), "items" BOŞ\n'
-      + '  olabilir ve olmalıdır da: var olmayan bir ürünün kartını açmak okuyucuya satın\n'
-      + '  alınabilir bir şey varmış izlenimi verir.\n'
-      + '- Karşılaştırma amaçlı bir önceki nesle DEĞİNMEK serbest — ama gövde metninde, ayrı bir\n'
-      + '  ürün öğesi olarak DEĞİL.\n\n'
-      + durustlukBlogu();
+    konu = konu || {};
+    return `${KONSEPT}
+
+BUGÜN: ${bugun}
+
+KONU: ${konu.title || konu}
+${konu.angle ? `AÇI: ${konu.angle}` : ''}
+${konu.keyword ? `HEDEF ANAHTAR KELİME: ${konu.keyword}` : ''}
+${konu.intent ? `ARAMA NİYETİ: ${konu.intent}` : ''}
+
+GÜNCEL ARAŞTIRMA NOTLARI (bunlara dayan, hafızandan tarih/fiyat uydurma):
+${arastirma || '(araştırma yapılamadı — tarih ve fiyat iddiasında BULUNMA, yalnızca kalıcı doğruları yaz)'}
+
+GÖREVİN: Yayına hazır, TAM bir blog yazısı üret. YALNIZCA ${dilAd} yaz — tek dil.
+
+${taban ? `BU YAZI DİĞER DİLDE ZATEN VAR. Yeni bir yazı KURGULAMA; aşağıdaki
+yazının ${dilAd} sürümünü yaz. Aynı bölümler, aynı sıra, aynı ürünler, aynı
+sayılar. Kelimesi kelimesine çeviri yapma — hedef dilde doğal yaz — ama
+HİÇBİR bölüm ekleme, çıkarma ya da yeniden sıralama.
+SAYILAR BİREBİR TUTMALI: <h2> sayısı aynı, SSS sorusu sayısı aynı, öğe
+sayısı aynı. Diğer dilde 5 soru varsa sende de TAM 5 olacak — bir tane
+fazla ya da eksik yazma.
+Ürün listesi ("items") birebir AYNI olmalı: aynı adet, aynı sıra, aynı
+"search" değerleri (katalog adları çevrilmez).
+
+DİĞER DİLDEKİ YAZI:
+${JSON.stringify(taban).slice(0, 60000)}
+` : ''}
+YAPIYI SEN KURARSIN. Şablon dayatılmıyor: bölüm sayısını, başlıkları, sıralamayı,
+kaç ürün anlatacağını, görsellerin nereye ve hangi boyutta geleceğini konuya göre
+SEN belirle. İyi bir yazı için ne gerekiyorsa onu yap.
+
+SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK:
+{
+  "category": "<kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
+  "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
+  "lang": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
+  "items": [
+    { "kind": "product|subscription|service",
+      "search": "<YALNIZ kind=product: sade katalog adı, marka + model, fiyat/ek İÇERMEZ>",
+      "name": "<yazıda görünen başlık>",
+      "brand": "<marka adı>",
+      "site": "<markanın resmî alan adı, emin değilsen boş>",
+      "blocks": [
+        { "type": "text", "style": "paragraph",
+          "text": "<BU ÖĞENİN TAM METNİ — EN AZ 170 KELİME, 3 paragraf. 1) ne olduğu ve kime hitap ettiği, 2) ölçülebilir farkı: en az üç somut sayı (mAh, nit, Hz, GB, saat, USD), 3) neye dikkat etmeli / kime UYGUN DEĞİL. Düz metin, HTML yok; kalın için **yıldız**, madde için satır başına '- '.>" },
+        { "type": "image", "pos": "left|right|full|center", "size": "s|m|l", "cap_tr": "", "cap_en": "" }
+      ] }
+  ]
+}
+
+GÖRSELLER
+- Ürün görselleri KATALOGDAN gelir; sen URL YAZMA, "url" alanını boş bırak ya da hiç koyma.
+  Sistem her ürünün görselini kendisi bulup senin işaretlediğin yere yerleştirir.
+- Görsel bloğunu METNE GÖRE konumlandır: uzun anlatımın yanına "right"/"left" (size "s"/"m"),
+  bir ürünü öne çıkarıyorsan "full"/"center" (size "l"). Her öğeye en fazla 1-2 görsel.
+- "cap_tr"/"cap_en": görselin altına düşecek tek satırlık açıklama — ürün adını tekrarlama,
+  görselde NE GÖRÜLDÜĞÜNÜ ya da neden önemli olduğunu yaz.
+
+METİN
+- body_html ürün bölümlerinden ÖNCEKİ giriş/genel yazı; conclusion_html ürünlerden SONRAKİ sonuç.
+- body_html/conclusion_html GEÇERLİ HTML: <h2>/<h3>, <p>, <ul><li>, <strong>, <table>.
+- items[].blocks metinleri DÜZ METİN — hiçbir HTML etiketi koyma. Kalın için **yıldız**,
+  madde için satır başına "- ", ara başlık için "## ".
+- Metin ÇEVİRİ KOKMAMALI; hedef dilde doğal, o dilde yazılmış gibi olsun.
+
+UZUNLUK — BURAYA DİKKAT, EN SIK YAPILAN HATA BU
+- TOPLAM 1400-2200 kelime. Bu toplam ŞUNLARIN HEPSİNİ kapsar:
+  body_html + conclusion_html + items[] içindeki BÜTÜN blok metinleri.
+- Bütçe şöyle dağılır ve HER BİRİ ayrı ayrı tutturulmalıdır:
+    body_html          en az 250 kelime  (konuyu kur, karar kriterini söyle)
+    her bir öğe metni  en az 170 kelime  (öğe sayısı × 170 = ana gövde)
+    conclusion_html    en az 200 kelime  + SSS bölümü
+  Örnek: 5 öğeli bir yazıda 250 + 5×170 + 200 = 1300 kelime taban demektir.
+- ASIL METİN ÖĞELERİN İÇİNDEDİR. En sık yaptığın hata öğelere iki-üç cümlelik
+  metin yazmak; bu yazıyı "ince içerik" yapıyor ve sayfa değersizleşiyor.
+- Uzunluğu doldurma cümlesiyle değil, DAHA FAZLA SOMUT BİLGİYLE karşıla:
+  sayı, ölçüm, karşılaştırma, kime uygun değil.
+- SON KONTROL: JSON'u göndermeden önce her öğenin metnini kelime kelime say.
+  170'in altında kalan varsa GERİ DÖN ve o öğeyi genişlet.
+
+SEO — SİTENİN KURALLARI
+- metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN. Yazmadan önce karakter say.
+- Yazıda TAM OLARAK BİR H1 yok; başlık ayrı alanda duruyor, gövde <h2> ile başlar.
+- SSS BÖLÜMÜ ZORUNLU: conclusion_html'in içine ya da body_html'in sonuna, soru işaretiyle
+  BİTEN <h2> başlıkları ve altlarında 2-4 cümlelik cevaplar olacak şekilde EN AZ 3 soru koy.
+  Site bu başlıkları okuyup FAQPage yapısal verisini otomatik üretiyor; soru işareti yoksa
+  o veri hiç oluşmaz. Sorular gerçekten sorulan sorular olsun, doldurma değil.
+- Anahtar kelimeyi başlıkta, ilk paragrafta ve en az bir <h2>'de geçir; doldurma yapma.
+
+ÖĞELER KONUYA AİT OLMAK ZORUNDA
+- "items" listesine YALNIZCA yazının gerçekten ele aldığı ürünleri koy. Başlık
+  bir ürün hakkındaysa, başka bir ürüne bölüm açma.
+  Ölçüldü: "Apple'ın 9 Eylül etkinliğinden neler beklenmeli?" başlıklı yazıya
+  model "iPhone 17 Pro" bölümü eklemişti — okuyucunun sorduğu soruyla ilgisiz.
+- Konu henüz ÇIKMAMIŞ bir ürünse (beklenti, sızıntı, etkinlik önizlemesi),
+  "items" BOŞ olabilir ve olmalıdır da: var olmayan bir ürünün kartını açmak
+  okuyucuya satın alınabilir bir şey varmış izlenimi verir.
+- Karşılaştırma amaçlı bir önceki nesle DEĞİNMEK serbest — ama gövde metninde,
+  ayrı bir ürün öğesi olarak DEĞİL.
+
+GÖRSELLER — URL YAZMA
+- "url" alanını HER ZAMAN boş bırak. Ürün görselleri katalogdan gelir; senin
+  bulduğun adresler ya kırık ya da marka logosu oluyor. Sen yalnızca görselin
+  NEREYE ve HANGİ BOYUTTA geleceğini söyle.
+
+DÜRÜSTLÜK
+- Fiyat, tarih, "şu anda satışta" gibi iddiaları YALNIZCA araştırma notlarında varsa yaz.
+- Emin olmadığın sayıyı yazma; "yaklaşık", "araştırma sırasında" gibi ifadelerle çerçevele.
+- Reklam dili yok: "muhteşem", "inanılmaz", "kaçırmayın" yasak. Sayı ver, hüküm ver.`;
   }
 
-  // ── 4) KOMUTLA DEĞİŞİKLİK ───────────────────────────────────────────────
-  /* Taslak hazır olduktan sonra kullanıcı ekranda okuyup "girişi kısalt, 3.
-     ürünü çıkar" diyebilmeli. Model MEVCUT metni görür ve YALNIZCA
-     değiştirdiği alanları döndürür.
-
-     ÖĞE İŞLEMLERİ YENİ. Eski prompt "içerik öğelerini bu çağrıda
-     değiştiremezsin" diyordu, yani "3. ürünü çıkar" komutu çalışmıyordu.
-     Artık model yalnızca İŞLEMİ söyler; uygulamayı kod yapar ve eklenen öğe
-     KATALOG KAPISINDAN geçer (uydurma ürün giremez). */
   function komutPrompt(komut, mevcut) {
-    return KONSEPT + '\n\n'
-      + 'Aşağıda yayına hazırlanan bir blog yazısının MEVCUT hâli var. Kullanıcı bir DEĞİŞİKLİK istiyor.\n\n'
-      + 'KULLANICININ İSTEĞİ:\n' + komut + '\n\n'
-      + 'MEVCUT YAZI (JSON):\n' + JSON.stringify(mevcut || {}).slice(0, 120000) + '\n\n'
-      + 'SADECE geçerli JSON döndür. YALNIZCA DEĞİŞTİRDİĞİN ALANLARI koy — dokunmadığın alanı\n'
-      + 'hiç yazma, çünkü yazmadığın alan olduğu gibi korunur:\n'
-      + '{\n'
-      + '  "langs": { "tr": { "title": "", "lead": "", "body_html": "", "conclusion_html": "",\n'
-      + '                     "metaTitle": "", "metaDescription": "" }, "en": { ... } },\n'
-      + '  "items": [\n'
-      + '    { "op": "remove",  "i": <öğe indeksi> },\n'
-      + '    { "op": "reorder", "order": [<yeni sıradaki eski indeksler>] },\n'
-      + '    { "op": "rewrite", "i": <indeks>, "tr": "<yeni düz metin>", "en": "<yeni düz metin>" },\n'
-      + '    { "op": "add", "kind": "product|subscription|service", "search": "<sade katalog adı>",\n'
-      + '      "name": "<görünen ad>", "tr": "<düz metin>", "en": "<düz metin>" }\n'
-      + '  ],\n'
-      + '  "note": "<ne yaptığını tek cümlede özetle, Türkçe>"\n'
-      + '}\n\n'
-      + 'KURALLAR:\n'
-      + '- "items" alanını YALNIZCA kullanıcı öğelerden söz ettiyse doldur; yoksa hiç yazma.\n'
-      + '- Kullanıcı "3. ürünü çıkar" derse indeks 0 tabanlıdır → {"op":"remove","i":2}.\n'
-      + '- "add" ile eklediğin öğe KATALOG ARAMASINDAN geçer; katalogda yoksa özel öğe olur.\n'
-      + '  Var olmayan ürün UYDURMA — emin değilsen "kind":"service" yaz.\n'
-      + '- Öğe metinleri DÜZ METİN: HTML etiketi yok, kalın için **yıldız**, madde için "- ".\n'
-      + '- İstek tek bir dili anıyorsa yalnız o dili değiştir; ikisini de anıyorsa ikisini birden.\n'
-      + '- body_html/conclusion_html GEÇERLİ HTML olmalı (<h2>, <p>, <ul><li>, <strong>, <table>).\n'
-      + '- metaTitle ' + C.META_TITLE_MAX + ', metaDescription ' + C.META_DESC_MAX + ' karakteri AŞMASIN.\n'
-      + '- SSS başlıkları soru işaretiyle BİTMELİ (soru ≥12, cevap ≥40 karakter); site FAQPage\n'
-      + '  verisini oradan üretiyor.\n'
-      + '- İstenmeyen hiçbir şeyi değiştirme. "Girişi kısalt" dendiyse sonucu ELLEME.\n'
-      + '- ÜRÜN FİYATI YAZMA — site canlı fiyatı kendisi gösterir.';
+    mevcut = mevcut || {};
+    return `${KONSEPT}
+
+Aşağıda yayına hazırlanan bir blog yazısının MEVCUT hâli var. Kullanıcı bir DEĞİŞİKLİK istiyor.
+
+KULLANICININ İSTEĞİ:
+${komut}
+
+MEVCUT YAZI (JSON):
+${JSON.stringify(mevcut).slice(0, 120000)}
+
+SADECE geçerli JSON döndür. YALNIZCA DEĞİŞTİRDİĞİN ALANLARI koy — dokunmadığın alanı
+hiç yazma, çünkü yazmadığın alan olduğu gibi korunur:
+{
+  "langs": { "tr": { "title": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "" }, "en": { ... } },
+  "items": [
+    { "op": "remove",  "i": <öğe indeksi> },
+    { "op": "reorder", "order": [<yeni sıradaki eski indeksler>] },
+    { "op": "rewrite", "i": <indeks>, "tr": "<yeni düz metin>", "en": "<yeni düz metin>" },
+    { "op": "add", "kind": "product|subscription|service", "search": "<sade katalog adı>",
+      "name": "<görünen ad>", "tr": "<düz metin>", "en": "<düz metin>" }
+  ],
+  "note": "<ne yaptığını tek cümlede özetle>"
+}
+
+KURALLAR:
+- İstek tek bir dili anıyorsa yalnız o dili değiştir; ikisini de anıyorsa ikisini birden.
+- body_html/conclusion_html GEÇERLİ HTML olmalı (<h2>, <p>, <ul><li>, <strong>, <table>).
+- metaTitle 60, metaDescription 155 karakteri AŞMASIN.
+- SSS başlıkları soru işaretiyle BİTMELİ; site FAQPage verisini oradan üretiyor.
+- İstenmeyen hiçbir şeyi değiştirme. "Girişi kısalt" dendiyse sonucu ELLEME.
+- ÖĞELERE DOKUNABİLİRSİN — ama yalnızca İŞLEMİ söyleyerek; uygulamayı kod yapar ve
+  eklenen öğe KATALOG KAPISINDAN geçer, yani var olmayan ürün yazıya giremez.
+  "3. ürünü çıkar" denirse indeks 0 tabanlıdır → {"op":"remove","i":2}.
+  "add" ile eklediğin öğe katalogda yoksa özel öğe olur; ürün UYDURMA, emin
+  değilsen "kind":"service" yaz. Öğe metinleri DÜZ METİN (HTML etiketi yok).
+  Kullanıcı öğelerden söz etmediyse "items" alanını HİÇ yazma.`;
   }
 
-  /* Öğe işlemlerini DETERMİNİSTİK uygula. Model yalnız işlemi söyler.
-     SIRA ÖNEMLİ: indeksler ÇAĞRI ANINDAKİ diziye göre verildi, o yüzden
-     önce rewrite (indeks sabit), sonra remove (büyükten küçüğe), sonra
-     reorder, en son add (sona eklenir). `add` katalog gerektirir → ayrı
-     döndürülür, çağıran `ogeleriIceAktar` ile geçirir. */
+  function qaPrompt(outline) {
+    outline = outline || {};
+    return `Sen bir yayın editörü ve sayfa tasarımcısısın. Aşağıda bir blog makalesinin yapısı JSON olarak veriliyor (dil: ${outline.lang}).
+
+GÖREVİN ÜÇ PARÇA:
+
+A) ŞABLON: Makalenin TÜRÜNÜ içeriğe bakarak belirle — "template" alanına yaz:
+   topn (en iyi N listesi) | review (tek ürün incelemesi) | vs (karşılaştırma) | guide (satın alma rehberi) |
+   howto (adım adım) | faq (soru-cevap) | deals (fırsat) | alt (alternatifler) | news (haber/duyuru).
+   Verilen "template" değeri içerikle uyuşmuyorsa DÜZELT.
+
+B) GÖRSEL YERLEŞİMİ: Her öğe için görselin nereye ve ne büyüklükte konacağına METNİN UZUNLUĞUNA, ritmine ve ŞABLONA bakarak karar ver.
+   - "pos": "left" | "right" | "center" | "full"
+   - "size": "s" | "m" | "l" | "xl"
+   - Kurallar: Kısa metinde (<400 karakter) yana sarma kötü durur → "center" veya "full" tercih et. Uzun metinde (>600 karakter) yana sarma iyidir → "left"/"right". ARDIŞIK öğelerde aynı tarafı tekrarlama, sağ-sol dönüşümlü bir ritim kur. Listenin ilk öğesi öne çıksın (daha büyük). Öğe metni çok kısaysa görseli küçült.
+   - ŞABLONA GÖRE: topn'de sıralı ritim (ilk öğe büyük); vs'de iki taraf SİMETRİK (aynı size, biri left biri right); review'da tek öğe "full"/"center"; guide/faq'ta görseller küçük kalsın, metin öne çıksın.
+   - Öğe "custom/service" ise görseli genelde bir LOGO'dur: logolar büyük basılmaz → "s" veya "m", tercihen "left"/"right".
+
+C) KALİTE DENETİMİ: Yayın öncesi gerçek sorunları bul. Uydurma sorun YAZMA; sorun yoksa boş dizi dön. Her sorun: {"level":"error"|"warn"|"info","text":"<tek cümle, Türkçe, ne yapılacağını söyle>"}
+   Bakılacaklar: giriş yazısı var mı ve konuyu kuruyor mu; öğe metinleri arasında ciddi uzunluk dengesizliği; anlam bütünlüğü (giriş listede vaat edileni tutuyor mu, sonuç öğelerle çelişiyor mu); başıboş kalmış kaynak adı/atıf artığı satırlar; tekrar eden kalıp cümleler; sonuç yazısı eksik mi; başlık ile içerik uyumsuzluğu; bir öğe yazının KONUSUYLA ALAKASIZ mı (yanlış eşleşmiş ürün).
+   Görsel/kapak eksikliğini YAZMA — onu kod zaten otomatik tamamlıyor, iki kez raporlanıyor.
+
+SADECE şu JSON'u döndür:
+{"template":"...","layout":[{"i":<öğe indeksi>,"pos":"...","size":"...","why":"<çok kısa gerekçe>"}],"issues":[{"level":"...","text":"..."}],"verdict":"<tek cümle genel değerlendirme>"}
+
+MAKALE YAPISI:
+${JSON.stringify(outline)}`;
+  }
+
+  function junkPrompt(cands) {
+    cands = cands || [];
+    return `Aşağıdaki liste, bir teknoloji blog yazısında TEK BAŞINA satır olarak duran kısa metinlerdir. Bir kısmı, yazı kopyalanırken kaynak bağlantılarından arta kalan YAYIN/SİTE/İNCELEME KANALI ADLARIDIR ve yazıya ait değildir; bir kısmı ise gerçek içeriktir (ara başlık, ürün adı, teknik terim).
+
+HER SATIRI TEK TEK sınıflandır. Atlama, hepsi için karar ver.
+
+SADECE şu JSON: {"junk":["<yayın/kaynak adı olanlar>"],"keep":["<gerçek içerik olanlar>"]}
+
+SATIRLAR:
+${JSON.stringify(cands)}`;
+  }
+
+  function ceviriPrompt(payload, dst) {
+    payload = payload || {};
+    return `Sen teknoloji sitesi Qor AI için profesyonel bir çevirmensin. Aşağıdaki JSON'daki TÜM metinleri ${LANG_NAME[dst] || dst} diline çevir.
+
+KESİN KURALLAR:
+- Çıktı SADECE geçerli JSON olsun; girdiyle BİREBİR aynı yapı ve aynı anahtarlar (items dizisindeki "i" ve "j" sayıları AYNEN korunacak).
+- HTML etiketlerini (<p>, <h2>, <ul>, <li>, <strong>, <table>, <a href="...">…) AYNEN koru; sadece etiketler ARASINDAKİ metni çevir.
+- Markdown işaretlerini koru: **kalın**, satır başındaki "- " maddeleri, "## " başlıkları, satır sonları.
+- Ürün/marka/model adlarını, teknik birimleri (mAh, GB, Hz, nit) ve sayıları ÇEVİRME.
+- Doğal ve akıcı yaz — kelimesi kelimesine değil, hedef dilde bir editörün yazacağı gibi.
+- metaTitle 60 karakteri, metaDescription 155 karakteri AŞMASIN.
+- Boş gelen alanları boş bırak.
+
+ÇEVRİLECEK JSON:
+${JSON.stringify(payload)}`;
+  }
+
+  function claudePrompt(kategoriler) {
+    var cats = (kategoriler && kategoriler.length) ? kategoriler.join(', ')
+      : 'smartphones, laptops, tablets, headphones, monitors, tvs, smartwatches, gaming_consoles, robot_vacuums';
+    return `Sen Qor AI (qorai.net) için blog makalesi yazan bir editörsün. Konu: [KONU]
+
+GÖREV: Bu konuda 2 dilde (Türkçe, İngilizce) eksiksiz bir makale yaz ve SADECE aşağıdaki şemaya uyan geçerli bir JSON döndür. JSON dışında hiçbir şey yazma (açıklama, markdown çiti, selamlama yok).
+
+ŞEMA:
+{
+  "category": "<şunlardan biri: ${cats}>",
+  "langs": {
+    "tr": {
+      "title": "<çekici başlık, yıl içerebilir>",
+      "slug": "<url-slug-kucuk-harf-tireli>",
+      "lead": "<özet, 120-160 karakter>",
+      "body_md": "<GİRİŞ bölümü markdown: neden bu liste/konu, nasıl seçildi. 150-300 kelime. ## alt başlıklar, **kalın**, - maddeler, | tablolar | desteklenir. Ürün anlatımlarını BURAYA YAZMA — ürünler items'ta>",
+      "conclusion_md": "<SONUÇ bölümü markdown: özet + öneri, 80-150 kelime>",
+      "metaTitle": "<SEO başlık — KESİNLİKLE 60 KARAKTERİ AŞMASIN, karakterleri say>",
+      "metaDescription": "<SEO açıklama — KESİNLİKLE 155 KARAKTERİ AŞMASIN, karakterleri say>",
+      "tags": "<virgülle 4-6 etiket>"
+    },
+    "en": { <aynı alanlar İngilizce> },
+  },
+  "items": [
+    {
+      "kind": "product",
+      "search": "<katalog araması için sade model adı, örn: iPhone 15 | Samsung Galaxy S24 | MacBook Air M3>",
+      "name": "<görünen ad>",
+      "blocks": [
+        { "type": "text", "style": "paragraph", "tr": "<ürün anlatımı TR — 80-150 kelime. **kalın** vurgu, '- ' ile artı/eksi maddeleri, '## ' ile ara başlık kullanabilirsin>", "en": "<aynısı EN>" }
+      ]
+    }
+  ]
+}
+
+KURALLAR:
+- Liste makalesiyse 5-7 ürün; inceleme ise 1 ürün; karşılaştırmaysa 2 ürün.
+- "search" alanı KRİTİK: mağaza eki olmadan, jenerik model adı (renk/kapasite yazma).
+- Her ürünün bloğunda somut artı/eksi ve kime uygun olduğu olsun; pazarlama dili değil, dürüst değerlendirme.
+- Fiyat YAZMA (site canlı fiyatı kendisi gösterir); "yaklaşık", "civarı" gibi fiyat cümleleri kurma.
+- 3 dil birbirinin çevirisi olsun ama doğal aksın (kelime kelime çeviri değil).
+- body_md içinde bir karşılaştırma tablosu (| Model | Ekran | Pil |…) varsa süper — tablolar destekleniyor.
+- metaTitle/metaDescription sınırlarını yazmadan önce karakter say; sınırı aşan metin Google'da kesilir. Ürün adlarını meta başlığa doldurma, kısa ve net tut.
+- JSON string'lerinde gerçek satır sonu için \\n kullan.`;
+  }
+
+  var AUTO_SCHEMA_PROMPT = `Sen bir içerik dönüştürücüsün. Aşağıdaki HAM METİN bir blog makalesidir; biçimi serbesttir (başlık etiketleri, birden çok dil, markdown, dağınık notlar olabilir).
+
+GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli JSON döndür — açıklama, markdown çiti, selamlama YOK.
+
+ŞEMA:
+{
+  "category": "<varsa uygun kategori anahtarı: smartphones|tablets|laptops|headphones|monitors|tvs|smartwatches|gaming_consoles|robot_vacuums|... yoksa boş>",
+  "template": "<yazının TÜRÜ: topn|review|vs|guide|howto|faq|deals|alt|news>",
+  "langs": {
+    "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "", "metaTitle": "", "metaDescription": "", "tags": "" },
+    "en": { ... }
+  },
+  "items": [
+    { "kind": "product|subscription|service",
+      "search": "<YALNIZ kind=product için: sade model adı: marka + model, FİYAT/ek İÇERMEZ. Diğerlerinde boş>",
+      "name": "<yazarın yazdığı görünen başlık, aynen>",
+      "brand": "<marka/hizmet adı, sade: Midjourney, OpenAI, Adobe>",
+      "site": "<markanın RESMÎ alan adı: midjourney.com — emin değilsen BOŞ>",
+      "blocks": [ { "type": "text", "style": "paragraph", "tr": "", "en": "" } ] }
+  ]
+}
+
+KURALLAR — ÇOK ÖNEMLİ:
+0. "kind" ALANI KRİTİK — yanlışı yazının içine alakasız ürün kartı sokar:
+   - "product": mağazadan satın alınan FİZİKSEL cihaz (telefon, laptop, kulaklık, TV…). Sadece bunlar katalogda aranır.
+   - "subscription": aylık/yıllık ücretli üyelik (ChatGPT Plus, Netflix, NordVPN, Spotify, Google AI Pro).
+   - "service": ücretli üyeliğe indirgenemeyen yazılım/araç/platform (Midjourney, Adobe Firefly, Leonardo AI, Figma).
+   Bir yazılım/hizmet ASLA "product" olamaz. Emin değilsen "service" yaz — katalogda aranmaz, uydurma eşleşme olmaz.
+0b. "template": yazının türünü içeriğe bakarak SEN belirle. "En iyi N …" listesi → topn · tek ürün incelemesi → review ·
+   "A vs B" → vs · satın alma rehberi → guide · adım adım anlatım → howto · soru-cevap → faq · indirim/fırsat → deals ·
+   "X alternatifleri" → alt · duyuru/haber → news.
+1. HİÇBİR CÜMLEYİ ATLAMA, ÖZETLEME, KISALTMA. Metnin tamamı çıktıda yer almalı. Bu bir çeviri/biçimlendirme işidir, yeniden yazma değil.
+2. Ham metinde KAÇ DİL varsa o kadarını doldur. Olmayan dili boş obje bırak ({}). Kendin ÇEVİRİ YAPMA.
+3. Numaralı ürün/hizmet bölümleri ("1. Apple iPad Pro (M5) — ...", "## 2. NordVPN" gibi) items dizisine gider; o bölümün TÜM metni (paragraflar, Artıları/Eksileri listeleri, "Kime Uygun?" kısmı) o öğenin blocks[0] metnine girer.
+   - Aynı ürünün farklı dillerdeki bölümleri AYNI item'ın blocks[0] içinde tr/en olarak eşleşmeli (sıra aynıdır).
+   - "search": mağaza/fiyat eki olmadan sade model adı ("Apple iPad Pro (M5)" -> "Apple iPad Pro M5").
+   - "name": yazarın yazdığı başlık aynen korunur.
+4. Ürün bölümlerinden ÖNCEKİ giriş/genel yazı body_html'e; ürünlerden SONRAKİ sonuç/özet bölümü conclusion_html'e gider.
+5. body_html ve conclusion_html GEÇERLİ HTML olsun: <h2>/<h3> başlıklar, <p> paragraflar, <ul><li> listeler, <strong>, <a href="...">bağlantılar</a>, <table> tablolar. Ham metindeki markdown bağlantılarını [Ad](url) -> <a href="url" target="_blank" rel="noopener">Ad</a> yap. Kaynak/atıf bağlantılarını KORU.
+6. items içindeki blocks metinleri HTML DEĞİL DÜZ METİNDİR. İçine <a>, <p>, <strong> gibi HİÇBİR ETİKET KOYMA. Kalın için **yıldız**, madde için satır başına "- ", ara başlık için satır başına "## " kullan; satır sonlarını koru. Ürün bölümlerindeki kaynak/atıf bağlantılarını buraya YAZMA, sadece metni al.
+7. slug boşsa başlıktan üret (küçük harf, tireli, Türkçe karakterler sadeleştirilmiş).
+8. metaTitle 60, metaDescription 155 KARAKTERİ AŞMASIN — aşıyorsa kısalt.
+9. KAYNAK ADI ÇÖPÜNÜ AT: Ham metin bir sohbet ekranından kopyalanmış olabilir; bu durumda kaynak bağlantıları düz metne dönüşüp tek başına satır olarak kalır ("MacRumors", "The Gadgeteer", "phonearena", "Tech Advisor", "6 Months Later", "Mark Ellis Reviews", "GSMArena" gibi yayın/site adları). Bunları çıktıya HİÇ ALMA — ne gövdeye ne öğe metinlerine. Gerçek cümleleri ve ara başlıkları ("Artıları:", "Kime Uygun?") aynen koru.
+
+HAM METİN:
+`;
+  function autoSchemaPrompt(raw) { return AUTO_SCHEMA_PROMPT + String(raw || ''); }
+
+  var ITEM_IMAGE_PROMPT = `Aşağıda bir teknoloji blog yazısındaki öğelerin adları var. Her öğe için MARKANIN/HİZMETİN RESMÎ WEB SİTESİNİN ALAN ADINI ver.
+
+SADECE şu JSON: {"items":[{"i":<verilen indeks>,"brand":"<marka/hizmet adı, sade>","site":"<alan adı, örn: midjourney.com — http/www/yol YOK>","kind":"product|subscription|service"}]}
+
+KURALLAR:
+- Alan adından EMİN DEĞİLSEN "site" alanını BOŞ bırak. Uydurma.
+- "site" markanın ANA alan adı olsun (ürün sayfası değil): "openai.com", "adobe.com", "leonardo.ai".
+- "kind": fiziksel cihaz → product; aylık/yıllık ücretli üyelik → subscription; onun dışındaki yazılım/hizmet → service.
+
+ÖĞELER:
+`;
+  function markaAlanPrompt(entries) { return ITEM_IMAGE_PROMPT + JSON.stringify(entries || []); }
+
+  /* Öğe işlemlerini DETERMİNİSTİK uygula. Model yalnız İŞLEMİ söyler; silme,
+     sıralama ve yeniden yazma burada olur, ekleme ise katalog kapısından
+     (ogeleriIceAktar) geçer — böylece uydurma ürün yazıya giremez.
+     SIRA ÖNEMLİ: indeksler ÇAĞRI ANINDAKİ diziye göre verildi, o yüzden önce
+     rewrite (indeks sabit), sonra remove (büyükten küçüğe), sonra reorder, en
+     son add (sona eklenir). */
   function ogeIslemleriniUygula(products, ops, lang) {
     var liste = products.slice();
     var log = [];
@@ -332,186 +485,6 @@
     return { products: liste, eklenecek: eklenecek, log: log };
   }
 
-  // ── 5) DÜZEN & KALİTE ───────────────────────────────────────────────────
-  /* Şablon hep aynı görünmesin ve görsel yerleşimi mekanik olmasın diye:
-     yapay zekâ makaleyi OKUR, her öğe için görselin nereye/ne boyutta
-     geleceğine METNE BAKARAK karar verir ve yayın öncesi sorunları listeler.
-     METNİ DEĞİŞTİRMEZ — yalnız yerleşim + rapor. */
-  function qaPrompt(outline) {
-    return KONSEPT + '\n\n'
-      + 'Sen bir yayın editörü ve sayfa tasarımcısısın. Aşağıda bir blog makalesinin yapısı JSON\n'
-      + 'olarak veriliyor (dil: ' + ((outline && outline.lang) || 'tr') + ').\n\n'
-      + 'GÖREVİN ÜÇ PARÇA:\n\n'
-      + 'A) ŞABLON: Makalenin TÜRÜNÜ içeriğe bakarak belirle — "template" alanına yaz:\n'
-      + '   topn (en iyi N listesi) | review (tek ürün incelemesi) | vs (karşılaştırma) |\n'
-      + '   guide (satın alma rehberi) | howto (adım adım) | faq (soru-cevap) | deals (fırsat) |\n'
-      + '   alt (alternatifler) | news (haber/duyuru).\n'
-      + '   Verilen "template" değeri içerikle uyuşmuyorsa DÜZELT.\n\n'
-      + 'B) GÖRSEL YERLEŞİMİ: Her öğe için görselin nereye ve ne büyüklükte konacağına METNİN\n'
-      + '   UZUNLUĞUNA, ritmine ve ŞABLONA bakarak karar ver.\n'
-      + '   - "pos": "left" | "right" | "center" | "full"   · "size": "s" | "m" | "l" | "xl"\n'
-      + '   - Kısa metinde (<400 karakter) yana sarma kötü durur → "center"/"full".\n'
-      + '     Uzun metinde (>600 karakter) yana sarma iyidir → "left"/"right".\n'
-      + '   - ARDIŞIK öğelerde aynı tarafı tekrarlama, sağ-sol dönüşümlü bir ritim kur.\n'
-      + '   - ŞABLONA GÖRE: topn\'de sıralı ritim (ilk öğe büyük); vs\'de iki taraf SİMETRİK;\n'
-      + '     review\'da tek öğe "full"/"center"; guide/faq\'ta görseller küçük kalsın.\n'
-      + '   - Öğe "custom/service" ise görseli genelde bir LOGO\'dur: logolar büyük basılmaz →\n'
-      + '     "s" veya "m", tercihen "left"/"right".\n\n'
-      + 'C) KALİTE DENETİMİ: Yayın öncesi gerçek sorunları bul. Uydurma sorun YAZMA; sorun yoksa\n'
-      + '   boş dizi dön. Her sorun: {"level":"error"|"warn"|"info","text":"<tek cümle, Türkçe>"}\n'
-      + '   Bakılacaklar: giriş yazısı konuyu kuruyor mu; öğe metinleri arasında ciddi uzunluk\n'
-      + '   dengesizliği; anlam bütünlüğü (giriş listede vaat edileni tutuyor mu, sonuç öğelerle\n'
-      + '   çelişiyor mu); başıboş kalmış kaynak adı/atıf artığı satırlar; tekrar eden kalıp\n'
-      + '   cümleler; sonuç yazısı eksik mi; başlık ile içerik uyumsuzluğu; bir öğe yazının\n'
-      + '   KONUSUYLA ALAKASIZ mı (yanlış eşleşmiş ürün).\n'
-      + '   Görsel/kapak eksikliğini YAZMA — onu kod zaten otomatik tamamlıyor.\n'
-      + '   Meta uzunluğu, slug, dil eksikliği gibi ÖLÇÜLEBİLİR şeyleri de YAZMA — onları kod\n'
-      + '   deterministik olarak denetliyor, iki kez raporlanıyor.\n\n'
-      + 'SADECE şu JSON\'u döndür:\n'
-      + '{"template":"...","layout":[{"i":<öğe indeksi>,"pos":"...","size":"...","why":"<çok kısa gerekçe>"}],\n'
-      + ' "issues":[{"level":"...","text":"..."}],"verdict":"<tek cümle genel değerlendirme, Türkçe>"}\n\n'
-      + 'MAKALE YAPISI:\n' + JSON.stringify(outline || {});
-  }
-
-  /* Kaynak adı sınıflandırması AYRI ve ODAKLI bir çağrı. Aynı isteğe düzen +
-     kalite ile birlikte konduğunda model dikkatini yapıya verip listeyi
-     savsaklıyordu (19 adayın yalnız 3'ünü işaretledi). Tek işe odaklanınca
-     18/19 doğru, gerçek içerikten hiçbiri yanlış işaretlenmedi (ölçüldü). */
-  function junkPrompt(cands) {
-    return 'Aşağıdaki liste, bir teknoloji blog yazısında TEK BAŞINA satır olarak duran kısa\n'
-      + 'metinlerdir. Bir kısmı, yazı kopyalanırken kaynak bağlantılarından arta kalan\n'
-      + 'YAYIN/SİTE/İNCELEME KANALI ADLARIDIR ve yazıya ait değildir; bir kısmı ise gerçek\n'
-      + 'içeriktir (ara başlık, ürün adı, teknik terim).\n\n'
-      + 'HER SATIRI TEK TEK sınıflandır. Atlama, hepsi için karar ver.\n\n'
-      + 'SADECE şu JSON: {"junk":["<yayın/kaynak adı olanlar>"],"keep":["<gerçek içerik olanlar>"]}\n\n'
-      + 'SATIRLAR:\n' + JSON.stringify(cands || []);
-  }
-
-  // ── 6) AKILLI İÇE AKTARMA ───────────────────────────────────────────────
-  /* Claude her seferinde aynı biçimi vermez: bazen "# Başlık", bazen
-     "TITLE:/SLUG:" etiketli bölümler, bazen iki dil arka arkaya. Katı
-     ayrıştırıcı yerine metni olduğu gibi Gemini'ye verip ŞEMAYA çevirtiyoruz. */
-  function autoSchemaPrompt(raw) {
-    return 'Sen bir içerik dönüştürücüsün. Aşağıdaki HAM METİN bir blog makalesidir; biçimi\n'
-      + 'serbesttir (başlık etiketleri, birden çok dil, markdown, dağınık notlar olabilir).\n\n'
-      + 'GÖREVİN: Ham metni AŞAĞIDAKİ JSON ŞEMASINA dönüştür. SADECE geçerli JSON döndür.\n\n'
-      + 'ŞEMA:\n'
-      + '{\n'
-      + '  "category": "<' + KATEGORI_ANAHTARLARI + '|... yoksa boş>",\n'
-      + '  "template": "<yazının TÜRÜ: ' + SABLON_ANAHTARLARI + '>",\n'
-      + '  "langs": {\n'
-      + '    "tr": { "title": "", "slug": "", "lead": "", "body_html": "", "conclusion_html": "",\n'
-      + '            "metaTitle": "", "metaDescription": "", "tags": "" },\n'
-      + '    "en": { ... }\n'
-      + '  },\n'
-      + '  "items": [\n'
-      + '    { "kind": "product|subscription|service",\n'
-      + '      "search": "<YALNIZ kind=product için: sade model adı, marka + model, FİYAT/ek İÇERMEZ>",\n'
-      + '      "name": "<yazarın yazdığı görünen başlık, aynen>",\n'
-      + '      "brand": "<marka/hizmet adı, sade: Midjourney, OpenAI, Adobe>",\n'
-      + '      "site": "<markanın RESMÎ alan adı: midjourney.com — emin değilsen BOŞ>",\n'
-      + '      "blocks": [ { "type": "text", "style": "paragraph|heading|subheading|bullets",\n'
-      + '                    "tr": "", "en": "" },\n'
-      + '                  { "type": "image", "pos": "left|right|full|center", "size": "s|m|l" } ] }\n'
-      + '  ]\n'
-      + '}\n\n'
-      + 'KURALLAR — ÇOK ÖNEMLİ:\n'
-      + '0. "kind" ALANI KRİTİK — yanlışı yazının içine alakasız ürün kartı sokar:\n'
-      + '   - "product": mağazadan satın alınan FİZİKSEL cihaz. Sadece bunlar katalogda aranır.\n'
-      + '   - "subscription": aylık/yıllık ücretli üyelik (ChatGPT Plus, Netflix, NordVPN).\n'
-      + '   - "service": ücretli üyeliğe indirgenemeyen yazılım/araç (Midjourney, Figma).\n'
-      + '   Bir yazılım/hizmet ASLA "product" olamaz. Emin değilsen "service" yaz.\n'
-      + '0b. "template": yazının türünü içeriğe bakarak SEN belirle.\n'
-      + '1. HİÇBİR CÜMLEYİ ATLAMA, ÖZETLEME, KISALTMA. Metnin tamamı çıktıda yer almalı.\n'
-      + '   Bu bir biçimlendirme işidir, yeniden yazma değil.\n'
-      + '2. Ham metinde KAÇ DİL varsa o kadarını doldur. Olmayan dili boş obje bırak ({}).\n'
-      + '   Kendin ÇEVİRİ YAPMA.\n'
-      + '3. Numaralı ürün/hizmet bölümleri items dizisine gider; o bölümün TÜM metni (paragraflar,\n'
-      + '   Artıları/Eksileri listeleri, "Kime Uygun?" kısmı) o öğenin blocks metnine girer.\n'
-      + '   Aynı ürünün farklı dillerdeki bölümleri AYNI item içinde tr/en olarak eşleşmeli.\n'
-      + '4. Ürün bölümlerinden ÖNCEKİ giriş body_html\'e; SONRAKİ sonuç conclusion_html\'e gider.\n'
-      + '5. body_html ve conclusion_html GEÇERLİ HTML olsun: <h2>/<h3>, <p>, <ul><li>, <strong>,\n'
-      + '   <table>. Kaynak/atıf bağlantılarını KOYMA.\n'
-      + '6. items içindeki blocks metinleri HTML DEĞİL DÜZ METİNDİR. İçine <a>, <p>, <strong> gibi\n'
-      + '   HİÇBİR ETİKET KOYMA. Kalın için **yıldız**, madde için "- ", ara başlık için "## ".\n'
-      + '7. slug boşsa başlıktan üret (küçük harf, tireli, Türkçe karakterler sadeleştirilmiş).\n'
-      + '8. metaTitle ' + C.META_TITLE_MAX + ', metaDescription ' + C.META_DESC_MAX + ' KARAKTERİ AŞMASIN.\n'
-      + '9. KAYNAK ADI ÇÖPÜNÜ AT: metin bir sohbet ekranından kopyalanmış olabilir; kaynak\n'
-      + '   bağlantıları düz metne dönüşüp tek başına satır olarak kalır ("MacRumors",\n'
-      + '   "The Gadgeteer", "GSMArena"). Bunları çıktıya HİÇ ALMA. Gerçek cümleleri ve ara\n'
-      + '   başlıkları ("Artıları:", "Kime Uygun?") aynen koru.\n\n'
-      + gorselKuralBlogu() + '\n\n'
-      + 'HAM METİN:\n' + String(raw || '');
-  }
-
-  // Claude'a elle verilecek prompt (İçe Aktar → "Claude prompt'u" sekmesi).
-  function claudePrompt(kategoriler) {
-    var cats = (kategoriler && kategoriler.length) ? kategoriler.join(', ')
-      : 'smartphones, laptops, tablets, headphones, monitors, tvs, smartwatches';
-    return 'Sen Qor AI (qorai.net) için blog makalesi yazan bir editörsün. Konu: [KONU]\n\n'
-      + 'GÖREV: Bu konuda 2 dilde (Türkçe, İngilizce) eksiksiz bir makale yaz ve SADECE aşağıdaki\n'
-      + 'şemaya uyan geçerli bir JSON döndür. JSON dışında hiçbir şey yazma.\n\n'
-      + 'ŞEMA:\n{\n'
-      + '  "category": "<şunlardan biri: ' + cats + '>",\n'
-      + '  "langs": {\n'
-      + '    "tr": { "title": "", "slug": "", "lead": "<120-160 karakter>",\n'
-      + '            "body_md": "<GİRİŞ, markdown, 150-300 kelime. Ürün anlatımlarını BURAYA YAZMA>",\n'
-      + '            "conclusion_md": "<SONUÇ + SSS, 80-150 kelime>",\n'
-      + '            "metaTitle": "<≤' + C.META_TITLE_MAX + ' karakter>",\n'
-      + '            "metaDescription": "<≤' + C.META_DESC_MAX + ' karakter>",\n'
-      + '            "tags": "<virgülle 4-6 etiket>" },\n'
-      + '    "en": { <aynı alanlar İngilizce> }\n'
-      + '  },\n'
-      + '  "items": [\n'
-      + '    { "kind": "product", "search": "<sade model adı>", "name": "<görünen ad>",\n'
-      + '      "blocks": [ { "type": "text", "style": "paragraph", "tr": "<80-150 kelime>", "en": "" } ] }\n'
-      + '  ]\n}\n\n'
-      + 'KURALLAR:\n'
-      + '- Liste makalesiyse 5-7 ürün; inceleme ise 1 ürün; karşılaştırmaysa 2 ürün.\n'
-      + '- "search" alanı KRİTİK: mağaza eki olmadan, jenerik model adı (renk/kapasite yazma).\n'
-      + '- Her ürünün bloğunda somut artı/eksi ve kime uygun olduğu olsun; pazarlama dili değil.\n'
-      + '- FİYAT YAZMA (site canlı fiyatı kendisi gösterir).\n'
-      + '- İki dil birbirinin çevirisi olsun ama doğal aksın.\n'
-      + '- SSS: conclusion_md içine soru işaretiyle biten "## " başlıkları koy (en az 3, soru ≥12\n'
-      + '  karakter, cevap ≥40 karakter) — site FAQPage yapısal verisini oradan üretiyor.\n'
-      + '- metaTitle/metaDescription sınırlarını yazmadan önce karakter say.\n'
-      + '- JSON string\'lerinde gerçek satır sonu için \\n kullan.';
-  }
-
-  // ── 7) ÇEVİRİ ───────────────────────────────────────────────────────────
-  var LANG_NAME = { en: 'İngilizce (English)', tr: 'Türkçe' };
-  function ceviriPrompt(payload, dst) {
-    return 'Sen teknoloji sitesi Qor AI için profesyonel bir çevirmensin. Aşağıdaki JSON\'daki TÜM\n'
-      + 'metinleri ' + (LANG_NAME[dst] || dst) + ' diline çevir.\n\n'
-      + 'KESİN KURALLAR:\n'
-      + '- Çıktı SADECE geçerli JSON olsun; girdiyle BİREBİR aynı yapı ve aynı anahtarlar\n'
-      + '  (items dizisindeki "i" ve "j" sayıları AYNEN korunacak).\n'
-      + '- HTML etiketlerini (<p>, <h2>, <ul>, <li>, <strong>, <table>) AYNEN koru; sadece\n'
-      + '  etiketler ARASINDAKİ metni çevir.\n'
-      + '- Markdown işaretlerini koru: **kalın**, satır başındaki "- " maddeleri, "## " başlıkları.\n'
-      + '- Ürün/marka/model adlarını, teknik birimleri (mAh, GB, Hz, nit) ve sayıları ÇEVİRME.\n'
-      + '- Doğal ve akıcı yaz — kelimesi kelimesine değil.\n'
-      + '- metaTitle ' + C.META_TITLE_MAX + ' karakteri, metaDescription ' + C.META_DESC_MAX + ' karakteri AŞMASIN.\n'
-      + '- SSS başlıklarındaki SORU İŞARETİNİ koru; site FAQPage verisini oradan üretiyor.\n'
-      + '- Boş gelen alanları boş bırak.\n\n'
-      + 'ÇEVRİLECEK JSON:\n' + JSON.stringify(payload || {});
-  }
-
-  // Marka alan adı — görsel için. Gemini görseli ÜRETMEZ/İNDİRMEZ; yalnızca
-  // markanın RESMÎ ALAN ADINI söyler, adaylar oradan türetilir ve her aday
-  // GERÇEKTEN YÜKLENEREK doğrulanır (naturalWidth ölçülür).
-  function markaAlanPrompt(entries) {
-    return 'Aşağıda bir teknoloji blog yazısındaki öğelerin adları var. Her öğe için MARKANIN/\n'
-      + 'HİZMETİN RESMÎ WEB SİTESİNİN ALAN ADINI ver.\n\n'
-      + 'SADECE şu JSON: {"items":[{"i":<verilen indeks>,"brand":"<marka adı, sade>",'
-      + '"site":"<alan adı, örn: midjourney.com — http/www/yol YOK>","kind":"product|subscription|service"}]}\n\n'
-      + 'KURALLAR:\n'
-      + '- Alan adından EMİN DEĞİLSEN "site" alanını BOŞ bırak. Uydurma.\n'
-      + '- "site" markanın ANA alan adı olsun (ürün sayfası değil).\n'
-      + '- "kind": fiziksel cihaz → product; aylık/yıllık ücretli üyelik → subscription;\n'
-      + '  onun dışındaki yazılım/hizmet → service.\n\n'
-      + 'ÖĞELER:\n' + JSON.stringify(entries || []);
-  }
 
   // ══ TAŞIMA KATMANI ═══════════════════════════════════════════════════════
   function pb() {
@@ -809,8 +782,6 @@
     komutPrompt: komutPrompt, qaPrompt: qaPrompt, junkPrompt: junkPrompt,
     autoSchemaPrompt: autoSchemaPrompt, claudePrompt: claudePrompt,
     ceviriPrompt: ceviriPrompt, markaAlanPrompt: markaAlanPrompt,
-    gorselKuralBlogu: gorselKuralBlogu, seoKuralBlogu: seoKuralBlogu,
-    metinKuralBlogu: metinKuralBlogu, durustlukBlogu: durustlukBlogu,
     // saf uygulayıcılar
     ogeIslemleriniUygula: ogeIslemleriniUygula,
     // taşıma + ağ
