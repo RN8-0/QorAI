@@ -339,22 +339,26 @@ export default function Analyses() {
               ))}
             </div>
           )}
-          {/* KATEGORI SERIDI. Tur seridinden AYRI duruyor cunku iki farkli
-              soruyu yanitliyorlar: tur "ne tur analiz" (urun/karsilastirma),
-              kategori "hangi urun ailesi" (telefon/kulaklik/TV). Ikisini tek
-              seride karistirmak, secili olanin hangi eksende oldugunu
-              okunmaz hale getirirdi. */}
+          {/* KATEGORI: CIP DEGIL ACILIR MENU (kullanici karari, 2026-09-04).
+              Cip seridi olarak 15 kategori 1440px'te uc satir kapliyor ve
+              listenin kendisini ekranin altina itiyordu — "rasgele bir
+              bicimde bu ekranda gozukmesin". Tur seridi CIP kaliyor: uc
+              secenek tek satira sigiyor ve hangi turde oldugun sayfanin
+              kimligi; kategori ise daralt-genislet islevi, menuye ait. */}
           {fasetler.kategoriler.length > 1 && (
-            <div className="an-filters an-filters-cat">
-              <button type="button" className={kategori ? '' : 'on'} onClick={() => setKategori('')}>
-                {L('All categories', 'Tüm kategoriler')}
-              </button>
-              {fasetler.kategoriler.map((k) => (
-                <button key={k} type="button" className={kategori === k ? 'on' : ''} onClick={() => setKategori(k)}>
-                  {categoryLabel(k, lang)}
-                </button>
-              ))}
-            </div>
+            <label className="an-cat-select">
+              <span className="an-cat-select-label">{L('Category', 'Kategori')}</span>
+              <select
+                value={kategori}
+                onChange={(e) => setKategori(e.target.value)}
+                aria-label={L('Filter by category', 'Kategoriye göre filtrele')}
+              >
+                <option value="">{L('All categories', 'Tüm kategoriler')}</option>
+                {fasetler.kategoriler.map((k) => (
+                  <option key={k} value={k}>{categoryLabel(k, lang)}</option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
       )}

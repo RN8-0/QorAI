@@ -17,6 +17,22 @@
 // Uc tur de yayinlanabilir: urun / link / abonelik. Fark yalnizca VERI
 // SEKLINDE ve o fark lib/analysisRecord.js icinde tek yerde kapatiliyor.
 import { Suspense, lazy, useEffect, useState } from 'react';
+
+/* ── PB ISTEGI ASILI KALABILIR ────────────────────────────────────────────
+   Tek host, soguk baslangic; fetch'in kendi zaman asimi yok. Korumasiz
+   birakilinca `.then`/`.catch` HIC kosmuyor ve sayfa sonsuza dek
+   "Yükleniyor…" diyor — kullanicinin "tıklanınca yükleniyor diyor ama sayfa
+   gelmiyor" dedigi hal buydu.
+
+   Ayni ders LISTE sayfasinda (pages/Analyses.jsx) ogrenilmis ve orada
+   `zamanAsimli` ile kapatilmisti; TEK ANALIZ sayfasina uygulanmamisti. */
+const PB_TIMEOUT_MS = 12000;
+function zamanAsimli(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, red) => { setTimeout(() => red(new Error('timeout')), PB_TIMEOUT_MS); }),
+  ]);
+}
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { getProduct } from '../lib/typesense';
@@ -67,6 +83,8 @@ export default function AnalysisPost() {
   const L = (en, tr) => (lang === 'tr' ? tr : en);
   const [a, setA] = useState(null);
   const [durum, setDurum] = useState('loading');
+  // "Tekrar dene" bunu artirir; fetch effect'i yeniden kosar.
+  const [tekrar, setTekrar] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -75,11 +93,19 @@ export default function AnalysisPost() {
       ? pb.collection('analyses').getOne(onizlemeId, { $autoCancel: false })
       : pb.collection('analyses')
         .getFirstListItem(`slug="${String(slug || '').replace(/"/g, '')}"`, { $autoCancel: false });
-    istek
+    zamanAsimli(istek)
       .then((r) => { if (live) { setA(r); setDurum('ok'); } })
-      .catch(() => { if (live) { setA(null); setDurum('yok'); } });
+      /* ZAMAN ASIMI ile GERCEKTEN YOK AYRI SEY.
+         Ikisini de 'yok' saymak, PB takildiginda okuyucuya "Analiz
+         bulunamadı" diye YANLIS bilgi verirdi; bu sayfa cogu zaman
+         ON-RENDER edilmis, yani icerik gercekten var. */
+      .catch((e) => {
+        if (!live) return;
+        setA(null);
+        setDurum(e && e.message === 'timeout' ? 'zamanasimi' : 'yok');
+      });
     return () => { live = false; };
-  }, [slug, onizlemeId]);
+  }, [slug, onizlemeId, tekrar]);
 
   // ── SAYFA DILI ile RAPOR DILI AYRISAMAZ ────────────────────────────────
   //
@@ -235,6 +261,28 @@ export default function AnalysisPost() {
     return (
       <div className="page an-post">
         <div className="container"><p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p></div>
+      </div>
+    );
+  }
+  /* ZAMAN ASIMI: "bulunamadı" DEMEZ. Icerik buyuk olasilikla duruyor,
+     yalnizca istek donmedi — okuyucuya dogru sebebi ve tek tikla yeniden
+     deneme yolunu ver. Sayfayi yenilemek zorunda birakmak, kullanicinin
+     acikca sikayet ettigi seydi. */
+  if (durum === 'zamanasimi') {
+    return (
+      <div className="page an-post">
+        <div className="container">
+          <p className="an-empty">
+            {L('The analysis could not be loaded — the server did not respond in time.',
+              'Analiz yüklenemedi — sunucu zamanında yanıt vermedi.')}
+          </p>
+          <div className="an-bar" style={{ justifyContent: 'center' }}>
+            <button type="button" className="btn btn-primary" onClick={() => setTekrar((n) => n + 1)}>
+              {L('Try again', 'Tekrar dene')}
+            </button>
+            <Link className="btn btn-ghost" to="/analiz">{L('All analyses', 'Tüm analizler')}</Link>
+          </div>
+        </div>
       </div>
     );
   }
