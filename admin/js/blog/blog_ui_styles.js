@@ -207,7 +207,11 @@
   .bl-blk.img-left.z-l + .bl-blk:not([class*=img-]),.bl-blk.img-right.z-l + .bl-blk:not([class*=img-]){width:calc(100% - 440px)}
   .bl-blk.img-left.z-xl + .bl-blk:not([class*=img-]),.bl-blk.img-right.z-xl + .bl-blk:not([class*=img-]){width:calc(100% - 500px)}
   .bl-fig{margin:8px 0 10px;position:relative}
-  .bl-fig img{display:block;max-width:100%;border-radius:8px;background:#fff}
+  /* Gorsel bir TUTAMAK: yerlesik surukleme kapali (sadece URL tasiyordu),
+     imlec grab, secim kapali. Bkz. blog_ui.js gorselBlokHtml. */
+  .bl-fig img{display:block;max-width:100%;border-radius:8px;background:#fff;
+              cursor:grab;user-select:none;-webkit-user-drag:none;touch-action:none}
+  .bl-fig img:active{cursor:grabbing}
   .bl-blk.img-center .bl-fig img{margin:0 auto}
   .bl-fig.z-s img{max-height:180px}
   .bl-fig.z-m img{max-height:280px}

@@ -420,6 +420,10 @@
       });
       if (!p.blocks.length) p.blocks.push(bosMetinBlok());
     });
+    /* DİL/PARA/COĞRAFYA da BU KAPIDAN geçer. Ayrı bir çağrı olsaydı dört içe
+       aktarma yolundan birinde unutulurdu — analiz tarafında tam olarak bu
+       fan-out hatası yaşandı (bkz. project_analiz_dort_prompt_yolu). */
+    dilKurallariUygula(a, products);
   }
 
   // Site tarafının okuduğu metin (BlogPost.jsx → blockText ile aynı düşüş).
@@ -450,6 +454,123 @@
       (p.blocks || []).forEach(function (b) { if (b.t === 'text') w += wordCount(b[c]); });
     });
     return w;
+  }
+
+  /* ══ DİL / PARA / COĞRAFYA KURALLARI ══════════════════════════════════════
+     "Analizdeki tüm kurallar burada da geçerli olacak" (kullanıcı, 2026-09-04).
+     Analiz tarafında bu İKİ KATMANLA çözülmüştü ve blog o katmanları HİÇ
+     kullanmıyordu. ÖLÇÜLDÜ: 14 makalenin 14'ünde yasak para birimi (GBP/EUR/
+     £/€), 7'sinde ülke/milliyet adı (Türkiye, ABD, Birleşik Krallık, Avrupa).
+
+       KATMAN 1  prompt → geoRulesBlock + para kuralı (blog_ai.js)
+       KATMAN 2  kod    → burası. Prompt tek başına yetmiyor; analiz tarafında
+                          da yetmemişti, kural oradan kopyalanmıyor ÇAĞRILIYOR.
+
+     PARA KURALI:
+       · GBP / £ / EUR / € / sterlin / avro → HER İKİ DİLDE YASAK
+       · TL / ₺ / lira → YALNIZ Türkçe metinde. İngilizce yazı küresel
+         okuyucuya gider (analiz tarafındaki `_tryTutariVarMi` kapısının aynısı)
+       · USD / $ → iki dilde de serbest
+     Yasaklı tutar taşıyan CÜMLE düşer, paragraf sınırı korunur. Fiyat
+     ÇEVİRİSİ YAPILMAZ — kur uydurmak sayı uydurmaktır. */
+  /* SEMBOL İKİ TARAFTA DA OLABİLİR. İngilizce "£1,599", Türkçe "1.599 £" yazar;
+     ilk sürüm yalnız önden gelen sembolü tutuyordu ve testte "1.299 €" kaçtı. */
+  var PARA_YASAK_HEP = /(?:\d[\d.,]*\s?(?:GBP|EUR)\b)|(?:[£€]\s?\d)|(?:\d[\d.,]*\s?[£€])|(?:\d[\d.,]*\s?(?:sterlin|avro|euro)\b)/i;
+  var PARA_YASAK_EN = /(?:\d[\d.,]*\s?(?:TRY|TL)\b)|(?:₺\s?\d)|(?:\d[\d.,]*\s?₺)|(?:\d[\d.,]*\s?lira\b)/i;
+
+  function paraYasakMi(cumle, lang) {
+    if (PARA_YASAK_HEP.test(cumle)) return true;
+    return lang !== 'tr' && PARA_YASAK_EN.test(cumle);
+  }
+
+  // Cümle sınırı: nokta + boşluk + büyük harf/rakam. Kısaltmalarda bölmez.
+  function cumlelereBol(t) {
+    return String(t || '').split(/(?<=[.!?…])\s+(?=[A-ZÇĞİÖŞÜ0-9"“(])/);
+  }
+
+  function paraTemizle(metin, lang) {
+    var ham = String(metin || '');
+    if (!ham.trim()) return ham;
+    if (!PARA_YASAK_HEP.test(ham) && !(lang !== 'tr' && PARA_YASAK_EN.test(ham))) return ham;
+    return ham.split(/\n{2,}/).map(function (par) {
+      return cumlelereBol(par)
+        .filter(function (c) { return !paraYasakMi(c, lang); })
+        .join(' ').replace(/[ \t]{2,}/g, ' ').trim();
+    }).filter(Boolean).join('\n\n');
+  }
+
+  /* HTML'de YALNIZ METİN DÜĞÜMLERİ temizlenir, etiketlere dokunulmaz.
+     Gövdeyi cümlelere bölüp yeniden birleştirmek <p>/<h2>/<ul> yapısını
+     bozar ve SSS çıkarımı (soru işaretiyle biten başlıklar) çökerdi. */
+  function htmlMetinDugumleri(html, fn) {
+    return String(html || '').replace(/>([^<]+)</g, function (m, txt) {
+      return txt.trim() ? ('>' + fn(txt) + '<') : m;
+    });
+  }
+
+  /* Coğrafi tarafsızlık analiz tarafının TEK KAYNAĞINDAN gelir
+     (QorAiPrompts.enforceGeoNeutrality). İkinci bir kopya çıkarmıyoruz —
+     kural değişirse iki yerde ayrışmasın. Yüklenmemişse sessizce geçer;
+     denetim kapısı (dilIhlalleri) yine de yakalar. */
+  function geoTemizle(metin, lang) {
+    var P = root.QorAiPrompts;
+    if (!P || typeof P.enforceGeoNeutrality !== 'function') return metin;
+    var kap = { text: String(metin || '') };
+    P.enforceGeoNeutrality(kap, lang);
+    return typeof kap.text === 'string' ? kap.text : metin;
+  }
+
+  /** Makaleyi + öğeleri YERİNDE temizler; değişen alan sayısını döner. */
+  function dilKurallariUygula(a, products) {
+    var n = 0;
+    var uygula = function (v, c) {
+      var y = paraTemizle(geoTemizle(v, c), c);
+      if (y !== v) n += 1;
+      return y;
+    };
+    LANG_CODES.forEach(function (c) {
+      if (a['lead_' + c]) a['lead_' + c] = uygula(a['lead_' + c], c);
+      ['body_' + c, 'conclusion_' + c].forEach(function (f) {
+        if (!a[f]) return;
+        a[f] = htmlMetinDugumleri(a[f], function (t) { return uygula(t, c); });
+      });
+    });
+    (products || []).forEach(function (p) {
+      ensureBlocks(p);
+      p.blocks.forEach(function (b) {
+        if (b.t !== 'text') return;
+        LANG_CODES.forEach(function (c) { if (b[c]) b[c] = uygula(b[c], c); });
+      });
+    });
+    return n;
+  }
+
+  /* DENETİM KAPISI — temizleyicinin cümle düşürerek çözemediği yerleri
+     (başlık, meta, etiket) yakalar. Sessiz geçmesin diye AYRI katman. */
+  var ULKE_ADI = /\b(türkiye|turkiye|turkey|türk|turkish|birleşik krallık|united kingdom|ingiltere|amerika|abd|almanya|germany|avrupa|europe)\b/i;
+
+  function dilIhlalleri(a, products) {
+    var out = [];
+    LANG_CODES.forEach(function (c) {
+      var parcalar = [a['title_' + c], a['lead_' + c], a['metaTitle_' + c],
+        a['metaDescription_' + c], a['tags_' + c]];
+      (products || []).forEach(function (p) {
+        (p.blocks || []).forEach(function (b) { if (b.t === 'text') parcalar.push(b[c]); });
+      });
+      parcalar.push(duzMetin(a['body_' + c]), duzMetin(a['conclusion_' + c]));
+      var hepsi = parcalar.filter(Boolean).join(' \n ');
+      var ulke = hepsi.match(ULKE_ADI);
+      if (ulke) {
+        out.push({ level: 'error', text: LANG_LABEL[c] + ' metninde ülke/milliyet adı geçiyor ("' + ulke[0] + '") — yazı bir kez üretilip herkese gösteriliyor.' });
+      }
+      if (PARA_YASAK_HEP.test(hepsi)) {
+        out.push({ level: 'error', text: LANG_LABEL[c] + ' metninde GBP/EUR tutarı var — para birimi ' + (c === 'tr' ? 'TL ya da USD' : 'USD') + ' olmalı.' });
+      }
+      if (c === 'en' && PARA_YASAK_EN.test(hepsi)) {
+        out.push({ level: 'error', text: 'EN metninde TL tutarı var — İngilizce yazı küresel okuyucuya gidiyor, USD kullan.' });
+      }
+    });
+    return out;
   }
 
   // ── 4. SSS ÇIKARIMI ─────────────────────────────────────────────────────
@@ -589,7 +710,10 @@
       if (bosLink) add('warn', LANG_LABEL[c] + ' metninde ' + bosLink + ' boş/yer tutucu link var (href="#").');
     });
 
-    // 5) Uzunluk ve tarih
+    // 5) DİL / PARA / COĞRAFYA — analizdeki kuralların aynısı
+    dilIhlalleri(a, prods).forEach(function (x) { out.push(x); });
+
+    // 6) Uzunluk ve tarih
     var words = totalWords(a, prods, 'tr');
     if (words < 300) add('warn', 'TR içerik ' + words + ' kelime — 300\'ün altı arama motorunda "ince içerik" sayılır.');
     var pub = Date.parse(String(a.publishedAt || '').replace(' ', 'T'));
@@ -884,6 +1008,8 @@
     sanitizeArticle: sanitizeArticle, blockText: blockText, itemName: itemName,
     itemImageUrl: itemImageUrl, itemHasImage: itemHasImage, totalWords: totalWords,
 
+    paraTemizle: paraTemizle, geoTemizle: geoTemizle, htmlMetinDugumleri: htmlMetinDugumleri,
+    dilKurallariUygula: dilKurallariUygula, dilIhlalleri: dilIhlalleri,
     sssCikar: sssCikar, faqDurumu: faqDurumu,
     articleHealth: articleHealth, slugKopmaUyarisi: slugKopmaUyarisi,
     junkCandidates: junkCandidates,

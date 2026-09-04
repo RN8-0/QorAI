@@ -27,6 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+await import('../admin/js/qor_ai_prompts.js');
 await import('../admin/js/blog/blog_core.js');
 await import('../admin/js/blog/blog_ai.js').catch(() => {});
 const C = globalThis.BlogCore;
@@ -529,6 +530,73 @@ if (!AI) {
     yaz(!/s2\/favicons|icons\.duckduckgo/.test(src), 'görsel · favicon servisi kaynakta geçmiyor');
   }
   yaz(!/bu çağrıda değiştiremezsin/.test(komut), 'komut · eski "öğelere dokunamazsın" yasağı kalktı');
+}
+
+// ═══ 10) DİL / PARA / COĞRAFYA ════════════════════════════════════════════
+baslik('10) DİL / PARA / COĞRAFYA — analizdeki kuralların aynısı blogda da');
+{
+  /* ÖLÇÜLDÜ 2026-09-04: 14 makalenin 14'ünde yasak para birimi (GBP/EUR/£/€),
+     7'sinde ülke/milliyet adı vardı. Blog, analiz tarafının iki katmanını
+     (geoRulesBlock + enforceGeoNeutrality) HİÇ kullanmıyordu. */
+  yaz(C.paraTemizle('Fiyatı 999 USD. Ülke dışında 1.599 GBP. Pili iyi.', 'tr') === 'Fiyatı 999 USD. Pili iyi.',
+    'TR · GBP cümlesi düşer, USD kalır');
+  yaz(C.paraTemizle('It costs 999 USD. In stores 34.999 TL. Battery is good.', 'en') === 'It costs 999 USD. Battery is good.',
+    'EN · TL cümlesi düşer (küresel okuyucu)');
+  yaz(C.paraTemizle('Fiyatı 34.999 TL. Pili iyi.', 'tr') === 'Fiyatı 34.999 TL. Pili iyi.',
+    'TR · TL serbest');
+  yaz(C.paraTemizle('Costs 2.099 EUR here.', 'tr') === '', 'EUR tutarı TR\'de de düşer');
+  yaz(C.paraTemizle('Fiyatı 1.299 €. Son.', 'tr') === 'Son.', '€ sembolü yakalanıyor');
+  yaz(C.paraTemizle('Pili iyi. Ekranı parlak.', 'tr') === 'Pili iyi. Ekranı parlak.',
+    'temiz metne DOKUNULMUYOR');
+  // Paragraf sınırı korunmalı — blok metinleri satır sonlarına dayanıyor.
+  yaz(C.paraTemizle('Bir.\n\n1.599 GBP.\n\nÜç.', 'tr') === 'Bir.\n\nÜç.', 'paragraf sınırı korunuyor');
+}
+{
+  // HTML yapısı bozulmamalı: SSS soru başlıkları FAQPage'in TEK kaynağı.
+  const h = '<h2>Fiyat nedir?</h2><p>999 USD. Ama 1.599 GBP değil. Son.</p>';
+  const t = C.htmlMetinDugumleri(h, (x) => C.paraTemizle(x, 'tr'));
+  yaz(t === '<h2>Fiyat nedir?</h2><p>999 USD. Son.</p>', 'HTML · etiketler korunuyor, cümle düşüyor', t);
+  yaz(C.sssCikar('<h2>Bu telefon ne kadar?</h2><p>' + 'x'.repeat(60) + '</p><h2>Pili kaç saat gider?</h2><p>' + 'y'.repeat(60) + '</p>').length === 2,
+    'HTML · temizlik sonrası SSS çıkarımı hâlâ çalışıyor');
+}
+{
+  // TEK KAPI: sanitizeArticle dört içe aktarma yolunun hepsinde çağrılıyor.
+  const a = {
+    title_tr: 'T', slug_tr: 't',
+    body_tr: '<p>Fiyatı 999 USD. Dışarıda 1.599 GBP olacak. Pili iyi.</p>',
+    body_en: '<p>It is 999 USD. In stores 34.999 TL. Battery is good.</p>',
+  };
+  const p = [{ kind: 'product', id: 'x', name: 'A',
+    blocks: [{ t: 'text', tr: 'Fiyatı 2.099 EUR. Ekranı parlak.', en: 'Bright screen. Price 1.599 GBP.' }] }];
+  C.sanitizeArticle(a, p);
+  yaz(!/GBP/.test(a.body_tr) && /999 USD/.test(a.body_tr), 'kapı · TR gövde temizlendi', a.body_tr);
+  yaz(!/TL/.test(a.body_en), 'kapı · EN gövdedeki TL düştü');
+  yaz(p[0].blocks[0].tr === 'Ekranı parlak.' && p[0].blocks[0].en === 'Bright screen.', 'kapı · blok metinleri temizlendi');
+  yaz(C.dilIhlalleri(a, p).length === 0, 'kapı · geriye ihlal kalmıyor');
+}
+{
+  // Denetim kapısı: temizleyicinin ulaşamadığı yerler (başlık/meta/etiket).
+  const a = { title_tr: 'Türkiye\'nin en iyi telefonu', slug_tr: 't', metaDescription_en: 'Only 34.999 TL' };
+  const i = C.dilIhlalleri(a, []);
+  yaz(i.some((x) => /ülke\/milliyet/.test(x.text)), 'denetim · başlıktaki ülke adı yakalanıyor');
+  yaz(i.some((x) => /TL tutarı/.test(x.text)), 'denetim · EN metasındaki TL yakalanıyor');
+  yaz(i.every((x) => x.level === 'error'), 'denetim · ihlaller KRİTİK (yayın öncesi sorar)');
+  yaz(C.articleHealth(a, []).some((x) => /ülke\/milliyet/.test(x.text)), 'denetim · sağlık listesine bağlı');
+}
+if (AI) {
+  const y = AI.yazarPrompt({ title: 'X' }, 'N', 'en', null);
+  const t = AI.yazarPrompt({ title: 'X' }, 'N', 'tr', null);
+  yaz(/GBP, £, EUR/.test(y), 'prompt · GBP/EUR yasağı yazar prompt\'unda');
+  yaz(/quote prices ONLY in USD/.test(y), 'prompt · EN yalnız USD');
+  yaz(/yalnızca TL \(₺\) ya da USD/.test(t), 'prompt · TR TL ya da USD');
+  yaz(/KUR ÇEVİRİSİ YAPMA/.test(y), 'prompt · kur çevirisi yasak');
+  yaz(/PARA BİRİMİ/.test(AI.komutPrompt('x', {})), 'prompt · komut prompt\'unda da var');
+  yaz(/PARA BİRİMİ/.test(AI.ceviriPrompt({}, 'en')), 'prompt · çeviri prompt\'unda da var');
+  yaz(/PARA BİRİMİ/.test(AI.konuPrompt(15, '', [])), 'prompt · konu prompt\'unda da var');
+  // Coğrafi kural analizin TEK KAYNAĞINDAN gelmeli, kopya OLMAMALI.
+  const src = fs.readFileSync('admin/js/blog/blog_ai.js', 'utf8');
+  yaz(/QorAiPrompts[\s\S]{0,40}geoRulesBlock/.test(src), 'prompt · geo kuralı analizden ÇAĞRILIYOR (kopya değil)');
+  yaz(!/GEOGRAPHIC NEUTRALITY \(HARD RULE\)/.test(src), 'prompt · geo metni blog\'a kopyalanmamış');
 }
 
 // ═══ 9) CANLI VERİ (opsiyonel) ════════════════════════════════════════════

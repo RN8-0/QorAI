@@ -505,7 +505,17 @@
     return '<div class="bl-blk img-' + (b.pos || 'full') + ' z-' + (b.size || 'm') + '" data-drop="block" data-i="' + i + '" data-j="' + j + '"' + stil + '>'
       + blokBar(i, j)
       + '<figure class="bl-fig z-' + (b.size || 'm') + '">'
-      + (u ? '<img src="' + esc(u) + '" onerror="this.style.display=\'none\';this.nextElementSibling&&this.nextElementSibling.classList.add(\'show\')"/>'
+      /* GÖRSELİN KENDİSİ BLOĞUN TUTAMAĞI.
+         draggable="false" ŞART: <img> tarayıcıda YERLEŞİK olarak
+         sürüklenebilir ve o sürükleme yalnızca URL taşır. Kullanıcı görseli
+         tutup taşımaya çalışınca pointer sürüklemesi hiç devreye giremiyor,
+         yerine tarayıcının link sürüklemesi çalışıyordu — "taşıyınca sürükle
+         bırak ile sadece link geliyor" (2026-09-04). Yerleşik sürükleme
+         kapatıldı; resmi tutmak artık BLOĞU taşıyor, zaten denenen hareket
+         buydu. Altyazı kutusu tutamak DEĞİL — orada metin seçilebilmeli. */
+      + (u ? '<img src="' + esc(u) + '" draggable="false" alt="" title="Sürükleyip taşı"'
+        + ' data-grip="block" data-i="' + i + '" data-j="' + j + '"'
+        + ' onerror="this.style.display=\'none\';this.nextElementSibling&&this.nextElementSibling.classList.add(\'show\')"/>'
         /* GÖRSEL BOŞ KALABİLİR VE BU HATA DEĞİL. Ürün görseli KATALOGDAN
            gelir; katalogda yoksa yazar elle koyar. AI görsel ARAMAZ. */
         : '<div class="bl-fig-e">Görsel yok — katalogdan gelmedi.<br>Elle ekle: <button class="bl-btn sm" data-bl="gorselUrl" data-i="' + i + '" data-j="' + j + '">🔗 URL</button> '

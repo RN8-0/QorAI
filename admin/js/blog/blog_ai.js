@@ -61,6 +61,33 @@
      yerinde durduğunu denetliyor. Bir kuralı gerçekten değiştirmek gerekirse
      altın kopyayı da bilerek güncelle — sessiz kısaltma YOK. */
 
+  /* ══ DİL / PARA / COĞRAFYA — PROMPT KATMANI ═══════════════════════════════
+     Altın kopyaya EKLENİR, ondan bir şey çıkarmaz (gerileme testi §8 eksilmeyi
+     yakalar, eklemeye izin verir). Kullanıcının 2026-09-04 talimatı:
+     "analizdeki tüm kurallar burada da geçerli olacak — türkiye adı geçmeyecek,
+      para birimi USD olabilir TL değil, türkçe yazınca sadece TL kullanabilir,
+      ingilizce olunca USD yazacak".
+
+     Coğrafi kural analizin TEK KAYNAĞINDAN gelir (QorAiPrompts.geoRulesBlock);
+     metni buraya kopyalamıyoruz ki iki yerde ayrışmasın. */
+  function dilKuralBlogu(lang) {
+    var P = root.QorAiPrompts;
+    var geo = (P && typeof P.geoRulesBlock === 'function') ? P.geoRulesBlock(lang) : '';
+    var tr = String(lang || '').slice(0, 2).toLowerCase() === 'tr';
+    return '\nDİL, PARA BİRİMİ VE COĞRAFYA — SERT KURALLAR\n'
+      + geo
+      + '- PARA BİRİMİ: GBP, £, EUR, € ve "sterlin/avro" HİÇBİR DİLDE geçmez.\n'
+      + (tr
+        ? '  Türkçe yazıda yalnızca TL (₺) ya da USD ($) kullanılır.\n'
+        : '  In English, quote prices ONLY in USD. TL/TRY amounts are forbidden — an\n'
+          + '  English article is read worldwide and a lira figure means nothing there.\n')
+      + '- Araştırma notları başka bir para biriminde tutar veriyorsa o tutarı YAZMA;\n'
+      + '  ya USD karşılığı notlarda varsa onu yaz ya da fiyattan hiç söz etme.\n'
+      + '  KUR ÇEVİRİSİ YAPMA — uydurduğun kur uydurduğun sayıdır.\n'
+      + '- Ürün fiyatını zorunlu değilsen hiç yazma: site her kartta CANLI fiyatı\n'
+      + '  ziyaretçinin kendi pazarında gösteriyor, senin yazdığın rakam bayatlar.\n';
+  }
+
   function konuPrompt(n, hint, basliklar) {
     var bugun = bugunStr();
     var mevcutBasliklar = function () { return basliklar || []; };
@@ -106,7 +133,7 @@ KURALLAR:
   90 günden daha geriye giden bir olayı "neden şimdi" diye gösterme. Bulduğun
   kaynak "2024 sonunda çıkacak" gibi geçmişte kalmış bir beklentiden söz
   ediyorsa o kaynak bayattır — o konuyu ya at ya da güncel kaynakla değiştir.
-  Aynı maddede hem gelecek hem geçmiş tarih varsa o maddeyi hiç yazma.`;
+  Aynı maddede hem gelecek hem geçmiş tarih varsa o maddeyi hiç yazma.` + dilKuralBlogu('tr');
   }
 
   function arastirmaPrompt(baslik) {
@@ -225,7 +252,7 @@ GÖRSELLER — URL YAZMA
 DÜRÜSTLÜK
 - Fiyat, tarih, "şu anda satışta" gibi iddiaları YALNIZCA araştırma notlarında varsa yaz.
 - Emin olmadığın sayıyı yazma; "yaklaşık", "araştırma sırasında" gibi ifadelerle çerçevele.
-- Reklam dili yok: "muhteşem", "inanılmaz", "kaçırmayın" yasak. Sayı ver, hüküm ver.`;
+- Reklam dili yok: "muhteşem", "inanılmaz", "kaçırmayın" yasak. Sayı ver, hüküm ver.` + dilKuralBlogu(lang);
   }
 
   function komutPrompt(komut, mevcut) {
@@ -265,7 +292,7 @@ KURALLAR:
   "3. ürünü çıkar" denirse indeks 0 tabanlıdır → {"op":"remove","i":2}.
   "add" ile eklediğin öğe katalogda yoksa özel öğe olur; ürün UYDURMA, emin
   değilsen "kind":"service" yaz. Öğe metinleri DÜZ METİN (HTML etiketi yok).
-  Kullanıcı öğelerden söz etmediyse "items" alanını HİÇ yazma.`;
+  Kullanıcı öğelerden söz etmediyse "items" alanını HİÇ yazma.` + dilKuralBlogu('tr');
   }
 
   function qaPrompt(outline) {
@@ -323,7 +350,7 @@ KESİN KURALLAR:
 - Boş gelen alanları boş bırak.
 
 ÇEVRİLECEK JSON:
-${JSON.stringify(payload)}`;
+${JSON.stringify(payload)}` + dilKuralBlogu(dst);
   }
 
   function claudePrompt(kategoriler) {
