@@ -1336,7 +1336,20 @@
         'js/stores.js',
         'js/notifications.js',
         'js/support.js',
-        'js/blog.js',
+        // BLOG EDITORU (2026-09-04 yeniden yazildi). SIRA ONEMLI:
+        //   core  -> DOM'suz model/kurallar (Node'dan test edilebiliyor)
+        //   ai    -> prompt'lar + Gemini/Typesense tasima katmani
+        //   dnd   -> pointer tabanli surukle-birak
+        //   ui    -> liste + tuval;  ui2 -> raylar/kaydetme;  flows -> AI akislari
+        // Hepsi qor_ai_prompts.js'ten ONCE: `QorAiRun` yuklenirken YOK,
+        // modul ustu seviyede ona dokunulmuyor, cagri aninda aliniyor.
+        'js/blog/blog_core.js',
+        'js/blog/blog_ai.js',
+        'js/blog/blog_dnd.js',
+        'js/blog/blog_ui_styles.js',
+        'js/blog/blog_ui.js',
+        'js/blog/blog_ui2.js',
+        'js/blog/blog_flows.js',
         // Analiz prompt'lari TEK KAYNAK: site (web/src/lib/aiPrompts.js) ve
         // build script'leri de AYNI dosyayi kosturuyor. analyses.js ve
         // qor_ai_run.js buradaki tanimlara bagli, o yuzden ONLARDAN ONCE.
