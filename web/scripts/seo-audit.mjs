@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const site = join(here, '..', '..', 'website');
@@ -241,6 +242,8 @@ function main() {
   let badAmp = 0;
   let todayStamps = 0;
   const today = new Date().toISOString().slice(0, 10);
+  // loc -> lastmod, churn testi icin (asagida onceki sitemap ile karsilastirilir)
+  const simdikiStamp = new Map();
 
   for (const file of files) {
     const xml = read(file);
@@ -252,6 +255,9 @@ function main() {
     category += [...xml.matchAll(/\/category\/[a-z0-9]/g)].length;
     badAmp += [...xml.matchAll(/<loc>[^<]*&(?!(?:amp|lt|gt|quot|apos);)[^<]*<\/loc>/g)].length;
     todayStamps += [...xml.matchAll(new RegExp(`<lastmod>${today}</lastmod>`, 'g'))].length;
+    for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)) {
+      simdikiStamp.set(m[1], m[2]);
+    }
   }
 
   // ── SITEMAP BEKLENTISI ANAHTARA BAGLI ─────────────────────────────────────
@@ -302,11 +308,61 @@ function main() {
     contentVersion = (seoSrc.match(/SEO_CONTENT_VERSION\s*=\s*'(\d{4}-\d{2}-\d{2})'/) || [])[1] || '';
   } catch { /* seo.mjs okunamazsa muafiyet yok */ }
   const versionIsToday = contentVersion && contentVersion === today;
-  assert(
-    versionIsToday || todayStamps < total * 0.5,
-    `sitemap stamps today's date on ${todayStamps}/${total} URLs — lastmod churn regression`
-    + ` (SEO_CONTENT_VERSION=${contentVersion || 'yok'})`,
-  );
+
+  // ── CHURN OLCUMU: ORAN DEGIL, AYNI ADRESIN TARIH KAYMASI ────────────────
+  // 2026-09-04: bu kapi yanlis alarm verip build'i dusurdu. O gun sitemap'in
+  // 188/320 adresi (%59) bugun damgaliydi ve kapi churn ilan etti — oysa 188'in
+  // hepsi O GUN YAYINLANAN analizdi, tarihleri gercekti.
+  //
+  // Oran esiginin kirilma sebebi: 2026-09-02'de 7.508 urun + 450 karsilastirma
+  // sitemap disi birakildi (ince sayfa karari). Sitemap 8.138 -> 320'ye dusunce
+  // analiz payi %0,6'dan %58'e cikti; artik TEK GUNLUK normal bir analiz partisi
+  // bile %50 esigini asiyor. Esigi yukseltmek yamadir: dogru olcum oran degil.
+  //
+  // Churn'un tanimi yorumun kendisinde yaziyor: "tarih HER BUILD'DE bugune
+  // kayar". O halde test de bunu olcmeli — commit'li onceki sitemap'te AYNI
+  // adres hangi tarihi tasiyordu? Bugune KAYMISSA churn'dur. Adres yeniyse ya
+  // da tarihi zaten bugunse (build tekrarlandi) kayma yoktur.
+  //
+  // Onceki sitemap okunamazsa (ilk build, git yok) eski oran testine dusulur.
+  let oncekiStamp = null;
+  try {
+    const ham = execSync('git show HEAD:website/sitemap.xml', {
+      cwd: join(here, '..', '..'), encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    oncekiStamp = new Map();
+    for (const m of ham.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)) {
+      oncekiStamp.set(m[1], m[2]);
+    }
+  } catch { oncekiStamp = null; }
+
+  if (oncekiStamp && oncekiStamp.size) {
+    let kayan = 0;   // ayni adres, tarihi bugune kaydi -> gercek churn
+    let ortak = 0;   // iki sitemap'te de olan adres sayisi (payda)
+    for (const [loc, stamp] of simdikiStamp) {
+      const onceki = oncekiStamp.get(loc);
+      if (onceki === undefined) continue;      // yeni adres: bugun olmasi dogru
+      ortak += 1;
+      if (stamp === today && onceki !== today) kayan += 1;
+    }
+    assert(
+      versionIsToday || kayan < Math.max(20, ortak * 0.5),
+      `sitemap moves ${kayan}/${ortak} EXISTING URLs' lastmod to today — churn regression`
+      + ` (SEO_CONTENT_VERSION=${contentVersion || 'yok'})`,
+    );
+    const yeni = simdikiStamp.size - ortak;
+    console.log(
+      `[seo-audit] lastmod: ${yeni} yeni adres · mevcut ${ortak} adresin ${kayan} tanesi bugune kaydi`
+      + ` (bugun damgali toplam ${todayStamps}/${total})`,
+    );
+  } else {
+    console.log('[seo-audit] not: onceki sitemap okunamadi — churn testi oran esigine dusuyor');
+    assert(
+      versionIsToday || todayStamps < total * 0.5,
+      `sitemap stamps today's date on ${todayStamps}/${total} URLs — lastmod churn regression`
+      + ` (SEO_CONTENT_VERSION=${contentVersion || 'yok'})`,
+    );
+  }
   if (versionIsToday) {
     console.log(`[seo-audit] not: SEO_CONTENT_VERSION=${contentVersion} bugüne eşit — toplu lastmod bilinçli (churn değil)`);
   }
