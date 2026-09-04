@@ -212,6 +212,43 @@ export default function BlogPost() {
     : '';
   const postLang = slugLang || lang;
   const L = (en, tr) => (postLang === 'tr' ? tr : en);
+
+  /* TÜRKÇE TARAYICI → TÜRKÇE SLUG (2026-09-04).
+     Şikâyet: "birinci site dili İngilizce, Google'da arayan İngilizce sonuç
+     görecek — ama siteye tıklanınca tarayıcı dili Türkçe ise Türkçe görmek
+     zorunda". Ölçüldü: Türkçe tarayıcıda /blog/<slug_en> İngilizce kalıyordu.
+
+     Kök adresteki çözümün (index.html: `/` → `/tr/`) blog'a uygulanamama
+     sebebi şuydu: /tr/blog/<slug> nginx'te /blog/<slug>'a 301 döner, yani
+     301 ↔ replace sonsuz döngüsü. Bu yüzden yazılar oradan MUAF tutulmuştu.
+
+     Doğru hedef `/tr/` ÖNEKİ DEĞİL, aynı /blog/ altındaki TÜRKÇE SLUG.
+     /blog/<slug_en> → /blog/<slug_tr>: ikisi de öneksiz, nginx kuralı hiç
+     devreye girmiyor, döngü yok. Vardığı adres zaten slug_tr olduğu için
+     koşul ikinci kez tutmaz.
+
+     İNDEKSİ BOZMAZ: Googlebot en-US ile tarar, aşağıdaki tarama yalnız 'tr'
+     için doğru döner — bot İngilizce adresi İSTİSNASIZ İngilizce görür,
+     Türkçe sürüme hreflang üzerinden ulaşır. Ön-render HTML'ine dokunulmaz.
+
+     Önizleme (previewId) MUAF: yazar taslağı hangi dilde açtıysa orada kalır. */
+  useEffect(() => {
+    if (!post || previewId) return;
+    const trSlug = post.slug_tr || '';
+    if (!trSlug || trSlug === slug) return;
+    let tercihTr = false;
+    try {
+      const diller = navigator.languages || [navigator.language || ''];
+      for (let i = 0; i < diller.length; i++) {
+        const k = String(diller[i]).slice(0, 2).toLowerCase();
+        if (k === 'tr') { tercihTr = true; break; }
+        if (k === 'en') break;
+      }
+    } catch { tercihTr = false; }
+    if (!tercihTr) return;
+    // Blog linkleri router'ın DIŞINDA verilir (routes.js) — burada da öyle.
+    window.location.replace(`/blog/${trSlug}${window.location.search}${window.location.hash}`);
+  }, [post, slug, previewId]);
   const pick = (a, f) => (a ? (a[`${f}_${postLang}`] || a[`${f}_tr`] || a[`${f}_en`] || '') : '');
 
   useEffect(() => {
