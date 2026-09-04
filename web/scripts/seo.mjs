@@ -3847,6 +3847,66 @@ async function main() {
     // Kayit iki raporu birden tasir (report_tr / report_en). Bir dilde rapor
     // YOKSA o dilin sayfasi da URETILMEZ ve hreflang'e girmez: var olmayan
     // alternatif uydurmak, tek adrese isaret etmekten daha kotu.
+    // ── KOPYA META CAKISMASI URETIMDE COZULUR ─────────────────────────────
+    // `seo-audit` ayni dilde iki analizin ayni <title>/description tasimasini
+    // build'i DUSURerek cezalandiriyor. Kapi dogru (Google icin kopya sayfa)
+    // ama tepkisi orantisiz: meta'yi AI uretiyor, katalog ayni urunun
+    // varyantlariyla dolu ("…wrv038f28" / "…wrv038f29") ve tek bir cakisma
+    // gece cron'unu susturuyor — commit, push ve deploy hic calismiyor. Sahibi
+    // bir ay bakmayacaksa bu, sitenin bir ay boyunca hic guncellenmemesi
+    // demektir. Kopya baslik kucuk bir SEO sorunu; duran yayin akisi degil.
+    //
+    // Cozum kapiyi gevsetmek DEGIL, cakismayi hic olusturmamak: ayni meta
+    // ikinci kez cikarsa sayfaya slug'dan turetilen AYIRT EDICI parca eklenir
+    // (baslikta gecmeyen en uzun slug parcasi — genelde model kodu ya da
+    // kapasite). Boylece Google kopya gormez, audit kapisi da yerinde kalir ve
+    // artik yalnizca GERCEKTEN beklenmedik bir durumda tetiklenir.
+    const gorulenBaslik = new Map(); // lang -> Set<title>
+    const gorulenOzet = new Map();   // lang -> Set<description>
+    const kume = (m, lang) => {
+      if (!m.has(lang)) m.set(lang, new Set());
+      return m.get(lang);
+    };
+    // Slug'in bu metinde GECMEYEN parcalarindan SONUNCUSU. "En uzun" degil:
+    // olculdu, `samsung-galaxy-s25-512gb` icin en uzun parca "samsung" cikiyor
+    // ve iki varyanti birbirinden AYIRMIYOR. Varyant eki slug'in sonundadir
+    // (512gb, wrv038f29, 2li), ayirt edici bilgi orada. Hicbiri eksik degilse
+    // son parcaya duser; slug bos ise bos doner ve cagiran taraf numaralar.
+    const metaAyirtEdici = (slug, metin) => {
+      const alt = String(metin || '').toLowerCase();
+      const parcalar = String(slug || '').split('-').filter((p) => p.length >= 2);
+      const eksik = parcalar.filter((p) => !alt.includes(p));
+      const secim = eksik[eksik.length - 1] || parcalar[parcalar.length - 1] || '';
+      return secim ? secim.charAt(0).toUpperCase() + secim.slice(1) : '';
+    };
+    const benzersiz = (set, metin, ayirt) => {
+      if (!set.has(metin)) { set.add(metin); return metin; }
+      let aday = ayirt ? `${metin} ${ayirt}` : metin;
+      let n = 2;
+      while (set.has(aday)) { aday = `${metin} ${ayirt || ''} ${n}`.replace(/\s+/g, ' ').trim(); n += 1; }
+      set.add(aday);
+      return aday;
+    };
+    // Aciklama icin ayri: <meta> etiketine giren deger truncate()'den GECMIS
+    // olan, yani benzersizlik de o deger uzerinde kurulmali. Iki farkli ozetin
+    // ilk 155 karakteri ayni oldugunda ham metinleri karsilastirmak cakismayi
+    // KACIRIR. Ayirt edici eklenirken govde ona yer acacak kadar kisaltilir ki
+    // sonradan gelen truncate() ayirt ediciyi kirpip atmasin.
+    const benzersizOzet = (set, ham, ayirt, max = 155) => {
+      const taban = truncate(ham, max);
+      if (!set.has(taban)) { set.add(taban); return taban; }
+      let ek = ayirt ? ` (${ayirt})` : ' (2)';
+      let n = 2;
+      let aday = `${truncate(ham, Math.max(40, max - ek.length))}${ek}`;
+      while (set.has(aday)) {
+        n += 1;
+        ek = ayirt ? ` (${ayirt} ${n})` : ` (${n})`;
+        aday = `${truncate(ham, Math.max(40, max - ek.length))}${ek}`;
+      }
+      set.add(aday);
+      return aday;
+    };
+
     for (const a of analyses) {
       if (!a.slug) continue;
       // DIKKAT: analysisReport() oteki dile DUSER; burada duserse Ingilizce
@@ -3865,8 +3925,12 @@ async function main() {
         // Baslik/aciklama sayfayi cizen bilesenle AYNI fonksiyondan gelir
         // (lib/analysisRecord.js) — admin metaTitle/metaDescription yazdiysa
         // onlar, yazmadiysa rapordan turetilenler.
-        const anBaslik = analysisMetaTitle(a, lang);
-        const anOzet = analysisMetaDescription(a, lang);
+        const anBaslikHam = analysisMetaTitle(a, lang);
+        const anOzetHam = analysisMetaDescription(a, lang);
+        // fitTitle head'i KIRPMAZ, yalniz kuyruk parcasi duser — bu yuzden
+        // ayirt edici head'e katilir: 60'i asarsa " | Qor AI" gider, baslik tam kalir.
+        const anBaslik = benzersiz(kume(gorulenBaslik, lang), anBaslikHam, metaAyirtEdici(a.slug, anBaslikHam));
+        const anOzet = benzersizOzet(kume(gorulenOzet, lang), anOzetHam, metaAyirtEdici(a.slug, anOzetHam));
         const faq = analysisFaq(a, lang).slice(0, 8);
         const graph = [{
           '@type': 'Article', '@id': `${url}#article`,
