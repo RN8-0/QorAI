@@ -77,7 +77,8 @@ function main() {
   // Kontrol KALDIRILMADI, anahtara bagli hale getirildi: hangi mod secilirse
   // secilsin, TERSI bir kayma hata verir. Yani bu satir hala bir kaza
   // yakalayicisi — yalnizca beklenen deger degisti.
-  const INDEX_THIN = process.env.SEO_INDEX_THIN === '1';
+  // seo.mjs ile AYNI varsayilan (2026-10-02'den beri: dizinde, kapatmak icin =0).
+  const INDEX_THIN = process.env.SEO_INDEX_THIN !== '0';
   const realProductDirs = sampleDirs('product', 3);
   assert(realProductDirs.length > 0, 'no prerendered product pages found');
   for (const dir of realProductDirs) {

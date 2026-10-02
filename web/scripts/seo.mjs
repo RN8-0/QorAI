@@ -119,7 +119,15 @@ const PB_URL = 'https://yv5z6sfeiogrv3jn4djss832.46.225.95.201.sslip.io';
 //  noindex olarak isaretlenmis" HATASI uretir. Bu yuzden ayni anahtar
 //  sitemap'ten de dusuruyor.
 // ═══════════════════════════════════════════════════════════════════════════
-const SEO_INDEX_THIN = process.env.SEO_INDEX_THIN === '1';
+// 2026-10-02 KARAR TERSINE DONDU — VARSAYILAN ARTIK "DIZINDE".
+// GSC (28 gun): sitenin trafigi URUN sayfalarindan geliyordu — en cok
+// sorgular model kodlari (zte u60 pro, lg 65qned7eb3c, vivo v2555), en cok
+// tiklanan 5 sayfanin 3'u urun sayfasi. 09-02'deki noindex'ten sonra "noindex
+// ile haric" 13.938'e cikti ve gosterim 22 Eylul'den itibaren gunde 2-2,8 B'den
+// 1 B'nin altina dustu. AdSense gerekcesi trafik olmadan anlamsiz: affiliate
+// ve reklam basvurulari trafik olmadigi icin reddediliyor. Eski davranis:
+// SEO_INDEX_THIN=0.
+const SEO_INDEX_THIN = process.env.SEO_INDEX_THIN !== '0';
 
 // Published blog articles (public read — listRule is status="published"). Drives
 // the prerendered /blog listing + /blog/<slug> article pages.
@@ -4049,7 +4057,13 @@ async function main() {
   // including the tr variants we now prerender alongside the root. lastmod = the
   // newest product in the category — a real change signal, not the build date.
   const categoryUrls = [];
-  const prodTs = (d) => Number(d.updatedAtTs || d.scrapedAtTs) || 0;
+  // ICERIK TARIHI = scrapedAtTs, updatedAtTs DEGIL (2026-10-02). updatedAtTs
+  // "kayda en son DOKUNAN is" demek: gece fiyat kosusu binlerce urune dokunuyor
+  // ve o adreslerin lastmod'u her gun bugune kayiyordu -> seo-audit churn
+  // kapisi patliyor, cron sessizce duruyordu (2026-08-31: 4858/8132). Urunun
+  // scrapedAt'i yalniz Epey'den OZELLIK cekilince yazilir; fiyat isleri kendi
+  // offer kaydina yazar. Urunler yeniden dizine acilinca bu sart.
+  const prodTs = (d) => Number(d.scrapedAtTs || d.updatedAtTs) || 0;
   for (const [cat, picked] of [...kategoriKabuklari.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const p = categoryPath(cat);
     if (!p) continue;
@@ -4076,7 +4090,7 @@ async function main() {
   // Üç dilin de ön-render'ı üretildiği için üçü de sitemap'e girer — aksi halde
   // dil varyantları yalnız hreflang üzerinden keşfedilir ve taranmaları gecikir.
   const productUrls = prerendered.flatMap(({ d, path }) => {
-    const lastmod = lastmodFromTs(d.updatedAtTs || d.scrapedAtTs);
+    const lastmod = lastmodFromTs(prodTs(d));
     return SEO_LOCALES.map((l) => ({
       loc: `${SITE}${localePrefix(l)}${path}`, lastmod, changefreq: 'weekly',
       priority: l === SEO_DEFAULT_LOCALE ? '0.6' : '0.5',
