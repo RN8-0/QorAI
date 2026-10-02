@@ -1,1 +1,77 @@
-{"category":"hardware_wallets","label":"Soğuk Cüzdan","title":"En İyi Soğuk Cüzdanlar 2024: Kriptonuzu Güvende Tutun","lead":"Kripto varlıklarınızı siber tehditlere karşı korumanın en güvenli yolu donanım cüzdanlarıdır. Dijital varlıklarınızı güvenle saklamak için öne çıkan seçenekleri mercek altına alıyoruz.","sections":[{"h":"Kripto Güvenliğinde Soğuk Cüzdanın Yeri","body":"Kripto paralarınızı çevrimdışı ortamda tutarak siber saldırılardan koruyan donanım cüzdanları, dijital varlıklarınız için temel bir kalkan görevi görür. Özel anahtarlarınızı internetten izole bir cihazda saklamanız, fonlarınıza yetkisiz erişimi engeller. Bu cihazlar, varlıklarınızın güvenliğini sağlamak adına vazgeçilmez bir yatırımdır."},{"h":"Soğuk Cüzdan Seçerken Nelere Dikkat Etmeli?","body":"Bir soğuk cüzdan seçerken, öncelikle desteklediği coin ve token çeşitliliğini göz önünde bulundurmalısınız. Cihazın güvenlik özellikleri, yazılım güncellemeleri ve yedekleme seçenekleri de büyük önem taşır. Ayrıca, kullanıcı arayüzünün basitliği ve cihazın fiziksel dayanıklılığı uzun vadeli kullanım için belirleyici faktörlerdir."},{"h":"İhtiyaçlarınıza En Uygun Modeli Bulmak","body":"Piyasada farklı bütçe ve kullanım senaryolarına uygun birçok soğuk cüzdan bulunuyor. Biyometrik güvenlik sunan modellerden, dokunmatik ekranlı ve geniş coin destekli cihazlara kadar geniş bir yelpaze mevcut. Kullanım amacınıza ve beklediğiniz güvenlik seviyesine göre seçim yapmak, deneyiminizi doğrudan etkileyecektir."}],"picks":[{"name":"D'Cent Biometric Wallet Soğuk Cüzdan","why":"Biyometrik parmak izi okuyucusu ile üst düzey güvenlik ve kolay erişim sunar.","id":"d4b3s5is2ulih6j","slug":"dcent-biometric-wallet"},{"name":"SecuX V20 Soğuk Cüzdan","why":"Geniş dokunmatik ekranı ve güçlü şifreleme özellikleriyle dikkat çeken bir orta segment seçeneğidir.","id":"sx604sbdhp9skov","slug":"secux-v20"},{"name":"SafePal S1 Soğuk Cüzdan","why":"Tamamen hava boşluklu (air-gapped) çalışma prensibi ve QR kod tabanlı işlem onayı ile öne çıkar.","id":"d8eg3tg98o1ulkz","slug":"safepal-s1"},{"name":"Blockstream Jade Soğuk Cüzdan","why":"Açık kaynak kodlu yapısı ve Bitcoin odaklı gelişmiş güvenlik özellikleriyle teknik kullanıcıların tercihi olabilir.","id":"34dwupbeapxbof8","slug":"blockstream-jade"},{"name":"Ledger Nano X Soğuk Cüzdan","why":"Bluetooth bağlantısı ve geniş coin desteği sayesinde mobil kullanım kolaylığı sağlar.","id":"ce5huvyzf5lg7um","slug":"ledger-nano-x"},{"name":"Ledger Stax Soğuk Cüzdan","why":"Büyük, özelleştirilebilir e-mürekkep ekranı sayesinde kullanıcı deneyimini zenginleştirir ve NFT'ler için ideal bir arayüz sunar.","id":"yb9e7tqfxht9hw3","slug":"ledger-stax"}],"faq":[{"q":"Soğuk cüzdanlar ne kadar güvenli?","a":"Özel anahtarlarınızı çevrimdışı tutarak siber saldırılara karşı maksimum koruma sağlarlar."},{"q":"Soğuk cüzdanımı kaybetsem ne olur?","a":"Kurtarma cümleniz (seed phrase) varsa, varlıklarınıza başka bir uyumlu cüzdan üzerinden erişebilirsiniz."},{"q":"Tüm kripto paraları destekler mi?","a":"Her cüzdanın desteklediği coin ve token listesi farklıdır, almadan önce kontrol etmek önemlidir."},{"q":"Yazılım cüzdanından farkı nedir?","a":"Yazılım cüzdanları internete bağlıdır ve sıcak cüzdan olarak kabul edilirken, soğuk cüzdanlar çevrimdışı çalışarak daha yüksek güvenlik sunar."}],"updatedAt":"2026-08-26T01:17:40.285Z"}
+{
+  "category": "hardware_wallets",
+  "label": "Soğuk Cüzdan",
+  "title": "En İyi Soğuk Cüzdanlar 2024: Kriptonuzu Güvende Tutun",
+  "lead": "Kripto varlıklarınızı siber tehditlere karşı korumanın en güvenli yolu donanım cüzdanlarıdır. Dijital varlıklarınızı güvenle saklamak için öne çıkan seçenekleri mercek altına alıyoruz.",
+  "sections": [
+    {
+      "h": "Kripto Güvenliğinde Soğuk Cüzdanın Yeri",
+      "body": "Kripto paralarınızı çevrimdışı ortamda tutarak siber saldırılardan koruyan donanım cüzdanları, dijital varlıklarınız için temel bir kalkan görevi görür. Özel anahtarlarınızı internetten izole bir cihazda saklamanız, fonlarınıza yetkisiz erişimi engeller. Bu cihazlar, varlıklarınızın güvenliğini sağlamak adına vazgeçilmez bir yatırımdır."
+    },
+    {
+      "h": "Soğuk Cüzdan Seçerken Nelere Dikkat Etmeli?",
+      "body": "Bir soğuk cüzdan seçerken, öncelikle desteklediği coin ve token çeşitliliğini göz önünde bulundurmalısınız. Cihazın güvenlik özellikleri, yazılım güncellemeleri ve yedekleme seçenekleri de büyük önem taşır. Ayrıca, kullanıcı arayüzünün basitliği ve cihazın fiziksel dayanıklılığı uzun vadeli kullanım için belirleyici faktörlerdir."
+    },
+    {
+      "h": "İhtiyaçlarınıza En Uygun Modeli Bulmak",
+      "body": "Piyasada farklı bütçe ve kullanım senaryolarına uygun birçok soğuk cüzdan bulunuyor. Biyometrik güvenlik sunan modellerden, dokunmatik ekranlı ve geniş coin destekli cihazlara kadar geniş bir yelpaze mevcut. Kullanım amacınıza ve beklediğiniz güvenlik seviyesine göre seçim yapmak, deneyiminizi doğrudan etkileyecektir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "D'Cent Biometric Wallet Soğuk Cüzdan",
+      "why": "Biyometrik parmak izi okuyucusu ile üst düzey güvenlik ve kolay erişim sunar.",
+      "id": "d4b3s5is2ulih6j",
+      "slug": "dcent-biometric-wallet"
+    },
+    {
+      "name": "SecuX V20 Soğuk Cüzdan",
+      "why": "Geniş dokunmatik ekranı ve güçlü şifreleme özellikleriyle dikkat çeken bir orta segment seçeneğidir.",
+      "id": "sx604sbdhp9skov",
+      "slug": "secux-v20"
+    },
+    {
+      "name": "SafePal S1 Soğuk Cüzdan",
+      "why": "Tamamen hava boşluklu (air-gapped) çalışma prensibi ve QR kod tabanlı işlem onayı ile öne çıkar.",
+      "id": "d8eg3tg98o1ulkz",
+      "slug": "safepal-s1"
+    },
+    {
+      "name": "Blockstream Jade Soğuk Cüzdan",
+      "why": "Açık kaynak kodlu yapısı ve Bitcoin odaklı gelişmiş güvenlik özellikleriyle teknik kullanıcıların tercihi olabilir.",
+      "id": "34dwupbeapxbof8",
+      "slug": "blockstream-jade"
+    },
+    {
+      "name": "Ledger Nano X Soğuk Cüzdan",
+      "why": "Bluetooth bağlantısı ve geniş coin desteği sayesinde mobil kullanım kolaylığı sağlar.",
+      "id": "ce5huvyzf5lg7um",
+      "slug": "ledger-nano-x"
+    },
+    {
+      "name": "Ledger Stax Soğuk Cüzdan",
+      "why": "Büyük, özelleştirilebilir e-mürekkep ekranı sayesinde kullanıcı deneyimini zenginleştirir ve NFT'ler için ideal bir arayüz sunar.",
+      "id": "yb9e7tqfxht9hw3",
+      "slug": "ledger-stax"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Soğuk cüzdanlar ne kadar güvenli?",
+      "a": "Özel anahtarlarınızı çevrimdışı tutarak siber saldırılara karşı maksimum koruma sağlarlar."
+    },
+    {
+      "q": "Soğuk cüzdanımı kaybetsem ne olur?",
+      "a": "Kurtarma cümleniz (seed phrase) varsa, varlıklarınıza başka bir uyumlu cüzdan üzerinden erişebilirsiniz."
+    },
+    {
+      "q": "Tüm kripto paraları destekler mi?",
+      "a": "Her cüzdanın desteklediği coin ve token listesi farklıdır, almadan önce kontrol etmek önemlidir."
+    },
+    {
+      "q": "Yazılım cüzdanından farkı nedir?",
+      "a": "Yazılım cüzdanları internete bağlıdır ve sıcak cüzdan olarak kabul edilirken, soğuk cüzdanlar çevrimdışı çalışarak daha yüksek güvenlik sunar."
+    }
+  ],
+  "updatedAt": "2026-08-26T01:17:40.285Z"
+}

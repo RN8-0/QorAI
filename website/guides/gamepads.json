@@ -1,1 +1,71 @@
-{"category":"gamepads","label":"Oyun Kolu","title":"En İyi Oyun Kolu Rehberi 2024","lead":"Oyun deneyiminin kalbi sağlam bir kontrolcüden geçer. İster PC'de, ister konsolda veya mobilde oynayın, doğru oyun kolu fark yaratır ve sizi oyuna daha fazla bağlar.","sections":[{"h":"Neden İyi Bir Oyun Kolu Önemli?","body":"Saatler süren oyun maratonlarında ellerinizi yormayacak, hassas tuş takımlarıyla her komutu anında iletecek bir oyun kolu, performansınızı doğrudan etkiler. Yüksek tepki süresi ve titreşim geri bildirimi gibi özellikler de oyunların atmosferini zenginleştirerek sizi daha çok içine çeker."},{"h":"Oyun Kolu Seçerken Nelere Dikkat Etmeli?","body":"Öncelikle hangi platformlarda kullanacağınızı belirleyin; PC, mobil veya belirli bir konsol uyumluluğu kritik. Kablosuz özgürlük sunarken, gecikmesiz bir deneyim için 2.4GHz dongle veya kaliteli Bluetooth bağlantısı sunan modellere bakmalısınız. Ergonomi, tuşların hissiyatı ve Hall Effect joystick gibi gelişmiş özellikler de uzun vadeli memnuniyet için oldukça önemlidir."},{"h":"Farklı İhtiyaçlara Yönelik Modeller","body":"Piyasada her bütçeye ve ihtiyaca uygun birçok model bulunuyor. Bazı kollar genel kullanım için harika bir fiyat/performans dengesi sunarken, bazıları gelişmiş makro tuşları ve kişiselleştirme seçenekleriyle rekabetçi oyunculara hitap eder. Özellikle mobil oyuncular için tasarlanmış, akıllı telefonlara kolayca entegre olan kompakt ve hafif seçenekler de mevcut."}],"picks":[{"name":"PXN 9607X Hall Oyun Kolu","why":"Hall Effect sensörleriyle uzun ömürlü ve hassas kontrol sunarak rekabetçi oyunlarda fark yaratır.","id":"liityzil0psxsf0","slug":"pxn-9607x-hall"},{"name":"8BitDo Ultimate 2C Wireless Oyun Kolu","why":"Çoklu platform desteği ve klasik tasarıma modern dokunuşlarıyla geniş bir kitleye hitap ediyor.","id":"v2ka3jszt7g3fng","slug":"8bitdo-ultimate-2c-wireless"},{"name":"Hoco GA32 Dragon Oyun Kolu","why":"Giriş seviyesi için ideal bir fiyat/performans dengesi sunarken, temel oyun deneyimi için yeterli hassasiyeti sağlıyor.","id":"1mulnnz9q21pg0x","slug":"hoco-ga32-dragon"},{"name":"PXN P50S Oyun Kolu","why":"Kompakt yapısıyla özellikle taşınabilirlik arayan mobil oyuncular için mükemmel bir seçim.","id":"f4miqx3gvrddfnn","slug":"pxn-p50s"},{"name":"PXN P5 8K Oyun Kolu","why":"Yüksek tepki hızı ve gelişmiş titreşim motorlarıyla özellikle detaylı geri bildirim bekleyen oyunculara hitap eder.","id":"7ph93640pingg42","slug":"pxn-p5-8k"}],"faq":[{"q":"Oyun kolu alırken kablosuz mu, kablolu mu tercih etmeliyim?","a":"Kablosuz kollar hareket özgürlüğü sunarken, kablolu modeller genellikle daha düşük gecikme süresi ve pil derdi olmamasıyla öne çıkar."},{"q":"Hall Effect joystick nedir ve neden önemlidir?","a":"Manyetik alan kullanarak çalışan Hall Effect joystick'ler, geleneksel potansiyometrelere göre daha uzun ömürlü, hassas ve drift (kayma) sorununa daha az yatkındır."},{"q":"Bir oyun kolunun pil ömrü ne kadar olmalı?","a":"Kullanım alışkanlıklarınıza bağlı olmakla birlikte, tek şarjla 10-20 saat arası kullanım sunan modeller genellikle yeterlidir."},{"q":"Oyun kolu seçerken bütçe ne kadar önemli?","a":"Bütçe tabii ki önemli, ancak uzun vadede konfor ve dayanıklılık sunan bir kola yatırım yapmak, oyun deneyiminizi çok daha keyifli hale getirecektir."}],"updatedAt":"2026-08-25T01:18:17.496Z"}
+{
+  "category": "gamepads",
+  "label": "Oyun Kolu",
+  "title": "En İyi Oyun Kolu Rehberi 2024",
+  "lead": "Oyun deneyiminin kalbi sağlam bir kontrolcüden geçer. İster PC'de, ister konsolda veya mobilde oynayın, doğru oyun kolu fark yaratır ve sizi oyuna daha fazla bağlar.",
+  "sections": [
+    {
+      "h": "Neden İyi Bir Oyun Kolu Önemli?",
+      "body": "Saatler süren oyun maratonlarında ellerinizi yormayacak, hassas tuş takımlarıyla her komutu anında iletecek bir oyun kolu, performansınızı doğrudan etkiler. Yüksek tepki süresi ve titreşim geri bildirimi gibi özellikler de oyunların atmosferini zenginleştirerek sizi daha çok içine çeker."
+    },
+    {
+      "h": "Oyun Kolu Seçerken Nelere Dikkat Etmeli?",
+      "body": "Öncelikle hangi platformlarda kullanacağınızı belirleyin; PC, mobil veya belirli bir konsol uyumluluğu kritik. Kablosuz özgürlük sunarken, gecikmesiz bir deneyim için 2.4GHz dongle veya kaliteli Bluetooth bağlantısı sunan modellere bakmalısınız. Ergonomi, tuşların hissiyatı ve Hall Effect joystick gibi gelişmiş özellikler de uzun vadeli memnuniyet için oldukça önemlidir."
+    },
+    {
+      "h": "Farklı İhtiyaçlara Yönelik Modeller",
+      "body": "Piyasada her bütçeye ve ihtiyaca uygun birçok model bulunuyor. Bazı kollar genel kullanım için harika bir fiyat/performans dengesi sunarken, bazıları gelişmiş makro tuşları ve kişiselleştirme seçenekleriyle rekabetçi oyunculara hitap eder. Özellikle mobil oyuncular için tasarlanmış, akıllı telefonlara kolayca entegre olan kompakt ve hafif seçenekler de mevcut."
+    }
+  ],
+  "picks": [
+    {
+      "name": "PXN 9607X Hall Oyun Kolu",
+      "why": "Hall Effect sensörleriyle uzun ömürlü ve hassas kontrol sunarak rekabetçi oyunlarda fark yaratır.",
+      "id": "liityzil0psxsf0",
+      "slug": "pxn-9607x-hall"
+    },
+    {
+      "name": "8BitDo Ultimate 2C Wireless Oyun Kolu",
+      "why": "Çoklu platform desteği ve klasik tasarıma modern dokunuşlarıyla geniş bir kitleye hitap ediyor.",
+      "id": "v2ka3jszt7g3fng",
+      "slug": "8bitdo-ultimate-2c-wireless"
+    },
+    {
+      "name": "Hoco GA32 Dragon Oyun Kolu",
+      "why": "Giriş seviyesi için ideal bir fiyat/performans dengesi sunarken, temel oyun deneyimi için yeterli hassasiyeti sağlıyor.",
+      "id": "1mulnnz9q21pg0x",
+      "slug": "hoco-ga32-dragon"
+    },
+    {
+      "name": "PXN P50S Oyun Kolu",
+      "why": "Kompakt yapısıyla özellikle taşınabilirlik arayan mobil oyuncular için mükemmel bir seçim.",
+      "id": "f4miqx3gvrddfnn",
+      "slug": "pxn-p50s"
+    },
+    {
+      "name": "PXN P5 8K Oyun Kolu",
+      "why": "Yüksek tepki hızı ve gelişmiş titreşim motorlarıyla özellikle detaylı geri bildirim bekleyen oyunculara hitap eder.",
+      "id": "7ph93640pingg42",
+      "slug": "pxn-p5-8k"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Oyun kolu alırken kablosuz mu, kablolu mu tercih etmeliyim?",
+      "a": "Kablosuz kollar hareket özgürlüğü sunarken, kablolu modeller genellikle daha düşük gecikme süresi ve pil derdi olmamasıyla öne çıkar."
+    },
+    {
+      "q": "Hall Effect joystick nedir ve neden önemlidir?",
+      "a": "Manyetik alan kullanarak çalışan Hall Effect joystick'ler, geleneksel potansiyometrelere göre daha uzun ömürlü, hassas ve drift (kayma) sorununa daha az yatkındır."
+    },
+    {
+      "q": "Bir oyun kolunun pil ömrü ne kadar olmalı?",
+      "a": "Kullanım alışkanlıklarınıza bağlı olmakla birlikte, tek şarjla 10-20 saat arası kullanım sunan modeller genellikle yeterlidir."
+    },
+    {
+      "q": "Oyun kolu seçerken bütçe ne kadar önemli?",
+      "a": "Bütçe tabii ki önemli, ancak uzun vadede konfor ve dayanıklılık sunan bir kola yatırım yapmak, oyun deneyiminizi çok daha keyifli hale getirecektir."
+    }
+  ],
+  "updatedAt": "2026-08-25T01:18:17.496Z"
+}
