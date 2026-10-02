@@ -7,7 +7,7 @@
 //
 // Kayitlar admin panelinden TEK TEK yayina alinir (status='published').
 // Otomatik doldurulmaz — bkz. web/scripts/gen-analysis.mjs basligi.
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { pb } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
@@ -105,6 +105,15 @@ export default function Analyses() {
   // gozle tarayarak bulabiliyordu. Filtreleme YEREL — sayfada duran kayitlar
   // uzerinde calisir, PB'ye her tusa basista istek atmaz.
   const [q, setQ] = useState('');
+  const aramaKutusu = useRef(null);
+  /* ARAC CUBUGU YAPISKAN (2026-10-02).
+     Arama kutusu `items.length > 0` iken ciziliyordu. Eslesmeyen bir arama
+     PB'den bos liste donunce items bosaliyor, kutu DOM'dan SILINIYOR ve
+     sayfa "Henüz yayınlanmış analiz yok" diyordu — okuyucunun yeniden
+     yazabilecegi bir kutu kalmiyordu, tek cikis sayfayi yenilemekti.
+     Yayinda analiz oldugu BIR KEZ bilindi mi (tohum, faset ya da dolu bir
+     yanit) cubuk bir daha kalkmaz; bos sonuc "aramaya uyan yok" demektir. */
+  const [analizVar, setAnalizVar] = useState(tohum.length > 0);
   // SAYFALAMA. `getList(1, 60)` sabit tavani vardi: 60'inci analizden sonrasi
   // hicbir yerden ULASILAMAZ oluyordu (sitemap'te var, sitede yok). Sayfa
   // sayfa yuklenir, "daha fazla" ile devam eder.
@@ -229,6 +238,7 @@ export default function Analyses() {
         if (!live) return;
         setItems(r.items || []);
         setDevam(r.page < r.totalPages);
+        if ((r.items || []).length) setAnalizVar(true);
       })
       // TOHUM SILINMEZ. Istek dustugunde elde duran listeyi bosaltmak,
       // okuyucuya "hic analiz yok" demek olurdu.
@@ -259,6 +269,17 @@ export default function Analyses() {
   const kucult = (s) => String(s || '').toLocaleLowerCase('tr');
   const ara = kucult(araGec).trim();
   const filtreSecili = Boolean(tur || kategori || ara);
+  // `q` de sayilir: debounce suresince (300 ms) `ara` henuz eski/bos olabilir
+  // ve cubuk o arada kalkmamali.
+  const aracGoster = analizVar || fasetler.turler.length > 0 || filtreSecili || Boolean(q.trim());
+  const aramayiTemizle = () => {
+    setQ('');
+    aramaKutusu.current?.focus();
+  };
+  const filtreleriTemizle = () => {
+    setTur('');
+    setKategori('');
+  };
   const gorunen = (!filtreSecili || !loading) ? items : items
     .filter((a) => (tur ? analysisKind(a) === tur : true))
     .filter((a) => (kategori ? a.category === kategori : true))
@@ -300,26 +321,10 @@ export default function Analyses() {
         </p>
       </header>
 
-      {loading && <p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}
-      {/* BOS LISTE ile BASARISIZ ISTEK ayni sey degil. Istek dustugunde
-          "Henüz yayınlanmış analiz yok" yazmak okuyucuya YANLIS bilgi verir
-          ve tekrar denemenin tek yolu sayfayi yenilemek olurdu. */}
-      {!loading && !items.length && hata && (
-        <p className="an-empty">
-          {L('The analyses could not be loaded.', 'Analizler yüklenemedi.')}
-          {' '}
-          <button type="button" className="an-retry" onClick={() => setTekrar((n) => n + 1)}>
-            {L('Try again', 'Tekrar dene')}
-          </button>
-        </p>
-      )}
-      {!loading && !items.length && !hata && (
-        <p className="an-empty">{L('No analyses published yet.', 'Henüz yayınlanmış analiz yok.')}</p>
-      )}
-
-      {!loading && items.length > 0 && (
+      {aracGoster && (
         <div className="an-tools">
           <input
+            ref={aramaKutusu}
             type="search"
             className="an-search"
             value={q}
@@ -366,10 +371,36 @@ export default function Analyses() {
         </div>
       )}
 
-      {!loading && items.length > 0 && !gorunen.length && (
+      {loading && <p className="an-empty">{L('Loading…', 'Yükleniyor…')}</p>}
+      {/* BOS LISTE ile BASARISIZ ISTEK ayni sey degil. Istek dustugunde
+          "Henüz yayınlanmış analiz yok" yazmak okuyucuya YANLIS bilgi verir
+          ve tekrar denemenin tek yolu sayfayi yenilemek olurdu. */}
+      {!loading && !items.length && hata && (
         <p className="an-empty">
-          {L('No analysis matches that search.', 'Bu aramaya uyan analiz yok.')}
+          {L('The analyses could not be loaded.', 'Analizler yüklenemedi.')}
+          {' '}
+          <button type="button" className="an-retry" onClick={() => setTekrar((n) => n + 1)}>
+            {L('Try again', 'Tekrar dene')}
+          </button>
         </p>
+      )}
+      {/* BOS SONUC iki ayri sey: hic analiz yok MU, yoksa secili arama/filtreye
+          uyan mi yok. Ikincisinde okuyucuya ne aradigi ve tek tikla geri donus
+          yolu verilir; arama kutusu yerinde kalir. */}
+      {!loading && !hata && !gorunen.length && (
+        filtreSecili ? (
+          <p className="an-empty" role="status">
+            {ara
+              ? L(`No analysis matches “${araGec}”.`, `“${araGec}” ile eşleşen bir analiz yok.`)
+              : L('No analysis matches these filters.', 'Seçili filtrelere uyan bir analiz yok.')}
+            {' '}
+            <button type="button" className="an-retry" onClick={ara ? aramayiTemizle : filtreleriTemizle}>
+              {ara ? L('Clear search', 'Aramayı temizle') : L('Clear filters', 'Filtreleri temizle')}
+            </button>
+          </p>
+        ) : (
+          <p className="an-empty">{L('No analyses published yet.', 'Henüz yayınlanmış analiz yok.')}</p>
+        )
       )}
 
       <div className="an-list">
