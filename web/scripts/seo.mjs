@@ -1016,8 +1016,8 @@ function articleCoverUrl(a) {
   return /^https?:\/\//i.test(pi) ? pi : '';
 }
 const BLOG_LBL = {
-  tr: { ai: 'AI Analizi', amz: "Amazon'da Gör", prod: 'Ürüne Git', verdict: 'Sonuç', all: '← Tüm rehberler' },
-  en: { ai: 'AI analysis', amz: 'View on Amazon', prod: 'Product', verdict: 'Verdict', all: '← All guides' },
+  tr: { ai: 'AI Analizi', amz: "Amazon'da Gör", prod: 'Ürüne Git', subs: 'Abonelikler', site: 'Resmi site', view: 'İncele', verdict: 'Sonuç', all: '← Tüm rehberler' },
+  en: { ai: 'AI analysis', amz: 'View on Amazon', prod: 'Product', subs: 'Subscriptions', site: 'Official site', view: 'View', verdict: 'Verdict', all: '← All guides' },
 };
 function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const lbl = BLOG_LBL[lang] || BLOG_LBL.tr;
@@ -1033,7 +1033,21 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
     // basliklariyla yayindaydi. Ayni temizlik BlogPost.jsx'te de var.
     const pAd = cleanProductName(p.name) || p.name;
     const slug = slugifyProduct(p.slug || p.name);
-    const href = slug ? `/product/${slug}` : `/product/${p.id}`;
+    // MADDE TURU — BlogPost.jsx renderProd ile AYNI kural (2026-10-02).
+    // On-render `kind`a hic bakmiyordu: editorde elle eklenen `custom`
+    // maddeler (Netflix, NordVPN, ChatGPT Plus …, id `c_…`) da
+    // `/product/<ad-slug>` linki aliyordu. Olculdu: 7 yazida katalogda
+    // OLMAYAN 35 adres; YandexBot/Googlebot bunlari izleyip 404 aldi (canli
+    // nginx logu). SPA ayni maddeleri zaten dogru ciziyordu: product -> urun,
+    // subscription -> /subscriptions, custom -> kendi dis linki ya da link yok.
+    const kind = p.kind || 'product';
+    const disHam = kind === 'custom' ? p.link : (kind === 'subscription' ? (p.affiliateUrl || p.website) : '');
+    const disHref = /^https?:\/\//i.test(String(disHam || '')) ? esc(String(disHam)) : '';
+    const href = kind === 'product' ? (slug ? `/product/${slug}` : `/product/${p.id}`)
+      : kind === 'subscription' ? '/subscriptions'
+      : '';
+    // Baslik/gorsel linki: ic adres, yoksa custom maddenin dis adresi, yoksa link yok.
+    const baglaAc = href ? `<a href="${href}"` : (disHref ? `<a href="${disHref}" target="_blank" rel="noopener noreferrer"` : '');
     const d1 = esc(p[`desc_${lang}`] || p.desc_tr || p.desc_en || '');
     const d2 = esc(p[`desc2_${lang}`] || p.desc2_tr || p.desc2_en || '');
     const imgSrc = p.image || p.imageUrl || '';
@@ -1045,7 +1059,10 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
     const layout = p.layout || 'split';
     const maxH = IMG_H[p.imgSize] || IMG_H.m;
     const dEl = (d) => (d ? `<p style="font-size:17px;line-height:1.8;color:#334155;margin:0 0 14px;max-width:760px">${d}</p>` : '');
-    const imgEl = img ? `<a href="${href}" style="display:block;margin:8px 0 16px"><img src="${img}" alt="${esc(pAd)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" /></a>` : '';
+    const imgTag = `<img src="${img}" alt="${esc(pAd)}" style="display:block;max-width:100%;max-height:${maxH}px;object-fit:contain;border-radius:12px;mix-blend-mode:multiply" loading="lazy" />`;
+    const imgEl = !img ? ''
+      : baglaAc ? `${baglaAc} style="display:block;margin:8px 0 16px">${imgTag}</a>`
+      : `<div style="margin:8px 0 16px">${imgTag}</div>`;
     // ── BLOK MODELI (yeni editor) ─────────────────────────────────────────
     // OLCULDU 2026-09-02: 11 makalenin 10'u urun metnini `blocks` icinde
     // tutuyor, YALNIZCA 1'i eski `desc_*` alanlarini kullaniyor. Bu fonksiyon
@@ -1084,11 +1101,26 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
       const txtCol = `<div style="flex:1;min-width:0">${dEl(d1)}${dEl(d2)}</div>`;
       inner = `<div style="display:flex;gap:24px;align-items:center;flex-direction:${layout === 'right' ? 'row-reverse' : 'row'}">${imgCol}${txtCol}</div>`;
     } else inner = dEl(d1) + imgEl + dEl(d2); // split
-    const btnsHtml = `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto">`
-      + `<a href="${href}?ai=1" style="color:#64748b;text-decoration:none">✨ ${lbl.ai}</a>`
-      + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="color:#64748b;text-decoration:none;display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${shownPrice ? `<b style="color:#0f172a">${esc(shownPrice)}</b>` : ''}</a>`
-      + `<a href="${href}" style="color:#64748b;text-decoration:none">→ ${lbl.prod}</a></div>`;
-    const titleHtml = `<a href="${href}" style="font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto"><span style="color:#2563eb">${i + 1}.</span> ${esc(pAd)}</a>`;
+    const btnStil = 'color:#64748b;text-decoration:none';
+    let btnIc;
+    if (kind === 'product') {
+      btnIc = `<a href="${href}?ai=1" style="${btnStil}">✨ ${lbl.ai}</a>`
+        + `<a href="${buy}" rel="sponsored nofollow" aria-label="Amazon" style="${btnStil};display:inline-flex;align-items:center;gap:6px"><img src="/assets/amazon.svg" alt="Amazon" style="height:14px;width:auto"/>${shownPrice ? `<b style="color:#0f172a">${esc(shownPrice)}</b>` : ''}</a>`
+        + `<a href="${href}" style="${btnStil}">→ ${lbl.prod}</a>`;
+    } else if (kind === 'subscription') {
+      btnIc = `<a href="${href}" style="${btnStil}">→ ${lbl.subs}</a>`
+        + (disHref ? `<a href="${disHref}" target="_blank" rel="sponsored noopener nofollow" style="${btnStil}">🌐 ${lbl.site}</a>` : '');
+    } else {
+      btnIc = disHref ? `<a href="${disHref}" target="_blank" rel="sponsored noopener nofollow" style="${btnStil}">→ ${lbl.view}</a>` : '';
+    }
+    const btnsHtml = btnIc
+      ? `<div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;font-weight:600;flex:0 0 auto">${btnIc}</div>`
+      : '';
+    const baslikStil = 'font-size:27px;font-weight:800;color:#0f172a;text-decoration:none;line-height:1.2;flex:1 1 auto';
+    const baslikIc = `<span style="color:#2563eb">${i + 1}.</span> ${esc(pAd)}`;
+    const titleHtml = baglaAc
+      ? `${baglaAc} style="${baslikStil}">${baslikIc}</a>`
+      : `<span style="${baslikStil}">${baslikIc}</span>`;
     return `<div style="padding:30px 0;border-top:1px solid #e8edf3">`
       + `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:12px">${titleHtml}${btnsHtml}</div>`
       + inner
