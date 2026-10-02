@@ -17,7 +17,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { searchProductsLean, enrichThinCards } from '../lib/typesense';
+import { searchSuggestions, enrichThinCards } from '../lib/typesense';
 import ProductCard, { ProductCardSkeleton } from '../components/ProductCard.jsx';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo } from '../lib/seo';
@@ -36,6 +36,13 @@ export default function Search() {
   const [sonuc, setSonuc] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(!!q);
   const [terim, setTerim] = useState('');       // sonuclarin AIT OLDUGU sorgu
+  /* TAM ESLESME (2026-10-02, ust bar ile ayni kural — HeaderSearch.jsx).
+     Typesense eslesmeyen kelimeyi dusurup yeniden ariyor; "iphone 18 duo"
+     iPhone 18 listesini aranan urunmus gibi donduruyordu. Liste kalir,
+     ama "en yakin sonuclar" oldugu soylenir. */
+  const [tam, setTam] = useState(true);
+  const [hata, setHata] = useState(false);      // ag hatasi "sonuc yok" DEGILDIR
+  const [tekrar, setTekrar] = useState(0);
   const [katFiltre, setKatFiltre] = useState('');
   const girdi = useRef(null);
 
@@ -57,13 +64,15 @@ export default function Search() {
 
   useEffect(() => {
     setKatFiltre('');
+    setHata(false);
     if (!q) { setSonuc([]); setYukleniyor(false); setTerim(''); return undefined; }
     let canli = true;
     setYukleniyor(true);
-    searchProductsLean(q, LIMIT)
+    searchSuggestions(q, LIMIT)
       .then(async (r) => {
         if (!canli) return;
-        const liste = Array.isArray(r) ? r : [];
+        const liste = r.items;
+        setTam(r.tam);
         // ONCE ham sonuclari bas — kullanici bekletilmesin; etiketler
         // zenginlestirme donunce yerine oturur (kart yuksekligi sabit,
         // dolayisiyla kayma olusmaz).
@@ -86,9 +95,9 @@ export default function Search() {
           if (canli) setSonuc(liste.map((p) => (!once.get(p.id) && zenginMi(p) ? { ...p } : p)));
         } catch { /* etiketler eksik kalir, sayfa calisir */ }
       })
-      .catch(() => { if (canli) { setSonuc([]); setTerim(q); setYukleniyor(false); } });
+      .catch(() => { if (canli) { setSonuc([]); setTerim(q); setHata(true); setYukleniyor(false); } });
     return () => { canli = false; };
-  }, [q]);
+  }, [q, tekrar]);
 
   // Sonuclardaki kategoriler — "daralt" kisayolu. Sorgu genis oldugunda
   // (ornegin "samsung") kullaniciyi dogru kategoriye goturur.
@@ -124,7 +133,7 @@ export default function Search() {
               </>
             ) : L('Search', 'Arama')}
           </h1>
-          {q && !yukleniyor && (
+          {q && !yukleniyor && !hata && (
             <span className="sr-count">
               {!katFiltre && sonuc.length >= LIMIT ? `${LIMIT}+` : gosterilen.length}{' '}
               {L('products', 'ürün')}
@@ -148,6 +157,15 @@ export default function Search() {
         {/* Kategori cipleri sonuclari YERINDE daraltir (yeni istek atmaz).
             Kategori sayfasina goturmek yaniltici olurdu: /category rotasi
             metin sorgusu okumuyor, yani ayni sorgu orada kaybolurdu. */}
+        {q && !yukleniyor && !hata && sonuc.length > 0 && !tam && (
+          <p className="sr-note" role="status">
+            {L(
+              <>No exact match for <b>“{terim}”</b>. Showing the closest results.</>,
+              <><b>“{terim}”</b> için tam eşleşme yok. En yakın sonuçlar gösteriliyor.</>,
+            )}
+          </p>
+        )}
+
         {kategoriler.length > 1 && (
           <div className="sr-cats">
             <span className="sr-cats-lbl">{L('Narrow down', 'Daralt')}</span>
@@ -172,6 +190,14 @@ export default function Search() {
         ) : yukleniyor ? (
           <div className="card-grid">
             {Array.from({ length: 12 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+          </div>
+        ) : hata ? (
+          <div className="card pad sr-empty" role="status">
+            <strong>{L('Search did not respond.', 'Arama yanıt vermedi.')}</strong>
+            <button type="button" className="btn btn-grad" style={{ marginTop: 6 }}
+              onClick={() => setTekrar((n) => n + 1)}>
+              {L('Try again', 'Tekrar dene')}
+            </button>
           </div>
         ) : gosterilen.length ? (
           <div className="card-grid">
