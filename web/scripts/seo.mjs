@@ -3474,9 +3474,33 @@ async function main() {
   // Capraz kategori linkleri: her kategori sayfasi digerlerine baglanir, boylece
   // kategoriler kopuk ada olmaktan cikar (olculdu: onceki halinde kategori
   // sayfalarinda BASKA kategoriye giden link sayisi 0'di).
-  const tumKategoriler = [...curatedByCat.keys()];
+  //
+  // KURASYONSUZ KATEGORI DE KABUK ALIR (2026-10-02). Ana sayfa ve /category
+  // kategori listesini ALIM REHBERLERINDEN (46) basiyor; kabuklar ise yalniz
+  // kurasyonlu urunu olan kategoriler (45) icin yaziliyordu. `case_fans`in
+  // hicbir urunu spec>=12 kapisini gecmiyor (fanin dogal olarak az ozelligi
+  // var) ve /category/case_fans ic linki 404'e gidiyordu. Spec kapisi URUN
+  // kabugu icindir; kategori sayfasi rehber + urun izgarasi. Izgara: talep
+  // sirali, gorselli, model-tekil ilk 24. Bu kategoriler icin urun kabugu ve
+  // karsilastirma URETILMEZ — onlar curatedByCat'te kalir.
+  const kategoriKabuklari = new Map(curatedByCat);
+  for (const cat of guides.keys()) {
+    if (kategoriKabuklari.has(cat) || !categoryPath(cat)) continue;
+    const seen = new Set();
+    const secilen = [];
+    for (const d of byCategory.get(cat) || []) {
+      if (secilen.length >= 24) break;
+      if (!d?.id || !d?.name || !/^https?:\/\//i.test(d.imageUrl || '')) continue;
+      const key = modelKey(d.name);
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      secilen.push(d);
+    }
+    if (secilen.length) kategoriKabuklari.set(cat, secilen);
+  }
+  const tumKategoriler = [...kategoriKabuklari.keys()];
   const digerKategoriler = (cat) => tumKategoriler.filter((c) => c !== cat).slice(0, 14);
-  for (const [cat, picked] of curatedByCat) {
+  for (const [cat, picked] of kategoriKabuklari) {
     const path = categoryPath(cat);
     if (!path) continue;
     const guide = guides.get(cat);
@@ -4021,12 +4045,12 @@ async function main() {
       }
     }
   }
-  // Only categories we actually generated a content shell for (curatedByCat),
+  // Only categories we actually generated a content shell for (kategoriKabuklari),
   // including the tr variants we now prerender alongside the root. lastmod = the
   // newest product in the category — a real change signal, not the build date.
   const categoryUrls = [];
   const prodTs = (d) => Number(d.updatedAtTs || d.scrapedAtTs) || 0;
-  for (const [cat, picked] of [...curatedByCat.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [cat, picked] of [...kategoriKabuklari.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const p = categoryPath(cat);
     if (!p) continue;
     // ── KATEGORI lastmod: SEO_CONTENT_VERSION, urun zaman damgasi DEGIL ─────
@@ -4132,7 +4156,7 @@ async function main() {
     '> an AI tech score (0-100). Languages: English (/), Turkish (/tr). Also on Android.',
     '',
     '## Ana bölümler / Main sections',
-    `- [Kategoriler / Categories](${SITE}/category): ${curatedByCat.size} teknoloji kategorisinde AI puanlı ürünler`,
+    `- [Kategoriler / Categories](${SITE}/category): ${kategoriKabuklari.size} teknoloji kategorisinde AI puanlı ürünler`,
     `- [Abonelik Karşılaştırma / Subscriptions](${SITE}/subscriptions): Netflix, Spotify, YouTube Premium, ChatGPT Plus…`,
     `- [Link Analizi / Link Analysis](${SITE}/link-analysis): ürün linki yapıştır, AI analiz etsin`,
     `- [Qor AI Sohbet / AI Chat](${SITE}/ai-chat)`,
