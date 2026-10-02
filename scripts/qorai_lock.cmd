@@ -61,7 +61,15 @@ ping -n 61 127.0.0.1 >nul
 goto acquire_loop
 
 :drop_stale
-forfiles /P "%LOCKDIR%" /M owner.txt /D -1 >nul 2>&1
+rem YAS SAAT ILE OLCULUR, TAKVIM GUNU ILE DEGIL (2026-10-02).
+rem Eskiden "forfiles /D -1" vardi: o, dosyanin TARIHINE bakar. Dun
+rem 17:04te alinan kilit bu sabah 09:00da "1 gunden eski" sayildi ve
+rem 16 saattir kosan price_refresh in kilidi silindi. product_discovery
+rem (24 paralel isci) ayni anda basladi, PB 3 GB a sisti, cekirdek onu
+rem OOM ile oldurdu ve site 522 verdi. Gece yarisini asan HER is
+rem kilidini ertesi sabahki ilk ise kaptiriyordu.
+rem 30 saat: en uzun mesru kosu (9000 urunluk fiyat telafisi) ~19 saat.
+powershell -NoProfile -NonInteractive -Command "if (((Get-Date) - (Get-Item -LiteralPath $env:OWNERFILE).LastWriteTime).TotalHours -ge 30) { exit 0 } else { exit 1 }" >nul 2>&1
 if errorlevel 1 goto :eof
 echo %date% %time% BAYAT kilit silindi >> "%LOGF%"
 type "%OWNERFILE%" >> "%LOGF%" 2>nul
