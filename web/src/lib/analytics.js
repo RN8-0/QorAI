@@ -95,22 +95,56 @@ function send(name, params) {
 // Cozum: baslik degisene kadar (ya da 2 sn) bekle, sonra gonder. Olay
 // zaten erteleniyor (ilk etkilesim ya da 6 sn), bu bekleme olcumu
 // geciktirmiyor.
-const KABUK_BASLIKLARI = /^(page not found|sayfa bulunamadi|sayfa bulunamadı|qor ai)/i;
+// DESEN 2026-09-01'DEN BERI HIC ESLESMIYORDU (2026-10-02'de bulundu):
+// sonundaki kelime siniri `\b` dosyaya GERCEK BACKSPACE (0x08) olarak
+// yazilmisti, desen her basligin sonunda o karakteri ariyordu. `oturdu`
+// hep true cikti, bekleme hic devreye girmedi ve page_view aninda kabuk
+// basligiyla gitti. Ters bolu kod-uretim yolunda yenebiliyor; bu satira
+// dokunursan baytlara bak (`od -c`).
+//
+// `\b` geri KONMADI: JS'te ASCII'dir, "bulunamadı"daki `ı`dan sonra sinir
+// olusmaz. `qor ai` da CIKARILDI: ana sayfanin KALICI basligi "Qor AI — …"
+// ile basliyor; desen onu da kabuk sayarsa en cok gezilen sayfanin
+// page_view'i 10 sn tavana kadar bekler ve erken cikan ziyaretci kaybolur.
+// Bugun gecici baslik tasiyan TEK kabuk 404 kabugu: kurasyon disi urun
+// adresine nginx onu 200 ile verir, SPA urunu cizince baslik degisir.
+// Diger her rotanin kendi on-render basligi var.
+const KABUK_BASLIKLARI = /^(page not found|sayfa bulunamad[ıi])/i;
+
+// 2 SN DE YETMIYORDU (olculdu 2026-10-02, canli /product/xiaomi-14t-pro):
+// sayfa 4 sn icinde "Xiaomi 14T Pro (256 GB) …" basligiyla cizildi. Urun
+// sayfasi rota parcasini + Typesense yanitini bekliyor; yavas baglantida
+// 2 sn'yi rahatca asiyor. Tavan yalnizca baslik HALA kabuk basligiyken
+// devrede; basligi hazir sayfa ilk kontrolde gonderilir.
+const BASLIK_TAVANI_MS = 10000;
+
+// Tavan uzayinca yeni bir risk: baslik oturmadan baska sayfaya gecilirse
+// onceki gorunum SONRAKI sayfanin basligiyla gidebilir. Yeni gorunum
+// basladiginda bekleyen eskisi, KENDI son gordugu baslikla hemen gider.
+let bekleyenGorunum = null;
 
 export function trackPageView(path) {
+  if (bekleyenGorunum) bekleyenGorunum();
   const basla = Date.now();
   const ilk = document.title;
+  let sonBaslik = ilk;
+  let gitti = false;
   const gonder = () => {
+    if (gitti) return;
+    gitti = true;
+    if (bekleyenGorunum === gonder) bekleyenGorunum = null;
     send('page_view', {
       page_path: path,
       page_location: location.origin + path,
-      page_title: document.title,
+      page_title: sonBaslik,
     });
   };
+  bekleyenGorunum = gonder;
   const bekle = () => {
-    const simdi = document.title;
-    const oturdu = simdi !== ilk || !KABUK_BASLIKLARI.test(simdi);
-    if (oturdu || Date.now() - basla > 2000) { gonder(); return; }
+    if (gitti) return;
+    sonBaslik = document.title;
+    const oturdu = sonBaslik !== ilk || !KABUK_BASLIKLARI.test(sonBaslik);
+    if (oturdu || Date.now() - basla > BASLIK_TAVANI_MS) { gonder(); return; }
     setTimeout(bekle, 120);
   };
   bekle();
