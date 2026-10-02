@@ -106,7 +106,11 @@ async function tsGet(path, params = {}) {
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`typesense ${res.status}`);
-    return res.json();
+    // `await` SART: `return res.json()` donunce `finally` GOVDE OKUNMADAN
+    // calisip zamanlayiciyi siliyordu. Sunucu basliklari gonderip govdede
+    // takilirsa (2026-10-02 sabahki asiri yuk) istek sonsuza dek askida
+    // kaliyor, ust bar aramasi iskelette donuyordu.
+    return await res.json();
   } finally {
     clearTimeout(timeout);
   }
@@ -799,37 +803,69 @@ export async function searchProductsLean(query, limit = 40) {
   return searchProducts(query, limit, LIST_FIELDS_LEAN);
 }
 
+function productSearchParams(q, limit, fields) {
+  return {
+    q,
+    // Name carries almost all of the relevance signal. filterTokens
+    // ("ram:8gb", "storage:256gb") were pulling in unrelated products on a
+    // plain-name search, so they're dropped from the query; keySpecsText is
+    // kept only as a faint tie-breaker.
+    query_by: 'name,brand,category,keySpecsText',
+    query_by_weights: '12,5,2,1',
+    sort_by: '_text_match:desc,trendScore:desc,techScore:desc',
+    per_page: Math.min(limit, 60),
+    include_fields: fields,
+    prefix: 'true',
+    // Tighter fuzziness: at most one typo, and only on tokens long enough that
+    // a typo is plausible — keeps "iphone 15" from matching half the catalog.
+    num_typos: '1,0,0,0',
+    min_len_1typo: 5,
+    min_len_2typo: 12,
+    drop_tokens_threshold: 1,
+    typo_tokens_threshold: 1,
+    prioritize_exact_match: 'true',
+    prioritize_token_position: 'true',
+  };
+}
+
 export async function searchProducts(query, limit = 40, fields = LIST_FIELDS) {
   const q = (query || '').trim();
   if (!q) return [];
   try {
-    const data = await searchDocs({
-      q,
-      // Name carries almost all of the relevance signal. filterTokens
-      // ("ram:8gb", "storage:256gb") were pulling in unrelated products on a
-      // plain-name search, so they're dropped from the query; keySpecsText is
-      // kept only as a faint tie-breaker.
-      query_by: 'name,brand,category,keySpecsText',
-      query_by_weights: '12,5,2,1',
-      sort_by: '_text_match:desc,trendScore:desc,techScore:desc',
-      per_page: Math.min(limit, 60),
-      include_fields: fields,
-      prefix: 'true',
-      // Tighter fuzziness: at most one typo, and only on tokens long enough that
-      // a typo is plausible — keeps "iphone 15" from matching half the catalog.
-      num_typos: '1,0,0,0',
-      min_len_1typo: 5,
-      min_len_2typo: 12,
-      drop_tokens_threshold: 1,
-      typo_tokens_threshold: 1,
-      prioritize_exact_match: 'true',
-      prioritize_token_position: 'true',
-    });
+    const data = await searchDocs(productSearchParams(q, limit, fields));
     return uniqueProducts(docs(data).map(docToProduct));
   } catch (err) {
     console.warn('[catalog] search failed', err);
     return [];
   }
+}
+
+// Typesense'in sorguyu boldugu kelime sayisi: bosluga gore bolunur, harf ve
+// rakam disi isaretler atilir ("s25+" -> "s25", tek basina "-" sayilmaz).
+function sorguKelimeSayisi(q) {
+  return q.split(/\s+/).map((k) => k.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean).length;
+}
+
+// UST BAR ONERILERI — sonuclar + "tam eslesme var mi" (2026-10-02).
+//
+// `drop_tokens_threshold: 1` hicbir urun TUM kelimeleri tasimiyorsa sagdan
+// kelime dusurup yeniden arar. Canlida olculdu: "iphone 18 duo" yazinca
+// "duo" sessizce atiliyor ve iPhone 18 Pro Max listesi sanki eslesmis gibi
+// gosteriliyordu. Dusurmenin kendisi faydali ("iphone 15 fiyat" yine
+// iPhone 15'leri bulur) — sorun SAKLANMASI. Typesense her isabette
+// `text_match_info.tokens_matched` donuyor; hicbir isabet sorgunun TUM
+// kelimelerini tasimiyorsa `tam: false` ve cagiran bunu soyler.
+//
+// searchProducts'tan farkli olarak hata YUTULMAZ: ag hatasini "eslesen urun
+// yok" diye gostermek yanlis bilgi olur; cagiran ayri bir durum cizer.
+export async function searchSuggestions(query, limit = 6) {
+  const q = (query || '').trim();
+  if (!q) return { items: [], tam: true };
+  const data = await searchDocs(productSearchParams(q, limit, LIST_FIELDS_LEAN));
+  const kelime = sorguKelimeSayisi(q);
+  const hits = Array.isArray(data?.hits) ? data.hits : [];
+  const tam = hits.some((h) => (h?.text_match_info?.tokens_matched || 0) >= kelime);
+  return { items: uniqueProducts(docs(data).map(docToProduct)), tam };
 }
 
 export async function getCategoryPage(opts = {}) {

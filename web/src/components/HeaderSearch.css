@@ -137,6 +137,22 @@
 .hs-state { padding: 20px 14px; text-align: center; display: flex; flex-direction: column; gap: 5px; }
 .hs-state strong { font-size: 13.5px; font-weight: 800; color: var(--text); }
 .hs-state span { font-size: 12px; font-weight: 600; color: var(--text-3); }
+/* Ag hatasinda tekrar dene — cumle icinde durdugu icin baglanti gibi. */
+.hs-retry {
+  align-self: center; padding: 2px 4px; border: 0; border-radius: 6px;
+  background: none; color: var(--accent); font: inherit;
+  font-size: 12.5px; font-weight: 800; text-decoration: underline; cursor: pointer;
+}
+.hs-retry:hover { color: var(--text); }
+.hs-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Typesense eslesmeyen kelimeyi dusurdugunde: liste "yakin sonuc", aranan
+   urun degil. Satirlardan 1px cizgiyle ayrilir, kutu/golge yok. */
+.hs-note {
+  margin: 0 0 4px; padding: 8px 10px 9px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; line-height: 1.45; color: var(--text-2);
+}
+.hs-note b { color: var(--text); font-weight: 800; }
 
 .hs-row {
   display: flex; align-items: center; gap: 6px; width: 100%;

@@ -28,7 +28,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n/index.jsx';
-import { searchProductsLean } from '../lib/typesense';
+import { searchSuggestions } from '../lib/typesense';
 import { productPath, searchPath } from '../lib/routes';
 import { displayProductName } from '../lib/productNames';
 import { useCompare } from '../lib/compare';
@@ -46,14 +46,24 @@ export default function HeaderSearch() {
   const [acik, setAcik] = useState(false);
   const [q, setQ] = useState('');
   const [sonuc, setSonuc] = useState([]);
-  const [araniyor, setAraniyor] = useState(false);
+  /* SONUC HANGI SORGUYA AIT (2026-10-02). Sorgu degisince eski sonuclar
+     panelde kaliyordu — canlida olculdu: "iphone 18" sonuclari, "iphone 18
+     duo" yazildiktan sonra da duruyordu; istek yavaslayinca ya da asili
+     kalinca bu kalici oluyordu. Sonuc artik yalnizca KENDI sorgusu kutuda
+     yaziliyken gosterilir; arada iskelet cizilir. */
+  const [sonucSorgu, setSonucSorgu] = useState('');
+  const [tam, setTam] = useState(true);         // sonuclar sorgunun TUM kelimelerini tasiyor mu
+  const [hata, setHata] = useState(false);      // ag hatasi "eslesen urun yok" DEGILDIR
+  const [tekrar, setTekrar] = useState(0);
   const [imlec, setImlec] = useState(-1);      // klavye ile secili satir
   const [uyari, setUyari] = useState('');      // "farkli kategori" bildirimi
   const kutu = useRef(null);
   const girdi = useRef(null);
   const uyariZ = useRef(null);
 
-  const kapat = useCallback(() => { setAcik(false); setSonuc([]); setImlec(-1); }, []);
+  // Sorgu KORUNUR (yeniden acinca kullanici kaldigi yerden devam eder) ama
+  // sonucu duser; yeniden acilinca arama tazelenir — bkz. oneriler efekti.
+  const kapat = useCallback(() => { setAcik(false); setSonuc([]); setSonucSorgu(''); setImlec(-1); }, []);
 
   // ── Disari tiklayinca kapan ──────────────────────────────────────────────
   // `pointerdown` (mousedown degil): mobilde dokunus da yakalanir. Panelin
@@ -95,20 +105,31 @@ export default function HeaderSearch() {
   }, [acik]);
 
   // ── Oneriler (debounce) ──────────────────────────────────────────────────
+  // `acik` da bagimlilik: kapatilip baska sayfada yeniden acilinca kutuda
+  // eski sorgu duruyor ama sonucu dusmus oluyor; arama o an tazelenir.
   useEffect(() => {
     const s = q.trim();
     setImlec(-1);
-    if (!s) { setSonuc([]); setAraniyor(false); return undefined; }
-    setAraniyor(true);
+    setHata(false);
+    if (!s || !acik) { if (!s) { setSonuc([]); setSonucSorgu(''); } return undefined; }
+    // Sahiplik her aramada sifirlanir: "Tekrar dene" ayni sorguyu yeniden
+    // sorarken panel arada "Eşleşen ürün yok" demesin, iskelet cizsin.
+    setSonucSorgu('');
     let canli = true;
     const z = setTimeout(async () => {
       try {
-        const r = await searchProductsLean(s, ONERI);
-        if (canli) setSonuc(Array.isArray(r) ? r.slice(0, ONERI) : []);
-      } catch { if (canli) setSonuc([]); } finally { if (canli) setAraniyor(false); }
+        const r = await searchSuggestions(s, ONERI);
+        if (canli) { setSonuc(r.items.slice(0, ONERI)); setTam(r.tam); setSonucSorgu(s); }
+      } catch {
+        if (canli) { setSonuc([]); setSonucSorgu(s); setHata(true); }
+      }
     }, 260);
     return () => { canli = false; clearTimeout(z); };
-  }, [q]);
+  }, [q, acik, tekrar]);
+
+  // Ekranda YALNIZCA kutudaki sorguya ait sonuclar durur.
+  const guncel = sonucSorgu !== '' && sonucSorgu === q.trim();
+  const gosterilen = guncel ? sonuc : [];
 
   useEffect(() => () => clearTimeout(uyariZ.current), []);
 
@@ -145,10 +166,10 @@ export default function HeaderSearch() {
   // ── Klavye ───────────────────────────────────────────────────────────────
   const tus = (e) => {
     if (e.key === 'Escape') { e.preventDefault(); kapat(); return; }
-    if (!sonuc.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setImlec((i) => (i + 1) % sonuc.length); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setImlec((i) => (i <= 0 ? sonuc.length : i) - 1); }
-    else if (e.key === 'Enter' && imlec >= 0) { e.preventDefault(); urunAc(sonuc[imlec]); }
+    if (!gosterilen.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setImlec((i) => (i + 1) % gosterilen.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setImlec((i) => (i <= 0 ? gosterilen.length : i) - 1); }
+    else if (e.key === 'Enter' && imlec >= 0 && gosterilen[imlec]) { e.preventDefault(); urunAc(gosterilen[imlec]); }
   };
 
   const panelAcik = acik && q.trim().length > 0;
@@ -202,7 +223,7 @@ export default function HeaderSearch() {
           aria-expanded={panelAcik}
           aria-controls="hs-panel"
           aria-autocomplete="list"
-          aria-activedescendant={imlec >= 0 && sonuc[imlec] ? `hs-row-${sonuc[imlec].id}` : undefined}
+          aria-activedescendant={imlec >= 0 && gosterilen[imlec] ? `hs-row-${gosterilen[imlec].id}` : undefined}
           tabIndex={acik ? 0 : -1}
         />
 
@@ -222,9 +243,10 @@ export default function HeaderSearch() {
 
       {panelAcik && (
         <div className="hs-panel" id="hs-panel" role="listbox" aria-label={t('common.search')}>
-          {araniyor && !sonuc.length ? (
+          {!guncel ? (
             /* Yavas agda "aranıyor…" yazisi yerine gercek satir iskeleti:
-               panel yuksekligi sonuclar gelince zipplamiyor. */
+               panel yuksekligi sonuclar gelince zipplamiyor. Sorgu
+               degistigi anda (debounce dahil) eski sonuclarin yerini alir. */
             <div className="hs-skel-wrap" aria-live="polite" aria-busy="true">
               {[0, 1, 2].map((i) => (
                 <div className="hs-row hs-skel" key={i}>
@@ -236,15 +258,32 @@ export default function HeaderSearch() {
                 </div>
               ))}
             </div>
-          ) : !sonuc.length ? (
-            <div className="hs-state">
+          ) : hata ? (
+            <div className="hs-state" role="status">
+              <strong>{L('Search did not respond.', 'Arama yanıt vermedi.')}</strong>
+              <button type="button" className="hs-retry" onClick={() => setTekrar((n) => n + 1)}>
+                {L('Try again', 'Tekrar dene')}
+              </button>
+            </div>
+          ) : !gosterilen.length ? (
+            <div className="hs-state" role="status">
               <strong>{L('No products matched.', 'Eşleşen ürün yok.')}</strong>
               <span>{L('Try a shorter or more common term.', 'Daha kısa ya da daha genel bir terim dene.')}</span>
             </div>
           ) : (
             <>
+              {/* Typesense eslesme olmayan kelimeyi dusurup yeniden aradiysa
+                  bunu SAKLAMA: liste yakin sonuctur, aranan urun degil. */}
+              {!tam && (
+                <p className="hs-note" role="status">
+                  {L(
+                    <>No exact match for <b>“{sonucSorgu}”</b>. Closest results:</>,
+                    <><b>“{sonucSorgu}”</b> için tam eşleşme yok. En yakın sonuçlar:</>,
+                  )}
+                </p>
+              )}
               <div className="hs-rows">
-                {sonuc.map((p, i) => {
+                {gosterilen.map((p, i) => {
                   const ekli = has(p.id);
                   return (
                     <div
