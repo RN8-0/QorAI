@@ -219,8 +219,8 @@ function inferCategoryFromUrl(url, title) {
   if (/(monitor|display|oled|qled|ultrawide)/.test(haystack)) return 'monitors';
   if (/(keyboard|mouse|klavye|fare)/.test(haystack)) return 'keyboards';
   if (/(camera|kamera|objektif|lens|dslr|mirrorless)/.test(haystack)) return 'cameras';
-  // book: "thinkbook / macbook / chromebook" kitap DEĞİLDİR.
-  if (/(book|books|isbn|kindle|kitap)/.test(haystack)) return 'books';
+  // \bbook\b: "thinkbook / macbook / chromebook" kitap DEĞİLDİR.
+  if (/(\bbook\b|\bbooks\b|isbn|kindle|kitap)/.test(haystack)) return 'books';
   if (/(shoe|shirt|dress|jacket|pantolon|ayakkabi|giyim|tekstil)/.test(haystack)) return 'clothing';
   if (/(bisiklet|bicycle|scooter|skuter)/.test(haystack)) return 'bikes';
   if (/(kitchen|vacuum|robot|coffee|airfryer|home|mutfak|beyaz-?esya|buzdolabi|camasir)/.test(haystack)) return 'home-appliances';
