@@ -1,1 +1,77 @@
-{"category":"projectors","label":"Projeksiyon","title":"En İyi Projeksiyon Cihazları 2024 Satın Alma Rehberi","lead":"Ev sinemasından iş sunumlarına, projeksiyon cihazları geniş ekran deneyimini mekanlarınıza taşıyor. Peki, sayısız seçenek arasından sizin için en uygun olanı nasıl seçersiniz?","sections":[{"h":"Görüntü Teknolojisi ve Çözünürlük","body":"Projeksiyon alırken ilk bakmanız gereken, görüntüyü nasıl oluşturduğudur. LCD modeller (Epson gibi) canlı renkler ve yüksek ışık çıkışı sunarken, DLP modeller (BenQ, Optoma) keskin detaylar ve akıcı hareket için idealdir. Özellikle 4K çözünürlük, günümüzde standart haline gelmiş olup, izlediğiniz içeriğin her ayrıntısını büyük ekranda net bir şekilde görmenizi sağlar."},{"h":"Parlaklık ve Kurulum Esnekliği","body":"Bir projeksiyon cihazının parlaklığı (ANSI Lümen cinsinden), cihazı kullanacağınız ortamın ışık koşulları için kritik öneme sahiptir. Karartma imkanı olmayan odalar için yüksek lümenli cihazlar tercih edilmelidir. Ayrıca, cihazın kurulum esnekliği de önemlidir; kısa mesafe (ultra short throw) projeksiyonlar, duvara çok yakın konumlandırılabilmesi sayesinde dar alanlar için harika bir çözüm sunar."},{"h":"Nelere Dikkat Etmeli: Bağlantılar, Akıllı Özellikler ve Gecikme","body":"Projeksiyon cihazınızın sunduğu bağlantı seçenekleri (HDMI, USB) ve akıllı özellikler (dahili işletim sistemi, Wi-Fi) kullanım deneyiminizi doğrudan etkiler. Özellikle oyunseverler için düşük gecikme süresi (input lag) sunan modeller büyük fark yaratır. Medya oynatıcılara veya konsollara kolayca bağlanabilen, hatta kablosuz yayın yapabilen cihazlar, modern kullanıcılar için vazgeçilmezdir."}],"picks":[{"name":"Epson EH-LS800 LCD Projeksiyon","why":"Ultra kısa atım mesafesi ve güçlü lazer ışık kaynağıyla, televizyon alternatifi arayanlar için muhteşem bir deneyim sunar.","id":"to1hafzll6ztbri","slug":"epson-eh-ls800"},{"name":"Hisense L9Q DLP Projeksiyon","why":"Canlı renkleri ve etkileyici 4K görüntü kalitesiyle geniş ekran deneyimini oturma odanıza taşıyan güçlü bir lazer TV çözümü.","id":"bka6ty7i4624ehy","slug":"hisense-l9q"},{"name":"BenQ X3000i DLP Projeksiyon","why":"Oyun tutkunları için özel olarak tasarlanmış, düşük gecikme süresi ve canlı renkleriyle sürükleyici bir oyun deneyimi sunar.","id":"g2kqaokqnor00tn","slug":"benq-x3000i"},{"name":"Optoma CinemaX P2 DLP Projeksiyon","why":"Akıllı özellikler, üstün ses kalitesi ve ultra kısa atım yeteneği sayesinde sinema keyfini odanıza sığdırır.","id":"p00c8nv8rojx0g1","slug":"optoma-cinemax-p2"},{"name":"Acer H6800BDA DLP Projeksiyon","why":"Bütçe dostu olmasına rağmen 4K çözünürlük ve iyi bir parlaklık sunarak ev sineması için erişilebilir bir seçenek.","id":"qukni4e6vn9jlne","slug":"acer-h6800bda"},{"name":"Epson EH-LS670 LCD Projeksiyon","why":"Esnek kurulum seçenekleri ve parlak görüntüsüyle farklı kullanım senaryolarına uyum sağlayabilen dengeli bir model.","id":"lwfobduail6w2mo","slug":"epson-eh-ls670"}],"faq":[{"q":"Projeksiyon alırken en önemli özellik nedir?","a":"Kullanım amacınıza göre değişse de, genellikle çözünürlük (4K) ve parlaklık (ANSI Lümen) en kritik faktörlerdir."},{"q":"Kısa mesafe (short throw) projeksiyon ne işe yarar?","a":"Cihazı duvara veya perdeye çok yakın konumlandırarak büyük görüntü elde etmeyi sağlar, böylece alan kısıtlaması olan odalar için idealdir."},{"q":"LCD mi DLP mi daha iyi?","a":"LCD modeller genellikle daha doygun renkler sunarken, DLP modeller daha keskin kontrast ve hızlı tepki süreleri ile öne çıkar; seçim kişisel tercihe bağlıdır."},{"q":"Projeksiyon lambası ne kadar dayanır?","a":"Lamba tabanlı modellerde genellikle 2.000-5.000 saat ömür varken, lazer ışık kaynaklı modeller 20.000 saat veya daha fazla dayanabilir."}],"updatedAt":"2026-08-24T01:19:05.272Z"}
+{
+  "category": "projectors",
+  "label": "Projeksiyon",
+  "title": "En İyi Projeksiyon Cihazları 2024 Satın Alma Rehberi",
+  "lead": "Ev sinemasından iş sunumlarına, projeksiyon cihazları geniş ekran deneyimini mekanlarınıza taşıyor. Peki, sayısız seçenek arasından sizin için en uygun olanı nasıl seçersiniz?",
+  "sections": [
+    {
+      "h": "Görüntü Teknolojisi ve Çözünürlük",
+      "body": "Projeksiyon alırken ilk bakmanız gereken, görüntüyü nasıl oluşturduğudur. LCD modeller (Epson gibi) canlı renkler ve yüksek ışık çıkışı sunarken, DLP modeller (BenQ, Optoma) keskin detaylar ve akıcı hareket için idealdir. Özellikle 4K çözünürlük, günümüzde standart haline gelmiş olup, izlediğiniz içeriğin her ayrıntısını büyük ekranda net bir şekilde görmenizi sağlar."
+    },
+    {
+      "h": "Parlaklık ve Kurulum Esnekliği",
+      "body": "Bir projeksiyon cihazının parlaklığı (ANSI Lümen cinsinden), cihazı kullanacağınız ortamın ışık koşulları için kritik öneme sahiptir. Karartma imkanı olmayan odalar için yüksek lümenli cihazlar tercih edilmelidir. Ayrıca, cihazın kurulum esnekliği de önemlidir; kısa mesafe (ultra short throw) projeksiyonlar, duvara çok yakın konumlandırılabilmesi sayesinde dar alanlar için harika bir çözüm sunar."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli: Bağlantılar, Akıllı Özellikler ve Gecikme",
+      "body": "Projeksiyon cihazınızın sunduğu bağlantı seçenekleri (HDMI, USB) ve akıllı özellikler (dahili işletim sistemi, Wi-Fi) kullanım deneyiminizi doğrudan etkiler. Özellikle oyunseverler için düşük gecikme süresi (input lag) sunan modeller büyük fark yaratır. Medya oynatıcılara veya konsollara kolayca bağlanabilen, hatta kablosuz yayın yapabilen cihazlar, modern kullanıcılar için vazgeçilmezdir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Epson EH-LS800 LCD Projeksiyon",
+      "why": "Ultra kısa atım mesafesi ve güçlü lazer ışık kaynağıyla, televizyon alternatifi arayanlar için muhteşem bir deneyim sunar.",
+      "id": "to1hafzll6ztbri",
+      "slug": "epson-eh-ls800"
+    },
+    {
+      "name": "Hisense L9Q DLP Projeksiyon",
+      "why": "Canlı renkleri ve etkileyici 4K görüntü kalitesiyle geniş ekran deneyimini oturma odanıza taşıyan güçlü bir lazer TV çözümü.",
+      "id": "bka6ty7i4624ehy",
+      "slug": "hisense-l9q"
+    },
+    {
+      "name": "BenQ X3000i DLP Projeksiyon",
+      "why": "Oyun tutkunları için özel olarak tasarlanmış, düşük gecikme süresi ve canlı renkleriyle sürükleyici bir oyun deneyimi sunar.",
+      "id": "g2kqaokqnor00tn",
+      "slug": "benq-x3000i"
+    },
+    {
+      "name": "Optoma CinemaX P2 DLP Projeksiyon",
+      "why": "Akıllı özellikler, üstün ses kalitesi ve ultra kısa atım yeteneği sayesinde sinema keyfini odanıza sığdırır.",
+      "id": "p00c8nv8rojx0g1",
+      "slug": "optoma-cinemax-p2"
+    },
+    {
+      "name": "Acer H6800BDA DLP Projeksiyon",
+      "why": "Bütçe dostu olmasına rağmen 4K çözünürlük ve iyi bir parlaklık sunarak ev sineması için erişilebilir bir seçenek.",
+      "id": "qukni4e6vn9jlne",
+      "slug": "acer-h6800bda"
+    },
+    {
+      "name": "Epson EH-LS670 LCD Projeksiyon",
+      "why": "Esnek kurulum seçenekleri ve parlak görüntüsüyle farklı kullanım senaryolarına uyum sağlayabilen dengeli bir model.",
+      "id": "lwfobduail6w2mo",
+      "slug": "epson-eh-ls670"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Projeksiyon alırken en önemli özellik nedir?",
+      "a": "Kullanım amacınıza göre değişse de, genellikle çözünürlük (4K) ve parlaklık (ANSI Lümen) en kritik faktörlerdir."
+    },
+    {
+      "q": "Kısa mesafe (short throw) projeksiyon ne işe yarar?",
+      "a": "Cihazı duvara veya perdeye çok yakın konumlandırarak büyük görüntü elde etmeyi sağlar, böylece alan kısıtlaması olan odalar için idealdir."
+    },
+    {
+      "q": "LCD mi DLP mi daha iyi?",
+      "a": "LCD modeller genellikle daha doygun renkler sunarken, DLP modeller daha keskin kontrast ve hızlı tepki süreleri ile öne çıkar; seçim kişisel tercihe bağlıdır."
+    },
+    {
+      "q": "Projeksiyon lambası ne kadar dayanır?",
+      "a": "Lamba tabanlı modellerde genellikle 2.000-5.000 saat ömür varken, lazer ışık kaynaklı modeller 20.000 saat veya daha fazla dayanabilir."
+    }
+  ],
+  "updatedAt": "2026-08-24T01:19:05.272Z"
+}

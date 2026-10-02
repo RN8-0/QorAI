@@ -1,1 +1,71 @@
-{"category":"keyboards","label":"Klavye","title":"En İyi Klavyeler 2024: Doğru Seçim Rehberi","lead":"Bilgisayar başında geçirdiğimiz saatlerde elimizin en çok değdiği donanımlardan biri klavye. Konforlu ve verimli bir deneyim için doğru klavye seçimi hayati önem taşıyor.","sections":[{"h":"Hangi Klavye Tipi Size Uygun?","body":"Klavye seçimi tamamen kullanım alışkanlıklarınıza bağlıdır. Uzun saatler yazı yazıyorsanız mekanik klavyelerin dokunsal geri bildirimi ve dayanıklılığı size hitap edebilirken, sessiz bir çalışma ortamı için membran klavyeler daha uygun olacaktır. Oyunseverler ise hızlı tepki süreleri sunan özel oyun klavyelerine yönelebilirler."},{"h":"Bağlantı ve Ek Özellikler","body":"Kablolu klavyeler düşük gecikme süresiyle oyun ve hassas işler için idealdir, kablosuz modeller ise masaüstü düzeni ve taşınabilirlik açısından özgürlük sunar. Bazı klavyeler, Microsoft Surface Pro Flex TouchPad Klavye gibi, entegre touchpad'leri veya ek multimedya tuşlarıyla kullanım kolaylığı sağlar. Arka aydınlatma, karanlık ortamlarda çalışmayı kolaylaştırırken, bazı modellerde bulunan makro tuşları iş akışınızı hızlandırabilir."},{"h":"Nelere Dikkat Etmeli?","body":"Klavye alırken tuş basım hissiyatını, malzeme kalitesini ve ergonomisini göz önünde bulundurmalısınız. Bilek desteği, ayarlanabilir eğim açıları ve tuşların yerleşimi uzun süreli kullanımlarda konforunuzu doğrudan etkiler. Ayrıca, klavyenin işletim sisteminizle uyumluluğu ve varsa accompanying yazılımının sunduğu kişiselleştirme seçenekleri de önemlidir."}],"picks":[{"name":"Microsoft Surface Pro Flex TouchPad Klavye (Y8U-00001)","why":"Surface Pro kullanıcıları için özel olarak tasarlanmış bu klavye, entegre touchpad'iyle taşınabilirlik ve işlevselliği bir arada sunuyor.","id":"sje0qrnixaq6z6t","slug":"microsoft-surface-pro-flex"},{"name":"Logitech K375s Klavye (920-008178)","why":"Çoklu cihaz desteği sayesinde telefon, tablet ve bilgisayar arasında kolayca geçiş yapabilen, kullanışlı bir klavye arayanlar için ideal.","id":"0kr1ugr2wdhipu6","slug":"logitech-k375s-920-008178"},{"name":"A4 Tech Fstyler FB2535C Klavye & Mouse Seti","why":"Günlük kullanım ve ofis işleri için uygun fiyatlı ve pratik bir klavye-fare seti arayanlara hitap ediyor.","id":"7vqm6lexsiqicji","slug":"a4-tech-fstyler-fb2535c"},{"name":"Everest EKW-603 TouchPad Klavye","why":"Yerden tasarruf etmek isteyen veya HTPC gibi medya merkezleri için touchpad'li kompakt bir çözüm arayanlar değerlendirebilir.","id":"xmvwnq5gefvf102","slug":"everest-ekw-603"},{"name":"3Dconnexion Keyboard Pro with Numpad Klavye (3DX-700092)","why":"Profesyonel CAD ve 3D tasarımcılar için özel kısayol tuşları ve ergonomik tasarımıyla iş akışını hızlandırıyor.","id":"vx8zl2bkmybybc9","slug":"3dconnexion-keyboard-pro-with-numpad"}],"faq":[{"q":"Mekanik klavye nedir, farkı ne?","a":"Tuşların altında bireysel anahtarlar bulunan, dokunsal geri bildirim ve ses veren, genellikle daha dayanıklı klavyelerdir."},{"q":"Kablosuz klavye mi, kablolu klavye mi daha iyi?","a":"Kablosuz klavyeler masaüstü düzeni ve taşınabilirlik açısından özgürlük sunarken, kablolu klavyeler gecikme süresi ve bağlantı güvenilirliği açısından daha avantajlı olabilir."},{"q":"Ergonomik klavye ne işe yarar?","a":"El ve bilek pozisyonunu daha doğal tutarak uzun süreli kullanımlarda rahatsızlığı ve tekrarlayan stres yaralanmaları riskini azaltır."},{"q":"Klavye temizliği nasıl yapılmalı?","a":"Klavyeyi kapatıp, tuş aralarındaki toz ve kırıntıları basınçlı hava ile temizleyebilir, yüzeyleri ise hafif nemli mikrofiber bezle silebilirsiniz."}],"updatedAt":"2026-08-24T01:18:13.476Z"}
+{
+  "category": "keyboards",
+  "label": "Klavye",
+  "title": "En İyi Klavyeler 2024: Doğru Seçim Rehberi",
+  "lead": "Bilgisayar başında geçirdiğimiz saatlerde elimizin en çok değdiği donanımlardan biri klavye. Konforlu ve verimli bir deneyim için doğru klavye seçimi hayati önem taşıyor.",
+  "sections": [
+    {
+      "h": "Hangi Klavye Tipi Size Uygun?",
+      "body": "Klavye seçimi tamamen kullanım alışkanlıklarınıza bağlıdır. Uzun saatler yazı yazıyorsanız mekanik klavyelerin dokunsal geri bildirimi ve dayanıklılığı size hitap edebilirken, sessiz bir çalışma ortamı için membran klavyeler daha uygun olacaktır. Oyunseverler ise hızlı tepki süreleri sunan özel oyun klavyelerine yönelebilirler."
+    },
+    {
+      "h": "Bağlantı ve Ek Özellikler",
+      "body": "Kablolu klavyeler düşük gecikme süresiyle oyun ve hassas işler için idealdir, kablosuz modeller ise masaüstü düzeni ve taşınabilirlik açısından özgürlük sunar. Bazı klavyeler, Microsoft Surface Pro Flex TouchPad Klavye gibi, entegre touchpad'leri veya ek multimedya tuşlarıyla kullanım kolaylığı sağlar. Arka aydınlatma, karanlık ortamlarda çalışmayı kolaylaştırırken, bazı modellerde bulunan makro tuşları iş akışınızı hızlandırabilir."
+    },
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Klavye alırken tuş basım hissiyatını, malzeme kalitesini ve ergonomisini göz önünde bulundurmalısınız. Bilek desteği, ayarlanabilir eğim açıları ve tuşların yerleşimi uzun süreli kullanımlarda konforunuzu doğrudan etkiler. Ayrıca, klavyenin işletim sisteminizle uyumluluğu ve varsa accompanying yazılımının sunduğu kişiselleştirme seçenekleri de önemlidir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Microsoft Surface Pro Flex TouchPad Klavye (Y8U-00001)",
+      "why": "Surface Pro kullanıcıları için özel olarak tasarlanmış bu klavye, entegre touchpad'iyle taşınabilirlik ve işlevselliği bir arada sunuyor.",
+      "id": "sje0qrnixaq6z6t",
+      "slug": "microsoft-surface-pro-flex"
+    },
+    {
+      "name": "Logitech K375s Klavye (920-008178)",
+      "why": "Çoklu cihaz desteği sayesinde telefon, tablet ve bilgisayar arasında kolayca geçiş yapabilen, kullanışlı bir klavye arayanlar için ideal.",
+      "id": "0kr1ugr2wdhipu6",
+      "slug": "logitech-k375s-920-008178"
+    },
+    {
+      "name": "A4 Tech Fstyler FB2535C Klavye & Mouse Seti",
+      "why": "Günlük kullanım ve ofis işleri için uygun fiyatlı ve pratik bir klavye-fare seti arayanlara hitap ediyor.",
+      "id": "7vqm6lexsiqicji",
+      "slug": "a4-tech-fstyler-fb2535c"
+    },
+    {
+      "name": "Everest EKW-603 TouchPad Klavye",
+      "why": "Yerden tasarruf etmek isteyen veya HTPC gibi medya merkezleri için touchpad'li kompakt bir çözüm arayanlar değerlendirebilir.",
+      "id": "xmvwnq5gefvf102",
+      "slug": "everest-ekw-603"
+    },
+    {
+      "name": "3Dconnexion Keyboard Pro with Numpad Klavye (3DX-700092)",
+      "why": "Profesyonel CAD ve 3D tasarımcılar için özel kısayol tuşları ve ergonomik tasarımıyla iş akışını hızlandırıyor.",
+      "id": "vx8zl2bkmybybc9",
+      "slug": "3dconnexion-keyboard-pro-with-numpad"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Mekanik klavye nedir, farkı ne?",
+      "a": "Tuşların altında bireysel anahtarlar bulunan, dokunsal geri bildirim ve ses veren, genellikle daha dayanıklı klavyelerdir."
+    },
+    {
+      "q": "Kablosuz klavye mi, kablolu klavye mi daha iyi?",
+      "a": "Kablosuz klavyeler masaüstü düzeni ve taşınabilirlik açısından özgürlük sunarken, kablolu klavyeler gecikme süresi ve bağlantı güvenilirliği açısından daha avantajlı olabilir."
+    },
+    {
+      "q": "Ergonomik klavye ne işe yarar?",
+      "a": "El ve bilek pozisyonunu daha doğal tutarak uzun süreli kullanımlarda rahatsızlığı ve tekrarlayan stres yaralanmaları riskini azaltır."
+    },
+    {
+      "q": "Klavye temizliği nasıl yapılmalı?",
+      "a": "Klavyeyi kapatıp, tuş aralarındaki toz ve kırıntıları basınçlı hava ile temizleyebilir, yüzeyleri ise hafif nemli mikrofiber bezle silebilirsiniz."
+    }
+  ],
+  "updatedAt": "2026-08-24T01:18:13.476Z"
+}

@@ -1,1 +1,77 @@
-{"category":"chargers","label":"Şarj Aleti","title":"En İyi Şarj Aleti Seçim Rehberi: Güç ve Hız","lead":"Akıllı telefonlarımızdan dizüstü bilgisayarlarımıza kadar tüm cihazlarımızın vazgeçilmezi şarj aletleri, doğru seçimle hayatınızı kolaylaştırır. Performans, güvenlik ve uzun ömürlü kullanım için doğru şarj aletini bulmak büyük önem taşır.","sections":[{"h":"Nelere Dikkat Etmeli?","body":"Şarj aleti alırken ilk olarak cihazlarınızın ihtiyaç duyduğu Watt (W) gücünü kontrol edin. Birden fazla cihazı aynı anda şarj etmek istiyorsanız, çoklu portlara sahip ve her porttan yeterli güç verebilen modellere yönelmelisiniz. GaN teknolojisi sayesinde daha küçük boyutlarda ve daha verimli çalışan şarj aletleri, seyahat edenler için büyük avantaj sağlar. Güvenlik sertifikalarına ve akım koruma özelliklerine sahip ürünleri tercih etmek, hem cihazlarınızın ömrünü uzatır hem de potansiyel riskleri ortadan kaldırır."},{"h":"Neden Yüksek Watt Gücü Önemli?","body":"Günümüzde sadece telefonlarımızı değil, tabletlerimizi, akıllı saatlerimizi ve hatta dizüstü bilgisayarlarımızı da şarj ediyoruz. Yüksek Watt gücüne sahip bir şarj aleti, bu farklı cihazları çok daha kısa sürede ve güvenle şarj etmenizi sağlar. Özellikle dizüstü bilgisayarlar için 60W üzeri güçler kritik öneme sahipken, modern telefonlar da 20W ve üzeri hızlı şarj imkanlarından faydalanır. Tek bir güçlü adaptörle tüm cihazlarınızın şarj ihtiyacını karşılamak, kablo kalabalığını da azaltır."},{"h":"USB-C ve USB-A: Geleceğin Standardı","body":"Artık çoğu yeni nesil cihaz USB-C portunu kullanıyor ve yüksek güç aktarımı için bu standart vazgeçilmez. Şarj aletinizin en az bir USB-C portuna sahip olması, gelecekteki cihazlarınızla uyumluluğu garanti eder. USB-A portları ise hâlâ birçok aksesuar ve eski cihaz için gerekli olabilir, bu yüzden her iki port tipinin de bulunduğu modeller esneklik sunar. Şarj aletinin üzerindeki portların sayısı ve türü, kullanım alışkanlıklarınıza göre dikkat etmeniz gereken önemli bir detaydır."}],"picks":[{"name":"Aohi Youth 140W Şarj Aleti","why":"Yüksek güç isteyenler için ideal, aynı anda birden fazla cihazı hızlı şarj edebilmesiyle öne çıkıyor.","id":"drmikq5wfx039d4","slug":"aohi-youth-140w"},{"name":"Joyroom TCG05 140W Şarj Aleti","why":"Hem güçlü hem de kompakt yapısıyla seyahatlerinizde bile yanınızdan ayırmak istemeyeceğiniz bir alternatif.","id":"ls0jox9u1dnxp7i","slug":"joyroom-tcg05-140w"},{"name":"Baseus GaN5 Pro 140W Şarj Aleti (CCGP100101)","why":"GaN teknolojisi sayesinde hem yüksek güç sunuyor hem de boyut olarak oldukça kullanışlı bir yapıya sahip.","id":"uwjxdac49vy7n7e","slug":"baseus-gan5-pro-140w"},{"name":"Ugreen Nexode 200W Şarj Aleti (40913)","why":"En üst düzey güç arayan profesyoneller ve çoklu cihaz kullanıcıları için benzersiz bir çözüm sunar.","id":"30tw3q74k9uvl1y","slug":"ugreen-nexode-200w"},{"name":"Xiaomi 120W Charging Combo Type-A Şarj Aleti (MDY-13-EG)","why":"Özellikle Xiaomi ekosistemi kullanıcıları için kendi cihazlarıyla süper hızlı şarj deneyimi sağlıyor.","id":"eeggu5c2sfkppod","slug":"xiaomi-120w-charging-combo-type-a"},{"name":"Wiwu CHG300 Voyager 100W Şarj Aleti","why":"Hem güçlü hem de çok yönlü bir seçenek arayanlar için fiyat/performans dengesi iyi bir ürün.","id":"oj6qnwq9a21kpdh","slug":"wiwu-chg300-voyager-100w"}],"faq":[{"q":"GaN teknolojisi nedir?","a":"Galyum Nitrür (GaN) tabanlı şarj aletleri, silikon bazlılara göre daha küçük boyutlarda ve daha verimli çalışarak daha az ısı üretir."},{"q":"Şarj aletimin kaç watt olması gerekir?","a":"Bu, şarj edeceğiniz cihaza bağlıdır; telefonlar için 20-60W, dizüstü bilgisayarlar için 60-140W arası idealdir."},{"q":"Hızlı şarj telefonuma zarar verir mi?","a":"Modern hızlı şarj teknolojileri, cihazın pil sağlığını koruyacak şekilde tasarlanmıştır ve pil ömrünü olumsuz etkilemez."},{"q":"USB-C portu neden önemli?","a":"USB-C, evrensel uyumluluk, yüksek güç aktarım kapasitesi ve çift yönlü kullanım sunarak geleceğin bağlantı standardıdır."}],"updatedAt":"2026-08-24T01:18:01.392Z"}
+{
+  "category": "chargers",
+  "label": "Şarj Aleti",
+  "title": "En İyi Şarj Aleti Seçim Rehberi: Güç ve Hız",
+  "lead": "Akıllı telefonlarımızdan dizüstü bilgisayarlarımıza kadar tüm cihazlarımızın vazgeçilmezi şarj aletleri, doğru seçimle hayatınızı kolaylaştırır. Performans, güvenlik ve uzun ömürlü kullanım için doğru şarj aletini bulmak büyük önem taşır.",
+  "sections": [
+    {
+      "h": "Nelere Dikkat Etmeli?",
+      "body": "Şarj aleti alırken ilk olarak cihazlarınızın ihtiyaç duyduğu Watt (W) gücünü kontrol edin. Birden fazla cihazı aynı anda şarj etmek istiyorsanız, çoklu portlara sahip ve her porttan yeterli güç verebilen modellere yönelmelisiniz. GaN teknolojisi sayesinde daha küçük boyutlarda ve daha verimli çalışan şarj aletleri, seyahat edenler için büyük avantaj sağlar. Güvenlik sertifikalarına ve akım koruma özelliklerine sahip ürünleri tercih etmek, hem cihazlarınızın ömrünü uzatır hem de potansiyel riskleri ortadan kaldırır."
+    },
+    {
+      "h": "Neden Yüksek Watt Gücü Önemli?",
+      "body": "Günümüzde sadece telefonlarımızı değil, tabletlerimizi, akıllı saatlerimizi ve hatta dizüstü bilgisayarlarımızı da şarj ediyoruz. Yüksek Watt gücüne sahip bir şarj aleti, bu farklı cihazları çok daha kısa sürede ve güvenle şarj etmenizi sağlar. Özellikle dizüstü bilgisayarlar için 60W üzeri güçler kritik öneme sahipken, modern telefonlar da 20W ve üzeri hızlı şarj imkanlarından faydalanır. Tek bir güçlü adaptörle tüm cihazlarınızın şarj ihtiyacını karşılamak, kablo kalabalığını da azaltır."
+    },
+    {
+      "h": "USB-C ve USB-A: Geleceğin Standardı",
+      "body": "Artık çoğu yeni nesil cihaz USB-C portunu kullanıyor ve yüksek güç aktarımı için bu standart vazgeçilmez. Şarj aletinizin en az bir USB-C portuna sahip olması, gelecekteki cihazlarınızla uyumluluğu garanti eder. USB-A portları ise hâlâ birçok aksesuar ve eski cihaz için gerekli olabilir, bu yüzden her iki port tipinin de bulunduğu modeller esneklik sunar. Şarj aletinin üzerindeki portların sayısı ve türü, kullanım alışkanlıklarınıza göre dikkat etmeniz gereken önemli bir detaydır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Aohi Youth 140W Şarj Aleti",
+      "why": "Yüksek güç isteyenler için ideal, aynı anda birden fazla cihazı hızlı şarj edebilmesiyle öne çıkıyor.",
+      "id": "drmikq5wfx039d4",
+      "slug": "aohi-youth-140w"
+    },
+    {
+      "name": "Joyroom TCG05 140W Şarj Aleti",
+      "why": "Hem güçlü hem de kompakt yapısıyla seyahatlerinizde bile yanınızdan ayırmak istemeyeceğiniz bir alternatif.",
+      "id": "ls0jox9u1dnxp7i",
+      "slug": "joyroom-tcg05-140w"
+    },
+    {
+      "name": "Baseus GaN5 Pro 140W Şarj Aleti (CCGP100101)",
+      "why": "GaN teknolojisi sayesinde hem yüksek güç sunuyor hem de boyut olarak oldukça kullanışlı bir yapıya sahip.",
+      "id": "uwjxdac49vy7n7e",
+      "slug": "baseus-gan5-pro-140w"
+    },
+    {
+      "name": "Ugreen Nexode 200W Şarj Aleti (40913)",
+      "why": "En üst düzey güç arayan profesyoneller ve çoklu cihaz kullanıcıları için benzersiz bir çözüm sunar.",
+      "id": "30tw3q74k9uvl1y",
+      "slug": "ugreen-nexode-200w"
+    },
+    {
+      "name": "Xiaomi 120W Charging Combo Type-A Şarj Aleti (MDY-13-EG)",
+      "why": "Özellikle Xiaomi ekosistemi kullanıcıları için kendi cihazlarıyla süper hızlı şarj deneyimi sağlıyor.",
+      "id": "eeggu5c2sfkppod",
+      "slug": "xiaomi-120w-charging-combo-type-a"
+    },
+    {
+      "name": "Wiwu CHG300 Voyager 100W Şarj Aleti",
+      "why": "Hem güçlü hem de çok yönlü bir seçenek arayanlar için fiyat/performans dengesi iyi bir ürün.",
+      "id": "oj6qnwq9a21kpdh",
+      "slug": "wiwu-chg300-voyager-100w"
+    }
+  ],
+  "faq": [
+    {
+      "q": "GaN teknolojisi nedir?",
+      "a": "Galyum Nitrür (GaN) tabanlı şarj aletleri, silikon bazlılara göre daha küçük boyutlarda ve daha verimli çalışarak daha az ısı üretir."
+    },
+    {
+      "q": "Şarj aletimin kaç watt olması gerekir?",
+      "a": "Bu, şarj edeceğiniz cihaza bağlıdır; telefonlar için 20-60W, dizüstü bilgisayarlar için 60-140W arası idealdir."
+    },
+    {
+      "q": "Hızlı şarj telefonuma zarar verir mi?",
+      "a": "Modern hızlı şarj teknolojileri, cihazın pil sağlığını koruyacak şekilde tasarlanmıştır ve pil ömrünü olumsuz etkilemez."
+    },
+    {
+      "q": "USB-C portu neden önemli?",
+      "a": "USB-C, evrensel uyumluluk, yüksek güç aktarım kapasitesi ve çift yönlü kullanım sunarak geleceğin bağlantı standardıdır."
+    }
+  ],
+  "updatedAt": "2026-08-24T01:18:01.392Z"
+}

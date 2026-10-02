@@ -1,1 +1,81 @@
-{"category":"motherboards","label":"Anakart","title":"2026'nın En İyi Anakartları: Sisteminizin Kalbini Seçin","lead":"Yeni bir sistem toplarken veya mevcut sisteminizi güncellerken anakart seçimi, bilgisayarınızın performansını ve geleceğe dönüklüğünü doğrudan etkiler. Doğru anakart, diğer tüm bileşenlerin uyumlu ve verimli çalışmasının temelini oluşturur.","sections":[{"h":"Anakart Seçerken Temel Kriterler: Soket ve Yonga Seti","body":"Sisteminizin kalbini oluşturan işlemciyle uyumluluk için AM5 (LGA 1718) veya LGA 1851 gibi doğru soket tipini seçmek şarttır. Yonga seti ise anakartın desteklediği PCIe nesli, depolama (M.2) ve USB portları gibi kritik özelliklerin çerçevesini belirler."},{"h":"Bağlantı ve Genişleme Seçeneklerine Dikkat","body":"Hızlı depolama için birden fazla M.2 yuvası, en yeni grafik kartları için PCIe 5.0 veya 6.0 desteği, genişleyebilirlik için yeterli PCIe slotları önemlidir. Ayrıca USB port çeşitliliği, Wi-Fi 7 gibi güncel kablosuz bağlantı standartları ve yüksek hızlı Ethernet portları da modern bir sistem için vazgeçilmezdir."},{"h":"Güç ve Soğutma Performansı Neden Önemli?","body":"Özellikle yüksek performanslı işlemcileri hedefliyorsanız, anakartın VRM (Voltaj Regülatör Modülü) yapısı ve pasif soğutma çözümlerinin kalitesi sistem kararlılığı için hayati rol oynar. Bu, işlemcinizin hız aşırtma potansiyelini ve uzun ömürlü çalışmasını doğrudan etkiler."},{"h":"Tasarım ve Kullanım Kolaylığı","body":"BTF (Back-To-Future) gibi yenilikçi tasarımlar, kablo karmaşasını minimuma indirerek estetik ve fonksiyonel bir kasa içi düzen sunar. RGB aydınlatma, kolay BIOS erişimi ve genel yapı kalitesi gibi detaylar da kullanıcı deneyimini zenginleştiren unsurlardır."}],"picks":[{"name":"Asus ROG Crosshair X870E Apex AM5 (LGA 1718) Soket Anakart","why":"Overclock meraklıları için tasarlanmış, ekstrem güç dağıtımı ve performans odaklı özellikleriyle öne çıkar.","id":"ogu2md78cwh9dur","slug":"asus-rog-crosshair-x870e-apex"},{"name":"Asus ROG Crosshair X870E Hero BTF AM5 (LGA 1718) Soket Anakart","why":"Yenilikçi BTF (Back-To-Future) tasarımı sayesinde daha temiz kablo yönetimi ve estetik bir kasa içi görünüm sunar.","id":"ejphtjclwqubiny","slug":"asus-rog-crosshair-x870e-hero-btf"},{"name":"Asus ROG Strix Z890-E Gaming WiFi LGA 1851 Soket Anakart (90MB1IM0-M0EAY0)","why":"Yüksek performanslı Intel sistemleri için gelişmiş bağlantı seçenekleri ve güçlü VRM yapısıyla oyunculara hitap eder.","id":"wwcw8p7z3t877a4","slug":"asus-rog-strix-z890-e-gaming-wifi"},{"name":"Sapphire Pure X870A WiFi7 AM5 (LGA 1718) Soket Anakart","why":"AMD platformunda güçlü performans, modern bağlantı standartları ve şık tasarımı bir araya getirerek dikkat çekici bir seçenek sunar.","id":"t91ytajtdk89zss","slug":"sapphire-pure-x870a-wifi7"},{"name":"Maxsun Terminator Z890-A WiFi LGA 1851 Soket Anakart","why":"Fiyat/performans dengesi gözeterek Intel platformunda ihtiyaç duyulan temel özellikleri sağlam bir şekilde sunar.","id":"e52ehgosgrhqq6y","slug":"maxsun-terminator-z890-a-wifi"},{"name":"Colorful iGame Z890 Flow V20 LGA 1851 Soket Anakart","why":"Özgün tasarımı ve entegre soğutma çözümleriyle yüksek performanslı Intel sistemler için hem estetik hem de işlevsel bir seçimdir.","id":"lsa91d1lf1y1swc","slug":"colorful-igame-z890-flow-v20"}],"faq":[{"q":"Anakart boyutunun önemi nedir?","a":"Anakart boyutu (ATX, Micro-ATX, Mini-ITX), kasanızla uyumlu olmalı ve kaç adet genişletme kartı takabileceğinizi belirler."},{"q":"Wi-Fi 7'li anakart almak gerekli mi?","a":"Eğer en yeni ve hızlı kablosuz bağlantı hızlarına ihtiyacınız varsa veya geleceğe dönük bir sistem kuruyorsanız Wi-Fi 7 destekli bir model düşünebilirsiniz."},{"q":"Bütçe dostu anakart alırken nelere dikkat etmeliyim?","a":"Bütçe dostu seçimlerde bile işlemci soketinin güncel olması, yeterli RAM yuvası ve en az bir M.2 yuvasının bulunması performanstan ödün vermemenizi sağlar."},{"q":"Anakartın VRM'si ne kadar önemli?","a":"VRM (Voltaj Regülatör Modülü), işlemcinize stabil güç sağlar; özellikle yüksek performanslı işlemciler ve hız aşırtma (overclock) düşünüyorsanız güçlü bir VRM kritik öneme sahiptir."}],"updatedAt":"2026-08-24T01:18:48.891Z"}
+{
+  "category": "motherboards",
+  "label": "Anakart",
+  "title": "2026'nın En İyi Anakartları: Sisteminizin Kalbini Seçin",
+  "lead": "Yeni bir sistem toplarken veya mevcut sisteminizi güncellerken anakart seçimi, bilgisayarınızın performansını ve geleceğe dönüklüğünü doğrudan etkiler. Doğru anakart, diğer tüm bileşenlerin uyumlu ve verimli çalışmasının temelini oluşturur.",
+  "sections": [
+    {
+      "h": "Anakart Seçerken Temel Kriterler: Soket ve Yonga Seti",
+      "body": "Sisteminizin kalbini oluşturan işlemciyle uyumluluk için AM5 (LGA 1718) veya LGA 1851 gibi doğru soket tipini seçmek şarttır. Yonga seti ise anakartın desteklediği PCIe nesli, depolama (M.2) ve USB portları gibi kritik özelliklerin çerçevesini belirler."
+    },
+    {
+      "h": "Bağlantı ve Genişleme Seçeneklerine Dikkat",
+      "body": "Hızlı depolama için birden fazla M.2 yuvası, en yeni grafik kartları için PCIe 5.0 veya 6.0 desteği, genişleyebilirlik için yeterli PCIe slotları önemlidir. Ayrıca USB port çeşitliliği, Wi-Fi 7 gibi güncel kablosuz bağlantı standartları ve yüksek hızlı Ethernet portları da modern bir sistem için vazgeçilmezdir."
+    },
+    {
+      "h": "Güç ve Soğutma Performansı Neden Önemli?",
+      "body": "Özellikle yüksek performanslı işlemcileri hedefliyorsanız, anakartın VRM (Voltaj Regülatör Modülü) yapısı ve pasif soğutma çözümlerinin kalitesi sistem kararlılığı için hayati rol oynar. Bu, işlemcinizin hız aşırtma potansiyelini ve uzun ömürlü çalışmasını doğrudan etkiler."
+    },
+    {
+      "h": "Tasarım ve Kullanım Kolaylığı",
+      "body": "BTF (Back-To-Future) gibi yenilikçi tasarımlar, kablo karmaşasını minimuma indirerek estetik ve fonksiyonel bir kasa içi düzen sunar. RGB aydınlatma, kolay BIOS erişimi ve genel yapı kalitesi gibi detaylar da kullanıcı deneyimini zenginleştiren unsurlardır."
+    }
+  ],
+  "picks": [
+    {
+      "name": "Asus ROG Crosshair X870E Apex AM5 (LGA 1718) Soket Anakart",
+      "why": "Overclock meraklıları için tasarlanmış, ekstrem güç dağıtımı ve performans odaklı özellikleriyle öne çıkar.",
+      "id": "ogu2md78cwh9dur",
+      "slug": "asus-rog-crosshair-x870e-apex"
+    },
+    {
+      "name": "Asus ROG Crosshair X870E Hero BTF AM5 (LGA 1718) Soket Anakart",
+      "why": "Yenilikçi BTF (Back-To-Future) tasarımı sayesinde daha temiz kablo yönetimi ve estetik bir kasa içi görünüm sunar.",
+      "id": "ejphtjclwqubiny",
+      "slug": "asus-rog-crosshair-x870e-hero-btf"
+    },
+    {
+      "name": "Asus ROG Strix Z890-E Gaming WiFi LGA 1851 Soket Anakart (90MB1IM0-M0EAY0)",
+      "why": "Yüksek performanslı Intel sistemleri için gelişmiş bağlantı seçenekleri ve güçlü VRM yapısıyla oyunculara hitap eder.",
+      "id": "wwcw8p7z3t877a4",
+      "slug": "asus-rog-strix-z890-e-gaming-wifi"
+    },
+    {
+      "name": "Sapphire Pure X870A WiFi7 AM5 (LGA 1718) Soket Anakart",
+      "why": "AMD platformunda güçlü performans, modern bağlantı standartları ve şık tasarımı bir araya getirerek dikkat çekici bir seçenek sunar.",
+      "id": "t91ytajtdk89zss",
+      "slug": "sapphire-pure-x870a-wifi7"
+    },
+    {
+      "name": "Maxsun Terminator Z890-A WiFi LGA 1851 Soket Anakart",
+      "why": "Fiyat/performans dengesi gözeterek Intel platformunda ihtiyaç duyulan temel özellikleri sağlam bir şekilde sunar.",
+      "id": "e52ehgosgrhqq6y",
+      "slug": "maxsun-terminator-z890-a-wifi"
+    },
+    {
+      "name": "Colorful iGame Z890 Flow V20 LGA 1851 Soket Anakart",
+      "why": "Özgün tasarımı ve entegre soğutma çözümleriyle yüksek performanslı Intel sistemler için hem estetik hem de işlevsel bir seçimdir.",
+      "id": "lsa91d1lf1y1swc",
+      "slug": "colorful-igame-z890-flow-v20"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Anakart boyutunun önemi nedir?",
+      "a": "Anakart boyutu (ATX, Micro-ATX, Mini-ITX), kasanızla uyumlu olmalı ve kaç adet genişletme kartı takabileceğinizi belirler."
+    },
+    {
+      "q": "Wi-Fi 7'li anakart almak gerekli mi?",
+      "a": "Eğer en yeni ve hızlı kablosuz bağlantı hızlarına ihtiyacınız varsa veya geleceğe dönük bir sistem kuruyorsanız Wi-Fi 7 destekli bir model düşünebilirsiniz."
+    },
+    {
+      "q": "Bütçe dostu anakart alırken nelere dikkat etmeliyim?",
+      "a": "Bütçe dostu seçimlerde bile işlemci soketinin güncel olması, yeterli RAM yuvası ve en az bir M.2 yuvasının bulunması performanstan ödün vermemenizi sağlar."
+    },
+    {
+      "q": "Anakartın VRM'si ne kadar önemli?",
+      "a": "VRM (Voltaj Regülatör Modülü), işlemcinize stabil güç sağlar; özellikle yüksek performanslı işlemciler ve hız aşırtma (overclock) düşünüyorsanız güçlü bir VRM kritik öneme sahiptir."
+    }
+  ],
+  "updatedAt": "2026-08-24T01:18:48.891Z"
+}

@@ -1,1 +1,71 @@
-{"category":"modem_routers","label":"Modem","title":"En İyi Modem Rehberi: Hızlı ve Kesintisiz İnternet İçin Seçimler","lead":"İnternet bağlantınızın kalbi olan modemi seçmek, dijital deneyiminizin temelini oluşturur. Ev veya iş yeriniz için doğru modemi bulmak, hızı ve güvenilirliği doğrudan etkiler.","sections":[{"h":"Modem Seçerken Nelere Dikkat Etmeli?","body":"Modem alırken öncelikle internet altyapınızla (ADSL, VDSL, Fiber, 5G) uyumlu olup olmadığına bakmalısınız. Wi-Fi 6 gibi güncel kablosuz teknolojileri desteklemesi, evinizdeki cihazlar için daha hızlı ve stabil bağlantı anlamına gelir. Ayrıca, evinizin büyüklüğüne göre kapsama alanı ve gerekirse Mesh Wi-Fi sistemleriyle uyumluluk da önemli kriterlerdir."},{"h":"DSL ve 5G Modemler Arasındaki Farklar","body":"Geleneksel DSL modemler, bakır hatlar üzerinden internet sağlarken, 5G modemler mobil şebeke üzerinden ultra yüksek hızlar sunar. Eğer kablolu altyapınız yetersizse veya taşınabilirlik sizin için öncelikliyse, 5G modemler güçlü bir alternatif olabilir. DSL modemler ise mevcut kablolu altyapınızı verimli kullanmak için idealdir ve genellikle daha uygun maliyetli çözümler sunar."},{"h":"Performans ve Kullanım Kolaylığı","body":"Bir modemin performansı, işlemci gücü ve RAM kapasitesiyle doğru orantılıdır; bu da aynı anda birden fazla cihazı sorunsuz çalıştırmasını sağlar. Kullanım kolaylığı açısından ise sade bir arayüz, kolay kurulum adımları ve güncel yazılım desteği büyük fark yaratır. Bazı modeller, ebeveyn kontrolü veya misafir ağı gibi ek özelliklerle de kullanım deneyimini zenginleştirir."}],"picks":[{"name":"ZyXEL 5G NR Mobile WiFi Modem (NR2101)","why":"Taşınabilir 5G bağlantısıyla özgürlük sunan, yüksek performanslı ve kompakt bir mobil modemdir.","id":"vj99tr6qmo79i07","slug":"zyxel-5g-nr-mobile-wifi"},{"name":"ZyXEL Nebula 5G NR Modem (FWA505)","why":"Sabit kablosuz erişimde güçlü 5G desteği ve kurumsal düzeyde yönetim imkanları sunar.","id":"290qt2hv7d3t8on","slug":"zyxel-nebula-5g-nr"},{"name":"Asus DSL-AX82U Modem","why":"Hem DSL uyumluluğu hem de Wi-Fi 6 teknolojisi ile geleceğe dönük, yüksek hızlı bir çözüm arayanlar için idealdir.","id":"qfm5c0jtzpyzyjs","slug":"asus-dsl-ax82u"},{"name":"Keenetic Hopper DSL KN-3611 Modem","why":"Sağlam yazılım desteği, stabil performansı ve kolay kullanımıyla öne çıkan güvenilir bir DSL modemdir.","id":"5py0iqu7ug7jrc0","slug":"keenetic-hopper-dsl-kn-3611"},{"name":"TP-Link VX230v Modem","why":"VDSL2 desteği ve güçlü Wi-Fi performansı ile ev kullanıcıları için dengeli ve uygun maliyetli bir seçenektir.","id":"x8bxz1lzsknvzuj","slug":"tp-link-vx230v"}],"faq":[{"q":"Modem ve router arasındaki fark nedir?","a":"Modem internet sinyalini dönüştürürken, router bu sinyali evinizdeki cihazlara dağıtır; birçok güncel cihaz her iki işlevi bir arada sunar."},{"q":"Wi-Fi 6 neden önemli?","a":"Wi-Fi 6, daha yüksek hızlar, daha düşük gecikme ve kalabalık ağ ortamlarında bile daha iyi performans sunarak genel internet deneyiminizi iyileştirir."},{"q":"5G modem kimler için uygun?","a":"5G modemi, fiber veya VDSL altyapısı bulunmayan bölgelerde yaşayanlar, yüksek hız ve taşınabilirlik arayanlar veya yedek internet çözümü isteyenler tercih edebilir."},{"q":"Modemin konumu internet hızımı etkiler mi?","a":"Evet, modemin merkezi bir konumda ve engellerden uzak olması, Wi-Fi sinyalinin kalitesi ve kapsama alanı üzerinde doğrudan etkilidir."}],"updatedAt":"2026-08-25T01:19:04.059Z"}
+{
+  "category": "modem_routers",
+  "label": "Modem",
+  "title": "En İyi Modem Rehberi: Hızlı ve Kesintisiz İnternet İçin Seçimler",
+  "lead": "İnternet bağlantınızın kalbi olan modemi seçmek, dijital deneyiminizin temelini oluşturur. Ev veya iş yeriniz için doğru modemi bulmak, hızı ve güvenilirliği doğrudan etkiler.",
+  "sections": [
+    {
+      "h": "Modem Seçerken Nelere Dikkat Etmeli?",
+      "body": "Modem alırken öncelikle internet altyapınızla (ADSL, VDSL, Fiber, 5G) uyumlu olup olmadığına bakmalısınız. Wi-Fi 6 gibi güncel kablosuz teknolojileri desteklemesi, evinizdeki cihazlar için daha hızlı ve stabil bağlantı anlamına gelir. Ayrıca, evinizin büyüklüğüne göre kapsama alanı ve gerekirse Mesh Wi-Fi sistemleriyle uyumluluk da önemli kriterlerdir."
+    },
+    {
+      "h": "DSL ve 5G Modemler Arasındaki Farklar",
+      "body": "Geleneksel DSL modemler, bakır hatlar üzerinden internet sağlarken, 5G modemler mobil şebeke üzerinden ultra yüksek hızlar sunar. Eğer kablolu altyapınız yetersizse veya taşınabilirlik sizin için öncelikliyse, 5G modemler güçlü bir alternatif olabilir. DSL modemler ise mevcut kablolu altyapınızı verimli kullanmak için idealdir ve genellikle daha uygun maliyetli çözümler sunar."
+    },
+    {
+      "h": "Performans ve Kullanım Kolaylığı",
+      "body": "Bir modemin performansı, işlemci gücü ve RAM kapasitesiyle doğru orantılıdır; bu da aynı anda birden fazla cihazı sorunsuz çalıştırmasını sağlar. Kullanım kolaylığı açısından ise sade bir arayüz, kolay kurulum adımları ve güncel yazılım desteği büyük fark yaratır. Bazı modeller, ebeveyn kontrolü veya misafir ağı gibi ek özelliklerle de kullanım deneyimini zenginleştirir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "ZyXEL 5G NR Mobile WiFi Modem (NR2101)",
+      "why": "Taşınabilir 5G bağlantısıyla özgürlük sunan, yüksek performanslı ve kompakt bir mobil modemdir.",
+      "id": "vj99tr6qmo79i07",
+      "slug": "zyxel-5g-nr-mobile-wifi"
+    },
+    {
+      "name": "ZyXEL Nebula 5G NR Modem (FWA505)",
+      "why": "Sabit kablosuz erişimde güçlü 5G desteği ve kurumsal düzeyde yönetim imkanları sunar.",
+      "id": "290qt2hv7d3t8on",
+      "slug": "zyxel-nebula-5g-nr"
+    },
+    {
+      "name": "Asus DSL-AX82U Modem",
+      "why": "Hem DSL uyumluluğu hem de Wi-Fi 6 teknolojisi ile geleceğe dönük, yüksek hızlı bir çözüm arayanlar için idealdir.",
+      "id": "qfm5c0jtzpyzyjs",
+      "slug": "asus-dsl-ax82u"
+    },
+    {
+      "name": "Keenetic Hopper DSL KN-3611 Modem",
+      "why": "Sağlam yazılım desteği, stabil performansı ve kolay kullanımıyla öne çıkan güvenilir bir DSL modemdir.",
+      "id": "5py0iqu7ug7jrc0",
+      "slug": "keenetic-hopper-dsl-kn-3611"
+    },
+    {
+      "name": "TP-Link VX230v Modem",
+      "why": "VDSL2 desteği ve güçlü Wi-Fi performansı ile ev kullanıcıları için dengeli ve uygun maliyetli bir seçenektir.",
+      "id": "x8bxz1lzsknvzuj",
+      "slug": "tp-link-vx230v"
+    }
+  ],
+  "faq": [
+    {
+      "q": "Modem ve router arasındaki fark nedir?",
+      "a": "Modem internet sinyalini dönüştürürken, router bu sinyali evinizdeki cihazlara dağıtır; birçok güncel cihaz her iki işlevi bir arada sunar."
+    },
+    {
+      "q": "Wi-Fi 6 neden önemli?",
+      "a": "Wi-Fi 6, daha yüksek hızlar, daha düşük gecikme ve kalabalık ağ ortamlarında bile daha iyi performans sunarak genel internet deneyiminizi iyileştirir."
+    },
+    {
+      "q": "5G modem kimler için uygun?",
+      "a": "5G modemi, fiber veya VDSL altyapısı bulunmayan bölgelerde yaşayanlar, yüksek hız ve taşınabilirlik arayanlar veya yedek internet çözümü isteyenler tercih edebilir."
+    },
+    {
+      "q": "Modemin konumu internet hızımı etkiler mi?",
+      "a": "Evet, modemin merkezi bir konumda ve engellerden uzak olması, Wi-Fi sinyalinin kalitesi ve kapsama alanı üzerinde doğrudan etkilidir."
+    }
+  ],
+  "updatedAt": "2026-08-25T01:19:04.059Z"
+}
