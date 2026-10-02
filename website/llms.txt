@@ -6,14 +6,14 @@
 > an AI tech score (0-100). Languages: English (/), Turkish (/tr). Also on Android.
 
 ## Ana bölümler / Main sections
-- [Kategoriler / Categories](https://qorai.net/category): 45 teknoloji kategorisinde AI puanlı ürünler
+- [Kategoriler / Categories](https://qorai.net/category): 46 teknoloji kategorisinde AI puanlı ürünler
 - [Abonelik Karşılaştırma / Subscriptions](https://qorai.net/subscriptions): Netflix, Spotify, YouTube Premium, ChatGPT Plus…
 - [Link Analizi / Link Analysis](https://qorai.net/link-analysis): ürün linki yapıştır, AI analiz etsin
 - [Qor AI Sohbet / AI Chat](https://qorai.net/ai-chat)
 - [Blog & Alım Rehberleri / Buying guides](https://qorai.net/blog)
 
 ## Veri / Data
-- [Sitemap](https://qorai.net/sitemap.xml): 416 sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber
+- [Sitemap](https://qorai.net/sitemap.xml): 8524 sayfa — ürün (/product/<slug>-<id>), karşılaştırma (/compare/<a>-vs-<b>), kategori, rehber
 - Her ürün sayfası: teknik özellik tablosu + Qor AI teknik skoru + benzer model linkleri
 
 ## Politikalar / Policies
