@@ -109,7 +109,12 @@ function send(name, params) {
 // Bugun gecici baslik tasiyan TEK kabuk 404 kabugu: kurasyon disi urun
 // adresine nginx onu 200 ile verir, SPA urunu cizince baslik degisir.
 // Diger her rotanin kendi on-render basligi var.
-const KABUK_BASLIKLARI = /^(page not found|sayfa bulunamad[ıi])/i;
+//
+// "Ürün yükleniyor" da GECICI (ProductDetail buildLoadingProductSeo): canli
+// olculdu 2026-10-02, desen duzelince page_view bu kez "Ürün yükleniyor —
+// Qor AI" olarak gitti — kabuk basligindan farkli oldugu icin "oturdu"
+// sayiliyordu. Veri gelince yerini urun basligina birakir.
+const KABUK_BASLIKLARI = /^(page not found|sayfa bulunamad[ıi]|ürün yükleniyor)/i;
 
 // 2 SN DE YETMIYORDU (olculdu 2026-10-02, canli /product/xiaomi-14t-pro):
 // sayfa 4 sn icinde "Xiaomi 14T Pro (256 GB) …" basligiyla cizildi. Urun
@@ -126,8 +131,7 @@ let bekleyenGorunum = null;
 export function trackPageView(path) {
   if (bekleyenGorunum) bekleyenGorunum();
   const basla = Date.now();
-  const ilk = document.title;
-  let sonBaslik = ilk;
+  let sonBaslik = document.title;
   let gitti = false;
   const gonder = () => {
     if (gitti) return;
@@ -143,7 +147,9 @@ export function trackPageView(path) {
   const bekle = () => {
     if (gitti) return;
     sonBaslik = document.title;
-    const oturdu = sonBaslik !== ilk || !KABUK_BASLIKLARI.test(sonBaslik);
+    // "Degisti mi" DEGIL "gecici mi" sorulur: "Page not found" -> "Ürün
+    // yükleniyor" de bir degisiklik ama baslik henuz oturmadi.
+    const oturdu = !KABUK_BASLIKLARI.test(sonBaslik);
     if (oturdu || Date.now() - basla > BASLIK_TAVANI_MS) { gonder(); return; }
     setTimeout(bekle, 120);
   };
