@@ -43,6 +43,18 @@ export function initAnalytics() {
   const host = location.hostname;
   // Skip on local dev / staging.
   if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.sslip.io')) return;
+  // JS CALISTIRAN TARAYICI BOTLARI SAYILMAZ (2026-10-02, olculdu).
+  // GA4'te Singapur'dan 28 gunde 737 "Direct" kullanici vardi. Origin'de
+  // CF-Connecting-IP ile olculdu: Singapur istekleri Huawei PetalBot
+  // (AS136907, UA'da "PetalBot") ve TikTokSpider (AWS SG, AS16509). Sayfayi
+  // JS ile isliyorlar, referrer tasimiyorlar -> GA4 onlari "Direct" yeni
+  // kullanici sayiyordu. Engellenmiyorlar (Petal Search gercek bir arama
+  // motoru); yalnizca olcume girmiyorlar. `navigator.webdriver`: Playwright/
+  // Puppeteer/Selenium ile surulen her tarayici (kendi testlerimiz dahil).
+  // Desen genel "bot" kelimesi ARAMAZ ("Cubot" telefon UA'si gercek
+  // kullanicidir): bot UA'lari iletisim adresi (`+https://…`) ya da
+  // spider/crawler tasir; gercek tarayici UA'sinda URL hic olmaz.
+  if (navigator.webdriver || /https?:\/\/|spider|crawler|headless/i.test(navigator.userAgent || '')) return;
   if (started) return;
   started = true;
 
