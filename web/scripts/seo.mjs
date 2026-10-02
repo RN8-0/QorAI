@@ -3404,12 +3404,27 @@ async function main() {
   // analizi yayinlanmis urun tanimi geregi ince sayfa DEGIL: sitenin baska
   // hicbir yerinde olmayan ozgun icerik ONA isaret ediyor. Elenirse hem o
   // sayfa ciplak kabuk kalir hem de analize giden ic link hic uretilmez.
+  //
+  // GOOGLE'DA TALEBI KANITLANMIS URUN DE HER HALUKARDA KURASYONDA (2026-10-02).
+  // Olculdu: GSC'de tik getiren /tr/product/zte-u60-pro-5g (50 spec, gorselli)
+  // ve sungate-x-tron-v6 (28 spec) KATEGORI KOTASINA takilip kurasyon disi
+  // kaliyordu — kabugu yok, 404 kabuguyla noindex servis ediliyordu. Kota
+  // tahmini bir talep siralamasi; Google'in gercekten gosterdigi sayfa ondan
+  // daha guclu bir kanit. Liste: web/scripts/data/gsc-talep-urunleri.json.
+  let talepSlugs = new Set();
+  try {
+    const ham = JSON.parse(readFileSync(join(here, 'data', 'gsc-talep-urunleri.json'), 'utf8'));
+    talepSlugs = new Set((Array.isArray(ham?.slugs) ? ham.slugs : []).map((s) => String(s || '').trim()).filter(Boolean));
+  } catch (err) {
+    console.warn(`[seo] gsc-talep-urunleri.json okunamadi (${err.message}) — talep listesi bos`);
+  }
   let zorunlu = 0;
-  if (analizBySlug.size) {
+  if (analizBySlug.size || talepSlugs.size) {
     const kuratedeVar = new Set();
     for (const p of curatedByCat.values()) for (const d of p) if (d?.slug) kuratedeVar.add(d.slug);
     for (const d of products) {
-      if (!d?.slug || !analizBySlug.has(d.slug) || kuratedeVar.has(d.slug)) continue;
+      if (!d?.slug || kuratedeVar.has(d.slug)) continue;
+      if (!analizBySlug.has(d.slug) && !talepSlugs.has(d.slug)) continue;
       if (!d.id || !d.name) continue;
       const cat = String(d.category || '').trim().toLowerCase();
       if (!cat) continue;
@@ -3419,7 +3434,7 @@ async function main() {
       curatedTotal += 1;
       zorunlu += 1;
     }
-    if (zorunlu) console.log(`[seo] kürasyona zorunlu eklenen (analizi olan ürün): ${zorunlu}`);
+    if (zorunlu) console.log(`[seo] kürasyona zorunlu eklenen (analizi olan ya da GSC talebi kanıtlı ürün): ${zorunlu} · talep listesi ${talepSlugs.size}`);
   }
   {
     const tumu = [...curatedByCat.values()].flat();

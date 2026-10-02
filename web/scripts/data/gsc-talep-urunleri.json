@@ -1,0 +1,13 @@
+{
+  "_aciklama": "Google'da talebi KANITLANMIS urunler: kategori kotasina takilsalar bile kurasyona girerler (seo.mjs). Kaynak: Search Console. Yeni slug eklemek icin GSC > Performans > Sayfa sayisi disa aktarimindaki /product/<slug> adresleri.",
+  "_guncelleme": "2026-10-02 — GSC 28 gun ekran goruntusundeki sorgular/sayfalar, Typesense'te model koduyla birebir eslesen urunler",
+  "slugs": [
+    "zte-u60-pro-5g",
+    "sungate-x-tron-v6",
+    "vivo-y11d",
+    "lg-65qned7eb3c",
+    "samsung-65qn80f",
+    "zte-u30-pro-5g",
+    "lenovo-yoga-tab-tb710fu-klavye-plus-kalem"
+  ]
+}
