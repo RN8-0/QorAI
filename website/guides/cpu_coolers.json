@@ -1,1 +1,81 @@
-{"category":"cpu_coolers","label":"İşlemci Soğutucu","title":"En İyi İşlemci Soğutucusu: Serin Kalmanın Yolları","lead":"Güçlü bir bilgisayarın kalbi işlemcidir ve bu kalbin uzun ömürlü ve performanslı çalışması için etkili bir soğutmaya ihtiyacı vardır. İşlemcinizin aşırı ısınmasını önlemek, bilgisayarınızın genel kararlılığı ve performansı için kritik öneme sahiptir.","sections":[{"h":"Neden İyi Bir İşlemci Soğutucuya İhtiyacınız Var?","body":"Modern işlemciler, yoğun görevler altında yüksek ısı üretebilir. Yetersiz soğutma, işlemcinin performansını düşürerek takılmalara, donmalara ve hatta uzun vadede donanım hasarına yol açabilir. İyi bir soğutucu, işlemcinizin optimum sıcaklıkta çalışmasını sağlayarak hem kararlılığı hem de performansı artırır."},{"h":"Sıvı Soğutma mı, Hava Soğutma mı?","body":"İşlemci soğutucuları temel olarak iki ana kategoriye ayrılır: hava soğutma ve sıvı soğutma (All-in-One - AIO). Hava soğutucular, genellikle daha uygun maliyetli, kurulumu daha basit ve bakım gerektirmeyen çözümler sunarken, sıvı soğutucular genellikle daha yüksek soğutma kapasitesi ve daha estetik bir görünüm sağlar. Özellikle yüksek performanslı işlemciler ve hız aşırtma meraklıları için sıvı soğutma sistemleri daha etkili olabilirken, orta segment işlemciler için güçlü bir hava soğutucu yeterlidir."},{"h":"İşlemci Soğutucu Seçerken Nelere Dikkat Etmeli?","body":"Soğutucu seçimi yaparken işlemcinizin TDP değeri, kasanızın iç hacmi ve anakartınızın uyumluluğu gibi faktörleri göz önünde bulundurmalısınız. Ayrıca, alüminyum veya bakır ısı borularının kalitesi, fanların hava akışı ve gürültü seviyeleri de performansı doğrudan etkiler. Estetik olarak RGB aydınlatma gibi özellikler de tercih sebebi olabilir ancak soğutma performansının öncelikli olduğundan emin olun."},{"h":"Montaj ve Bakım Kolaylığı","body":"Seçtiğiniz soğutucunun anakart soketinizle uyumlu olduğundan emin olun (Intel için LGA, AMD için AM serisi gibi). Bazı büyük hava soğutucular veya AIO sistemler, RAM yuvalarını veya kasanın yan panelini engelleyebilir, bu yüzden boyutları kontrol etmek önemlidir. Termal macunun önceden uygulanmış olması veya kolayca uygulanabilir olması da kurulum sürecini basitleştirir."}],"picks":[{"name":"DarkFlash Radiant DC-360 İşlemci Soğutucu (3 adet)","why":"Üst düzey soğutma performansı arayanlar için 360mm radyatörü ile ideal bir tercih sunar.","id":"03zwbgs7qg81hm9","slug":"darkflash-radiant-dc-360"},{"name":"DarkFlash Radiant DC-240 İşlemci Soğutucu (2 adet)","why":"Fiyat/performans dengesi başarılı, orta-üst segment sistemler için güçlü bir sıvı soğutma çözümü sunuyor.","id":"t7knym94lqj7x61","slug":"darkflash-radiant-dc-240"},{"name":"Dark AquaForce W122 İşlemci Soğutucu (DKCCW122)","why":"Kompakt sistemler için uygun, güvenilir bir 120mm sıvı soğutma performansı sağlar.","id":"hi6fpfsnunwndrd","slug":"dark-aquaforce-w122"},{"name":"1Stplayer X-240E İşlemci Soğutucu","why":"Yüksek performanslı işlemciler için etkili bir çözüm sunan, geniş radyatörlü bir sıvı soğutucudur.","id":"j2yglxyd2ouosti","slug":"1stplayer-x-240e"},{"name":"Ocypus Delta A40 SE ARGB İşlemci Soğutucu (Delta-A40-BK1AAWN00S-GL)","why":"Uygun fiyatlı segmentte, ARGB aydınlatmalı ve yeterli performans sunan bir hava soğutucu seçeneğidir.","id":"cftt2cdss7tltzp","slug":"ocypus-delta-a40-se-argb"},{"name":"PowerBoost PB-510B4P İşlemci Soğutucu","why":"Standart kullanıcılar ve giriş seviyesi sistemler için bütçe dostu ve işlevsel bir hava soğutucu alternatifidir.","id":"3hr6xj1aydb6n21","slug":"powerboost-pb-510b4p"}],"faq":[{"q":"İşlemci soğutucusu ne kadar önemli?","a":"İşlemcinizin ömrünü uzatmak, stabil çalışmasını sağlamak ve performansta düşüş yaşamamak için hayati öneme sahiptir."},{"q":"Hava soğutma mı, sıvı soğutma mı daha sessiz?","a":"Genellikle iyi tasarlanmış hava soğutucuları, pompası olmayan yapıları sayesinde daha sessiz olabilir; ancak modern sıvı soğutucular da oldukça sessiz çalışabilir."},{"q":"Termal macun ne zaman yenilenmeli?","a":"Ortalama olarak 2-3 yılda bir veya işlemcinizin sıcaklıkları yükselmeye başladığında yenilenmesi önerilir."},{"q":"Kutu işlemci soğutucusu (stock cooler) yeterli mi?","a":"Kutu soğutucular genellikle sadece temel kullanım için yeterlidir; hız aşırtma veya yoğun yük altında daha iyi bir performans için özel bir soğutucu şarttır."}],"updatedAt":"2026-08-25T01:17:49.704Z"}
+{
+  "category": "cpu_coolers",
+  "label": "İşlemci Soğutucu",
+  "title": "En İyi İşlemci Soğutucusu: Serin Kalmanın Yolları",
+  "lead": "Güçlü bir bilgisayarın kalbi işlemcidir ve bu kalbin uzun ömürlü ve performanslı çalışması için etkili bir soğutmaya ihtiyacı vardır. İşlemcinizin aşırı ısınmasını önlemek, bilgisayarınızın genel kararlılığı ve performansı için kritik öneme sahiptir.",
+  "sections": [
+    {
+      "h": "Neden İyi Bir İşlemci Soğutucuya İhtiyacınız Var?",
+      "body": "Modern işlemciler, yoğun görevler altında yüksek ısı üretebilir. Yetersiz soğutma, işlemcinin performansını düşürerek takılmalara, donmalara ve hatta uzun vadede donanım hasarına yol açabilir. İyi bir soğutucu, işlemcinizin optimum sıcaklıkta çalışmasını sağlayarak hem kararlılığı hem de performansı artırır."
+    },
+    {
+      "h": "Sıvı Soğutma mı, Hava Soğutma mı?",
+      "body": "İşlemci soğutucuları temel olarak iki ana kategoriye ayrılır: hava soğutma ve sıvı soğutma (All-in-One - AIO). Hava soğutucular, genellikle daha uygun maliyetli, kurulumu daha basit ve bakım gerektirmeyen çözümler sunarken, sıvı soğutucular genellikle daha yüksek soğutma kapasitesi ve daha estetik bir görünüm sağlar. Özellikle yüksek performanslı işlemciler ve hız aşırtma meraklıları için sıvı soğutma sistemleri daha etkili olabilirken, orta segment işlemciler için güçlü bir hava soğutucu yeterlidir."
+    },
+    {
+      "h": "İşlemci Soğutucu Seçerken Nelere Dikkat Etmeli?",
+      "body": "Soğutucu seçimi yaparken işlemcinizin TDP değeri, kasanızın iç hacmi ve anakartınızın uyumluluğu gibi faktörleri göz önünde bulundurmalısınız. Ayrıca, alüminyum veya bakır ısı borularının kalitesi, fanların hava akışı ve gürültü seviyeleri de performansı doğrudan etkiler. Estetik olarak RGB aydınlatma gibi özellikler de tercih sebebi olabilir ancak soğutma performansının öncelikli olduğundan emin olun."
+    },
+    {
+      "h": "Montaj ve Bakım Kolaylığı",
+      "body": "Seçtiğiniz soğutucunun anakart soketinizle uyumlu olduğundan emin olun (Intel için LGA, AMD için AM serisi gibi). Bazı büyük hava soğutucular veya AIO sistemler, RAM yuvalarını veya kasanın yan panelini engelleyebilir, bu yüzden boyutları kontrol etmek önemlidir. Termal macunun önceden uygulanmış olması veya kolayca uygulanabilir olması da kurulum sürecini basitleştirir."
+    }
+  ],
+  "picks": [
+    {
+      "name": "DarkFlash Radiant DC-360 İşlemci Soğutucu (3 adet)",
+      "why": "Üst düzey soğutma performansı arayanlar için 360mm radyatörü ile ideal bir tercih sunar.",
+      "id": "03zwbgs7qg81hm9",
+      "slug": "darkflash-radiant-dc-360"
+    },
+    {
+      "name": "DarkFlash Radiant DC-240 İşlemci Soğutucu (2 adet)",
+      "why": "Fiyat/performans dengesi başarılı, orta-üst segment sistemler için güçlü bir sıvı soğutma çözümü sunuyor.",
+      "id": "t7knym94lqj7x61",
+      "slug": "darkflash-radiant-dc-240"
+    },
+    {
+      "name": "Dark AquaForce W122 İşlemci Soğutucu (DKCCW122)",
+      "why": "Kompakt sistemler için uygun, güvenilir bir 120mm sıvı soğutma performansı sağlar.",
+      "id": "hi6fpfsnunwndrd",
+      "slug": "dark-aquaforce-w122"
+    },
+    {
+      "name": "1Stplayer X-240E İşlemci Soğutucu",
+      "why": "Yüksek performanslı işlemciler için etkili bir çözüm sunan, geniş radyatörlü bir sıvı soğutucudur.",
+      "id": "j2yglxyd2ouosti",
+      "slug": "1stplayer-x-240e"
+    },
+    {
+      "name": "Ocypus Delta A40 SE ARGB İşlemci Soğutucu (Delta-A40-BK1AAWN00S-GL)",
+      "why": "Uygun fiyatlı segmentte, ARGB aydınlatmalı ve yeterli performans sunan bir hava soğutucu seçeneğidir.",
+      "id": "cftt2cdss7tltzp",
+      "slug": "ocypus-delta-a40-se-argb"
+    },
+    {
+      "name": "PowerBoost PB-510B4P İşlemci Soğutucu",
+      "why": "Standart kullanıcılar ve giriş seviyesi sistemler için bütçe dostu ve işlevsel bir hava soğutucu alternatifidir.",
+      "id": "3hr6xj1aydb6n21",
+      "slug": "powerboost-pb-510b4p"
+    }
+  ],
+  "faq": [
+    {
+      "q": "İşlemci soğutucusu ne kadar önemli?",
+      "a": "İşlemcinizin ömrünü uzatmak, stabil çalışmasını sağlamak ve performansta düşüş yaşamamak için hayati öneme sahiptir."
+    },
+    {
+      "q": "Hava soğutma mı, sıvı soğutma mı daha sessiz?",
+      "a": "Genellikle iyi tasarlanmış hava soğutucuları, pompası olmayan yapıları sayesinde daha sessiz olabilir; ancak modern sıvı soğutucular da oldukça sessiz çalışabilir."
+    },
+    {
+      "q": "Termal macun ne zaman yenilenmeli?",
+      "a": "Ortalama olarak 2-3 yılda bir veya işlemcinizin sıcaklıkları yükselmeye başladığında yenilenmesi önerilir."
+    },
+    {
+      "q": "Kutu işlemci soğutucusu (stock cooler) yeterli mi?",
+      "a": "Kutu soğutucular genellikle sadece temel kullanım için yeterlidir; hız aşırtma veya yoğun yük altında daha iyi bir performans için özel bir soğutucu şarttır."
+    }
+  ],
+  "updatedAt": "2026-08-25T01:17:49.704Z"
+}
