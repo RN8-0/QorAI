@@ -937,7 +937,9 @@
     };
     LANG_CODES.forEach(function (c) {
       data['title_' + c] = a['title_' + c] || '';
-      data['lead_' + c] = a['lead_' + c] || '';
+      // Özet DÜZ METİN alanı: AI yazarı onu `<p>…</p>` olarak döndürdü ve
+      // site "<p>" yazısını aynen bastı. Hangi yoldan gelirse gelsin burada düzleşir.
+      data['lead_' + c] = duzMetin(a['lead_' + c]);
       data['body_' + c] = a['body_' + c] || '';
       data['conclusion_' + c] = a['conclusion_' + c] || '';
       data['tags_' + c] = (a['tags_' + c] || '').trim();

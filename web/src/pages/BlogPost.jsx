@@ -4,7 +4,7 @@ import { pb, currentUser, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL } from '../lib/seo';
 import { productPath, articlePath } from '../lib/routes';
-import { amazonGoPath } from '../lib/format';
+import { amazonGoPath, plainText } from '../lib/format';
 import { cleanProductName } from '../lib/productNames';
 import { useGeoCountry } from '../lib/geo';
 import { getSimilar } from '../lib/typesense';
@@ -346,7 +346,7 @@ export default function BlogPost() {
   }, [status, canonKey]);
 
   const title = pick(post, 'title');
-  const lead = pick(post, 'lead');
+  const lead = plainText(pick(post, 'lead'));
   const body = pick(post, 'body');
   const conclusion = pick(post, 'conclusion');
   // Custom items have a per-language name (name_tr/en/de); products/subscriptions
@@ -738,7 +738,7 @@ export default function BlogPost() {
                     {mcover ? <div className="blog-simrow-img"><img src={mcover} alt={pick(m, 'title')} loading="lazy" /></div> : null}
                     <div className="blog-simrow-body">
                       <h3>{pick(m, 'title')}</h3>
-                      {pick(m, 'lead') ? <p>{pick(m, 'lead')}</p> : null}
+                      {pick(m, 'lead') ? <p>{plainText(pick(m, 'lead'))}</p> : null}
                     </div>
                   </a>
                 );

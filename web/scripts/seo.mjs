@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync, rmSync,
 import { STRINGS } from '../src/i18n/strings.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { categoryLabel, amazonGoPath } from '../src/lib/format.js';
+import { categoryLabel, amazonGoPath, plainText } from '../src/lib/format.js';
 // Site modu TEK KAYNAK: SPA'nin gezinmesi ile on-render/sitemap AYNI dosyayi
 // okur. Bayrak build zamaninda bilinmek zorunda — Google'in gordugu HTML
 // burada yaziliyor, calisma anindaki bir ayar ona yetisemez (bkz. siteMode.js).
@@ -1031,7 +1031,7 @@ function blogArticleBody(a, lang = 'tr', priceMap = null) {
   const lbl = BLOG_LBL[lang] || BLOG_LBL.tr;
   const t = (f) => a[`${f}_${lang}`] || a[`${f}_tr`] || a[`${f}_en`] || '';
   const title = esc(t('title'));
-  const lead = esc(t('lead'));
+  const lead = esc(plainText(t('lead')));
   const body = safeBodyHtml(t('body'));
   const products = Array.isArray(a.products) ? a.products.filter((p) => p && p.id && p.name) : [];
   const IMG_H = { s: 190, m: 290, l: 420 };
@@ -1163,7 +1163,7 @@ function blogListBody(articles, lang = 'tr') {
     return `<a href="/blog/${esc(a.slug)}" style="display:flex;gap:18px;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;text-decoration:none;color:inherit;margin:14px 0">`
       + (cover ? `<div style="flex:0 0 200px;background:#f8fafc;display:flex;align-items:center;justify-content:center"><img src="${cover}" alt="${esc(t(a, 'title'))}" style="width:100%;max-height:150px;object-fit:contain;padding:16px;mix-blend-mode:multiply" loading="lazy" /></div>` : '')
       + `<div style="padding:18px 20px"><h2 style="font-size:20px;font-weight:700;margin:0 0 6px">${esc(t(a, 'title'))}</h2>`
-      + `<p style="font-size:15px;color:#64748b;margin:0 0 8px;line-height:1.6">${esc(t(a, 'lead'))}</p>`
+      + `<p style="font-size:15px;color:#64748b;margin:0 0 8px;line-height:1.6">${esc(plainText(t(a, 'lead')))}</p>`
       + `<span style="font-size:14px;font-weight:600;color:#2563eb">Rehberi oku →</span></div></a>`;
   }).join('');
   return `<main class="seo-prerender" style="max-width:1000px;margin:0 auto;padding:24px 16px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0f172a">`
@@ -3806,7 +3806,7 @@ async function main() {
         const metaD = (a[`metaDescription_${lang}`] || a.metaDescription_tr || a.metaDescription || '').trim();
         const kw = (a[`tags_${lang}`] || a.tags_tr || a.tags || '').trim();
         const articleLd = {
-          '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: metaD || t('lead'),
+          '@type': 'Article', '@id': `${url}#article`, headline: t('title'), description: metaD || plainText(t('lead')),
           image: [cover], datePublished: a.publishedAt || a.created, dateModified: a.updated,
           inLanguage: lang,
           ...(kw ? { keywords: kw } : {}),
@@ -3818,7 +3818,7 @@ async function main() {
           // metaTitle varsa AYNEN kullanilir (admin onu zaten 60'a kirpiyor);
           // yoksa marka eki DUSURULEBILIR bir kuyruk olarak eklenir ve
           // baslik 60'a sigar (bkz. fitTitle basligi).
-          title: metaT || fitTitle(t('title'), [' | Qor AI'], 60), description: truncate(metaD || t('lead')),
+          title: metaT || fitTitle(t('title'), [' | Qor AI'], 60), description: truncate(metaD || plainText(t('lead'))),
           url, image: cover, imageAlt: t('title'), type: 'article', alternates,
           routeKey: 'blogpost',
           // <html lang> bu sayfanin GERCEK dili olsun: JS calistirmayan bir

@@ -118,6 +118,19 @@ export function scoreLabel(score) {
   return Math.round(s);
 }
 
+// Plain text for a field that is MEANT to be plain (blog `lead`). The AI
+// writer once stored a lead as `<p>…</p><p>…</p>`; React and the pre-render
+// both escape it, so readers AND Google saw a literal "<p>". Same regex as
+// admin `duzMetin` (blog_core.js) so admin, SPA and pre-render agree.
+export function plainText(html) {
+  return String(html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ').trim();
+}
+
 export function formatCount(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M+';
   if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, '') + 'K+';

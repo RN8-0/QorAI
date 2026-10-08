@@ -4,6 +4,7 @@ import { pb, fileUrl } from '../lib/pocketbase';
 import { useI18n } from '../i18n/index.jsx';
 import { useSeo, SITE_URL, hreflangAlternates } from '../lib/seo';
 import { articlePath } from '../lib/routes';
+import { plainText } from '../lib/format';
 import './Blog.css';
 
 // Same deterministic baseline as BlogPost so listing counts match the article.
@@ -101,7 +102,7 @@ export default function Blog() {
                   <span>👁 {nf(viewsOf(a))}</span>
                   <span>❤ {nf(likesOf(a))}</span>
                 </div>
-                <p>{pick(a, 'lead')}</p>
+                <p>{plainText(pick(a, 'lead'))}</p>
                 <span className="blog-row-link">{L('Read guide →', 'Rehberi oku →')}</span>
               </div>
             </a>
